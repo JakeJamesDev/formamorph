@@ -3,7 +3,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { isUntouchedCopy } from '@/lib/blueprintCopies';
 import { remintPlaceholderDef } from '@/lib/placeholders';
-import type { PlaceholderHome } from '@/lib/placeholderHomes';
+import { placeholderOwnerRef, type PlaceholderHome, type PlaceholderOwnerRef } from '@/lib/placeholderHomes';
 import {
   chipValueFor, ownedDescendants, releasePlaceholderOwners, removeChipValueFrom, removePlaceholderCascade,
   type PlaceholderTreeRow,
@@ -11,16 +11,24 @@ import {
 import { randomUUID } from '@/lib/uuid';
 import type { Placeholder } from '@/types';
 
-/** A placeholder row and the list it lives in. */
 export type PlaceholderRowRef = PlaceholderTreeRow & { home: PlaceholderHome };
 
 /** What a copy's row knows about the copy. */
 export interface PlaceholderCopyFacts {
-  owner: { id: string; name: string };
+  owner: PlaceholderOwnerRef;
   blueprint?: Placeholder;
   untouched: boolean;
   /** Something uses the copy, so a delete would bring it straight back. */
   inUse: boolean;
+}
+
+export interface PlaceholderRowRules {
+  copy?: PlaceholderCopyFacts;
+  duplicate?: () => void;
+  /** Deletes the row, or removes a shared row's reference. */
+  remove?: () => void;
+  /** Why the row can't be deleted. */
+  removeBlocked?: string;
 }
 
 /**
@@ -82,11 +90,11 @@ export function usePlaceholderRowActions({ selectedId, onSelect }: {
     });
   };
 
-  /** The copy a row draws, or undefined for a row that is not an owner's copy. */
+  /** The owner's copy a row draws, if it draws one. */
   const copyOf = (node: PlaceholderRowRef): PlaceholderCopyFacts | undefined => {
     const { placeholder, home } = node;
-    if (!placeholder.blueprintId || home.kind === 'world') return undefined;
-    const owner = [...(lists?.entities ?? []), ...(lists?.dictionaries ?? [])].find((o) => o.id === home.ownerId);
+    if (!placeholder.blueprintId || home.kind === 'world' || !lists) return undefined;
+    const owner = placeholderOwnerRef(lists, home.ownerId);
     if (!owner) return undefined;
     const untouched = isUntouchedCopy(placeholder);
     return {
@@ -98,12 +106,18 @@ export function usePlaceholderRowActions({ selectedId, onSelect }: {
     };
   };
 
-  /** Why a copy's row can't be deleted, when something uses it. */
-  const removeBlocked = (copy: PlaceholderCopyFacts | undefined): string | undefined => {
-    if (!copy?.inUse) return undefined;
-    return copy.untouched
-      ? 'A trait uses this copy. It goes away when nothing uses it.'
-      : 'A trait uses this copy. Use Reset to Blueprint to undo your edits.';
+  /** A row's copy facts and its duplicate and delete, with the delete blocked while something uses the copy. */
+  const rowRules = (node: PlaceholderRowRef): PlaceholderRowRules => {
+    const copy = copyOf(node);
+    return {
+      copy,
+      // One copy per blueprint per owner.
+      duplicate: node.placeholder.blueprintId ? undefined : () => duplicate(node),
+      remove: copy?.inUse ? undefined : () => askRemove(node),
+      removeBlocked: !copy?.inUse ? undefined
+        : copy.untouched ? 'A trait uses this copy. It goes away when nothing uses it.'
+        : 'A trait uses this copy. Use Reset to Blueprint to undo your edits.',
+    };
   };
 
   const dialog: ReactNode = (
@@ -120,5 +134,5 @@ export function usePlaceholderRowActions({ selectedId, onSelect }: {
     />
   );
 
-  return { askRemove, duplicate, copyOf, removeBlocked, dialog };
+  return { rowRules, dialog };
 }

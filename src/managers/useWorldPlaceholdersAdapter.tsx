@@ -11,6 +11,7 @@ import {
   allPlaceholders, placeholderOwnerRef, type PlaceholderHomesWorld, type PlaceholderOwnerRef,
 } from '@/lib/placeholderHomes';
 import { newPlaceholder, PLACEHOLDER_PATH_SEPARATOR, SHARED_PATH_SEP } from '@/lib/placeholders';
+import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
 import { ownerIdOfNode, placeholderTreeNodes, type PlaceholderRowNode } from '@/lib/placeholderScopes';
 import { randomUUID } from '@/lib/uuid';
 import type { Placeholder } from '@/types';
@@ -32,7 +33,7 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
   const { placeholders, lists } = usePlaceholderStore();
   const { advanced } = useEditorMode();
   const { detail, footer, ownerId } = usePlaceholderDetail({ selectedId, onSelect, onOpenOwner });
-  const { askRemove, duplicate, copyOf, removeBlocked, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
+  const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
 
   const nodes = useMemo(() => (lists ? placeholderTreeNodes(lists) : []), [lists]);
   const nodeIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes]);
@@ -57,7 +58,6 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
   };
 
   // Each placeholder once, at its own row: a shared reference and the rows it repeats beneath it stay out.
-  // A world row reads its chain bare, an owned row `Owner › Chain`, and a copy as its tree row does.
   const rows = (): ListEditorRow[] => {
     if (!lists) return [];
     const byId = new Map(allPlaceholders(lists).map((p) => [p.id, p]));
@@ -69,25 +69,20 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
         repeated.add(node.id);
         continue;
       }
-      const copy = copyOf(node);
+      const { copy, duplicate, remove, removeBlocked } = rowRules(node);
+      const actions: EditorRowAction[] = [];
+      if (duplicate) actions.push({ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: duplicate });
+      if (remove || removeBlocked) {
+        actions.push({ icon: <X className="h-4 w-4" />, title: 'Delete', onClick: remove ?? (() => {}), disabledReason: removeBlocked });
+      }
       out.push({
         id: node.id,
         name: rowLabel(node, byId, lists),
         icon: copy ? <Link2 className="h-4 w-4 shrink-0" aria-label="Copy" /> : undefined,
-        actions: rowActions(node, copy),
+        actions,
       });
     }
     return out;
-  };
-  const rowActions = (node: PlaceholderRowNode, copy: ReturnType<typeof copyOf>): EditorRowAction[] => {
-    const blocked = removeBlocked(copy);
-    return [
-      // One copy per blueprint per owner.
-      ...(node.placeholder.blueprintId ? [] : [{ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicate(node) }]),
-      blocked
-        ? { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => {}, disabledReason: blocked }
-        : { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => askRemove(node) },
-    ];
   };
 
   const adapter: ListEditorAdapter = {
@@ -124,7 +119,7 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
   return { adapter, ownerId, dialog };
 }
 
-/** A search row's label: the row's chain of names, under its owner when it has one. */
+/** A search row's label: a world row's chain of names, an owned row's chain under its owner, a copy as its tree row reads. */
 function rowLabel(node: PlaceholderRowNode, byId: ReadonlyMap<string, Placeholder>, lists: PlaceholderHomesWorld): string {
   const chain = node.id.split(SHARED_PATH_SEP).map((id) => byId.get(id));
   const names = chain.map((p) => p?.name ?? '');
@@ -136,5 +131,5 @@ function rowLabel(node: PlaceholderRowNode, byId: ReadonlyMap<string, Placeholde
     names[0] = copyName(owner.name, byId.get(root.blueprintId)?.name ?? root.name);
     return names.join(PLACEHOLDER_PATH_SEPARATOR);
   }
-  return [owner.name, ...names].join(PLACEHOLDER_PATH_SEPARATOR);
+  return `${owner.name}${OWNER_NAME_SEPARATOR}${names.join(PLACEHOLDER_PATH_SEPARATOR)}`;
 }

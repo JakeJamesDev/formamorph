@@ -50,7 +50,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
     setRefusal(refused && { refusal: refused, removing });
     if (!refused) setLists(next);
   };
-  const { askRemove, duplicate, copyOf, removeBlocked, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
+  const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
 
   // The tree, the rows that hold at least one other (which drives the chevron), and who holds whom — each
   // derived once per change. `getVisible` runs on every drag frame, so re-walking there is a per-frame cost.
@@ -144,7 +144,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         };
       }
       const { placeholder, shared, holderId } = node;
-      const copy = copyOf(node);
+      const { copy, duplicate, remove, removeBlocked } = rowRules(node);
       const copyOwner = copy?.owner;
       const blueprint = copy?.blueprint;
       // "Used by" belongs on the original, where the author reads it before dragging: it says whether the
@@ -192,10 +192,9 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         // The affordance has to say what it does: a shared row's X unhooks the reference, and only an
         // owned or top-level row's deletes anything.
         removeTitle: shared && holderId !== null ? 'Remove Reference' : 'Delete',
-        remove: copy?.inUse ? undefined : () => askRemove(node),
-        removeBlocked: removeBlocked(copy),
-        // One copy per blueprint per owner.
-        duplicate: placeholder.blueprintId ? undefined : () => duplicate(node),
+        remove,
+        removeBlocked,
+        duplicate,
       };
     },
   };
