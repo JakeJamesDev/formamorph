@@ -144,6 +144,8 @@ export interface DebugEndpointInfo {
   /** The reasoning fields the request carried, in the spelling the endpoint received. Empty where it sent
    *  none. A `0` budget is a switched-off prompt, which is a different thing from sending nothing. */
   reasoningFields: ReasoningWireField[];
+  /** The `max_tokens` the request sent. Absent where it sent none. */
+  maxTokens?: number;
 }
 
 /**
@@ -162,7 +164,7 @@ export function toDebugEndpoint(
     url: string;
     apiToken: string;
   },
-  body: ReasoningBodyFields,
+  body: ReasoningBodyFields & { max_tokens?: number },
   dialect: ReasoningDialect,
 ): DebugEndpointInfo {
   return {
@@ -171,6 +173,7 @@ export function toDebugEndpoint(
     model: target.model,
     url: target.url,
     reasoningFields: reasoningWireFields(dialect, body),
+    ...(body.max_tokens !== undefined && { maxTokens: body.max_tokens }),
   };
 }
 

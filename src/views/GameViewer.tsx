@@ -147,6 +147,7 @@ import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/stat
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic } from "../lib/statRequest";
 import { resolveEntityTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
+import { MaxTokensChip } from "@/components/game/MaxTokensChip";
 import { ReasoningChip } from "@/components/game/ReasoningChip";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
@@ -1518,10 +1519,10 @@ const GameViewer = ({
     paragraphLimit,
     disableThinking,
   });
-  // The reserve holds what narration's request sends, thinking included; the length guidance reads the answer alone.
+  // The reserve holds the answer plus the prompt's own budget; the length guidance reads the answer alone.
   const narrationCaps = outputCaps(snapshotFor(narrationEndpoint), { requestType: 'narration' });
   const narrationAnswerCap = narrationCaps.answerCap;
-  const maxTokens = outputReserve(narrationCaps.maxTokens);
+  const maxTokens = outputReserve(narrationCaps.reserve);
 
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseEffectiveTurns(fullMessageHistory);
@@ -5226,6 +5227,7 @@ const GameViewer = ({
                                       </Tip>
                                     )}
                                     {req.endpoint && <ReasoningChip endpoint={req.endpoint} />}
+                                    {req.endpoint && <MaxTokensChip endpoint={req.endpoint} />}
                                   </span>
                                   {groupOpen ? (
                                     <ChevronDown className="h-4 w-4 flex-shrink-0" />

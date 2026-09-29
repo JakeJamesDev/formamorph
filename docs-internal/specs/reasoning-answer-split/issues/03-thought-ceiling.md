@@ -1,6 +1,7 @@
 # 03: Thought Ceiling on the wire
 
-Status: ready-for-agent
+Status: in-progress
+Base: 609ce03e
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -14,10 +15,16 @@ With reasoning on and a target that takes no budget, the request's `max_tokens` 
 
 ## Acceptance criteria
 
-- [ ] Request-body tests: no-budget target with reasoning on sends the Thought Ceiling; budget-taking target sends the Answer Cap plus the budget; reasoning off sends the Answer Cap.
-- [ ] Output-caps tests show the reserve uses the prompt's own percent, not the ceiling.
-- [ ] The AI Context viewer shows the sent `max_tokens`.
-- [ ] Help-line copy updated and passes the copy tests.
-- [ ] Live check: rerun the LM Studio cap-only arm and record the finish reasons and answer lengths here.
-- [ ] Changelog line in 🚧 In Progress.
-- [ ] Four gates green.
+- [x] Request-body tests: no-budget target with reasoning on sends the Thought Ceiling; budget-taking target sends the Answer Cap plus the budget; reasoning off sends the Answer Cap.
+- [x] Output-caps tests show the reserve uses the prompt's own percent, not the ceiling.
+- [x] The AI Context viewer shows the sent `max_tokens`.
+- [x] Help-line copy updated and passes the copy tests.
+- [ ] Live check: rerun the LM Studio cap-only arm and record the finish reasons and answer lengths here. Open: LM Studio was not running at build time, and the MeroMero arm needs an agreed window.
+- [x] Changelog line in 🚧 In Progress.
+- [x] Four gates green.
+
+## Rulings from the spec session
+
+- Q-A: with no endpoint Max Output, the Answer Cap is the base, so the ceiling is the Answer Cap × 3.
+- Q-B: the AI Context viewer shows a separate **Max Tokens** chip beside the reasoning chip.
+- Q-C: the rule is "no budget on the wire → Thought Ceiling", so a budget-taking target with no base gets it too.

@@ -216,6 +216,11 @@ describe('toDebugEndpoint', () => {
     expect(debug.reasoningFields.map((f) => f.name)).toEqual(names);
   });
 
+  it('records the max_tokens the request sent, and none where it sent none', () => {
+    expect(toDebugEndpoint(target, { max_tokens: 2400, reasoning_effort: 'high' }, 'openai').maxTokens).toBe(2400);
+    expect(toDebugEndpoint(target, {}, 'openai')).not.toHaveProperty('maxTokens');
+  });
+
   it('marks a pinned prompt as routed and an unpinned one as not', () => {
     expect(toDebugEndpoint(target, {}, 'unknown').routed).toBe(true);
     expect(toDebugEndpoint({ ...target, presetId: null }, {}, 'unknown').routed).toBe(false);

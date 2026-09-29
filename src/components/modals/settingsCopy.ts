@@ -322,7 +322,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   },
   maxOutputTokens: {
     label: 'Max Output Tokens',
-    description: 'Caps how long each reply can run',
+    description: 'Caps how long each answer can run, not the reasoning',
   },
   endpointTemperature: { label: 'Temperature', description: 'Overrides this endpoint’s temperature' },
   endpointRepetitionPenalty: { label: 'Repetition Penalty', description: 'Overrides this endpoint’s repetition penalty' },
@@ -477,7 +477,7 @@ Around 0.7 fits most story models. Above 1.2 the text can lose coherence.`,
   },
   localMaxTokens: {
     label: 'Max Output Tokens',
-    description: 'Caps how long each reply can run',
+    description: 'Caps how long each answer can run, not the reasoning',
     info: 'A reply that hits the cap ends at the last full sentence',
   },
   localTopP: {
@@ -539,7 +539,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   },
   promptMaxOutput: {
     label: 'Max Output',
-    description: 'Overrides how many tokens this prompt can write',
+    description: 'Overrides how long this prompt’s answer can run, not its reasoning',
   },
 
   // ── Prompts · Narration messages ────────────────────────────────────────────

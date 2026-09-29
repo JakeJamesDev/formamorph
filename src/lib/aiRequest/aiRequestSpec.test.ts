@@ -552,12 +552,12 @@ describe('the whole spec', () => {
       .toMatchObject({ max_tokens: 1400, thinking_budget_tokens: 400 });
   });
 
-  it('gives Choices no budget and its shipped cap alone on an endpoint with no Max Output', () => {
+  it('gives Choices no budget and the Thought Ceiling over its shipped cap on an endpoint with no Max Output', () => {
     const snap = snapshot(lmStudioReasoning({ maxTokens: undefined }), {
       reasoningEngaged: true, promptReasoning: { choices: 'high' }, promptReasoningBudget: { choices: 25 },
     });
     const body = buildRequestBody(snap, call({ requestType: 'choices', maxTokensOverride: 256 }));
-    expect(body).toMatchObject({ max_tokens: 256, reasoning_effort: 'high' });
+    expect(body).toMatchObject({ max_tokens: 768, reasoning_effort: 'high' });
     expect(body).not.toHaveProperty('thinking_budget_tokens');
   });
 
@@ -618,10 +618,10 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 256, max_tokens: 768 });
   });
 
-  it('sends no budget and no headroom when the endpoint Max Output override is off', () => {
+  it('sends no budget and the Answer-Cap-based Thought Ceiling when the endpoint Max Output override is off', () => {
     const snap = snapshot(routed(undefined), { promptReasoning: { summary: 'high' } });
     const summary = buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 300 }));
-    expect(summary).toMatchObject({ max_tokens: 300 });
+    expect(summary).toMatchObject({ max_tokens: 900 });
     expect(summary).not.toHaveProperty('thinking_budget_tokens');
     const narration = buildRequestBody(snap, call());
     expect(narration).not.toHaveProperty('thinking_budget_tokens');
@@ -636,10 +636,10 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
       .toMatchObject({ thinking_budget_tokens: 0, reasoning_effort: 'none', max_tokens: 300 });
   });
 
-  it('gives a level-only endpoint its level and the same headroom, with no budget field', () => {
+  it('gives a level-only endpoint its level and the Thought Ceiling, with no budget field', () => {
     const body = buildRequestBody(snapshot(levelOnly(), { reasoningEngaged: true, reasoningEffort: 'high' }), call());
-    // 150% of the 800-token Max Output rides on top of the 800-token answer.
-    expect(body).toMatchObject({ reasoning_effort: 'high', max_tokens: 2000 });
+    // 200% of the 800-token Max Output rides on top of the 800-token answer, whatever the prompt's percent.
+    expect(body).toMatchObject({ reasoning_effort: 'high', max_tokens: 2400 });
     expect(body).not.toHaveProperty('thinking_budget_tokens');
   });
 
@@ -656,14 +656,34 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).toMatchObject({ reasoning_effort: 'none', max_tokens: 800 });
   });
 
-  it('gives a known reasoner that is sent no field the same headroom', () => {
+  it('gives a known reasoner that is sent no field the same Thought Ceiling', () => {
     const k2 = external({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, reasons: true, budget: false, dialect: 'moonshot-k2' } });
     const body = buildRequestBody(snapshot(k2, { reasoningEngaged: true, reasoningEffort: 'high' }), call());
     expect(body).not.toHaveProperty('thinking');
-    expect(body).toMatchObject({ max_tokens: 2000 });
+    expect(body).toMatchObject({ max_tokens: 2400 });
   });
 
-  it('sends a Gemini 2.5 prompt no budget and no headroom when the endpoint Max Output override is off', () => {
+  it('sends a no-budget target the Thought Ceiling whatever the prompt’s own percent', () => {
+    const snap = (pct: number) => snapshot(levelOnly(), {
+      reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { summary: pct },
+    });
+    const summary = call({ requestType: 'summary', maxTokensOverride: 300 });
+    expect(buildRequestBody(snap(50), summary).max_tokens).toBe(1900);
+    expect(buildRequestBody(snap(200), summary).max_tokens).toBe(1900);
+  });
+
+  it('bases the Thought Ceiling on the Answer Cap when the endpoint Max Output override is off', () => {
+    const snap = snapshot(levelOnly({ maxTokens: undefined }), { reasoningEngaged: true, reasoningEffort: 'high' });
+    expect(buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 300 })).max_tokens).toBe(900);
+    expect(buildRequestBody(snap, call())).not.toHaveProperty('max_tokens');
+  });
+
+  it('sends a budget-taking target the Answer Cap plus its budget, not the Thought Ceiling', () => {
+    const snap = snapshot(lmStudioReasoning({ maxTokens: 800 }), { promptReasoningBudget: { narration: 50 } });
+    expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 400, max_tokens: 1200 });
+  });
+
+  it('sends a Gemini 2.5 prompt no budget and the Thought Ceiling when the endpoint Max Output override is off', () => {
     const gemini = external({
       maxTokens: undefined,
       reasoning: { ...accepts('none', 'low', 'medium', 'high'), reasons: true, budget: true, dialect: 'google-2.5' },
@@ -673,7 +693,7 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
       call({ requestType: 'summary', maxTokensOverride: 300 }),
     );
     expect(body).not.toHaveProperty('google');
-    expect(body).toMatchObject({ max_tokens: 300 });
+    expect(body).toMatchObject({ max_tokens: 900 });
   });
 
   it('sends a model the record rules out its answer cap alone', () => {
@@ -1009,7 +1029,7 @@ describe('tools — sent only where the record says the target takes them', () =
 /** Narration's context reserve and length guidance read the same caps the request sends. */
 describe('narration output caps — the reserve and the length guidance', () => {
   const narration = { requestType: 'narration' } as const;
-  const reserveFor = (snap: AiSettingsSnapshot) => outputReserve(outputCaps(snap, narration).maxTokens);
+  const reserveFor = (snap: AiSettingsSnapshot) => outputReserve(outputCaps(snap, narration).reserve);
 
   it('reserves the answer plus the thinking with reasoning on, and the answer alone with it off', () => {
     const on = snapshot(lmStudioReasoning({ maxTokens: 512 }), { promptReasoningBudget: { narration: 150 } });
@@ -1034,5 +1054,13 @@ describe('narration output caps — the reserve and the length guidance', () => 
     expect(lengthGuidance('auto', outputCaps(at(1024), narration).answerCap)).toMatch(/at most 12 /);
     expect(reserveFor(at(512))).toBe(1280);
     expect(reserveFor(at(1024))).toBe(2560);
+  });
+
+  it('reserves the prompt’s own percent on a no-budget target, not the Thought Ceiling it sends', () => {
+    const levelOnly = external({ reasoning: { ...accepts('none', 'low', 'high'), reasons: true, dialect: 'openai' } });
+    const snap = snapshot(levelOnly, { reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { narration: 50 } });
+    expect(reserveFor(snap)).toBe(1200);
+    expect(buildRequestBody(snap, call()).max_tokens).toBe(2400);
+    expect(lengthGuidance('auto', outputCaps(snap, narration).answerCap)).toMatch(/at most 9 /);
   });
 });
