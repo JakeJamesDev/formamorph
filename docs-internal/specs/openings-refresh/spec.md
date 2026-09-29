@@ -1,6 +1,6 @@
 # Spec: Openings Refresh
 
-Status: ready-for-agent
+Status: done
 Spec session: openings-refresh — spec
 
 ## Problem Statement
