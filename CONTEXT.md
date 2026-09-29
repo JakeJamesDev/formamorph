@@ -108,6 +108,10 @@ _Avoid_: node graph, map view
 The player-facing readonly twin of the Locations Canvas, shown during play — same layout and arrows, no editing. Clicking a location travels there.
 _Avoid_: canvas (authoring term), world map
 
+**List Editor**:
+The one editor shell every authoring list runs on: a search box with the **+** control, the tree (or a flat list of matches while a search is typed), and the selected item's detail. Each list plugs in what it shows and how it adds. A panel or modal shows the detail beside the list or pushed over it.
+_Avoid_: list-detail (that is only the layout), master-detail, list manager
+
 **Report**:
 A signed-in user's one-shot ticket flagging a Report Target to staff — a category plus optional details. Never public, never a conversation; it ends in exactly one Outcome.
 _Avoid_: flag, feedback (that's bug/suggestion)
