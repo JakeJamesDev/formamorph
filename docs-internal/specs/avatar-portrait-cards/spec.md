@@ -112,5 +112,6 @@ Avatars use the same portrait layout as entities, everywhere a listing or Librar
 | Q9 | In the Library Detailed view, the GLB chip (same tip) moves to the card's note line, as the Default persona badge does. Nothing overlays the split art. Asked by ticket 04. |
 | Q10 | An empty Avatar description draws no line, on the Library Detailed card and on the community card. The card shell gets an opt-in to omit the empty line; worlds and entities keep the "No description available." fallback. Ticket 04 covers both surfaces. |
 | Q11 | Avatar cards draw no "No tags" line, on the Library Detailed card and on the community card. Same kind of opt-in as Q10, on the tag row; worlds and entities keep it. Found by ticket 04; folded into its review. |
+| Q12 | The listing details window also draws no description line for an Avatar with an empty credit line. Worlds, entities and dictionaries keep the fallback. Found by ticket 04's review; ticket 05. |
 
 - Prior art: the Blank Entity Art effort built Morph art, the placeholder flag and its backfill for entities. This effort extends the same mechanism to Avatars.
