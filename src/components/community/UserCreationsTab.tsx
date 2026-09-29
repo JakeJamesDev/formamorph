@@ -12,7 +12,7 @@ import { API_BASE_URL } from "@/lib/apiBase";
 import type { ProfileCreation } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { thumbFit } from "@/lib/thumbAspect";
+import { thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 
 /** The list's own box: a fixed scroller in a dialog, nothing at all on a page. */
 function ListFrame({ layout, children }: { layout: 'dialog' | 'page'; children: ReactNode }) {
@@ -164,8 +164,8 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
                     url={`${API_BASE_URL}/thumbnails/${item.thumbnailFile}`}
                     updatedAt={item.updatedAt}
                     alt={item.name}
-                    className={cn('h-full w-full', thumbFit(item.kind === 'entity' ? 'portrait' : 'landscape'))}
-                    aspect={item.kind === 'entity' ? 'portrait' : 'landscape'}
+                    className={cn('h-full w-full', thumbFit(thumbAspectFor(item.kind)))}
+                    aspect={thumbAspectFor(item.kind)}
                   />
                 )}
               </div>

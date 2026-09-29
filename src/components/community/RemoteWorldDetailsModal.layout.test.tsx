@@ -87,6 +87,16 @@ describe('the details window’s layout', () => {
     expect(frame.className).toContain('overflow-hidden');
   });
 
+  it('frames an Avatar’s art as a portrait beside its author and counts', async () => {
+    show({ kind: 'model' });
+    await screen.findByText('A ferry keeper.');
+
+    const frame = screen.getByRole('img', { name: 'Wren Hallow' }).parentElement!;
+    expect(frame.className).toContain('aspect-[2/3]');
+    expect(header()!.contains(frame)).toBe(true);
+    for (const text of ['Author', 'Downloads', 'Likes']) expect(header()!.textContent).toContain(text);
+  });
+
   it('keeps a world’s wide art above its details', async () => {
     show({ kind: 'world' });
     await screen.findByText('A ferry keeper.');

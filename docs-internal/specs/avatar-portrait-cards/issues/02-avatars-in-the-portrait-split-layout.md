@@ -1,6 +1,7 @@
 # 02: Avatars in the Portrait Split Layout
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3cc1df82
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

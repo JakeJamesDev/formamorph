@@ -185,7 +185,7 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 - Put a concise description below the art, then align likes, downloads, and comments across one row.
 - Put tags after counts. Show two rows in the resting card and disclose the remainder on hover rather than making every card taller.
 - Keep the contextual download control in the art’s top-right corner. Other secondary actions remain in their established contextual placements.
-- Give entities the split layout. Their art is tall, so it sits at 2:3 on the left and the text sits on the right. The title and author move to the top of the art, and the art’s actions move to its bottom-right corner. A split card is about twice as wide, so the Entity grid shows three per row on wide screens, two on medium screens and one on phones.
+- Give entities and Avatars the split layout. Their art is tall, so it sits at 2:3 on the left and the text sits on the right. The title and author move to the top of the art, and the art’s actions move to its bottom-right corner. A split card is about twice as wide, so the Entity and Avatar grids show three per row on wide screens, two on medium screens and one on phones.
 - Give an entity with no image its Morph art (`EntityPlaceholderArt`): its first letter in goo, in a hue picked from its id. Never a gray box or an icon.
 - Give an entity listing that the server flags as a stand-in its Morph art too. The card never fetches or shows the stored file.
 - Use controlled callbacks in the showcase. The reference never opens a listing, publishes, downloads, deletes, or changes a like outside its local state.
@@ -214,10 +214,10 @@ At desktop widths, cards form a two-column reference grid. At narrower widths th
 | Disabled | A pending favorite callback disables the production heart until the local callback completes. |
 | Focus | Thumbnail actions reveal on keyboard focus and use the shared ring. |
 | Overflow | Titles clamp in the resting card and expand up to three lines on hover; a tooltip preserves clipped titles. Long author names truncate inside the art. Tags disclose after two rows. |
-| Loading | The Entity grid loads with split-card skeletons, so it keeps its shape when the listings arrive. |
+| Loading | The Entity and Avatar grids load with split-card skeletons, so it keeps its shape when the listings arrive. |
 | Action | The update action and favorite callback report local outcomes only. |
 
-The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data. Two entity cards show Morph art: one has no image, and one is a flagged stand-in with a stored thumbnail.
+The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data. One Avatar card shows the split layout. Two entity cards show Morph art: one has no image, and one is a flagged stand-in with a stored thumbnail.
 
 ### Writing review
 

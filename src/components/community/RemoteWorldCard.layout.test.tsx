@@ -57,6 +57,14 @@ describe('RemoteWorldCard layout', () => {
     expect(actions).not.toHaveClass('top-1');
   });
 
+  it('puts an Avatar beside its text like an entity', () => {
+    show('model');
+    const { frame, scrim, actions } = parts();
+    expect(frame.dataset.layout).toBe('split');
+    expect(scrim).toHaveClass('top-0');
+    expect(actions).toHaveClass('bottom-1');
+  });
+
   it('keeps a world stacked, name at the bottom, actions at the top', () => {
     show('world');
     const { frame, scrim, actions } = parts();
