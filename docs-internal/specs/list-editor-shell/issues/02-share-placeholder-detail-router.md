@@ -1,6 +1,7 @@
 # 02: Share the placeholder detail router
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3b03ae6e
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

@@ -1,0 +1,79 @@
+import { useMemo, type ReactNode } from 'react';
+import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
+import { placeholderOwnerRef, type PlaceholderOwnerRef } from '@/lib/placeholderHomes';
+import { ownerIdOfNode } from '@/lib/placeholderScopes';
+import { placeholderSelection } from '@/lib/placeholderTree';
+import PlaceholderManager from './PlaceholderManager';
+import PlaceholderGroupManager from './PlaceholderGroupManager';
+import PlaceholderOwnerPanel from './PlaceholderOwnerPanel';
+import { PlaceholderCopyEditor, PlaceholderCopyFooter } from './PlaceholderCopyEditor';
+
+export interface PlaceholderDetailProps {
+  /** A row id, or a bare placeholder id that opens its first row. */
+  selectedId: string | null;
+  /** Opens another row: Edit Blueprint selects the copy's blueprint. */
+  onSelect: (id: string) => void;
+  /** Opens a selected owner node's entity or book where it is edited. */
+  onOpenOwner?: (owner: PlaceholderOwnerRef) => void;
+  /** The copy's owner name when the store carries no owner index. */
+  ownerName?: string;
+}
+
+export interface PlaceholderDetailParts {
+  /** The pane for the selection, or null when it resolves to nothing. */
+  detail: ReactNode;
+  /** The copy's frozen footer, when the selection is a copy. */
+  footer: ReactNode;
+  /** The entity or book the selection belongs to, for the palette. */
+  ownerId?: string;
+}
+
+/**
+ * Picks the detail pane for a placeholder selection: a group, an owner node, a copy over its blueprint, or
+ * the placeholder manager. Groups and owner nodes resolve only through a store that carries the world's
+ * lists, so a store bound to one owner's list reaches the copy and manager panes alone.
+ */
+export function usePlaceholderDetail({ selectedId, onSelect, onOpenOwner, ownerName }: PlaceholderDetailProps): PlaceholderDetailParts {
+  const { placeholders, lists, owners } = usePlaceholderStore();
+  const owner = useMemo(() => {
+    const ownerId = selectedId && lists ? ownerIdOfNode(selectedId) : null;
+    return ownerId && lists ? placeholderOwnerRef(lists, ownerId) ?? null : null;
+  }, [selectedId, lists]);
+  const group = selectedId ? lists?.placeholderGroups?.find((g) => g.id === selectedId) : undefined;
+  // Resolving a row walks the whole tree, and the host re-renders on every keystroke in any panel.
+  const selection = useMemo(() => placeholderSelection(placeholders, selectedId), [placeholders, selectedId]);
+
+  if (group) return { detail: <PlaceholderGroupManager key={group.id} group={group} />, footer: null };
+  if (owner) {
+    return {
+      detail: <PlaceholderOwnerPanel owner={owner} placeholders={placeholders} onOpen={() => onOpenOwner?.(owner)} />,
+      footer: null,
+      ownerId: owner.id,
+    };
+  }
+  if (!selection) return { detail: null, footer: null };
+  const { row, share } = selection;
+  const placeholder = row.placeholder;
+  const holder = owners?.get(placeholder.id);
+  const ownerId = holder?.id;
+  const blueprint = placeholder.blueprintId ? placeholders.find((p) => p.id === placeholder.blueprintId) : undefined;
+  if (blueprint) {
+    return {
+      detail: (
+        <PlaceholderCopyEditor
+          key={row.id}
+          copy={placeholder}
+          blueprint={blueprint}
+          ownerName={holder?.name ?? ownerName ?? ''}
+        />
+      ),
+      footer: <PlaceholderCopyFooter copy={placeholder} onEditBlueprint={() => onSelect(blueprint.id)} />,
+      ownerId,
+    };
+  }
+  return {
+    detail: <PlaceholderManager key={row.id} placeholder={placeholder} rowId={row.id} share={share} />,
+    footer: null,
+    ownerId,
+  };
+}
