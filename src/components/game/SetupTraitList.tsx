@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
-import { WORLD_OWNER, gateOf, type GateStates } from '@/lib/traitGates';
+import { WORLD_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
@@ -35,10 +35,11 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
 
 /**
  * One trait category of the setup screen: its heading, the Player-Facing Descriptions of the groups it
- * sits in, and its traits with their stat changes. An exclusive category holds at most one trait.
+ * sits in, and its traits with their stat changes. A max-one category is a radio choice; a full category with
+ * a larger max disables its unchecked rows.
  */
 export function SetupTraitList({
-  name, groups, traits, exclusive, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
+  name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
   ownerId = WORLD_OWNER, gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
@@ -48,7 +49,8 @@ export function SetupTraitList({
   groups: TraitGroup[];
   /** This category's traits, in authored order. */
   traits: Trait[];
-  exclusive?: boolean;
+  /** The category's own group's pick state for this bearer; absent for traits outside any group. */
+  picks?: GroupPickState | null;
   stats: Stat[];
   /** The bearer's picks. */
   selectedTraits: readonly string[];
@@ -64,11 +66,13 @@ export function SetupTraitList({
   onDismissCascade?: () => void;
 }) {
   const statById = useMemo(() => new Map(stats.map((stat) => [stat.id, stat])), [stats]);
-  const selectedExclusive = traits.find((trait) => selectedTraits.includes(trait.id))?.id;
+  const radio = picks?.max === 1;
+  const selectedRadio = traits.find((trait) => selectedTraits.includes(trait.id))?.id;
   const rows = traits.map((trait) => {
     const selected = selectedTraits.includes(trait.id);
     const gate = gates && gateOf(gates, ownerId, trait.id);
     const locked = gate?.unlocked === false;
+    const disabled = locked || (!radio && !selected && !!picks?.full);
     const line = gateLine(gate);
     const description = resolveTraitText(trait, trait.playerDescription ?? '').trim();
     const changes = trait.statChanges
@@ -77,9 +81,9 @@ export function SetupTraitList({
     return (
       <div
         key={trait.id}
-        className={cn(choiceRowClass(selected), locked && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-card')}
+        className={cn(choiceRowClass(selected), disabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-card')}
       >
-        {exclusive ? (
+        {radio ? (
           <RadioGroupItem
             id={`setup-trait-${trait.id}`}
             value={trait.id}
@@ -97,7 +101,7 @@ export function SetupTraitList({
           <Checkbox
             id={`setup-trait-${trait.id}`}
             checked={selected}
-            disabled={locked}
+            disabled={disabled}
             aria-label={trait.name}
             className="mt-0.5 shrink-0"
             onCheckedChange={() => onTraitSelect(trait.id, ownerId)}
@@ -105,7 +109,7 @@ export function SetupTraitList({
         )}
         <label
           htmlFor={`setup-trait-${trait.id}`}
-          className={cn('min-w-0 flex-1', locked ? 'cursor-not-allowed' : 'cursor-pointer')}
+          className={cn('min-w-0 flex-1', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}
         >
           <strong className="flex items-center gap-2 text-label font-semibold">
             {trait.name}
@@ -148,9 +152,9 @@ export function SetupTraitList({
       ))}
       <fieldset className="mt-4 min-w-0">
         <legend className="sr-only">{name} choices</legend>
-        {exclusive ? (
+        {radio ? (
           <RadioGroup
-            value={selectedExclusive ?? ''}
+            value={selectedRadio ?? ''}
             onValueChange={(traitId) => onTraitSelect(traitId, ownerId)}
             className="grid min-w-0 gap-3 xl:grid-cols-2"
           >

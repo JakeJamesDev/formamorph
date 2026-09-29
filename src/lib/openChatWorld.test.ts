@@ -132,7 +132,7 @@ describe('the Open Chat default world', () => {
     const groups = world.traitGroups ?? [];
     expect(groups.map((g) => g.name)).toEqual(['Reply Length', 'Style', 'Pacing']);
     for (const group of groups) {
-      expect(group.exclusive, group.name).toBe(true);
+      expect(group.maxPicks, group.name).toBe(1);
       const members = world.traits.filter((t) => t.groupId === group.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       expect(members, group.name).toHaveLength(3);
       expect(members.map((t) => t.isDefault === true), group.name).toEqual([false, true, false]);

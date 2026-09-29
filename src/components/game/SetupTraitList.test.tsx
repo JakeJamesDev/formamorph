@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { SetupTraitList } from './SetupTraitList';
+import { groupPickState } from '@/lib/traitGates';
 import type { Stat, Trait, TraitGroup } from '@/types';
 
 /**
@@ -13,7 +14,7 @@ const stats: Stat[] = [
   { id: 'secret', name: 'Secret', min: 0, max: 10, value: 0, hidden: true } as Stat,
 ];
 const origin: TraitGroup = {
-  id: 'origin', name: 'Origin', parentId: null, exclusive: true, playerDescription: 'Where you grew up.',
+  id: 'origin', name: 'Origin', parentId: null, maxPicks: 1, playerDescription: 'Where you grew up.',
 };
 const dockhand: Trait = {
   id: 'dockhand', name: 'Dockhand', groupId: 'origin', playerDescription: 'You hauled nets for years.',
@@ -35,7 +36,7 @@ const view = (props: Partial<Parameters<typeof SetupTraitList>[0]> = {}) => {
       name="Origin"
       groups={[origin]}
       traits={[dockhand, scholar]}
-      exclusive
+      picks={groupPickState(origin, [dockhand, scholar], props.selectedTraits ?? [])}
       stats={stats}
       selectedTraits={[]}
       resolveText={identity}
@@ -60,7 +61,7 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Grit: +2', 'Grit: -1 (max)']);
   });
 
-  it('offers an exclusive group as one choice at most', () => {
+  it('offers a max-one group as one choice at most', () => {
     const onTraitSelect = view({ selectedTraits: ['dockhand'] });
     expect(screen.getAllByRole('radio')).toHaveLength(2);
     expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeChecked();
@@ -69,11 +70,29 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(onTraitSelect).toHaveBeenCalledWith('dockhand', 'world');
   });
 
-  it('offers a non-exclusive group as checkboxes', () => {
-    const onTraitSelect = view({ exclusive: false });
+  it('offers a group with no max as checkboxes', () => {
+    const onTraitSelect = view({ picks: null });
     expect(screen.queryByRole('radio')).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Scholar' }));
     expect(onTraitSelect).toHaveBeenCalledWith('scholar', 'world');
+  });
+
+  it('disables the unchecked rows of a full group with a larger max, and keeps the checked ones switchable', () => {
+    const skills = { ...origin, maxPicks: 2 };
+    const sailor = { ...scholar, id: 'sailor', name: 'Sailor' };
+    const traits = [dockhand, scholar, sailor];
+    const selectedTraits = ['dockhand', 'scholar'];
+    view({ traits, selectedTraits, picks: groupPickState(skills, traits, selectedTraits) });
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'Sailor' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Dockhand' })).toBeEnabled();
+    expect(screen.getByRole('checkbox', { name: 'Scholar' })).toBeEnabled();
+  });
+
+  it('keeps every row open below a larger max', () => {
+    const skills = { ...origin, maxPicks: 2 };
+    view({ selectedTraits: ['dockhand'], picks: groupPickState(skills, [dockhand, scholar], ['dockhand']) });
+    expect(screen.getByRole('checkbox', { name: 'Scholar' })).toBeEnabled();
   });
 });
 
@@ -85,19 +104,19 @@ describe('SetupTraitList gates', () => {
   ])]]);
 
   it('keeps a locked trait in place, disabled, and says what it requires', () => {
-    view({ gates, exclusive: false });
+    view({ gates, picks: null });
     expect(screen.getByRole('checkbox', { name: 'Dockhand' })).toBeDisabled();
     expect(screen.getByText('Requires Paladin or Knight')).toBeInTheDocument();
   });
 
-  it('disables a locked radio in an exclusive group', () => {
+  it('disables a locked radio in a max-one group', () => {
     view({ gates });
     expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeDisabled();
     expect(screen.getByRole('radio', { name: 'Scholar' })).toBeEnabled();
   });
 
   it('names only the requirements that unlocked an open gated trait', () => {
-    view({ gates, exclusive: false });
+    view({ gates, picks: null });
     expect(screen.getByRole('checkbox', { name: 'Scholar' })).toBeEnabled();
     expect(screen.getByText('Unlocked by Mage')).toBeInTheDocument();
   });

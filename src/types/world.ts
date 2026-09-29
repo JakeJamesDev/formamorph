@@ -128,8 +128,11 @@ export interface TraitGroup {
   parentId: string | null;
   /** Sibling order among items sharing the same parent. */
   order?: number;
-  /** At most one trait in this group may be active — rendered as radio buttons rather than checkboxes. */
-  exclusive?: boolean;
+  /** The fewest traits placed directly in this group that must be active; absent = 0. */
+  minPicks?: number;
+  /** The most traits placed directly in this group that may be active; absent = no limit. A max of 1 renders
+   *  radio buttons. */
+  maxPicks?: number;
   /** `blueprints` marks the world's Blueprints group: it holds originals that reach play only through links.
    *  At most one world group carries it. Never set on an entity's own group. */
   system?: 'blueprints';

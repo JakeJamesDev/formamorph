@@ -9,7 +9,7 @@ import {
   enabledStats,
   exclusiveSiblings,
   traitConflicts,
-  collapseExclusiveDefaults,
+  capDefaults,
   refreshChosenTraits,
   refreshSavedStats,
   renamedPlaceholderValues,
@@ -179,7 +179,7 @@ describe('placeholder pins', () => {
 });
 
 describe('exclusive groups', () => {
-  const groups = [G('excl', { exclusive: true }), G('plain')];
+  const groups = [G('excl', { maxPicks: 1 }), G('plain')];
   const traits = [
     T('a', { groupId: 'excl' }), T('b', { groupId: 'excl' }),
     T('c', { groupId: 'plain' }), T('d', { groupId: 'plain' }),
@@ -197,7 +197,7 @@ describe('exclusive groups', () => {
 });
 
 describe('conflict detection', () => {
-  const groups = [G('excl', { exclusive: true, order: 0 }), G('plain', { order: 1 })];
+  const groups = [G('excl', { maxPicks: 1, order: 0 }), G('plain', { order: 1 })];
   const vampire = T('vampire', { name: 'Vampire', order: 0, statToggles: [{ statId: 's1', enabled: true }] });
   const cured = T('cured', { name: 'Cured', order: 1, statToggles: [{ statId: 's1', enabled: false }] });
   const lone = T('lone', { name: 'Lone', order: 2, statToggles: [{ statId: 's2', enabled: true }] });
@@ -235,20 +235,25 @@ describe('conflict detection', () => {
   });
 });
 
-describe('collapseExclusiveDefaults', () => {
-  const groups = [G('excl', { exclusive: true, order: 0 }), G('plain', { order: 1 })];
+describe('capDefaults', () => {
+  const groups = [G('excl', { maxPicks: 1, order: 0 }), G('plain', { order: 1 }), G('two', { maxPicks: 2, order: 2 })];
   const traits = [
     T('a', { groupId: 'excl', order: 0 }), T('b', { groupId: 'excl', order: 1 }),
     T('c', { groupId: 'plain', order: 0 }), T('d', { groupId: 'plain', order: 1 }),
+    T('x', { groupId: 'two', order: 0 }), T('y', { groupId: 'two', order: 1 }), T('z', { groupId: 'two', order: 2 }),
     T('loose'),
   ];
 
-  it('keeps only the first authored default per exclusive group', () => {
-    expect(collapseExclusiveDefaults(['b', 'a', 'loose'], traits, groups)).toEqual(['a', 'loose']);
+  it('keeps only the first authored default of a max-one group', () => {
+    expect(capDefaults(['b', 'a', 'loose'], traits, groups)).toEqual(['a', 'loose']);
   });
 
-  it('leaves non-exclusive groups and ungrouped traits alone', () => {
-    expect(collapseExclusiveDefaults(['c', 'd', 'loose'], traits, groups)).toEqual(['c', 'd', 'loose']);
+  it('keeps the first defaults up to a larger max, in authored order', () => {
+    expect(capDefaults(['z', 'y', 'x'], traits, groups)).toEqual(['x', 'y']);
+  });
+
+  it('leaves groups with no max and ungrouped traits alone', () => {
+    expect(capDefaults(['c', 'd', 'loose'], traits, groups)).toEqual(['c', 'd', 'loose']);
   });
 });
 

@@ -1494,10 +1494,11 @@ describe('entity completeness rules', () => {
 });
 
 describe('trait group rules', () => {
-  const grouped = (over: { exclusive?: boolean; defaults?: number; members?: number }) => {
-    const { exclusive = true, defaults = 0, members = 2 } = over;
+  // `max: null` is a group with no limit.
+  const grouped = (over: { max?: number | null; defaults?: number; members?: number }) => {
+    const { max = 1, defaults = 0, members = 2 } = over;
     return base({
-      traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, exclusive }],
+      traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, ...(max === null ? {} : { maxPicks: max }) }],
       traits: Array.from({ length: members }, (_, i) => trait({
         id: `t${i + 1}`, name: `Origin ${i + 1}`, groupId: 'g1', isDefault: i < defaults,
       })),
@@ -1514,7 +1515,7 @@ describe('trait group rules', () => {
   });
 
   it('lets a non-exclusive group default whatever it likes', () => {
-    expect(only(grouped({ exclusive: false, defaults: 2 }), 'trait-group-multiple-defaults')).toEqual([]);
+    expect(only(grouped({ max: null, defaults: 2 }), 'trait-group-multiple-defaults')).toEqual([]);
   });
 
   it('flags an exclusive group holding fewer than two traits — a choice that isn’t a choice', () => {
@@ -1527,7 +1528,7 @@ describe('trait group rules', () => {
   });
 
   it('leaves a small non-exclusive group alone — a folder is not a choice', () => {
-    expect(only(grouped({ exclusive: false, members: 1 }), 'trait-group-too-small')).toEqual([]);
+    expect(only(grouped({ max: null, members: 1 }), 'trait-group-too-small')).toEqual([]);
   });
 });
 
@@ -1557,7 +1558,7 @@ describe('trait gate rules', () => {
     it('flags a trait whose only requirement is its own pick-one sibling', () => {
       const w = gates(
         [gated('a', needs('b'), { groupId: 'g' }), trait({ id: 'b', name: 'B', groupId: 'g' })],
-        { traitGroups: [{ id: 'g', name: 'Stance', parentId: null, exclusive: true }] },
+        { traitGroups: [{ id: 'g', name: 'Stance', parentId: null, maxPicks: 1 }] },
       );
       const found = only(w, rule);
       expect(ids(found)).toEqual([['a']]);
@@ -1691,7 +1692,7 @@ describe('trait gate rules', () => {
       ];
       const traitGroups = [
         { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' as const },
-        { id: 'races', name: 'Races', parentId: 'blueprints', exclusive: true },
+        { id: 'races', name: 'Races', parentId: 'blueprints', maxPicks: 1 },
         { id: 'abilities', name: 'Racial Abilities', parentId: 'blueprints' },
       ];
       const links = (race: string): TraitLink[] => [
@@ -2108,7 +2109,7 @@ describe('placeholder pin rules', () => {
 
   describe('conflicts across sources', () => {
     const pinTo = (value: string): PlaceholderPin => ({ placeholderId: 'p1', value });
-    const origin = { id: 'g1', name: 'Origin', parentId: null, exclusive: true };
+    const origin = { id: 'g1', name: 'Origin', parentId: null, maxPicks: 1 };
     const contest = (over: Partial<RuleWorld>): RuleWorld => ({ ...placed, placeholders: [hue], ...over });
 
     it('names every source that can pin the placeholder at once, and the one precedence picks', () => {

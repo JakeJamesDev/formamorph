@@ -213,7 +213,7 @@ describe('TestBench lens bar', () => {
       { id: 'harbor', name: 'Harbor Steps', isStarting: true },
       { id: 'market', name: 'The Long Market' },
     ],
-    traitGroups: [{ id: 'g-origin', name: 'Origin', parentId: null, exclusive: true }],
+    traitGroups: [{ id: 'g-origin', name: 'Origin', parentId: null, maxPicks: 1 }],
     traits: [
       {
         id: 't-sedge', name: 'Sedge-Born', groupId: 'g-origin', statChanges: [], order: 0,

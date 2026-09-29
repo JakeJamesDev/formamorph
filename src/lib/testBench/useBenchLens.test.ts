@@ -6,7 +6,7 @@ import type { LensWorld } from './lens';
 import { readLensState } from './lensStore';
 import { useBenchLens } from './useBenchLens';
 
-const traitGroups: TraitGroup[] = [{ id: 'g-origin', name: 'Origin', parentId: null, exclusive: true }];
+const traitGroups: TraitGroup[] = [{ id: 'g-origin', name: 'Origin', parentId: null, maxPicks: 1 }];
 const traits: Trait[] = [
   { id: 't-sedge', name: 'Sedge-Born', groupId: 'g-origin', statChanges: [], order: 0 },
   { id: 't-reach', name: 'Reach-Born', groupId: 'g-origin', statChanges: [], order: 1 },

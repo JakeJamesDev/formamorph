@@ -390,7 +390,7 @@ describe('linked traits in the traits tab', () => {
   // entity links Wizard for a player with no persona.
   const GROUPS = [
     G('g-blueprints', 'Blueprints', { system: 'blueprints', order: 0 }),
-    G('g-classes', 'Classes', { parentId: 'g-blueprints', exclusive: true }),
+    G('g-classes', 'Classes', { parentId: 'g-blueprints', maxPicks: 1 }),
   ];
   const PALADIN = T('t-paladin', 'Paladin', { groupId: 'g-classes', order: 0, isDefault: true });
   const WIZARD = T('t-wizard', 'Wizard', { groupId: 'g-classes', order: 1, playerDescription: '{{char}} studies.' });
@@ -471,14 +471,36 @@ describe('linked traits in the traits tab', () => {
   });
 });
 
-describe('an exclusive trait group reads as a set of alternatives', () => {
-  const GROUPS = [G('g-past', 'Background', { exclusive: true })];
+describe('a full group with a max above one', () => {
+  const GROUPS = [G('g-skill', 'Skills', { maxPicks: 2 })];
+  const TRAITS = [
+    T('t-bow', 'Archery', { groupId: 'g-skill' }),
+    T('t-hide', 'Stealth', { groupId: 'g-skill' }),
+    T('t-lore', 'Lore', { groupId: 'g-skill' }),
+  ];
+
+  it('disables its switched-off rows and keeps the switched-on ones switchable', () => {
+    renderTraits(TRAITS, GROUPS, ['t-bow', 't-hide']);
+    expect(screen.getByRole('checkbox', { name: 'Switch off Archery' })).toBeEnabled();
+    openDisabled('Skills');
+    expect(screen.getByRole('checkbox', { name: 'Switch on Lore' })).toBeDisabled();
+  });
+
+  it('keeps every row open below the max', () => {
+    renderTraits(TRAITS, GROUPS, ['t-bow']);
+    openDisabled('Skills');
+    expect(screen.getByRole('checkbox', { name: 'Switch on Lore' })).toBeEnabled();
+  });
+});
+
+describe('a max-one trait group reads as a set of alternatives', () => {
+  const GROUPS = [G('g-past', 'Background', { maxPicks: 1 })];
   const TRAITS = [
     T('t-farm', 'Farmhand', { groupId: 'g-past' }),
     T('t-book', 'Scholar', { groupId: 'g-past' }),
   ];
 
-  it('gives an exclusive group radios and a plain group checkboxes', () => {
+  it('gives a max-one group radios and a plain group checkboxes', () => {
     renderTraits([...TRAITS, T('t-loose', 'Wanderer')], GROUPS, ['t-farm', 't-loose']);
     expect(screen.getByRole('radio', { name: 'Switch off Farmhand' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Switch off Wanderer' })).toBeInTheDocument();

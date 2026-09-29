@@ -11,7 +11,7 @@ const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: phVa
 const homeland: Placeholder = { id: 'ph-home', name: 'Homeland', values: phValues(['the Reach']) };
 
 const groups: TraitGroup[] = [
-  { id: 'g-origin', name: 'Origin', parentId: null, exclusive: true },
+  { id: 'g-origin', name: 'Origin', parentId: null, maxPicks: 1 },
   { id: 'g-gifts', name: 'Gifts', parentId: null },
 ];
 
@@ -53,7 +53,7 @@ describe('lens options', () => {
   });
 
   it('has no PCs at all in a world with no exclusive group', () => {
-    const flat = world({ traitGroups: groups.map((g) => ({ ...g, exclusive: false })) });
+    const flat = world({ traitGroups: groups.map(({ maxPicks: _max, ...g }) => g) });
     expect(lensPcOptions(flat)).toEqual([]);
   });
 
@@ -179,7 +179,7 @@ describe('pins from owned traits', () => {
   // Ash's default Tamed pins hair to jet; Wild, its exclusive sibling, is not a default.
   const ash = (over: Partial<Trait> = {}): LensWorld['entities'] => [{
     id: 'ash', name: 'Ash',
-    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, maxPicks: 1 }],
     traits: [
       { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], isDefault: true,
         placeholderPins: [{ placeholderId: 'ph-hair', value: 'jet' }], ...over },
@@ -228,7 +228,7 @@ describe('the player bearer', () => {
   // Blueprints: Classes (Paladin pins Hair Color by value id, Wizard) and a default Warded pinning Homeland.
   const blueprints: TraitGroup[] = [
     { id: 'g-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
-    { id: 'g-classes', name: 'Classes', parentId: 'g-blueprints', exclusive: true },
+    { id: 'g-classes', name: 'Classes', parentId: 'g-blueprints', maxPicks: 1 },
   ];
   const blueprinted: Trait[] = [
     {
@@ -247,6 +247,12 @@ describe('the player bearer', () => {
     world({ traits: [...traits, ...blueprinted], traitGroups: [...groups, ...blueprints], ...over });
   const active = (w: LensWorld, pcTraitId: string | null = null) =>
     lensActiveTraits(w, buildLens(w, { pcTraitId, locationId: null })).map((t) => t.id);
+
+  it('caps the defaults at each group’s max, first in authored order, as a new game does', () => {
+    const twoGifts = groups.map((g) => (g.id === 'g-gifts' ? { ...g, maxPicks: 2 } : g));
+    const gifts = ['t-keen', 't-sharp', 't-quick'].map((id, order): Trait => ({ id, name: id, groupId: 'g-gifts', statChanges: [], order, isDefault: true }));
+    expect(active(world({ traits: gifts, traitGroups: twoGifts }))).toEqual(['t-keen', 't-sharp']);
+  });
 
   it('leaves Blueprints out: no PC from its groups, no default, no pin', () => {
     const w = withBlueprints();

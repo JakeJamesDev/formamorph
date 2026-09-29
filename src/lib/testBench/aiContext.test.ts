@@ -13,7 +13,7 @@ import { phValues } from '@/test/placeholderValues';
 const HAIR_CHIP = '{{ph:ph-hair:world:p1}}';
 const hairColor: Placeholder = { id: 'ph-hair', name: 'Hair Color', values: phValues(['ash', 'copper', 'jet']) };
 
-const traitGroups: TraitGroup[] = [{ id: 'g-origin', name: 'Origin', parentId: null, exclusive: true }];
+const traitGroups: TraitGroup[] = [{ id: 'g-origin', name: 'Origin', parentId: null, maxPicks: 1 }];
 const traits: Trait[] = [
   {
     id: 't-sedge', name: 'Sedge-Born', groupId: 'g-origin', statChanges: [], order: 0,

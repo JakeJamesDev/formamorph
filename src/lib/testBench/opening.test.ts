@@ -13,7 +13,7 @@ import {
 // Chip tokens, spelled as the editor inserts them.
 const chip = (id: string, mode: 'world' | 'unique', placement: string) => `{{ph:${id}:${mode}:${placement}}}`;
 
-const groups: TraitGroup[] = [{ id: 'g-origin', name: 'Origin', parentId: null, exclusive: true }];
+const groups: TraitGroup[] = [{ id: 'g-origin', name: 'Origin', parentId: null, maxPicks: 1 }];
 
 const traits: Trait[] = [
   // The default PC of the exclusive group — replaced when the lens picks a sibling.

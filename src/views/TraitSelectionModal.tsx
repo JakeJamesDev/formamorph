@@ -110,7 +110,7 @@ const TraitSelectionModal = ({
   if (!current) return null;
 
   const sectionTraits = directTraits(current.id);
-  const isExclusive = !!current.group?.exclusive;
+  const isExclusive = current.group?.maxPicks === 1;
   const exclusiveValue = sectionTraits.find((t) => selectedTraits.includes(t.id))?.id ?? '';
 
   // A hidden stat's changes still apply; the card just doesn't name it.

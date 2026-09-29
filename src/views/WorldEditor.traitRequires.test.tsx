@@ -30,7 +30,7 @@ const WORLD: World = benchEditorWorld({
     { id: 'resident', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'] },
     { id: 'aldric', name: 'Sir Aldric', persona: true, playerDescription: 'A knight.', aiDescription: 'A knight.', locations: ['harbor'] },
   ],
-  traitGroups: [{ id: 'g-class', name: 'Class', parentId: null, exclusive: true }],
+  traitGroups: [{ id: 'g-class', name: 'Class', parentId: null, maxPicks: 1 }],
   traits: [
     { id: 't-paladin', name: 'Paladin', groupId: 'g-class', statChanges: [] },
     { id: 't-rogue', name: 'Rogue', groupId: 'g-class', statChanges: [] },

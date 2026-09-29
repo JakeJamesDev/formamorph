@@ -90,36 +90,37 @@ export function enabledStats<T extends { id: string }>(stats: T[], enabled: Reco
 }
 
 /**
- * The traits a player toggle switches off alongside the one being switched on: an exclusive group holds at
+ * The traits a player toggle switches off alongside the one being switched on: a max-one group holds at
  * most one active trait, so enabling a member retires its active siblings. Nesting doesn't cascade — only
  * traits sitting directly in the same group compete.
  */
 export function exclusiveSiblings(trait: Trait, traits: readonly Trait[], groups: readonly TraitGroup[]): string[] {
   const groupId = trait.groupId ?? null;
   if (groupId === null) return [];
-  if (!groups.find((g) => g.id === groupId)?.exclusive) return [];
+  if (groups.find((g) => g.id === groupId)?.maxPicks !== 1) return [];
   return traits.filter((t) => (t.groupId ?? null) === groupId && t.id !== trait.id).map((t) => t.id);
 }
 
 /**
- * Collapse a default-trait selection so each exclusive group contributes at most one id — the first in
- * authored order, matching the radio the selection screen shows checked. An author can mark two exclusive
- * siblings default; without this both would silently apply on Enter World / Quick Start.
+ * Cap a default-trait selection so each group contributes at most its `maxPicks` ids, the first in authored
+ * order. For a max-one group that is the radio the selection screen shows checked.
  */
-export function collapseExclusiveDefaults(ids: string[], traits: Trait[], groups: TraitGroup[]): string[] {
+export function capDefaults(ids: readonly string[], traits: readonly Trait[], groups: readonly TraitGroup[]): string[] {
   const byId = new Map(traits.map((t) => [t.id, t]));
   const order = traitOrderIndex(traits, groups);
-  const exclusive = new Set(groups.filter((g) => g.exclusive).map((g) => g.id));
-  const takenGroup = new Set<string>();
+  const max = new Map(groups.flatMap((g) => (g.maxPicks === undefined ? [] : [[g.id, g.maxPicks] as const])));
+  const taken = new Map<string, number>();
   const out: string[] = [];
   const sorted = [...ids].sort(
     (a, b) => (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER),
   );
   for (const id of sorted) {
     const groupId = byId.get(id)?.groupId ?? null;
-    if (groupId !== null && exclusive.has(groupId)) {
-      if (takenGroup.has(groupId)) continue;
-      takenGroup.add(groupId);
+    const cap = groupId === null ? undefined : max.get(groupId);
+    if (groupId !== null && cap !== undefined) {
+      const count = taken.get(groupId) ?? 0;
+      if (count >= cap) continue;
+      taken.set(groupId, count + 1);
     }
     out.push(id);
   }

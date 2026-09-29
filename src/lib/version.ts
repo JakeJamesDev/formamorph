@@ -375,6 +375,25 @@ function migratePlayerSetting(world: Record<string, unknown>): void {
 }
 
 /**
+ * Turn the shipped `exclusive: true` into `maxPicks: 1` on world and entity-owned trait groups, and drop the
+ * old key. Not version-gated: 3.x worlds carry `version === APP_VERSION`. Idempotent.
+ */
+function migrateExclusiveGroups(world: Record<string, unknown>): void {
+  const groups = (list: unknown[]) => list.map((raw) => {
+    if (!raw || typeof raw !== 'object' || !('exclusive' in raw)) return raw;
+    const { exclusive, ...group } = raw as Record<string, unknown>;
+    return exclusive === true ? { ...group, maxPicks: 1 } : group;
+  });
+  if (Array.isArray(world.traitGroups)) world.traitGroups = groups(world.traitGroups);
+  if (Array.isArray(world.entities)) {
+    world.entities = world.entities.map((raw) => {
+      const owned = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).traitGroups : undefined;
+      return Array.isArray(owned) ? { ...(raw as object), traitGroups: groups(owned) } : raw;
+    });
+  }
+}
+
+/**
  * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
  * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
  */
@@ -439,6 +458,7 @@ export function migrateWorld(raw: unknown): World {
   migrateWorldPlaceholders(world);
   migrateOpeningCue(world);
   migratePlayerSetting(world);
+  migrateExclusiveGroups(world);
   normalizeContentLinks(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 

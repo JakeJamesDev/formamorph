@@ -117,7 +117,7 @@ const SetupTraitSurface = ({ category }: { category: SetupTraitCategory }) => (
       name={category.name}
       groups={category.groups}
       traits={category.traits}
-      exclusive={category.exclusive}
+      picks={category.picks}
       stats={category.stats}
       selectedTraits={category.selected}
       resolveText={asWritten}

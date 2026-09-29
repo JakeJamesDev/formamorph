@@ -7,6 +7,7 @@ import { copyLookup, readerFor, type CopyLookup } from '../blueprints';
 import { borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
 import { resolveBearerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
 import { bindBlueprintPins, traitScopedPins } from '../placeholderPins';
+import { capDefaults } from '../traitEffects';
 import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
@@ -91,7 +92,9 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     ? resolveOwnedTraitTexts(resolveEntityTexts(withLinks, resolveEntity), resolveOwned, resolveEntity)
     : withLinks;
   const presentIds = entityIdsAt(location?.id, entities);
-  const activeIds = new Set(options.activeTraitIds ?? player.traits.filter((trait) => trait.isDefault).map((trait) => trait.id));
+  const defaultsOf = (bearer: Pick<Bearer, 'traits' | 'groups'>) =>
+    capDefaults(bearer.traits.filter((trait) => trait.isDefault).map((trait) => trait.id), bearer.traits, bearer.groups);
+  const activeIds = new Set(options.activeTraitIds ?? defaultsOf(player));
   const playerCopies = copiesOf(player);
   // The player bears its traits: the Character Name reads as the Player Name, under a caller's resolve or own pins.
   const playerText = (trait: Trait, text: string) => (options.resolve
@@ -109,7 +112,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     traitGroups: borneByPlayer(player.groups),
     // Each entity holds its default traits, owned and linked, as the entry step preselects them.
     ownedTraits: Object.fromEntries(bearers.flatMap((bearer) => {
-      const defaults = bearer.traits.filter((trait) => trait.isDefault).map((trait) => trait.id);
+      const defaults = defaultsOf(bearer);
       return bearer.entity && defaults.length ? [[bearer.id, defaults]] : [];
     })),
     persona: null,

@@ -1667,7 +1667,7 @@ const traitGroupMultipleDefaults: Rule = {
   check: (world) => {
     const traits = world.traits ?? [];
     return (world.traitGroups ?? [])
-      .filter((group) => group.exclusive)
+      .filter((group) => group.maxPicks === 1)
       .flatMap((group) => {
         const defaults = traits.filter((t) => t.groupId === group.id && t.isDefault);
         if (defaults.length < 2) return [];
@@ -1690,7 +1690,7 @@ const traitGroupTooSmall: Rule = {
   check: (world) => {
     const traits = world.traits ?? [];
     return (world.traitGroups ?? [])
-      .filter((group) => group.exclusive)
+      .filter((group) => group.maxPicks === 1)
       .map((group) => ({ group, size: traits.filter((t) => t.groupId === group.id).length }))
       .filter(({ size }) => size < 2)
       .map(({ group, size }) => {

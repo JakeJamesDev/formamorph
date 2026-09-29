@@ -109,7 +109,7 @@ const openEnterWorld = async (page: Page, settings: Record<string, unknown> = {}
       name,
       parentId: index === 0 ? null : `deep-group-${index - 1}`,
       order: 0,
-      exclusive: index === names.length - 1,
+      ...(index === names.length - 1 ? { maxPicks: 1 } : {}),
       playerDescription: 'A deliberately long player description that must wrap without widening the workspace or hiding its stable finish action.',
     }));
     world.traits = names.flatMap((name, index) => {

@@ -3,7 +3,7 @@ import { BookOpen, Check, ChevronDown, ListTree, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { WORLD_OWNER, type GateStates } from '@/lib/traitGates';
+import { WORLD_OWNER, groupPickState, type GateStates } from '@/lib/traitGates';
 import { choiceRowClass } from '@/components/game/setupChoiceRow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -347,7 +347,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               name={current.name}
               groups={current.path}
               traits={current.traits}
-              exclusive={current.group?.exclusive === true}
+              picks={current.group ? groupPickState(current.group, current.traits, picksOf(current.entityId)) : null}
               stats={props.stats}
               selectedTraits={picksOf(current.entityId)}
               resolveText={props.resolveText}

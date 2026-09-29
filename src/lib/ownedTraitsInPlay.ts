@@ -8,7 +8,7 @@ import { entityTexts } from './entityTexts';
 import { bindBlueprintPins, collectPins, type PinSources } from './placeholderPins';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
-import { exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
+import { capDefaults, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import type { GateOwner } from './traitGates';
 import { effectivePlacement, placeableGroupIds } from './traitTree';
 import { mapPreservingIdentity } from './utils';
@@ -228,7 +228,8 @@ export function bearerPreview(
   const trait = bearer?.traits.find((t) => t.id === traitId);
   if (!bearer?.entity || !trait) return null;
   const retired = new Set(exclusiveSiblings(trait, bearer.traits, bearer.groups));
-  const on = [...bearer.traits.filter((t) => t.isDefault && !retired.has(t.id)).map((t) => t.id), traitId];
+  const defaults = capDefaults(bearer.traits.filter((t) => t.isDefault).map((t) => t.id), bearer.traits, bearer.groups);
+  const on = [...defaults.filter((id) => !retired.has(id)), traitId];
   const set = bearerPins(
     { world, persona: undefined, playerTraits: [], owned: { [bearerId]: [...new Set(on)] }, sharedPlaceholders },
     { placeholders },

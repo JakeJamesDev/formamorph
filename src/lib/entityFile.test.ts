@@ -336,7 +336,7 @@ describe('a character card’s openings', () => {
 describe('a character card’s owned traits', () => {
   const tamer: Entity = {
     id: 'ash', name: 'Ash', persona: true,
-    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, maxPicks: 1 }],
     traits: [
       { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], isDefault: true },
       {

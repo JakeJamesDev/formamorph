@@ -21,7 +21,7 @@ const world = {
     trait('fire', { groupId: 'schools' }),
     trait('brave', { groupId: null, statChanges: [{ statId: 's', value: 1, type: 'min' }] }),
   ] satisfies Trait[],
-  traitGroups: [group('classes', null, { name: 'Classes', exclusive: true }), group('schools', 'classes', { order: 2 })],
+  traitGroups: [group('classes', null, { name: 'Classes', maxPicks: 1 }), group('schools', 'classes', { order: 2 })],
 };
 
 describe('addLink', () => {
@@ -194,7 +194,7 @@ describe('detachLink', () => {
     const groups = out.entity.traitGroups!;
     const traits = out.entity.traits!;
     const root = groups.find((g) => g.id === out.newId)!;
-    expect(root).toMatchObject({ name: 'Classes', exclusive: true, parentId: null, order: 1 });
+    expect(root).toMatchObject({ name: 'Classes', maxPicks: 1, parentId: null, order: 1 });
     const schools = groups.find((g) => g.name === 'schools')!;
     expect(schools.parentId).toBe(root.id);
     const byName = (n: string) => traits.find((t) => t.name === n)!;
