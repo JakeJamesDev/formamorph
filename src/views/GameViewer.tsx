@@ -1191,7 +1191,7 @@ const GameViewer = ({
   // A new game draws at seed; a loaded save draws on first need.
   const openingSessionRef = useRef<OpeningSession>(newOpeningSession());
   // The Custom Persona entity carrying the player's entry, so a Self row it owns names the player.
-  const playerStandIn = customPersonaEntity(traitEntities) ?? null;
+  const customPersona = customPersonaEntity(traitEntities);
   /** The rows this playthrough draws from. The picked entities come off the initial-turn seed, so a loaded
    *  save rebuilds the same pool. */
   const sessionPool = () => openingPool({
@@ -1201,7 +1201,7 @@ const GameViewer = ({
     startingLocationId: openingSessionRef.current.startLocationId ?? pageOneLocationId(fullMessageHistory),
     picked: pickedAtStart(discoveredEntities),
     persona,
-    customPersona: playerStandIn,
+    customPersona,
   });
   // An Opening Narration is page one, never a directive to the narrator, so a session that drew one reads
   // an action row here.
@@ -1212,7 +1212,7 @@ const GameViewer = ({
   };
   /** A drawn row's text, with its owning entity as the Character Name. */
   const resolveDrawn = (drawn: DrawnOpening): string => resolveOpening(drawn.opening.text, {
-    owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities), ...(playerStandIn ? [playerStandIn] : [])], persona),
+    owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities)], persona, customPersona),
   });
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in

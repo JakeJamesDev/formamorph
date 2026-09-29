@@ -1,6 +1,7 @@
 # 04: Self Openings for Library and Custom Personas
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 826df3ed
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

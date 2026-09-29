@@ -19,8 +19,7 @@ export const DEFAULT_OPENING: Opening = { id: 'default', text: OPENING_SCENE_CUE
 export interface OpeningOwner {
   openings?: Opening[];
   openingWeights?: Record<string, number>;
-  /** The Persona mark. With the Custom Persona mark, the only marks under which the owner's Self rows show
-   *  and draw. */
+  /** Either mark lets the owner's Self rows show and draw. */
   persona?: boolean;
   customPersona?: boolean;
 }
@@ -49,7 +48,7 @@ export function openingsEnabled(overview: Overview, owners: readonly MaybeOwner[
 }
 
 /** Whether this owner has written an opening that can draw. Weight 0 benches one row, so it still counts
- *  here; a Self row counts only on an owner with the Persona mark. */
+ *  here; a Self row counts only on an owner that can own Self rows. */
 export function hasAuthoredOpenings(owner: MaybeOwner): boolean {
   return (owner?.openings ?? []).some((o) => o.text.trim().length > 0 && (!o.self || canOwnSelfOpenings(owner)));
 }
@@ -109,7 +108,8 @@ const selfOnly = (owner: Entity | null | undefined): OpeningOwner | null =>
  * The rows a new playthrough draws from. The world switch benches every row, whoever owns it. With it on,
  * the persona's Self rows replace everything else; then picked entities with a drawable row do; otherwise
  * the world's own rows, then the starting location's own (never a parent's), then those of the authored
- * entities present there, in cast order. Only the persona's Self rows ever draw.
+ * entities present there, in cast order. Self rows draw only as the persona's own, or as the Custom Persona
+ * entity's in its place.
  */
 export function openingPool({
   overview, entities = [], locations = [], startingLocationId, picked = [], persona, customPersona,
@@ -153,12 +153,13 @@ export function drawOpening(pool: readonly PoolEntry[], random: () => number): O
   return drawPoolEntry(pool, random).opening;
 }
 
-/** The entity that owns a drawn row, among `entities` and the played persona, or null for the world's own row. */
+/** The entity that owns a drawn row, among `entities`, the played persona and the Custom Persona entity, or
+ *  null for the world's own row. */
 export function openingOwner(
-  ownerId: string | null, entities: readonly Entity[], persona?: ResolvedPersona | null,
+  ownerId: string | null, entities: readonly Entity[], persona?: ResolvedPersona | null, customPersona?: Entity | null,
 ): Entity | null {
   if (ownerId == null) return null;
-  return entities.find((e) => e.id === ownerId) ?? (persona?.entity.id === ownerId ? persona.entity : null);
+  return [...entities, persona?.entity, customPersona].find((e) => e?.id === ownerId) ?? null;
 }
 
 /** One row by weight from a pool that has weight to draw. */

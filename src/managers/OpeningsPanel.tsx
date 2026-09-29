@@ -184,15 +184,17 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
 }
 
 /** One entity's openings, for both entity editors. */
-export function EntityOpenings({ entity, onChange, placeholders, names = { placeholders } }: {
+export function EntityOpenings({ entity, library = false, onChange, placeholders, names = { placeholders } }: {
   entity: Entity;
+  /** A library entity, whose Self rows show only with the Persona mark: no player picks a library Custom Persona. */
+  library?: boolean;
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
   /** How the search reads chips; defaults to the placeholders alone. */
   names?: ListSearchNames;
 }) {
   const search = useListSearch();
-  const showSelf = canOwnSelfOpenings(entity);
+  const showSelf = library ? !!entity.persona : canOwnSelfOpenings(entity);
   return (
     <div className="space-y-2">
       <ListSearchToolbar
