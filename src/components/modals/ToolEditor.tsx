@@ -1,5 +1,5 @@
 import { useId, useMemo, type ReactNode } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Info, Plus, Trash2 } from 'lucide-react';
 import type { Tool, ToolHandler, ToolParam, ToolParamType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,7 +10,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { FieldError, Hint } from '@/components/ui/typography';
-import { HintInfo, Section } from '@/components/SettingsRows';
+import { Section } from '@/components/SettingsRows';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
 import { CodeArea } from '@/components/prompt/CodeArea';
 import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import PromptField from '@/components/prompt/PromptField';
@@ -210,11 +213,39 @@ function ParametersTab({ draft, onChange, problems }: TabProps) {
   );
 }
 
-/** The script's readable values as ⓘ markdown. */
-const scriptReference = (globals: readonly { name: string; detail: string; info: string }[]) => [
-  'Reads these read-only values. Returns text, or any other value as JSON.',
-  ...globals.map((g) => `- **\`${g.name}\`** \`${g.detail}\` ${g.info}`),
-].join('\n');
+/** An ⓘ beside the Script label that opens the table of values a script can read. */
+function ScriptReference({ globals }: { globals: readonly { name: string; detail: string; info: string }[] }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button" aria-label="What a Script Can Read"
+          className="shrink-0 text-muted-foreground hover:text-foreground focus-visible:text-foreground outline-none"
+        >
+          <Info className="h-4 w-4" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>What a Script Can Read</DialogTitle>
+          <DialogDescription>Reads these read-only values. Returns text, or any other value as JSON.</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="-mx-1 min-h-0 flex-1 px-1">
+          <dl aria-label="What the script can read" className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 pr-1 text-label">
+            {globals.map((entry) => (
+              <div key={entry.name} className="contents">
+                <dt className="font-mono">{entry.name}</dt>
+                <dd className="min-w-0 text-muted-foreground">
+                  <span className="font-mono break-words text-foreground/80">{entry.detail}</span> {entry.info}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
@@ -302,7 +333,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
       {handler.kind === 'script' && (
         <CodeArea
           label="Script" ariaLabel="Script" rows={10} surface={surface}
-          info={<HintInfo>{scriptReference(surface.globals)}</HintInfo>}
+          info={<ScriptReference globals={surface.globals} />}
           value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
         />
       )}

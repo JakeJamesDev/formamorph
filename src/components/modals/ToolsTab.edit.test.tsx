@@ -136,11 +136,10 @@ describe('editing a Tool', () => {
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.click(tab('Handler'));
     await pickHandler(user, 'Script');
-    await user.click(screen.getByRole('button', { name: 'More info' }));
-    const readable = within(await screen.findByRole('dialog'));
-    expect(readable.getAllByRole('listitem').map((li) => li.textContent?.split(' ')[0]))
-      .toEqual(['args', 'world', 'scene', 'placeholders', 'console']);
-    expect(readable.getAllByRole('listitem')[0]).toHaveTextContent('{ place }');
+    await user.click(screen.getByRole('button', { name: 'What a Script Can Read' }));
+    const readable = within(await screen.findByLabelText('What the script can read'));
+    expect(readable.getAllByRole('term').map((t) => t.textContent)).toEqual(['args', 'world', 'scene', 'placeholders', 'console']);
+    expect(readable.getAllByRole('definition')[0]).toHaveTextContent('{ place }');
     await user.keyboard('{Escape}');
     expect(screen.getByRole('textbox', { name: 'Script' })).toBeInTheDocument();
     await user.click(saveButton());
