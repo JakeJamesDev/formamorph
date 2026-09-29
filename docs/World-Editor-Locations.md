@@ -51,6 +51,7 @@ Select a location in the list to open its panel.
 | **Presence** | **Entities** and **Connections** | Simple and Advanced |
 | **Media** | **Background Image**, **Image Tags** and **Ambient Sound** | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
+| **Openings** | The location's own [openings](World-Editor-Openings#location-openings), drawn when a game starts here | Advanced only |
 
 Simple mode hides **AI-Facing Summary**, **Ambient Sound** and **Image Tags**.
 

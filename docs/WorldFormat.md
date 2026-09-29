@@ -62,7 +62,7 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `readme` | String | Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle) |
 | `openings` | [Opening](#-openings)[] | The world's own openings, in authored order. One is drawn by weight at Start Game |
 | `openingWeights` | Object | Draw weight per opening `id`. A missing entry weighs 1; `0` keeps the opening without drawing it |
-| `openingsEnabled` | Boolean | `false` keeps the world's openings, and those of its entities, without drawing them. Absent = on |
+| `openingsEnabled` | Boolean | `false` keeps the world's openings, and those of its locations and entities, without drawing them. Absent = on |
 | `allowedPersonas` | `"any"` \| `"world"` | Which personas the player can pick: the [Allowed Personas](Persona-Authoring#persona-rules) control. Absent = `any`, and the editor writes no field for it |
 | `startPersona` | `{ "source": "none" }` \| `{ "source": "world", "entityId": string }` | The persona a new player starts on: the [Starts On](Persona-Authoring#persona-rules) control. Absent = the player's default. The older `playerSetting` field loads as these two |
 
@@ -222,18 +222,19 @@ People, creatures and objects in the world.
 | `model` | [MediaAsset](#-media-fields) | Associated 3D model |
 | `groupId` | String \| null | Parent entity-group `id`; null/absent = ungrouped (editor-only, not sent to the AI) |
 | `order` | Number | Sibling order within its group (editor-only) |
-| `openings` | [Opening](#-openings)[] | The entity's own openings. They join the draw when the entity is at the player's starting location |
+| `openings` | [Opening](#-openings)[] | The entity's own openings. Its Others openings join the draw when the entity is at the player's starting location. Its Self openings draw when the player plays it |
 | `openingWeights` | Object | Draw weight per opening `id`, as on `worldOverview` |
 
 ### 🎬 Openings
 
-One way a playthrough can start. Used by `worldOverview.openings` and `entities[].openings`.
+One way a playthrough can start. Used by `worldOverview.openings`, `entities[].openings` and `locations[].openings`. A location's openings join the draw when a game starts at that exact location. Its `openingWeights` work as on `worldOverview`.
 
 | Field | Type | Description |
 |---|---|---|
 | `id` | String | Unique within its owner. `openingWeights` is keyed by it |
 | `text` | String | The opening's text. Supports placeholder chips, resolved when the opening is drawn. `{{user}}` is the stored form of the [Player Name chip](Persona-Authoring#the-player-name-chip) |
 | `kind` | `"action"` \| `"narration"` | `action` fills the player's input box (Opening Action). `narration` is page one, shown as written (Opening Narration) |
+| `self` | `true` | Optional. Marks a [Self Opening](World-Editor-Openings#self-openings), a start for playing as its owner. Read only on an entity with the `persona` mark. Absent = Others |
 
 ### 🔄 `statUpdates`
 

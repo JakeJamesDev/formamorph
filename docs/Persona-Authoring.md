@@ -29,7 +29,7 @@ When a player picks it:
 | Its traits | They're the player's traits, marked **You**. See [Entity Traits](World-Editor-Traits#entity-traits). |
 | The AI | Reads that everyone in the world already knows this person, and that your text about the entity means the player |
 | Starting location | The entity's first location that is a starting location is preselected. The player can change it. |
-| [Entity Openings](World-Editor-Openings#entity-openings) | The entity's own openings leave the draw, so page one never greets the player as themselves |
+| [Entity Openings](World-Editor-Openings#entity-openings) | The entity's Others openings leave the draw, so page one never greets the player as themselves. Its [Self Openings](World-Editor-Openings#self-openings), if any, replace the whole draw. |
 
 Only entities you select are playable. The setting is your statement that the entity reads correctly from the player's side.
 
@@ -46,7 +46,8 @@ Some entities exist only as a player slot, such as a "Custom Character" with no 
 | Picks it | Is the player, the same as any playable entity |
 | Picks someone else, or **None** | Isn't in the world. It's left out of the cast, scenes, diaries and the side panel. |
 
-- **Its openings never draw.** When picked, it's the player. When not picked, it's absent.
+- **Its Others openings never draw.** When picked, it's the player. When not picked, it's absent.
+- **Its Self openings draw when the player picks it.** They give a persona-only character its own start.
 - **The checkbox is in the World Editor only.** A library entity is never in a cast, so it doesn't need one.
 
 ## Custom Persona
@@ -60,6 +61,7 @@ Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The
 | One per world | While one entity holds the mark, the choice is off on every other entity. A hint names the holder. |
 | Not in the cast | The mark takes the place of **Playable** and **Persona-Only**, and the entity acts as Persona-Only. It never joins a scene. |
 | A normal entity | It owns traits, links and [copies](World-Editor-Placeholders#copies). You name it. |
+| Self openings | Its [Self Openings](World-Editor-Openings#self-openings) draw for a player who picks **None**, or a library persona with no Self openings of its own |
 | At the top level | It stays at the top level of the **Traits** tab, in the order you set. A drop into a group is refused. |
 | Always a bearer | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
 | Duplicate | A duplicate drops the mark. |

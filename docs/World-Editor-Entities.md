@@ -18,8 +18,8 @@ Select an entity to open its panel.
 |---|---|---|
 | **Profile** | Name, aliases, pronouns, type, locations, the image and the 3D model | Simple and Advanced |
 | **Descriptions** | The three description fields | Simple and Advanced |
-| **Openings** | The entity's own openings | Advanced only |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
+| **Openings** | The entity's own openings, including Self openings for a playable entity | Advanced only |
 
 ## What reaches the AI
 
@@ -90,7 +90,7 @@ The default prompt sends entities from three places, as separate blocks: the pla
 
 ## Openings
 
-An entity can have its own openings, so it can start the scene in its own voice. See [Entity Openings](World-Editor-Openings#entity-openings).
+An entity can have its own openings, so it can start the scene in its own voice. A playable entity can also have [Self Openings](World-Editor-Openings#self-openings), which start the game for a player who plays it. See [Entity Openings](World-Editor-Openings#entity-openings).
 
 ## Groups
 
