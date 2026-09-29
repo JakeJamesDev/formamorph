@@ -15,7 +15,7 @@ import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { Chip } from '@/components/Chip';
 import {
-  placeholderWeight, placeholderChances, placeholderValueLine, parsePlaceholderText,
+  placeholderWeight, placeholderChances, placeholderChipLine,
   reconcilePlaceholderValues, prunePlaceholderWeights, pruneSharedWeights, mergePlaceholderWeights,
   lonePlaceholderToken, drawPlaceholderSpans, placeholderIsChoice, placeholderRandomizes, type PlaceholderSpan,
 } from '@/lib/placeholders';
@@ -125,10 +125,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   const vocab = usePlaceholderChipVocabulary(placeholders, placeholder.id);
   /** One value as a line a plain-text surface can show: a chip in it is named rather than spelled out as
    *  the token behind it, which is what a value list holding chips would otherwise print. */
-  const valueLine = (value: string) =>
-    placeholderValueLine(
-      parsePlaceholderText(value).map((s) => (s.type === 'text' ? s.value : vocab.label(s.token))).join(''),
-    );
+  const valueLine = (value: string) => placeholderChipLine(value, vocab.label);
   // The weight pop-out hangs off whichever chip was clicked, tracked by element rather than by wrapping the
   // open one: a wrapper that appears on click replaces the chip's DOM node mid-gesture, and the second
   // click of a double-click then lands on a different element, so double-click-to-rename never fired.
@@ -462,7 +459,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
           )}
           <div className="ml-auto flex items-center gap-1">
             {!locked && style === 'multiline' && boxes.length > 1 && (
-              <CollapseAllButton anyOpen={collapse.anyOpen} noun="values" onClick={() => collapse.setAll(!collapse.anyOpen)} />
+              <CollapseAllButton anyOpen={collapse.anyOpen} noun="values" onClick={collapse.toggleAll} />
             )}
             {/* A shared row edits no text, so the two text editors have nothing to choose between. */}
             {!locked && (

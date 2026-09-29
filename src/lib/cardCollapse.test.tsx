@@ -33,9 +33,9 @@ describe('useCardCollapse', () => {
 
   it('expands every row, then collapses every row', () => {
     const { result } = renderHook(() => useCardCollapse(ids(3)));
-    act(() => result.current.setAll(true));
+    act(() => result.current.toggleAll());
     expect(ids(3).map(result.current.isOpen)).toEqual([true, true, true]);
-    act(() => result.current.setAll(false));
+    act(() => result.current.toggleAll());
     expect(ids(3).map(result.current.isOpen)).toEqual([false, false, false]);
   });
 

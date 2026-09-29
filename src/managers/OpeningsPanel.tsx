@@ -6,7 +6,7 @@ import { ChevronDown, GripVertical, MapPinOff, Plus, Trash2 } from 'lucide-react
 import { CollapseAllButton } from '@/components/CollapseAllButton';
 import { useCardCollapse } from '@/lib/cardCollapse';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { parsePlaceholderText, placeholderValueLine } from '@/lib/placeholders';
+import { placeholderChipLine } from '@/lib/placeholders';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { badgeVariants } from '@/components/ui/badge';
@@ -235,13 +235,13 @@ export function OpeningsList({
     const to = rows.findIndex((r) => r.opening.id === over.id);
     if (from !== -1 && to !== -1) onChange(moveOpening(owner, from, to));
   };
-  const collapse = useCardCollapse(rows.map((r) => r.opening.id));
+  const collapse = useCardCollapse(shown.map(({ row }) => row.opening.id));
 
   return (
     <div className="space-y-2">
-      {rows.length > 1 && (
+      {shown.length > 1 && (
         <div className="flex justify-end">
-          <CollapseAllButton anyOpen={collapse.anyOpen} noun="openings" onClick={() => collapse.setAll(!collapse.anyOpen)} />
+          <CollapseAllButton anyOpen={collapse.anyOpen} noun="openings" onClick={collapse.toggleAll} />
         </div>
       )}
       {shown.length === 0 ? (search ? <NoMatch typed={search} /> : empty) : (
@@ -310,9 +310,7 @@ const OpeningCard = ({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: opening.id });
   const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
   // A chip reads as its name, and a paragraph as its first line plus an ellipsis.
-  const firstLine = placeholderValueLine(
-    parsePlaceholderText(opening.text).map((s) => (s.type === 'text' ? s.value : vocab.label(s.token))).join(''),
-  );
+  const firstLine = placeholderChipLine(opening.text, vocab.label);
   return (
     <div
       ref={setNodeRef}
