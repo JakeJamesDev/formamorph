@@ -9,7 +9,7 @@ const { CachedThumbnail } = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/useCachedThumbnail', () => ({ CachedThumbnail }));
 
-/** A listing the server stored its stand-in silhouette for draws Morph art and never asks for that file. */
+/** An entity or Avatar listing the server stored its stand-in silhouette for draws Morph art and never asks for that file. */
 
 const listing = (over: Record<string, unknown>): WorldRecord => ({
   id: 'listing-1',
@@ -51,9 +51,20 @@ describe('RemoteWorldCard art', () => {
     expect(container.querySelector('[data-morph-art]')).toBeNull();
   });
 
-  it('keeps an avatar’s silhouette even when flagged', () => {
-    const { container, getByTestId } = show({ kind: 'model', placeholder: true });
-    expect(getByTestId('thumb')).toBeTruthy();
+  it('draws Morph art for a flagged avatar and requests no thumbnail', () => {
+    const { container } = show({ kind: 'model', placeholder: true });
+    expect(container.querySelector('[data-morph-art]')).not.toBeNull();
+    expect(CachedThumbnail).not.toHaveBeenCalled();
+  });
+
+  it('draws Morph art for an avatar with no thumbnail file', () => {
+    const { container } = show({ kind: 'model', thumbnail_file: null });
+    expect(container.querySelector('[data-morph-art]')).not.toBeNull();
+  });
+
+  it('shows the art of an avatar that is not flagged', () => {
+    const { container, getByTestId } = show({ kind: 'model', placeholder: false });
+    expect(getByTestId('thumb').dataset.file).toBe('stand-in.png');
     expect(container.querySelector('[data-morph-art]')).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 # 03: Morph Art for Avatar Listings
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: dd79eff8
 Blocked by: 02
 Also blocked by: FormamorphServer 01 (Flag Avatar Stand-Ins)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

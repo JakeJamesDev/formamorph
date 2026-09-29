@@ -37,8 +37,12 @@ describe('showsMorphArt', () => {
     expect(showsMorphArt({ kind: 'entity' })).toBe(false);
   });
 
-  it('never replaces an avatar or world thumbnail', () => {
-    expect(showsMorphArt({ kind: 'model', placeholder: true })).toBe(false);
+  it('draws Morph art for an Avatar the server flags', () => {
+    expect(showsMorphArt({ kind: 'model', placeholder: true })).toBe(true);
+    expect(showsMorphArt({ kind: 'model', placeholder: false })).toBe(false);
+  });
+
+  it('never replaces a world thumbnail', () => {
     expect(showsMorphArt({ kind: 'world', placeholder: true })).toBe(false);
   });
 });

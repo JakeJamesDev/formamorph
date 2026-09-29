@@ -10,7 +10,7 @@ import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { LikeButton } from "@/components/community/LikeButton";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
-import { KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, kindHasMorphArt, kindHasThumbnail, showsMorphArt } from "@/lib/catalogKinds";
 import { KindArt } from "@/components/community/KindArt";
 import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
@@ -207,7 +207,7 @@ export function RemoteWorldCard({
           alt={world.name}
           className={thumbClass}
         />
-      ) : kindOf(world) === 'entity' ? (
+      ) : kindHasMorphArt(kindOf(world)) ? (
         <EntityPlaceholderArt id={worldId} name={world.name ?? ''} />
       ) : undefined}
       author={(

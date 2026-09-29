@@ -58,6 +58,15 @@ describe('community card reference', () => {
     expect(card.querySelector('img')).toBeNull();
   });
 
+  it('draws Morph art for a flagged Avatar and never shows its stored thumbnail', () => {
+    renderReference();
+
+    const card = cardNamed('Ember Stride');
+    expect(card.dataset.layout).toBe('split');
+    expect(card.querySelector('[data-morph-art]')).not.toBeNull();
+    expect(CachedThumbnail).not.toHaveBeenCalled();
+  });
+
   it('shows an Avatar in the split layout', () => {
     renderReference();
 
