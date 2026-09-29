@@ -2,7 +2,6 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer, defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { X, ChevronRight, ChevronDown, Copy, FilePlus } from 'lucide-react';
 import {
@@ -12,13 +11,16 @@ import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { useEditorDragActive } from '@/components/dnd/dragInvariants';
-import { reorderBooks, moveEntryInBooks, duplicateEntryInBooks, blankDictionaryEntry } from '@/lib/dictionaryTree';
+import {
+  reorderBooks, moveEntryInBooks, duplicateEntryInBooks, blankDictionaryEntry, dictionaryEntryLabel,
+} from '@/lib/dictionaryTree';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import type { Dictionary, DictionaryEntry } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { ContentLinkIcon } from '@/components/ContentLinkStatus';
 import { useEditorMode } from '@/lib/editorMode';
 import { cn } from '@/lib/utils';
+import { useRemoveBook } from './useRemoveBook';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
 function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onRemove }: {
@@ -49,7 +51,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
       selected={selected}
       onSelect={() => onSelect(entry.id)}
       checkbox={advanced ? { checked: entry.enabled !== false, onChange: (v) => onToggleEnabled(entry, v) } : undefined}
-      label={<PlaceholderText text={entry.name || entry.key?.[0] || 'Untitled'} placeholders={placeholders} />}
+      label={<PlaceholderText text={dictionaryEntryLabel(entry)} placeholders={placeholders} />}
       actions={[
         { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(entry.id) },
         { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => onRemove(entry.id) },
@@ -344,10 +346,10 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false }: {
   onSelect: (id: string) => void;
   hideBookRow?: boolean;
 }) => {
-  const { dictionaries, setDictionaries, addDictionaryEntry, updateDictionary, removeDictionary, removeDictionaryEntry } = useDictionaryStore();
+  const { dictionaries, setDictionaries, addDictionaryEntry, updateDictionary, removeDictionaryEntry } = useDictionaryStore();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [collapsedZones, setCollapsedZones] = useState<Set<string>>(new Set());
-  const [bookToDelete, setBookToDelete] = useState<string | null>(null);
+  const { ask: askRemoveBook, dialog: removeBookDialog } = useRemoveBook({ selectedId, onSelect });
   // While a book is being dragged, collapse every book: they can be large and can't nest, so a compact
   // list reorders cleanly. This is transient (doesn't touch the persistent `collapsed` set).
   const [draggingBook, setDraggingBook] = useState(false);
@@ -481,7 +483,7 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false }: {
                 onSelect={onSelect}
                 onToggleEnabled={(b, enabled) => updateDictionary({ ...b, enabled })}
                 onAddEntry={addEntry}
-                onDeleteBook={setBookToDelete}
+                onDeleteBook={askRemoveBook}
                 entryHandlers={entryHandlers}
               />
             ))}
@@ -489,16 +491,7 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false }: {
         </StableSortableContext>
         )}
       </EditorDndContext>
-      <ConfirmDialog
-        open={!!bookToDelete}
-        onOpenChange={(open) => !open && setBookToDelete(null)}
-        title="Delete Dictionary"
-        description="Delete this dictionary and all of its entries? This cannot be undone."
-        onConfirm={() => {
-          if (bookToDelete) { removeDictionary(bookToDelete); if (bookToDelete === selectedId) onSelect(''); }
-          setBookToDelete(null);
-        }}
-      />
+      {removeBookDialog}
     </>
   );
 };

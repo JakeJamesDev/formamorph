@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
-import { ListDetail } from '@/components/ui/list-detail';
+import { ListEditor } from '@/components/ListEditor';
+import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ListAddButton, ListToolbar } from '@/components/ListToolbar';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import EditorModalShell from './EditorModalShell';
 import { FieldColumn } from './FieldColumn';
 import { LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
-import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
+import { DictionaryStoreProvider, useDictionaryStore, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryOverviewManager from '@/managers/DictionaryOverviewManager';
 import DictionaryManager from '@/managers/DictionaryManager';
 import LibraryPlaceholdersEditor from '@/managers/LibraryPlaceholdersEditor';
+import { useDictionarySearchRows } from '@/managers/useDictionarySearchRows';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
@@ -20,10 +21,10 @@ import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/Placehold
 import { NoWorld } from '@/contexts/GameDataContext';
 import { directChipTargets } from '@/lib/placeholders';
 import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
-import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
+import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders, type PlacementLetters } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
 import { ALWAYS_ADVANCED, EditorModeContext } from '@/lib/editorMode';
-import { blankDictionaryEntry, firstDictionaryEntryId } from '@/lib/dictionaryTree';
+import { firstDictionaryEntryId } from '@/lib/dictionaryTree';
 import { exportedLibraryLinks } from '@/lib/componentExportLinks';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -36,6 +37,69 @@ import type { Dictionary, Placeholder, LibraryDetails } from '@/types';
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
 const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
+
+/**
+ * The book's entries on the List Editor, side by side: the tree with no book row, a flat search over the
+ * entries, and the entry panel. Reads the modal's own store.
+ */
+function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange, bookPlaceholders, letters }: {
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  entryTab: DictionaryPanelTab;
+  onEntryTabChange: (tab: DictionaryPanelTab) => void;
+  bookPlaceholders: Placeholder[];
+  letters: PlacementLetters;
+}) {
+  const { dictionaries } = useDictionaryStore();
+  const { rows, addEntry, dialog } = useDictionarySearchRows({ selectedId, onSelect, withBooks: false });
+  const book = dictionaries[0];
+  const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
+  const adapter: ListEditorAdapter = {
+    tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} hideBookRow />,
+    rows,
+    names: { placeholders: bookPlaceholders, letters },
+    noun: 'entries',
+    detail: () => (
+      <FieldColumn fill>
+        {selectedEntry ? (
+          <ChipInsertTargetProvider>
+            <PlaceholderPaletteBar placeholders={bookPlaceholders} />
+            <DictionaryManager
+              key={selectedEntry.id}
+              entry={selectedEntry}
+              placeholders={bookPlaceholders}
+              tab={entryTab}
+              onTabChange={onEntryTabChange}
+            />
+          </ChipInsertTargetProvider>
+        ) : (
+          <p className="text-helper text-muted-foreground">Select an entry to edit it</p>
+        )}
+      </FieldColumn>
+    ),
+    // The entry panel keeps its tab strip above a body that scrolls itself.
+    fills: () => true,
+    add: { label: 'Add entry', onAdd: (typed) => { if (book) addEntry(book.id, typed); } },
+    placeholder: 'Search or add new entries',
+    holds: (id) => !!book?.entries.some((e) => e.id === id),
+    // The hint sits beside the + instead.
+    isEmpty: false,
+    emptyHint: null,
+  };
+  return (
+    <>
+      <ListEditor
+        adapter={adapter}
+        layout="sideBySide"
+        selectedId={selectedId}
+        onSelect={onSelect}
+        backLabel="Dictionary"
+        toolbarChildren={book?.entries.length === 0 && <EmptyListHint noun="entries" />}
+      />
+      {dialog}
+    </>
+  );
+}
 
 /**
  * Edit a single library dictionary in place. Reuses the World Editor's dictionary widgets, but binds them
@@ -99,7 +163,6 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
 
   const hasUnsavedChanges = book != null && (canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current
     || canon(libraryDetails) !== detailsBaselineRef.current);
-  const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
   // The book's carried placeholders live on the sole book (index 0): its own plus the shared ones it
   // carries from the world it was exported from. Its entries' chips resolve against both.
   const bookPlaceholders = carriedPlaceholders(dictionaries[0] ?? {});
@@ -127,14 +190,6 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
     () => (dictionaries[0] ? dictionaryPlacementLetters(dictionaries[0]) : EMPTY_LETTERS),
     [dictionaries],
   );
-
-  const addEntry = () => {
-    const current = dictionaries[0];
-    if (!current) return;
-    const entry = blankDictionaryEntry();
-    store.addDictionaryEntry(current.id, entry);
-    setSelectedId(entry.id);
-  };
 
   // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
   const handleSave = async (): Promise<boolean> => {
@@ -208,45 +263,13 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
               </div>
             </ChipInsertTargetProvider>
           ) : (
-            <ListDetail
-              showDetail={!!selectedEntry}
-              onBack={() => setSelectedId(null)}
-              backLabel="Dictionary"
-              // The + row stays put over the scrolling entries, as the World Editor's does.
-              scrollList={false}
-              list={
-                <div className="flex h-full flex-col">
-                  <ListToolbar className="p-2 pb-0">
-                    <ListAddButton label="Add entry" onClick={addEntry} />
-                    {dictionaries[0]?.entries.length === 0 && <EmptyListHint noun="entries" />}
-                  </ListToolbar>
-                  <ScrollArea className="min-h-0 flex-1">
-                    <div className="p-2">
-                      <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} hideBookRow />
-                    </div>
-                  </ScrollArea>
-                </div>
-              }
-              // The entry panel keeps its tab strip above a body that scrolls itself.
-              scrollDetail={false}
-              detail={
-                <FieldColumn fill>
-                  {selectedEntry ? (
-                    <ChipInsertTargetProvider>
-                      <PlaceholderPaletteBar placeholders={bookPlaceholders} />
-                      <DictionaryManager
-                        key={selectedEntry.id}
-                        entry={selectedEntry}
-                        placeholders={bookPlaceholders}
-                        tab={entryTab}
-                        onTabChange={setEntryTab}
-                      />
-                    </ChipInsertTargetProvider>
-                  ) : (
-                    <p className="text-helper text-muted-foreground">Select an entry to edit it</p>
-                  )}
-                </FieldColumn>
-              }
+            <LibraryEntriesEditor
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              entryTab={entryTab}
+              onEntryTabChange={setEntryTab}
+              bookPlaceholders={bookPlaceholders}
+              letters={letters}
             />
           )}
         </DictionaryStoreProvider>

@@ -104,12 +104,13 @@ describe('the search text names the next add', () => {
 });
 
 describe('boxes that only name', () => {
-  it('names a new dictionary and leaves the books unfiltered', () => {
+  // The Dictionary box searches too (Q23), so the unmatched book leaves the list.
+  it('names a new dictionary from the search text', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Dictionary/);
-    const box = screen.getByPlaceholderText('Name a new dictionary') as HTMLInputElement;
+    const box = searchBox('dictionaries');
     type(box, 'Bestiary');
-    expect(screen.getByText('Fen Lore')).toBeInTheDocument();
+    expect(screen.queryByText('Fen Lore')).toBeNull();
     fireEvent.click(addButton('Dictionary'));
     expect(ctx().dictionaries.map((d) => d.name)).toContain('Bestiary');
     expect(box).toHaveValue('');

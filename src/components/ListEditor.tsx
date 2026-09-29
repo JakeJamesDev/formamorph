@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ListDetail } from '@/components/ui/list-detail';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useListEditor, type ListEditorAdapter } from '@/components/listEditorHooks';
@@ -9,13 +10,15 @@ export type ListEditorLayout = 'sideBySide' | 'stacked';
  * The List Editor in a panel or modal: the toolbar above the scrolled list, and the detail beside it or
  * pushed over it. A host that lays the parts out itself uses `useListEditor` instead.
  */
-export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel }: {
+export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel, toolbarChildren }: {
   adapter: ListEditorAdapter;
   layout: ListEditorLayout;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   /** The list's name; the pushed detail's arrow reads "Back to <backLabel>". */
   backLabel: string;
+  /** Sits in the toolbar row after the +. */
+  toolbarChildren?: ReactNode;
 }) {
   const parts = useListEditor(adapter, { selectedId, onSelect });
   return (
@@ -29,7 +32,7 @@ export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel }:
       detailFooter={parts.footer}
       list={
         <div className="flex h-full min-h-0 flex-col">
-          {parts.toolbar('p-2 pb-0')}
+          {parts.toolbar('p-2 pb-0', { children: toolbarChildren })}
           {parts.ownsSlot ? <div className="min-h-0 flex-1">{parts.list}</div> : (
             <ScrollArea className="min-h-0 flex-1">
               <div className="p-2">{parts.list}</div>
