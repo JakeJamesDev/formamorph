@@ -105,7 +105,7 @@ describe('the two entity editors', () => {
 
     expect(libraryTop).toEqual(['Entity', 'Traits', 'Placeholders']);
     expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
-    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Openings', 'Placeholders']);
+    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Placeholders', 'Openings']);
   });
 
   it('drop Traits, Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {

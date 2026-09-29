@@ -1,6 +1,7 @@
 # 01: Opening Card Fixes
 
-Status: ready-for-agent
+Status: in-progress
+Base: 2d47fda4
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

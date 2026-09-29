@@ -265,10 +265,9 @@ export function OpeningsList({
           variant="outline"
           size="sm"
           className="w-full"
-          aria-label={ownerLabel ? `Add Opening to ${ownerLabel}` : undefined}
           onClick={() => onChange(addOpening(owner))}
         >
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add Opening
+          <Plus className="mr-1 h-3.5 w-3.5" /> {ownerLabel ? `Add Opening to ${ownerLabel}` : 'Add Opening'}
         </Button>
       )}
     </div>
@@ -320,8 +319,8 @@ const OpeningCard = ({
           aria-label={`Opens As, ${a11yLabel}`}
           className="h-6"
         >
-          <ToggleGroupItem value="action" className="h-6 px-2 text-helper">Player Action</ToggleGroupItem>
-          <ToggleGroupItem value="narration" className="h-6 px-2 text-helper">Narration</ToggleGroupItem>
+          <ToggleGroupItem value="action" className="px-2 py-0 text-helper">Player Action</ToggleGroupItem>
+          <ToggleGroupItem value="narration" className="px-2 py-0 text-helper">Narration</ToggleGroupItem>
         </ToggleGroup>
         <div className="ml-auto flex items-center gap-2">
           <Input

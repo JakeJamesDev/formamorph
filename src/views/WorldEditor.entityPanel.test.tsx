@@ -79,7 +79,7 @@ describe('the World Editor entity panel tabs', () => {
   it('offers five tabs in Advanced mode and opens on Profile', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Traits', 'Openings', 'Placeholders']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Traits', 'Placeholders', 'Openings']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
   });
 
