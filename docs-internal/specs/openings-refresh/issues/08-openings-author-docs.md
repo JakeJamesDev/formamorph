@@ -1,6 +1,6 @@
 # 08: Openings Author Docs
 
-Status: ready-for-human
+Status: done
 Base: f9682d2b
 Blocked by: 06; 07
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

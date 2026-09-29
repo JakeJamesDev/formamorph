@@ -1,6 +1,6 @@
 # 07: Test Bench Persona Preview
 
-Status: ready-for-human
+Status: done
 Base: 207679e4
 Blocked by: 04; 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

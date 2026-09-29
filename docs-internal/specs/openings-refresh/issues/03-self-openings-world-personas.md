@@ -1,6 +1,6 @@
 # 03: Self Openings for World Personas
 
-Status: ready-for-human
+Status: done
 Base: 0601e20b
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
