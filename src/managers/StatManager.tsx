@@ -306,7 +306,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               onOpenChange={(open) => { if (open) loadMorphs(); }}
               placeholder="Select body sliders"
               emptyIndicator={morphsLoading ? "Loading sliders…" : undefined}
-              hideSelectAll
               maxCount={6}
             />
           </div>

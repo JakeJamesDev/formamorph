@@ -24,7 +24,6 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-	CommandSeparator,
 } from "@/components/ui/command";
 
 /**
@@ -180,12 +179,6 @@ interface MultiSelectProps
 	 */
 	className?: string;
 
-	/**
-	 * If true, disables the select all functionality.
-	 * Optional, defaults to false.
-	 */
-	hideSelectAll?: boolean;
-
 	/** Shown as one chip in place of the per-option chips while every option is selected. */
 	allSelectedLabel?: string;
 
@@ -336,7 +329,6 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			maxCount = 3,
 			modalPopover = true,
 			className,
-			hideSelectAll = false,
 			allSelectedLabel,
 			searchable = true,
 			emptyIndicator,
@@ -1097,7 +1089,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 								<CommandEmpty>
 									{emptyIndicator || "No results found."}
 								</CommandEmpty>{" "}
-								{!hideSelectAll && !searchValue && (
+								{!searchValue && (
 									<CommandGroup>
 										<CommandItem
 											key="all"
@@ -1215,30 +1207,30 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 										})}
 									</CommandGroup>
 								)}
-								<CommandSeparator />
-								<CommandGroup>
-									<div className="flex items-center justify-between">
-										{selectedValues.length > 0 && (
-											<>
-												<CommandItem
-													onSelect={handleClear}
-													className="flex-1 justify-center cursor-pointer">
-													Clear
-												</CommandItem>
-												<Separator
-													orientation="vertical"
-													className="flex min-h-6 h-full"
-												/>
-											</>
-										)}
-										<CommandItem
-											onSelect={() => setIsPopoverOpen(false)}
-											className="flex-1 justify-center cursor-pointer max-w-full">
-											Close
-										</CommandItem>
-									</div>
-								</CommandGroup>
 							</CommandList>
+							{/* Footer stays outside the scroll list; forceMount keeps it through search filtering. */}
+							<div className="flex shrink-0 items-center justify-between border-t border-border p-1">
+								{selectedValues.length > 0 && (
+									<>
+										<CommandItem
+											forceMount
+											onSelect={handleClear}
+											className="flex-1 justify-center cursor-pointer">
+											Clear
+										</CommandItem>
+										<Separator
+											orientation="vertical"
+											className="flex min-h-6 h-full"
+										/>
+									</>
+								)}
+								<CommandItem
+									forceMount
+									onSelect={() => setIsPopoverOpen(false)}
+									className="flex-1 justify-center cursor-pointer max-w-full">
+									Close
+								</CommandItem>
+							</div>
 						</Command>
 					</PopoverContent>
 					{animation > 0 && selectedValues.length > 0 && (

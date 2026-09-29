@@ -185,6 +185,20 @@ describe('Offered To', () => {
     expect(options).toEqual(['(Select All)', ...Object.values(PROMPT_TAB_REQUESTS).map((k) => REQUEST_LABELS[k]), 'Clear', 'Close']);
   });
 
+  it('keeps Clear and Close in a footer outside the scroll list, through any search', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState([tool()])} />);
+    await user.click(list().getByRole('button', { name: 'get_weather' }));
+    await pick(user, /^Select all \d+ options$/);
+    await user.click(offeredTo());
+    const listbox = (await screen.findByRole('option', { name: /^Narration/ })).closest('[role="listbox"]');
+    await user.type(screen.getByPlaceholderText('Search options...'), 'zzz');
+    for (const name of ['Clear', 'Close']) {
+      const item = screen.getByRole('option', { name });
+      expect(listbox).not.toContainElement(item);
+    }
+  });
+
   it('checks every prompt with Select All and shows one All Prompts chip, then clears them all', async () => {
     const user = userEvent.setup();
     const every = Object.values(PROMPT_TAB_REQUESTS);

@@ -259,7 +259,6 @@ export const EntityLocationsField = ({ value, options, selectedIds, onLocationsC
       defaultValue={selectedIds}
       onValueChange={(ids) => onLocationsChange?.(ids)}
       placeholder="Select locations"
-      hideSelectAll
     />
   </div>
 );
