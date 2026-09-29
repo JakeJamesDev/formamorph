@@ -96,6 +96,17 @@ describe('the library entity Traits tab', () => {
   });
 });
 
+describe("the library entity Traits tab's placeholder palette", () => {
+  it("offers the entity's placeholders and inserts one into a trait field", async () => {
+    await openTraits({ ...wolf, placeholders: [{ id: 'town', name: 'Town', values: phValues(['Sedge']) }] });
+    await userEvent.click(screen.getByText('Tamed'));
+    await userEvent.click(screen.getByLabelText('Name'));
+    await userEvent.click(screen.getByRole('button', { name: 'Town' }));
+    const tamed = (await saveEntity()).traits?.find((t) => t.id === 't-tamed');
+    expect(tamed?.name).toMatch(/\{\{ph:town:/);
+  });
+});
+
 describe("the library entity Traits tab's toolbar", () => {
   it('replaces the Add buttons with the search box and a + menu that adds to the entity', async () => {
     await openTraits();

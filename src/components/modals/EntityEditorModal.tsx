@@ -257,9 +257,15 @@ const EntityEditorModal = ({
             </FieldColumn>
           </div>
         ) : entity && tab === 'traits' ? (
-          <LibraryTraitsEditor
-            entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
-          />
+          // The palette the other tabs get, over the trait fields.
+          <ChipInsertTargetProvider>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />
+              <LibraryTraitsEditor
+                entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
+              />
+            </div>
+          </ChipInsertTargetProvider>
         ) : (
           // The same palette the field tabs get, over the value fields: a value is a chip field too.
           <ChipInsertTargetProvider>
