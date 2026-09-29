@@ -1,6 +1,6 @@
 # 03: Host List Editor parts in the World Editor
 
-Status: in-progress
+Status: ready-for-human
 Base: 3b03ae6e
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

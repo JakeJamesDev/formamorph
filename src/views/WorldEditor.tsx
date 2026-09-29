@@ -712,7 +712,7 @@ const WorldEditorInner = ({
     setSelectedItemId(id);
   };
 
-  // The world holds at most one Blueprints group, so its add hides once it exists.
+  // The world holds at most one placeholder Blueprints group, so its add hides once it exists.
   const hasPlaceholderBlueprints = !!blueprintsPlaceholderGroup(placeholderGroups);
   const handleAddPlaceholderBlueprints = () => {
     const id = randomUUID();
@@ -762,7 +762,7 @@ const WorldEditorInner = ({
     focusField: findField,
   });
   const traitsParts = useListEditor(traitsAdapter, { selectedId: selections.traits ?? null, onSelect: selectTrait, search });
-  // The active tab's List Editor parts, on a tab that has moved onto it.
+  // The active tab's List Editor parts, on a tab that runs on it.
   const listEditorParts = activeTab === 'traits' ? traitsParts : null;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
@@ -829,7 +829,7 @@ const WorldEditorInner = ({
     (config.setItems as (next: { id: string }[]) => void)(arrayMove(items, oldIndex, newIndex));
   };
 
-  // Deep-copy an item and place the copy right after the original. The other tabs are flat arrays.
+  // Deep-copy an item and place the copy right after the original.
   const duplicateItem = (id: string) => {
     // An entity copy needs fresh ids for what it owns, which the entity tree's duplicate gives it.
     if (activeTab === "entities") {
@@ -1144,7 +1144,7 @@ const WorldEditorInner = ({
       ) : null}
     </ListSearchToolbar>
   ));
-  // The detail's frozen footer: the List Editor's on a tab that has moved onto it.
+  // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts ? listEditorParts.footer : placeholderDetail.footer;
   const footerBar = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">

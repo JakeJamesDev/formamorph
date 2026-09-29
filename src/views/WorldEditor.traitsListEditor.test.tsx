@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, clickFlask, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -34,6 +34,8 @@ const WORLD: World = benchEditorWorld({
   traits: [
     { id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'g-classes' },
     { id: 't-tamer', name: 'Beast Tamer', statChanges: [], order: 1 },
+    // One Bench finding: a pin naming a placeholder that doesn't exist.
+    { id: 't-oath', name: 'Hollow Oath', statChanges: [], order: 2, placeholderPins: [{ placeholderId: 'gone', value: 'ash' }] },
   ],
   entities: [
     {
@@ -162,6 +164,21 @@ describe('one selection per tab', () => {
 
     openEditorTab(/Traits/);
     expect(shownName()).toBe('Paladin');
+  });
+
+  it('opens a Bench finding on its own tab and leaves the other tabs\' selections alone', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    fireEvent.click(screen.getByText('Damp'));
+
+    await clickFlask();
+    // The popover names the finding's trait on its row and its dismiss control; the row is the first.
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Hollow Oath' }))[0]);
+    await waitFor(() => expect(screen.getByRole('tab', { name: /Traits/, selected: true })).toBeInTheDocument());
+    expect(shownName()).toBe('Hollow Oath');
+
+    openEditorTab(/Stats/);
+    expect(shownName()).toBe('Damp');
   });
 
   describe('on mobile', () => {
