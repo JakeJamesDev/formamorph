@@ -1,6 +1,6 @@
 # 05: Scoped placeholder editor in the entity and dictionary panels
 
-Status: in-progress
+Status: ready-for-human
 Base: 7b73793c
 Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

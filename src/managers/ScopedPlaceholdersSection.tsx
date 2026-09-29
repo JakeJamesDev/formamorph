@@ -4,7 +4,8 @@ import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { PlaceholderStoreProvider, usePlaceholderStore, usePlaceholderStoreOptional, type PlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { useEditorMode } from '@/lib/editorMode';
 import { OWNER_NAME_SEPARATOR, labelPlaceholders } from '@/lib/placementLetters';
-import { placeholderOwnerRef, type PlaceholderHome } from '@/lib/placeholderHomes';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
+import { placeholderList, placeholderOwnerRef, type PlaceholderHome } from '@/lib/placeholderHomes';
 import { newPlaceholder } from '@/lib/placeholders';
 import { ownerPlaceholderNodes } from '@/lib/placeholderScopes';
 import PlaceholderList from './PlaceholderList';
@@ -28,9 +29,15 @@ interface ScopedSelection {
 /** One owner's placeholders on the List Editor, stacked: its tree, a flat search over its rows, and the
  *  detail router's pane over the list. Reads the scoped store. */
 const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlaceholder }: ScopedSelection & { home: PlaceholderHome & { ownerId: string } }) => {
-  const { placeholders, lists, addPlaceholder } = usePlaceholderStore();
+  const { placeholders, lists, owners, addPlaceholder } = usePlaceholderStore();
+  const letters = useGameDataOptional()?.placementLetters;
   const { detail, footer } = usePlaceholderDetail({ selectedId, onSelect: onOpenWorldPlaceholder });
-  const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
+  // A duplicate lands in its source's list, so a shared row's duplicate opens on the top-level tab (Q39).
+  const openDuplicate = (rowId: string, sourceId: string) => {
+    if (lists && placeholderList(lists, home).some((p) => p.id === sourceId)) onSelect(rowId);
+    else onOpenWorldPlaceholder(rowId);
+  };
+  const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect, openDuplicate });
   const nodes = useMemo(() => (lists ? ownerPlaceholderNodes(lists, home) : []), [lists, home]);
   // A drawn row, or the bare id of a placeholder the tree draws: a shared row's link opens its original.
   const heldIds = useMemo(() => new Set(nodes.flatMap((n) => [n.id, n.placeholder.id])), [nodes]);
@@ -38,9 +45,9 @@ const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlace
   const ownerName = labelPlaceholders(placeholderOwnerRef(lists, home.ownerId)?.name ?? '', placeholders);
 
   const adapter: ListEditorAdapter = {
-    tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} />,
-    rows: () => placeholderSearchRows(nodes, lists, rowRules, false),
-    names: { placeholders },
+    tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} openDuplicate={openDuplicate} />,
+    rows: () => placeholderSearchRows(nodes, lists, rowRules, { withOwner: false }),
+    names: { placeholders, letters, owners },
     noun: 'placeholders',
     detail: (id) => (
       <div className="p-4">

@@ -13,8 +13,7 @@ import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
  *  on Placeholders. Entry editing is the DictionaryManager's job; add/delete entries from the tree on the left.
  *
  *  The panel remounts per book, so the chosen tab and the open placeholder are the editor's to hold and
- *  arrive as props. Placeholders
- *  is Advanced only, so Simple mode leaves one tab and no strip.
+ *  arrive as props. Placeholders is Advanced only, so Simple mode leaves one tab and no strip.
  *
  *  `focusField` is the Find hit the editor just navigated to. The panel opens the tab that holds it. */
 const DictionaryBookManager = ({

@@ -35,9 +35,11 @@ export interface PlaceholderRowRules {
  * The actions a placeholder row offers wherever it is drawn: delete (with the confirmation that names what
  * goes with it), remove a reference, and duplicate. `dialog` is the confirmation; the caller renders it.
  */
-export function usePlaceholderRowActions({ selectedId, onSelect }: {
+export function usePlaceholderRowActions({ selectedId, onSelect, openDuplicate }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** Opens a fresh duplicate's row, given the id of the placeholder it copies; absent, the row is selected. */
+  openDuplicate?: (rowId: string, sourceId: string) => void;
 }) {
   const { placeholders, setPlaceholders, removePlaceholder, lists, copiesInUse } = usePlaceholderStore();
   // The placeholder a delete is waiting on, held so the confirmation can name what goes with it.
@@ -79,7 +81,9 @@ export function usePlaceholderRowActions({ selectedId, onSelect }: {
       const copy = { ...remintPlaceholderDef(source), id: randomUUID(), name: `${source.name} (Copy)` };
       // Selection speaks in row ids. Only a copy that stays owned lands under the row it came from; a copy
       // of a shared row belongs to nobody, so its row is a top-level one named by its id alone.
-      onSelect(copy.ownerId && row.parentId ? `${row.parentId}/${copy.id}` : copy.id);
+      const rowId = copy.ownerId && row.parentId ? `${row.parentId}/${copy.id}` : copy.id;
+      if (openDuplicate) openDuplicate(rowId, source.id);
+      else onSelect(rowId);
       // Inserted right after its source, which is what keeps it in the source's list (see `scatterPlaceholders`).
       const next = [...prev.slice(0, i + 1), copy, ...prev.slice(i + 1)];
       // A copy of an owned row belongs where the original does, which only holds once its owner holds it.

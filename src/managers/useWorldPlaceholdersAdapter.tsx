@@ -55,7 +55,7 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
 
   const adapter: ListEditorAdapter = {
     tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} />,
-    rows: () => (lists ? placeholderSearchRows(nodes, lists, rowRules, true) : []),
+    rows: () => (lists ? placeholderSearchRows(nodes, lists, rowRules, { withOwner: true }) : []),
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'placeholders',
     detail: (id) => id && detail,
