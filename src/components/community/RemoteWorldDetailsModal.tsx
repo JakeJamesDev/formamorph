@@ -507,6 +507,7 @@ export function RemoteWorldDetailsModal({
             <div className={splitColumnClasses(collapsed).left}>
               <WorldDetailsColumn
                 description={world.description || ""}
+                omitEmptyDescription={kindOf(world) === 'model'}
                 tags={portrait ? undefined : world.tags}
                 thumbnail={portrait ? (
                   <div className="flex gap-4" data-layout="split">

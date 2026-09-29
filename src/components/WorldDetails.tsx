@@ -71,10 +71,12 @@ export function DetailTags({ tags }: { tags: string[] }) {
 
 /** The single-column world-details layout shared by the local-world modal and the community details
  *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags. */
-export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta, split = false, collapsed = false }: {
+export function WorldDetailsColumn({ thumbnail, actions, description, omitEmptyDescription, tags, meta, split = false, collapsed = false }: {
   thumbnail: React.ReactNode;
   actions: React.ReactNode;
   description?: string;
+  // Draws no Description section for an empty description instead of the fallback line.
+  omitEmptyDescription?: boolean;
   tags?: string[];
   meta?: React.ReactNode;
   // When set, thumbnail + actions sit in a left column and description/meta/tags in a right column.
@@ -84,12 +86,14 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
 }) {
   const info = (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-title font-semibold">Description</h3>
-        <div className="text-muted-foreground mt-1">
-          <MarkdownRenderer text={description || "No description available."} />
+      {(description || !omitEmptyDescription) && (
+        <div>
+          <h3 className="text-title font-semibold">Description</h3>
+          <div className="text-muted-foreground mt-1">
+            <MarkdownRenderer text={description || "No description available."} />
+          </div>
         </div>
-      </div>
+      )}
       {meta}
       {tags && <DetailTags tags={tags} />}
     </div>

@@ -1,6 +1,7 @@
 # 05: Avatar Details Window Empty Description
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 5b313104
 Blocked by: 03, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
