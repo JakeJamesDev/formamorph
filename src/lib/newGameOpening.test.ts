@@ -274,9 +274,28 @@ describe('the derived Openings switch in a world with no openings that can draw'
     random: always,
   }).draw.opening.id;
 
-  it('stays off for a library persona’s rows, which never draw', () => {
-    const own = entity('own', { persona: true, openings: [action('own-hello'), selfRow('own-self')] });
+  it('stays off for a library persona’s Others rows, which never draw', () => {
+    const own = entity('own', { persona: true, openings: [action('own-hello')] });
     expect(drawWith({ source: 'library', entityId: 'own' }, [], own)).toBe('default');
+  });
+
+  it('turns on for a library persona’s Self rows, which then draw', () => {
+    const own = entity('own', { persona: true, openings: [action('own-hello'), selfRow('own-self')] });
+    expect(drawWith({ source: 'library', entityId: 'own' }, [], own)).toBe('own-self');
+  });
+
+  it('turns on for the Custom Persona entity’s Self rows under None', () => {
+    const wanderer = entity('wanderer', { customPersona: true, openings: [selfRow('wanderer-self')] });
+    expect(openingsEnabled(overview, [wanderer])).toBe(true);
+    expect(drawWith({ source: 'none' }, [wanderer])).toBe('wanderer-self');
+  });
+
+  it('stays off under the world’s explicit off, whatever Self rows the player brings', () => {
+    const own = entity('own', { persona: true, openings: [selfRow('own-self')] });
+    expect(drawNewGameOpening({
+      pick: { ref: { source: 'library', entityId: 'own' }, libraryEntity: own }, worldEntities: [],
+      overview: { ...overview, openingsEnabled: false }, startingLocationId: 'start', picked: [visitor], random: always,
+    }).draw.opening.id).toBe('default');
   });
 
   it('stays off for the played world persona’s Others rows', () => {
@@ -323,5 +342,87 @@ describe('Self openings of an entity without the Persona mark', () => {
 
   it('never draw when it stands at the start', () => {
     expect(firstDraws({ source: 'none' }, worldEntities)).toEqual(new Set(['former-hello', 'keeper-hello']));
+  });
+});
+
+describe('Self openings of a library persona and the Custom Persona entity', () => {
+  // The Custom Persona entity carries no Persona mark of its own; it stands in for the player under None.
+  const wanderer = entity('wanderer', {
+    customPersona: true, locations: ['start'], openings: [action('wanderer-hello'), selfRow('wanderer-self')],
+  });
+  const traveler = entity('traveler', { persona: true, openings: [action('traveler-hello'), selfRow('traveler-self')] });
+  const bare = entity('bare', { persona: true, openings: [action('bare-hello')] });
+  const visitor = entity('visitor', { openings: [action('visitor-hello'), selfRow('visitor-self')] });
+  const worldRows = { ...overview, openings: [action('world-hello')] };
+
+  /** Every opening the first draw can land on, and the owner each one names. */
+  const drawsUnder = (
+    pick: PersonaRef, { libraryEntity, worldEntities = [wanderer, keeper], picked = [] }: {
+      libraryEntity?: Entity; worldEntities?: Entity[]; picked?: Entity[];
+    } = {},
+  ) => new Map(Array.from({ length: 40 }, (_, i) => {
+    const result = drawNewGameOpening({
+      pick: { ref: pick, libraryEntity }, worldEntities, overview: worldRows, startingLocationId: 'start', picked,
+      random: () => (i + 0.5) / 40,
+    });
+    return [result.draw.opening.id, result.owner?.id ?? null] as const;
+  }));
+
+  it('draw a library persona’s own Self rows in any world', () => {
+    expect(drawsUnder({ source: 'library', entityId: 'traveler' }, { libraryEntity: traveler }))
+      .toEqual(new Map([['traveler-self', 'traveler']]));
+  });
+
+  it('fall back to the Custom Persona entity’s Self rows under a library persona with none', () => {
+    expect(drawsUnder({ source: 'library', entityId: 'bare' }, { libraryEntity: bare }))
+      .toEqual(new Map([['wanderer-self', 'wanderer']]));
+  });
+
+  it('leave a library persona with none on the location pool in a world without a Custom Persona', () => {
+    expect([...drawsUnder({ source: 'library', entityId: 'bare' }, { libraryEntity: bare, worldEntities: [keeper] }).keys()])
+      .toEqual(['world-hello', 'keeper-hello']);
+  });
+
+  it('draw the Custom Persona entity’s Self rows under None', () => {
+    expect(drawsUnder({ source: 'none' })).toEqual(new Map([['wanderer-self', 'wanderer']]));
+  });
+
+  it('never draw the Custom Persona entity’s rows under a world persona', () => {
+    const hero = entity('hero', { persona: true, locations: ['start'], openings: [action('hero-hello')] });
+    expect([...drawsUnder({ source: 'world', entityId: 'hero' }, { worldEntities: [wanderer, hero, keeper] }).keys()])
+      .toEqual(['world-hello', 'keeper-hello']);
+  });
+
+  it('beat Library Additions’ openings', () => {
+    expect(drawsUnder({ source: 'library', entityId: 'traveler' }, { libraryEntity: traveler, picked: [visitor] }))
+      .toEqual(new Map([['traveler-self', 'traveler']]));
+    expect(drawsUnder({ source: 'none' }, { picked: [visitor] })).toEqual(new Map([['wanderer-self', 'wanderer']]));
+  });
+
+  it('leave Library Additions to win when no Self row applies', () => {
+    const plainCustom = { ...wanderer, openings: [action('wanderer-hello')] };
+    expect(drawsUnder({ source: 'library', entityId: 'bare' }, { libraryEntity: bare, worldEntities: [plainCustom, keeper], picked: [visitor] }))
+      .toEqual(new Map([['visitor-hello', 'visitor']]));
+  });
+
+  it('never draw from a library entity without the Persona mark', () => {
+    const unmarked = { ...traveler, persona: undefined };
+    expect(drawsUnder({ source: 'library', entityId: 'traveler' }, { libraryEntity: unmarked }))
+      .toEqual(new Map([['wanderer-self', 'wanderer']]));
+  });
+
+  it('are what the page-one redraw draws again from', () => {
+    const { persona, cast } = resolvePersona({ source: 'library', entityId: 'bare' }, [wanderer, keeper], [bare]);
+    const random = seeded(9);
+    let seen: string[] = [];
+    const redraws = Array.from({ length: 20 }, () => {
+      const pool = openingPool({
+        overview: worldRows, entities: cast, startingLocationId: 'start', picked: [], persona, customPersona: wanderer,
+      });
+      const next = drawUnseenOpening(pool, seen, random);
+      seen = next.shown;
+      return next.opening.id;
+    });
+    expect(new Set(redraws)).toEqual(new Set(['wanderer-self']));
   });
 });

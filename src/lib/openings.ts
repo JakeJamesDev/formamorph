@@ -19,8 +19,10 @@ export const DEFAULT_OPENING: Opening = { id: 'default', text: OPENING_SCENE_CUE
 export interface OpeningOwner {
   openings?: Opening[];
   openingWeights?: Record<string, number>;
-  /** The Persona mark, without which the owner's Self rows neither show nor draw. */
+  /** The Persona mark. With the Custom Persona mark, the only marks under which the owner's Self rows show
+   *  and draw. */
   persona?: boolean;
+  customPersona?: boolean;
 }
 
 /** One drawable row, its owner and its weight, always above 0. `ownerId` is the entity's id, or null for
@@ -50,8 +52,9 @@ export function hasAuthoredOpenings(owner: MaybeOwner): boolean {
   return (owner?.openings ?? []).some((o) => o.text.trim().length > 0 && (!o.self || canOwnSelfOpenings(owner)));
 }
 
-/** Whether an owner's Self rows exist for the editor and the draw: only an owner with the Persona mark has any. */
-export const canOwnSelfOpenings = (owner: MaybeOwner): boolean => !!owner?.persona;
+/** Whether an owner's Self rows exist for the editor and the draw: only a Persona or the Custom Persona entity
+ *  has any. */
+export const canOwnSelfOpenings = (owner: MaybeOwner): boolean => !!owner?.persona || !!owner?.customPersona;
 
 /** A row's relative weight: 1 unless the author set one. Negatives count as 0. */
 export function openingWeight(weights: Record<string, number> | undefined, id: string): number {
@@ -69,10 +72,6 @@ function drawable(owner: MaybeOwner, ownerId: string | null, self = false): Pool
     .filter((e) => e.weight > 0);
 }
 
-/** The played entity whose Self rows can draw: a world persona. */
-const selfOwner = (persona: ResolvedPersona | null | undefined): Entity | null =>
-  (persona?.source === 'world' ? persona.entity : null);
-
 /** What a new playthrough's pool reads: the world, its authored entities and the chosen starting location. */
 export interface PoolSources {
   overview: Overview;
@@ -82,20 +81,35 @@ export interface PoolSources {
   picked?: readonly Entity[];
   /** The entity the player plays, whose Self rows replace the pool. */
   persona?: ResolvedPersona | null;
+  /** The world's Custom Persona entity, whose Self rows stand in under a library persona that has none. */
+  customPersona?: Entity | null;
 }
+
+/** The Self rows that replace the pool: the played entity's, or the Custom Persona entity's under a library
+ *  persona with none. Under None the played entity is the Custom Persona entity. */
+function personaSelfRows(persona: ResolvedPersona | null | undefined, customPersona: Entity | null | undefined): PoolEntry[] {
+  if (!persona) return [];
+  const own = drawable(persona.entity, persona.entity.id, true);
+  if (own.length || persona.source !== 'library' || !customPersona) return own;
+  return drawable(customPersona, customPersona.id, true);
+}
+
+const selfOnly = (owner: Entity | null | undefined): OpeningOwner | null =>
+  (owner ? { ...owner, openings: owner.openings?.filter((o) => o.self) } : null);
 
 /**
  * The rows a new playthrough draws from. The world switch benches every row, whoever owns it. With it on,
- * the played persona's Self rows replace everything else; then picked entities with a drawable row do;
- * otherwise the world's own rows, then those of the authored entities present at the starting location, in
- * cast order. Only the played persona's Self rows ever draw.
+ * the persona's Self rows replace everything else; then picked entities with a drawable row do; otherwise
+ * the world's own rows, then those of the authored entities present at the starting location, in cast
+ * order. Only the persona's Self rows ever draw.
  */
-export function openingPool({ overview, entities = [], startingLocationId, picked = [], persona }: PoolSources): PoolEntry[] {
-  const played = selfOwner(persona);
-  // The played entity's Others rows never draw, so only its Self rows can switch the list on.
-  const playedSelf = played && { ...played, openings: played.openings?.filter((o) => o.self) };
-  if (!openingsEnabled(overview, [...entities, playedSelf])) return [];
-  const selfRows = played ? drawable(played, played.id, true) : [];
+export function openingPool({
+  overview, entities = [], startingLocationId, picked = [], persona, customPersona,
+}: PoolSources): PoolEntry[] {
+  // The played entity's Others rows never draw, so only its Self rows and the Custom Persona entity's can
+  // switch the list on.
+  if (!openingsEnabled(overview, [...entities, selfOnly(persona?.entity), selfOnly(customPersona)])) return [];
+  const selfRows = personaSelfRows(persona, customPersona);
   if (selfRows.length) return selfRows;
   const pickedRows = picked.flatMap((e) => drawable(e, e.id));
   if (pickedRows.length) return pickedRows;

@@ -1,4 +1,5 @@
 import { drawUnseenOpening, openingOwner, openingPool, type UnseenDraw } from './openings';
+import { customPersonaEntity } from './blueprints';
 import { resolvePersona, type PersonaPick, type ResolvedPersona } from './persona';
 import type { Entity, WorldOverview } from '@/types';
 
@@ -20,7 +21,8 @@ export function drawNewGameOpening(
   const { pick, worldEntities, overview, startingLocationId, picked, random } = sources;
   const resolution = resolvePersona(pick.ref, worldEntities, pick.libraryEntity ? [pick.libraryEntity] : []);
   const { persona, cast } = resolution;
-  const pool = openingPool({ overview, entities: cast, startingLocationId, picked, persona });
+  const customPersona = customPersonaEntity(worldEntities) ?? null;
+  const pool = openingPool({ overview, entities: cast, startingLocationId, picked, persona, customPersona });
   const draw = drawUnseenOpening(pool, [], random);
-  return { persona, draw, owner: openingOwner(draw.ownerId, [...cast, ...picked], persona) };
+  return { persona, draw, owner: openingOwner(draw.ownerId, [...cast, ...picked, ...(customPersona ? [customPersona] : [])], persona) };
 }

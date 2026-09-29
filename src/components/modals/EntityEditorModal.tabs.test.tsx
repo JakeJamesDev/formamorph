@@ -248,6 +248,63 @@ describe('the two entity editors', () => {
   });
 });
 
+describe('the Others | Self switch on the Openings tab', () => {
+  const rows = [
+    { id: 'o1', text: 'Wren trims the lamp.', kind: 'narration' },
+    { id: 'o2', text: 'You wake as Wren.', kind: 'action', self: true },
+  ];
+  const withRows = (marks: Partial<Entity>) => ({ ...entity, ...marks, openings: rows, openingWeights: { o1: 2 } } as unknown as Entity);
+  const switchFor = (n: number) => within(panelOf('Openings')).queryByRole('radiogroup', { name: `Drawn For, Opening ${n}` });
+  const cardCount = () => within(panelOf('Openings')).getAllByTestId('opening-row').length;
+  const openTab = () => userEvent.click(screen.getByRole('tab', { name: 'Openings' }));
+  const WorldPanelFor = ({ of }: { of: Entity }) => {
+    const [tab, setTab] = useState<EntityPanelTab>('profile');
+    return <EntityManager entity={of} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />;
+  };
+
+  it('shows on a library entity with the Persona mark, with its Self row', async () => {
+    renderLibrary(<EntityEditorModal entityId={null} draft={withRows({ persona: true })} onClose={vi.fn()} />);
+    await openTab();
+    expect(within(switchFor(1)!).getByRole('radio', { name: 'Others' })).toBeChecked();
+    expect(within(switchFor(2)!).getByRole('radio', { name: 'Self' })).toBeChecked();
+  });
+
+  it('hides, with the Self row, on a library entity without the Persona mark', async () => {
+    renderLibrary(<EntityEditorModal entityId={null} draft={withRows({})} onClose={vi.fn()} />);
+    await openTab();
+    expect(switchFor(1)).toBeNull();
+    expect(cardCount()).toBe(1);
+  });
+
+  it('flips a library persona’s row to Self, keeping its text, kind and weight', async () => {
+    renderLibrary(<EntityEditorModal entityId={null} draft={withRows({ persona: true })} onClose={vi.fn()} />);
+    await openTab();
+    await userEvent.click(within(switchFor(1)!).getByRole('radio', { name: 'Self' }));
+    expect(within(switchFor(1)!).getByRole('radio', { name: 'Self' })).toBeChecked();
+    expect(within(panelOf('Openings')).getByDisplayValue('2')).toBeInTheDocument();
+    expect(cardCount()).toBe(2);
+  });
+
+  it('shows on the world’s Custom Persona entity and writes a flip to it', async () => {
+    world.updateEntity.mockClear();
+    render(<SettingsProvider><WorldPanelFor of={withRows({ customPersona: true })} /></SettingsProvider>);
+    await openTab();
+    expect(within(switchFor(2)!).getByRole('radio', { name: 'Self' })).toBeChecked();
+
+    await userEvent.click(within(switchFor(2)!).getByRole('radio', { name: 'Others' }));
+    const written = world.updateEntity.mock.calls.at(-1)?.[0] as Entity;
+    expect(written.openings).toEqual([rows[0], { id: 'o2', text: 'You wake as Wren.', kind: 'action' }]);
+    expect(written.openingWeights).toEqual({ o1: 2 });
+  });
+
+  it('hides on a world entity with neither mark', async () => {
+    render(<SettingsProvider><WorldPanelFor of={withRows({})} /></SettingsProvider>);
+    await openTab();
+    expect(switchFor(1)).toBeNull();
+    expect(cardCount()).toBe(1);
+  });
+});
+
 describe('the library Openings tab toolbar', () => {
   const twoOpenings = {
     ...entity,

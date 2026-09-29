@@ -161,17 +161,15 @@ export function OpeningsPanel({ onOpenEntity }: {
 }
 
 /** One entity's openings, for both entity editors. */
-export function EntityOpenings({ entity, home, onChange, placeholders, names = { placeholders } }: {
+export function EntityOpenings({ entity, onChange, placeholders, names = { placeholders } }: {
   entity: Entity;
-  /** Which editor holds the entity. Only a world entity's Self rows show. */
-  home: 'world' | 'library';
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
   /** How the search reads chips; defaults to the placeholders alone. */
   names?: ListSearchNames;
 }) {
   const search = useListSearch();
-  const showSelf = home === 'world' && canOwnSelfOpenings(entity);
+  const showSelf = canOwnSelfOpenings(entity);
   return (
     <div className="space-y-2">
       <ListSearchToolbar
