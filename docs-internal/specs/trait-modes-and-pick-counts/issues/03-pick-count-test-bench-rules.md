@@ -1,6 +1,7 @@
 # 03: Pick-count Test Bench rules
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: d2ddbd02
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
