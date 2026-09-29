@@ -407,6 +407,20 @@ describe('thumbnail source', () => {
     expect(meta?.thumbnailSource ?? 'file').toBe('file');
   });
 
+  it('ends on the last pick when the player switches back during the first render', async () => {
+    const record = await addThumbed();
+    let finishRender!: (image: string) => void;
+    vi.mocked(renderVrmThumbnail).mockImplementationOnce(() => new Promise((resolve) => { finishRender = resolve; }));
+
+    const toGenerated = ModelStorageService.setThumbnailSource(record.id, 'generated');
+    const toFile = ModelStorageService.setThumbnailSource(record.id, 'file');
+    await vi.waitFor(() => expect(renderVrmThumbnail).toHaveBeenCalled());
+    finishRender(GENERATED);
+    await Promise.all([toGenerated, toFile]);
+
+    expect(await metaOf(record.id)).toMatchObject({ thumbnail: THUMB_DATA_URL, thumbnailSource: 'file' });
+  });
+
   it('does not bring back an Avatar deleted during the render', async () => {
     const record = await addThumbed('Gone');
     await addThumbed('Kept');
@@ -419,8 +433,9 @@ describe('thumbnail source', () => {
     expect(await getRaw(record.id)).toBeUndefined();
   });
 
-  it('treats an older stored thumbnail as the file variant when the file has an embedded image', async () => {
-    const stored = 'data:image/webp;base64,STORED';
+  it('rebuilds the file variant from an older record whose file has an embedded image, dropping its stored render', async () => {
+    // An older download stored a render even when its file had an embedded image.
+    const stored = 'data:image/webp;base64,STORED-RENDER';
     await putRaw({
       id: 'legacy', name: 'Legacy',
       data: { type: 'model/vrm', blob: blob(), size: 9, hash: 'h', license: FRESH_LICENSE, thumbnail: stored },
@@ -428,13 +443,15 @@ describe('thumbnail source', () => {
     // The stored blob can't be re-parsed under fake-indexeddb (see the "survives a legacy record" test).
     vi.mocked(readVrmMeta).mockResolvedValueOnce({ license: FRESH_LICENSE, thumbnail: THUMB_DATA_URL });
 
-    await expect(ModelStorageService.ensureThumbnail('legacy')).resolves.toBe(stored);
-    expect(await metaOf('legacy')).toMatchObject({ thumbnail: stored, hasFileThumbnail: true });
+    await expect(ModelStorageService.ensureThumbnail('legacy')).resolves.toBe(THUMB_DATA_URL);
+    expect(await metaOf('legacy')).toMatchObject({ thumbnail: THUMB_DATA_URL, hasFileThumbnail: true });
 
     vi.mocked(renderVrmThumbnail).mockResolvedValueOnce(GENERATED);
-    await ModelStorageService.setThumbnailSource('legacy', 'generated');
+    await expect(ModelStorageService.setThumbnailSource('legacy', 'generated'))
+      .resolves.toMatchObject({ thumbnail: GENERATED });
+    expect(renderVrmThumbnail).toHaveBeenCalledTimes(1);
     await expect(ModelStorageService.setThumbnailSource('legacy', 'file'))
-      .resolves.toMatchObject({ thumbnail: stored });
+      .resolves.toMatchObject({ thumbnail: THUMB_DATA_URL });
   });
 
   it('treats an older stored thumbnail as the rendered portrait when the file has no embedded image', async () => {

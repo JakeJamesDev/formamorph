@@ -24,7 +24,10 @@ export function AvatarThumbnailMenuItems({ model, onChange }: {
       <ContextMenuLabel>Thumbnail</ContextMenuLabel>
       <ContextMenuRadioGroup
         value={active}
-        onValueChange={(value) => { if (value !== active) onChange(value as AvatarThumbnailSource); }}
+        onValueChange={(value) => {
+          const picked = SOURCE_LABELS.find(({ source }) => source === value)?.source;
+          if (picked && picked !== active) onChange(picked);
+        }}
       >
         {/* The shared radio item takes its checked state explicitly. */}
         {SOURCE_LABELS.map(({ source, label }) => (
