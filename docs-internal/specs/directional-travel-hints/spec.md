@@ -114,7 +114,7 @@ A new two-way Connection starts linked. An author who writes one hint therefore 
 
 ### Locations Canvas
 
-- Each leg is one arrow, as today. Each arrow's label is its own leg's hint.
+- Each leg is one arrow, as today. When both legs' hints are equal (both absent counts), the pair draws one shared label. When they differ, each label sits on the outer side of its own arrow, offset away from the partner arrow. The user approved this placement (ruling from ticket 01).
 - Clicking an arrow selects its Connection and focuses that leg's box in the inspector.
 - Link, unlink, and hint edits go through the canvas intent and history path, so undo covers them. A run of keystrokes in one box stays one undo step.
 
@@ -133,7 +133,7 @@ A new two-way Connection starts linked. An author who writes one hint therefore 
 - **Location context** (destination entries): each direction gets its own leg's hint; a leg with no hint gives no hint even when the other leg has one; a one-way Connection offers no return trip. Prior art: the location-context and location-graph tests.
 - **Migration**: old two-way records put the hint in both legs; old one-way records map to one leg; new-shape records pass through; records with no legs are dropped. Prior art: the version tests.
 - **Travel Hint pair component**, tested through the location panel's Connections list: a new two-way Connection opens linked with a read-only second box that shows the first box's text; unlink makes both editable and restores the earlier text; different hints open unlinked; a one-way Connection shows one box and no toggle; the toggle reports `aria-pressed`. Prior art: the LocationConnections RTL tests.
-- **Locations Canvas builder**: each arrow's label is its own leg's hint. Prior art: the location-canvas tests.
+- **Locations Canvas builder**: equal hints give one shared label; different hints give one label per arrow, each on its arrow's outer side. Prior art: the location-canvas tests.
 - Each guard must bite: reinstate the single-hint behavior and confirm the direction tests fail.
 
 ## Out of Scope
