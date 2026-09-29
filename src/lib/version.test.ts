@@ -312,6 +312,13 @@ describe('migrateWorld — Connection legs', () => {
     expect(connectionsOf([current])).toEqual([current]);
   });
 
+  it('normalizes a new-shape record: a blank hint becomes no hint, a malformed leg or end is dropped', () => {
+    expect(connectionsOf([
+      { id: 'c1', a: 'quay', b: 'tower', aToB: { hint: '  ' }, bToA: 'yes' },
+      { id: 'c2', a: 'quay', aToB: {} },
+    ])).toEqual([{ id: 'c1', a: 'quay', b: 'tower', aToB: {} }]);
+  });
+
   it('drops a record with no legs', () => {
     expect(connectionsOf([{ id: 'c1', a: 'quay', b: 'tower' }, { id: 'c2', a: 'tower', b: 'quay', aToB: {} }]))
       .toEqual([{ id: 'c2', a: 'tower', b: 'quay', aToB: {} }]);

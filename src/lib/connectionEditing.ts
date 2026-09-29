@@ -1,6 +1,6 @@
 import { randomUUID } from '@/lib/uuid';
-import type { Connection, ConnectionLeg, GameLocation } from '@/types';
-import type { LegKey } from '@/lib/locationGraph';
+import type { Connection, ConnectionLeg, GameLocation, LegKey } from '@/types';
+import { isTwoWay, otherLeg } from '@/lib/locationGraph';
 
 /**
  * Editing Connections from one end of them.
@@ -30,8 +30,6 @@ export function legFrom(connection: Connection, locationId: string): LegKey {
   return connection.a === locationId ? 'aToB' : 'bToA';
 }
 
-const otherLeg = (key: LegKey): LegKey => (key === 'aToB' ? 'bToA' : 'aToB');
-
 /** The record with exactly the given legs; an absent leg leaves no key behind. */
 function withLegs(connection: Connection, legs: Partial<Record<LegKey, ConnectionLeg>>): Connection {
   const { aToB: _aToB, bToA: _bToA, ...rest } = connection;
@@ -44,9 +42,8 @@ function withLegs(connection: Connection, legs: Partial<Record<LegKey, Connectio
 
 /** Which way travel runs from `locationId` — the only thing about a Connection that differs by end. */
 export function directionFrom(connection: Connection, locationId: string): ConnectionDirection {
-  const out = legFrom(connection, locationId);
-  if (connection[out] && connection[otherLeg(out)]) return 'two-way';
-  return connection[out] ? 'outgoing' : 'incoming';
+  if (isTwoWay(connection)) return 'two-way';
+  return connection[legFrom(connection, locationId)] ? 'outgoing' : 'incoming';
 }
 
 /**

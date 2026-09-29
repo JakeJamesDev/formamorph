@@ -1,9 +1,9 @@
-import type { Connection, GameLocation } from "@/types";
+import type { Connection, GameLocation, LegKey } from "@/types";
 import {
   createConnection, directionFrom, withDirection, withHint, type ConnectionDirection,
 } from "./connectionEditing";
 import {
-  connectionLegs, implicitPairs, overriddenPairs, pairKey, reachableFromStarts, type LegKey,
+  connectionLegs, implicitPairs, isTwoWay, overriddenPairs, pairKey, reachableFromStarts,
 } from "./locationGraph";
 import { holderOf, isDescendantLocation } from "./locationTree";
 
@@ -179,7 +179,7 @@ export function buildLocationCanvas(
   }
   for (const connection of connections) {
     if (!known.has(connection.a) || !known.has(connection.b)) continue;
-    const paired = !!connection.aToB && !!connection.bToA;
+    const paired = isTwoWay(connection);
     const shared = paired && connection.aToB?.hint === connection.bToA?.hint;
     for (const { key, from, to, leg } of connectionLegs(connection)) {
       const label = shared && key === "bToA" ? undefined : leg.hint;

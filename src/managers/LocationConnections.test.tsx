@@ -66,8 +66,8 @@ describe('LocationConnections', () => {
     render(<LocationConnections location={at('cave')} />);
     expect(screen.getByText('Ledge')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Incoming' })).toHaveAttribute('data-state', 'on');
-    expect(screen.getByLabelText('Travel Hint From Ledge')).toHaveValue('over the lip');
-    expect(screen.queryByLabelText('Travel Hint To Ledge')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Travel Hint from Ledge')).toHaveValue('over the lip');
+    expect(screen.queryByLabelText('Travel Hint to Ledge')).not.toBeInTheDocument();
   });
 
   it('makes the Connection two-way from either end without touching its endpoints', () => {
@@ -84,7 +84,7 @@ describe('LocationConnections', () => {
 
   it('writes the travel hint through to the record', () => {
     render(<LocationConnections location={at('ledge')} />);
-    fireEvent.change(screen.getByLabelText('Travel Hint To Cave'), {
+    fireEvent.change(screen.getByLabelText('Travel Hint to Cave'), {
       target: { value: 'down the chute' },
     });
     expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'down the chute' } });
@@ -92,7 +92,7 @@ describe('LocationConnections', () => {
 
   it('drops the hint field when the author clears it, rather than storing an empty one', () => {
     render(<LocationConnections location={at('ledge')} />);
-    fireEvent.change(screen.getByLabelText('Travel Hint To Cave'), {
+    fireEvent.change(screen.getByLabelText('Travel Hint to Cave'), {
       target: { value: '' },
     });
     expect(lastUpdate().aToB).toEqual({});
@@ -102,9 +102,9 @@ describe('LocationConnections', () => {
     connections = [{ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'down the chute' }, bToA: { hint: 'up the rope' } }];
     render(<LocationConnections location={at('cave')} />);
     expect(screen.getByText('To Ledge')).toBeInTheDocument();
-    expect(screen.getByLabelText('Travel Hint To Ledge')).toHaveValue('up the rope');
-    expect(screen.getByLabelText('Travel Hint From Ledge')).toHaveValue('down the chute');
-    fireEvent.change(screen.getByLabelText('Travel Hint To Ledge'), { target: { value: 'up the ladder' } });
+    expect(screen.getByLabelText('Travel Hint to Ledge')).toHaveValue('up the rope');
+    expect(screen.getByLabelText('Travel Hint from Ledge')).toHaveValue('down the chute');
+    fireEvent.change(screen.getByLabelText('Travel Hint to Ledge'), { target: { value: 'up the ladder' } });
     expect(lastUpdate()).toEqual({
       id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'down the chute' }, bToA: { hint: 'up the ladder' },
     });

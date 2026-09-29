@@ -1,4 +1,4 @@
-import type { Connection, ConnectionLeg, GameLocation } from "@/types";
+import type { Connection, ConnectionLeg, GameLocation, LegKey } from "@/types";
 
 /**
  * The location graph's rules (ADR-0002), as pure functions over plain world data.
@@ -38,9 +38,6 @@ export function implicitPairs(locations: GameLocation[]): [string, string][] {
   return [...pairs.values()];
 }
 
-/** Which direction of a Connection a leg is. */
-export type LegKey = "aToB" | "bToA";
-
 /** One travelable direction of a Connection, with the ends it runs between. */
 export interface ConnectionLegView {
   key: LegKey;
@@ -48,6 +45,12 @@ export interface ConnectionLegView {
   to: string;
   leg: ConnectionLeg;
 }
+
+/** The other direction of a Connection. */
+export const otherLeg = (key: LegKey): LegKey => (key === "aToB" ? "bToA" : "aToB");
+
+/** Travel runs both ways. */
+export const isTwoWay = (connection: Connection): boolean => !!connection.aToB && !!connection.bToA;
 
 /** A Connection's present legs, `a → b` first. */
 export function connectionLegs(connection: Connection): ConnectionLegView[] {

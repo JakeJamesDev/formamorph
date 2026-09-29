@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  World, SaveObject, Stat, GameState, Trait, PlayerStat, Connection, GameLocation, Placeholder, PlaceholderValue,
+  World, SaveObject, Stat, GameState, Trait, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
   Opening,
 } from '@/types';
 import { implicitPairs, pairKey } from './locationGraph';
@@ -196,26 +196,25 @@ function migrateLocationConnections(world: Record<string, unknown>): void {
 /**
  * Convert each `{from, to, twoWay, aiHint}` Connection record to the leg shape: `from` becomes `a`, the old
  * hint goes into `aToB`, and into `bToA` too when the record was two-way, so a shipped world plays the same.
- * A blank hint becomes no hint. A record with no legs is dropped: it allows no travel and the editor never
- * makes one. Idempotent: a record in the leg shape passes through. Deliberately NOT version-gated, for the
+ * A blank hint becomes no hint. A record with no legs, or without two ends, is dropped: it allows no travel
+ * and the editor never makes one. Idempotent: a record in the leg shape passes through. Deliberately NOT version-gated, for the
  * same reason as `foldDictionaryIntoBooks`: shipped worlds carry `version === APP_VERSION` in the old shape.
  */
 function migrateConnectionLegs(world: Record<string, unknown>): void {
   if (!Array.isArray(world.connections)) return;
-  world.connections = world.connections.flatMap((raw: unknown): unknown[] => {
+  const legWith = (hint: unknown): ConnectionLeg => (typeof hint === 'string' && hint.trim() ? { hint } : {});
+  /** A present leg in its one shape; anything that is not an object is no leg. */
+  const legOf = (raw: unknown): ConnectionLeg | undefined =>
+    raw && typeof raw === 'object' ? legWith((raw as { hint?: unknown }).hint) : undefined;
+  world.connections = world.connections.flatMap((raw: unknown): Connection[] => {
     if (!raw || typeof raw !== 'object') return [];
     const record = raw as Record<string, unknown>;
-    if (typeof record.a === 'string') return record.aToB || record.bToA ? [record] : [];
-    if (typeof record.from !== 'string' || typeof record.to !== 'string') return [];
-    const leg = typeof record.aiHint === 'string' && record.aiHint.trim() ? { hint: record.aiHint } : {};
-    const connection: Connection = {
-      id: typeof record.id === 'string' ? record.id : randomUUID(),
-      a: record.from,
-      b: record.to,
-      aToB: leg,
-      ...(record.twoWay ? { bToA: { ...leg } } : {}),
-    };
-    return [connection];
+    const id = typeof record.id === 'string' ? record.id : randomUUID();
+    const [a, b, aToB, bToA] = typeof record.a === 'string' || typeof record.b === 'string'
+      ? [record.a, record.b, legOf(record.aToB), legOf(record.bToA)]
+      : [record.from, record.to, legWith(record.aiHint), record.twoWay ? legWith(record.aiHint) : undefined];
+    if (typeof a !== 'string' || typeof b !== 'string' || (!aToB && !bToA)) return [];
+    return [{ id, a, b, ...(aToB ? { aToB } : {}), ...(bToA ? { bToA } : {}) }];
   });
 }
 
