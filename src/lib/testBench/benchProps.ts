@@ -98,6 +98,8 @@ export interface OpeningProps {
   onReroll: () => void;
   /** Show the fresh game at another member of the start pool. */
   onStartChange: (startLocationId: string) => void;
+  /** Show the fresh game as another world persona, or as None with null. */
+  onPersonaChange: (personaId: string | null) => void;
   /** Show another row of the opening pool, by its key. */
   onOpeningChange: (openingKey: string) => void;
 }

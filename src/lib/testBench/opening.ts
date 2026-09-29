@@ -15,13 +15,14 @@
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
-import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
+import { copyLookup, customPersonaEntity, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { bearerPriming } from '@/lib/ownedTraitsInPlay';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { estimateTokens } from '@/lib/memoryUtils';
+import { resolvePersona } from '@/lib/persona';
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, lonePlaceholderToken,
   placeholderChances, primeRolls, resolveEntityText, resolvePlaceholders,
@@ -108,8 +109,12 @@ export interface OpeningRollGroup {
 export interface OpeningPoolRow {
   /** The Openings module's key for the row: owner plus opening id. */
   key: string;
-  /** The entity that owns the row, or null for the world's own. */
+  /** The entity that owns the row, or null for the world's and a location's own. */
   ownerName: string | null;
+  /** The location that owns the row, on a location's rows only. */
+  locationName: string | null;
+  /** A Self row: the played entity's own opening. */
+  self: boolean;
   /** Whether the row opens as a Player Action or as Narration. */
   kind: Opening['kind'];
   /** The row's text with chips and the user macro resolved. */
@@ -127,6 +132,10 @@ export interface OpeningData {
   startPool: number;
   /** The places the fresh game might start at, for the author to pick one. */
   starts: { id: string; name: string }[];
+  /** The world's personas the author can play as; None is always there. */
+  personas: { id: string; name: string }[];
+  /** The persona shown, or null for None. */
+  personaId: string | null;
   /** The rows a fresh game at `location` draws from, in pool order. */
   pool: OpeningPoolRow[];
   /** The pool row shown, or null when the pool is empty and play opens on the default. */
@@ -150,7 +159,7 @@ export interface OpeningData {
 
 /** What the instrument reads while it has nothing to assemble — a Bench closed, or closed on another tab. */
 export const EMPTY_OPENING: OpeningData = {
-  pcName: null, location: null, locationName: '', startPool: 0, starts: [], pool: [], selectedKey: null,
+  pcName: null, location: null, locationName: '', startPool: 0, starts: [], personas: [], personaId: null, pool: [], selectedKey: null,
   opening: { kind: DEFAULT_OPENING.kind, text: '' }, openingsEnabled: true,
   stats: [], disabledStats: [], traits: [], rolls: [], system: '', user: '', totalTokens: 0,
 };
@@ -278,8 +287,11 @@ export function settledOpeningStats(world: OpeningWorld, lens: BenchLens): Playe
   return settleOpeningStats(world, lensActiveTraits(world, lens)).settled;
 }
 
-/** What the author picked to look at: a start from the start pool and a row from its opening pool. */
+/** What the author picked to look at: the persona, a start from the start pool and a row from its opening
+ *  pool. */
 export interface OpeningChoice {
+  /** A world persona's id. Absent or unknown reads as None. */
+  personaId?: string | null;
   startLocationId?: string | null;
   openingKey?: string | null;
 }
@@ -390,20 +402,31 @@ export function buildOpening(
     resolve,
     resolveEntity,
   }));
-  // The opening pool at this start, as Enter World reads it. Picked library entities are a player choice.
-  const entityName = new Map((world.entities ?? []).map((e) => [e.id, e.name]));
+  // The opening pool for this persona at this start, as new-game play reads it. The Bench has no library, so
+  // the persona is a world entity or None; picked library entities are a player choice.
+  const worldEntities = world.entities ?? [];
+  const personas = worldEntities.filter((e) => e.persona && !e.customPersona);
+  const personaId = personas.find((e) => e.id === choice.personaId)?.id ?? null;
+  const { persona, cast } = resolvePersona(personaId ? { source: 'world', entityId: personaId } : { source: 'none' }, worldEntities, []);
+  const customPersona = customPersonaEntity(worldEntities);
   const entries = openingPool({
-    overview: world.worldOverview, entities: world.entities ?? [], startingLocationId: location?.id,
+    overview: world.worldOverview, entities: cast, locations: world.locations ?? [], startingLocationId: location?.id,
+    persona, customPersona,
   });
   const chances = poolChances(entries);
-  // The Bench has no persona, so the Player Name chip reads "you" here as it does in a game without one.
+  const entityName = new Map([...cast, persona?.entity, customPersona].flatMap((e) => (e ? [[e.id, e.name] as const] : [])));
+  const locationName = new Map((world.locations ?? []).map((l) => [l.id, l.name]));
+  // A game without a persona reads the Player Name chip as "you"; a world persona names it.
+  const player = personaId && persona ? { name: resolve(persona.entity.name), kind: 'opening' as const } : { kind: 'opening' as const };
   const openingText = (text: string, owner: Entity | null = null) =>
-    resolveEntityText(owner, text, { placeholders, rolls, pins, player: { kind: 'opening' } });
+    resolveEntityText(owner, text, { placeholders, rolls, pins, player });
   const pool = entries.map((entry, i): OpeningPoolRow => ({
     key: poolKey(entry),
     ownerName: entry.ownerId == null ? null : resolve(entityName.get(entry.ownerId) ?? entry.ownerId),
+    locationName: entry.locationId == null ? null : resolve(locationName.get(entry.locationId) ?? entry.locationId),
+    self: !!entry.opening.self,
     kind: entry.opening.kind,
-    text: openingText(entry.opening.text, openingOwner(entry.ownerId, world.entities ?? [])),
+    text: openingText(entry.opening.text, openingOwner(entry.ownerId, cast, persona, customPersona)),
     chance: chances[i],
   }));
   const chosen = pool.find((row) => row.key === choice.openingKey) ?? pool[0] ?? null;
@@ -438,6 +461,8 @@ export function buildOpening(
     locationName: location ? resolve(location.name) : '',
     startPool: start.pool.length,
     starts: start.pool.map((l) => ({ id: l.id, name: resolve(l.name) })),
+    personas: personas.map((e) => ({ id: e.id, name: resolve(e.name) })),
+    personaId,
     pool,
     selectedKey: chosen?.key ?? null,
     opening,

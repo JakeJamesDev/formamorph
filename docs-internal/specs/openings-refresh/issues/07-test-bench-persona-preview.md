@@ -1,6 +1,7 @@
 # 07: Test Bench Persona Preview
 
-Status: ready-for-agent
+Status: in-progress
+Base: 207679e4
 Blocked by: 04; 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
