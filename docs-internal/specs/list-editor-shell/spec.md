@@ -59,6 +59,7 @@ This is a refactor. The only behavior changes are the ones the rulings name. Any
 - **Q36** The shell's stale-selection clear applies on every list, hidden tabs included: a selection the list's `holds` rejects is cleared. `holds` accepts everything the list's detail opens, so nothing that opened a pane before is cleared. A migration that meets this logs it as "Keep: Q36" and needs no ruling.
 - **Q37** In the entity and dictionary panels, a copy's **Edit Blueprint** switches to the top-level Placeholders tab with the blueprint selected. The panel's own selection stays. The library modal still hides it (Q13).
 - **Q38** A scoped search row reads its tree label with no owner prefix (`Eyes`, `Hair › Color`, `Molly.Eyes`), per Q34. The scoped section keeps its helper line above the stacked editor.
+- **Q39** Drift #9: in a panel, **Duplicate** on a shared row makes a world copy and opens it on the top-level Placeholders tab, as **Edit Blueprint** does (Q37). The panel's own selection stays.
 
 ## User Stories
 
