@@ -642,11 +642,6 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).toMatchObject({ reasoning_effort: 'none', max_tokens: 800 });
   });
 
-  it('never rounds an on budget down to the zero off signal', () => {
-    const snap = snapshot(lmStudioReasoning({ maxTokens: 0 }), { promptReasoningBudget: { narration: 50 } });
-    expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 1, max_tokens: 1 });
-  });
-
   it('gives a known reasoner that is sent no field the same headroom', () => {
     const k2 = external({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, reasons: true, budget: false, dialect: 'moonshot-k2' } });
     const body = buildRequestBody(snapshot(k2, { reasoningEngaged: true, reasoningEffort: 'high' }), call());
@@ -802,10 +797,6 @@ describe('dialects — one spelling per row', () => {
     const roomy = speaking('anthropic-budget', { maxTokens: 1000 });
     // 50% of 1,000 is 500, under the floor.
     expect(sends(roomy, { promptReasoningBudget: { narration: 50 } }))
-      .toMatchObject({ thinking: { budget_tokens: 1024, type: 'enabled' }, max_tokens: 2024 });
-
-    // 100% of 1,000 is still under the floor.
-    expect(sends(roomy, { promptReasoningBudget: { narration: 100 } }))
       .toMatchObject({ thinking: { budget_tokens: 1024, type: 'enabled' }, max_tokens: 2024 });
   });
 

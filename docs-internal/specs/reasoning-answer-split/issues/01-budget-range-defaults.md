@@ -1,6 +1,6 @@
 # 01: Budget range 50–200% and new defaults
 
-Status: in-progress
+Status: ready-for-human
 Base: 46fb27f3
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
@@ -15,10 +15,10 @@ The Reasoning Budget slider runs 50–200% in steps of 5. Narration ships at 150
 
 ## Acceptance criteria
 
-- [ ] The slider's minimum is 50 and its maximum is 200.
-- [ ] A fresh narration prompt shows 150%, and a fresh Low-reasoning prompt shows 75%, with the token readout.
-- [ ] A stored 25% shows as 50% and sends the 50% budget.
-- [ ] A shared preset with 200% survives export and import; 250% imports as 200%.
-- [ ] Request-body tests show the new default budgets on a budget-taking target.
-- [ ] Changelog line in 🚧 In Progress.
-- [ ] Four gates green.
+- [x] The slider's minimum is 50 and its maximum is 200.
+- [x] A fresh narration prompt shows 150%, and a fresh Low-reasoning prompt shows 75%, with the token readout.
+- [x] A stored 25% shows as 50% and sends the 50% budget.
+- [x] A shared preset with 200% survives export and import; 250% imports as 200%.
+- [x] Request-body tests show the new default budgets on a budget-taking target.
+- [x] Changelog line in 🚧 In Progress.
+- [x] Four gates green.
