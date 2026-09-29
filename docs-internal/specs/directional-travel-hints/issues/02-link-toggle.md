@@ -26,5 +26,6 @@ One shared component renders the pair and the toggle for both the canvas inspect
 - [ ] Link, unlink, and hint edits on the canvas are undoable. A run of keystrokes in one box is one undo step.
 - [ ] Clicking an arrow selects its Connection and focuses that leg's box.
 - [ ] The pattern has an entry in the Design System doc and the dev-router showcase.
+- [ ] The Design System Locations reference includes a two-way pair with different hints, so the outer-side arrow labels (ruling from ticket 01) show there.
 - [ ] RTL tests through the location panel's Connections list cover the linked, unlinked, restore, and one-way cases.
 - [ ] Changelog line in In Progress (fold into 01's entry if it is still unreleased).
