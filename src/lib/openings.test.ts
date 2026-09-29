@@ -398,6 +398,13 @@ describe('the editor view', () => {
     openingsEditorView({ overview: overview(), entities: [], locations: [], ...over }, startId);
   const chances = (v: ReturnType<typeof view>) => v.groups.map((g) => [g.entity?.id ?? null, g.rows.map((r) => r.chance)]);
 
+  it('gives a location and an entity sharing an id and an opening id their own chances', () => {
+    const dock = { ...loc('dock', true), openings: [action('x')] };
+    const v = view({ locations: [dock], entities: [ent('dock', ['dock'], [action('x')], { openingWeights: { x: 3 } })] });
+    expect(v.groups.map((g) => [g.location ? 'location' : g.entity ? 'entity' : 'world', g.rows.map((r) => r.chance)]))
+      .toEqual([['world', []], ['location', [25]], ['entity', [75]]]);
+  });
+
   it('lists the world’s rows first, then one group per entity with openings, in cast order', () => {
     const v = view({
       overview: overview({ openings: [action('w1')] }),

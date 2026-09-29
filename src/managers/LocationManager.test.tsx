@@ -63,21 +63,22 @@ vi.mock('../lib/UtilityComponents', () => ({ SoundUpload: () => null }));
  * the harness stands in for it and opens on Pins. That is the tab under test here; the tabs themselves are
  * covered against the real editor in `WorldEditor.locationPanel.test.tsx`.
  */
-const Harness = () => {
+const Harness = ({ initialTab = 'pins' }: { initialTab?: LocationPanelTab }) => {
   const [, setTick] = useState(0);
-  const [tab, setTab] = useState<LocationPanelTab>('pins');
+  const [tab, setTab] = useState<LocationPanelTab>(initialTab);
   store.rerender = () => setTick((n) => n + 1);
   return <LocationManager location={store.location} tab={tab} onTabChange={setTab} />;
 };
 
-const renderManager = (mode: 'simple' | 'advanced' = 'advanced') => render(
+const renderManager = (mode: 'simple' | 'advanced' = 'advanced', initialTab?: LocationPanelTab) => render(
   <EditorModeContext.Provider value={{ mode, advanced: mode === 'advanced', setMode: () => {} }}>
-    <Harness />
+    <Harness initialTab={initialTab} />
   </EditorModeContext.Provider>,
 );
 
 const pinField = () => screen.getByRole('textbox', { name: 'Pinned Value' }) as HTMLInputElement;
-const lastPins = () => store.writes[store.writes.length - 1].placeholderPins;
+const lastWrite = () => store.writes[store.writes.length - 1];
+const lastPins = () => lastWrite().placeholderPins;
 
 beforeEach(() => {
   store.location = { ...fen };
@@ -133,5 +134,50 @@ describe('the location pin section', () => {
     renderManager('simple');
     expect(screen.queryByText('Placeholder Pins')).toBeNull();
     expect(screen.queryByRole('textbox', { name: 'Pinned Value' })).toBeNull();
+  });
+});
+
+describe('the location Openings tab', () => {
+  const tabNames = () => within(screen.getByRole('tablist', { name: 'Location Fields' }))
+    .getAllByRole('tab').map((t) => t.textContent);
+  const rows = [
+    { id: 'o1', text: 'Mist lifts off the reeds.', kind: 'narration' as const },
+    { id: 'o2', text: 'I wade in.', kind: 'action' as const },
+  ];
+
+  it('sits last in Advanced mode and is gone in Simple mode', () => {
+    const { unmount } = renderManager('advanced');
+    expect(tabNames().at(-1)).toBe('Openings');
+    unmount();
+    renderManager('simple');
+    expect(tabNames()).not.toContain('Openings');
+  });
+
+  it('adds an opening onto the location', async () => {
+    renderManager('advanced', 'openings');
+    await userEvent.click(screen.getByRole('button', { name: 'Add Opening' }));
+    expect(lastWrite().openings).toEqual([{ id: expect.any(String), text: '', kind: 'action' }]);
+  });
+
+  it('writes kind and weight onto the location, with chances within its own list', async () => {
+    store.location = { ...fen, openings: rows, openingWeights: { o1: 3 } };
+    renderManager('advanced', 'openings');
+    expect(screen.getByLabelText('Chance for Opening 1')).toHaveTextContent('75%');
+    expect(screen.getByLabelText('Chance for Opening 2')).toHaveTextContent('25%');
+
+    await userEvent.click(within(screen.getByRole('radiogroup', { name: 'Opens As, Opening 2' })).getByRole('radio', { name: 'Narration' }));
+    expect(lastWrite().openings).toEqual([rows[0], { ...rows[1], kind: 'narration' }]);
+
+    const weight = screen.getByLabelText('Draw weight for Opening 2');
+    await userEvent.clear(weight);
+    await userEvent.type(weight, '2');
+    expect(lastWrite().openingWeights).toEqual({ o1: 3, o2: 2 });
+  });
+
+  it('never offers the Others | Self switch', () => {
+    store.location = { ...fen, openings: rows };
+    renderManager('advanced', 'openings');
+    expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
+    expect(screen.queryByRole('radiogroup', { name: /^Drawn For/ })).toBeNull();
   });
 });

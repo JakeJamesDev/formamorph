@@ -336,6 +336,11 @@ export interface GameLocation {
   /** Placeholders held at a fixed value while the player is here. Released on leaving; a child location
    *  inherits nothing through `parentId`. */
   placeholderPins?: PlaceholderPin[];
+  /** This location's own openings, in authored order. They join the world's pool when a new game starts at
+   *  this exact location (see lib/openings); a child location draws none of its parent's. */
+  openings?: Opening[];
+  /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
+  openingWeights?: Record<string, number>;
 }
 
 /**

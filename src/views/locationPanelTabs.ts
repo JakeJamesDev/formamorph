@@ -1,8 +1,9 @@
 /** The location detail panel's own tabs, in order. Single source of truth: `LocationManager`'s `PanelTabsList`
  *  renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorLocation`) is guarded against it
  *  in `devRouter.test.ts`. */
-import { ImageIcon, MapPin, Pin, Users } from 'lucide-react';
+import { ImageIcon, MapPin, Pin, Play, Users } from 'lucide-react';
 
+import { isOpeningFieldKey } from '@/lib/openings';
 import { tabForField } from './findFocus';
 
 export const LOCATION_PANEL_TABS = [
@@ -10,6 +11,7 @@ export const LOCATION_PANEL_TABS = [
   { value: 'presence', label: 'Presence', icon: Users },
   { value: 'media', label: 'Media', icon: ImageIcon },
   { value: 'pins', label: 'Pins', icon: Pin, advancedOnly: true },
+  { value: 'openings', label: 'Openings', icon: Play, advancedOnly: true },
 ] as const;
 
 export type LocationPanelTab = (typeof LOCATION_PANEL_TABS)[number]['value'];
@@ -31,5 +33,6 @@ const TAB_BY_FIELD: Record<string, LocationPanelTab> = {
 
 /** The tab holding `fieldKey`, or `null` for a key no tab claims. */
 export function locationTabForField(fieldKey: string): LocationPanelTab | null {
+  if (isOpeningFieldKey(fieldKey)) return 'openings';
   return tabForField(fieldKey, TAB_BY_FIELD);
 }

@@ -252,6 +252,10 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', location.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
     add({ ...where, chipCapable: true }, 'aiSummary', 'AI-Facing Summary', location.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', location.imageTags, (r, v) => ({ ...r, imageTags: v }));
+    (location.openings ?? []).forEach((opening, i) => {
+      add({ ...where, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
+        (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));
+    });
   });
 
   // ── Traits ────────────────────────────────────────────────────────────────

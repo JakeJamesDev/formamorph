@@ -67,6 +67,10 @@ vi.mock('@/contexts/GameDataContext', () => ({
       world.entities = world.entities.map((e) => (e.id === next.id ? next : e));
       world.rerender();
     },
+    updateLocation: (next: GameLocation) => {
+      world.locations = world.locations.map((l) => (l.id === next.id ? next : l));
+      world.rerender();
+    },
     entities: world.entities, locations: world.locations,
     stats, traits, traitGroups: [], dictionaries, placeholders,
   }),
@@ -101,15 +105,18 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 type FocusField = FocusFieldHint | null;
 
 /** Renders the manager against the live `world`, re-rendering whenever the manager writes to it. */
-const Harness = ({ focusField, onOpenEntity }: { focusField?: FocusField; onOpenEntity?: (id: string) => void }) => {
+type OpenItem = (id: string) => void;
+const Harness = ({ focusField, onOpenEntity, onOpenLocation }: {
+  focusField?: FocusField; onOpenEntity?: OpenItem; onOpenLocation?: OpenItem;
+}) => {
   const [, setTick] = useState(0);
   world.rerender = () => setTick((n) => n + 1);
-  return <WorldDetailsManager focusField={focusField} onOpenEntity={onOpenEntity} />;
+  return <WorldDetailsManager focusField={focusField} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />;
 };
 
-const renderManager = (advanced = true, focusField?: FocusField, onOpenEntity?: (id: string) => void) => render(
+const renderManager = (advanced = true, focusField?: FocusField, onOpenEntity?: OpenItem, onOpenLocation?: OpenItem) => render(
   <EditorModeContext.Provider value={{ mode: advanced ? 'advanced' : 'simple', advanced, setMode: () => {} }}>
-    <Harness focusField={focusField} onOpenEntity={onOpenEntity} />
+    <Harness focusField={focusField} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
   </EditorModeContext.Provider>,
 );
 
@@ -635,9 +642,9 @@ describe('the mirrored openings panel', () => {
   } as unknown as Entity;
   const plain = { id: 'plain', name: 'Plain', locations: ['dock'] } as unknown as Entity;
 
-  const open = async (onOpenEntity?: (id: string) => void) => {
+  const open = async (onOpenEntity?: OpenItem, onOpenLocation?: OpenItem) => {
     const user = userEvent.setup();
-    renderManager(true, undefined, onOpenEntity);
+    renderManager(true, undefined, onOpenEntity, onOpenLocation);
     await user.click(picker('Openings'));
     return user;
   };
@@ -810,5 +817,70 @@ describe('the mirrored openings panel', () => {
     const user = await open(onOpenEntity);
     await user.click(screen.getByRole('button', { name: 'Guide' }));
     expect(onOpenEntity).toHaveBeenCalledWith('guide');
+  });
+
+  describe('location groups', () => {
+    const dockRow = { id: 'd1', text: 'Gulls fight over the nets.', kind: 'narration' as const };
+    const caveRow = { id: 'c1', text: 'Water drips in the dark.', kind: 'action' as const };
+    const withRows = (loc: GameLocation, row: typeof dockRow | typeof caveRow) => ({ ...loc, openings: [row] });
+    const dockNow = () => world.locations.find((l) => l.id === 'dock')!;
+
+    beforeEach(() => {
+      world.locations = [withRows(dock, dockRow), withRows(cave, caveRow)];
+    });
+
+    it('run World, then Locations in editor order, then Entities', async () => {
+      await open();
+      expect(screen.getAllByRole('region').map((g) => g.getAttribute('aria-label')))
+        .toEqual(['This World', 'The Dock', 'The Cave', 'Guide', 'Hermit']);
+    });
+
+    it('show a location’s share of the pool at its own start, and a dash and the badge where it isn’t one', async () => {
+      await open();
+      expect(chance('The Dock Opening 1')).toBe('25%');
+      expect(chance('Guide Opening 1')).toBe('25%');
+      expect(chance('The Cave Opening 1')).toBe('—');
+      expect(within(screen.getByRole('region', { name: 'The Cave' })).getByText('No Starting Location')).toBeInTheDocument();
+      expect(within(screen.getByRole('region', { name: 'The Dock' })).queryByText('No Starting Location')).not.toBeInTheDocument();
+    });
+
+    it('write an edit, a weight and an add to that location, with no Others | Self switch', async () => {
+      const user = await open();
+      edit('The Dock Opening 1', 'The tide is out.');
+      expect(dockNow().openings?.[0].text).toBe('The tide is out.');
+
+      const weight = screen.getByLabelText('Draw weight for The Dock Opening 1');
+      await user.clear(weight);
+      await user.type(weight, '2');
+      expect(dockNow().openingWeights).toEqual({ d1: 2 });
+
+      await user.click(screen.getByRole('button', { name: 'Add Opening to The Dock' }));
+      expect(dockNow().openings).toHaveLength(2);
+      expect(screen.queryByRole('radiogroup', { name: /^Drawn For, The Dock/ })).toBeNull();
+      expect(world.entities.find((e) => e.id === 'dock')).toBeUndefined();
+    });
+
+    it('open the location’s Openings tab from the group header', async () => {
+      const onOpenLocation = vi.fn();
+      const onOpenEntity = vi.fn();
+      const user = await open(onOpenEntity, onOpenLocation);
+      await user.click(screen.getByRole('button', { name: 'The Dock' }));
+      expect(onOpenLocation).toHaveBeenCalledWith('dock');
+      expect(onOpenEntity).not.toHaveBeenCalled();
+    });
+
+    it('are covered by the search', async () => {
+      const user = await open();
+      await user.type(screen.getByPlaceholderText('Search openings'), 'gulls');
+      expect(screen.getAllByRole('region').map((g) => g.getAttribute('aria-label'))).toEqual(['The Dock']);
+      expect(screen.getAllByTestId('opening-row')).toHaveLength(1);
+    });
+
+    it('switch the list on by themselves', async () => {
+      world.overview = { ...world.overview, openings: [] };
+      world.entities = [plain];
+      await open();
+      expect(openingsCheckbox()).toBeChecked();
+    });
   });
 });

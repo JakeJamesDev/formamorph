@@ -27,27 +27,30 @@ import {
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
-import type { Entity, Opening, OpeningKind, Placeholder } from '@/types';
+import type { Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
 
 /**
- * Every opening in the world, grouped by owner: the world's own rows, then each authored entity that has
- * openings. Each edit lands on its owner. The chances describe one starting location, which the author picks
- * when the world has several; the pick is view state and is never stored.
+ * Every opening in the world, grouped by owner: the world's own rows, then each location with openings, then
+ * each authored entity that has openings. Each edit lands on its owner. The chances describe one starting
+ * location, which the author picks when the world has several; the pick is view state and is never stored.
  */
-export function OpeningsPanel({ onOpenEntity }: {
+export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
   /** Opens that entity's Openings tab. */
   onOpenEntity?: (entityId: string) => void;
+  /** Opens that location's Openings tab. */
+  onOpenLocation?: (locationId: string) => void;
 }) {
   const {
-    worldOverview, updateWorldOverview, entities, updateEntity, locations, placeholders, placementLetters,
-    placeholderOwners,
+    worldOverview, updateWorldOverview, entities, updateEntity, locations, updateLocation, placeholders,
+    placementLetters, placeholderOwners,
   } = useGameData();
   const [startId, setStartId] = useState<string | null>(null);
   const view = openingsEditorView({ overview: worldOverview, entities, locations }, startId);
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const chancesStart = view.starts.find((l) => l.id === view.chancesStartId);
-  const [world, ...entityGroups] = view.groups;
-  const anyOpenings = hasAuthoredOpenings(worldOverview) || entities.some(hasAuthoredOpenings);
+  const [world, ...ownedGroups] = view.groups;
+  const owners = [...entities, ...locations];
+  const anyOpenings = hasAuthoredOpenings(worldOverview) || owners.some(hasAuthoredOpenings);
   const search = useListSearch();
   const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
   const hasMatch = (rows: EditorOpeningRow[]) => !search.typed || matchingRows(rows, search.typed, names).length > 0;
@@ -103,24 +106,31 @@ export function OpeningsPanel({ onOpenEntity }: {
         </section>
       )}
 
-      {entityGroups.map(({ entity, name: rawName, rows, showSelf, atNoStart, atChancesStart }) => {
-        if (!entity || !hasMatch(rows)) return null;
-        const name = label(rawName) || 'Unnamed entity';
+      {ownedGroups.map(({ entity, location, name: rawName, rows, showSelf, atNoStart, atChancesStart }) => {
+        if (!hasMatch(rows)) return null;
+        const owner = location ?? entity;
+        if (!owner) return null;
+        const name = label(rawName) || (location ? 'Unnamed location' : 'Unnamed entity');
         return (
-          <section key={entity.id} aria-label={name} className="space-y-2" data-testid="opening-group">
+          <section key={`${location ? 'location' : 'entity'}:${owner.id}`} aria-label={name} className="space-y-2" data-testid="opening-group">
             <div className="flex flex-wrap items-center gap-2">
-              <Tip tip="Open this entity's Openings tab" labelsChild={false}>
+              <Tip tip={location ? "Open this location's Openings tab" : "Open this entity's Openings tab"} labelsChild={false}>
                 <Button
                   type="button"
                   variant="link"
                   className="h-auto min-w-0 p-0 text-body font-semibold"
-                  onClick={() => onOpenEntity?.(entity.id)}
+                  onClick={() => (location ? onOpenLocation?.(location.id) : onOpenEntity?.(owner.id))}
                 >
                   <span className="truncate">{name}</span>
                 </Button>
               </Tip>
               {atNoStart && (
-                <Tip tip="Isn't at any starting location, so its openings never come up" labelsChild={false}>
+                <Tip
+                  tip={location
+                    ? "Isn't a starting location, so its openings never come up"
+                    : "Isn't at any starting location, so its openings never come up"}
+                  labelsChild={false}
+                >
                   {/* A span, not Badge: the tip's trigger needs a ref, and Badge forwards none. */}
                   <span tabIndex={0} className={cn(badgeVariants({ variant: 'outline' }), 'gap-1')}>
                     <MapPinOff className="h-3 w-3" aria-hidden /> No Starting Location
@@ -131,30 +141,43 @@ export function OpeningsPanel({ onOpenEntity }: {
             {!atNoStart && !atChancesStart && chancesStart && (
               <Hint>{`Not at ${label(chancesStart.name)}, so these openings don't come up there`}</Hint>
             )}
-            <OpeningsList
-              owner={entity}
-              rows={rows}
-              onChange={(patch) => updateEntity({ ...entity, ...patch })}
-              placeholders={placeholders}
-              ownerId={entity.id}
-              ownerLabel={name}
-              ownerName={entity.name}
-              search={search.typed}
-              names={names}
-              selfSwitch={showSelf}
-              selfBadge
-              empty={null}
-            />
+            {location ? (
+              <OpeningsList
+                owner={location}
+                rows={rows}
+                onChange={(patch) => updateLocation({ ...location, ...patch })}
+                placeholders={placeholders}
+                ownerLabel={name}
+                search={search.typed}
+                names={names}
+                empty={null}
+              />
+            ) : entity && (
+              <OpeningsList
+                owner={entity}
+                rows={rows}
+                onChange={(patch) => updateEntity({ ...entity, ...patch })}
+                placeholders={placeholders}
+                ownerId={entity.id}
+                ownerLabel={name}
+                ownerName={entity.name}
+                search={search.typed}
+                names={names}
+                selfSwitch={showSelf}
+                selfBadge
+                empty={null}
+              />
+            )}
           </section>
         );
       })}
 
       <Hint>
-        {openingsEnabled(worldOverview, entities)
+        {openingsEnabled(worldOverview, owners)
           ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
           : anyOpenings
             ? "Switched off, so players start on the default opening. Chances show the odds you'll get once it's on."
-            : 'Write an opening here or on an entity to switch this on. Until then players start on the default opening.'}
+            : 'Write an opening here, on a location or on an entity to switch this on. Until then players start on the default opening.'}
       </Hint>
     </div>
   );
@@ -193,6 +216,39 @@ export function EntityOpenings({ entity, onChange, placeholders, names = { place
       <Hint>
         {"Drawn with the world's openings when a player starts at one of this entity's locations. The world's switch turns them off too."}
         {showSelf && ' Mark one Self to make it the only start for a player who plays this entity.'}
+      </Hint>
+    </div>
+  );
+}
+
+/** One location's openings, for the location editor. A location has no Self rows. */
+export function LocationOpenings({ location, onChange, placeholders, names = { placeholders } }: {
+  location: GameLocation;
+  onChange: (patch: OpeningOwner) => void;
+  placeholders: Placeholder[];
+  /** How the search reads chips; defaults to the placeholders alone. */
+  names?: ListSearchNames;
+}) {
+  const search = useListSearch();
+  return (
+    <div className="space-y-2">
+      <ListSearchToolbar
+        search={search}
+        add={{ label: 'Add Opening', onAdd: () => onChange(addOpening(location)) }}
+        placeholder="Search openings"
+      />
+      <OpeningsList
+        owner={location}
+        rows={ownerOpeningRows(location, false)}
+        onChange={onChange}
+        placeholders={placeholders}
+        search={search.typed}
+        names={names}
+        addButton={false}
+        empty={<Hint>No openings yet</Hint>}
+      />
+      <Hint>
+        {"Drawn with the world's openings when a game starts at this location, not at a location inside it. The world's switch turns them off too."}
       </Hint>
     </div>
   );

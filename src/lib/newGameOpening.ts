@@ -1,13 +1,15 @@
 import { drawUnseenOpening, openingOwner, openingPool, type UnseenDraw } from './openings';
 import { customPersonaEntity } from './blueprints';
 import { resolvePersona, type PersonaPick, type ResolvedPersona } from './persona';
-import type { Entity, WorldOverview } from '@/types';
+import type { Entity, GameLocation, WorldOverview } from '@/types';
 
 export interface NewGameOpeningSources {
   pick: PersonaPick;
   /** The authored world's entities. No persona is in state yet when a new game seeds. */
   worldEntities: Entity[];
   overview: WorldOverview | null | undefined;
+  /** The authored world's locations; the starting location's own openings join the pool. */
+  locations?: readonly GameLocation[];
   startingLocationId: string | null | undefined;
   picked: readonly Entity[];
   random: () => number;
@@ -18,11 +20,11 @@ export interface NewGameOpeningSources {
 export function drawNewGameOpening(
   sources: NewGameOpeningSources,
 ): { persona: ResolvedPersona | null; draw: UnseenDraw; owner: Entity | null } {
-  const { pick, worldEntities, overview, startingLocationId, picked, random } = sources;
+  const { pick, worldEntities, overview, locations, startingLocationId, picked, random } = sources;
   const resolution = resolvePersona(pick.ref, worldEntities, pick.libraryEntity ? [pick.libraryEntity] : []);
   const { persona, cast } = resolution;
   const customPersona = customPersonaEntity(worldEntities) ?? null;
-  const pool = openingPool({ overview, entities: cast, startingLocationId, picked, persona, customPersona });
+  const pool = openingPool({ overview, entities: cast, locations, startingLocationId, picked, persona, customPersona });
   const draw = drawUnseenOpening(pool, [], random);
   return { persona, draw, owner: openingOwner(draw.ownerId, [...cast, ...picked, ...(customPersona ? [customPersona] : [])], persona) };
 }
