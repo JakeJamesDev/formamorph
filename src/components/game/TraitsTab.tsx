@@ -17,7 +17,7 @@ import { WORLD_OWNER, gateOf, groupPickState, leavesShort, type GateStates, type
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
-import { isAlwaysOn } from '@/lib/traitEffects';
+import { isAlwaysOn, isHidden } from '@/lib/traitEffects';
 import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
@@ -64,7 +64,7 @@ const bearerOf = (block: TraitBlock): string => block.entityId ?? WORLD_OWNER;
 
 /** Which sections a fresh look at this trait list opens: the ones holding something switched on. */
 const seedOpen = (sections: TraitSection[], isOff: (id: string, bearerId: string) => boolean): ReadonlySet<string> =>
-  new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isOff(t.id, bearerOf(b))))).map((s) => s.key));
+  new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isHidden(t) && !isOff(t.id, bearerOf(b))))).map((s) => s.key));
 
 export const TraitsTab = ({
   traits, groups, entityNodes, playerEntityIds = [], stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
@@ -114,7 +114,7 @@ export const TraitsTab = ({
     .flatMap(({ section, view }) => (view ? [{ section, view }] : []));
   // A cast entity's trait carries its bearer's name, as the log does; the player's own read bare.
   const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits
-    .filter((t) => !isOff(t.id, bearerOf(b)))
+    .filter((t) => !isHidden(t) && !isOff(t.id, bearerOf(b)))
     .map((t) => (b.entityId && !isPlayer(b.entityId) ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
 
   // Counted on the whole block: the view splits each block into enabled and disabled halves.

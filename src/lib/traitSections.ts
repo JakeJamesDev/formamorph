@@ -5,7 +5,7 @@
 // Pure and display-only: nothing here decides what a trait does, only where its row lands.
 
 import { buildTraitTree, type TraitTreeNode } from './traitTree';
-import { isAlwaysOn } from './traitEffects';
+import { isAlwaysOn, isHidden } from './traitEffects';
 import type { Trait, TraitGroup } from '@/types';
 
 /** A run of traits under one (sub)group heading. A max-one block's traits are alternatives, not a set. */
@@ -132,8 +132,8 @@ export function viewTraitSection(
       .map((b) => ({ ...b, traits: b.traits.filter((t) => matches(t, b.entityId) && keep(t, b.entityId)) }))
       .filter((b) => b.traits.length > 0);
 
-  const enabled = split((t, bearerId) => !isOff(t.id, bearerId));
-  // A dormant Always On trait isn't shown at all (Q15).
+  // A Hidden trait never shows (Q13), and a dormant Always On trait isn't shown at all (Q15).
+  const enabled = split((t, bearerId) => !isOff(t.id, bearerId) && !isHidden(t));
   const disabled = split((t, bearerId) => isOff(t.id, bearerId) && !isAlwaysOn(t));
   const count = (blocks: TraitBlock[]) => blocks.reduce((n, b) => n + b.traits.length, 0);
   if (enabled.length === 0 && disabled.length === 0) return null;

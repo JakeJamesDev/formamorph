@@ -2,7 +2,7 @@
 // and gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
 import type { PersonaRef, RequirementBearer, Trait, TraitGroup, TraitRequirement } from '@/types';
-import { defaultPicks, exclusiveSiblings, isAlwaysOn, traitOrderIndex } from './traitEffects';
+import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
 
@@ -45,6 +45,8 @@ export interface RequirementState {
   text: string;
   holds: boolean;
   unresolved: boolean;
+  /** The target is a Hidden trait, so player-facing lines leave it out (Q14). */
+  hidden: boolean;
 }
 
 export interface GateState {
@@ -75,6 +77,10 @@ export function playerOwnerIds(persona: PersonaRef, entities: readonly GateEntit
 /** The first owner whose tree holds `traitId`: the world's copy of an original, else the entity that owns it. */
 export const ownerHolding = (owners: readonly GateOwner[], traitId: string): GateOwner | undefined =>
   owners.find((o) => o.traits.some((t) => t.id === traitId));
+
+/** The refs the player may see named: every one but a Hidden trait in its owner's tree. */
+export const shownRefs = (owners: readonly GateOwner[], refs: readonly GateTraitRef[]): GateTraitRef[] =>
+  refs.filter((ref) => !owners.some((o) => o.id === ref.ownerId && o.traits.some((t) => t.id === ref.traitId && isHidden(t))));
 
 /** The bearer a requirement names; absent for the same bearer and for "playing as". */
 export const bearerOf = (req: TraitRequirement): RequirementBearer | undefined =>
@@ -112,12 +118,18 @@ function index(input: GateInput) {
   const owners = new Map<string, OwnerIndex>();
   const traitNames = new Map<string, string>();
   const groupNames = new Map<string, string>();
-  for (const trait of input.originals?.traits ?? []) traitNames.set(trait.id, trait.name);
+  const hiddenTraits = new Set<string>();
+  const nameTrait = (trait: Trait) => {
+    if (traitNames.has(trait.id)) return;
+    traitNames.set(trait.id, trait.name);
+    if (isHidden(trait)) hiddenTraits.add(trait.id);
+  };
+  for (const trait of input.originals?.traits ?? []) nameTrait(trait);
   for (const group of input.originals?.groups ?? []) groupNames.set(group.id, group.name);
   for (const owner of input.owners) {
     const traits = new Map(owner.traits.map((item) => [item.id, { owner, item }]));
     const groups = new Map(owner.groups.map((item) => [item.id, { owner, item }]));
-    for (const trait of owner.traits) if (!traitNames.has(trait.id)) traitNames.set(trait.id, trait.name);
+    for (const trait of owner.traits) nameTrait(trait);
     for (const group of owner.groups) if (!groupNames.has(group.id)) groupNames.set(group.id, group.name);
     const below = new Map<string, string[]>();
     const collect = (groupId: string): string[] => {
@@ -146,7 +158,7 @@ function index(input: GateInput) {
     (bearer === undefined ? setOf(from) : bearer.kind === 'you' ? playerIds : new Set([bearer.id]));
   const traitsBelow = (set: ReadonlySet<string>, groupId: string): string[] =>
     [...set].flatMap((ownerId) => owners.get(ownerId)?.below.get(groupId) ?? []);
-  return { owners, traitNames, groupNames, entities, playerIds, bearerSet, traitsBelow, persona: input.persona };
+  return { owners, traitNames, groupNames, hiddenTraits, entities, playerIds, bearerSet, traitsBelow, persona: input.persona };
 }
 
 type Index = ReturnType<typeof index>;
@@ -208,7 +220,8 @@ export function gateStates(input: GateInput): GateStates {
     for (const trait of traits.values()) {
       const requirements = (trait.item.requires ?? []).map((req) => {
         const { text, unresolved } = requirementText(req, idx);
-        return { text, unresolved, holds: !unresolved && requirementHolds(req, trait, activeIn, idx) };
+        const hidden = req.kind === 'trait' && idx.hiddenTraits.has(req.id);
+        return { text, unresolved, hidden, holds: !unresolved && requirementHolds(req, trait, activeIn, idx) };
       });
       states.set(trait.item.id, { unlocked: requirements.length === 0 || requirements.some((r) => r.holds), requirements });
     }

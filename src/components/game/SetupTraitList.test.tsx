@@ -118,7 +118,7 @@ describe('SetupTraitList outside the setup dialog', () => {
 });
 
 describe('SetupTraitList gates', () => {
-  const req = (text: string, holds: boolean) => ({ text, holds, unresolved: false });
+  const req = (text: string, holds: boolean, hidden = false) => ({ text, holds, unresolved: false, hidden });
   const gates = new Map([['world', new Map([
     ['dockhand', { unlocked: false, requirements: [req('Paladin', false), req('Knight', false)] }],
     ['scholar', { unlocked: true, requirements: [req('Mage', true), req('any Class', false)] }],
@@ -178,6 +178,38 @@ describe('SetupTraitList gates', () => {
       view({ traits: [marked], picks: null, selectedTraits: ['marked'] });
       expect(screen.queryByRole('checkbox')).toBeNull();
       expect(screen.getByRole('img', { name: 'Always On' })).toBeInTheDocument();
+    });
+  });
+
+  describe('a Hidden trait', () => {
+    const secret: Trait = { id: 'secret-bond', name: 'Secret Bond', groupId: 'origin', mode: 'hidden', statChanges: [] } as Trait;
+    const traits = [dockhand, scholar, secret];
+
+    it('does not show while active, and still blocks the max-one group’s other picks', () => {
+      view({ traits, selectedTraits: ['secret-bond'], picks: groupPickState(origin, traits, ['secret-bond']) });
+      expect(screen.queryByText('Secret Bond')).toBeNull();
+      expect(screen.queryByRole('img', { name: 'Always On' })).toBeNull();
+      expect(screen.getByRole('radio', { name: 'Scholar' })).toBeDisabled();
+    });
+
+    it('leaves a Hidden requirement out of the gate line', () => {
+      const hiddenGates = new Map([['world', new Map([
+        ['dockhand', { unlocked: false, requirements: [req('Secret Bond', false, true), req('Knight', false)] }],
+        ['scholar', { unlocked: true, requirements: [req('Secret Bond', true, true), req('Mage', true)] }],
+      ])]]);
+      view({ gates: hiddenGates, picks: null });
+      expect(screen.getByText('Requires Knight')).toBeInTheDocument();
+      expect(screen.getByText('Unlocked by Mage')).toBeInTheDocument();
+      expect(screen.queryByText(/Secret Bond/)).toBeNull();
+    });
+
+    it('reads a bare "Locked" when every requirement is Hidden', () => {
+      const hiddenGates = new Map([['world', new Map([
+        ['dockhand', { unlocked: false, requirements: [req('Secret Bond', false, true)] }],
+      ])]]);
+      view({ gates: hiddenGates, picks: null });
+      expect(screen.getByText('Locked')).toBeInTheDocument();
+      expect(screen.queryByText(/Secret Bond/)).toBeNull();
     });
   });
 });

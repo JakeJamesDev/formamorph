@@ -17,7 +17,7 @@ import type {
 import { clamp } from './utils';
 import { ownedTraitStatesFrom, recordKey } from './ownedTraitState';
 import { activeOwnedTraitIds } from './ownedTraitsInPlay';
-import { exclusiveSiblings, inAuthoredOrder, isAlwaysOn } from './traitEffects';
+import { exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits } from './traitTree';
 import {
   gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
@@ -391,12 +391,12 @@ export function switchPersonaStats(
   for (const [key, trait] of off) {
     inForce.delete(key);
     next = moveStats(next, trait, false, key, [...inForce.values()]);
-    log.push(...traitSwitchLog(nameOf(trait), 'off', []));
+    if (!isHidden(trait)) log.push(...traitSwitchLog(nameOf(trait), 'off', []));
   }
   for (const [key, trait] of on) {
     inForce.set(key, trait);
     next = moveStats(next, trait, true, key, [...inForce.values()]);
-    log.push(...traitSwitchLog(nameOf(trait), 'on', []));
+    if (!isHidden(trait)) log.push(...traitSwitchLog(nameOf(trait), 'on', []));
   }
   return { state: next, log };
 }
@@ -605,12 +605,13 @@ export function settleTraits(
     next = flipBearerTrait(next, ownerId, trait, true, world);
   }
   const label = labeler(world, nameOf);
-  const cascadeNames = off.map(({ ownerId, trait }) => label(trait, ownerId));
+  // A Hidden trait moves unseen: no log line, no banner name.
+  const cascadeNames = off.filter(({ trait }) => !isHidden(trait)).map(({ ownerId, trait }) => label(trait, ownerId));
   return {
     state: { ...next, cascadeOffTraitIds: cascadeOff },
     log: [
       ...cascadeNames.flatMap((name) => traitSwitchLog(name, 'off', [], by)),
-      ...back.flatMap(({ ownerId, trait }) => traitSwitchLog(label(trait, ownerId), 'on', [], by)),
+      ...back.filter(({ trait }) => !isHidden(trait)).flatMap(({ ownerId, trait }) => traitSwitchLog(label(trait, ownerId), 'on', [], by)),
     ],
     cascade: off.map(({ trait }) => trait),
     cascadeNames,

@@ -688,6 +688,46 @@ describe('Always On traits in play', () => {
   });
 });
 
+describe('Hidden traits in play', () => {
+  // The Cursed Ring brings a Hidden curse: its stats move, but no log line or banner names it.
+  const ring = trait('ring', [], { playerToggle: true });
+  const curse = trait('curse', [{ statId: 'h', value: -10, type: 'starting' }], {
+    mode: 'hidden', requires: [{ kind: 'trait', id: 'ring' }],
+  });
+  const w = world([ring, curse]);
+  const name = (t: Trait) => t.name;
+  const on = (s: TraitRuntimeState) => activeTraits(s.traits, s.disabledTraitIds).map((t) => t.id);
+
+  it('applies its stats as it turns on and off, and leaves it out of the log and the banner', () => {
+    const cursed = switchPlayerTrait(state(), 'ring', true, w, name)!;
+    expect(on(cursed.state)).toEqual(['ring', 'curse']);
+    expect(valueOf(cursed.state)).toBe(40);
+    expect(cursed.log).toEqual(['Acquired trait: ring']);
+    const lifted = switchPlayerTrait(cursed.state, 'ring', false, w, name)!;
+    expect(on(lifted.state)).toEqual([]);
+    expect(valueOf(lifted.state)).toBe(50);
+    expect(lifted.log).toEqual(['Trait switched off: ring']);
+    expect(lifted.cascade.map((t) => t.id)).toEqual(['curse']);
+    expect(lifted.cascadeNames).toEqual([]);
+  });
+
+  it('moves a Hidden linked stat trait on a persona switch with no log line', () => {
+    const mark = trait('mark', [{ statId: 'h', value: 5, type: 'starting' }], { mode: 'hidden' });
+    const linked = (persona: PersonaRef): TraitWorld => ({
+      traits: [], groups: [], entities: [{ id: 'albus', name: 'Albus', persona: true }], persona,
+      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [mark], groups: [] }],
+    });
+    const asAlbus = linked({ source: 'world', entityId: 'albus' });
+    const seeded = applyPlayedStatTraits(state({ ownedTraits: { albus: { chosen: ['mark'] } } }), asAlbus).state;
+    const toNone = switchPersonaStats(seeded, asAlbus, linked({ source: 'none' }), name);
+    expect(valueOf(toNone.state)).toBe(50);
+    expect(toNone.log).toEqual([]);
+    const back = switchPersonaStats(toNone.state, linked({ source: 'none' }), asAlbus, name);
+    expect(valueOf(back.state)).toBe(55);
+    expect(back.log).toEqual([]);
+  });
+});
+
 describe('owned traits in play', () => {
   // The player's Paladin opens Ash's Loyal (You: Paladin); Ash's Tamed opens the world's Beast Tamer
   // (Ash: Tamed). Tamed and Wild share Ash's exclusive Bond group. Gruff is Ash's but not switchable.

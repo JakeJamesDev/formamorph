@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTraitWorkspace } from './setupTraitWorkspace';
 import { bearerTraitTree, bearerGroupId } from './ownedTraitsInPlay';
+import { isShown } from './traitEffects';
 import type { Entity, Trait } from '@/types';
 
 const trait = (id: string, groupId: string | null = null): Trait => ({ id, name: id, groupId, statChanges: [] });
@@ -64,5 +65,43 @@ describe('buildTraitWorkspace with entity nodes', () => {
       { id: 'inner', name: 'Inner', parentId: 'outer', order: 0 },
     ]);
     expect(categories.map((c) => c.name)).toEqual(['Inner']);
+  });
+});
+
+describe('buildTraitWorkspace with rows the player does not see', () => {
+  const groups = [
+    { id: 'class', name: 'Class', parentId: null, order: 0 },
+    { id: 'secret', name: 'Secret', parentId: null, order: 1 },
+    { id: 'omens', name: 'Omens', parentId: 'secret', order: 0 },
+  ];
+  const traits: Trait[] = [
+    trait('paladin', 'class'),
+    { ...trait('bond', 'class'), mode: 'hidden' },
+    { ...trait('veil', 'secret'), mode: 'hidden' },
+    { ...trait('curse', 'omens'), mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'paladin' }] },
+  ];
+  const shows = (picks: string[]) => (t: Trait) => isShown(t, picks);
+
+  it('drops a category holding only Hidden or dormant Always On traits, and keeps every trait in a shown one', () => {
+    const { categories, navigationGroups } = buildTraitWorkspace(traits, groups, new Set(), shows(['bond', 'veil']));
+    expect(categories.map((c) => [c.name, c.traits.map((t) => t.id)])).toEqual([['Class', ['paladin', 'bond']]]);
+    expect(navigationGroups.map((g) => g.group.name)).toEqual(['Class']);
+  });
+
+  it('brings a category back once an Always On trait in it turns on', () => {
+    const { categories } = buildTraitWorkspace(traits, groups, new Set(), shows(['paladin', 'curse', 'veil']));
+    expect(categories.map((c) => c.name)).toEqual(['Class', 'Omens']);
+  });
+
+  it("reads an entity's rows under that entity's picks", () => {
+    const wolf: Entity = {
+      id: 'wolf', name: 'Wolf', traits: [{ ...trait('howl'), mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'x' }] }],
+    };
+    const tree = bearerTraitTree({ traits: [], traitGroups: [], entities: [wolf] }, undefined);
+    const build = (picks: Record<string, string[]>) => buildTraitWorkspace(
+      tree.traits, tree.groups, new Set(tree.entityNodes.keys()), (t, entityId) => isShown(t, picks[entityId ?? 'world'] ?? []),
+    ).categories.map((c) => c.name);
+    expect(build({ world: ['howl'] })).toEqual([]);
+    expect(build({ wolf: ['howl'] })).toEqual(['Wolf']);
   });
 });

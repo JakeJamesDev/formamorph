@@ -21,7 +21,7 @@ import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildTraitWorkspace, type TraitCategory } from '@/lib/setupTraitWorkspace';
-import { isDormant } from '@/lib/traitEffects';
+import { isShown } from '@/lib/traitEffects';
 import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
 
 export interface EnterWorldWorkspaceProps {
@@ -100,9 +100,18 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     [props.traits, props.traitGroups, props.traitEntities, props.persona, props.traitLibrary],
   );
   const picksOf = (ownerId: string | undefined) => props.selectedTraits[ownerId ?? WORLD_OWNER] ?? [];
-  const traitWorkspace = useMemo(
-    () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())),
+  // Every category, seen or not, for the Begin check.
+  const allCategories = useMemo(
+    () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())).categories,
     [traitTree],
+  );
+  // A category with no row the player sees drops out, so the page index can move as picks change (Q33).
+  const traitWorkspace = useMemo(
+    () => buildTraitWorkspace(
+      traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys()),
+      (trait, entityId) => isShown(trait, props.selectedTraits[entityId ?? WORLD_OWNER] ?? []),
+    ),
+    [traitTree, props.selectedTraits],
   );
   const playerIds = playerEntityIds(traitTree);
   const youMark = <span className="ml-2 text-meta font-normal text-primary">You</span>;
@@ -135,7 +144,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const pickStateOf = (category: TraitCategory) =>
     (category.group ? groupPickState(category.group, category.traits, picksOf(category.entityId)) : null);
   // Begin waits for every bearer's groups to meet their minimums; Quick Start never comes through here.
-  const short = traitWorkspace.categories.some((category) => !!pickStateOf(category)?.short);
+  const short = allCategories.some((category) => !!pickStateOf(category)?.short);
   const currentIndex = Math.min(props.categoryIndex, Math.max(categories.length - 1, 0));
   const current = categories[currentIndex];
   const visibleGroups = traitWorkspace.navigationGroups;
@@ -143,7 +152,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
 
   const categoryButton = (category: (typeof categories)[number], index: number, depth = 0) => {
     const picks = category.kind === 'traits' ? picksOf(category.entityId) : [];
-    const shown = category.kind === 'traits' ? category.traits.filter((trait) => !isDormant(trait, picks)) : [];
+    const shown = category.kind === 'traits' ? category.traits.filter((trait) => isShown(trait, picks)) : [];
     const selected = shown.filter((trait) => picks.includes(trait.id)).length;
     return (
       <button
