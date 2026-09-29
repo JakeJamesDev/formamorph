@@ -765,3 +765,40 @@ describe('isSaveEnvelope', () => {
     expect(isSaveEnvelope('x')).toBe(false);
   });
 });
+
+describe('migrateWorld — player setting to persona rules', () => {
+  const playable = { id: 'w', name: 'Maren', persona: true };
+  const overviewOf = (playerSetting: string, entities: unknown[] = []) =>
+    migrateWorld({ version: APP_VERSION, worldOverview: { name: 'W', playerSetting }, entities }).worldOverview as unknown as Record<string, unknown>;
+
+  it('drops Open, which is the absent value', () => {
+    const ov = overviewOf('open');
+    expect('playerSetting' in ov).toBe(false);
+    expect(ov.allowedPersonas).toBeUndefined();
+    expect(ov.startPersona).toBeUndefined();
+  });
+
+  it('turns Fixed into a start on None', () => {
+    const ov = overviewOf('fixed', [playable]);
+    expect('playerSetting' in ov).toBe(false);
+    expect(ov.allowedPersonas).toBeUndefined();
+    expect(ov.startPersona).toEqual({ source: 'none' });
+  });
+
+  it('turns Cast into World Only, starting on the first persona', () => {
+    const ov = overviewOf('cast', [playable]);
+    expect(ov.allowedPersonas).toBe('world');
+    expect(ov.startPersona).toBeUndefined();
+  });
+
+  it('keeps a Cast world with no playable entity starting on None, as Cast did', () => {
+    const ov = overviewOf('cast');
+    expect(ov.allowedPersonas).toBe('world');
+    expect(ov.startPersona).toEqual({ source: 'none' });
+  });
+
+  it('is idempotent', () => {
+    const once = migrateWorld({ version: APP_VERSION, worldOverview: { playerSetting: 'cast' }, entities: [playable] });
+    expect(migrateWorld(JSON.parse(JSON.stringify(once))).worldOverview).toEqual(once.worldOverview);
+  });
+});

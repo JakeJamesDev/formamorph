@@ -559,12 +559,15 @@ describe('loadWorldData', () => {
     expect(result.current.worldOverview.openingsEnabled).toBeUndefined();
   });
 
-  it("carries the world's player setting through the load, and does not leak it into the next world", () => {
+  it("carries the world's persona rules through the load, and does not leak them into the next world", () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
-    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', { playerSetting: 'cast' })))); });
-    expect(result.current.worldOverview.playerSetting).toBe('cast');
+    const rules = { allowedPersonas: 'world', startPersona: { source: 'world', entityId: 'w' } } as const;
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', rules)))); });
+    expect(result.current.worldOverview.allowedPersonas).toBe('world');
+    expect(result.current.worldOverview.startPersona).toEqual({ source: 'world', entityId: 'w' });
     act(() => { result.current.loadWorldData(world('b', {})); });
-    expect(result.current.worldOverview.playerSetting).toBeUndefined();
+    expect(result.current.worldOverview.allowedPersonas).toBeUndefined();
+    expect(result.current.worldOverview.startPersona).toBeUndefined();
   });
 });
 

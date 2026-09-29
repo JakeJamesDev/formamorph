@@ -119,7 +119,8 @@ describe('the Open Chat default world', () => {
   });
 
   it('lets the player be anyone and opens on one editable Player Action', () => {
-    expect(world.worldOverview.playerSetting).toBe('open');
+    expect(world.worldOverview.allowedPersonas).toBeUndefined();
+    expect(world.worldOverview.startPersona).toBeUndefined();
     expect(world.worldOverview.openingsEnabled).not.toBe(false);
     const openings = world.worldOverview.openings ?? [];
     expect(openings).toHaveLength(1);

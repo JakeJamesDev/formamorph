@@ -6,7 +6,7 @@
 import { hasValue } from './editorMode';
 import { allPlaceholders } from './placeholderHomes';
 import { openingTexts } from './openings';
-import { worldPlayerSetting } from './personaPick';
+import { worldAllowedPersonas, worldStartPersona } from './personaPick';
 import { storedWorldPrompt, WORLD_PROMPT_KINDS } from './worldPrompt';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 
@@ -33,7 +33,7 @@ export function worldUsesAdvancedFeatures(w: AdvancedDataInput): boolean {
     hasValue(e.scanDepth) || hasValue(e.secondaryKeys)))) return true;
   if (WORLD_PROMPT_KINDS.some((kind) => hasValue(storedWorldPrompt(w.worldOverview, kind)))) return true;
   if (openingTexts(w.worldOverview).length > 0) return true;
-  if (worldPlayerSetting(w.worldOverview) !== 'open') return true;
+  if (worldAllowedPersonas(w.worldOverview) !== 'any' || worldStartPersona(w.worldOverview)) return true;
   if ((w.stats ?? []).some((s) =>
     hasValue(s.beforeCode) || hasValue(s.code) || hasValue(s.descriptors) ||
     s.noIncrease || s.noIncreaseMax || s.noDecrease || s.noDecreaseMax)) return true;

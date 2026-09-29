@@ -497,12 +497,17 @@ export interface WorldOverview {
   openingWeights?: Record<string, number>;
   /** `false` keeps `openings` on the world without drawing them. Absent = on. */
   openingsEnabled?: boolean;
-  /** Who the player can be: any persona, None preselected, or only this world's personas. Absent = open. */
-  playerSetting?: WorldPlayerSetting;
+  /** Which personas the player can pick. Absent = any. */
+  allowedPersonas?: AllowedPersonas;
+  /** The persona a new player starts on. Absent = the player's default persona. */
+  startPersona?: StartPersona;
 }
 
-/** The world's player setting. The pickers read it through lib/personaPick, which applies it. */
-export type WorldPlayerSetting = 'open' | 'fixed' | 'cast';
+/** `world` limits the pickers to this world's personas and its Custom Persona. Applied by lib/personaPick. */
+export type AllowedPersonas = 'any' | 'world';
+
+/** None (or the Custom Persona, which stands in its place), or one of this world's personas. */
+export type StartPersona = { source: 'none' } | { source: 'world'; entityId: string };
 
 /** Where an opening's text lands: `action` pre-fills the player's input box, `narration` is page one. */
 export type OpeningKind = 'action' | 'narration';

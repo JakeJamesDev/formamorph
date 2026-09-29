@@ -768,12 +768,12 @@ describe('a world persona at world entry', () => {
   });
 });
 
-describe("the world's player setting at world entry", () => {
+describe("the world's persona rules at world entry", () => {
   const keeperRef: PersonaRef = { source: 'world', entityId: 'keeper' };
   // A library persona set as the global default, and optionally one marked world entity.
-  const setUp = async (playerSetting: 'fixed' | 'cast', withKeeper: boolean) => {
+  const setUp = async (rules: Pick<WorldOverview, 'allowedPersonas' | 'startPersona'>, withKeeper: boolean) => {
     const record = world();
-    (record.data.worldOverview as WorldOverview).playerSetting = playerSetting;
+    Object.assign(record.data.worldOverview as WorldOverview, rules);
     if (withKeeper) {
       record.data.entities = [{
         id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '',
@@ -789,8 +789,8 @@ describe("the world's player setting at world entry", () => {
   };
   afterEach(async () => { await EntityStorageService.deleteEntity('self').catch(() => {}); });
 
-  it("cast lists only the world's personas, with no None, on the first", async () => {
-    await setUp('cast', true);
+  it("world only lists only the world's personas, with no None, on the first", async () => {
+    await setUp({ allowedPersonas: 'world' }, true);
     renderMainMenu();
     await enter();
     expect(screen.getByRole('radio', { name: 'Harbor Keeper' })).toBeChecked();
@@ -798,8 +798,8 @@ describe("the world's player setting at world entry", () => {
     expect(screen.queryByRole('radio', { name: 'Self' })).not.toBeInTheDocument();
   });
 
-  it('cast gives Quick Start the first world persona over the global default', async () => {
-    await setUp('cast', true);
+  it('world only gives Quick Start the first world persona over the global default', async () => {
+    await setUp({ allowedPersonas: 'world' }, true);
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));
@@ -808,16 +808,26 @@ describe("the world's player setting at world entry", () => {
     expect(onStartGame.mock.calls[0][6]).toEqual({ ref: keeperRef });
   });
 
-  it('fixed starts the step on None and still offers the global default', async () => {
-    await setUp('fixed', false);
+  it('starts the step on None and still offers the global default', async () => {
+    await setUp({ startPersona: { source: 'none' } }, false);
     renderMainMenu();
     await enter();
     expect(screen.getByRole('radio', { name: 'None' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Self' })).toBeInTheDocument();
   });
 
-  it('cast with no marked entity behaves as fixed, for Quick Start too', async () => {
-    await setUp('cast', false);
+  it('starts Quick Start on a world persona over the global default under Any', async () => {
+    await setUp({ startPersona: { source: 'world', entityId: 'keeper' } }, true);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual({ ref: keeperRef });
+  });
+
+  it('starts Quick Start on None when told to, over the global default', async () => {
+    await setUp({ startPersona: { source: 'none' } }, false);
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));

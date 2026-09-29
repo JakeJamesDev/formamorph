@@ -160,20 +160,20 @@ describe('world personas in the Change picker', () => {
     expect(within(dialog).getByText('Keeps the harbor ledger.')).toBeTruthy();
   });
 
-  it("lists only the world's personas, with no None, in a Cast world", async () => {
+  it("lists only the world's personas, with no None, in a World Only world", async () => {
     await store(ash);
     const overview = worldFixture().worldOverview;
-    renderInGame(<PersonaRow onChange={vi.fn()} />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'cast' } } });
+    renderInGame(<PersonaRow onChange={vi.fn()} />, { world: { ...world, worldOverview: { ...overview, allowedPersonas: 'world' } } });
     const dialog = await openPicker();
     await within(dialog).findByRole('radio', { name: 'Harbor Warden' });
     expect(within(dialog).queryByRole('radio', { name: 'None' })).toBeNull();
     expect(within(dialog).queryByRole('radio', { name: 'Ash' })).toBeNull();
   });
 
-  it('offers None and the library personas in a Fixed world', async () => {
+  it('offers None and the library personas in a world that starts on None', async () => {
     await store(ash);
     const overview = worldFixture().worldOverview;
-    renderInGame(<PersonaRow onChange={vi.fn()} />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'fixed' } } });
+    renderInGame(<PersonaRow onChange={vi.fn()} />, { world: { ...world, worldOverview: { ...overview, startPersona: { source: 'none' } } } });
     const dialog = await openPicker();
     await within(dialog).findByRole('radio', { name: 'Ash' });
     expect(within(dialog).getByRole('radio', { name: 'None' })).toBeTruthy();

@@ -28,7 +28,7 @@ import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/Dic
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
 import { EMPTY_LETTERS, worldPlacementLetters } from '@/lib/placementLetters';
-import { worldPlayerSetting } from '@/lib/personaPick';
+import { worldAllowedPersonas, worldStartPersona } from '@/lib/personaPick';
 import { CodeRenameContext } from '@/lib/useCodeRename';
 import type {
   WorldMetadata,
@@ -314,7 +314,8 @@ function useProvideGameData() {
 
     // Handle world overview with validation (migrateWorld already moved any legacy VRM into worldOverview).
     const overview = worldData.worldOverview || defaultOverview;
-    const playerSetting = worldPlayerSetting(overview);
+    const allowedPersonas = worldAllowedPersonas(overview);
+    const startPersona = worldStartPersona(overview);
     const normalizedOverview: WorldOverview = {
       name: overview.name || defaultOverview.name,
       description: overview.description || defaultOverview.description,
@@ -334,8 +335,9 @@ function useProvideGameData() {
       ...(Array.isArray(overview.openings) ? { openings: overview.openings } : {}),
       ...(overview.openingWeights ? { openingWeights: overview.openingWeights } : {}),
       ...(typeof overview.openingsEnabled === 'boolean' ? { openingsEnabled: overview.openingsEnabled } : {}),
-      // Open is the absent value, so only Fixed and Cast are carried.
-      ...(playerSetting !== 'open' ? { playerSetting } : {})
+      // Any and the player's default are the absent values.
+      ...(allowedPersonas !== 'any' ? { allowedPersonas } : {}),
+      ...(startPersona ? { startPersona } : {})
     };
     // Replace, never merge: a merge lets a field the normalizer doesn't set survive from the previously
     // loaded world, leaking it into this one and into the next saveWorld.
