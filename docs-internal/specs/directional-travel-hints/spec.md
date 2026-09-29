@@ -103,7 +103,7 @@ A new two-way Connection starts linked. An author who writes one hint therefore 
 ### Travel Hint pair component
 
 - One new shared component renders the hint boxes and the link toggle. The canvas inspector and the location panel's Connections list both use it.
-- Layout: the two boxes stack. The toggle sits to the right of both and spans their full height. The icon is a vertical chain: link when linked, broken link when unlinked (the lucide `link-2` / `link-2-off` pair, rotated 90°).
+- Layout: the two boxes stack. The toggle sits to the right of both and spans their full height. The icon is a vertical chain: link when linked, broken link when unlinked (the lucide `link` / `unlink` pair, turned upright by -45° so the chain stays vertical; user ruling in ticket 02).
 - The toggle is a button with `aria-pressed`. Tooltips: **Link Travel Hints** / **Unlink Travel Hints**.
 - The component holds the second box's pre-link text in memory, keyed by Connection id, for as long as it is mounted. That text is never saved. Closing the panel or reloading loses it. This trade-off is accepted.
 - The link state is not stored in the world. It is derived when the component mounts and then held in component state.
