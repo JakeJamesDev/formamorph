@@ -3,7 +3,7 @@ import { toolSchema, type ToolFunctionSchema } from '@/lib/tools/toolSchema';
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
-  MAX_REASONING_BUDGET_PCT, reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
+  MAX_REASONING_BUDGET_PCT, nativeReasoningSuppressed, reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { reasoningDialectBody, reasoningDialectBudgetFloor, type ReasoningBodyFields } from '@/lib/reasoningDialect';
@@ -202,7 +202,8 @@ function thoughtCeiling(answerCap: number | undefined, base: number | undefined)
  * What one call says about reasoning, and the caps that hold it. The literal is withheld while reasoning is
  * engaged nowhere, and a record that rules the model out licenses no off signal. The budget rides on top of
  * the answer cap where the slice carries a reasoning field or the record knows the model reasons. A request
- * that reasons with no budget on the wire sends the Thought Ceiling, since the server never closes its thought.
+ * that reasons with no budget on the wire, and Inline narration, send the Thought Ceiling, since the server
+ * never closes that thought.
  */
 function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: AiEndpointTarget): ResolvedReasoning {
   const effort = resolveRequestReasoning(
@@ -226,10 +227,12 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   });
   const carriesReasoning = Object.keys(fields).length > 0 || target.reasoning.reasons === true;
   const reserve = carriesReasoning ? planned.maxTokens : answerCap;
-  const ceiling = carriesReasoning && effort !== 'none' && budget === null;
+  // Inline narration's own <think> block rides in the answer, whatever the native settings say.
+  const sendsCeiling = nativeReasoningSuppressed(snapshot.thinkingMode, call.requestType)
+    || (carriesReasoning && effort !== 'none' && budget === null);
   return {
     fields, level, answerCap, reserve,
-    maxTokens: ceiling ? thoughtCeiling(answerCap, target.maxTokens) : reserve,
+    maxTokens: sendsCeiling ? thoughtCeiling(answerCap, target.maxTokens) : reserve,
   };
 }
 

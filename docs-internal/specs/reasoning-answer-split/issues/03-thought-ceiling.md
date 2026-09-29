@@ -1,6 +1,6 @@
 # 03: Thought Ceiling on the wire
 
-Status: in-progress
+Status: ready-for-human
 Base: 609ce03e
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -28,3 +28,5 @@ With reasoning on and a target that takes no budget, the request's `max_tokens` 
 - Q-A: with no endpoint Max Output, the Answer Cap is the base, so the ceiling is the Answer Cap × 3.
 - Q-B: the AI Context viewer shows a separate **Max Tokens** chip beside the reasoning chip.
 - Q-C: the rule is "no budget on the wire → Thought Ceiling", so a budget-taking target with no base gets it too.
+- R1, R3: Inline narration sends the ceiling on any endpoint. This also covers an endpoint that refuses off, since only Inline narration resolves to `none` there.
+- R2: an unprobed endpoint that is sent no reasoning field keeps the Answer Cap.

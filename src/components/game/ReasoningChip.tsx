@@ -1,5 +1,5 @@
 import type { DebugEndpointInfo } from '@/lib/promptEndpoints';
-import { Tip } from '@/components/ui/tooltip';
+import { DebugChip } from './DebugChip';
 import { reasoningChipText } from './reasoningChipText';
 
 /**
@@ -12,9 +12,5 @@ import { reasoningChipText } from './reasoningChipText';
 export function ReasoningChip({ endpoint }: { endpoint: DebugEndpointInfo }) {
   const chip = reasoningChipText(endpoint);
   if (!chip) return null;
-  return (
-    <Tip tip={chip.tip} labelsChild={false}>
-      <span className="rounded bg-muted px-1.5 py-0.5 text-meta font-normal text-muted-foreground">{chip.label}</span>
-    </Tip>
-  );
+  return <DebugChip label={chip.label} tip={chip.tip} />;
 }
