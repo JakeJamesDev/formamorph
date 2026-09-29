@@ -84,7 +84,7 @@ A new two-way Connection starts linked. An author who writes one hint therefore 
 
 - A new `migrateWorld` step converts `{from, to, twoWay, aiHint}` to `{a: from, b: to, aToB: {hint}, bToA: twoWay ? {hint} : undefined}`. The old hint goes into both legs of a two-way Connection, so shipped worlds play the same.
 - The step is idempotent: a record already in the new shape passes through.
-- The world copies that saves carry go through the same step, as the other `migrateWorld` steps do.
+- Saves hold no copy of Connections. A save plays against the world loaded through `migrateWorld`, so the world step covers saves (ruling from ticket 01).
 - The bundled worlds that contain Connections are rewritten to the new shape.
 
 ### Navigation and prompt
@@ -131,7 +131,7 @@ A new two-way Connection starts linked. An author who writes one hint therefore 
 - Tests check external behavior: returned records, destination entries, and what the author sees and can do. They do not check internal state or call order.
 - **Connection-editing module** (pure functions): direction changes keep hints with their legs; flip moves the leg; link copies; unlink restores the given text; blank hints drop the field; the derived link state for equal, different, absent, and one-way cases. Prior art: the existing connection-editing tests.
 - **Location context** (destination entries): each direction gets its own leg's hint; a leg with no hint gives no hint even when the other leg has one; a one-way Connection offers no return trip. Prior art: the location-context and location-graph tests.
-- **Migration**: old two-way records put the hint in both legs; old one-way records map to one leg; new-shape records pass through; records with no legs are dropped; save world copies migrate. Prior art: the version tests.
+- **Migration**: old two-way records put the hint in both legs; old one-way records map to one leg; new-shape records pass through; records with no legs are dropped. Prior art: the version tests.
 - **Travel Hint pair component**, tested through the location panel's Connections list: a new two-way Connection opens linked with a read-only second box that shows the first box's text; unlink makes both editable and restores the earlier text; different hints open unlinked; a one-way Connection shows one box and no toggle; the toggle reports `aria-pressed`. Prior art: the LocationConnections RTL tests.
 - **Locations Canvas builder**: each arrow's label is its own leg's hint. Prior art: the location-canvas tests.
 - Each guard must bite: reinstate the single-hint behavior and confirm the direction tests fail.
@@ -147,6 +147,6 @@ A new two-way Connection starts linked. An author who writes one hint therefore 
 
 ## Further Notes
 
-- ⚠️ **Export shape:** this replaces the shape of `connections[]` in world `.json`, and in the world copy a save carries. The `migrateWorld` step keeps old files loading.
+- ⚠️ **Export shape:** this replaces the shape of `connections[]` in world `.json`. The `migrateWorld` step keeps old files loading.
 - Update the glossary entry for **Connection** in `CONTEXT.md` to mention legs and the per-direction Travel Hint.
 - The wiki page that documents Connections needs the new hint pair and link toggle.
