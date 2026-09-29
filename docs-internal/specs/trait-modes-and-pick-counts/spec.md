@@ -102,6 +102,10 @@ Every trait is also something the player chooses. An author has no way to say:
 | Q26 | The minimum refusal is mid-game only (Q6). The gate module exports it as a pure query, and the play runtime refuses through it for every bearer. On the setup screen, a switch-off is never refused for the minimum, because refusing it would lock an "Exactly N" group. Begin gates the short group instead (Q9). |
 | Q27 | Mid-game, a player switch-off is refused whenever it ends below the minimum, including in a group already short after a cascade. |
 | Q28 | Mid-game, an "Exactly N" group with N above 1 can't change. That is accepted. An author who wants swaps sets a range. There is no swap picker. |
+| Q29 | An Always On trait whose gate starts to hold in a full group joins anyway. Nothing is retired, so the group runs over its max until the player drops a pick. This matches Q8 and the over-max warning. |
+| Q30 | Stat code never switches an Always On or Hidden trait, in either direction. Its gate alone decides (Q2). |
+| Q31 | Ticket 04 treats `hidden` as Always On in the gate logic. Ticket 05 adds only the hiding and the editor option. |
+| Q32 | `trait-group-always-on-over-max` counts co-activation: it finds the largest set of the group's Always On traits whose gates one selection can open together, respecting max-1 rivals. If that can't stay small and pure, it counts every Always On trait that can ever unlock and accepts the false positives. |
 
 **Schema (world export shape).**
 
