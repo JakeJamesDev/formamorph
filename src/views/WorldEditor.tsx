@@ -11,7 +11,7 @@ import {
   useTutorialSeen,
 } from '@/lib/tutorials';
 import {
-  entityRootCount, newBlankWorld, newLocation,
+  entityRootCount, newBlankWorld,
 } from '@/lib/blankWorld';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
@@ -25,12 +25,10 @@ import { TourBar } from '@/components/authoringTour/TourBar';
 import { TourInPlay } from '@/components/authoringTour/InPlayPane';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
 import { ListSearchToolbar, type ListAddSlot } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import { useListEditor } from '@/components/listEditorHooks';
-import { matchesListSearch } from '@/lib/listSearch';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
 import { worldEditorTopicId } from '@/lib/helpTopics';
@@ -63,9 +61,7 @@ import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
-import LocationManager from '../managers/LocationManager';
-import LocationTree from '../managers/LocationTree';
-import LocationCanvas from '../managers/LocationCanvas';
+import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
@@ -96,23 +92,14 @@ import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
-import { type DragEndEvent } from '@dnd-kit/core';
-import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Entity, GameLocation, Dictionary, World, FocusFieldHint } from '@/types';
+import type { Entity, Dictionary, World, FocusFieldHint } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
-import { SortableRow, type SortableListItem } from '@/components/SortableList';
 import { SelectedContentActions } from '@/components/ContentLinkStatus';
 import { SplitButton } from '@/components/ui/split-button';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
-import { EditorRowList } from '@/components/EditorRow';
-import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { Tip } from '@/components/ui/tooltip';
-
-/** The fields a reorderable list row needs (every editor item has these). */
-type ListItem = SortableListItem;
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
 }: {
@@ -141,7 +128,6 @@ const WorldEditorInner = ({
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
-    removeLocation,
     setLocations, setEntities, setDictionaries,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
@@ -661,20 +647,6 @@ const WorldEditorInner = ({
     }
   };
 
-  // Add a new item to the active flat-list tab. Like the other handlers, an empty search box falls
-  // back to a default name so the + button always creates something.
-  const addItem = (typed: string) => {
-    const newId = randomUUID();
-
-    if (activeTab === "locations") {
-      addLocation(newLocation(newId, typed || undefined));
-    } else {
-      return;
-    }
-
-    setSelectedItemId(newId);
-  };
-
   // The Dictionary tab's + adds a whole book (name from the search box); entries are added per-book in the tree.
   const handleAddBook = (typed: string) => {
     const id = randomUUID();
@@ -685,13 +657,6 @@ const WorldEditorInner = ({
   // A library entity lands at the root, after every root sibling.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
-  const filteredItems = useMemo(() => {
-    const itemsToFilter = activeTab === "locations" ? locations : [];
-    const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
-    return itemsToFilter.filter((item) => matchesListSearch(item.name, search.term, names));
-  }, [activeTab, locations, search.term, placeholders, placementLetters, placeholderOwners]);
-
-  const selectedItem = filteredItems.find(item => item.id === selectedItemId);
   const selectedEntity = entities.find(e => e.id === selections.entities);
   const selectedEntityGroup = entityGroups.find(g => g.id === selections.entities);
   // The Traits tab runs on the List Editor; the host lays out its parts.
@@ -742,19 +707,32 @@ const WorldEditorInner = ({
   const entitiesParts = useListEditor(entitiesEditor.adapter, {
     selectedId: selections.entities ?? null, onSelect: selectEntity, search,
   });
+  const selectLocation = useCallback((id: string | null) => select('locations', id), [select]);
+  const locationsAdapter = useWorldLocationsAdapter({
+    selectedId: selections.locations ?? null,
+    onSelect: selectLocation,
+    search,
+    view: locationView,
+    tab: shownLocationTab,
+    onTabChange: setLocationTab,
+    focusField: findField,
+  });
+  const locationsParts = useListEditor(locationsAdapter, {
+    selectedId: selections.locations ?? null, onSelect: selectLocation, search,
+  });
   // The active tab's List Editor parts, on a tab that runs on it.
   const listEditorParts = activeTab === 'traits' ? traitsParts
     : activeTab === 'placeholders' ? placeholdersParts
     : activeTab === 'stats' ? statsParts
     : activeTab === 'entities' ? entitiesParts
+    : activeTab === 'locations' ? locationsParts
     : null;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   // Mirrors the panel branches in detailContent.
-  const detailFills = (activeTab === "locations" && !!selectedItem)
-    || !!listEditorParts?.fills
+  const detailFills = !!listEditorParts?.fills
     || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
   const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
@@ -779,87 +757,16 @@ const WorldEditorInner = ({
   const importDisabled = false;
   const importLabel = activeTab === 'entities' ? 'Add Entity' : 'Add Dictionary';
 
-  // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
-  const tabConfig = {
-    locations: { items: locations, setItems: setLocations },
-  };
-
-  // Reorder the active tab's full array (filter-safe: located by id).
-  const handleRowDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const config = tabConfig[activeTab as keyof typeof tabConfig];
-    if (!config) return;
-    // The per-tab item/setter types correlate but TS can't track that across the union; all items
-    // share `id` and each setter accepts its own reordered array, so treat them uniformly here.
-    const items = config.items as { id: string }[];
-    const oldIndex = items.findIndex((it) => it.id === active.id);
-    const newIndex = items.findIndex((it) => it.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    (config.setItems as (next: { id: string }[]) => void)(arrayMove(items, oldIndex, newIndex));
-  };
-
-  // Deep-copy an item and place the copy right after the original.
-  const duplicateItem = (id: string) => {
-    const config = tabConfig[activeTab as keyof typeof tabConfig];
-    if (!config) return;
-    const items = config.items as { id: string; name: string }[];
-    const index = items.findIndex((it) => it.id === id);
-    if (index === -1) return;
-    const copy = { ...structuredClone(items[index]), id: randomUUID() };
-    copy.name = `${copy.name} (Copy)`;
-    const next = [...items.slice(0, index + 1), copy, ...items.slice(index + 1)];
-    (config.setItems as (next: { id: string }[]) => void)(next);
-    setSelectedItemId(copy.id);
-  };
-
-  const removeItem = (id: string) => {
-    if (activeTab === "locations") removeLocation(id);
-    setSelectedItemId(null);
-  };
-
-  const renderItemList = (items: ListItem[]) => {
-    if (items.length === 0) {
-      const q = search.typed;
-      // Same empty-state hint the trees show (unified), or a "no matches" note when filtering.
-      return q
-        ? <p className="text-helper text-muted-foreground p-2">No {activeTab} match &ldquo;{q}&rdquo;.</p>
-        : <EmptyListHint noun={activeTab} />;
-    }
-    return (
-    <EditorDndContext onDragEnd={handleRowDragEnd}>
-      <StableSortableContext items={items} strategy={verticalListSortingStrategy}>
-        <EditorRowList>
-          {items.map((item) => (
-            <SortableRow
-              key={item.id}
-              item={item}
-              label={<PlaceholderText text={item.name} placeholders={placeholders} />}
-              selected={selectedItemId === item.id}
-              onSelect={setSelectedItemId}
-              onRemove={removeItem}
-              onDuplicate={duplicateItem}
-            />
-          ))}
-        </EditorRowList>
-      </StableSortableContext>
-    </EditorDndContext>
-    );
-  };
-
-  // The canvas fills its pane and owns its own clicks, so it opts out of the list pane's scroller and of
-  // the click-to-deselect that empties the detail panel.
-  const canvasView = activeTab === "locations" && locationView === "canvas";
-  const deselectOnListClick = canvasView ? undefined : () => setSelectedItemId(null);
+  // A list that owns its slot (the Locations canvas) opts out of the list pane's scroller and of the
+  // click-to-deselect that empties the detail panel.
+  const listOwnsSlot = !!listEditorParts?.ownsSlot;
+  const deselectOnListClick = listOwnsSlot ? undefined : () => setSelectedItemId(null);
 
   // The per-tab list (master) and detail, extracted so both the desktop resizable split and the mobile
   // single-panel push render from one source. `overview` isn't master-detail — it shows a form in each slot.
   const listContent = (
     <>
       {activeTab === "overview" && <WorldOverviewManager />}
-      {activeTab === "locations" && (canvasView
-        ? <LocationCanvas selectedId={selectedItemId} onSelect={setSelectedItemId} />
-        : search.typed ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {listEditorParts?.list}
       {removeWorldTraitDialog}
       {placeholdersEditor.dialog}
@@ -880,15 +787,6 @@ const WorldEditorInner = ({
         <WorldDetailsManager
           focusField={findField}
           onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
-        />
-      )}
-      {activeTab === "locations" && selectedItem && (
-        <LocationManager
-          key={selectedItem.id}
-          location={selectedItem as GameLocation}
-          tab={shownLocationTab}
-          onTabChange={setLocationTab}
-          focusField={focusFieldForItem(findField, selectedItem.id)}
         />
       )}
       {listEditorParts?.detail}
@@ -1020,40 +918,42 @@ const WorldEditorInner = ({
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
-  const addSlot: ListAddSlot = { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : addItem };
+  const addSlot: ListAddSlot = { label: addLabel, onAdd: handleAddBook };
   // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
   const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
-  const addSearchBar = activeTab !== "overview" && (listEditorParts ? listEditorParts.toolbar('mt-4', { after: helpButton }) : (
-    <ListSearchToolbar
-      className="mt-4"
-      search={search}
-      add={addSlot}
-      placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
-      after={helpButton}
+  // The Locations toolbar's List/Canvas switch, after the +.
+  const locationViewToggle = activeTab === "locations" && (
+    <ToggleGroup
+      type="single"
+      value={locationView}
+      onValueChange={(v) => { if (v) setLocationView(v as LocationView); }}
+      aria-label="Locations view"
+      className="flex-shrink-0"
     >
-      {activeTab === "locations" ? (
-        <ToggleGroup
-          type="single"
-          value={locationView}
-          onValueChange={(v) => { if (v) setLocationView(v as LocationView); }}
-          aria-label="Locations view"
-          className="flex-shrink-0"
-        >
-          {LOCATION_VIEWS.map((v) => (
-            isMobile
-              ? (
-                <Tip key={v.value} tip={v.label}>
-                  <ToggleGroupItem value={v.value} className="px-2">
-                    {v.value === 'canvas' ? <Map className="h-4 w-4" /> : <List className="h-4 w-4" />}
-                  </ToggleGroupItem>
-                </Tip>
-              )
-              : <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      ) : null}
-    </ListSearchToolbar>
-  ));
+      {LOCATION_VIEWS.map((v) => (
+        isMobile
+          ? (
+            <Tip key={v.value} tip={v.label}>
+              <ToggleGroupItem value={v.value} className="px-2">
+                {v.value === 'canvas' ? <Map className="h-4 w-4" /> : <List className="h-4 w-4" />}
+              </ToggleGroupItem>
+            </Tip>
+          )
+          : <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+  const addSearchBar = activeTab !== "overview" && (listEditorParts
+    ? listEditorParts.toolbar('mt-4', { children: locationViewToggle, after: helpButton })
+    : (
+      <ListSearchToolbar
+        className="mt-4"
+        search={search}
+        add={addSlot}
+        placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
+        after={helpButton}
+      />
+    ));
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   const footerBar = (
@@ -1180,7 +1080,7 @@ const WorldEditorInner = ({
                       showDetail={listEditorParts ? listEditorParts.showDetail : !!selectedItemId}
                       onBack={listEditorParts ? listEditorParts.onBack : () => setSelectedItemId(null)}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
-                      scrollList={!canvasView}
+                      scrollList={!listOwnsSlot}
                       scrollDetail={!detailFills}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
@@ -1213,7 +1113,7 @@ const WorldEditorInner = ({
                             panel outside the tab root — the tab's own content is this list. */}
                         {tabPanels(
                           <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
-                            {canvasView ? listContent : <ScrollArea className="h-full">{listContent}</ScrollArea>}
+                            {listOwnsSlot ? listContent : <ScrollArea className="h-full">{listContent}</ScrollArea>}
                           </div>
                         )}
                       </Tabs>

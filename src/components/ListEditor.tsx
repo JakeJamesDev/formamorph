@@ -30,9 +30,11 @@ export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel }:
       list={
         <div className="flex h-full min-h-0 flex-col">
           {parts.toolbar('p-2 pb-0')}
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="p-2">{parts.list}</div>
-          </ScrollArea>
+          {parts.ownsSlot ? <div className="min-h-0 flex-1">{parts.list}</div> : (
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="p-2">{parts.list}</div>
+            </ScrollArea>
+          )}
         </div>
       }
       detail={parts.detail}
