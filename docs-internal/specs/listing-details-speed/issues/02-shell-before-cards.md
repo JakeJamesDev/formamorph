@@ -1,6 +1,7 @@
 # 02: Paint the window before the cards
 
-Status: ready-for-agent
+Status: in-progress
+Base: 9ddcc93f
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -13,8 +14,24 @@ Spec Q8. Clicking Community Creations shows its window at once. The card grid re
 
 ## Acceptance criteria
 
-- [ ] The window shell commits before the card grid on every open.
-- [ ] No "no results" or empty-grid frame shows while rows exist but have not rendered.
-- [ ] Scroll, search input, and close respond while the grid renders.
-- [ ] A render test proves the shell commits first and fails when the grid renders in the same commit.
-- [ ] Harness numbers before and after, at 1× and 4×, are recorded under `## Comments`.
+- [x] The window shell commits before the card grid on every open.
+- [x] No "no results" or empty-grid frame shows while rows exist but have not rendered.
+- [x] Scroll, search input, and close respond while the grid renders.
+- [x] A render test proves the shell commits first and fails when the grid renders in the same commit.
+- [x] Harness numbers before and after, at 1× and 4×, are recorded under `## Comments`.
+
+## Comments
+
+**What changed.** [CommunityCreationsBrowser.tsx](src/views/CommunityCreationsBrowser.tsx) reads the page's rows through `useDeferredValue`, and a closed browser reads as no rows. An open commits the shell with skeleton cards, then renders the cards in a transition. The empty state shows only when the deferred rows have caught up and are empty. Once cards are up, updates skip the deferral: a like press must redraw at once (the guestLikes tests caught the first version, which deferred every update). `pagedRemoteWorlds` in [useCommunityBrowserFilters.ts](src/lib/useCommunityBrowserFilters.ts) is now memoized, because a new array per render never settles a deferred value.
+
+**Test.** [CommunityCreationsBrowser.shellFirst.test.tsx](src/views/CommunityCreationsBrowser.shellFirst.test.tsx) counts commits with a `Profiler`. It covers a reopen with cached rows, fresh rows that arrive late, no empty-state commit, a real empty catalog, and an immediate redraw after the grid is up. Proved to bite: the first two fail on the old code, the empty-state test fails when the pending guard goes, and the redraw test fails when every update defers.
+
+**Harness.** A page reload opens with no rows in memory, so the rows already commit after the window there. The change matters on a reopen (close, then open in the same page), so the harness gained a `reopen` open. Same machine, one sample per open, same 700 rows. Reload opens (cold, warm 1, warm 2) stay within run-to-run noise.
+
+| Throttle | Open | visibleMs before | visibleMs after | Blocks before → after | Blocked ms before → after |
+|---|---|---|---|---|---|
+| 1× | reopen | 54 | 34 | 1 → 0 | 51 → 0 |
+| 4× | reopen | 411 | 132 | 6 → 4 | 626 → 317 |
+| 4× | warm 2 | 161 | 187 | 7 → 4 | 624 → 457 |
+
+A timeline probe at 4× (throwaway, not kept) showed frames every 13–50 ms between the window and the first card, so the page stays live while the cards draw. Cards land later than before (about 590 ms against 280 ms on a warm open) because the render now yields to the frames.

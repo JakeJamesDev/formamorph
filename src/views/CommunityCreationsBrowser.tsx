@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { responseError } from '@/services/responseError';
@@ -88,6 +88,9 @@ import { useTutorial } from "@/lib/tutorials";
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
 const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
+
+/** One shared empty list, so a closed browser hands the grid the same identity every render. */
+const NO_ROWS: WorldRecord[] = [];
 
 /** The prompt target for a host without the preset store. `downloadFor` never hands it a listing. */
 const NO_PROMPT_LIBRARY: LibraryTarget<PromptListingContent> = {
@@ -507,6 +510,19 @@ const CommunityCreationsBrowser = ({
     file: w.thumbnail_file as string | null | undefined,
     updatedAt: w.updated_at as string | null | undefined,
   })));
+
+  // The first cards of an open render in a transition, so the window paints first and scroll, search,
+  // and close stay responsive. Closed reads as no rows: a reopen then commits the shell before the
+  // grid. Once cards are up, updates such as a like press render at once.
+  const gridRows = open ? pagedRemoteWorlds : NO_ROWS;
+  const lagRows = useDeferredValue(gridRows);
+  const gridSettled = useRef(false);
+  const deferredRows = gridSettled.current ? gridRows : lagRows;
+  const gridPending = deferredRows !== gridRows;
+  useEffect(() => {
+    if (!open) gridSettled.current = false;
+    else if (!gridPending && gridRows.length > 0) gridSettled.current = true;
+  }, [open, gridPending, gridRows]);
 
   /** Whether anything is narrowing the grid — what tells an empty result from an empty catalog. */
   const anyFilterApplied = Boolean(searchQuery) || activeFilterCount > 0;
@@ -1198,7 +1214,7 @@ const CommunityCreationsBrowser = ({
               'grid grid-cols-1 gap-4 px-6 py-4',
               gridLayout === 'split' ? 'lg:grid-cols-2 xl:grid-cols-3' : 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
             )}>
-              {isLoadingRemoteWorlds ? (
+              {isLoadingRemoteWorlds || (gridPending && deferredRows.length === 0) ? (
                 gridLayout === 'split' ? Array(4).fill(0).map((_, index) => (
                   <WorldCardShell key={index} layout="split" loading name="" frameClassName="bg-card" />
                 )) : Array(4).fill(0).map((_, index) => (
@@ -1209,7 +1225,7 @@ const CommunityCreationsBrowser = ({
                     </div>
                   </div>
                 ))
-              ) : filteredRemoteWorlds.length === 0 ? (
+              ) : deferredRows.length === 0 ? (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
                   {/* Filters now outlive the session, so an empty grid names them rather than reading as an
                       empty catalog. */}
@@ -1224,7 +1240,7 @@ const CommunityCreationsBrowser = ({
                       `No ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()} available. Be the first to publish one!`}
                 </div>
               ) : (
-                pagedRemoteWorlds.map((world) => {
+                deferredRows.map((world) => {
                   const worldId = world._id || world.id;
                   return (
                     <RemoteWorldCard

@@ -357,7 +357,11 @@ export function useCommunityBrowserFilters(
   }, [kindWorlds, searchQuery, authorFilter, tagFilter, tagMode, modelFilter, statusFilter, viewerId, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, downloadStateOf, order]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRemoteWorlds.length / pageSize));
-  const pagedRemoteWorlds = filteredRemoteWorlds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  // Memoized: the browser defers this list, and a fresh array each render would never settle.
+  const pagedRemoteWorlds = useMemo(
+    () => filteredRemoteWorlds.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredRemoteWorlds, currentPage, pageSize],
+  );
 
   /** How many narrowings are in force on this tab — what the mobile "Filters" badge counts. Hides are
    *  included: an empty-looking grid is as often a hide as a filter. */

@@ -1,6 +1,6 @@
 # Open-speed harness
 
-Measures how fast Community Creations opens: cold, warm 1 and warm 2, at 1× and 4× CPU throttle.
+Measures how fast Community Creations opens: cold, warm 1 and warm 2 (page reloads), and reopen (close, then open again in the same page), at 1× and 4× CPU throttle.
 
 ```
 npm run profile:open-speed
