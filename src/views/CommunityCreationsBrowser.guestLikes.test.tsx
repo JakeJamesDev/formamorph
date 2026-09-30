@@ -149,6 +149,33 @@ describe('where a guest\'s press goes', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Unlike — 12 likes/ })).toBeTruthy());
   });
 
+  it('keeps a hidden contest count hidden through the press and the reply', async () => {
+    sync.items = [{ ...listing, likes: undefined, likesHidden: true }];
+    let answer: (state: { liked: boolean; likesHidden: boolean }) => void = () => {};
+    anonymousRoute().mockReturnValueOnce(new Promise((res) => { answer = res; }));
+    renderBrowser();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Like — likes hidden' }));
+
+    // In the air: the heart fills and no guessed number shows.
+    const pressed = await screen.findByRole('button', { name: 'Unlike — likes hidden' });
+    expect(pressed.textContent?.trim()).toBe('—');
+    answer({ liked: true, likesHidden: true });
+    await waitFor(() => expect(anonymousRoute()).toHaveBeenCalledWith('w1', true));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Unlike — likes hidden' }).textContent?.trim()).toBe('—'));
+  });
+
+  it('shows the count once a reply carries one, and drops the hidden flag', async () => {
+    // Results were announced while the catalog sat open.
+    sync.items = [{ ...listing, likes: undefined, likesHidden: true }];
+    anonymousRoute().mockResolvedValueOnce({ liked: true, likes: 21 });
+    renderBrowser();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Like — likes hidden' }));
+
+    expect(await screen.findByRole('button', { name: 'Unlike — 21 likes' })).toBeTruthy();
+  });
+
   it('sends the guest to sign-in when this server takes no anonymous like', async () => {
     sync.anonymousLikes = false;
     const onGuestLike = vi.fn();

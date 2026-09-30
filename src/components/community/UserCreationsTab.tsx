@@ -192,7 +192,7 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
                 )}
 
                 <p className="flex items-center gap-3 text-meta text-muted-foreground">
-                  <LikeButton likes={item.likes} />
+                  <LikeButton count={item.likes} />
                   <span className="inline-flex items-center gap-1">
                     <Download className="h-3 w-3" aria-hidden />
                     <span className="tabular-nums">{item.downloads}</span>

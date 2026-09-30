@@ -32,8 +32,9 @@ function ProfileStat({ icon: Icon, value, label }: {
  * Shared by the popup a stranger opens and the dialog behind your own profile circle, so your own
  * numbers are the ones everybody else is reading rather than a second answer to the same question.
  *
- * The totals count the catalog rather than what the reader may see — an author's quarantined work is
- * listed to them with its own numbers and still sits out of these. See `World.authorTotals`.
+ * The totals count the catalog — an author's quarantined work is listed to them with its own numbers and
+ * still sits out of these. The like total leaves out contest likes hidden from this reader. See
+ * `World.authorTotals`.
  */
 export function ProfileStats({ profile, className }: {
   profile: Pick<PublicProfile, 'followers' | 'likes' | 'downloads'>;

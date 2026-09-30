@@ -1,6 +1,7 @@
 # 04: Show hidden and private counts
 
-Status: ready-for-agent
+Status: in-progress
+Base: e822d2f5
 Blocked by: 01, 02, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,7 +16,7 @@ A player sees a heart with "—" on a hidden contest entry, on its card, in the 
 
 ## Acceptance criteria
 
-- [ ] One pure helper reads a listing record and returns a number, a private number, or hidden. Every count surface uses it: the community card, the details modal, profile creation rows, and the profile total.
+- [ ] One pure helper reads a listing record and returns a number, a private number, or hidden. Every per-listing count uses it: the community card, the details modal, and profile creation rows. The profile total stays a plain number (Q12).
 - [ ] A hidden count shows a heart with "—" and the results tooltip. The heart stays pressable.
 - [ ] A private count shows the number and the private tooltip.
 - [ ] A like press on a hidden entry shows no optimistic number and keeps the hidden state from the reply.

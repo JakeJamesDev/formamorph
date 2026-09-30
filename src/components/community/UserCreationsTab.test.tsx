@@ -18,7 +18,7 @@ const creation = (over: Partial<ProfileCreation> = {}): ProfileCreation => ({
   placeholder: false,
   downloads: 0,
   commentCount: 0,
-  likes: 0,
+  likes: { visibility: 'public', likes: 0 },
   updatedAt: '2026-03-14T00:00:00.000Z',
   createdAt: '2026-03-14T00:00:00.000Z',
   quarantined: false,
@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe('what somebody has published', () => {
   it('lists their work with its likes, downloads and comments', async () => {
-    listing([creation({ likes: 12, downloads: 42, commentCount: 7 })]);
+    listing([creation({ likes: { visibility: 'public', likes: 12 }, downloads: 42, commentCount: 7 })]);
 
     render(<UserCreationsTab userId="u1" username="wren_hallow" />);
 
@@ -51,12 +51,21 @@ describe('what somebody has published', () => {
 
   it('never offers the heart as a control here', async () => {
     // The profile lists somebody's work; rating it belongs where you can see what you are rating.
-    listing([creation({ likes: 12 })]);
+    listing([creation({ likes: { visibility: 'public', likes: 12 } })]);
 
     render(<UserCreationsTab userId="u1" username="wren_hallow" />);
     await screen.findByText('Sedge Landing');
 
     expect(screen.queryByRole('button', { name: /Like —|Unlike/ })).toBeNull();
+  });
+
+  it('shows a dash for a contest count hidden from this reader', async () => {
+    listing([creation({ likes: { visibility: 'hidden' }, downloads: 42 })]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+    await screen.findByText('Sedge Landing');
+
+    expect(screen.getByLabelText('Likes show after the winners are announced').textContent).toContain('—');
   });
 
   it('fetches nothing until it is pointed at somebody', () => {

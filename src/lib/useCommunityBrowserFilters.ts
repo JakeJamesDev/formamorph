@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef, type Dispatch, type 
 import { sanitizeTag, collectSanitizedTags } from "@/lib/tagUtils";
 import { type DownloadState } from "@/lib/downloadState";
 import { toEpoch } from "@/lib/thumbnailCache";
+import { likesForSort } from "@/lib/likeCount";
 import { kindOf, listingModels } from "@/lib/catalogKinds";
 import { BROWSE_TABS, catalogKindOfTab, type BrowseTab } from "@/lib/browseTabs";
 import { asStatusFacet, matchesStatusFacets, type StatusFacet } from "@/lib/communityStatusFacets";
@@ -53,6 +54,16 @@ const emptyFilters = (sortField = 'updated_at'): TabFilters => ({
 
 const emptyByTab = (defaultSortField: string): Record<BrowseTab, TabFilters> =>
   Object.fromEntries(BROWSE_TABS.map((t) => [t, emptyFilters(defaultSortField)])) as Record<BrowseTab, TabFilters>;
+
+/**
+ * What one row compares on for a sort field. Dates parse to an epoch; downloads pass through, missing as 0;
+ * likes go through `likesForSort`, so a hidden count sorts as 0.
+ */
+const sortValue = (world: WorldRecord, field: string): number => {
+  if (field === 'likes') return likesForSort(world);
+  if (field === 'downloads') return world.downloads || 0;
+  return toEpoch(world[field]);
+};
 
 const stringList = (value: unknown): string[] =>
   Array.isArray(value) ? value.map((v) => String(v)).filter(Boolean) : [];
@@ -348,10 +359,8 @@ export function useCommunityBrowserFilters(
         const bu = downloadStateOf(b) === 'update' ? 1 : 0;
         if (au !== bu) return bu - au; // updates first, regardless of sort direction
       }
-      // Dates parse to an epoch; the counts (downloads, likes) pass through `toEpoch` as the numbers they
-      // already are, missing ones included, so both kinds of field compare on one line.
-      const av = sortField === 'downloads' ? (a.downloads || 0) : toEpoch(a[sortField]);
-      const bv = sortField === 'downloads' ? (b.downloads || 0) : toEpoch(b[sortField]);
+      const av = sortValue(a, sortField);
+      const bv = sortValue(b, sortField);
       return (av - bv) * dir;
     });
   }, [kindWorlds, searchQuery, authorFilter, tagFilter, tagMode, modelFilter, statusFilter, viewerId, hiddenWorldIds, hiddenTags, hiddenAuthors, sortField, sortOrder, sortUpdatesFirst, downloadStateOf, order]);

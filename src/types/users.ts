@@ -1,4 +1,5 @@
 import type { CatalogKind } from '@/lib/catalogKinds';
+import type { LikeCount } from '@/lib/likeCount';
 
 /**
  * The public face of an account: what a stranger sees when they click a name.
@@ -20,9 +21,9 @@ export interface PublicProfile {
   /**
    * What their published work has earned, across every kind.
    *
-   * Counted over the catalog rather than over what this reader may see, so an author's own profile says
-   * the same thing as the one they hand somebody else — their quarantined work is listed to them below
-   * with its own numbers, and sits out of these until it is back in the catalog.
+   * Counted over the catalog: their quarantined work is listed to them below with its own numbers, and
+   * sits out of these until it is back in the catalog. The server leaves out contest likes hidden from
+   * this reader, so the author and staff get a larger total than the public.
    */
   likes: number;
   downloads: number;
@@ -52,8 +53,8 @@ export interface ProfileCreation {
   placeholder: boolean;
   downloads: number;
   commentCount: number;
-  /** How many accounts have liked it. Never a control here — the profile lists work rather than rates it. */
-  likes: number;
+  /** What its like count shows to this reader. Never a control here — the profile lists work rather than rates it. */
+  likes: LikeCount;
   /** When it last changed, as a server timestamp — also what the thumbnail cache is keyed against. */
   updatedAt: string;
   /** When it was published, as a server timestamp. The list is newest-first by this. */

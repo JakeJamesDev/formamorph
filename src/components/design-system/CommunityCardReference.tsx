@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from 'react';
 import { CheckCircle2, CircleDashed } from 'lucide-react';
 import { RemoteWorldCard } from '@/components/community/RemoteWorldCard';
+import { LikeButton } from '@/components/community/LikeButton';
 import type { WorldRecord } from '@/components/WorldDetails';
 import { Button } from '@/components/ui/button';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -131,6 +132,7 @@ type PendingLike = {
 
 export function CommunityCardReference() {
   const [featuredLiked, setFeaturedLiked] = useState(Boolean(FEATURED_WORLD.liked));
+  const [hiddenLiked, setHiddenLiked] = useState(false);
   const [selectedName, setSelectedName] = useState<string>();
   const [lastAction, setLastAction] = useState('Select a creation.');
   const [pendingLike, setPendingLike] = useState<PendingLike>();
@@ -257,6 +259,22 @@ export function CommunityCardReference() {
         ) : (
           <Meta>Select the Like or Unlike button.</Meta>
         )}
+      </div>
+
+      <div className="grid gap-2">
+        <h4 className="text-label font-medium">Like Counts</h4>
+        <Hint>
+          A contest entry hides its like count until the winners are announced. Other readers see a dash, and the heart still works. The author and staff see the number, with a tooltip that says who else sees it.
+        </Hint>
+        <div className="flex flex-wrap items-center gap-6 rounded-md border border-border p-3 text-meta text-muted-foreground" onClick={stopCardClick}>
+          <span className="flex items-center gap-2"><Meta>Public</Meta><LikeButton count={{ visibility: 'public', likes: 104 }} /></span>
+          <span className="flex items-center gap-2"><Meta>Private</Meta><LikeButton count={{ visibility: 'private', likes: 104 }} /></span>
+          <span className="flex items-center gap-2"><Meta>Hidden</Meta><LikeButton count={{ visibility: 'hidden' }} /></span>
+          <span className="flex items-center gap-2">
+            <Meta>Hidden, Pressable</Meta>
+            <LikeButton count={{ visibility: 'hidden' }} liked={hiddenLiked} onToggle={async (next) => setHiddenLiked(next)} />
+          </span>
+        </div>
       </div>
     </section>
   );
