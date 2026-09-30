@@ -289,6 +289,16 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
 **Always** keeps the button even when the **Choices** request is off.`,
   },
 
+  // ── Output · Attachments ────────────────────────────────────────────────────
+  imageAttachments: {
+    label: 'Image Attachments',
+    description: 'Lets you attach up to 4 images to an action',
+    info: `Adds an attach button to the action box. The images go to the **Narration** request with your action text, on that turn only.
+
+- Your model must read images. A text-only model returns an error.
+- Each image is shrunk to 1568 px on its long side before it's sent.`,
+  },
+
   // ── Output · Performance ────────────────────────────────────────────────────
   concurrentRequests: {
     label: 'Concurrent Requests',

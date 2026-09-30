@@ -34,7 +34,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
+import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, ImagePlus, type LucideIcon } from "lucide-react";
+import { toast } from 'react-toastify';
+import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS, addToPending, removePending, turnAttachments } from '@/lib/actionAttachments';
+import { useImageAttachments } from '@/lib/useImageAttachments';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { AttachmentThumbs } from './AttachmentThumbs';
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONTINUE_CHOICE } from "@/lib/choices";
@@ -580,10 +585,34 @@ export const MiddlePanel = ({
     choices: latestChoices,
     fullMessageHistory,
     viewSelectedChoice,
-    viewContinueUsed
+    viewContinueUsed,
+    isGameStarted,
+    actionAttachments,
+    pendingAttachments,
+    setPendingAttachments,
   } = useGameplay();
   const gameplayText = useGameplayText();
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
+  const imageAttachments = useImageAttachments();
+
+  // The attach button's picker. One attach at a time, so the cap counts what is already pending.
+  const attachInput = useRef<HTMLInputElement>(null);
+  const [attaching, setAttaching] = useState(false);
+  const mounted = useMountedRef();
+  const attachFiles = async (files: File[]) => {
+    if (files.length === 0) return;
+    setAttaching(true);
+    try {
+      const { pending, refused } = await addToPending(pendingAttachments, files);
+      if (!mounted.current) return;
+      // Only the new images join: a send while they encoded has already taken the old ones.
+      const added = pending.slice(pendingAttachments.length);
+      setPendingAttachments((prev) => [...prev, ...added].slice(0, MAX_ATTACHMENTS));
+      for (const reason of refused) toast.warn(ATTACH_REFUSAL_COPY[reason]);
+    } finally {
+      if (mounted.current) setAttaching(false);
+    }
+  };
   const chatLayout = useNarrationLayout() === 'chat';
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
@@ -848,7 +877,9 @@ export const MiddlePanel = ({
                     className="mb-3"
                   />
                 )}
-                {actionLine !== undefined && <ActionLine text={actionLine} actions={actionLineActions} />}
+                {actionLine !== undefined && (
+                  <ActionLine text={actionLine} actions={actionLineActions} images={turnAttachments(actionAttachments, sceneTurnId)} />
+                )}
                 {showReasoning && pageReasoning?.text && (
                   <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />
                 )}
@@ -1001,6 +1032,13 @@ export const MiddlePanel = ({
           </div>
           {progressBar}
           <div className="flex flex-col gap-2">
+            {imageAttachments && (
+              <AttachmentThumbs
+                images={pendingAttachments}
+                onRemove={(id) => setPendingAttachments((prev) => removePending(prev, id))}
+                className="pt-1.5"
+              />
+            )}
             <div className="flex items-end">
               <ActionInput
                 value={playerInput}
@@ -1009,6 +1047,37 @@ export const MiddlePanel = ({
                 placeholder="Type your action... [square brackets] direct the story as the author"
                 disabled={disabled}
               />
+              {/* The opening turn sends the drawn opening, so images wait for the game to start. */}
+              {imageAttachments && isGameStarted && (
+                <>
+                  <input
+                    ref={attachInput}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    data-testid="attach-input"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      // Cleared so picking the same file again still fires a change.
+                      e.target.value = '';
+                      void attachFiles(files);
+                    }}
+                  />
+                  <Tip tip="Attach images">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="mr-2 shrink-0"
+                      aria-label="Attach images"
+                      disabled={disabled || attaching}
+                      onClick={() => attachInput.current?.click()}
+                    >
+                      {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                    </Button>
+                  </Tip>
+                </>
+              )}
               <HelpButton
                 topicId="game.howToPlay"
                 className="mr-2"

@@ -54,7 +54,7 @@ describe('settings design reference', () => {
       .getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent).filter((text) => text !== name);
     expect(headings('Display Reference')).toEqual(['Appearance', 'Scene', 'Narration', 'Accessibility', 'Inspection']);
     expect(headings('Output Reference')).toEqual(
-      ['Turn Extras', 'Reasoning', 'Tools', 'Memory', 'Time', 'Lore', 'Characters', 'Choices', 'Performance'],
+      ['Turn Extras', 'Reasoning', 'Tools', 'Memory', 'Time', 'Lore', 'Characters', 'Choices', 'Attachments', 'Performance'],
     );
   });
 

@@ -45,6 +45,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
     semanticDiaries, setSemanticDiaries,
     continueChoiceMode, setContinueChoiceMode,
     concurrentTurnRequests, setConcurrentTurnRequests,
+    imageAttachments, setImageAttachments,
     embeddingModel,
   } = source;
   // The Output rows read the ACTIVE endpoint's record.
@@ -322,6 +323,15 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
           options={CONTINUE_CHOICE_MODES}
         />
       </Row>
+      </Section>
+
+      <Section title="Attachments">
+      <CheckRow
+        htmlFor="imageAttachments"
+        checked={imageAttachments}
+        onChange={setImageAttachments}
+        {...rowCopy('imageAttachments')}
+      />
       </Section>
 
       {advanced && (

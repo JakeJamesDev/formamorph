@@ -191,6 +191,10 @@ export const DEV_MODAL_TABS = {
   // The narration panel's layout, reached with `mode=…` on the game view (`#dev?view=gameViewer&mode=chat`).
   // It overrides the Narration Layout setting without saving it.
   gameViewerLayout: ['pages', 'chat'],
+  // Attached images on the game view, reached with `attach=…` (`#dev?view=gameViewer&fixture=whiteRoom&attach=sample`).
+  // `sample` turns Image Attachments on, then runs sample images through the attach path: two wait in the
+  // action box and two ride the latest turn's action.
+  gameViewerAttach: ['sample'],
 } as const;
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those

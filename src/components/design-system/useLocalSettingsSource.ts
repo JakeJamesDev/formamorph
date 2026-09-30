@@ -31,7 +31,7 @@ type LocalSettingsValues = Pick<SettingsSource,
   | 'thinkingMode' | 'limitActiveCharacters' | 'activeCharacterLimit' | 'nativeReasoning' | 'toolsEnabled'
   | 'memoryDigests' | 'semanticMemory' | 'semanticBandCap' | 'semanticRehydration'
   | 'timeContext' | 'aiClock' | 'semanticLore' | 'describeCharacters' | 'characterDiaries' | 'semanticDiaries'
-  | 'continueChoiceMode' | 'concurrentTurnRequests'
+  | 'continueChoiceMode' | 'concurrentTurnRequests' | 'imageAttachments'
 > & { quoteColorLight: string | null; quoteColorDark: string | null };
 
 /** First-run values. Guarded against a fresh SettingsProvider in this module's test. */
@@ -91,6 +91,7 @@ export const LOCAL_SETTINGS_DEFAULTS: LocalSettingsValues = {
   semanticDiaries: HIDDEN_SETTING_DEFAULTS.semanticDiaries,
   continueChoiceMode: DEFAULT_CONTINUE_CHOICE,
   concurrentTurnRequests: HIDDEN_SETTING_DEFAULTS.concurrentTurnRequests,
+  imageAttachments: false,
 };
 
 const systemTheme = (): 'light' | 'dark' =>
@@ -172,6 +173,7 @@ export function useLocalSettingsSource(report: (status: string) => void): Settin
       setSemanticDiaries: set('semanticDiaries'),
       setContinueChoiceMode: set('continueChoiceMode'),
       setConcurrentTurnRequests: set('concurrentTurnRequests'),
+      setImageAttachments: set('imageAttachments'),
       embeddingModel: {
         loading: false,
         progress: null,

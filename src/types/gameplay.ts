@@ -11,6 +11,13 @@ export interface DiscoveredEntity {
   sourceTurnId: string;
 }
 
+/** One image the player attached to an action, already downscaled and re-encoded. */
+export interface ImageAttachment {
+  id: string;
+  mime: string;
+  dataUrl: string;
+}
+
 /** The bounds a stat's own code set on it. Each is absolute; a field the code never set is absent. */
 export type CodeBounds = { min?: number; max?: number; regen?: number };
 

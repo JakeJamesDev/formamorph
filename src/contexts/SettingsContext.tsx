@@ -427,6 +427,8 @@ function useProvideSettings() {
   // Ollama), harmless on serial endpoints (they queue). Turn off if a VRAM-tight local engine slows or OOMs
   // under concurrent decodes.
   const [concurrentTurnRequests, setConcurrentTurnRequests] = usePersistentState<boolean>(`${APP_ID}_concurrentTurnRequests`, true, boolCodec);
+  // Lets the player attach images to an action. Off hides every attachment control and sends no image.
+  const [imageAttachments, setImageAttachments] = usePersistentState<boolean>(`${APP_ID}_imageAttachments`, false, boolCodec);
   // Master switch over every prompt's Tools; the endpoint capability gate still applies when on.
   const [toolsEnabled, setToolsEnabled] = usePersistentState<boolean>(`${APP_ID}_toolsEnabled`, DEFAULT_TOOLS_ENABLED, boolCodec);
   // Autosave the world's single autosave slot after every completed turn (starting with the opening). On by default.
@@ -1555,6 +1557,8 @@ function useProvideSettings() {
     setAiClock,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
+    imageAttachments,
+    setImageAttachments,
     toolsEnabled,
     setToolsEnabled,
     autosaveEnabled,

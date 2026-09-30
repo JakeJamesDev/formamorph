@@ -76,6 +76,14 @@ export function survivingTurnIds(history: ChatMessage[]): Set<string> {
   return ids;
 }
 
+/** A map keyed by turn id without the turns no longer in `history`. Unchanged when nothing drops. */
+export function pruneTurnMap<T>(map: Record<string, T>, history: ChatMessage[]): Record<string, T> {
+  const live = survivingTurnIds(history);
+  const kept = Object.keys(map).filter((id) => live.has(id));
+  if (kept.length === Object.keys(map).length) return map;
+  return Object.fromEntries(kept.map((id) => [id, map[id]]));
+}
+
 /**
  * Pick the `turnId`s of assistant turns that are due for a digest: those with a stable id and no
  * summary yet. `skipRecent` optionally excludes the N most recent assistant turns (default 0 — every

@@ -1,4 +1,5 @@
-import type { ChatMessage } from '@/types';
+import type { ChatMessage, RequestMessage } from '@/types';
+import { messageText } from '@/lib/aiRequest/imageParts';
 
 /**
  * Request Anatomy: the labeled map of one assembled request.
@@ -218,10 +219,10 @@ export interface AnatomyBlock {
  * request layer prepends, so it takes `anatomy.system`; the rest take `anatomy.messages` in order. A
  * message with no runs renders unlabeled, which is what a pre-anatomy capture gets for all of them.
  */
-export function toAnatomyBlocks(messages: ChatMessage[], anatomy?: RequestAnatomy): AnatomyBlock[] {
+export function toAnatomyBlocks(messages: RequestMessage[], anatomy?: RequestAnatomy): AnatomyBlock[] {
   return messages.map((message, i) => ({
     role: message.role,
-    content: message.content,
+    content: messageText(message),
     runs: (i === 0 ? anatomy?.system : anatomy?.messages[i - 1]) ?? [],
   }));
 }

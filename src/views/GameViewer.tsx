@@ -60,7 +60,7 @@ import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, RequestMessage, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -123,6 +123,7 @@ import { classifyTurnError, type TurnErrorKind } from "../lib/turnPipeline/turnE
 import { emptyTurnMaterial, type TurnMaterial, type TurnPlanInput, type TurnPrompts, type TurnSettings } from "../lib/turnPipeline/turnPlan";
 import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, type BandCounts } from "../lib/turnBanding";
 import { anatomyRegions, toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
+import { asTextMessage } from "../lib/aiRequest/imageParts";
 import type { PromptJumpTarget } from "../lib/promptJump";
 import { RequestAnatomyView } from "../components/game/RequestAnatomyView";
 import {
@@ -154,6 +155,9 @@ import { ReasoningChip } from "@/components/game/ReasoningChip";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
+import { addToPending, attachToTurn, pruneAttachments } from "../lib/actionAttachments";
+import { useImageAttachments } from "../lib/useImageAttachments";
+import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
@@ -221,7 +225,7 @@ interface DebugRequest {
   statRequestId?: string;
   statDiagnostics?: StatUpdateDiagnostic[];
   type: string;
-  messages: ChatMessage[];
+  messages: RequestMessage[];
   response?: string;
   /** The native reasoning field as streamed; inline `<think>` stays in `response`. Never sent back in history. */
   reasoning?: string;
@@ -320,7 +324,7 @@ const DIARY_MAX_TOKENS = TURN_PASS_CAPS.diary;
 interface AiCallArgs {
   statRequest?: StatRequestSnapshot;
   systemPrompt: string;
-  messages: ChatMessage[];
+  messages: RequestMessage[];
   type: AIRequestType;
   /** Absent (or null) leaves the request type's own default cap to apply downstream. */
   maxTokens?: number | null;
@@ -637,6 +641,9 @@ const GameViewer = ({
     setMemoryNotes,
     sceneImages,
     setSceneImages,
+    setActionAttachments,
+    pendingAttachments,
+    setPendingAttachments,
   } = useGameplay();
 
   // --- Placeholder resolution, before anything reads a name ---------------------------------------------
@@ -988,6 +995,31 @@ const GameViewer = ({
       await loadGame(id, locations, stats, entities.map((e) => e.id));
     })();
   }, [devRoute?.fixture, locations, stats, entities, loadGame]);
+  const imageAttachments = useImageAttachments();
+  const mounted = useMountedRef();
+  // DEV dev-router: `attach=sample` stages attached images once the game has a committed turn, through the
+  // real attach path. Tree-shaken in prod.
+  const devAttachLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.attach !== 'sample' || devAttachLoadedRef.current) return;
+    const lastTurn = fullMessageHistory.findLast((m) => m.role === "assistant");
+    const turnId = lastTurn && parseTurnContent(lastTurn.content)?.turnId;
+    if (!turnId) return;
+    devAttachLoadedRef.current = true;
+    void (async () => {
+      const files = await Promise.all(["1", "2", "3", "4"].map(async (n) =>
+        new File([await (await fetch(`/thumbnails/${n}.jpg`)).blob()], `sample-${n}.jpg`, { type: "image/jpeg" })));
+      const { pending } = await addToPending([], files);
+      if (!mounted.current) return;
+      setPendingAttachments(pending.slice(0, 2));
+      setActionAttachments((prev) => attachToTurn(prev, turnId, pending.slice(2)));
+    })();
+  }, [devRoute?.attach, fullMessageHistory, mounted, setPendingAttachments, setActionAttachments]);
+  // Images belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
+  // was re-generated.
+  useEffect(() => {
+    if (!isWaitingForAI) setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
+  }, [isWaitingForAI, fullMessageHistory, setActionAttachments]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
@@ -1924,6 +1956,7 @@ const GameViewer = ({
     memoryDigests,
     characterDiaries,
     describeCharacters,
+    imageAttachments,
     language,
   });
 
@@ -2090,7 +2123,10 @@ const GameViewer = ({
    * everything here is React state either feeding it (the `advance` derivations below) or receiving it
    * (the Turn Commit at the end).
    */
-  const sendGameAction = async (action: string, writtenNarration?: string) => {
+  const sendGameAction = async (
+    action: string,
+    { writtenNarration, attachments }: { writtenNarration?: string; attachments?: ImageAttachment[] } = {},
+  ) => {
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
     stopCommandPreview(); // a real turn supersedes any command preview
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
@@ -2106,6 +2142,7 @@ const GameViewer = ({
       locationCount: locations.length,
       hasCurrentLocation: !!currentLocation,
       writtenNarration,
+      attachments,
       settings: turnSettings(),
       prompts: turnPrompts(),
     });
@@ -2160,6 +2197,12 @@ const GameViewer = ({
       setSuggestedLocation(null);
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
+      // The images leave the action box with the text. A turn that may not carry them leaves them pending.
+      if (plan.attachments.length) {
+        const turnId = currentTurnIdRef.current;
+        setActionAttachments((prev) => attachToTurn(prev, turnId, plan.attachments));
+        setPendingAttachments([]);
+      }
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front
       // location request) must not be mistaken for "narration came through" (see abortGeneration).
       userTurnAddedRef.current = false;
@@ -2549,7 +2592,7 @@ const GameViewer = ({
     if (pendingTurnNonce === 0) return;
     const pending = pendingTurnRef.current;
     pendingTurnRef.current = null;
-    if (pending !== null) sendGameAction(pending.action, pending.writtenNarration);
+    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration });
     // sendGameAction is deliberately not a dependency — we want this render's (post-restore) closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTurnNonce]);
@@ -2849,8 +2892,9 @@ const GameViewer = ({
     executeTool: turnExecutor,
   }: AiCallArgs) => {
     // The parity recording observes the seam itself: exactly the arguments this call received, in
-    // dispatch order, before anything downstream shapes them. Inert unless the harness armed it.
-    const paritySeq = recordParityRequest({ systemPrompt, messages, type: requestType, maxTokens: maxTokensOverride, silent, attachTurnId });
+    // dispatch order, before anything downstream shapes them. Inert unless the harness armed it. It records
+    // text only, so an attached image never enters it.
+    const paritySeq = recordParityRequest({ systemPrompt, messages: messages.map(asTextMessage), type: requestType, maxTokens: maxTokensOverride, silent, attachTurnId });
 
     // Where this prompt sends: its pinned preset, or the active endpoint when it follows the selection.
     // Resolved once here and handed to the spec layer, so the capture below and the request body can never
@@ -3867,7 +3911,7 @@ const GameViewer = ({
       setPlayerInput("");
       return;
     }
-    sendGameAction(input);
+    sendGameAction(input, { attachments: pendingAttachments });
   };
 
   // Enter submits; Shift+Enter inserts a newline (the action box is a multi-line textarea).

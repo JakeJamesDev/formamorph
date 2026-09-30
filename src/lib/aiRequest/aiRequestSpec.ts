@@ -1,4 +1,4 @@
-import type { AIRequestType, ChatMessage, Tool, WireMessage } from '@/types';
+import type { AIRequestType, RequestMessage, Tool, WireMessage } from '@/types';
 import { toolSchema, type ToolFunctionSchema } from '@/lib/tools/toolSchema';
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
@@ -56,7 +56,7 @@ export interface AiSettingsSnapshot {
 /** One AI call as the caller states it, before any settings are applied. */
 export interface AiCall {
   systemPrompt: string;
-  messages: ChatMessage[];
+  messages: RequestMessage[];
   requestType: AIRequestType;
   /** Overrides the target's own output cap for the answer. */
   maxTokensOverride?: number | null;
@@ -67,7 +67,7 @@ export interface AiCall {
 /** The chat-completions body this layer builds. Optional fields are absent, never undefined-valued. The
  *  reasoning fields come from the target dialect's row, so they arrive as a group. The caller's request holds
  *  plain chat messages; a tool round's follow-up widens them to the wire's other roles. */
-export interface AiRequestBody<TMessage extends WireMessage = ChatMessage> extends ReasoningBodyFields {
+export interface AiRequestBody<TMessage extends WireMessage = RequestMessage> extends ReasoningBodyFields {
   model: string;
   messages: TMessage[];
   max_tokens?: number;
@@ -84,7 +84,7 @@ export interface AiRequestBody<TMessage extends WireMessage = ChatMessage> exten
 }
 
 /** A complete request, ready for one fetch. */
-export interface AiRequestSpec<TMessage extends WireMessage = ChatMessage> {
+export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage> {
   url: string;
   headers: Record<string, string>;
   body: AiRequestBody<TMessage>;
@@ -279,7 +279,7 @@ function offeredTools(call: AiCall, target: AiEndpointTarget): readonly Tool[] |
 }
 
 /** The wire message list: the resolved system message first, then the caller's. */
-function buildMessages(snapshot: AiSettingsSnapshot, call: AiCall): ChatMessage[] {
+function buildMessages(snapshot: AiSettingsSnapshot, call: AiCall): RequestMessage[] {
   return [
     { role: 'system', content: resolveSystemPrompt(call.systemPrompt, snapshot.disableThinking) },
     ...call.messages,
