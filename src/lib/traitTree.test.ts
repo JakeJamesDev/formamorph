@@ -715,6 +715,29 @@ describe('system nodes in the one tree', () => {
     expect(persona?.traitLinks).toEqual([{ ...cpLink('wizard'), order: 1 }]);
   });
 
+  it('moves a top-level group holding a stat trait into the Custom Persona or a Persona entity, stats kept (Q3)', () => {
+    const elf = { ...trait('elf', 'race', 0), name: 'Elf', statChanges: [{ statId: 's', value: 1, type: 'max' as const }] };
+    const withRace = { traits: [...world.traits, elf], traitGroups: [...world.traitGroups, { ...group('race', null, 2), name: 'Race' }] };
+    // Rows: blueprints, classes, paladin, wizard, loner, race, elf, ash, pack, cp (collapsed). Race dropped on the node, one level in.
+    const out = drop(withRace, [ash, cp()], 'race', 'cp', 24, ['cp', 'race']);
+    const persona = out?.kind === 'moved' ? out.entities.find((e) => e.id === 'cp') : undefined;
+    expect(persona?.traitGroups?.map((g) => g.id)).toEqual(['race']);
+    expect(persona?.traits).toMatchObject([{ id: 'elf', groupId: 'race', statChanges: elf.statChanges }]);
+    // The same group onto a Persona-marked entity moves in; onto a cast entity it stays.
+    const playable = { ...ash, persona: true };
+    const played = drop(withRace, [playable], 'race', 'pack', 24, ['race']);
+    expect(played?.kind === 'moved' && played.entities.find((e) => e.id === 'ash')?.traitGroups?.map((g) => g.id)).toEqual(['race']);
+    expect(drop(withRace, [ash], 'race', 'pack', 24, ['race']))
+      .toEqual({ kind: 'refused', refusal: { reason: 'stats', name: 'Race', kind: 'group', offender: 'Elf', owner: null } });
+  });
+
+  it('refuses a persona\'s stat trait moving to a cast entity, naming the persona it stays with', () => {
+    const owning: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traits: [{ ...trait('elf', null, 0), name: 'Elf', statToggles: [{ statId: 's', enabled: true }] }] };
+    // Rows: blueprints, classes, paladin, wizard, loner, ash, pack, cp, elf. Elf dropped on Pack joins Ash.
+    expect(drop(world, [ash, owning], 'elf', 'pack', 0))
+      .toEqual({ kind: 'refused', refusal: { reason: 'stats', name: 'Elf', kind: 'trait', offender: 'Elf', owner: 'Newcomer' } });
+  });
+
   it('refuses a second link to a Blueprints trait the Custom Persona entity already has', () => {
     // Rows: blueprints, classes, paladin, wizard, loner, ash, pack, cp, l-cp (collapsed).
     expect(drop(world, [ash, cp('classes', 'group')], 'paladin', 'l-cp', 0, ['l-cp']))

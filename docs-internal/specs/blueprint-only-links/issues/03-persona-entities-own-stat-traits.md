@@ -1,6 +1,7 @@
 # 03: Persona entities own stat traits
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 2e3227a6
 
 Parent: [Blueprint-Only Links spec](../spec.md)
 

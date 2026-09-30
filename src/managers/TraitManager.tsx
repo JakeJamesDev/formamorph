@@ -19,6 +19,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { isAlwaysOn, traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
+import { canOwnStatTraits, hasStatEffects } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
@@ -85,12 +86,19 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  *
  * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
  *
- * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections are gone. Its
+ * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections show only where it can own them. Its
  * "Owned by" line goes with `ownerLine` off, for a host whose heading already names the entity. A host that
  * can open only some requirement targets says which through `requirementOpens`; the rest read as plain chips.
  * A `link` edits the trait as that link reads it: overridable fields write the link's overrides and show a
  * Reset while overridden, and the rest is read-only. Its own lines go in `detailsHeader` and `availabilityFooter`.
  */
+/** The line under a bearer's stat sections: when its stat effects apply, or that they never do. The Custom
+ *  Persona entity's traits are the player's, so it gets none. */
+export function BearerStatNote({ bearer }: { bearer: Entity }) {
+  if (bearer.customPersona) return null;
+  return <Hint>{bearer.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>;
+}
+
 const TraitManager = ({
   trait, owner, link, ownerLine = true, detailsHeader, availabilityFooter, onOpenTrait, onOpenEntity, requirementOpens, tab, onTabChange,
   focusField,
@@ -185,8 +193,9 @@ const TraitManager = ({
 
   if (!editingTrait) return null;
 
-  // An owned trait carries no stat effects, so it has no Stats tab.
-  const tabs = traitPanelTabsFor(advanced).filter((t) => !owner || t.value !== 'stats');
+  // An owned trait has a Stats tab on a persona, or anywhere it already has stat effects to see and remove.
+  const statsShown = !owner || canOwnStatTraits(owner) || hasStatEffects(editingTrait);
+  const tabs = traitPanelTabsFor(advanced).filter((t) => statsShown || t.value !== 'stats');
   const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 
   const detailsPanel = (
@@ -303,6 +312,7 @@ const TraitManager = ({
 
   const statsPanel = (
     <>
+      {owner && !link && <BearerStatNote bearer={owner} />}
       <div data-tour-anchor="trait-stat-changes" className="space-y-2">
         <LabelRow reset={resetControl('statChanges', 'Stat Changes')}>
           <Label>Stat Changes</Label>

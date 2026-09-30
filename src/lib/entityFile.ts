@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
   BlueprintOverride, Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, StatChange, Trait, TraitGroup,
-  TraitLink, TraitLinkOverrides, TraitRequirement,
+  TraitLink, TraitLinkOverrides, TraitRequirement, TraitStatToggle,
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
@@ -209,6 +209,9 @@ const cardStatChanges = (raw: unknown): StatChange[] => (Array.isArray(raw) ? ra
     }]
     : []));
 
+const cardStatToggles = (raw: unknown): TraitStatToggle[] => (Array.isArray(raw) ? raw : []).flatMap((t): TraitStatToggle[] =>
+  (isRecord(t) && typeof t.statId === 'string' && typeof t.enabled === 'boolean' ? [{ statId: t.statId, enabled: t.enabled }] : []));
+
 /** One override as the card stores it, both sides read through `read`; undefined when either side is not one. */
 function cardOverride<V>(raw: unknown, read: (v: unknown) => V | undefined): BlueprintOverride<V> | undefined {
   if (!isRecord(raw)) return undefined;
@@ -257,15 +260,17 @@ function cardLink(raw: unknown): TraitLink[] {
   }];
 }
 
-/** The card's owned traits, groups and links. An owned trait carries no stat effects, so none are read. */
+/** The card's owned traits, groups and links. Stat effects are read as stored; a stat id the world lacks does nothing. */
 function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'> {
   const traits: Trait[] = (Array.isArray(obj.traits) ? obj.traits : []).filter(hasIdAndName).map((t) => {
     const requires = Array.isArray(t.requires) ? t.requires.flatMap(cardRequirement) : [];
     const pins = cardPins(t.placeholderPins);
+    const statToggles = cardStatToggles(t.statToggles);
     return {
       id: t.id,
       name: t.name,
-      statChanges: [],
+      statChanges: cardStatChanges(t.statChanges),
+      ...(statToggles.length ? { statToggles } : {}),
       ...(typeof t.playerDescription === 'string' ? { playerDescription: t.playerDescription } : {}),
       ...(typeof t.aiDescription === 'string' ? { aiDescription: t.aiDescription } : {}),
       ...(typeof t.groupId === 'string' ? { groupId: t.groupId } : {}),

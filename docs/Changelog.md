@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **In the World Editor, a Playable, Persona-Only or Custom Persona entity can own traits with Stat Changes and Stat Availability.** They apply while the player plays as that entity and reverse on a switch. Drag a stat trait or a group holding one onto the entity, or detach a link, and the stats stay. Such a trait has a Stats tab with a line that says when its stats apply. Any other entity still refuses stat traits. Remove an entity's persona mark, and its stat traits stay, but their stats do nothing. A character card keeps an entity's own stat traits.
+
 #### ➖ Removed
 
 - **👤 User-facing**

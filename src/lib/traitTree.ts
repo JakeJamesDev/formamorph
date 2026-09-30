@@ -303,8 +303,11 @@ export type OwnedTraitDrop =
   | { kind: 'moved'; world?: { traits: Trait[]; groups: TraitGroup[] }; entities: Entity[] }
   | { kind: 'refused'; refusal: TraitDropRefusal };
 
-/** Whether the trait changes stats: stat changes or stat toggles. An entity's own traits never do. */
+/** Whether the trait changes stats: stat changes or stat toggles. */
 export const hasStatEffects = (t: Trait): boolean => t.statChanges.length > 0 || (t.statToggles?.length ?? 0) > 0;
+
+/** Whether the entity may own traits with stat effects: the player can play it, so they apply while it is played. */
+export const canOwnStatTraits = (entity: Pick<Entity, 'persona' | 'customPersona'>): boolean => !!(entity.persona || entity.customPersona);
 
 /** The one tree's visible rows, with collapsed groups' children hidden. */
 export const ownedTraitRows = (tree: OwnedTraitTree, collapsedIds: Iterable<string>): FlatTraitNode[] =>
@@ -544,8 +547,8 @@ export function applyOwnedTraitDrop(
       const refused = duplicateIn(to, link.originalId);
       if (refused) return refused;
     }
-    // A link's stat effects stay on its original, so only owned traits count.
-    const ownedBelow = leavesBelow.filter((t) => !tree.linkRows.has(t.id));
+    // A link's stat effects stay on its original, so only owned traits count, and a persona may own them.
+    const ownedBelow = canOwnStatTraits(tree.entityNodes.get(to)!) ? [] : leavesBelow.filter((t) => !tree.linkRows.has(t.id));
     const offender = flattenTraitTree(buildTraitTree(dropped.groups, ownedBelow)).find((n) => n.leaf && hasStatEffects(n.leaf));
     if (offender) {
       return {

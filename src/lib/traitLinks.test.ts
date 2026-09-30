@@ -178,17 +178,24 @@ describe('editLinkTrait', () => {
 });
 
 describe('detachDropsStats', () => {
+  const cast: Entity = { id: 'c', name: 'C' };
+
   it('reads stat changes and stat toggles anywhere the link brings, as the link reads them', () => {
-    expect(detachDropsStats(world, link('l1', 'brave', 'trait'))).toBe(true);
-    expect(detachDropsStats(world, link('l1', 'wizard', 'trait'))).toBe(false);
+    expect(detachDropsStats(world, cast, link('l1', 'brave', 'trait'))).toBe(true);
+    expect(detachDropsStats(world, cast, link('l1', 'wizard', 'trait'))).toBe(false);
     const toggled = { ...world, traits: [...world.traits, trait('ember', { groupId: 'schools', statToggles: [{ statId: 's', enabled: true }] })] };
-    expect(detachDropsStats(toggled, link('l1', 'classes', 'group'))).toBe(true);
-    expect(detachDropsStats(world, link('l1', 'classes', 'group'))).toBe(false);
+    expect(detachDropsStats(toggled, cast, link('l1', 'classes', 'group'))).toBe(true);
+    expect(detachDropsStats(world, cast, link('l1', 'classes', 'group'))).toBe(false);
     // An override that adds stat changes counts; one that clears them does not.
     const adds = { wizard: { statChanges: { value: [{ statId: 's', value: 1, type: 'max' as const }], blueprint: [] } } };
-    expect(detachDropsStats(world, link('l1', 'classes', 'group', { overrides: adds }))).toBe(true);
+    expect(detachDropsStats(world, cast, link('l1', 'classes', 'group', { overrides: adds }))).toBe(true);
     const clears = { brave: { statChanges: { value: [], blueprint: world.traits[3].statChanges } } };
-    expect(detachDropsStats(world, link('l1', 'brave', 'trait', { overrides: clears }))).toBe(false);
+    expect(detachDropsStats(world, cast, link('l1', 'brave', 'trait', { overrides: clears }))).toBe(false);
+  });
+
+  it('drops nothing on a persona, which keeps the stats (Q8)', () => {
+    expect(detachDropsStats(world, { ...cast, persona: true }, link('l1', 'brave', 'trait'))).toBe(false);
+    expect(detachDropsStats(world, { ...cast, customPersona: true }, link('l1', 'brave', 'trait'))).toBe(false);
   });
 });
 
@@ -202,6 +209,18 @@ describe('detachLink', () => {
     expect(out.newId).not.toBe('brave');
     expect(copy).toMatchObject({ name: 'brave', groupId: 'bond', order: 3, isDefault: true, playerToggle: true, statChanges: [] });
     expect(copy).not.toHaveProperty('statToggles');
+  });
+
+  it('keeps stat changes and stat toggles, as the link reads them, on a persona (Q8)', () => {
+    const toggles = [{ statId: 's', enabled: true }];
+    const toggled = { ...world, traits: world.traits.map((t) => (t.id === 'brave' ? { ...t, statToggles: toggles } : t)) };
+    const raised = [{ statId: 's', value: 3, type: 'max' as const }];
+    const overrides = { brave: { statChanges: { value: raised, blueprint: world.traits[3].statChanges } } };
+    for (const mark of [{ persona: true }, { customPersona: true }]) {
+      const a: Entity = { id: 'a', name: 'A', ...mark, traitLinks: [link('l1', 'brave', 'trait', { overrides })] };
+      const out = detachLink(toggled, a, 'l1')!;
+      expect(out.entity.traits!.find((t) => t.id === out.newId)).toMatchObject({ statChanges: raised, statToggles: toggles });
+    }
   });
 
   it('copies a linked group with its subtree under new ids, remapping parents and inner requirements', () => {

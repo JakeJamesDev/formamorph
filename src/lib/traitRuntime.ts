@@ -86,8 +86,8 @@ const playerEntityBearers = (world: TraitWorld): readonly GateOwner[] => {
 /** Whether `ownerId` is a player entity bearer, whose stat traits move the player's stats. */
 const isPlayerBearer = (world: TraitWorld, ownerId: string): boolean => playerEntityBearers(world).some((o) => o.id === ownerId);
 
-/** Each player entity bearer's active traits that change stats, with the bearer that holds them: the played
- *  persona's links, and the Custom Persona entity's, since an owned trait never carries stat effects. */
+/** Each player entity bearer's active traits that change stats, owned or linked, with the bearer that holds
+ *  them: the played persona's, and the Custom Persona entity's. */
 function playedStatTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): [string, Trait][] {
   const active = activeOwnedTraitIds(state.ownedTraits ?? {});
   return playerEntityBearers(world).flatMap((owner) => {
@@ -96,7 +96,7 @@ function playedStatTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits'>, wo
   });
 }
 
-/** The player's active linked traits that change stats: the played persona's, and the Custom Persona
+/** The player's active entity traits that change stats: the played persona's, and the Custom Persona
  *  entity's under None and a library persona. Empty with no persona, or under a world with no bearers. */
 export const playedStatTraits = (state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): Trait[] =>
   playedStatTraitsByOwner(state, world).map(([, t]) => t);
