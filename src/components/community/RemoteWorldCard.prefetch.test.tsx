@@ -137,6 +137,16 @@ describe('keyboard focus on a card', () => {
     expect(asked()).toEqual(['w1']);
   });
 
+  it('loads the listing once focus rests on the open button', async () => {
+    cards('w1');
+
+    fireEvent.keyDown(document, { key: 'Tab' });
+    act(() => screen.getByRole('button', { name: 'Listing w1' }).focus());
+    await rest(PREFETCH_DWELL_MS);
+
+    expect(asked()).toEqual(['w1']);
+  });
+
   it('keeps its dwell when a pointer passes over the card', async () => {
     cards('w1');
 

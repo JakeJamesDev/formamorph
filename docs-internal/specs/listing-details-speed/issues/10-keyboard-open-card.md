@@ -1,6 +1,8 @@
 # 10: Open a community card from the keyboard
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Hit area is the frame click, not a ::after; the frame already covers the card.
+Base: 352cc927
 Blocked by: 09
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
