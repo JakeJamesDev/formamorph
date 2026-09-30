@@ -24,23 +24,24 @@ vi.mock('@/components/prompt/PromptField', () => ({
  * nothing above it moves. A listing with no such section changes nothing at all.
  */
 
-const component = (): WorldRecord => ({
+const component = (kind: string): WorldRecord => ({
   id: 'e1',
   _id: 'e1',
   name: 'Wren Hallow',
   description: 'A traveling cartographer.',
-  kind: 'entity',
+  kind,
   author: { id: 'author-1', username: 'alice' },
-  tags: [],
+  tags: ['cozy'],
 }) as unknown as WorldRecord;
 
 const reader = { id: 'reader-1', username: 'reader-1', accountType: 'normal' } as unknown as WorldRecord;
 
-const metaGrid = () => screen.getByTestId('details-meta');
+/** The info column: description, meta, tags, then the late sections. */
+const column = () => screen.getByTestId('details-meta').parentElement as HTMLElement;
 
-/** Every block in the grid except the late sections. */
+/** Every block in the column except the late sections. */
 const blocksAbove = () =>
-  Array.from(metaGrid().children)
+  Array.from(column().children)
     .filter((el) => !/Compatible Worlds|Download installs/.test(el.textContent ?? ''))
     .map((el) => el.outerHTML);
 
@@ -56,11 +57,19 @@ beforeEach(() => {
   vi.spyOn(WorldStorageService, 'readListingDetails').mockImplementation(
     () => new Promise((resolve) => { answer = (details) => resolve({ status: 'ok', details }); }),
   );
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+const show = (kind: string) =>
   render(
     <RemoteWorldDetailsModal
       open
       onOpenChange={() => {}}
-      world={component()}
+      world={component(kind)}
       collapsed={false}
       onToggleCollapsed={() => {}}
       isAuthenticated
@@ -71,14 +80,11 @@ beforeEach(() => {
       currentUser={reader}
     />,
   );
-});
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
+// An entity draws its tags beside the art; a dictionary draws them in the column, above the late sections.
+describe.each(['entity', 'dictionary'])('the left column of a %s when the details answer lands', (kind) => {
+  beforeEach(() => { show(kind); });
 
-describe('the left column when the details answer lands', () => {
   it('adds Compatible Worlds after everything else and moves nothing above it', async () => {
     await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     const before = blocksAbove();
@@ -93,18 +99,19 @@ describe('the left column when the details answer lands', () => {
 
     const heading = await screen.findByText('Compatible Worlds');
     expect(blocksAbove()).toEqual(before);
-    const report = screen.getByRole('button', { name: /Report This/ });
-    expect(report.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(metaGrid().lastElementChild!.contains(heading)).toBe(true);
+    for (const above of [screen.getByRole('button', { name: /Report This/ }), screen.getByText('cozy')]) {
+      expect(above.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(column().lastElementChild!.contains(heading)).toBe(true);
   });
 
   it('changes nothing for a listing with no late sections', async () => {
     await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
-    const before = metaGrid().innerHTML;
+    const before = column().innerHTML;
 
     await act(async () => { answer({ anonymousLikes: false, changelog: null, compatibleWorlds: [] }); });
 
     expect(screen.queryByText('Compatible Worlds')).toBeNull();
-    expect(metaGrid().innerHTML).toBe(before);
+    expect(column().innerHTML).toBe(before);
   });
 });

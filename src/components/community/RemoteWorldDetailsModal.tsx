@@ -661,9 +661,11 @@ export function RemoteWorldDetailsModal({
                         </Button>
                       </div>
                     )}
-
-                    {/* Last in the column: they arrive with the details answer, so a late section pushes
-                        nothing the reader can already see. */}
+                  </div>
+                }
+                // Below the tags, so a section that arrives with the details answer pushes nothing above it.
+                after={
+                  <>
                     {/* What the download installs beside the world, and what the player may add to it.
                         Absent for a world that follows nothing, and against a server without the routes. */}
                     {capabilities.localLibrary && <DownloadLinkedContent review={downloadPlan} />}
@@ -679,7 +681,7 @@ export function RemoteWorldDetailsModal({
                           : {})}
                       />
                     )}
-                  </div>
+                  </>
                 }
               />
             </div>
