@@ -18,12 +18,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **In Community Creations and on profiles, a contest entry shows its like count as a dash until staff announce the winners.** A tooltip says when the likes will show. The heart still likes and unlikes the entry. The author and staff see the number, with a tooltip that says only they see it. A sort by likes puts hidden entries with the entries that have no likes.
+  - **A profile lists the author's work in two columns, most recently updated first, in the game and on formamorph.ai.** Phones show one column. The profile window is wider and has less empty space around its content. A line sets Prompts apart from the other kinds, as in Community Creations. The list opens on the kind of work the author updated last.
 - **🛠️ Developer tooling**
   - **`VITE_FM_HOLD_UPDATES=1` makes the dev server hold every edit until you apply it from a bar at the top of the page.** The bar names the changed files and says whether they are styles only or code that may reset what's open. **Apply** swaps them in without a reload. When a change needs a full reload, the bar shows **Reload** instead.
 
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **For staff, a profile window shows only the list for the selected tab, Creations or Likes.** Before, the Likes list stayed on screen under Creations after you switched back.
   - **In Community Creations, a contest's entries stay shuffled while the contest is judged, and sort by likes only after staff announce the winners.** Before, judging already put the most-liked entries first, which showed the counts that are hidden until then. The winners still lead once announced.
   - **For staff, a scheduled contest stays off the Contest tab in Community Creations until it starts.** Before, it showed there as being judged. It still shows under **Scheduled** in the Events tab.
   - **A listing's details window always shows the Changelog | Comments switch, so the right column no longer jumps when the window opens.** **Changelog** stays dimmed until the listing has entries. On your own listing it works at once, so you can start a changelog. The window reads the entry and comment counts from the catalog, so **Changelog** works at once when the listing has entries, and the comment count shows while the comments load. Gray rows hold the place of the comments, and a listing with no comments shows its empty message at once. A tab you press while the window loads stays selected when the listing details arrive. **Linked Content** and **Compatible Worlds** now sit at the end of the left column, so when they arrive they push nothing above them.

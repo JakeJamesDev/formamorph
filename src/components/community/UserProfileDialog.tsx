@@ -106,12 +106,12 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   return (
     <Dialog open={userId !== null} onOpenChange={onOpenChange}>
       {/* No description: a profile is the person, and a line explaining that would say nothing. */}
-      <DialogContent aria-describedby={undefined} className="sm:max-w-[460px]">
+      <DialogContent aria-describedby={undefined} className="gap-3 pb-3 sm:max-w-[460px] md:max-w-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>{name || 'Profile'}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-3 py-4 text-center min-w-0">
+        <div className="flex flex-col items-center gap-3 text-center min-w-0">
           {isLoading && !name ? (
             <Skeleton className="h-24 w-24 rounded-full" />
           ) : (
@@ -181,8 +181,13 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
 
             {/* Mounted only once the tab has been opened, so the fetch follows the click rather than
                 every staff member who looks somebody up — and kept mounted from then on, so switching
-                back to Creations and returning does not read the list a second time. */}
-            <TabsContent value="likes" forceMount={likesOpened ? true : undefined}>
+                back to Creations and returning does not read the list a second time. Radix never hides a
+                force-mounted panel, so it is hidden here while Creations is on show. */}
+            <TabsContent
+              value="likes"
+              forceMount={likesOpened ? true : undefined}
+              hidden={activeTab !== 'likes'}
+            >
               {likesOpened && (
                 <UserLikesTab
                   userId={userId}

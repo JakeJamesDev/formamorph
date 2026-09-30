@@ -71,7 +71,7 @@ function ProfileBody({ username }: { username: string }) {
   const memberSince = profile ? parseServerDate(profile.createdAt)?.toLocaleDateString() : null;
 
   return (
-    <SiteLayout width="page">
+    <SiteLayout width="wide">
       <div className="flex flex-col items-center gap-3 text-center min-w-0">
         {profile ? (
           <UserAvatar

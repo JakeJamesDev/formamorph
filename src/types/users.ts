@@ -55,9 +55,9 @@ export interface ProfileCreation {
   commentCount: number;
   /** What its like count shows to this reader. Never a control here — the profile lists work rather than rates it. */
   likes: LikeCount;
-  /** When it last changed, as a server timestamp — also what the thumbnail cache is keyed against. */
+  /** When it last changed, as a server timestamp. The list is newest-first by this, and the thumbnail cache keys on it. */
   updatedAt: string;
-  /** When it was published, as a server timestamp. The list is newest-first by this. */
+  /** When it was published, as a server timestamp. */
   createdAt: string;
   /**
    * Whether it is currently hidden from the catalog.
