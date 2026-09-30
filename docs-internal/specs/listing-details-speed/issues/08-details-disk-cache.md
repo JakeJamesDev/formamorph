@@ -1,6 +1,7 @@
 # 08: Listing details disk cache
 
-Status: ready-for-agent
+Status: in-progress
+Base: 859c77f1
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

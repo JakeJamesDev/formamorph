@@ -25,7 +25,8 @@ import { CHIP_BASE } from "@/components/Chip";
 import { componentKind } from "@/lib/worldDependencies";
 import { associationGroups } from "@/lib/listingAssociations";
 import { ListingCompatibleWorlds } from "@/components/community/ListingCompatibleWorlds";
-import WorldStorageService from "@/services/WorldStorageService";
+import WorldStorageService, { type ListingDetails } from "@/services/WorldStorageService";
+import { loadListingDetails } from "@/lib/listingDetailsLoader";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
@@ -278,27 +279,41 @@ export function RemoteWorldDetailsModal({
 
   /**
    * Read what only an open listing shows — its changelog and, for an Avatar, its license terms — and
-   * decide which panel this reader arrives on.
+   * decide which panel this reader arrives on. Details cached from a past open show first; the fresh
+   * answer replaces them, and a request that gets no answer leaves them standing.
    *
    * Tokened like the comments fetch, and for the same reason: a slow answer for a since-closed world must
    * not land in a different world's modal.
    */
-  const loadListingDetails = async (worldId: string, forWorld: WorldRecord) => {
+  const showListingDetails = async (worldId: string, forWorld: WorldRecord) => {
     const reqId = ++changelogReqRef.current;
-    const details = await WorldStorageService.fetchListingDetails(worldId);
-    if (!mountedRef.current || reqId !== changelogReqRef.current) return;
+    const current = () => mountedRef.current && reqId === changelogReqRef.current;
 
-    // The fresher answer about the setting: this response was read now, and the catalog may be a visit
-    // old. A failed request says nothing about it, so nothing is reported.
-    if (details) onAnonymousLikes?.(details.anonymousLikes);
+    const apply = (details: ListingDetails | null) => {
+      const entries = details?.changelog ?? null;
+      setChangelog(entries);
+      setModelLicense(details?.modelLicense);
+      setAssociations(details?.compatibleWorlds);
+      setListingVisibility(details?.visibility);
+      setDetailsSettled(true);
+      if (!tabPickedRef.current) setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
+    };
 
-    const entries = details?.changelog ?? null;
-    setChangelog(entries);
-    setModelLicense(details?.modelLicense);
-    setAssociations(details?.compatibleWorlds);
-    setListingVisibility(details?.visibility);
-    setDetailsSettled(true);
-    if (!tabPickedRef.current) setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
+    const load = loadListingDetails(worldId);
+    const cached = await load.cached;
+    if (!current()) return;
+    if (cached) apply(cached);
+
+    const fresh = await load.fresh;
+    if (!current()) return;
+    if (fresh.status === 'ok') {
+      // The fresher answer about the setting: this response was read now, and the catalog may be a visit
+      // old. Cached details and a failed request say nothing about it, so nothing is reported.
+      onAnonymousLikes?.(fresh.details.anonymousLikes);
+      apply(fresh.details);
+    } else if (fresh.status === 'gone' || !cached) {
+      apply(null);
+    }
   };
 
   // Reset before the first paint, so the window opens on the catalog row's tab and count rather than a
@@ -329,7 +344,7 @@ export function RemoteWorldDetailsModal({
   useEffect(() => {
     if (open && world) {
       loadComments(world._id || world.id, COMMENTS_PAGE);
-      void loadListingDetails(world._id || world.id, world);
+      void showListingDetails(world._id || world.id, world);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);

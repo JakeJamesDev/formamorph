@@ -82,8 +82,8 @@ afterEach(() => {
 
 describe('an Avatar listing’s license terms', () => {
   it('shows the file’s title, authors, and what it permits', async () => {
-    vi.spyOn(WorldStorageService, 'fetchListingDetails')
-      .mockResolvedValue({ anonymousLikes: false, changelog: null, modelLicense: AVATAR_LICENSE });
+    vi.spyOn(WorldStorageService, 'readListingDetails')
+      .mockResolvedValue({ status: 'ok', details: { anonymousLikes: false, changelog: null, modelLicense: AVATAR_LICENSE } });
 
     show();
 
@@ -100,8 +100,8 @@ describe('an Avatar listing’s license terms', () => {
   });
 
   it('says so when the author asks to be credited', async () => {
-    vi.spyOn(WorldStorageService, 'fetchListingDetails')
-      .mockResolvedValue({ anonymousLikes: false, changelog: null, modelLicense: AVATAR_LICENSE });
+    vi.spyOn(WorldStorageService, 'readListingDetails')
+      .mockResolvedValue({ status: 'ok', details: { anonymousLikes: false, changelog: null, modelLicense: AVATAR_LICENSE } });
 
     show();
 
@@ -109,30 +109,30 @@ describe('an Avatar listing’s license terms', () => {
   });
 
   it('shows nothing at all for a kind that carries no license', async () => {
-    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ anonymousLikes: false, changelog: null });
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'ok', details: { anonymousLikes: false, changelog: null } });
 
     show({ world: listing({ kind: 'world', name: 'Sedge Landing' }) });
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText('Avatar File')).not.toBeInTheDocument();
   });
 
   it('shows nothing against a server that predates the field, rather than an empty section', async () => {
     // The client and the community server ship separately; an older deploy answers without the terms and
     // the section must simply not be there.
-    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ anonymousLikes: false, changelog: null });
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'ok', details: { anonymousLikes: false, changelog: null } });
 
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText('Avatar File')).not.toBeInTheDocument();
   });
 
   it('does not show one listing’s terms under the next one’s name while its fetch is still out', async () => {
     // The window stays mounted between listings, so terms left standing would be read as the new
     // listing's for as long as the network takes — a false claim about what a file permits.
-    const fetchDetails = vi.spyOn(WorldStorageService, 'fetchListingDetails')
-      .mockResolvedValue({ anonymousLikes: false, changelog: null, modelLicense: AVATAR_LICENSE });
+    const fetchDetails = vi.spyOn(WorldStorageService, 'readListingDetails')
+      .mockResolvedValue({ status: 'ok', details: { anonymousLikes: false, changelog: null, modelLicense: AVATAR_LICENSE } });
 
     const view = show();
     expect(await screen.findByText('Avatar File')).toBeInTheDocument();

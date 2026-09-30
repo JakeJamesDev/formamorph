@@ -40,8 +40,8 @@ const component = (over: Record<string, unknown> = {}): WorldRecord => ({
 const account = (id: string) => ({ id, username: id, accountType: 'normal' }) as unknown as WorldRecord;
 
 const serveDetails = (details: Partial<ListingDetails>) =>
-  vi.spyOn(WorldStorageService, 'fetchListingDetails')
-    .mockResolvedValue({ changelog: null, ...details } as ListingDetails);
+  vi.spyOn(WorldStorageService, 'readListingDetails')
+    .mockResolvedValue({ status: 'ok', details: { changelog: null, ...details } as ListingDetails });
 
 const show = (props: Record<string, unknown> = {}) =>
   render(
@@ -104,7 +104,7 @@ describe('a component listing’s Compatible Worlds', () => {
 
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText('Ashfall')).toBeNull();
     expect(screen.queryByText('Compatible Worlds')).toBeNull();
   });
@@ -134,7 +134,7 @@ describe('a component listing’s Compatible Worlds', () => {
 
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText('Compatible Worlds')).toBeNull();
   });
 
@@ -143,7 +143,7 @@ describe('a component listing’s Compatible Worlds', () => {
 
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText('Compatible Worlds')).toBeNull();
   });
 
@@ -152,7 +152,7 @@ describe('a component listing’s Compatible Worlds', () => {
 
     show({ world: component({ id: 'w9', _id: 'w9', kind: 'world', name: 'Ashfall' }) });
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText('Compatible Worlds')).toBeNull();
   });
 });
@@ -213,7 +213,7 @@ describe('an unlisted component', () => {
 
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText('Unlisted')).toBeNull();
   });
 });

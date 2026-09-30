@@ -57,8 +57,10 @@ let answerComments: (v: Comments) => void;
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  vi.spyOn(WorldStorageService, 'fetchListingDetails')
-    .mockReturnValue(new Promise((resolve) => { answerDetails = resolve; }));
+  // A null answer is a request that got none.
+  vi.spyOn(WorldStorageService, 'readListingDetails').mockReturnValue(new Promise((resolve) => {
+    answerDetails = (v) => resolve(v ? { status: 'ok', details: v } : { status: 'unreachable' });
+  }));
   vi.spyOn(WorldStorageService, 'fetchComments')
     .mockReturnValue(new Promise((resolve) => { answerComments = resolve; }));
 });

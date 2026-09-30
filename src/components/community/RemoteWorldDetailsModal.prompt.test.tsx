@@ -71,7 +71,7 @@ beforeEach(() => {
   vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue({
     success: true, data: [], pagination: {}, total: 0,
   });
-  vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ anonymousLikes: false, changelog: [] });
+  vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'ok', details: { anonymousLikes: false, changelog: [] } });
 });
 
 afterEach(() => {
@@ -100,13 +100,13 @@ describe('a prompt listing’s details', () => {
 
   it('says nothing about a version the listing does not carry', async () => {
     show({ world: listing({ app_version: null }) });
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByText(/Made for Formamorph/)).not.toBeInTheDocument();
 
     cleanup();
     // An older server sends no field at all.
     show({ world: listing({ app_version: undefined }) });
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalledTimes(2));
     expect(screen.queryByText(/Made for Formamorph/)).not.toBeInTheDocument();
   });
 
@@ -136,7 +136,7 @@ describe('a prompt listing’s details', () => {
   it('leaves models and version off every other kind', async () => {
     show({ world: listing({ kind: 'world', models: [], app_version: null }) });
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByRole('heading', { name: 'Models' })).not.toBeInTheDocument();
   });
 });
@@ -160,7 +160,7 @@ describe('Use This Preset', () => {
   it('is absent before the preset is downloaded', async () => {
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(screen.queryByRole('button', { name: /Use This Preset|Preset In Use/ })).not.toBeInTheDocument();
   });
 });
