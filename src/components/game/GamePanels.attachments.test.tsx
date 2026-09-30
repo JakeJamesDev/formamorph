@@ -95,6 +95,91 @@ describe('the action box with Image Attachments on', () => {
   });
 });
 
+/** The box that takes a paste or a drop: the action row's parent. */
+const dropZone = () => screen.getByTestId('action-input-wrap').parentElement!.parentElement!;
+
+/** A paste event's clipboard: files plus an optional text flavor. */
+const clipboard = (files: File[], text = '') => ({ files, getData: (t: string) => (t === 'text/plain' ? text : '') });
+/** A drag's data transfer carrying these files. */
+const dragOf = (files: File[]) => ({ files, types: ['Files'], getData: () => '', dropEffect: 'none' });
+
+describe('paste and drop with Image Attachments on', () => {
+  const setup = () => renderMiddlePanel({}, { turns: TURNS, settings: attachOn, seed: started });
+  const zone = async () => {
+    await screen.findByRole('button', { name: 'Attach images' });
+    return dropZone();
+  };
+
+  it('pastes a clipboard image as a pending attachment', async () => {
+    const view = setup();
+    const box = await zone();
+    await act(async () => { fireEvent.paste(box, { clipboardData: clipboard([fakeImageFile('800x600')]) }); });
+    await waitFor(() => expect(view.gameplay().pendingAttachments).toHaveLength(1));
+    expect(decodedFake(view.gameplay().pendingAttachments[0].dataUrl).size).toBe('800x600');
+  });
+
+  it('leaves a paste that carries text to insert the text', async () => {
+    const view = setup();
+    const box = await zone();
+    const notPrevented = fireEvent.paste(box, { clipboardData: clipboard([fakeImageFile('800x600')], 'A1	B1') });
+    expect(notPrevented).toBe(true);
+    expect(view.gameplay().pendingAttachments).toEqual([]);
+  });
+
+  it('drops image files as pending attachments, in order', async () => {
+    const view = setup();
+    const box = await zone();
+    await act(async () => { fireEvent.drop(box, { dataTransfer: dragOf([fakeImageFile('100x100'), fakeImageFile('200x200')]) }); });
+    await waitFor(() => expect(view.gameplay().pendingAttachments).toHaveLength(2));
+    expect(view.gameplay().pendingAttachments.map((a) => decodedFake(a.dataUrl).size)).toEqual(['100x100', '200x200']);
+  });
+
+  it('refuses a dropped file that is not an image, and keeps the browser from opening it', async () => {
+    const warn = vi.spyOn(toast, 'warn');
+    const view = setup();
+    const box = await zone();
+    const notPrevented = fireEvent.drop(box, { dataTransfer: dragOf([new File(['x'], 'a.txt', { type: 'text/plain' })]) });
+    expect(notPrevented).toBe(false);
+    expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.notImage);
+    expect(view.gameplay().pendingAttachments).toEqual([]);
+  });
+
+  it('keeps the images and refuses the rest when a drop mixes images and other files', async () => {
+    const warn = vi.spyOn(toast, 'warn');
+    const view = setup();
+    const box = await zone();
+    await act(async () => {
+      fireEvent.drop(box, { dataTransfer: dragOf([fakeImageFile('100x100'), new File(['x'], 'a.txt', { type: 'text/plain' })]) });
+    });
+    await waitFor(() => expect(view.gameplay().pendingAttachments).toHaveLength(1));
+    expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.notImage);
+  });
+
+  it('caps pending images at four across a picked set, a paste and a drop', async () => {
+    const warn = vi.spyOn(toast, 'warn');
+    const view = setup();
+    const box = await zone();
+    await pick(fakeImageFile('1x1'), fakeImageFile('2x2'), fakeImageFile('3x3'));
+    await waitFor(() => expect(view.gameplay().pendingAttachments).toHaveLength(3));
+    await act(async () => { fireEvent.paste(box, { clipboardData: clipboard([fakeImageFile('4x4')]) }); });
+    await waitFor(() => expect(view.gameplay().pendingAttachments).toHaveLength(4));
+    await act(async () => { fireEvent.drop(box, { dataTransfer: dragOf([fakeImageFile('5x5')]) }); });
+    await waitFor(() => expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.limit));
+    expect(view.gameplay().pendingAttachments.map((a) => decodedFake(a.dataUrl).size)).toEqual(['1x1', '2x2', '3x3', '4x4']);
+  });
+});
+
+describe('paste and drop with Image Attachments off', () => {
+  it('adds nothing, and leaves the drop and the paste to the browser', async () => {
+    const view = renderMiddlePanel({}, { turns: TURNS, seed: started });
+    await screen.findByTestId('action-input-wrap');
+    const box = dropZone();
+    expect(fireEvent.paste(box, { clipboardData: clipboard([fakeImageFile('800x600')]) })).toBe(true);
+    expect(fireEvent.drop(box, { dataTransfer: dragOf([fakeImageFile('800x600')]) })).toBe(true);
+    expect(view.gameplay().pendingAttachments).toEqual([]);
+  });
+});
+
 describe('the images a past action carried', () => {
   const seed = (g: Gameplay) => g.setActionAttachments({ t2: [image('sketch'), image('map')] });
 

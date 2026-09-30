@@ -36,7 +36,8 @@ import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, ImagePlus, type LucideIcon } from "lucide-react";
 import { toast } from 'react-toastify';
-import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS, addToPending, removePending, turnAttachments } from '@/lib/actionAttachments';
+import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS, addToPending, pastedImageFiles, removePending, turnAttachments } from '@/lib/actionAttachments';
+import { useImageDropTarget } from '@/lib/useImageDropTarget';
 import { useImageAttachments } from '@/lib/useImageAttachments';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { AttachmentThumbs } from './AttachmentThumbs';
@@ -613,6 +614,33 @@ export const MiddlePanel = ({
       if (mounted.current) setAttaching(false);
     }
   };
+  // Paste and drop feed the same pending set as the picker. They wait for the game to start, like the button.
+  const intakeOn = imageAttachments && isGameStarted && !disabled;
+  const attachDrop = useImageDropTarget({
+    enabled: intakeOn,
+    onUrl: () => {},
+    onFiles: (files) => void attachFiles(files),
+  });
+  const intakeProps = intakeOn ? {
+    onDragOver: (e: React.DragEvent<HTMLElement>) => { if (e.dataTransfer.types.includes('Files')) attachDrop.dropProps.onDragOver(e); },
+    onDragLeave: attachDrop.dropProps.onDragLeave,
+    onDrop: (e: React.DragEvent<HTMLElement>) => {
+      // A dropped link or text keeps its default: it lands in the box as text.
+      if (e.dataTransfer.files.length === 0) return attachDrop.dropProps.onDragLeave();
+      attachDrop.dropProps.onDrop(e);
+      // The drop helper keeps the images of a mixed drop. The other files are refused, never opened by the browser.
+      if (Array.from(e.dataTransfer.files).some((f) => !f.type.startsWith('image/'))) {
+        e.preventDefault();
+        toast.warn(ATTACH_REFUSAL_COPY.notImage);
+      }
+    },
+    onPaste: (e: React.ClipboardEvent<HTMLElement>) => {
+      const files = pastedImageFiles(e.clipboardData);
+      if (files.length === 0) return;
+      e.preventDefault();
+      void attachFiles(files);
+    },
+  } : {};
   const chatLayout = useNarrationLayout() === 'chat';
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
@@ -1031,7 +1059,7 @@ export const MiddlePanel = ({
             {!chatLayout && <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-center" />}
           </div>
           {progressBar}
-          <div className="flex flex-col gap-2">
+          <div className={cn('flex flex-col gap-2', attachDrop.dragOver && 'rounded-md ring-2 ring-inset ring-ring')} {...intakeProps}>
             {imageAttachments && (
               <AttachmentThumbs
                 images={pendingAttachments}
