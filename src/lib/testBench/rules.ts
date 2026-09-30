@@ -53,6 +53,7 @@ import {
   WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
 } from '@/lib/traitGates';
 import { isAlwaysOn } from '@/lib/traitEffects';
+import { canOwnStatTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
   Trait, TraitGroup, TraitLink, World,
@@ -333,6 +334,16 @@ const aliasSelfDuplicate: Rule = {
 const labelOf = (text: string | undefined, world: RuleWorld): string =>
   labelPlaceholders(text ?? '', allPlaceholders(world), { letters: lettersOf(world) }).trim() || 'Untitled';
 
+/** The world's traits, then every trait an entity owns. */
+const everyTrait = (world: RuleWorld): Trait[] => [
+  ...(world.traits ?? []), ...(world.entities ?? []).flatMap((e) => e.traits ?? []),
+];
+
+/** The traits whose stat effects can reach the player: the world's, and the ones persona entities own. */
+const statTraits = (world: RuleWorld): Trait[] => [
+  ...(world.traits ?? []), ...(world.entities ?? []).filter(canOwnStatTraits).flatMap((e) => e.traits ?? []),
+];
+
 /** A non-entity item, chips labeled like the editor's own lists label them. */
 const namedItem = (id: string, name: string | undefined, world: RuleWorld, section?: FindingSection): FindingItem => ({
   id,
@@ -433,7 +444,7 @@ const traitToggleMissingStat: Rule = {
   summary: (count) => `${count} trait stat toggles point at stats that don’t exist`,
   check: (world) => {
     const known = new Set((world.stats ?? []).map((s) => s.id));
-    return (world.traits ?? [])
+    return everyTrait(world)
       .filter((trait) => (trait.statToggles ?? []).some((toggle) => !known.has(toggle.statId)))
       .map((trait) => {
         const item = namedItem(trait.id, trait.name, world);
@@ -834,7 +845,7 @@ const unplacedPlaceholders = (world: RuleWorld): Array<{ placeholder: Placeholde
     .filter((p) => !p.blueprintId && !placed.has(p.id))
     .map((placeholder) => ({
       placeholder,
-      pinnedBy: (world.traits ?? []).filter((t) =>
+      pinnedBy: everyTrait(world).filter((t) =>
         (t.placeholderPins ?? []).some((pin) => pin.placeholderId === placeholder.id)),
     }));
 };
@@ -1098,7 +1109,7 @@ const entityNowhere: Rule = {
 /** The stats that can be live at some point in a playthrough — everything except a stat that starts disabled
  *  with no trait to switch it on. A stat that is never live never runs its code and never reaches the AI. */
 const everActiveStats = (world: RuleWorld): Stat[] => {
-  const enabledBy = new Set((world.traits ?? []).flatMap((trait) =>
+  const enabledBy = new Set(statTraits(world).flatMap((trait) =>
     (trait.statToggles ?? []).filter((toggle) => toggle.enabled).map((toggle) => toggle.statId),
   ));
   return (world.stats ?? []).filter((stat) => stat.enabled !== false || enabledBy.has(stat.id));
@@ -1297,7 +1308,7 @@ const traitFloor = (stat: Stat, trait: Trait): number =>
 
 /** Every trait that moves a stat's starting value, with the delta it asks for. */
 const traitValueChanges = (world: RuleWorld): Array<{ stat: Stat; trait: Trait; delta: number }> =>
-  (world.stats ?? []).flatMap((stat) => (world.traits ?? []).flatMap((trait) => {
+  (world.stats ?? []).flatMap((stat) => statTraits(world).flatMap((trait) => {
     const delta = traitContribution(stat, trait, 'starting');
     return delta === 0 ? [] : [{ stat, trait, delta }];
   }));
@@ -1963,9 +1974,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
 };
 
 /** A world or owned trait by its id, opening its own row. */
-const traitItem = (id: string, world: RuleWorld): FindingItem => namedItem(id, [
-  ...(world.traits ?? []), ...(world.entities ?? []).flatMap((e) => e.traits ?? []),
-].find((t) => t.id === id)?.name, world);
+const traitItem = (id: string, world: RuleWorld): FindingItem => namedItem(id, everyTrait(world).find((t) => t.id === id)?.name, world);
 
 /** A link as a finding opens it: its own row in the Traits tree, named by what it brings. */
 const linkItem = (link: TraitLink, name: string | undefined, world: RuleWorld): FindingItem =>

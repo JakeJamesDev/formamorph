@@ -458,7 +458,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const world = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities };
     // The persona's linked stat traits apply after the world picks, as the game's seed does.
     const starting = startingStatsWith(rawStats, chosen, {
-      traits: rawTraits, groups: rawTraitGroups, persona: draftPersona, bearers: inPlayBearers(world, draftPersona, libraryCast),
+      traits: rawTraits, groups: rawTraitGroups, entities: worldEntities, persona: draftPersona,
+      bearers: inPlayBearers(world, draftPersona, libraryCast),
     }, ownedTraitPicks);
     return bearerPins({
       world,

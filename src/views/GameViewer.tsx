@@ -4020,7 +4020,7 @@ const GameViewer = ({
       const chosen = new Set(initialTraits);
       const seedLibrary = inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []);
       const seedWorld: TraitWorld = {
-        traits: authoredTraits, groups: traitGroups, persona: initialPersona?.ref,
+        traits: authoredTraits, groups: traitGroups, entities: traitEntities, persona: initialPersona?.ref ?? { source: 'none' },
         bearers: inPlayBearers(bearerWorld, initialPersona?.ref, seedLibrary),
       };
       // Only the held picks: a Custom Persona pick made before the entry step moved to a world persona is not

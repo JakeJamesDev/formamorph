@@ -790,14 +790,14 @@ describe('owned traits in play', () => {
   it('refuses an owned switch-on in a full entity group with a max above one', () => {
     const calm = trait('calm', [], { name: 'Calm', playerToggle: true, groupId: 'bond' });
     const wide = { ...ash, traits: [...ashTraits, calm], groups: [{ ...bond, maxPicks: 2 }] };
-    const w: TraitWorld = { ...owned(), bearers: [owned().bearers![0], wide] };
+    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], bearers: [owned().bearers![0], wide] };
     const full = flip(flip(state(), 'tamed', true, w).state, 'wild', true, w).state;
     expect(onOf(full)).toEqual(['tamed', 'wild']);
     expect(switchPlayerTrait(full, 'calm', true, w, name)).toBeNull();
   });
 
   it('refuses an owned switch-off that drops an entity group below its minimum', () => {
-    const w: TraitWorld = { ...owned(), bearers: [owned().bearers![0], { ...ash, groups: [{ ...bond, minPicks: 1 }] }] };
+    const w: TraitWorld = { ...owned(), entities: owned().entities ?? [], bearers: [owned().bearers![0], { ...ash, groups: [{ ...bond, minPicks: 1 }] }] };
     const s = flip(state(), 'tamed', true, w).state;
     expect(switchPlayerTrait(s, 'tamed', false, w, name)).toBeNull();
     expect(onOf(flip(s, 'wild', true, w).state)).toEqual(['wild']);
@@ -892,7 +892,7 @@ describe('linked stat traits follow whoever the player plays', () => {
     });
     const withSquire = (persona: PersonaRef, held: Trait[]): TraitWorld => {
       const base = linked(persona);
-      return { ...base, traits: [vigil, squire], bearers: [{ id: 'world', name: '', traits: held, groups: [] }, albus, mira] };
+      return { ...base, traits: [vigil, squire], entities: base.entities ?? [], bearers: [{ id: 'world', name: '', traits: held, groups: [] }, albus, mira] };
     };
     const asMiraSquire = withSquire({ source: 'world', entityId: 'mira' }, [vigil, squire]);
     const asAlbusNoSquire = withSquire({ source: 'world', entityId: 'albus' }, [vigil]);
@@ -955,7 +955,7 @@ describe('linked stat traits follow whoever the player plays', () => {
     const wizard = trait('wizard', [{ statId: 'h', value: 3, type: 'starting' }], { name: 'Wizard', playerToggle: true, groupId: 'classes' });
     const classes: TraitGroup = { id: 'classes', name: 'Classes', parentId: null, maxPicks: 1 };
     const albusClasses = { id: 'albus', name: 'Albus', traits: [{ ...paladin, groupId: 'classes' }, wizard], groups: [classes] };
-    const w: TraitWorld = { ...asAlbus, bearers: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albusClasses] };
+    const w: TraitWorld = { ...asAlbus, entities: asAlbus.entities ?? [], bearers: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albusClasses] };
     const seeded = applyPlayedStatTraits(state({ ownedTraits: { albus: { chosen: ['paladin'] } } }), w).state;
     expect(valueOf(seeded)).toBe(55);
     const swapped = switchPlayerTrait(seeded, 'wizard', true, w, name, 'albus')!;

@@ -332,7 +332,7 @@ describe('owned trait state across a save/load round trip', () => {
     expect(live().playerTraits).toEqual([wizard]);
     expect(live().ownedTraits).toEqual({});
     const bearers = inPlayBearers(world, live().personaRef);
-    expect(heldPlayerTraits(live().playerTraits, { traits: world.traits, groups: world.traitGroups, bearers })).toEqual([]);
+    expect(heldPlayerTraits(live().playerTraits, { traits: world.traits, groups: world.traitGroups, entities: world.entities, bearers })).toEqual([]);
   });
 
   it('omits the field from a save with no owned state, and reads its absence as none', async () => {

@@ -28,6 +28,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **In the Traits tab, dragging a top-level trait or group onto an entity moves it to that entity in Basic and Advanced alike.** Before, Advanced tried to link it, and the Custom Persona entity refused it because the player already had it.
+  - **A new game as None applies the Custom Persona entity's stat traits.** Their Stat Changes now land at the start and show in the Enter World preview. Before, the stats they turned on opened at their authored value.
+  - **The Test Bench reads traits an entity owns.** A stat that a persona entity's trait turns on no longer shows as never enabled. The stat toggle, clamped starting value and pinned placeholder checks cover owned traits too.
   - **On Novita, DeepSeek V3.1 and later and GLM 4.5 and later stop thinking on prompts with Native Reasoning off.** Short passes such as Location Change and Time Passed no longer fail with "The model reached its token limit before it wrote an answer." Each request sends Novita's `enable_thinking: false`.
 
 ---

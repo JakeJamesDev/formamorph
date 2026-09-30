@@ -283,6 +283,16 @@ describe('reference-integrity rules', () => {
     expect(runRules(toggled('s1'))).toEqual([]);
   });
 
+  it('flags an owned trait toggling a stat that doesn’t exist', () => {
+    const found = only(base({
+      stats: [stat({ id: 's1', name: 'Mana' })],
+      entities: [resident, { id: 'e-you', name: 'Wanderer', customPersona: true, traits: [
+        trait({ id: 't1', name: 'Blessed', statToggles: [{ statId: 'gone', enabled: true }] }),
+      ] }],
+    }), 'trait-toggle-missing-stat');
+    expect(found.map((f) => f.items[0].id)).toEqual(['t1']);
+  });
+
   it('flags a pin to a placeholder that doesn’t exist, from any of the four sources, opening on the source', () => {
     const hue: Placeholder = { id: 'p1', name: 'Hue', values: phValues(['red', 'blue']) };
     const gone = { placeholderId: 'gone', value: 'red' };
@@ -638,6 +648,17 @@ describe('reachability rules', () => {
     expect(runRules(disabled([trait({ id: 't1', name: 'Cursed', statToggles: [{ statId: 's1', enabled: true }] })]))).toEqual([]);
   });
 
+  it('counts a persona entity’s owned trait as enabling a disabled stat, and a cast entity’s as not', () => {
+    const cursed = trait({ id: 't1', name: 'Cursed', statToggles: [{ statId: 's1', enabled: true }] });
+    const ownedBy = (entity: Partial<Entity>) => base({
+      stats: [stat({ id: 's1', name: 'Corruption', enabled: false })],
+      entities: [resident, { id: 'e-you', name: 'Wanderer', ...entity, traits: [cursed] }],
+    });
+    expect(only(ownedBy({ customPersona: true }), 'stat-disabled-forever')).toEqual([]);
+    expect(only(ownedBy({ persona: true }), 'stat-disabled-forever')).toEqual([]);
+    expect(only(ownedBy({}), 'stat-disabled-forever')).toHaveLength(1);
+  });
+
   it('catches the Centaur Breeder class of defects together', () => {
     // The real pre-sweep shape: a legacy start flag standing in for isStarting, and a cast member in no location.
     const w = base({
@@ -851,6 +872,12 @@ describe('stat sanity rules', () => {
     expect(found[0].items[1].section).toBe('traits');
   });
 
+  it('reads a persona entity’s owned trait for a clamped starting delta', () => {
+    const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
+    const w = { ...oneStat({ starting: 0 }), entities: [resident, { id: 'e-you', name: 'Wanderer', customPersona: true, traits: [ashen] }] };
+    expect(only(w, 'stat-trait-delta-clamped').map((f) => f.items.map((i) => i.id))).toEqual([['s1', 't1']]);
+  });
+
   it('counts the floor the trait itself raises, not just the authored min', () => {
     // A trait that lifts the min to where the stat already sits leaves its own penalty nowhere to go.
     const raises = trait({
@@ -1018,6 +1045,17 @@ describe('the unused-placeholder rule', () => {
       placeholders: [{ id: 'p1', name: 'Hue', values: phValues(['red', 'blue']) }],
       traits: [trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value: 'red' }] })],
     }), 'placeholder-unused')).toEqual([]);
+  });
+
+  it('routes a placeholder pinned only by an owned trait to the pinned rule', () => {
+    const w = base({
+      placeholders: [{ id: 'p1', name: 'Hue', values: phValues(['red', 'blue']) }],
+      entities: [resident, { id: 'e-you', name: 'Wanderer', customPersona: true, traits: [
+        trait({ id: 't1', name: 'Dyed', placeholderPins: [{ placeholderId: 'p1', value: 'red' }] }),
+      ] }],
+    });
+    expect(only(w, 'placeholder-unused')).toEqual([]);
+    expect(only(w, 'placeholder-pinned-unused').map((f) => f.items.map((i) => i.id))).toEqual([['p1', 't1']]);
   });
 
   it('counts a chip in a stat description as a use', () => {
