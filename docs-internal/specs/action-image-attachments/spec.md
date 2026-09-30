@@ -81,7 +81,8 @@ If the bundled local engine runs a pass that has images, the pass drops them and
 - The flag travels in the preset share code and the preset JSON.
 
 **Settings**
-- A new boolean setting, Image Attachments, defaults to off. It lives in a new Attachments section on the Output tab.
+- A new boolean setting, Image Attachments, defaults to off. It lives in a new Attachments section on the Output tab. It shows in Simple and Advanced mode. Narration defaults on, so Simple players get a working feature without the Prompts tab.
+- The existing Output tab dev route covers the setting. The pending and past-action thumbnails need a dev route that reaches them.
 - Off hides the attach button, turns off paste and drop handling, and hides the Include Attachments toggles on the Prompts tab. The stored flags stay unchanged.
 - Off also means no image goes to the AI, including when a turn with attachments is regenerated.
 
