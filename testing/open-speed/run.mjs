@@ -1,6 +1,6 @@
 // Community Creations open-speed harness. `npm run profile:open-speed` builds an unminified production
-// bundle into testing/open-speed/.build, serves it, and opens the browser cold, warm 1 and warm 2 at
-// 1x and 4x CPU throttle. Block timing comes from a trace; a CPU profile inside the same trace gives the
+// bundle into testing/open-speed/.build, serves it, and opens the browser cold, warm 1, warm 2 and
+// reopen (close, then open again in the same page) at 1x and 4x CPU throttle. Block timing comes from a trace; a CPU profile inside the same trace gives the
 // tooltip share. Not part of the four gates.
 import { spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -198,6 +198,12 @@ async function runThrottle(browser, base, rate) {
     if (label === 'cold') await warmProfiler(cdp);
     results.push(await measureOpen(page, cdp, label));
   }
+  // Close and open again in the same page: the browser stays mounted and keeps its rows, so nothing
+  // arrives late to commit after the window.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.locator('[role="dialog"][data-state="closed"]', { hasText: 'Community Creations' }).waitFor({ state: 'attached', timeout: 30_000 });
+  await page.waitForTimeout(2500);
+  results.push(await measureOpen(page, cdp, 'reopen'));
   await context.close();
   return results;
 }
