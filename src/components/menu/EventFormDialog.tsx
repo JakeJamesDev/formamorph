@@ -20,7 +20,8 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { EventPosterBand } from "@/components/events/EventPosterBand";
 import { PosterPositionDialog } from "@/components/events/PosterPositionDialog";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
-import { adminEventState, fromLocalInputValue, toLocalInputValue } from "@/lib/adminEvents";
+import { fromLocalInputValue, toLocalInputValue } from "@/lib/adminEvents";
+import { eventState } from "@/lib/serverEvents";
 import { parsePosterColor, parsePosterPlacement } from "@/lib/posterStyle";
 import { IMAGE_UPLOAD_ACCEPT } from "@/lib/avatar";
 import EventService from "@/services/EventService";
@@ -108,7 +109,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
   });
 
   const isContest = type === 'contest';
-  const started = editing ? adminEventState(editing) !== 'scheduled' : false;
+  const started = editing ? eventState(editing) !== 'scheduled' : false;
   const previewImage = pickedImage ?? storedImage;
 
   /** Read the picked file as the data URI the server stores it from. */

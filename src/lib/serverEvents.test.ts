@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  daysRemaining, eventChipMarker, eventPhase, firstPlaceOf, isContestEvent, phaseMessageId, placeOf,
+  daysRemaining, eventChipMarker, eventPhase, eventState, firstPlaceOf, isContestEvent, phaseMessageId, placeOf,
   placementsOf, resultsAnnounced,
 } from './serverEvents';
 import { daysFrom, serverEvent } from '@/test/serverEvents';
@@ -121,6 +121,47 @@ describe('firstPlaceOf', () => {
 
   it('is empty for a contest with no podium at all', () => {
     expect(firstPlaceOf(event())).toEqual([]);
+  });
+});
+
+describe('eventState', () => {
+  it('is active inside its window', () => {
+    expect(eventState(event(), NOW)).toBe('active');
+  });
+
+  it('is scheduled before its window opens', () => {
+    expect(eventState(event({ startsAt: at(2), endsAt: at(9) }), NOW)).toBe('scheduled');
+  });
+
+  it('is judging once a contest closes with its results still to come', () => {
+    expect(eventState(event({ startsAt: at(-9), endsAt: at(-1) }), NOW)).toBe('judging');
+  });
+
+  it('is ended once a contest has announced its results', () => {
+    expect(eventState(decided({ startsAt: at(-9), endsAt: at(-1) }), NOW)).toBe('ended');
+  });
+
+  it('is ended the moment a contest announces, however much of the window is left', () => {
+    expect(eventState(decided(), NOW)).toBe('ended');
+  });
+
+  it('is ended for a closed announcement, which has no results to wait for', () => {
+    const notice = event({ type: 'announcement', startsAt: at(-9), endsAt: at(-1) });
+
+    expect(eventState(notice, NOW)).toBe('ended');
+  });
+
+  it('is canceled whatever the clock or the podium says', () => {
+    expect(eventState(event({ cancelledAt: at(-1) }), NOW)).toBe('canceled');
+    expect(eventState(decided({ cancelledAt: at(-1) }), NOW)).toBe('canceled');
+  });
+
+  it('counts the closing instant as closed, not as one more moment of running', () => {
+    expect(eventState(event({ startsAt: at(-4), endsAt: NOW.toISOString() }), NOW)).toBe('judging');
+  });
+
+  it('reads an unreadable window as over rather than running', () => {
+    expect(eventState(event({ endsAt: 'not a date' }), NOW)).toBe('ended');
   });
 });
 

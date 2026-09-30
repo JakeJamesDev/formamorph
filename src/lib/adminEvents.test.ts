@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  adminEventState,
   toLocalInputValue,
   fromLocalInputValue,
   adminEventActions,
@@ -29,38 +28,6 @@ const decided = (over: Partial<ServerEvent> = {}): ServerEvent => event({
 
 const event = (over: Partial<ServerEvent> = {}): ServerEvent =>
   serverEvent({ title: 'Summer Isles Contest', startsAt: at(-4), endsAt: at(8), ...over });
-
-describe('which state an event is in', () => {
-  it('is active inside its window', () => {
-    expect(adminEventState(event(), NOW)).toBe('active');
-  });
-
-  it('is scheduled before its window opens', () => {
-    expect(adminEventState(event({ startsAt: at(2), endsAt: at(9) }), NOW)).toBe('scheduled');
-  });
-
-  it('is judging once a contest closes with its results still to come', () => {
-    expect(adminEventState(event({ startsAt: at(-9), endsAt: at(-1) }), NOW)).toBe('judging');
-  });
-
-  it('is ended once a contest has announced its results', () => {
-    expect(adminEventState(decided(), NOW)).toBe('ended');
-  });
-
-  it('is ended for a closed announcement, which has no results to wait for', () => {
-    const notice = event({ type: 'announcement', startsAt: at(-9), endsAt: at(-1) });
-
-    expect(adminEventState(notice, NOW)).toBe('ended');
-  });
-
-  it('is canceled whatever the clock says', () => {
-    expect(adminEventState(event({ cancelledAt: at(-1) }), NOW)).toBe('canceled');
-  });
-
-  it('counts the closing instant as closed, not as one more moment of running', () => {
-    expect(adminEventState(event({ startsAt: at(-4), endsAt: NOW.toISOString() }), NOW)).toBe('judging');
-  });
-});
 
 describe('grouping the calendar', () => {
   const running = event({ id: 'running' });

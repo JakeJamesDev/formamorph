@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  activeContestOf, contestPhase, contestsOf, contestEntryIdOf, entriesOf, isContestRunning,
+  activeContestOf, contestPhase, contestsOf, contestEntryIdOf, entriesOf,
   judgingContestsOf, orderContestEntries, placeInContest, placementsBy, shuffleWithSeed, contestSections,
   standingsOrder, tiedLikeCounts,
 } from './contests';
@@ -35,7 +35,6 @@ const decidedWith = (
 describe('which state a contest is in', () => {
   it('is live inside its window', () => {
     expect(contestPhase(event())).toBe('live');
-    expect(isContestRunning(event())).toBe(true);
   });
 
   it('is judging once the window closes with the results still to come', () => {
@@ -46,9 +45,9 @@ describe('which state a contest is in', () => {
     expect(contestPhase(decidedWith(['w2']))).toBe('decided');
   });
 
-  it('is not running before it starts, or once it has been called off', () => {
-    expect(isContestRunning(event({ startsAt: at(2), endsAt: at(9) }))).toBe(false);
-    expect(isContestRunning(event({ cancelledAt: at(-1) }))).toBe(false);
+  it('has no phase before it starts, or once it has been called off', () => {
+    expect(contestPhase(event({ startsAt: at(2), endsAt: at(9) }))).toBeNull();
+    expect(contestPhase(event({ cancelledAt: at(-1) }))).toBeNull();
   });
 });
 
@@ -66,6 +65,12 @@ describe('the contests worth showing', () => {
     const called_off = event({ id: 'c1', cancelledAt: at(-1) });
 
     expect(contestsOf([announcement, called_off, event()]).map((e) => e.id)).toEqual(['e1']);
+  });
+
+  it('drops a contest that has not started, which staff see in this same feed', () => {
+    const scheduled = event({ id: 'soon', startsAt: at(4), endsAt: at(20) });
+
+    expect(contestsOf([scheduled, event()]).map((e) => e.id)).toEqual(['e1']);
   });
 });
 

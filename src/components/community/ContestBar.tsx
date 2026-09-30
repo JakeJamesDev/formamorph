@@ -23,7 +23,9 @@ interface ContestBarProps {
 }
 
 /** What the bar says about where the contest stands. */
-function statusLine(contest: ServerEvent, phase: ContestPhase): string {
+function statusLine(contest: ServerEvent, phase: ContestPhase | null): string {
+  // Unreachable through `contestsOf`, which drops a contest players never see.
+  if (phase === null) return '';
   if (phase === 'decided') {
     // The gold name with a count of the rest, rather than the whole podium: the band below spells it out,
     // and a bar that lists three worlds pushes the entries it sits above off the screen. A shared 1st is
