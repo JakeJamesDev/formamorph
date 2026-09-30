@@ -16,8 +16,25 @@ const directSyncAppModules = {
   },
 }
 
+// FM_HOLD_FULL_RELOAD=1: swap Vite's full-page reloads for a custom event; in-place HMR still applies.
+const holdFullReloads = {
+  name: 'hold-full-reloads',
+  apply: 'serve',
+  configureServer(server) {
+    if (!process.env.FM_HOLD_FULL_RELOAD) return
+    const send = server.ws.send.bind(server.ws)
+    server.ws.send = (payload, ...rest) => {
+      if (typeof payload === 'object' && payload.type === 'full-reload') {
+        server.config.logger.info(`full reload held (${payload.path ?? 'page'})`, { timestamp: true })
+        return send({ type: 'custom', event: 'fm:full-reload-held', data: payload })
+      }
+      return send(payload, ...rest)
+    }
+  },
+}
+
 export default defineConfig({
-  plugins: [react(), directSyncAppModules],
+  plugins: [react(), directSyncAppModules, holdFullReloads],
   ...(process.env.E2E_SYNC_APP
     ? { cacheDir: path.resolve(__dirname, 'node_modules/.vite-sync-app') }
     : {}),
