@@ -186,15 +186,15 @@ export function tiedLikeCounts(entries: readonly Standing[]): Set<number> {
 /**
  * The order a contest's entries are shown in.
  *
- * While the contest runs the order is shuffled per visit, so entering early is not itself an advantage.
- * Once judging starts the shuffle would only obscure the standings, so entries settle by likes — and the
- * podium is pinned to the front of them, in the order the podium itself is stored in.
+ * While the contest runs or is judged the order is shuffled per visit, so neither entering early nor the
+ * like counts decide what a player sees first. Once results are announced, entries settle by likes — and
+ * the podium is pinned to the front of them, in the order the podium itself is stored in.
  *
  * Level like counts break by publish time, earliest first. Likes alone leave their order to however the
  * catalog happened to arrive, which is a list that reshuffles itself between two visits that changed
  * nothing — and a contest whose entries are level is exactly when that is most visible.
  *
- * @param seed - The visit's shuffle seed; only read while the contest is live
+ * @param seed - The visit's shuffle seed; only read before results are announced
  */
 export function orderContestEntries(
   entries: WorldRecord[],
@@ -203,7 +203,7 @@ export function orderContestEntries(
   now: Date = new Date(),
 ): WorldRecord[] {
   if (!event) return entries;
-  if (contestPhase(event, now) === 'live') return shuffleWithSeed(entries, seed);
+  if (contestPhase(event, now) !== 'decided') return shuffleWithSeed(entries, seed);
 
   const byLikes = standingsOrder(entries.map((record) => ({
     record, likes: likesOf(record), publishedAt: publishedAtOf(record),

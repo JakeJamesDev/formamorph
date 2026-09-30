@@ -218,7 +218,7 @@ describe('what the contest grid shows in each of its three states', () => {
     expect(screen.queryByText(/Place/)).not.toBeInTheDocument();
   });
 
-  it('stands the entries by likes once the window closes for judging', async () => {
+  it('shows every entry while the contest is judged', async () => {
     server.events = [contest({ startsAt: at(-20), endsAt: at(-2) })];
     catalog.items = [
       listing('Saltmarsh', { contest_event_id: 'e1', likes: 2 }),
@@ -228,7 +228,8 @@ describe('what the contest grid shows in each of its three states', () => {
     renderBrowser();
     await openContestTab();
 
-    await waitFor(() => expect(gridNames()).toEqual(['Thawline', 'Coldkeep', 'Saltmarsh']));
+    // The order is a shuffle (covered in contests.test.ts); the grid only has to show all three entries.
+    await waitFor(() => expect(gridNames().sort()).toEqual(['Coldkeep', 'Saltmarsh', 'Thawline']));
     expect(screen.getByText(/being judged/)).toBeInTheDocument();
   });
 

@@ -1,6 +1,7 @@
 # 05: Shuffle contest entries while judging
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 859c77f1
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

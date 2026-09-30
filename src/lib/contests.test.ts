@@ -209,9 +209,19 @@ describe('the order entries are shown in', () => {
     expect(orderContestEntries(entries, event(), 0.42)).toEqual(orderContestEntries(entries, event(), 0.42));
   });
 
-  it('settles by likes once judging starts, where a shuffle would only hide the standings', () => {
+  it('shuffles while judging, so the likes do not lead the list before results', () => {
     const judging = event({ startsAt: at(-20), endsAt: at(-2) });
-    expect(orderContestEntries(entries, judging, 0.42).map((w) => w._id)).toEqual(['w2', 'w5', 'w3', 'w1', 'w4']);
+    const first = orderContestEntries(entries, judging, 0.42).map((w) => w._id);
+    const other = orderContestEntries(entries, judging, 0.77).map((w) => w._id);
+
+    expect(first).not.toEqual(['w2', 'w5', 'w3', 'w1', 'w4']);
+    expect(first).not.toEqual(other);
+    expect([...first].sort()).toEqual(['w1', 'w2', 'w3', 'w4', 'w5']);
+    expect(first).toEqual(orderContestEntries(entries, judging, 0.42).map((w) => w._id));
+  });
+
+  it('settles by likes once results are announced', () => {
+    expect(orderContestEntries(entries, decidedWith([]), 0.42).map((w) => w._id)).toEqual(['w2', 'w5', 'w3', 'w1', 'w4']);
   });
 
   it('pins the whole podium in front of the likes, in podium order', () => {
@@ -254,18 +264,14 @@ describe('the order entries are shown in', () => {
 
   it('breaks level like counts by publish time, earliest first', () => {
     const level = [entry('late', 5, 'e1', at(-2)), entry('early', 5, 'e1', at(-9)), entry('middle', 5, 'e1', at(-5))];
-    const judging = event({ startsAt: at(-20), endsAt: at(-2) });
-
-    expect(orderContestEntries(level, judging, 0.42).map((w) => w._id)).toEqual(['early', 'middle', 'late']);
+    expect(orderContestEntries(level, decidedWith([]), 0.42).map((w) => w._id)).toEqual(['early', 'middle', 'late']);
   });
 
   it('sorts a listing whose publish time cannot be read last, rather than scrambling the rest', () => {
     // A stamp that cannot be read must not beat one that can, and two of them must still compare level —
     // which a sentinel of infinity would not, because the difference of two infinities is not a number.
     const level = [entry('junk', 5, 'e1', 'not a date'), entry('none', 5), entry('dated', 5, 'e1', at(-9))];
-    const judging = event({ startsAt: at(-20), endsAt: at(-2) });
-
-    expect(orderContestEntries(level, judging, 0.42).map((w) => w._id)).toEqual(['dated', 'junk', 'none']);
+    expect(orderContestEntries(level, decidedWith([]), 0.42).map((w) => w._id)).toEqual(['dated', 'junk', 'none']);
   });
 });
 
