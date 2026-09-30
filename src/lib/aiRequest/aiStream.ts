@@ -1,6 +1,7 @@
 import type { WireMessage } from '@/types';
 import { redactUrl } from '@/lib/redactUrl';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
+import { noteImagesDropped } from './localEngineImageDrop';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
  *  frame is skipped so the rest of the stream still arrives. `cut-thought`: the server stopped the reply
@@ -282,6 +283,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
   }
 
   if (!response.ok) throw await httpFailure(response, spec);
+  noteImagesDropped(response);
   if (!response.body) throw new AiStreamError('no-body', 'Response has no body to stream');
 
   yield { type: 'debug', debug: { kind: 'response', status: response.status, openedAt: now() } };

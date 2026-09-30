@@ -97,3 +97,47 @@ describe('llmEngine status transitions', () => {
     expect(getState().gpuBackend).toBeNull();
   });
 });
+
+describe('llmEngine splitMessages', () => {
+  const { splitMessages } = llmEngine;
+  const img = (url) => ({ type: 'image_url', image_url: { url } });
+
+  it('keeps the text of a content-parts final prompt and counts the dropped images', () => {
+    const out = splitMessages([
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: [{ type: 'text', text: 'look' }, img('data:a'), img('data:b')] },
+    ]);
+    expect(out.promptText).toBe('look');
+    expect(out.droppedImages).toBe(2);
+  });
+
+  it('keeps the text of a content-parts history message and counts its images', () => {
+    const out = splitMessages([
+      { role: 'user', content: [{ type: 'text', text: 'first' }, img('data:a')] },
+      { role: 'assistant', content: 'reply' },
+      { role: 'user', content: 'next' },
+    ]);
+    expect(out.chatHistory).toEqual([
+      { type: 'user', text: 'first' },
+      { type: 'model', response: ['reply'] },
+    ]);
+    expect(out.promptText).toBe('next');
+    expect(out.droppedImages).toBe(1);
+  });
+
+  it('leaves plain string messages unchanged and reports no drop', () => {
+    const out = splitMessages([
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'hi' },
+      { role: 'assistant', content: 'yo' },
+      { role: 'user', content: 'go' },
+    ]);
+    expect(out.chatHistory).toEqual([
+      { type: 'system', text: 'sys' },
+      { type: 'user', text: 'hi' },
+      { type: 'model', response: ['yo'] },
+    ]);
+    expect(out.promptText).toBe('go');
+    expect(out.droppedImages).toBe(0);
+  });
+});

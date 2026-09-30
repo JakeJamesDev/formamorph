@@ -1,6 +1,7 @@
 # 06: Local Engine Drops Images
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 84a8d2ed
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

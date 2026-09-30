@@ -101,19 +101,37 @@ function onStatus(cb) {
   return () => statusListeners.delete(cb);
 }
 
-/** Split an OpenAI messages array into a node-llama-cpp chat history + the final prompt text. */
+/** A message's text. Content parts keep their text parts; image parts have no engine input and are counted. */
+function contentText(content) {
+  if (!Array.isArray(content)) return { text: content || '', dropped: 0 };
+  const texts = [];
+  let dropped = 0;
+  for (const part of content) {
+    if (part && part.type === 'text') texts.push(part.text || '');
+    else if (part && part.type === 'image_url') dropped += 1;
+  }
+  return { text: texts.join('\n\n'), dropped };
+}
+
+/** Split an OpenAI messages array into a node-llama-cpp chat history, the final prompt text, and the image count dropped. */
 function splitMessages(messages) {
   const list = Array.isArray(messages) ? messages : [];
   const last = list[list.length - 1];
   const history = [];
   let system = '';
+  let droppedImages = 0;
+  const textOf = (m) => {
+    const { text, dropped } = contentText(m.content);
+    droppedImages += dropped;
+    return text;
+  };
   for (const m of list.slice(0, -1)) {
-    if (m.role === 'system') system += (system ? '\n' : '') + (m.content || '');
-    else if (m.role === 'user') history.push({ type: 'user', text: m.content || '' });
-    else if (m.role === 'assistant') history.push({ type: 'model', response: [m.content || ''] });
+    if (m.role === 'system') system += (system ? '\n' : '') + textOf(m);
+    else if (m.role === 'user') history.push({ type: 'user', text: textOf(m) });
+    else if (m.role === 'assistant') history.push({ type: 'model', response: [textOf(m)] });
   }
   const chatHistory = system ? [{ type: 'system', text: system }, ...history] : history;
-  return { chatHistory, promptText: last ? last.content || '' : '' };
+  return { chatHistory, promptText: last ? textOf(last) : '', droppedImages };
 }
 
 /** Options passed to session.prompt(), mapped from the OpenAI request body. */
@@ -163,10 +181,14 @@ function makeRawReconstructor() {
   };
 }
 
+/** Response header carrying the count of image parts the engine dropped. */
+const IMAGES_DROPPED_HEADER = 'X-Formamorph-Images-Dropped';
+
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Expose-Headers', IMAGES_DROPPED_HEADER);
 }
 
 function sendJson(res, code, obj) {
@@ -190,7 +212,7 @@ let LlamaChatSession = null;
 async function handleChatCompletion(req, res) {
   if (state.status !== 'ready') return sendJson(res, 503, { error: { message: 'Model is not loaded.' } });
   const body = JSON.parse((await readBody(req)) || '{}');
-  const { chatHistory, promptText } = splitMessages(body.messages);
+  const { chatHistory, promptText, droppedImages } = splitMessages(body.messages);
   const streaming = body.stream === true;
   const created = Math.floor(Date.now() / 1000);
   const id = `chatcmpl-${created}`;
@@ -208,6 +230,7 @@ async function handleChatCompletion(req, res) {
   if (!seq) { res.off('close', onClose); return sendJson(res, 503, { error: { message: 'Model is not loaded.' } }); }
   const session = new LlamaChatSession(chatWrapper ? { contextSequence: seq, chatWrapper } : { contextSequence: seq });
   session.setChatHistory(chatHistory);
+  if (droppedImages > 0) res.setHeader(IMAGES_DROPPED_HEADER, String(droppedImages));
   const raw = makeRawReconstructor();
 
   try {
@@ -431,4 +454,4 @@ async function listDevices() {
   return { gpuBackend: backend.gpu === false ? 'cpu' : backend.gpu, gpuDeviceNames };
 }
 
-module.exports = { start, stop, getState, onStatus, stoppedState, listDevices };
+module.exports = { start, stop, getState, onStatus, stoppedState, listDevices, splitMessages, IMAGES_DROPPED_HEADER };
