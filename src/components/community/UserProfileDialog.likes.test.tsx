@@ -113,6 +113,20 @@ describe('reading what an account has liked', () => {
     expect(fetchLikes).toHaveBeenCalledTimes(1);
   });
 
+  it('hides the kept Likes panel when Creations is on show again', async () => {
+    signedInAs('admin');
+    vi.spyOn(UserService, 'fetchLikesGiven').mockResolvedValue({ total: 1, rows: [like()] });
+
+    show();
+    await openLikes();
+    expect(await screen.findByRole('listitem')).toBeTruthy();
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Creations' }));
+
+    // Role queries skip hidden content, so a panel left on show still finds the row.
+    await waitFor(() => expect(screen.queryByRole('listitem')).toBeNull());
+  });
+
   it('carries the listing, its author, the like time and a hidden marker', async () => {
     signedInAs('admin');
     vi.spyOn(UserService, 'fetchLikesGiven').mockResolvedValue({

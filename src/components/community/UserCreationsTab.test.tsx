@@ -192,6 +192,50 @@ describe('the kind filter', () => {
 
     expect(await screen.findByText('Wren')).toBeTruthy();
   });
+
+  it('sets Prompts apart from the content kinds with a separator', async () => {
+    listing([creation()]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+    await screen.findByText('Sedge Landing');
+
+    const separator = screen.getByRole('separator');
+    const items = screen.getAllByRole('radio');
+    const prompts = items[items.length - 1];
+    const beforePrompts = items[items.length - 2];
+    expect(prompts.getAttribute('aria-label')).toMatch(/^Prompts/);
+    expect(beforePrompts.compareDocumentPosition(separator) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(separator.compareDocumentPosition(prompts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('opens on the kind they updated most recently', async () => {
+    listing([
+      creation({ id: 'w1', kind: 'world', name: 'Sedge Landing', updatedAt: '2026-03-14 00:00:00' }),
+      creation({ id: 'e1', kind: 'entity', name: 'Wren', updatedAt: '2026-08-01 00:00:00' }),
+    ]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+
+    expect(await screen.findByText('Wren')).toBeTruthy();
+    expect(screen.queryByText('Sedge Landing')).toBeNull();
+  });
+});
+
+describe('the order of the list', () => {
+  it('puts the most recently updated first, whatever order the server sends', async () => {
+    listing([
+      creation({ id: 'a', name: 'Oldest', createdAt: '2026-03-01 00:00:00', updatedAt: '2026-03-01 00:00:00' }),
+      creation({ id: 'b', name: 'Freshly Updated', createdAt: '2026-01-01 00:00:00', updatedAt: '2026-09-01 00:00:00' }),
+      creation({ id: 'c', name: 'Middle', createdAt: '2026-05-01 00:00:00', updatedAt: '2026-05-01T00:00:00.000Z' }),
+    ]);
+
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+    await screen.findByText('Oldest');
+
+    const names = screen.getAllByRole('listitem').map((row) => row.textContent ?? '');
+    expect(names.map((text) => text.match(/Oldest|Freshly Updated|Middle/)?.[0]))
+      .toEqual(['Freshly Updated', 'Middle', 'Oldest']);
+  });
 });
 
 describe('opening one of them', () => {

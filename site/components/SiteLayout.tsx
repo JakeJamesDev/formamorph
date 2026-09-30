@@ -8,8 +8,8 @@ interface SiteLayoutProps {
   title?: string;
   /** One line under the title. */
   subtitle?: string;
-  /** A form is read down one column; a profile is a page. */
-  width?: 'form' | 'page';
+  /** A form is read down one column; a page is wider; a wide page holds a multi-column grid. */
+  width?: 'form' | 'page' | 'wide';
   /** A full-width surface that owns the main area below the shared website header. */
   surface?: boolean;
   children: ReactNode;
@@ -19,6 +19,7 @@ interface SiteLayoutProps {
 const WIDTHS = {
   form: 'max-w-[420px]',
   page: 'max-w-[640px]',
+  wide: 'max-w-[760px]',
 } as const;
 
 /** Shared website frame with a content column and footer. */
