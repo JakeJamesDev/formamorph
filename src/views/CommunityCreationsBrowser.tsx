@@ -85,7 +85,7 @@ import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
 import { CommunityFilterBar } from "@/components/community/CommunityFilterBar";
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { useTutorial } from "@/lib/tutorials";
-import { optimisticLikeState, type LikeState } from "@/lib/likeCount";
+import { likeStateOf, optimisticLikeState, type LikeState } from "@/lib/likeCount";
 
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
@@ -643,9 +643,7 @@ const CommunityCreationsBrowser = ({
    */
   const showLikeState = (worldId: string, state: LikeState) => {
     // Every field is written, absent ones included, so a flag the new state drops does not linger.
-    const patch = {
-      liked: state.liked, likes: state.likes, likesHidden: state.likesHidden, likesPrivate: state.likesPrivate,
-    };
+    const patch = likeStateOf(state);
     setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? { ...w, ...patch } : w)));
     setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? { ...prev, ...patch } : prev));
   };
@@ -662,12 +660,7 @@ const CommunityCreationsBrowser = ({
   const handleLike = async (world: WorldRecord, liked: boolean) => {
     dismissIfShowing('community-like');
     const worldId = String(world._id || world.id);
-    const before: LikeState = {
-      liked: world.liked as boolean | undefined,
-      likes: world.likes as number | undefined,
-      likesHidden: world.likesHidden as boolean | undefined,
-      likesPrivate: world.likesPrivate as boolean | undefined,
-    };
+    const before = likeStateOf(world);
 
     showLikeState(worldId, optimisticLikeState(world, liked));
 

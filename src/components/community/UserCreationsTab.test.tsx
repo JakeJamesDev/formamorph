@@ -1,6 +1,7 @@
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UserCreationsTab } from './UserCreationsTab';
+import { HIDDEN_LIKES_TIP } from './LikeButton';
 import UserService from '@/services/UserService';
 import type { ProfileCreation } from '@/types';
 
@@ -65,7 +66,7 @@ describe('what somebody has published', () => {
     render(<UserCreationsTab userId="u1" username="wren_hallow" />);
     await screen.findByText('Sedge Landing');
 
-    expect(screen.getByLabelText('Likes show after the winners are announced').textContent).toContain('—');
+    expect(screen.getByLabelText(HIDDEN_LIKES_TIP).textContent).toContain('—');
   });
 
   it('fetches nothing until it is pointed at somebody', () => {

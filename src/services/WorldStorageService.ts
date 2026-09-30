@@ -32,6 +32,9 @@ export type CatalogFetch =
   | { status: 'unchanged' }
   | { status: 'error'; error: string };
 
+/** A like reply: the reader's state, and the count as the reader may see it. */
+type LikeReply = LikeState & { liked: boolean };
+
 /**
  * A press the server would not take, named by its code.
  *
@@ -39,9 +42,6 @@ export type CatalogFetch =
  * a switched-off server sends the guest to sign-in, and a listing that has gone quiet needs nothing said
  * about it.
  */
-/** A like reply: the reader's state, and the count as the reader may see it. */
-type LikeReply = LikeState & { liked: boolean };
-
 export class AnonymousLikeRefused extends Error {
   readonly code: string;
   readonly details: string;

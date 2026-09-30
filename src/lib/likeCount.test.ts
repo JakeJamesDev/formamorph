@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { likeCountOf, likesForSort, optimisticLikeState } from './likeCount';
+import { likeCountOf, likeStateOf, likesForSort, optimisticLikeState } from './likeCount';
 
 /**
  * What a like count shows to this reader.
  *
  * The server leaves a hidden contest count out and flags it, and flags a count that only the author and
  * staff see. These guard that every surface reads those flags the same way, and that a record with no
- * flags reads exactly as it did before the flags existed.
+ * flags reads as a plain number.
  */
 
 describe('likeCountOf', () => {
@@ -14,7 +14,7 @@ describe('likeCountOf', () => {
     expect(likeCountOf({ likes: 7 })).toEqual({ visibility: 'public', likes: 7 });
   });
 
-  it('reads a missing count on an unflagged record as zero, as before the flags', () => {
+  it('reads a missing count on an unflagged record as zero', () => {
     expect(likeCountOf({})).toEqual({ visibility: 'public', likes: 0 });
   });
 
@@ -47,11 +47,11 @@ describe('likesForSort', () => {
 
 describe('optimisticLikeState', () => {
   it('moves a public count by one on a like', () => {
-    expect(optimisticLikeState({ likes: 3, liked: false }, true)).toEqual({ liked: true, likes: 4 });
+    expect(optimisticLikeState({ likes: 3 }, true)).toEqual({ liked: true, likes: 4 });
   });
 
   it('moves a public count down on an unlike, never below zero', () => {
-    expect(optimisticLikeState({ likes: 0, liked: true }, false)).toEqual({ liked: false, likes: 0 });
+    expect(optimisticLikeState({ likes: 0 }, false)).toEqual({ liked: false, likes: 0 });
   });
 
   it('keeps a private count private while it moves', () => {
@@ -60,5 +60,15 @@ describe('optimisticLikeState', () => {
 
   it('shows no number on a hidden count, only the press', () => {
     expect(optimisticLikeState({ likes: 40, likesHidden: true }, true)).toEqual({ liked: true, likesHidden: true });
+  });
+});
+
+describe('likeStateOf', () => {
+  it('keeps the flags a record carries, so a refused press puts them back', () => {
+    expect(likeStateOf({ liked: false, likesHidden: true })).toEqual({ liked: false, likes: undefined, likesHidden: true, likesPrivate: undefined });
+  });
+
+  it('writes an absent flag as undefined, so a patch clears a flag the new state drops', () => {
+    expect(likeStateOf({ liked: true, likes: 21 })).toEqual({ liked: true, likes: 21, likesHidden: undefined, likesPrivate: undefined });
   });
 });

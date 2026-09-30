@@ -37,8 +37,18 @@ export function likesForSort(record: LikeFields): number {
   return count.visibility === 'hidden' ? 0 : count.likes;
 }
 
+/** A record's like state as it stands, for putting back after a refused press. */
+export function likeStateOf(record: LikeFields & { liked?: unknown }): LikeState {
+  return {
+    liked: typeof record.liked === 'boolean' ? record.liked : undefined,
+    likes: typeof record.likes === 'number' ? record.likes : undefined,
+    likesHidden: record.likesHidden === true ? true : undefined,
+    likesPrivate: record.likesPrivate === true ? true : undefined,
+  };
+}
+
 /** The state to show while a like press is in the air. A hidden count gets no guessed number. */
-export function optimisticLikeState(record: LikeFields & { liked?: unknown }, liked: boolean): LikeState {
+export function optimisticLikeState(record: LikeFields, liked: boolean): LikeState {
   const count = likeCountOf(record);
   if (count.visibility === 'hidden') return { liked, likesHidden: true };
 

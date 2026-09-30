@@ -4,7 +4,7 @@ import { RemoteWorldCard } from '@/components/community/RemoteWorldCard';
 import { LikeButton } from '@/components/community/LikeButton';
 import type { WorldRecord } from '@/components/WorldDetails';
 import { Button } from '@/components/ui/button';
-import { Hint, Meta } from '@/components/ui/typography';
+import { Hint, Meta, SectionTitle } from '@/components/ui/typography';
 
 const CARD_ART = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540">
   <defs>
@@ -262,9 +262,9 @@ export function CommunityCardReference() {
       </div>
 
       <div className="grid gap-2">
-        <h4 className="text-label font-medium">Like Counts</h4>
+        <SectionTitle>Like Counts</SectionTitle>
         <Hint>
-          A contest entry hides its like count until the winners are announced. Other readers see a dash, and the heart still works. The author and staff see the number, with a tooltip that says who else sees it.
+          A contest entry hides its like count until staff announce the winners. Other readers see a dash, and the heart still works. The author and staff see the number, with a tooltip that says who else sees it.
         </Hint>
         <div className="flex flex-wrap items-center gap-6 rounded-md border border-border p-3 text-meta text-muted-foreground" onClick={stopCardClick}>
           <span className="flex items-center gap-2"><Meta>Public</Meta><LikeButton count={{ visibility: 'public', likes: 104 }} /></span>

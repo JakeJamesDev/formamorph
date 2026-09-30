@@ -216,8 +216,10 @@ At desktop widths, cards form a two-column reference grid. At narrower widths th
 | Overflow | Titles clamp in the resting card and expand up to three lines on hover; a tooltip preserves clipped titles. Long author names truncate inside the art. Tags disclose after two rows. |
 | Loading | The Entity and Avatar grids load with split-card skeletons, so it keeps its shape when the listings arrive. |
 | Action | The update action and favorite callback report local outcomes only. |
+| Hidden count | A contest entry's count shows as a dash until staff announce the winners. The heart stays pressable, and a tooltip says when the likes will show. |
+| Private count | The author and staff see the number, with a tooltip that says only they see it. |
 
-The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data. One Avatar card shows the split layout. Another Avatar card is a flagged stand-in and shows Morph art. Two entity cards show Morph art: one has no image, and one is a flagged stand-in with a stored thumbnail.
+The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data. The Like Counts row shows a public, a private, and a hidden count, and a hidden count that stays pressable. One Avatar card shows the split layout. Another Avatar card is a flagged stand-in and shows Morph art. Two entity cards show Morph art: one has no image, and one is a flagged stand-in with a stored thumbnail.
 
 ### Writing review
 
