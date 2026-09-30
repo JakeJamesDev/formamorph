@@ -41,9 +41,11 @@ export function linkedTraits(world: WorldTraitLists, link: TraitLink, originalId
     .map((r) => effectiveLinkTrait(r.leaf!, link));
 }
 
-/** How many links across `entities` point at the original. */
-export const linksTo = (entities: readonly Entity[], originalId: string): number =>
-  entities.reduce((n, e) => n + (e.traitLinks ?? []).filter((l) => l.originalId === originalId).length, 0);
+/** How many links across `entities` point at the originals. */
+export function linksTo(entities: readonly Entity[], originalIds: string | ReadonlySet<string>): number {
+  const at = typeof originalIds === 'string' ? new Set([originalIds]) : originalIds;
+  return entities.reduce((n, e) => n + (e.traitLinks ?? []).filter((l) => at.has(l.originalId)).length, 0);
+}
 
 /** Every entity without its links to the originals; the same array when none links one. */
 export function dropLinksTo(entities: Entity[], originalIds: string | ReadonlySet<string>): Entity[] {
