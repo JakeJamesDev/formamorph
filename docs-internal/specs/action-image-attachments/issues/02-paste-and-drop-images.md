@@ -15,4 +15,5 @@ With Image Attachments on, a player can paste an image into the action box (Ctrl
 - [ ] Dropping one or more image files adds them, and the four-image cap and the non-image refusal apply.
 - [ ] The drop target reuses the existing image drop helpers.
 - [ ] With the setting off, neither handler adds attachments.
+- [ ] Verify on the dev route `#dev?view=gameViewer&fixture=whiteRoom&attach=sample`, which turns the setting on without saving it.
 - [ ] Tests in the GamePanels harness cover paste, drop, the cap across mixed input, and the setting-off case.
