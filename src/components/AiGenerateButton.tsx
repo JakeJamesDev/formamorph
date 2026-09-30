@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { summarizeDescription } from '@/lib/summarize';
+import { useAiSettingsSnapshot } from '@/lib/aiRequest/useAiSettingsSnapshot';
 import { bridgeDescription, type BridgeKind } from '@/lib/bridgeDescription';
 import { buildImagePrompt, type ImageSubjectKind } from '@/lib/imagePrompt';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
@@ -36,7 +37,8 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
   onChange: (v: string) => void;
   kind?: ImageSubjectKind; // tags/playerDesc/aiDesc: subject kind
 }) => {
-  const { activeEndpointUrl, activeApiToken, activeModelName, imageTagPrompt } = useSettings();
+  const { imageTagPrompt } = useSettings();
+  const snapshot = useAiSettingsSnapshot();
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -52,7 +54,7 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
     abortRef.current = controller;
     setLoading(true);
     try {
-      const opts = { endpointUrl: activeEndpointUrl, apiToken: activeApiToken, modelName: activeModelName, signal: controller.signal };
+      const opts = { snapshot, signal: controller.signal };
       const bridgeKind: BridgeKind = kind === 'location' ? 'location' : 'character';
       const result = mode === 'tags'
         // The subject's name is deliberately not sent: models answer with it as a tag, and no image model

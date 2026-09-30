@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { normalizeBooruTags, buildImagePrompt, SUBJECT_GUIDANCE, DEFAULT_TAG_PROMPT } from './imagePrompt';
+import { sentBody, sseReply, sseResponse, stubStream, textSnapshot } from '@/test/aiTextFixtures';
 
 describe('normalizeBooruTags', () => {
   it('splits CamelCase/PascalCase joined tokens into spaced words', () => {
@@ -31,18 +32,21 @@ describe('normalizeBooruTags', () => {
   });
 });
 
+describe('buildImagePrompt request', () => {
+  it('sends the tag request kind with its cap and sampler pin', async () => {
+    const spy = stubStream(sseReply('Silver_Hair'));
+    await expect(buildImagePrompt({ description: 'd', kind: 'character' }, { snapshot: textSnapshot() })).resolves.toBe('silver hair');
+    vi.unstubAllGlobals();
+    expect(sentBody(spy)).toMatchObject({ max_tokens: 200, temperature: 0.3 });
+  });
+});
+
 describe('buildImagePrompt user message', () => {
   const capture = async (description: string) => {
-    let sent = '';
-    const fetchMock = vi.fn().mockImplementation((_url: string, init: { body: string }) => {
-      sent = (JSON.parse(init.body) as { messages: { role: string; content: string }[] })
-        .messages.find((m) => m.role === 'user')!.content;
-      return Promise.resolve({ ok: true, json: async () => ({ choices: [{ message: { content: 'a tag' } }] }) });
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    await buildImagePrompt({ description, kind: 'character' }, { endpointUrl: 'http://x', apiToken: '', modelName: 'm' });
+    const spy = stubStream(sseReply('a tag'));
+    await buildImagePrompt({ description, kind: 'character' }, { snapshot: textSnapshot() });
     vi.unstubAllGlobals();
-    return sent;
+    return (sentBody(spy).messages as { role: string; content: string }[]).find((m) => m.role === 'user')!.content;
   };
 
   it('sends the description alone, never the subject name', async () => {
@@ -55,8 +59,7 @@ describe('buildImagePrompt user message', () => {
 
 describe('Subject Header in the image-prompt request', () => {
   it.each(['character', 'location', 'world'] as const)('renders %s guidance through the shared Header path', async kind => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: 'a tag' } }] }) });
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubStream(() => sseResponse(sseReply('a tag')));
     try {
       for (const [tagPrompt, expected] of [
         [undefined, DEFAULT_TAG_PROMPT.replace('<SUBJECT>', SUBJECT_GUIDANCE[kind])],
@@ -64,7 +67,7 @@ describe('Subject Header in the image-prompt request', () => {
         ['<SUBJECT|format=xml>', SUBJECT_GUIDANCE[kind]],
         ['<SUBJECT|format=markdown|header="image subject">', `\n## Image Subject\n${SUBJECT_GUIDANCE[kind]}\n`],
       ]) {
-        await buildImagePrompt({ description: 'A river town', kind }, { endpointUrl: 'http://x', apiToken: '', modelName: 'm', tagPrompt });
+        await buildImagePrompt({ description: 'A river town', kind }, { snapshot: textSnapshot(), tagPrompt });
         const request = JSON.parse(fetchMock.mock.lastCall![1].body as string) as { messages: { content: string }[] };
         expect(request.messages[0].content).toBe(expected);
       }

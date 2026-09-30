@@ -1,5 +1,8 @@
-// One-shot, non-streaming description bridging for the world editor's player/AI description buttons.
-// Same request shape as `summarize.ts`; the direction picks which description is being written.
+// One-shot description bridging for the world editor's player/AI description buttons.
+// The direction picks which description is being written.
+
+import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import { requestAiText } from '@/lib/aiRequest/aiText';
 
 /** Which description is being written, and therefore which one is the source. */
 export type BridgeDirection = 'playerDesc' | 'aiDesc';
@@ -38,49 +41,23 @@ export function bridgePrompt(direction: BridgeDirection, kind: BridgeKind): stri
       + 'Write 3 to 6 sentences. Open on the description itself, with no title, label or heading above it.';
 }
 
-interface ChatCompletion {
-  choices?: { message?: { content?: string } }[];
-}
-
-// A rewrite that must stay faithful to the source, so it sits low - but both directions are prose the
-// author will read, and 0 gives flat, near-identical phrasing on our tiers.
-const BRIDGE_TEMPERATURE = 0.6;
-
 /** Room for the longest direction (`aiDesc`, up to 6 sentences) with slack for a long subject. */
 const BRIDGE_MAX_TOKENS = 400;
 
 /**
- * Rewrite `text` into the other description via the configured chat-completions endpoint. Throws on a
- * non-OK response or an empty/unparseable result; the caller surfaces failures (and ignores `AbortError`).
+ * Rewrite `text` into the other description through the request pipeline. Throws on a failed or empty
+ * result; the caller surfaces failures (and ignores `AbortError`).
  */
 export async function bridgeDescription(
   text: string,
   direction: BridgeDirection,
   kind: BridgeKind,
-  opts: { endpointUrl: string; apiToken: string; modelName: string; signal?: AbortSignal },
+  opts: { snapshot: AiSettingsSnapshot; signal?: AbortSignal },
 ): Promise<string> {
-  const res = await fetch(opts.endpointUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(opts.apiToken ? { Authorization: `Bearer ${opts.apiToken}` } : {}),
-    },
-    body: JSON.stringify({
-      model: opts.modelName,
-      messages: [
-        { role: 'system', content: bridgePrompt(direction, kind) },
-        { role: 'user', content: text },
-      ],
-      temperature: BRIDGE_TEMPERATURE,
-      max_tokens: BRIDGE_MAX_TOKENS,
-      stream: false,
-    }),
-    signal: opts.signal,
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-  const json = (await res.json()) as ChatCompletion;
-  const content = json?.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || !content.trim()) throw new Error('Empty description response');
-  return content.trim();
+  return requestAiText(opts.snapshot, {
+    systemPrompt: bridgePrompt(direction, kind),
+    messages: [{ role: 'user', content: text }],
+    requestType: 'descriptionBridge',
+    maxTokensOverride: BRIDGE_MAX_TOKENS,
+  }, { signal: opts.signal });
 }

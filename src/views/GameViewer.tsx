@@ -84,6 +84,7 @@ import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
 import { ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS, LENGTH_FINISH_REASON } from "../lib/aiRequest/aiStream";
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
+import { useAiSettingsSnapshot } from "../lib/aiRequest/useAiSettingsSnapshot";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { splitSentenceSegments } from "../lib/ttsChunks";
@@ -466,19 +467,10 @@ const GameViewer = ({
     streamNarrationAudio,
     // Active endpoint settings: the user's values when "Use Custom Endpoint" is on, built-in defaults otherwise.
     activeEndpointUrl: endpointUrl,
-    activeApiToken: apiToken,
-    activeModelName: modelName,
     // Per-prompt endpoint routing: every AI call resolves its own target, so a prompt pinned to another
     // preset sends there. An unpinned prompt resolves to the active endpoint, i.e. the values above.
     resolveEndpointForKind,
     disableEndpointOverride,
-    disableThinking,
-    genTemperature,
-    genTopP,
-    genRepetitionPenalty,
-    genTopK,
-    genMinP,
-    promptSamplers,
     systemPrompt: presetSystemPrompt,
     choicesPrompt,
     statUpdatesPrompt,
@@ -493,15 +485,8 @@ const GameViewer = ({
     narrationVerbatimTurns,
     thinkingVerbatimTurns,
     thinkingMode,
-    reasoningEffort,
-    reasoningEngaged,
     noteReasoningReply,
-    promptReasoning,
-    promptReasoningSettings,
-    nativeReasoning,
-    promptReasoningBudget,
     thinkingPrompt,
-    promptMaxOutput,
     memoryDigests,
     semanticMemory,
     semanticLore,
@@ -1509,25 +1494,8 @@ const GameViewer = ({
   // The per-call settings snapshot the AI Request Spec layer reads. Every engine-shaped decision
   // (sampler resolution, the reasoning budget/effort split, the `/no_think` switch, penalty spellings)
   // lives behind that seam; this component only states the values.
-  const snapshotFor = (target: AiEndpointTarget): AiSettingsSnapshot => ({
-    resolveTarget: () => target,
-    thinkingMode,
-    reasoningEffort,
-    reasoningEngaged,
-    promptReasoning,
-    // The stored switches and strengths, which the spec layer reads only on an endpoint that refuses off.
-    keptReasoning: { prompts: promptReasoningSettings, global: nativeReasoning },
-    promptReasoningBudget,
-    promptSamplers,
-    genTemperature,
-    promptMaxOutput,
-    genRepetitionPenalty,
-    genTopP,
-    genTopK,
-    genMinP,
-    paragraphLimit,
-    disableThinking,
-  });
+  const aiSnapshot = useAiSettingsSnapshot();
+  const snapshotFor = (target: AiEndpointTarget): AiSettingsSnapshot => ({ ...aiSnapshot, resolveTarget: () => target });
   // The reserve holds the answer plus the prompt's own budget; the length guidance reads the answer alone.
   const narrationCaps = outputCaps(snapshotFor(narrationEndpoint), { requestType: 'narration' });
   const narrationAnswerCap = narrationCaps.answerCap;
@@ -3276,7 +3244,7 @@ const GameViewer = ({
       // describes what a character looks like, which is all this layer wants.
       const tags = await buildImagePrompt(
         { description, kind },
-        { endpointUrl: getEndpointUrl(), apiToken, modelName, tagPrompt: imageTagPrompt, signal },
+        { snapshot: aiSnapshot, tagPrompt: imageTagPrompt, signal },
       );
       const cleaned = scrub ? scrub(tags) : tags;
       derivedTagsRef.current.set(subject.id, cleaned);
@@ -4207,7 +4175,7 @@ const GameViewer = ({
       );
     }
     if (isWaitingForAI) {
-      const labels = {
+      const labels: Partial<Record<AIRequestType, string>> = {
         thinking: "Plan",
         director: "Cast",
         character: "Motivation",
@@ -4224,7 +4192,7 @@ const GameViewer = ({
         openingTime: "Opening",
         sceneTags: "Scene Tags",
       };
-      const label = aiRequestType ? labels[aiRequestType] : "Response";
+      const label = (aiRequestType && labels[aiRequestType]) ?? "Response";
       return (
         <div className="flex items-center gap-2 mb-1">
           <span className="text-meta text-muted-foreground whitespace-nowrap">

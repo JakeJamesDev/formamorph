@@ -1,5 +1,5 @@
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
-import type { AIRequestType } from '@/types';
+import type { AIRequestType, EditorRequestType } from '@/types';
 import {
   probeKnownAbsent, recordProbeStatus, completionProbeAnswers, recordCompletionProbe, type CompletionProbeAnswers,
 } from '@/lib/probeMemo';
@@ -300,11 +300,17 @@ export function nativeReasoningSuppressed(mode: ThinkingMode, kind: AIRequestTyp
   return mode === 'inline' && kind === 'narration';
 }
 
-/** Every request kind: for checks that consider a shipped default, and for validating an imported kind. */
-export const ALL_REQUEST_KINDS = [
+/** Every prompt the preset tunes: for checks that consider a shipped default, and for validating an imported kind. */
+export const PROMPT_REQUEST_KINDS = [
   'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
   'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
 ] as const satisfies readonly AIRequestType[];
+
+export const EDITOR_REQUEST_KINDS = ['descriptionSummary', 'descriptionBridge', 'imageTags'] as const satisfies readonly EditorRequestType[];
+
+export const ALL_REQUEST_KINDS = [...PROMPT_REQUEST_KINDS, ...EDITOR_REQUEST_KINDS] as const;
+
+const isEditorRequest = (kind: AIRequestType): boolean => (EDITOR_REQUEST_KINDS as readonly AIRequestType[]).includes(kind);
 // Fails to compile when a kind is added to the union but not to the list above.
 type _EveryKindListed = Exclude<AIRequestType, (typeof ALL_REQUEST_KINDS)[number]> extends never ? true : never;
 const _everyKindListed: _EveryKindListed = true;
@@ -322,7 +328,7 @@ export function isReasoningEngaged(
   promptReasoning: Record<string, PromptReasoning>,
 ): boolean {
   return mode !== 'off'
-    || ALL_REQUEST_KINDS.some((kind) => resolvePromptReasoning(kind, promptReasoning, globalEffort, mode) !== 'none');
+    || PROMPT_REQUEST_KINDS.some((kind) => resolvePromptReasoning(kind, promptReasoning, globalEffort, mode) !== 'none');
 }
 
 /** Shipped resolved choice per prompt — `defaultPromptReasoningSetting` as the request layer reads it. */
@@ -341,7 +347,7 @@ export function resolvePromptReasoning(
   globalEffort: ReasoningEffort,
   mode: ThinkingMode,
 ): ReasoningEffort {
-  if (nativeReasoningSuppressed(mode, kind)) return 'none';
+  if (nativeReasoningSuppressed(mode, kind) || isEditorRequest(kind)) return 'none';
   const pref = prefs[kind] ?? defaultPromptReasoning(kind);
   return pref === 'global' ? globalEffort : pref;
 }
