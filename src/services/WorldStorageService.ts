@@ -212,7 +212,7 @@ class WorldStorageService {
     try {
       return await fetch(url, init);
     } catch (error) {
-      if (!(INSTALL_HEADER_NAME in init.headers)) throw error;
+      if (init.signal?.aborted || !(INSTALL_HEADER_NAME in init.headers)) throw error;
 
       const headers = { ...init.headers };
       delete headers[INSTALL_HEADER_NAME];
@@ -931,7 +931,7 @@ class WorldStorageService {
 
   /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to
    *  a `{success:false}` shape. */
-  async fetchComments(worldId: string, page = 1, limit = 20) {
+  async fetchComments(worldId: string, page = 1, limit = 20, signal?: AbortSignal) {
     try {
       const headers: Record<string, string> = {};
       if (AuthService.isAuthenticated()) {
@@ -939,7 +939,7 @@ class WorldStorageService {
       }
       const response = await fetch(
         `${this.API_URL}/worlds/${worldId}/comments?page=${page}&limit=${limit}`,
-        { headers },
+        { headers, signal },
       );
       if (!response.ok) throw new Error('Failed to fetch comments');
       const responseData = await response.json();
@@ -950,7 +950,7 @@ class WorldStorageService {
         total: responseData.total || 0,
       };
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      if (!signal?.aborted) console.error('Error fetching comments:', error);
       return { success: false, error: (error as Error).message, data: [] as unknown[], total: 0, pagination: {} };
     }
   }
@@ -1036,13 +1036,14 @@ class WorldStorageService {
    * a request that got no answer. A 403 or 404 is gone; any other refusal or a thrown fetch is unreachable.
    *
    * @param worldId - The listing's server id
+   * @param signal - Cancels the read, which then answers unreachable
    */
-  async readListingDetails(worldId: string): Promise<ListingDetailsRead> {
+  async readListingDetails(worldId: string, signal?: AbortSignal): Promise<ListingDetailsRead> {
     try {
       const headers = this.readerHeaders();
       const response = await this.installFallbackFetch(
         `${this.API_URL}/worlds/${worldId}?includeChangelog=true`,
-        { headers },
+        { headers, signal },
       );
       if (response.status === 403 || response.status === 404) return { status: 'gone' };
       if (!response.ok) return { status: 'unreachable' };
@@ -1065,7 +1066,7 @@ class WorldStorageService {
         },
       };
     } catch (error) {
-      console.error('Error fetching the listing:', error);
+      if (!signal?.aborted) console.error('Error fetching the listing:', error);
       return { status: 'unreachable' };
     }
   }

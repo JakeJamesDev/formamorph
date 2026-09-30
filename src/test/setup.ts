@@ -65,10 +65,12 @@ if (typeof Element !== 'undefined' && typeof Element.prototype.scrollIntoView ==
 if (typeof window !== 'undefined' && typeof window.PointerEvent === 'undefined') {
   class PointerEventStub extends MouseEvent {
     pointerId: number;
+    pointerType: string;
 
     constructor(type: string, init: PointerEventInit = {}) {
       super(type, init);
       this.pointerId = init.pointerId ?? 0;
+      this.pointerType = init.pointerType ?? '';
     }
   }
 

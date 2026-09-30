@@ -26,7 +26,7 @@ import { componentKind } from "@/lib/worldDependencies";
 import { associationGroups } from "@/lib/listingAssociations";
 import { ListingCompatibleWorlds } from "@/components/community/ListingCompatibleWorlds";
 import WorldStorageService, { type ListingDetails } from "@/services/WorldStorageService";
-import { loadListingDetails } from "@/lib/listingDetailsLoader";
+import { COMMENTS_PAGE, loadListingDetails, takePrefetchedComments, type CommentsPage } from "@/lib/listingDetailsLoader";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
@@ -98,9 +98,6 @@ interface RemoteWorldDetailsModalProps {
 
 /** The same cap a feedback comment carries, so the two comment boxes hold the same amount. */
 const COMMENT_MAX = 4000;
-
-/** How many more comments each "Load more" adds to the window on screen. */
-const COMMENTS_PAGE = 20;
 
 /** A count the catalog row carries, or undefined against a server that predates the field. */
 const rowCount = (value: unknown): number | undefined =>
@@ -208,12 +205,13 @@ export function RemoteWorldDetailsModal({
    *
    * Asking for one page at a time by number would skip a comment as soon as one had been deleted: the
    * rows below it shift up by one, and the next page starts past the row that moved into it.
+   * `prefetched` is a first page already on its way, read in place of a request of its own.
    */
-  const loadComments = async (worldId: string, wanted = COMMENTS_PAGE) => {
+  const loadComments = async (worldId: string, wanted = COMMENTS_PAGE, prefetched: Promise<CommentsPage> | null = null) => {
     const reqId = ++commentsReqRef.current;
     setCommentsLoading(true);
     try {
-      const res = await WorldStorageService.fetchComments(worldId, 1, wanted);
+      const res = await (prefetched ?? WorldStorageService.fetchComments(worldId, 1, wanted));
       if (!mountedRef.current || reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
       setCommentsTotal(res.total);
       setCommentsHasMore(!!res.pagination?.next);
@@ -343,8 +341,9 @@ export function RemoteWorldDetailsModal({
   // Fetch comments and the changelog whenever the detail modal opens for a world.
   useEffect(() => {
     if (open && world) {
-      loadComments(world._id || world.id, COMMENTS_PAGE);
-      void showListingDetails(world._id || world.id, world);
+      const worldId = world._id || world.id;
+      loadComments(worldId, COMMENTS_PAGE, takePrefetchedComments(worldId));
+      void showListingDetails(worldId, world);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);

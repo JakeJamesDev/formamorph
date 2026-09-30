@@ -14,7 +14,7 @@ import type { ContestPlace, ServerEvent } from '@/types';
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 vi.mock('@/services/AuthService', () => ({
-  default: { token: 'test-token', getCurrentUser: () => ({ username: 'reader' }) },
+  default: { token: 'test-token', isAuthenticated: () => true, getCurrentUser: () => ({ username: 'reader' }) },
 }));
 
 vi.mock('@/services/WorldStorageService', () => ({
@@ -25,6 +25,7 @@ vi.mock('@/services/WorldStorageService', () => ({
     // The details modal fetches these on open; a missing one rejects in an effect and fails the run
     // as an unhandled error even while every assertion passes.
     fetchListingDetails: vi.fn(async () => null),
+    readListingDetails: vi.fn(async () => ({ status: 'unreachable' })),
     fetchDependencies: vi.fn(async () => []),
     fetchAddons: vi.fn(async () => []),
   },
