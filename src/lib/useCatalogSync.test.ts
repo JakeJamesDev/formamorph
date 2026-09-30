@@ -96,6 +96,7 @@ const movingClaim = () => {
 describe('catalogSettled', () => {
   it('stays false while the refresh is in flight, even with a cached snapshot showing', async () => {
     cache.items = [world];
+    cache.tag = { tag: 'W/"abc"', reader: guest() };
     const { result } = renderHook(() => useCatalogSync(true));
 
     // The cached copy renders first — the exact window where a lookup miss must not be trusted.
@@ -230,6 +231,19 @@ describe('the freshness tag', () => {
 
     await waitFor(() => expect(server.calls).toBe(1));
     expect(server.sentTag).toBeNull();
+  });
+
+  it('never shows another reader\'s cached rows, which carry their private like counts', async () => {
+    // A staff reader's catalog, still on disk after they signed out and the app restarted.
+    cache.items = [{ ...world, likes: 12, likesPrivate: true }];
+    cache.tag = { tag: 'W/"staff"', reader: '42' };
+    auth.user = null;
+
+    const { result } = renderHook(() => useCatalogSync(true));
+
+    await waitFor(() => expect(server.calls).toBe(1));
+    expect(result.current.remoteWorlds).toEqual([]);
+    expect(result.current.isLoadingRemoteWorlds).toBe(true);
   });
 
   it('sends the tag back to the reader it was stored for', async () => {

@@ -34,7 +34,8 @@ const cache = vi.hoisted(() => ({ items: [] as Record<string, unknown>[], anonym
 vi.mock('@/lib/worldCatalog', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/worldCatalog')>()),
   getCatalog: async () => cache.items,
-  getCatalogTag: async () => null,
+  // Cached rows show only to the reader their tag names, so the tag names whoever is reading.
+  getCatalogTag: async () => ({ tag: 'W/"cached"', reader: (await import('@/lib/currentReader')).currentReader() }),
   getCatalogAnonymousLikes: async () => cache.anonymousLikes,
   replaceCatalog: async () => {},
 }));

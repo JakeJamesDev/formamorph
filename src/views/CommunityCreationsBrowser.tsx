@@ -436,8 +436,8 @@ const CommunityCreationsBrowser = ({
     closeDetails();
   }, [closeDetails]);
 
-  // A fresh shuffle seed each time the browser opens, so a live contest is re-ordered per visit but holds
-  // still while the reader is looking at it. The archive picked last time is dropped at the same moment:
+  // A fresh shuffle seed each time the browser opens, so contest entries are re-ordered per visit until
+  // results are announced, but hold still while the reader is looking at them. The archive picked last time is dropped at the same moment:
   // the running contest is what a visit opens on, not whichever old one was last read.
   const [shuffleSeed, setShuffleSeed] = useState(() => Math.random());
   useEffect(() => {
@@ -475,7 +475,7 @@ const CommunityCreationsBrowser = ({
   const withdrawal = useContestWithdrawal(useCallback((listingId: string) => {
     const released = remoteWorldsRef.current.map((record) => (
       String(record._id || record.id) === listingId
-        ? { ...record, contest_event_id: null, contestEventId: null }
+        ? { ...record, contest_event_id: null, contestEventId: null, likesPrivate: undefined }
         : record
     ));
     setRemoteWorlds(released);
@@ -954,8 +954,8 @@ const CommunityCreationsBrowser = ({
     <EventBannerChips banners={banners} onOpenEvent={openEventFromBanner} />
   );
 
-  // A contest's entries are ordered by the contest, not by the reader: shuffled while it runs, by likes
-  // once it is judged. Offering a sort that the grid then overrides would be a control that lies.
+  // A contest's entries are ordered by the contest, not by the reader: shuffled until results are announced,
+  // then by likes. Offering a sort that the grid then overrides would be a control that lies.
   const sortControl = browseTab === 'contest' ? null : (
     <div className="flex items-center gap-1">
       <Select value={sortField} onValueChange={(v) => { setSortField(v); setCurrentPage(1); }}>
