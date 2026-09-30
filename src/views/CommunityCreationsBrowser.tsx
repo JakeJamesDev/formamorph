@@ -17,7 +17,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
 import { listingId, listingRef, type ListingRef } from "@/lib/worldDependencies";
-import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
+import { contestPhase, placementsBy, entriesOf, orderContestEntries, type ContestPlacement } from "@/lib/contests";
 import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
 import { ContestBar, ContestPodium } from "@/components/community/ContestBar";
@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import { CHIP_BASE } from "@/components/Chip";
 import { useCatalogSync } from "@/lib/useCatalogSync";
+import { useStableCallback } from "@/lib/useStableCallback";
 import { replaceCatalog, type CatalogWorld } from "@/lib/worldCatalog";
 import { useThumbnailPreload } from "@/lib/useCachedThumbnail";
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
@@ -1079,6 +1080,33 @@ const CommunityCreationsBrowser = ({
     </div>
   );
 
+  // Cards are memoized, so what they are handed keeps its identity across renders.
+  const viewCard = useStableCallback(handleViewRemoteWorldDetails);
+  const hideCardWorld = useStableCallback(hideRemoteWorld);
+  const hideCardAuthor = useStableCallback(hideRemoteAuthor);
+  const hideCardTag = useStableCallback(hideRemoteTag);
+  const downloadCard = useStableCallback(handleCardDownload);
+  const likeCard = useStableCallback(handleLike);
+  const guestLikeCard = useStableCallback((world: WorldRecord) => onGuestLike?.(world));
+  const releaseCard = useStableCallback(handleRelease);
+  const withdrawCard = useStableCallback((entry: WorldRecord) => withdrawal.ask({
+    id: String(entry._id || entry.id),
+    name: String(entry.name ?? 'That world'),
+  }));
+  const manageCardAddons = useStableCallback((own: WorldRecord) => setManagingAddons(listingRef(own)));
+  // Kept per row object, so an unchanged row keeps its placements too.
+  const placementsOf = useMemo(() => {
+    const byRow = new WeakMap<WorldRecord, ContestPlacement[]>();
+    return (world: WorldRecord) => {
+      let placements = byRow.get(world);
+      if (!placements) {
+        placements = placementsBy(world, contests);
+        byRow.set(world, placements);
+      }
+      return placements;
+    };
+  }, [contests]);
+
   return (
     <>
       {downscaleDialog}
@@ -1244,6 +1272,7 @@ const CommunityCreationsBrowser = ({
               ) : (
                 deferredRows.map((world) => {
                   const worldId = world._id || world.id;
+                  const likeTutorial = tutorial?.id === 'community-like' && worldId === likeAnchorId ? tutorial : null;
                   return (
                     <RemoteWorldCard
                       key={worldId}
@@ -1252,36 +1281,29 @@ const CommunityCreationsBrowser = ({
                       downloadProgress={allDownloadProgress[worldId]}
                       isAuthenticated={isAuthenticated}
                       currentUser={currentUser}
-                      onView={handleViewRemoteWorldDetails}
-                      onHideWorld={capabilities.hiddenFilters ? hideRemoteWorld : undefined}
-                      onHideAuthor={capabilities.hiddenFilters ? hideRemoteAuthor : undefined}
-                      onHideTag={capabilities.hiddenFilters ? hideRemoteTag : undefined}
-                      onContextualDownload={capabilities.localLibrary && savesLocally(world) ? handleCardDownload : undefined}
+                      onView={viewCard}
+                      onHideWorld={capabilities.hiddenFilters ? hideCardWorld : undefined}
+                      onHideAuthor={capabilities.hiddenFilters ? hideCardAuthor : undefined}
+                      onHideTag={capabilities.hiddenFilters ? hideCardTag : undefined}
+                      onContextualDownload={capabilities.localLibrary && savesLocally(world) ? downloadCard : undefined}
                       onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
                       onDelete={capabilities.authorManagement ? setRemoteWorldToDelete : undefined}
-                      onLike={capabilities.likes ? handleLike : undefined}
-                      onGuestLike={capabilities.likes ? onGuestLike : undefined}
+                      onLike={capabilities.likes ? likeCard : undefined}
+                      onGuestLike={capabilities.likes && onGuestLike ? guestLikeCard : undefined}
                       guestLikes={capabilities.likes && capabilities.guestLikes}
                       serverTakesLikes={anonymousLikes}
                       onQuarantine={capabilities.moderation ? setQuarantining : undefined}
-                      onRelease={capabilities.moderation ? handleRelease : undefined}
-                      placements={placementsBy(world, contests)}
+                      onRelease={capabilities.moderation ? releaseCard : undefined}
+                      placements={placementsOf(world)}
                       onOpenContest={openContest}
                       // Only where the entry is the subject, and only while it is still an entry: a
                       // decided contest keeps its podium, and the server refuses to release a placed world.
                       onWithdraw={capabilities.contestParticipation && browseTab === 'contest' && shownContest && contestPhase(shownContest) !== 'decided'
-                        ? (entry) => withdrawal.ask({
-                            id: String(entry._id || entry.id),
-                            name: String(entry.name ?? 'That world'),
-                          })
+                        ? withdrawCard
                         : undefined}
-                      onManageAddons={capabilities.authorManagement
-                        ? (own) => setManagingAddons(listingRef(own))
-                        : undefined}
-                      likeTutorial={
-                        tutorial?.id === 'community-like' && worldId === likeAnchorId ? tutorial : null
-                      }
-                      likeTutorialNav={tutorialNav}
+                      onManageAddons={capabilities.authorManagement ? manageCardAddons : undefined}
+                      likeTutorial={likeTutorial}
+                      likeTutorialNav={likeTutorial ? tutorialNav : undefined}
                     />
                   );
                 })
