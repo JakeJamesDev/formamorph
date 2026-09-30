@@ -96,13 +96,14 @@ Old clients get no count for a hidden entry and show "0". Nothing leaks and noth
 - The single listing, the listing content, the dependency list, dependency content, and the add-on list. The content read now passes the reader, so it can apply the rule.
 - The publish and update replies. The author is the reader, so they see the count.
 - The like reply and the guest-like reply, including the guest-like path that answers when the feature is off, and the path for an account that already likes the listing.
-- A user's listings, both "my listings" and another user's listings.
-- Profile totals. Hidden likes leave the public like total. The author and staff see the full total.
+- A user's listings, both "my listings" and another user's listings. These go through the catalog query, so ticket 01 already applies the rule to them.
+- Profile totals. Hidden likes leave the public like total. The author and staff see the full total. The total's SQL uses the same SQL form of the rule that ticket 01 added, so the rule is not copied.
 - Staff-only routes (likers, audit, like removal) are not changed, because staff pass the rule.
 
 ### Caching
 
 - The single listing read gets the same per-reader caching as the catalog: private, no-cache, and varying on the authorization and install headers. Otherwise one reader's count could be served to another.
+- The listing content and dependency content reads carry per-reader counts too, so they send the same headers. One shared server helper sets them on every per-reader read.
 - The catalog and dependency reads already vary per reader. The client catalog cache is keyed by reader. When results are announced, the response body changes, so the tag changes and the client takes the new rows.
 
 ### Client display
