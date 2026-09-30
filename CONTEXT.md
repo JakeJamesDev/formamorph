@@ -222,7 +222,7 @@ A trait the player has — chosen at creation or picked up in play. A trait the 
 _Avoid_: held
 
 **Link**:
-A node in an entity's trait tree that points at an Original and reads it live until edited. Its Overrides are its own: default-on, requirements, pins, Player Can Toggle and stat changes, per Original trait. A Link is not a trait.
+A node in an entity's trait tree that points at an Original and reads it live until edited. The Original is always a Blueprints item; a top-level item dropped on an entity moves in instead. Its Overrides are its own: default-on, requirements, pins, Player Can Toggle and stat changes, per Original trait. A Link is not a trait.
 _Avoid_: shared trait, reference, copy; linked copy (that is a library item's world copy)
 
 **Blueprint**:

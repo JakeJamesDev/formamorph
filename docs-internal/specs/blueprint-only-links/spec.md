@@ -1,6 +1,6 @@
 # Blueprint-Only Links
 
-Status: in-progress
+Status: ready-for-human
 
 ## Problem Statement
 
