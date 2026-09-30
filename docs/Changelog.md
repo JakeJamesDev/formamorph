@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.1.1** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **🛠️ Developer tooling**
+  - **Image presets from `VITE_DEFAULT_IMAGE_PRESETS` reset to their `.env` values and follow later `.env` edits.** A preset now saves only the fields you change. Each other field reads its `.env` entry on every load. Before, **Reset** went to the built-in defaults, and a `.env` edit never reached a preset that was already saved.
+
 ---
 
 <details>
