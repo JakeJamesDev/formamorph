@@ -204,6 +204,18 @@ describe('planTurn', () => {
       expect(plan.attachments).toEqual([IMAGE]);
     });
 
+    it('includes them in the passes whose flag is on, and leaves Narration on unless its flag says off', () => {
+      const on = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: true, promptAttachments: { director: true, statUpdates: true } }));
+      expect(on.attachmentPasses.sort()).toEqual(['director', 'narration', 'statUpdates']);
+      const off = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: true, promptAttachments: { narration: false } }));
+      expect(off.attachmentPasses).toEqual([]);
+    });
+
+    it('applies one prompt flag to every pass that shares its prompt', () => {
+      const plan = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: true, promptAttachments: { locationChange: true } }));
+      expect(plan.attachmentPasses).toEqual(expect.arrayContaining(['locationAuto', 'locationSuggest']));
+    });
+
     it('includes them nowhere with the setting off', () => {
       const plan = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: false }));
       expect(plan.attachmentPasses).toEqual([]);

@@ -2,6 +2,7 @@ import type { AIRequestType, ChatMessage, Entity, ImageAttachment, RequestMessag
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import type { StatRequestSnapshot } from '@/lib/statRequest';
+import type { PromptAttachmentsMap } from '@/lib/promptAttachments';
 
 /**
  * The Turn Plan: what one turn will ask the model, decided before any request is sent.
@@ -55,6 +56,8 @@ export interface TurnSettings {
   describeCharacters: boolean;
   /** The Image Attachments setting. Off, no pass includes the action's images. */
   imageAttachments: boolean;
+  /** The active preset's Include Attachments flags. An absent prompt takes its default. */
+  promptAttachments: PromptAttachmentsMap;
   /** Narration language or style; anything but English appends a language directive to some prompts. */
   language: string;
 }

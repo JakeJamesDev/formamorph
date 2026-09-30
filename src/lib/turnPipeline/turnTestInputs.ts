@@ -51,6 +51,7 @@ export const TEST_SETTINGS: TurnSettings = {
   characterDiaries: true,
   describeCharacters: true,
   imageAttachments: false,
+  promptAttachments: {},
   language: 'English',
 };
 

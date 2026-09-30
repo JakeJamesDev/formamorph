@@ -191,6 +191,31 @@ describe('Max Output in a shared preset', () => {
   });
 });
 
+describe('Include Attachments in a shared preset', () => {
+  const flags = { narration: false, director: true };
+
+  it('round-trips the flags through the code and the JSON', () => {
+    const shared = buildSharedPreset({ ...base, attachments: flags }, APP);
+    expect(parseSharedCode(serializeSharedCode(shared), APP).preset!.attachments).toEqual(flags);
+    expect(parseSharedJson(serializeSharedJson(shared), APP).preset!.attachments).toEqual(flags);
+  });
+
+  it('omits the map when it is empty', () => {
+    expect(buildSharedPreset({ ...base, attachments: {} }, APP)).not.toHaveProperty('attachments');
+  });
+
+  it('imports an older preset without the map as all defaults', () => {
+    const r = parseSharedJson(serializeSharedJson(buildSharedPreset(base, APP)), APP);
+    expect(r.ok).toBe(true);
+    expect(r.preset!.attachments).toBeUndefined();
+  });
+
+  it('drops malformed entries and keeps the rest', () => {
+    const crafted = JSON.stringify({ ...buildSharedPreset(base, APP), attachments: { narration: 'no', director: true, bogus: true } });
+    expect(parseSharedJson(crafted, APP).preset!.attachments).toEqual({ director: true });
+  });
+});
+
 // Per-prompt endpoint routing is stored globally, outside the preset store, precisely so a shared preset
 // never carries endpoint ids (or tokens) that mean nothing — or something wrong — on another machine.
 describe('endpoint routing is never shared', () => {

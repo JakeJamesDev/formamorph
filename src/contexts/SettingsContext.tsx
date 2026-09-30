@@ -48,8 +48,8 @@ import {
 import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
-  activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
-  updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
+  activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeAttachments, activeVerbatim, activePromptEndpoints,
+  updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateAttachments, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
   addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
   userToolsCodec, saveUserTool, deleteUserTool, activeEnabledTools, setToolEnabled as setToolEnabledOp, dropToolEverywhere,
   builtinToolSwitchesCodec, activeBuiltinId, setBuiltinToolEnabled, dropToolFromBuiltins, type BuiltinToolSwitches,
@@ -255,6 +255,7 @@ function importedPresetContent(imported: ImportedPreset, name: string, includeTu
     ...(includeTuning && imported.reasoning ? { reasoning: imported.reasoning } : {}),
     ...(includeTuning && imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
     ...(includeTuning && imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
+    ...(includeTuning && imported.attachments ? { attachments: imported.attachments } : {}),
     ...(includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
     ...(imported.overview ? { overview: imported.overview } : {}),
     ...(imported.enabledTools ? { enabledTools: imported.enabledTools } : {}),
@@ -831,6 +832,7 @@ function useProvideSettings() {
   );
   const promptReasoningBudget = useMemo(() => activeReasoningBudget(effectiveStore), [effectiveStore]);
   const promptMaxOutput = useMemo(() => activeMaxOutput(effectiveStore), [effectiveStore]);
+  const promptAttachments = useMemo(() => activeAttachments(effectiveStore), [effectiveStore]);
   const promptEndpoints = useMemo(() => activePromptEndpoints(effectiveStore), [effectiveStore]);
   const setPromptEndpoint = useCallback(
     (kind: AIRequestType, id: string | null) =>
@@ -937,6 +939,10 @@ function useProvideSettings() {
     })));
   }, [editPresetStore]);
 
+  const setPromptAttachments = useCallback((kind: AIRequestType, include: boolean) => {
+    editPresetStore((s) => updateAttachments(s, (prev) => ({ ...prev, [kind]: include })));
+  }, [editPresetStore]);
+
   // Preset management (Settings → Prompts selector).
   const activePresetId = effectiveStore.activeId;
   const activePresetIsBuiltIn = isBuiltInActive(effectiveStore);
@@ -1012,7 +1018,7 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
     ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore), enabledTools, tools: userTools }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, attachments: promptAttachments, verbatim: verbatimMap, overview: storedOverview(effectiveStore), enabledTools, tools: userTools }, appVersion);
   // Plans against a ref so two imports before a re-render see each other's additions.
   const latestUserTools = useRef(userTools);
   latestUserTools.current = userTools;
@@ -1705,6 +1711,8 @@ function useProvideSettings() {
     promptMaxOutput,
     setPromptMaxOutputCustom,
     setPromptMaxOutputValue,
+    promptAttachments,
+    setPromptAttachments,
     thinkingPrompt,
     setThinkingPrompt,
     summaryPrompt,

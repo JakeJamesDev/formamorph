@@ -46,6 +46,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   // setting's own effect on the plan is covered in planTurn.test.ts.
   describeCharacters: false,
   imageAttachments: false,
+  promptAttachments: {},
   language: 'English',
 };
 

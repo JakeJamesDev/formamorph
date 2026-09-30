@@ -114,7 +114,7 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
     const addsScript = planPresetTools(userTools, parsed.preset.tools ?? [], () => '').hasScript;
     return addsScript ? [...parsed.warnings, PRESET_SCRIPT_TOOL_WARNING] : parsed.warnings;
   }, [parsed, userTools]);
-  const hasTuning = !!(parsed?.preset && (parsed.preset.samplers || parsed.preset.reasoning || parsed.preset.maxOutput || parsed.preset.verbatim));
+  const hasTuning = !!(parsed?.preset && (parsed.preset.samplers || parsed.preset.reasoning || parsed.preset.maxOutput || parsed.preset.attachments || parsed.preset.verbatim));
   const collision = parsed?.ok ? existingUserNames.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase()) : undefined;
   const canAdd = !!(parsed?.ok && name.trim());
   const submit = () => {

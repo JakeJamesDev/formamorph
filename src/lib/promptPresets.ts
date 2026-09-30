@@ -4,6 +4,7 @@ import { parseTool, parseToolEnabledMap, toolNameProblem } from './tools/toolVal
 import type { PromptSamplerMap } from './promptSamplers';
 import type { PromptEndpointMap } from './promptEndpoints';
 import type { PromptMaxOutputMap } from './promptMaxOutput';
+import type { PromptAttachmentsMap } from './promptAttachments';
 import { parsePromptReasoningSetting, type PromptReasoningSetting } from './reasoningEffort';
 
 /** Per-request verbatim-turn overrides carried on a preset; a missing kind uses its shipped default. */
@@ -84,6 +85,8 @@ export interface PromptPreset extends CommunityLink {
   reasoning?: ReasoningMap;
   reasoningBudget?: ReasoningBudgetMap;
   maxOutput?: PromptMaxOutputMap;
+  /** Which prompts receive the action's images; an absent kind takes its default. */
+  attachments?: PromptAttachmentsMap;
   verbatim?: VerbatimMap;
   /** Per-prompt endpoint routing. Preset-scoped like the tuning above, but deliberately excluded from
    *  sharing: it names endpoint presets, whose ids mean nothing on another machine. */
@@ -299,6 +302,12 @@ export function activeMaxOutput(store: PromptPresetStore): PromptMaxOutputMap {
   return store.presets.find((p) => p.id === store.activeId)?.maxOutput ?? {};
 }
 
+/** The active preset's Include Attachments flags (empty for a built-in, which uses the defaults). */
+export function activeAttachments(store: PromptPresetStore): PromptAttachmentsMap {
+  if (isBuiltInActive(store)) return {};
+  return store.presets.find((p) => p.id === store.activeId)?.attachments ?? {};
+}
+
 /** Apply a patch to the active user preset; no-op under a built-in. */
 function patchActivePreset(store: PromptPresetStore, patch: (p: PromptPreset) => PromptPreset): PromptPresetStore {
   if (isBuiltInActive(store)) return store;
@@ -333,6 +342,11 @@ export function updateReasoningBudget(store: PromptPresetStore, kind: AIRequestT
 /** Replace the active preset's Max Output map via a transform. No-op under a built-in. */
 export function updateMaxOutput(store: PromptPresetStore, fn: (m: PromptMaxOutputMap) => PromptMaxOutputMap): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, maxOutput: fn(p.maxOutput ?? {}) }));
+}
+
+/** Replace the active preset's Include Attachments flags via a transform. No-op under a built-in. */
+export function updateAttachments(store: PromptPresetStore, fn: (m: PromptAttachmentsMap) => PromptAttachmentsMap): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, attachments: fn(p.attachments ?? {}) }));
 }
 
 // --- Tools ---
