@@ -1,6 +1,6 @@
 # 07: Hold space for late sections
 
-Status: in-progress
+Status: ready-for-human
 Base: 859c77f1
 Status note: ruled Q11 (option c): Linked Content and Compatible Worlds sit at the end of the left column, with no placeholder and no reserved space.
 Blocked by: 05
