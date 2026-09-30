@@ -7,7 +7,7 @@ import { makeLink, originalOf, type BearerWorld } from './bearers';
 import {
   effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, resetLinkTraitOverrides, setLinkEdits, setLinkOverride,
 } from './blueprints';
-import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isBlueprintItem, isDescendantGroup } from './traitTree';
+import { buildTraitTree, canOwnStatTraits, flattenTraitTree, groupsBelow, hasStatEffects, isBlueprintItem, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 
 type WorldTraitLists = Pick<BearerWorld, 'traits' | 'traitGroups'>;
@@ -101,29 +101,32 @@ function brought(world: WorldTraitLists, link: TraitLink): { groups: TraitGroup[
   return { groups, traits: world.traits.filter((t) => t.groupId != null && ids.has(t.groupId)) };
 }
 
-/** Whether Detach would leave stat changes or stat toggles behind, which an owned trait can't carry. */
-export const detachDropsStats = (world: WorldTraitLists, link: TraitLink): boolean =>
-  brought(world, link)?.traits.some((t) => hasStatEffects(effectiveLinkTrait(t, link))) ?? false;
+/** Whether Detach would leave stat changes or stat toggles behind: the entity can't own them. */
+export const detachDropsStats = (world: WorldTraitLists, entity: Entity, link: TraitLink): boolean =>
+  !canOwnStatTraits(entity) && (brought(world, link)?.traits.some((t) => hasStatEffects(effectiveLinkTrait(t, link))) ?? false);
 
 /**
  * Replace a link with an owned copy of what it brings, in the link's place, under new ids. The copy takes
- * each trait as the link reads it and leaves stat effects behind. Null when the link or its original is gone.
+ * each trait as the link reads it; stat effects stay only on an entity that can own them. Null when the link
+ * or its original is gone.
  */
 export function detachLink(world: WorldTraitLists, entity: Entity, linkId: string): { entity: Entity; newId: string } | null {
   const link = entity.traitLinks?.find((l) => l.id === linkId);
   const items = link && brought(world, link);
   if (!link || !items) return null;
   const ids = new Map([...items.groups, ...items.traits].map((x) => [x.id, randomUUID()] as const));
+  const keepStats = canOwnStatTraits(entity);
   // The original takes the link's place; everything below it keeps its place inside the copy.
   const isOriginal = (id: string) => id === link.originalId;
   const traits = items.traits.map((t): Trait => {
-    const { statToggles: _s, ...rest } = effectiveLinkTrait(t, link);
+    const { statToggles, ...rest } = effectiveLinkTrait(t, link);
     return {
       ...rest,
       id: ids.get(t.id)!,
       groupId: isOriginal(t.id) ? link.groupId : ids.get(t.groupId!)!,
       order: isOriginal(t.id) ? link.order ?? 0 : t.order,
-      statChanges: [],
+      statChanges: keepStats ? rest.statChanges : [],
+      ...(keepStats && statToggles ? { statToggles } : {}),
       ...(rest.requires ? { requires: rest.requires.map((r) => (r.kind === 'trait' && ids.has(r.id) ? { ...r, id: ids.get(r.id)! } : r)) } : {}),
     };
   });

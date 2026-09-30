@@ -77,7 +77,7 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
         <>
           {name} stays {refusal.owner
             ? <><PlaceholderText text={refusal.owner} placeholders={placeholders} />&apos;s</>
-            : 'a world'} {refusal.kind}, because an entity&apos;s traits can&apos;t change stats.{' '}
+            : 'a world'} {refusal.kind}, because only a persona&apos;s traits can change stats.{' '}
           {refusal.kind === 'trait'
             ? 'Remove its stat changes and stat toggles first.'
             : <>Remove the stat changes and stat toggles from <strong><PlaceholderText text={refusal.offender} placeholders={placeholders} /></strong> first.</>}
@@ -118,9 +118,10 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     editEntity(entityId, () => res.entity);
     onSelect(res.newId);
   };
-  // An owned copy can't carry stat effects, so a Detach that drops them asks first.
+  // A Detach that drops stat effects, on an entity that can't own them, asks first.
   const askDetach = ({ entityId, link }: LinkRow, name: string) => {
-    if (detachDropsStats(originals, link)) setPendingDetach({ entityId, linkId: link.id, name });
+    const bearer = entityRoot?.bearer.id === entityId ? entityRoot.bearer : entities.find((e) => e.id === entityId);
+    if (bearer && detachDropsStats(originals, bearer, link)) setPendingDetach({ entityId, linkId: link.id, name });
     else detach(entityId, link.id);
   };
 
@@ -313,7 +314,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         open={!!pendingDetach}
         onOpenChange={(open) => { if (!open) setPendingDetach(null); }}
         title={`Detach ${labelPlaceholders(pendingDetach?.name ?? '', placeholders)}?`}
-        description="The copy won't keep its stat changes and stat toggles, because an entity's traits can't change stats."
+        description="The copy won't keep its stat changes and stat toggles, because only a persona's traits can change stats."
         onConfirm={() => {
           if (pendingDetach) detach(pendingDetach.entityId, pendingDetach.linkId);
           setPendingDetach(null);

@@ -63,3 +63,25 @@ describe('link overrides in play', () => {
     expect(valueOf(back.state)).toBe(62);
   });
 });
+
+describe("a persona's own stat traits in play (Q3)", () => {
+  // Vow (+7 starting health) is Sylvie's own trait; Mira links Paladin. Neither sits at the top level.
+  const vow: Trait = { id: 'vow', name: 'Vow', groupId: null, order: 0, statChanges: [{ statId: 'h', value: 7, type: 'starting' }] };
+  const sylvie: Entity = { id: 'sylvie', name: 'Sylvie', persona: true, traits: [vow] };
+  const owning: BearerWorld = { ...world, entities: [...world.entities, sylvie] };
+  const as = (entityId: string): TraitWorld => {
+    const persona: PersonaRef = { source: 'world', entityId };
+    return { traits: [paladin], groups, entities: owning.entities, persona, bearers: inPlayBearers(owning, persona) };
+  };
+  const picked = state({ ownedTraits: { sylvie: { chosen: ['vow'] }, mira: { chosen: ['paladin'] } } });
+
+  it('applies the played persona’s owned stat trait, and a switch reverses it', () => {
+    const seeded = applyPlayedStatTraits(picked, as('sylvie')).state;
+    expect(valueOf(seeded)).toBe(57);
+    expect(seeded.appliedValues).toEqual({ 'sylvie/vow': { h: 7 } });
+
+    const toMira = switchPersonaStats(seeded, as('sylvie'), as('mira'), name);
+    expect(toMira.log).toEqual(['Trait switched off: Vow', 'Trait switched on: Paladin']);
+    expect(valueOf(toMira.state)).toBe(55);
+  });
+});

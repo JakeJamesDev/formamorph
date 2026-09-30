@@ -375,17 +375,21 @@ describe('a character card’s owned traits', () => {
     ]);
   });
 
-  it('reads no stat effects and drops junk rows', () => {
+  it('reads stat effects as stored (Q9) and drops junk rows', () => {
     const parsed = parseEntityCardData({
       formamorphKind: 'entity', name: 'X',
       traits: [
-        { id: 'a', name: 'A', statChanges: [{ statId: 's', value: 5, type: 'min' }], statToggles: [{ statId: 's', enabled: true }] },
+        {
+          id: 'a', name: 'A',
+          statChanges: [{ statId: 's', value: 5, type: 'min' }, { statId: 7, value: 1 }],
+          statToggles: [{ statId: 's', enabled: true }, { statId: 's' }],
+        },
         { id: 7, name: 'B' }, 'junk', { id: 'c', name: 'C', requires: [{ kind: 'weird', id: 'x' }, { kind: 'group', id: 'g' }] },
       ],
       traitGroups: [{ id: 'g', name: 'G', parentId: 5 }, null],
     });
     expect(parsed.traits).toEqual([
-      { id: 'a', name: 'A', statChanges: [] },
+      { id: 'a', name: 'A', statChanges: [{ statId: 's', value: 5, type: 'min' }], statToggles: [{ statId: 's', enabled: true }] },
       { id: 'c', name: 'C', statChanges: [], requires: [{ kind: 'group', id: 'g' }] },
     ]);
     expect(parsed.traitGroups).toEqual([{ id: 'g', name: 'G', parentId: null }]);

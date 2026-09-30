@@ -183,17 +183,42 @@ describe('entity nodes on the Traits tab', () => {
 });
 
 describe('an owned trait\'s panel', () => {
-  it('names its owner at the top of Details and has no Stats tab', () => {
+  it('names its owner at the top of Details, and has a Stats tab on a persona (Q10)', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(treeRow('Tamed')!);
     expect(screen.getByText(/^Owned by/)).toHaveTextContent('Owned by Ash');
     expect(screen.getByText('Describes them to the AI, and joins your traits when you play as them')).toBeInTheDocument();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Pins']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
+    fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
+    expect(screen.getByText('Stat changes apply only when you play as them')).toBeInTheDocument();
 
+    fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Details' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ash' }));
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
+  });
+
+  it("has no Stats tab on a cast entity's trait, unless the trait already has stat effects to remove (Q6, Q10)", () => {
+    const cast = (tamed: Partial<World['traits'][number]>) => ({
+      ...WORLD,
+      entities: WORLD.entities.map((e) => (e.id === 'ash'
+        ? { ...e, persona: false, traits: e.traits!.map((t) => (t.id === 't-tamed' ? { ...t, ...tamed } : t)) }
+        : e)),
+    });
+    const { unmount } = renderWorldEditorBench(cast({}), 'advanced');
+    openTab(/Traits/);
+    fireEvent.click(treeRow('Tamed')!);
+    const plain = screen.getByRole('tablist', { name: 'Trait Fields' });
+    expect(within(plain).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Pins']);
+    unmount();
+
+    renderWorldEditorBench(cast({ statToggles: [{ statId: 'hp', enabled: true }] }), 'advanced');
+    openTab(/Traits/);
+    fireEvent.click(treeRow('Tamed')!);
+    const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
+    fireEvent.mouseDown(within(strip).getByRole('tab', { name: 'Stats' }));
+    expect(screen.getByText("Stat changes don't apply to entities")).toBeInTheDocument();
   });
 
   it('keeps the Stats tab and no owner line on a world trait', () => {

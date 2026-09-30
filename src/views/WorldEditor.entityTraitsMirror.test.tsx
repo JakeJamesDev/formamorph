@@ -235,7 +235,8 @@ describe('the entity Traits tab as a mirror', () => {
     fireEvent.click(rowNamed('Tamed')!);
     expect(screen.getByLabelText('Name')).toHaveTextContent('Tamed');
     expect(screen.queryByText(/^Owned by/)).toBeNull();
-    expect(within(screen.getByRole('tablist', { name: 'Trait Fields' })).queryByRole('tab', { name: 'Stats' })).toBeNull();
+    // Ash is a persona, so the trait has a Stats tab (Q10).
+    expect(within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name: 'Stats' })).toBeInTheDocument();
   });
 
   it('pushes the details in over the mirror on mobile, each push with its arrow leading its own tab strip', () => {

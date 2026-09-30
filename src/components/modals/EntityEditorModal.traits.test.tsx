@@ -56,13 +56,13 @@ const saveEntity = async () => {
 };
 
 describe('the library entity Traits tab', () => {
-  it("shows the entity's own traits and groups, and edits an owned trait with no Stats tab", async () => {
+  it("shows the entity's own traits and groups, and edits a persona's owned trait with a Stats tab (Q10)", async () => {
     await openTraits();
     expect(screen.getByText('Bond')).toBeInTheDocument();
     await userEvent.click(screen.getByText('Oath'));
     expect(screen.getByText(/Owned by/)).toBeInTheDocument();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).queryByRole('tab', { name: 'Stats' })).not.toBeInTheDocument();
+    expect(within(strip).getByRole('tab', { name: 'Stats' })).toBeInTheDocument();
   });
 
   it('reads an outward requirement by its stored name, red, and offers only requirements inside the entity', async () => {

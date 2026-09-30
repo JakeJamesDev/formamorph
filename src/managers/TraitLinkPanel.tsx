@@ -13,7 +13,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { hasStatEffects } from '@/lib/traitTree';
 import type { LinkRow } from '@/lib/traitTree';
 import type { Entity, Trait, TraitLink } from '@/types';
-import TraitManager, { type TraitLinkEdit } from './TraitManager';
+import TraitManager, { BearerStatNote, type TraitLinkEdit } from './TraitManager';
 
 /** The line above a link's original: where the original lives. */
 export function LinkedFromLine({ originalId }: { originalId: string }) {
@@ -40,11 +40,9 @@ export function LinkNotice({ children }: { children: ReactNode }) {
 const defaultHintFor = (bearer: Entity) =>
   (bearer.customPersona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts');
 
-/** The note on a link whose stat effects apply only while the player plays as the entity, or never. The
- *  Custom Persona entity's links are the player's, so they get none. */
+/** The bearer's stat note on a link that brings stat effects. */
 function LinkStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
-  if (bearer.customPersona || !traits.some(hasStatEffects)) return null;
-  return <Hint>{bearer.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>;
+  return traits.some(hasStatEffects) ? <BearerStatNote bearer={bearer} /> : null;
 }
 
 /**
