@@ -49,6 +49,15 @@ function render(state: HeldState, apply: () => void): void {
   });
   button.addEventListener('click', state.reload ? () => window.location.reload() : apply);
 
+  // An open Radix modal sets pointer-events: none on body and dismisses on an outside press or focus move.
+  bar.style.pointerEvents = 'auto';
+  for (const type of ['pointerdown', 'mousedown', 'touchstart'] as const) {
+    bar.addEventListener(type, (e) => {
+      e.stopPropagation();
+      if (type !== 'touchstart') e.preventDefault();
+    });
+  }
+
   bar.append(text, button);
   document.body.append(bar);
 }
