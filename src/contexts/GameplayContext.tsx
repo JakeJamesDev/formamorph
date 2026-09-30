@@ -12,7 +12,7 @@ import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
-import { restoreAttachments, serializeAttachments, type AttachmentMap } from '../lib/actionAttachments';
+import { restoreAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -386,7 +386,7 @@ function useProvideGameplay() {
         ...(memoryDeleted.length ? { memoryDeleted } : {}),
         ...(memoryNotes.length ? { memoryNotes } : {}),
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
-        ...(serializeAttachments(actionAttachments) ? { actionAttachments } : {}),
+        ...(Object.keys(actionAttachments).length ? { actionAttachments } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -530,6 +530,9 @@ function useProvideGameplay() {
           const success = loadGameState(backfillGameStateStats(migrateLegacySaveState(convertedData), worldStats), locations, { worldStats });
           if (success) {
             setPersonaRef(undefined);
+            // A legacy save predates attachments ⇒ none.
+            setActionAttachments({});
+            setPendingAttachments([]);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
             setSaveLoads((n) => n + 1);
           }

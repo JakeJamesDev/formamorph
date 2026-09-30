@@ -5,10 +5,22 @@ import { render, act } from '@testing-library/react';
 import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
-import { getSaveRecord } from '@/components/modals/dbUtils';
+import { getSaveRecord, putSaveRecord } from '@/components/modals/dbUtils';
 import type { ImageAttachment, SaveRecord } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
+// jsdom has no module workers. The stub stands in for the worker that converts a deep-nested legacy save.
+vi.mock('@/lib/saveConversionWorkerUtils', () => ({
+  convertSaveFile: async () => ({
+    flattenedStates: [],
+    convertedData: {
+      playerStats: [], playerTraits: [], visibleEntities: [], logEntries: [], gameplayText: '', gameTime: 0,
+      characterData: null, choices: [], isGameStarted: true, timestamp: '2020-01-01T00:00:00.000Z',
+      worldName: null, playerNotes: '', previousStateIndex: null, stateVersion: 2,
+    },
+  }),
+  terminateWorker: () => {},
+}));
 
 const Expose = ({ expose }: { expose: (g: ReturnType<typeof useGameplay>) => void }) => {
   expose(useGameplay());
@@ -66,6 +78,19 @@ describe('action attachments across a save/load round trip', () => {
       live().setPendingAttachments([image('p')]);
     });
     await act(async () => { await live().loadGame('attach-absent', []); });
+    expect(live().actionAttachments).toEqual({});
+    expect(live().pendingAttachments).toEqual([]);
+  });
+
+  it('starts a legacy nested save with none, too', async () => {
+    const live = mount();
+    // A deep-nested save has no currentState, so it takes the conversion path.
+    await putSaveRecord({ id: 'attach-legacy', name: 'old' } as unknown as SaveRecord);
+    await act(async () => {
+      live().setActionAttachments({ stale: [image('z')] });
+      live().setPendingAttachments([image('p')]);
+    });
+    await act(async () => { expect(await live().loadGame('attach-legacy', [])).toBe(true); });
     expect(live().actionAttachments).toEqual({});
     expect(live().pendingAttachments).toEqual([]);
   });

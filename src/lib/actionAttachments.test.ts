@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ATTACHMENT_MAX_DIM, MAX_ATTACHMENTS, addToPending, attachToTurn, pruneAttachments, removePending, restoreAttachments, serializeAttachments, turnAttachments,
+  ATTACHMENT_MAX_DIM, MAX_ATTACHMENTS, addToPending, attachToTurn, pruneAttachments, removePending, restoreAttachments, turnAttachments,
 } from './actionAttachments';
 import type { ChatMessage, ImageAttachment } from '@/types';
 import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
@@ -106,15 +106,9 @@ describe('the turn map', () => {
 describe('the save map', () => {
   const image = (id: string): ImageAttachment => ({ id, mime: 'image/webp', dataUrl: `data:image/webp;base64,${id}` });
 
-  it('writes the map as it is, and nothing when it is empty', () => {
-    const map = attachToTurn({}, 'turn-1', [image('a'), image('b')]);
-    expect(serializeAttachments(map)).toBe(map);
-    expect(serializeAttachments({})).toBeUndefined();
-  });
-
   it('reads a written map back with every turn and image in order', () => {
     const map = attachToTurn(attachToTurn({}, 'turn-1', [image('a'), image('b')]), 'turn-2', [image('c')]);
-    expect(restoreAttachments(JSON.parse(JSON.stringify(serializeAttachments(map))))).toEqual(map);
+    expect(restoreAttachments(JSON.parse(JSON.stringify(map)))).toEqual(map);
   });
 
   it('reads an absent map as none', () => {
@@ -122,9 +116,19 @@ describe('the save map', () => {
     expect(restoreAttachments(null)).toEqual({});
   });
 
+  it('reads a map that is not an object as none', () => {
+    for (const raw of ['text', 7, true, [image('a')]]) expect(restoreAttachments(raw)).toEqual({});
+  });
+
   it('leaves out entries that are not lists of images, so a hand-edited save still loads', () => {
     const restored = restoreAttachments({
-      ok: [image('a'), { id: 'x', mime: 'image/webp' }, { id: 'y', mime: 'text/html', dataUrl: 'javascript:alert(1)' }],
+      ok: [
+        image('a'),
+        { id: 'x', mime: 'image/webp' },
+        { id: 'y', mime: 'image/webp', dataUrl: 'javascript:alert(1)' },
+        { id: 'z', mime: 'text/html', dataUrl: 'data:image/webp;base64,zz' },
+        { id: 7, mime: 'image/webp', dataUrl: 'data:image/webp;base64,zz' },
+      ],
       notAList: 'data:image/webp;base64,zz',
       empty: [],
     });
