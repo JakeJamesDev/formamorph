@@ -1,4 +1,3 @@
-import { randomUUID } from "@/lib/uuid";
 import type { Codec } from './usePersistentState';
 import type { ImageProviderId } from './imageGen';
 import { DEFAULT_COMFY_WORKFLOW } from './imageGen/comfyui';
@@ -38,15 +37,23 @@ export interface ImageEndpointValues {
 
 export type ImageEndpointValueKey = keyof ImageEndpointValues;
 
+/** A preset stores only the fields the user changed; the rest read live from its base. */
 export interface ImageEndpointPreset {
   id: string;
   name: string;
-  values: ImageEndpointValues;
+  overrides: Partial<ImageEndpointValues>;
 }
 
 export interface ImageEndpointPresetStore {
   activeId: string;
   presets: ImageEndpointPreset[];
+}
+
+/** One VITE_DEFAULT_IMAGE_PRESETS entry, fully resolved. Its id is stable across loads. */
+export interface EnvImagePreset {
+  id: string;
+  name: string;
+  values: ImageEndpointValues;
 }
 
 /** Built-in defaults for a fresh "Default" preset (honors the VITE_DEFAULT_IMAGE_* overrides). */
@@ -73,10 +80,7 @@ export const DEFAULT_IMAGE_ENDPOINT_VALUES: ImageEndpointValues = {
 
 export const DEFAULT_IMAGE_PRESET_ID = 'default';
 
-/** A fresh store holding one editable "Default" preset seeded from `values` (defaults to the built-ins). */
-export function makeDefaultStore(values: ImageEndpointValues = DEFAULT_IMAGE_ENDPOINT_VALUES): ImageEndpointPresetStore {
-  return { activeId: DEFAULT_IMAGE_PRESET_ID, presets: [{ id: DEFAULT_IMAGE_PRESET_ID, name: 'Default', values: { ...values } }] };
-}
+export const envPresetId = (name: string) => `env:${name}`;
 
 /** Layer a raw JSON entry over the built-in defaults, coercing each field by type (unknown keys ignored). */
 function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
@@ -112,42 +116,95 @@ function coerceValues(rec: Record<string, unknown>): ImageEndpointValues {
 }
 
 /**
- * Build a store from the VITE_DEFAULT_IMAGE_PRESETS env var — a JSON array of `{ name, ...partial values }`
- * entries, each layered over the built-in defaults (so a preset need only list what differs). Returns null
- * when the var is unset or malformed, letting the caller fall back to a single "Default" preset.
+ * Parse VITE_DEFAULT_IMAGE_PRESETS — a JSON array of `{ name, ...partial values }` entries, each layered
+ * over the built-in defaults. Unset or malformed input yields no presets; a repeated name keeps the first.
  */
-export function presetStoreFromEnv(
-  raw: string | undefined = import.meta.env.VITE_DEFAULT_IMAGE_PRESETS,
-): ImageEndpointPresetStore | null {
-  if (!raw) return null;
+export function parseEnvPresets(raw: string | undefined): EnvImagePreset[] {
+  if (!raw) return [];
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return null;
+    return [];
   }
-  if (!Array.isArray(parsed)) return null;
-  const presets: ImageEndpointPreset[] = [];
+  if (!Array.isArray(parsed)) return [];
+  const presets: EnvImagePreset[] = [];
   for (const item of parsed) {
     if (!item || typeof item !== 'object') continue;
     const rec = item as Record<string, unknown>;
     const name = typeof rec.name === 'string' ? rec.name.trim() : '';
-    if (!name) continue;
-    presets.push({ id: randomUUID(), name, values: coerceValues(rec) });
+    if (!name || presets.some((p) => p.name === name)) continue;
+    presets.push({ id: envPresetId(name), name, values: coerceValues(rec) });
   }
-  if (presets.length === 0) return null;
-  return { activeId: presets[0].id, presets };
+  return presets;
+}
+
+const ENV_PRESETS = parseEnvPresets(import.meta.env.VITE_DEFAULT_IMAGE_PRESETS);
+
+/** The values a preset falls back to: its env entry when it came from one, else the built-in defaults. */
+export function baseValues(id: string, env: EnvImagePreset[] = ENV_PRESETS): ImageEndpointValues {
+  return env.find((p) => p.id === id)?.values ?? DEFAULT_IMAGE_ENDPOINT_VALUES;
+}
+
+/** The fields of `values` that differ from `base`. */
+function diff(values: ImageEndpointValues, base: ImageEndpointValues): Partial<ImageEndpointValues> {
+  const out: Partial<Record<ImageEndpointValueKey, unknown>> = {};
+  for (const key of Object.keys(values) as ImageEndpointValueKey[]) {
+    if (values[key] !== base[key]) out[key] = values[key];
+  }
+  return out as Partial<ImageEndpointValues>;
+}
+
+/** A fresh store holding one editable "Default" preset seeded from `values` (defaults to the built-ins). */
+export function makeDefaultStore(values: ImageEndpointValues = DEFAULT_IMAGE_ENDPOINT_VALUES): ImageEndpointPresetStore {
+  return {
+    activeId: DEFAULT_IMAGE_PRESET_ID,
+    presets: [{ id: DEFAULT_IMAGE_PRESET_ID, name: 'Default', overrides: diff(values, DEFAULT_IMAGE_ENDPOINT_VALUES) }],
+  };
+}
+
+/** A store with one untouched preset per env entry, the first active. Null when there are none. */
+export function presetStoreFromEnv(env: EnvImagePreset[] = ENV_PRESETS): ImageEndpointPresetStore | null {
+  if (env.length === 0) return null;
+  return { activeId: env[0].id, presets: env.map((p) => ({ id: p.id, name: p.name, overrides: {} })) };
+}
+
+type StoredPreset = { id: string; name: string; overrides?: Partial<ImageEndpointValues>; values?: Partial<ImageEndpointValues> };
+
+/**
+ * Convert presets saved as full value copies into overrides. A copy whose name matches an env entry
+ * takes that entry's id, so Reset returns to the env values. Presets already in override form pass through.
+ */
+export function migrateStore(
+  stored: { activeId: string; presets: StoredPreset[] },
+  env: EnvImagePreset[] = ENV_PRESETS,
+): ImageEndpointPresetStore {
+  let activeId = stored.activeId;
+  const claimed = new Set(stored.presets.map((p) => p.id));
+  const presets = stored.presets.map((p): ImageEndpointPreset => {
+    if (p.overrides) return { id: p.id, name: p.name, overrides: p.overrides };
+    const full = { ...DEFAULT_IMAGE_ENDPOINT_VALUES, ...p.values };
+    const match = env.find((e) => e.name === p.name);
+    let id = p.id;
+    if (match && !claimed.has(match.id)) {
+      claimed.add(match.id);
+      if (activeId === id) activeId = match.id;
+      id = match.id;
+    }
+    return { id, name: p.name, overrides: diff(full, baseValues(id, env)) };
+  });
+  return { activeId, presets };
 }
 
 /** localStorage codec; any malformed/empty value falls back to a fresh Default-only store. */
 export const imageEndpointPresetCodec: Codec<ImageEndpointPresetStore> = {
   parse: (raw) => {
     try {
-      const parsed = JSON.parse(raw) as Partial<ImageEndpointPresetStore>;
+      const parsed = JSON.parse(raw) as { activeId?: unknown; presets?: unknown };
       if (!parsed || typeof parsed.activeId !== 'string' || !Array.isArray(parsed.presets) || parsed.presets.length === 0) {
         return makeDefaultStore();
       }
-      return { activeId: parsed.activeId, presets: parsed.presets as ImageEndpointPreset[] };
+      return migrateStore({ activeId: parsed.activeId, presets: parsed.presets as StoredPreset[] });
     } catch {
       return makeDefaultStore();
     }
@@ -160,9 +217,28 @@ function activePreset(store: ImageEndpointPresetStore): ImageEndpointPreset {
   return store.presets.find((p) => p.id === store.activeId) ?? store.presets[0];
 }
 
-/** The active preset's values, layered over the built-in defaults so a missing future key falls back. */
-export function activeValues(store: ImageEndpointPresetStore): ImageEndpointValues {
-  return { ...DEFAULT_IMAGE_ENDPOINT_VALUES, ...activePreset(store)?.values };
+/** A preset's effective values: its base with the user's overrides on top. */
+function presetValues(preset: ImageEndpointPreset | undefined, env: EnvImagePreset[]): ImageEndpointValues {
+  return preset ? { ...baseValues(preset.id, env), ...preset.overrides } : DEFAULT_IMAGE_ENDPOINT_VALUES;
+}
+
+export function activeValues(store: ImageEndpointPresetStore, env: EnvImagePreset[] = ENV_PRESETS): ImageEndpointValues {
+  return presetValues(activePreset(store), env);
+}
+
+/** Replace the active preset's values, storing only what differs from its base. */
+function setActiveValues(
+  store: ImageEndpointPresetStore,
+  next: (current: ImageEndpointValues) => ImageEndpointValues,
+  env: EnvImagePreset[],
+): ImageEndpointPresetStore {
+  const active = activePreset(store);
+  return {
+    ...store,
+    presets: store.presets.map((p) =>
+      p === active ? { ...p, overrides: diff(next(presetValues(p, env)), baseValues(p.id, env)) } : p,
+    ),
+  };
 }
 
 export function setActive(store: ImageEndpointPresetStore, id: string): ImageEndpointPresetStore {
@@ -171,7 +247,7 @@ export function setActive(store: ImageEndpointPresetStore, id: string): ImageEnd
 
 /** Add a preset (a copy of `values`) and select it. */
 export function addPreset(store: ImageEndpointPresetStore, id: string, name: string, values: ImageEndpointValues): ImageEndpointPresetStore {
-  return { activeId: id, presets: [...store.presets, { id, name, values: { ...values } }] };
+  return { activeId: id, presets: [...store.presets, { id, name, overrides: diff(values, DEFAULT_IMAGE_ENDPOINT_VALUES) }] };
 }
 
 export function renamePreset(store: ImageEndpointPresetStore, id: string, name: string): ImageEndpointPresetStore {
@@ -185,9 +261,9 @@ export function deletePreset(store: ImageEndpointPresetStore, id: string): Image
   return { activeId: store.activeId === id ? presets[0].id : store.activeId, presets };
 }
 
-/** Reset a preset's values back to the built-in defaults. */
+/** Drop a preset's overrides so it reads its base (the env entry or the built-in defaults) again. */
 export function resetPreset(store: ImageEndpointPresetStore, id: string): ImageEndpointPresetStore {
-  return { ...store, presets: store.presets.map((p) => (p.id === id ? { ...p, values: { ...DEFAULT_IMAGE_ENDPOINT_VALUES } } : p)) };
+  return { ...store, presets: store.presets.map((p) => (p.id === id ? { ...p, overrides: {} } : p)) };
 }
 
 /** Values seeded into a preset the first time it is pointed at a provider that has an opinion about
@@ -219,19 +295,15 @@ export function providerSwitchValues(values: ImageEndpointValues, provider: Imag
 }
 
 /** Point the active preset at `provider` (seeding its defaults on a first switch). */
-export function setProvider(store: ImageEndpointPresetStore, provider: ImageProviderId): ImageEndpointPresetStore {
-  return {
-    ...store,
-    presets: store.presets.map((p) =>
-      p.id === store.activeId ? { ...p, values: providerSwitchValues({ ...DEFAULT_IMAGE_ENDPOINT_VALUES, ...p.values }, provider) } : p,
-    ),
-  };
+export function setProvider(
+  store: ImageEndpointPresetStore, provider: ImageProviderId, env: EnvImagePreset[] = ENV_PRESETS,
+): ImageEndpointPresetStore {
+  return setActiveValues(store, (v) => providerSwitchValues(v, provider), env);
 }
 
 /** Patch one value on the active preset (every preset is editable). */
-export function updateValue<K extends ImageEndpointValueKey>(store: ImageEndpointPresetStore, key: K, value: ImageEndpointValues[K]): ImageEndpointPresetStore {
-  return {
-    ...store,
-    presets: store.presets.map((p) => (p.id === store.activeId ? { ...p, values: { ...p.values, [key]: value } } : p)),
-  };
+export function updateValue<K extends ImageEndpointValueKey>(
+  store: ImageEndpointPresetStore, key: K, value: ImageEndpointValues[K], env: EnvImagePreset[] = ENV_PRESETS,
+): ImageEndpointPresetStore {
+  return setActiveValues(store, (v) => ({ ...v, [key]: value }), env);
 }
