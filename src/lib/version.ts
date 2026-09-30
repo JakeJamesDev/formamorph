@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  World, SaveObject, Stat, GameState, Trait, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
+  World, SaveObject, Stat, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
   Opening,
 } from '@/types';
 import { implicitPairs, pairKey } from './locationGraph';
@@ -11,6 +11,7 @@ import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_SENT
 import { migrateEntityImages } from './entityImages';
 import { normalizeLinkedItem } from './contentLink';
 import { migrateStatLookups } from './statLookupMigration';
+import { blueprintItemIds } from './traitTree';
 
 /** Current app version, derived from package.json (see vite.config.js `define`). User-managed. */
 export const APP_VERSION = __APP_VERSION__;
@@ -393,6 +394,24 @@ function migrateExclusiveGroups(world: Record<string, unknown>): void {
   }
 }
 
+/** Remove every entity link whose original sits outside Blueprints, overrides and all: only Blueprints items
+ *  are linked. Not version-gated, since 3.1.0 worlds carry such links under the current version. */
+function dropRootTraitLinks(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.entities)) return;
+  const linkable = blueprintItemIds({
+    traits: Array.isArray(world.traits) ? world.traits as Trait[] : [],
+    traitGroups: Array.isArray(world.traitGroups) ? world.traitGroups as TraitGroup[] : [],
+  });
+  world.entities = world.entities.map((raw) => {
+    const links = raw && typeof raw === 'object' ? (raw as Entity).traitLinks : undefined;
+    if (!Array.isArray(links)) return raw;
+    const kept = links.filter((l) => linkable.has(l.originalId));
+    if (kept.length === links.length) return raw;
+    const { traitLinks: _l, ...rest } = raw as Entity;
+    return kept.length ? { ...rest, traitLinks: kept } : rest;
+  });
+}
+
 /**
  * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
  * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
@@ -459,6 +478,7 @@ export function migrateWorld(raw: unknown): World {
   migrateOpeningCue(world);
   migratePlayerSetting(world);
   migrateExclusiveGroups(world);
+  dropRootTraitLinks(world);
   normalizeContentLinks(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 

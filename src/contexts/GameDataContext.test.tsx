@@ -133,8 +133,11 @@ describe('placeholder copies in the world store', () => {
 describe('trait links when an original goes', () => {
   const linked = {
     ...world('w', {}),
-    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'classes' }, { id: 'brave', name: 'Brave', statChanges: [] }],
-    traitGroups: [{ id: 'classes', name: 'Classes', parentId: null }],
+    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'classes' }, { id: 'brave', name: 'Brave', statChanges: [], groupId: 'blueprints' }],
+    traitGroups: [
+      { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
+      { id: 'classes', name: 'Classes', parentId: 'blueprints' },
+    ],
     entities: [
       { id: 'ash', name: 'Ash', traitLinks: [
         { id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null },
@@ -156,7 +159,7 @@ describe('trait links when an original goes', () => {
     act(() => { result.current.loadWorldData(linked); });
     act(() => { result.current.removeTraitGroup('classes'); });
     expect(result.current.entities.map((e) => e.traitLinks?.map((l) => l.id))).toEqual([['l1'], ['l3']]);
-    expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
+    expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBe('blueprints');
   });
 
   it('leaves the entities untouched when nothing linked the deleted trait', () => {

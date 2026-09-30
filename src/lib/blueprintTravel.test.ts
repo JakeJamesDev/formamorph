@@ -13,7 +13,7 @@ import { applyLibraryUpdate, type LibrarySource } from './linkedContent';
 import { traitWorldOf, type TraitWorld } from './portableTraits';
 import EntityStorageService from '@/services/EntityStorageService';
 import WorldStorageService from '@/services/WorldStorageService';
-import type { Entity, Placeholder, PlaceholderGroup, PlaceholderValue, Trait } from '@/types';
+import type { Entity, Placeholder, PlaceholderGroup, PlaceholderValue, Trait, TraitGroup } from '@/types';
 
 vi.mock('@/services/AuthService', () => ({ default: { getCurrentUser: () => null } }));
 
@@ -21,8 +21,11 @@ const value = (id: string, text: string): PlaceholderValue => ({ id, text });
 /** A chip at `id`, placed as `at` was; a rewrite moves the target and keeps the placement. */
 const chip = (id: string, at = id) => encodePlaceholderToken({ id, mode: 'world', placementId: `p-${at}` });
 const trait = (id: string, name: string): Trait => ({ id, name, statChanges: [] });
+/** A trait inside the world's trait Blueprints, where a link's original sits. */
+const blueprintTrait = (id: string, name: string): Trait => ({ ...trait(id, name), groupId: 'tg-bp' });
 
 const BLUEPRINTS: PlaceholderGroup = { id: 'g-bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
+const TRAIT_BLUEPRINTS: TraitGroup = { id: 'tg-bp', name: 'Blueprints', parentId: null, system: 'blueprints' };
 const tone: Placeholder = { id: 'tone', name: 'Tone', values: [value('v-dry', 'dry')] };
 
 /** Home: Class Garb, whose plate nests Crest and whose robe places the world's Tone. */
@@ -31,8 +34,11 @@ const homeGarb: Placeholder = {
   id: 'garb', name: 'Class Garb', groupId: 'g-bp',
   values: [value('v-plate', `plate under ${chip('crest')}`), value('v-robe', `a ${chip('tone')} robe`)],
 };
-const home = { placeholders: [tone, homeGarb, homeCrest], placeholderGroups: [BLUEPRINTS], traits: [trait('w-paladin', 'Paladin')] };
-const homeTraits: TraitWorld = { traits: home.traits, traitGroups: [], entities: [] };
+const home = {
+  placeholders: [tone, homeGarb, homeCrest], placeholderGroups: [BLUEPRINTS],
+  traits: [blueprintTrait('w-paladin', 'Paladin')], traitGroups: [TRAIT_BLUEPRINTS],
+};
+const homeTraits: TraitWorld = { traits: home.traits, traitGroups: home.traitGroups, entities: [] };
 
 /** Elsewhere: every placeholder under new ids and new placements. Crest has an eagle in place of the hawk. */
 const newTone: Placeholder = { id: 'n-tone', name: 'Tone', values: [value('n-dry', 'dry')] };
@@ -46,11 +52,11 @@ const elsewhere = {
     { id: 'n-crest', name: 'Crest', groupId: 'g-bp', values: [value('n-lion', 'a lion'), value('n-eagle', 'an eagle')] },
   ],
   placeholderGroups: [BLUEPRINTS],
-  traits: [trait('n-paladin', 'Paladin')],
+  traits: [blueprintTrait('n-paladin', 'Paladin')], traitGroups: [TRAIT_BLUEPRINTS],
 };
 
-/** Bare: no Blueprints group at all. */
-const bare = { placeholders: [tone], placeholderGroups: [], traits: [trait('b-paladin', 'Paladin')] };
+/** Bare: no placeholder Blueprints group at all. */
+const bare = { placeholders: [tone], placeholderGroups: [], traits: [blueprintTrait('b-paladin', 'Paladin')], traitGroups: [TRAIT_BLUEPRINTS] };
 
 /** Mira holds a copy of each, her own text and vow read her garb, and her Paladin link pins the blueprint. */
 const mira: Entity = {
@@ -108,12 +114,15 @@ const source: LibrarySource = { id: 'lib-1', name: 'Mira', revision: 'r1', owned
 const NO_PLAN = { placeholders: {}, locations: {}, newLocations: [], newPlaceholders: [] };
 
 /** `carried` imported into a stored world holding `world`, and the entity as it landed. */
-async function importInto(world: { placeholders: Placeholder[]; placeholderGroups: PlaceholderGroup[]; traits: Trait[] }, carried: Entity) {
+async function importInto(
+  world: { placeholders: Placeholder[]; placeholderGroups: PlaceholderGroup[]; traits: Trait[]; traitGroups: TraitGroup[] }, carried: Entity,
+) {
   await WorldStorageService.storeWorld({
     id: 'w-1', name: 'Target', author: 'Ann',
     data: {
       worldOverview: { name: 'Target' }, stats: [], statUpdates: [], entities: [], dictionaries: [], locations: [],
       traits: world.traits as unknown as unknown[],
+      traitGroups: world.traitGroups as unknown as unknown[],
       placeholders: world.placeholders as unknown as unknown[],
       placeholderGroups: world.placeholderGroups as unknown as unknown[],
     },
@@ -224,7 +233,7 @@ describe('a copy whose blueprint name two world blueprints carry', () => {
 
 describe('a copy that turns plain beside one that binds', () => {
   it('moves its chip at the bound blueprint to the entity’s copy of it', async () => {
-    const half = { placeholders: [tone, homeCrest], placeholderGroups: [BLUEPRINTS], traits: [] };
+    const half = { placeholders: [tone, homeCrest], placeholderGroups: [BLUEPRINTS], traits: [], traitGroups: [TRAIT_BLUEPRINTS] };
     const { entity } = await importInto(half, parseEntityCardData(JSON.parse(JSON.stringify(cardOf(mira)))));
     const crest = copyNamed(entity, 'Crest');
     expect(crest.blueprintId).toBe('crest');
@@ -247,14 +256,14 @@ describe('a library update', () => {
   it('binds the source revision’s copies to the world holding the linked copy', async () => {
     const data = await carriers[2][1](mira);
     const linked: Entity = { id: 'mira-here', name: 'Mira', link: { libraryId: 'lib-1', sourceRevision: 'r0' } };
-    const { item } = applyLibraryUpdate(linked, data, { ...source, data }, elsewhere.placeholders, traitWorldOf({ ...elsewhere, traitGroups: [] }));
+    const { item } = applyLibraryUpdate(linked, data, { ...source, data }, elsewhere.placeholders, traitWorldOf(elsewhere));
     expect(item).not.toHaveProperty('blueprints');
     expect(item.placeholders!.map((p) => p.blueprintId)).toEqual(['n-garb', 'n-crest']);
   });
 });
 
 describe('a library persona at play', () => {
-  const world = (w: typeof elsewhere) => ({ traits: w.traits, traitGroups: [], entities: [], ...blueprintBindWorld(w) });
+  const world = (w: typeof elsewhere) => ({ traits: w.traits, traitGroups: w.traitGroups, entities: [], ...blueprintBindWorld(w) });
 
   it('binds its copies and links to the world it enters', async () => {
     const there = bindLibraryEntity(await carriers[2][1](mira), world(elsewhere));

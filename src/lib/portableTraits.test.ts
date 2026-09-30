@@ -188,14 +188,14 @@ describe('adoptOwnedTraits', () => {
   });
 });
 
-/** A world with a Class group of two classes, a root Smite, and Albus. */
+/** A world whose Blueprints hold a Class group of two classes and a Smite, and Albus. */
 const linkOrigin: TraitWorld = {
   traits: [
     trait('w-paladin', { name: 'Paladin', groupId: 'w-class' }),
     trait('w-wizard', { name: 'Wizard', groupId: 'w-class' }),
-    trait('w-smite', { name: 'Smite' }),
+    trait('w-smite', { name: 'Smite', groupId: 'w-blueprints' }),
   ],
-  traitGroups: [group('w-class', 'Class')],
+  traitGroups: [{ ...group('w-blueprints', 'Blueprints'), system: 'blueprints' }, { ...group('w-class', 'Class'), parentId: 'w-blueprints' }],
   entities: [{ id: 'albus', name: 'Albus' }],
 };
 
@@ -259,9 +259,9 @@ describe('portableOwnedTraits with links', () => {
 const linkTarget = (extra: Partial<TraitWorld> = {}): TraitWorld => ({
   traits: [
     trait('n-paladin', { name: 'Paladin', groupId: 'n-class' }),
-    trait('n-smite', { name: 'Smite' }),
+    trait('n-smite', { name: 'Smite', groupId: 'n-blueprints' }),
   ],
-  traitGroups: [group('n-class', 'Class')],
+  traitGroups: [{ ...group('n-blueprints', 'Blueprints'), system: 'blueprints' }, { ...group('n-class', 'Class'), parentId: 'n-blueprints' }],
   entities: [{ id: 'n-albus', name: 'Albus' }],
   ...extra,
 });
@@ -289,7 +289,7 @@ describe('bindOwnedTraits with links', () => {
   });
 
   it('drops a key whose child the rebound original does not hold', () => {
-    const world = linkTarget({ traits: [trait('n-cleric', { name: 'Cleric', groupId: 'n-class' }), trait('n-smite', { name: 'Smite' })] });
+    const world = linkTarget({ traits: [trait('n-cleric', { name: 'Cleric', groupId: 'n-class' }), trait('n-smite', { name: 'Smite', groupId: 'n-blueprints' })] });
     const cls = linkOf(bindOwnedTraits(carriedMira(), world), 'l-class')!;
     expect(cls.originalId).toBe('n-class');
     expect(cls).not.toHaveProperty('overrides');
@@ -298,13 +298,22 @@ describe('bindOwnedTraits with links', () => {
   it('drops a link whose original matches no name, or two', () => {
     const none = bindOwnedTraits(carriedMira(), linkTarget({ traits: [] , traitGroups: [] }));
     expect(none.traitLinks).toBeUndefined();
-    const two = linkTarget({ traits: [...linkTarget().traits, trait('n-smite-2', { name: 'Smite' })] });
+    const two = linkTarget({ traits: [...linkTarget().traits, trait('n-smite-2', { name: 'Smite', groupId: 'n-blueprints' })] });
     expect(bindOwnedTraits(carriedMira(), two).traitLinks!.map((l) => l.id)).toEqual(['l-class']);
+  });
+
+  it('treats a top-level match, by name or by id, as no match (Q5)', () => {
+    // Smite sits at the top level here, so only the Class link binds.
+    const rooted = linkTarget({ traits: [trait('n-smite', { name: 'Smite', groupId: null })] });
+    expect(bindOwnedTraits(carriedMira(), rooted).traitLinks!.map((l) => l.id)).toEqual(['l-class']);
+    // A top-level Smite beside the Blueprints one leaves the Blueprints one unique.
+    const beside = linkTarget({ traits: [...linkTarget().traits, trait('n-smite-root', { name: 'Smite', groupId: null })] });
+    expect(linkOf(bindOwnedTraits(carriedMira(), beside), 'l-smite')!.originalId).toBe('n-smite');
   });
 
   it('binds a link only to an original of its own kind, never to Blueprints itself', () => {
     const world = linkTarget({
-      traits: [trait('n-class-trait', { name: 'Class' }), trait('n-smite', { name: 'Smite' })],
+      traits: [trait('n-class-trait', { name: 'Class', groupId: 'n-blueprints' }), trait('n-smite', { name: 'Smite', groupId: 'n-blueprints' })],
       traitGroups: [{ ...group('n-blueprints', 'Class'), system: 'blueprints' }],
     });
     expect(bindOwnedTraits(carriedMira(), world).traitLinks!.map((l) => l.id)).toEqual(['l-smite']);

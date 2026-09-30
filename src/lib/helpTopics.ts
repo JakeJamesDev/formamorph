@@ -254,7 +254,7 @@ Write the AI-Facing Description as a fact about the character the narrator can a
 
 **Entities can have traits.** Each entity with traits shows as a node below the world's traits. Its active traits describe it to the AI, and they become the player's when the player plays that entity. Type \`{{char}}\` in a trait's text to name whoever has it.
 
-**Links share one trait.** Drag a world trait or group onto an entity node, or select it and use **Link To…**. The entity gets that trait, its **original**, without a copy. A link reads the original live until you change a field on it. Each field you change is an override for that link only: Enabled by Default, Requires, Placeholder Pins, Player Can Toggle In-Game and Stat Changes.
+**Links share one trait.** Drag a Blueprints trait or group onto an entity node, or select it and use **Link To…**. The entity gets that trait, its **original**, without a copy. Drag a top-level trait onto an entity node, and it moves to that entity instead. A link reads the original live until you change a field on it. Each field you change is an override for that link only: Enabled by Default, Requires, Placeholder Pins, Player Can Toggle In-Game and Stat Changes.
 
 - **Reset** returns one field to the original. **Reset to Blueprint** returns them all.
 - **Edit Blueprint** jumps to the original, so the change reaches every link.

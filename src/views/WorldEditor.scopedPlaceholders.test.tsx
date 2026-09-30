@@ -36,7 +36,8 @@ const WORLD: World = benchEditorWorld({
     { id: 'garb', name: 'Class Garb', groupId: 'bp', values: [value('v-tabard', 'a tabard')] },
     { id: 'tone', name: 'Tone', values: [value('v-warm', 'warm')] },
   ],
-  traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], aiDescription: `Wears ${chip('garb')}.` }],
+  traitGroups: [{ id: 'tbp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+  traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'tbp', aiDescription: `Wears ${chip('garb')}.` }],
   entities: [
     {
       id: 'molly', name: 'Molly', playerDescription: '', aiDescription: '', locations: [],
