@@ -1,6 +1,7 @@
 # Spec: Listing details speed (client)
 
 Status: ready-for-agent
+Spec session: listing-details-speed — spec
 Status note: first iteration, items 1–5; more items will follow.
 
 Server side: the FormamorphServer repo, `docs-internal/specs/listing-details-speed/spec.md`.
