@@ -21,9 +21,7 @@ export function useRemoveWorldTrait(): { ask: (id: string, isGroup: boolean) => 
   const ask = (id: string, isGroup: boolean) => {
     const group = isGroup ? traitGroups.find((g) => g.id === id) : undefined;
     const blueprints = group?.system === 'blueprints' && groupHoldsItems({ traits, traitGroups }, id);
-    const links = blueprints
-      ? [...blueprintItemIds({ traits, traitGroups })].reduce((n, itemId) => n + linksTo(entities, itemId), 0)
-      : linksTo(entities, id);
+    const links = linksTo(entities, blueprints ? blueprintItemIds({ traits, traitGroups }) : id);
     const name = (group ?? traits.find((t) => t.id === id))?.name ?? '';
     if (links || blueprints) setPending({ id, name, isGroup, links, blueprints });
     else remove(id, isGroup);

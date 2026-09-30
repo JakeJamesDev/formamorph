@@ -43,9 +43,6 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
   };
 };
 
-/** The line after a refused drop: an entity's trait would gain stat effects, the entity already has the
- *  trait, the Custom Persona entity left the top level, a linked world item would become owned, or a linked
- *  Blueprint would leave Blueprints. The dragged item stays put. */
 /** `A`, `A and B`, `A, B and C`, each name in bold. */
 const bearerList = (names: readonly string[], placeholders: Placeholder[]) => names.map((n, i) => (
   <Fragment key={i}>
@@ -54,6 +51,9 @@ const bearerList = (names: readonly string[], placeholders: Placeholder[]) => na
   </Fragment>
 ));
 
+/** The line after a refused drop: an entity's trait would gain stat effects, the entity already has the
+ *  trait, the Custom Persona entity left the top level, or a linked Blueprint would leave Blueprints or
+ *  become owned. The dragged item stays put. */
 export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   refusal: TraitDropRefusal;
   placeholders: Placeholder[];
@@ -71,8 +71,6 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
         </>
       ) : refusal.reason === 'root' ? (
         <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
-      ) : refusal.reason === 'linked' ? (
-        <>{name} stays a world item, because {refusal.links === 1 ? 'a link points' : `${refusal.links} links point`} at it or at something in it. Remove {refusal.links === 1 ? 'the link' : 'the links'} first.</>
       ) : (
         <>
           {name} stays {refusal.owner

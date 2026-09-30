@@ -609,11 +609,14 @@ describe('applyOwnedTraitDrop with links', () => {
     expect(next.traits?.find((t) => t.id === 'loner')).toMatchObject({ groupId: null, order: 1 });
   });
 
-  it('refuses the move with links off while an entity links the item or something below it', () => {
-    const linked: Entity = { id: 'bob', name: 'Bob', traitLinks: [{ id: 'l1', originalId: 'loner', kind: 'trait', originalName: 'Loner', groupId: null, order: 0 }] };
-    expect(drop([ash, linked], 'loner', 'pack', 0, [], false)).toEqual({ kind: 'refused', refusal: { reason: 'linked', name: 'Loner', links: 1 } });
+  it('refuses a linked Blueprint moving into an entity with links off, naming who links it or something below it (Q7)', () => {
+    const linked: Entity = { id: 'bob', name: 'Bob', traitLinks: [{ id: 'l1', originalId: 'wizard', kind: 'trait', originalName: 'wizard', groupId: null, order: 0 }] };
+    // Wizard dropped below Pack, one level out, lands at Ash's root.
+    expect(drop([ash, linked], 'wizard', 'pack', -24, [], false))
+      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'wizard', bearers: ['Bob'] } });
     const groupLinked: Entity = { ...linked, traitLinks: [{ id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'paladin', groupId: null, order: 0 }] };
-    expect(drop([ash, groupLinked], 'classes', 'pack', 0, [], false)?.kind).toBe('refused');
+    expect(drop([ash, groupLinked], 'classes', 'pack', 0, ['classes'], false))
+      .toEqual({ kind: 'refused', refusal: { reason: 'blueprint-linked', name: 'Classes', bearers: ['Bob'] } });
   });
 
   it('refuses the move with links off when the world trait carries stat effects', () => {

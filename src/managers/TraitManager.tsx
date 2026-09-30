@@ -75,6 +75,13 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
   );
 };
 
+/** The line under a bearer's stat sections: when its stat effects apply, or that they never do. The Custom
+ *  Persona entity's traits are the player's, so it gets none. */
+export function BearerStatNote({ bearer }: { bearer: Entity }) {
+  if (bearer.customPersona) return null;
+  return <Hint>{bearer.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>;
+}
+
 /**
  * Right-panel editor for one trait: its fields split across Details, Availability, Stats and Pins.
  *
@@ -86,19 +93,13 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  *
  * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
  *
- * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections show only where it can own them. Its
- * "Owned by" line goes with `ownerLine` off, for a host whose heading already names the entity. A host that
- * can open only some requirement targets says which through `requirementOpens`; the rest read as plain chips.
- * A `link` edits the trait as that link reads it: overridable fields write the link's overrides and show a
- * Reset while overridden, and the rest is read-only. Its own lines go in `detailsHeader` and `availabilityFooter`.
+ * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections show on a persona
+ * or where the trait already has stat effects. Its "Owned by" line goes with `ownerLine` off, for a host whose
+ * heading already names the entity. A host that can open only some requirement targets says which through
+ * `requirementOpens`; the rest read as plain chips. A `link` edits the trait as that link reads it:
+ * overridable fields write the link's overrides and show a Reset while overridden, and the rest is read-only.
+ * Its own lines go in `detailsHeader` and `availabilityFooter`.
  */
-/** The line under a bearer's stat sections: when its stat effects apply, or that they never do. The Custom
- *  Persona entity's traits are the player's, so it gets none. */
-export function BearerStatNote({ bearer }: { bearer: Entity }) {
-  if (bearer.customPersona) return null;
-  return <Hint>{bearer.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>;
-}
-
 const TraitManager = ({
   trait, owner, link, ownerLine = true, detailsHeader, availabilityFooter, onOpenTrait, onOpenEntity, requirementOpens, tab, onTabChange,
   focusField,

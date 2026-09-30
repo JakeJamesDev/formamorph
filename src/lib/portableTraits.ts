@@ -4,7 +4,7 @@ import type { Entity, Placeholder, PlaceholderGroup, RequirementBearer, Trait, T
 import { linksInTreeOrder, originalOf } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
-import { blueprintItemIds, groupsBelow, isBlueprintItem } from './traitTree';
+import { blueprintItemIds, groupsBelow } from './traitTree';
 
 /** Off-world, a "playing as" or a named bearer on the entity itself names it by this id, since each copy has
  *  its own id. */
@@ -87,15 +87,14 @@ function rekeyed<V>(map: Record<string, V> | undefined, key: (id: string) => str
   return Object.keys(out).length ? out : undefined;
 }
 
-/** The world original the link points at by id, when it is a Blueprints item of the link's kind. */
-function originalById(world: TraitWorld, link: TraitLink): Original | null {
-  const original = isBlueprintItem(world, link.originalId) ? originalOf(world, link.originalId) : null;
+/** The world original the link points at by id, when it is one of the `linkable` Blueprints items of the link's kind. */
+function originalById(world: TraitWorld, linkable: ReadonlySet<string>, link: TraitLink): Original | null {
+  const original = linkable.has(link.originalId) ? originalOf(world, link.originalId) : null;
   return original?.kind === link.kind ? original : null;
 }
 
-/** The one Blueprints item of the link's kind that carries its stored name. */
-function originalByName(world: TraitWorld, link: TraitLink): Original | null {
-  const linkable = blueprintItemIds(world);
+/** The one `linkable` Blueprints item of the link's kind that carries its stored name. */
+function originalByName(world: TraitWorld, linkable: ReadonlySet<string>, link: TraitLink): Original | null {
   const list: readonly Named[] = (link.kind === 'trait' ? world.traits : world.traitGroups).filter((item) => linkable.has(item.id));
   const named = uniqueNamed(list, link.originalName);
   return named && originalOf(world, named.id);
@@ -113,7 +112,8 @@ function brought(world: TraitWorld, original: Original): { ids: string[]; traits
 /** Each link naming its original, and each other trait its data keys, by the world's names. */
 function portableLinks(links: readonly TraitLink[], world?: TraitWorld): TraitLink[] {
   return links.map((link) => {
-    const original = world && originalById(world, link);
+    const found = world && originalOf(world, link.originalId);
+    const original = found?.kind === link.kind ? found : null;
     const keyNames = Object.fromEntries(keyedIds(link).filter((id) => id !== link.originalId).flatMap((id) => {
       const name = world?.traits.find((t) => t.id === id)?.name ?? link.keyNames?.[id];
       return name ? [[id, name] as const] : [];
@@ -132,8 +132,9 @@ function portableLinks(links: readonly TraitLink[], world?: TraitWorld): TraitLi
 function bindLinks(entity: Entity, links: readonly TraitLink[], world: TraitWorld): TraitLink[] {
   const held = new Set<string>();
   const kept = new Map<string, TraitLink>();
+  const linkable = blueprintItemIds(world);
   for (const link of linksInTreeOrder(entity, links)) {
-    const bound = bindLink(link, world);
+    const bound = bindLink(link, world, linkable);
     if (!bound || bound.ids.some((id) => held.has(id))) continue;
     bound.ids.forEach((id) => held.add(id));
     kept.set(link.id, bound.link);
@@ -141,9 +142,9 @@ function bindLinks(entity: Entity, links: readonly TraitLink[], world: TraitWorl
   return links.flatMap((l) => kept.get(l.id) ?? []);
 }
 
-/** One link bound to `world`, with the ids it brings; null when no original matches. */
-function bindLink(link: TraitLink, world: TraitWorld): { link: TraitLink; ids: string[] } | null {
-  const original = originalById(world, link) ?? originalByName(world, link);
+/** One link bound to `world`, with the ids it brings; null when no `linkable` original matches. */
+function bindLink(link: TraitLink, world: TraitWorld, linkable: ReadonlySet<string>): { link: TraitLink; ids: string[] } | null {
+  const original = originalById(world, linkable, link) ?? originalByName(world, linkable, link);
   if (!original) return null;
   const { ids, traits } = brought(world, original);
   const key = (id: string): string | null => {
@@ -158,8 +159,11 @@ function bindLink(link: TraitLink, world: TraitWorld): { link: TraitLink; ids: s
 
 /** A library entity's links as the world it is opened in reads them: each that binds takes the world's ids,
  *  and one that does not stays as stored. Nothing is dropped, since the entity stays in the library. */
-export const linksBoundTo = (entity: Entity, world: TraitWorld): Entity =>
-  (entity.traitLinks?.length ? { ...entity, traitLinks: entity.traitLinks.map((l) => bindLink(l, world)?.link ?? l) } : entity);
+export function linksBoundTo(entity: Entity, world: TraitWorld): Entity {
+  if (!entity.traitLinks?.length) return entity;
+  const linkable = blueprintItemIds(world);
+  return { ...entity, traitLinks: entity.traitLinks.map((l) => bindLink(l, world, linkable)?.link ?? l) };
+}
 
 /** A library entity's links as the library stores them, named from the world it is opened in. */
 export const linksCarriedFrom = (entity: Entity, world: TraitWorld): Entity =>
