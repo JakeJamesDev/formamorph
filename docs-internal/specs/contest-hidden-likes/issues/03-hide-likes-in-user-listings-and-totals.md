@@ -1,6 +1,8 @@
 # 03: Hide contest likes in user listings and profile totals
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: server 4734172 (FormamorphServer). Totals take the viewer; listings needed route tests only. Not deployed.
+Base: c4b7873b
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
