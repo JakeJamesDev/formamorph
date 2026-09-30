@@ -108,7 +108,8 @@ Old clients get no count for a hidden entry and show "0". Nothing leaks and noth
 
 ### Client display
 
-- One pure helper reads a listing record and returns what to show: a number, a private number, or hidden. Every surface that shows a count uses it: the community card, the listing details modal, profile creation rows, and the profile total.
+- One pure helper reads a listing record and returns what to show: a number, a private number, or hidden. Every per-listing count uses it: the community card, the listing details modal, and profile creation rows.
+- The profile total stays a plain number for every reader, with no tooltip. The server already sends each reader the right total. (Q12, 2026-09-30)
 - A hidden count shows as a heart with "—". The heart stays pressable. A tooltip explains that likes show after the winners are announced.
 - A private count shows the number with a tooltip saying only the reader and staff see it until results.
 - After a like press, the client keeps the hidden state from the reply. It never shows an optimistic number on a hidden entry.
