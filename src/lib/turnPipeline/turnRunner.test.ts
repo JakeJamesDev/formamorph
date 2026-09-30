@@ -847,6 +847,18 @@ describe('image attachments', () => {
     });
   });
 
+  it('sends the images on every request of a fan-out pass', async () => {
+    const cast = [{ name: 'Maela' }, { name: 'Bram' }];
+    const finished = ok((await attached({
+      subjects: { character: cast },
+      settings: { promptAttachments: { character: true, narration: false } },
+    })).result);
+    const characters = finished.passes.filter((p) => p.id === 'character');
+    expect(characters.length).toBe(2);
+    for (const pass of characters) expect(hasParts(pass.request)).toBe(true);
+    expect(finished.passes.filter((p) => hasParts(p.request)).map((p) => p.id).sort()).toEqual(['character', 'character']);
+  });
+
   it('keeps the flags from sending anything while the setting is off', async () => {
     const finished = ok((await attached({ settings: { imageAttachments: false, promptAttachments: { director: true } } })).result);
     for (const pass of finished.passes) expect(hasParts(pass.request), pass.id).toBe(false);
