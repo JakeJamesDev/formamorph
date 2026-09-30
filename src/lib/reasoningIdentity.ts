@@ -172,8 +172,35 @@ const MOONSHOT_ROW: ReasoningIdentityRow = {
   },
 };
 
+/** The Novita model families that switch thinking with `enable_thinking`: DeepSeek from V3.1, GLM from 4.5. */
+const NOVITA_THINKING: readonly { prefix: string; from: number }[] = [
+  { prefix: 'deepseek/deepseek-v', from: 301 },
+  { prefix: 'zai-org/glm-', from: 405 },
+];
+
+/**
+ * Novita's OpenAI-compatible API. It switches thinking with `enable_thinking`, which defaults to on, and
+ * takes no effort literal or token budget. Only the families its reference lists are claimed, with DeepSeek
+ * V4 added from a failed turn that reasoned with no field sent; every other id falls through to the chain.
+ *
+ * Read on 2026-09-30 from Novita's chat-completions API reference.
+ */
+const NOVITA_ROW: ReasoningIdentityRow = {
+  hosts: ['api.novita.ai'],
+  match: (modelId) => {
+    const family = NOVITA_THINKING.find((f) => modelId.startsWith(f.prefix));
+    if (!family) return null;
+    const version = generation(modelId.slice(family.prefix.length), /^(\d+)(?:\.(\d+))?/);
+    return version !== null && version >= family.from
+      ? { dialect: 'novita', reasons: true, levels: [], budget: false }
+      : null;
+  },
+};
+
 /** Every first-party API whose own address names its reasoning dialect. */
-export const REASONING_IDENTITY_ROWS: readonly ReasoningIdentityRow[] = [ANTHROPIC_ROW, GOOGLE_ROW, MOONSHOT_ROW];
+export const REASONING_IDENTITY_ROWS: readonly ReasoningIdentityRow[] = [
+  ANTHROPIC_ROW, GOOGLE_ROW, MOONSHOT_ROW, NOVITA_ROW,
+];
 
 /**
  * The answer the endpoint's own identity proves, or `null` where no row claims the host or the model. It

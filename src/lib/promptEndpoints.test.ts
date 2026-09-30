@@ -211,6 +211,7 @@ describe('toDebugEndpoint', () => {
     ['google-3', { google: { thinking_config: { thinking_level: 'high' } } }, ['google.thinking_config.thinking_level']],
     ['moonshot-k3', { reasoning_effort: 'max' as const }, ['reasoning_effort']],
     ['moonshot-k2', { thinking: { type: 'disabled' as const } }, ['thinking.type']],
+    ['novita', { enable_thinking: false }, ['enable_thinking']],
   ] as const)('names the keys the %s dialect writes', (dialect, body, names) => {
     const debug = toDebugEndpoint(target, body, dialect);
     expect(debug.reasoningFields.map((f) => f.name)).toEqual(names);

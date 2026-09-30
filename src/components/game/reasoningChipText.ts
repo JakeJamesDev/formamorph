@@ -9,7 +9,7 @@ export function reasoningChipText(endpoint: DebugEndpointInfo): { label: string;
   const fields = endpoint.reasoningFields;
   if (!fields.length) return null;
   return {
-    label: fields.map((f) => `${f.label} ${f.value}`).join(' · '),
+    label: fields.map((f) => `${f.label} ${typeof f.value === 'boolean' ? (f.value ? 'on' : 'off') : f.value}`).join(' · '),
     tip: fields.map((f) => `${f.name}: ${f.value}`).join(' · '),
   };
 }

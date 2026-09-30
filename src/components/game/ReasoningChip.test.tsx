@@ -33,6 +33,12 @@ describe('reasoningChipText', () => {
     expect(reasoningChipText(endpoint(effort('low')))?.label).toBe('Effort low');
   });
 
+  it('reads a boolean switch as on or off, and keeps the wire value in the tip', () => {
+    const chip = reasoningChipText(endpoint({ label: 'Reasoning', name: 'enable_thinking', value: false }));
+    expect(chip?.label).toBe('Reasoning off');
+    expect(chip?.tip).toBe('enable_thinking: false');
+  });
+
   it('names the cap alone on the built-in engine, which takes no hint', () => {
     expect(reasoningChipText(endpoint(budget(250)))?.label).toBe('Budget 250');
   });
