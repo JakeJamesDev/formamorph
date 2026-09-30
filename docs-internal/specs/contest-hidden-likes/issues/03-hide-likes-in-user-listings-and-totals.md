@@ -7,7 +7,9 @@ Reasoning effort: medium
 Repo: FormamorphServer
 Spec: ../spec.md (Implementation Decisions › Routes)
 
-Model rationale: two read paths and one SQL sum that needs a reader-aware filter.
+Model rationale: one SQL sum that needs a reader-aware filter, plus route tests.
+
+Note from ticket 01 (server dc8c48e): user listings already follow the rule because they go through the catalog query, so they need route tests only. The total filter reuses ticket 01's SQL rule function `likes_hidden(...)` and its reader-params helper, both in the server's like-visibility module. Do not copy the rule.
 
 ## What to build
 
@@ -15,7 +17,7 @@ A player opens an author's profile during a contest. The author's listing rows f
 
 ## Acceptance criteria
 
-- [ ] "My listings" and another user's listings follow the ticket 01 contract per row.
+- [ ] Route tests prove that "my listings" and another user's listings follow the ticket 01 contract per row.
 - [ ] Profile totals (by id and by username) leave hidden likes out for a public reader.
 - [ ] The author and staff get the full total.
 - [ ] Route tests: an author with one hidden entry and one normal listing. A public reader's total equals the normal listing's likes; the author's total equals both.
