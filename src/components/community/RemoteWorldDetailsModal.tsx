@@ -29,6 +29,7 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { LikeButton } from "@/components/community/LikeButton";
+import { likeCountOf } from "@/lib/likeCount";
 import { LikersDialog } from "@/components/community/LikersDialog";
 import { ReportDialog, type ReportTarget } from "@/components/community/ReportDialog";
 import { useReportsEnabled } from "@/lib/useReportsEnabled";
@@ -489,7 +490,7 @@ export function RemoteWorldDetailsModal({
       <div>
         <h3 className="text-helper font-semibold text-muted-foreground">Likes</h3>
         <LikeButton
-          likes={world.likes || 0}
+          count={likeCountOf(world)}
           liked={world.liked}
           size="md"
           // Static on your own listing, which the server refuses.

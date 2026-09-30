@@ -49,6 +49,16 @@ describe('community card reference', () => {
     expect(screen.getByText('The local update action started for The Glass Marsh Almanac.')).toBeInTheDocument();
   });
 
+  it('shows the hidden like count as a dash that still presses', async () => {
+    const user = userEvent.setup();
+    renderReference();
+
+    const heart = screen.getByRole('button', { name: 'Like — likes hidden' });
+    expect(heart.textContent?.trim()).toBe('—');
+    await user.click(heart);
+    expect(await screen.findByRole('button', { name: 'Unlike — likes hidden' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('draws Morph art for a flagged stand-in and never shows its stored thumbnail', () => {
     renderReference();
 

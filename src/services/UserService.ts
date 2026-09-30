@@ -1,5 +1,6 @@
 import type { FeedItem, FollowedUser, LikeGiven, LinkedAccount, ProfileCreation, PublicProfile } from '@/types';
 import { kindOf } from '@/lib/catalogKinds';
+import { likeCountOf } from '@/lib/likeCount';
 import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
 import { failureFromText, responseError } from '@/services/responseError';
@@ -21,6 +22,8 @@ interface RawCreation {
   downloads?: number;
   comment_count?: number;
   likes?: number;
+  likesHidden?: boolean;
+  likesPrivate?: boolean;
   updated_at: string;
   created_at: string;
   quarantined_at?: string | null;
@@ -132,7 +135,7 @@ class UserService {
       placeholder: row.placeholder === true,
       downloads: Number(row.downloads) || 0,
       commentCount: Number(row.comment_count) || 0,
-      likes: Number(row.likes) || 0,
+      likes: likeCountOf(row),
       updatedAt: row.updated_at,
       createdAt: row.created_at,
       // A timestamp on the row is the whole signal; the server has already decided whether this reader

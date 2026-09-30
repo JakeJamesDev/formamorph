@@ -123,6 +123,13 @@ describe('who is told the likers exist', () => {
     expect(onGuestLike).not.toHaveBeenCalled();
   });
 
+  it('shows a dash on a contest entry whose count is hidden, and keeps the heart', async () => {
+    show({ world: world({ likes: undefined, likesHidden: true }) });
+
+    const heart = await screen.findByRole('button', { name: 'Like — likes hidden' });
+    expect(heart.textContent?.trim()).toBe('—');
+  });
+
   it('offers it to a moderator, naming what it opens', async () => {
     show({ currentUser: account('m1', 'mod') });
 

@@ -9,6 +9,7 @@ import { mayPressHeart } from '@/lib/anonymousLikes';
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { LikeButton } from "@/components/community/LikeButton";
+import { likeCountOf } from "@/lib/likeCount";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf, kindHasMorphArt, kindHasThumbnail, showsMorphArt } from "@/lib/catalogKinds";
@@ -115,7 +116,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
 
   const likeControl = (
     <LikeButton
-      likes={world.likes || 0}
+      count={likeCountOf(world)}
       liked={world.liked}
       // Static on your own listing, which the server refuses: liking it would make the count say how much
       // somebody has published rather than how many people liked it.

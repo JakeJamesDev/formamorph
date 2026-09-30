@@ -15,6 +15,7 @@ import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
 import type { ListingVisibility } from '@/lib/publishLinks';
 import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { SourceCheckStatus } from '@/lib/sourceChecks';
+import type { LikeState } from '@/lib/likeCount';
 import type {
   AnonymousLikeRow, AnonymousLikesRemoved, ContentLink, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata,
 } from '@/types';
@@ -38,6 +39,9 @@ export type CatalogFetch =
  * a switched-off server sends the guest to sign-in, and a listing that has gone quiet needs nothing said
  * about it.
  */
+/** A like reply: the reader's state, and the count as the reader may see it. */
+type LikeReply = LikeState & { liked: boolean };
+
 export class AnonymousLikeRefused extends Error {
   readonly code: string;
   readonly details: string;
@@ -759,7 +763,7 @@ class WorldStorageService {
     if (!response.ok) throw await responseError(response, 'Failed to change that');
     const body = await response.json().catch(() => ({}));
 
-    return body.data as { liked: boolean; likes: number };
+    return body.data as LikeReply;
   }
 
   /**
@@ -794,7 +798,7 @@ class WorldStorageService {
     }
     const body = await response.json().catch(() => ({}));
 
-    return body.data as { liked: boolean; likes: number };
+    return body.data as LikeReply;
   }
 
   /**

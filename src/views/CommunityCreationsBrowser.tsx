@@ -85,6 +85,7 @@ import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
 import { CommunityFilterBar } from "@/components/community/CommunityFilterBar";
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { useTutorial } from "@/lib/tutorials";
+import { optimisticLikeState, type LikeState } from "@/lib/likeCount";
 
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
@@ -640,13 +641,13 @@ const CommunityCreationsBrowser = ({
    * catalog arrives as one big request, and refetching it to learn one number would blank the grid — and
    * re-sort it under the pointer when the reader is sorting by likes.
    */
-  const showLikeState = (worldId: string, state: { liked?: boolean; likes: number }) => {
-    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId
-      ? { ...w, liked: state.liked, likes: state.likes }
-      : w)));
-    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId
-      ? { ...prev, liked: state.liked, likes: state.likes }
-      : prev));
+  const showLikeState = (worldId: string, state: LikeState) => {
+    // Every field is written, absent ones included, so a flag the new state drops does not linger.
+    const patch = {
+      liked: state.liked, likes: state.likes, likesHidden: state.likesHidden, likesPrivate: state.likesPrivate,
+    };
+    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId ? { ...w, ...patch } : w)));
+    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId ? { ...prev, ...patch } : prev));
   };
 
   /**
@@ -654,16 +655,21 @@ const CommunityCreationsBrowser = ({
    *
    * The session picks the route: an account has one of its own, and a guest's like is addressed by the
    * Install instead. The heart moves first and the count follows the server's answer, so the press reads
-   * as done while the request is still in the air.
+   * as done while the request is still in the air. A hidden count gets no guessed number.
    *
    * A refusal puts the heart back. What is said about it depends on the code — see `refusalAnswer`.
    */
   const handleLike = async (world: WorldRecord, liked: boolean) => {
     dismissIfShowing('community-like');
     const worldId = String(world._id || world.id);
-    const before = { liked: world.liked as boolean | undefined, likes: Number(world.likes) || 0 };
+    const before: LikeState = {
+      liked: world.liked as boolean | undefined,
+      likes: world.likes as number | undefined,
+      likesHidden: world.likesHidden as boolean | undefined,
+      likesPrivate: world.likesPrivate as boolean | undefined,
+    };
 
-    showLikeState(worldId, { liked, likes: Math.max(0, before.likes + (liked ? 1 : -1)) });
+    showLikeState(worldId, optimisticLikeState(world, liked));
 
     try {
       const state = isAuthenticated

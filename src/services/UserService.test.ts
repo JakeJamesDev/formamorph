@@ -103,6 +103,21 @@ describe('reading somebody’s creations', () => {
 
     expect(creation.placeholder).toBe(false);
   });
+
+  it('reads each row\'s like count as this reader may see it', async () => {
+    signedIn(null);
+    respondWith([
+      row({ likesHidden: true }),
+      row({ likes: 12, likesPrivate: true }),
+      row({ likes: 3 }),
+    ]);
+
+    const [hidden, own, plain] = await UserService.fetchCreations('u1');
+
+    expect(hidden.likes).toEqual({ visibility: 'hidden' });
+    expect(own.likes).toEqual({ visibility: 'private', likes: 12 });
+    expect(plain.likes).toEqual({ visibility: 'public', likes: 3 });
+  });
 });
 
 describe('reading a profile by name', () => {

@@ -3,10 +3,14 @@ import { toastError } from "@/lib/linkToast";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
+import type { LikeCount } from "@/lib/likeCount";
+
+export const HIDDEN_LIKES_TIP = 'Likes show after the winners are announced';
+export const PRIVATE_LIKES_TIP = 'Only you and staff see this count until the winners are announced';
 
 interface LikeButtonProps {
-  /** How many accounts have liked it. */
-  likes: number;
+  /** What the count shows to this reader; see `likeCountOf`. */
+  count: LikeCount;
   /** Whether the reader has. Absent for a signed-out visitor, who is shown a number rather than a control. */
   liked?: boolean;
   /**
@@ -31,12 +35,19 @@ interface LikeButtonProps {
  * many finished it wanting to say so, and a listing that scores well on one and badly on the other is
  * exactly the thing neither number tells you alone.
  */
-export function LikeButton({ likes, liked, onToggle, onOpenLikers, size = 'sm', className }: LikeButtonProps) {
+export function LikeButton({ count, liked, onToggle, onOpenLikers, size = 'sm', className }: LikeButtonProps) {
   const [isBusy, setIsBusy] = useState(false);
 
+  const shown = count.visibility === 'hidden' ? '—' : count.likes;
   const iconClass = cn(size === 'sm' ? 'h-3 w-3' : 'h-4 w-4', liked && 'fill-like text-like');
-  const body = <><Heart className={iconClass} /> {likes}</>;
-  const label = `${likes} ${likes === 1 ? 'like' : 'likes'}`;
+  const body = <><Heart className={iconClass} /> {shown}</>;
+  const label = count.visibility === 'hidden'
+    ? 'likes hidden'
+    : `${count.likes} ${count.likes === 1 ? 'like' : 'likes'}`;
+  // A count others can't see says so after whatever the tip already says.
+  const why = count.visibility === 'hidden' ? HIDDEN_LIKES_TIP : count.visibility === 'private' ? PRIVATE_LIKES_TIP : null;
+  const withWhy = (tip: string) => (why ? `${tip}. ${why}.` : tip);
+  const pressTip = withWhy(liked ? 'You like this' : 'Like this');
 
   const toggle = async () => {
     if (!onToggle) return;
@@ -58,7 +69,7 @@ export function LikeButton({ likes, liked, onToggle, onOpenLikers, size = 'sm', 
     return (
       <span className={cn('flex items-center gap-1', className)}>
         {onToggle ? (
-          <Tip tip={liked ? 'You like this' : 'Like this'}>
+          <Tip tip={pressTip}>
             <button
               type="button"
               // These sit inside cards that are themselves clickable.
@@ -75,14 +86,14 @@ export function LikeButton({ likes, liked, onToggle, onOpenLikers, size = 'sm', 
           <Heart className={iconClass} aria-hidden />
         )}
 
-        <Tip tip="See who liked this">
+        <Tip tip={withWhy('See who liked this')}>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onOpenLikers(); }}
             aria-label={`Show who liked this — ${label}`}
             className="rounded-sm tabular-nums underline underline-offset-2 decoration-dotted transition-colors hover:text-like focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            {likes}
+            {shown}
           </button>
         </Tip>
       </span>
@@ -92,14 +103,14 @@ export function LikeButton({ likes, liked, onToggle, onOpenLikers, size = 'sm', 
   if (!onToggle) {
     return (
       // The tip counts too, so it names the span: the heart is decorative and a bare "3" says nothing.
-      <Tip tip={label}>
+      <Tip tip={count.visibility === 'hidden' ? HIDDEN_LIKES_TIP : withWhy(label)}>
         <span className={cn('flex items-center gap-1', className)}>{body}</span>
       </Tip>
     );
   }
 
   return (
-    <Tip tip={liked ? 'You like this' : 'Like this'}>
+    <Tip tip={pressTip}>
       <button
         type="button"
         // These sit inside cards that are themselves clickable.
