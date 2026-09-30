@@ -266,16 +266,30 @@ describe('the comments header and rows at open', () => {
     expect(emptyState()).toBeNull();
   });
 
-  it('settles on an empty thread, not the row count, when the comments request fails', async () => {
+  it('keeps the row count, and never claims no comments, when the comments request fails', async () => {
+    show({ world: world({ comment_count: 5 }) });
+
+    // The service's own failure shape: it resolves, it never throws.
+    await act(async () => {
+      answerComments({ success: false, error: 'offline', data: [], total: 0, pagination: {} } as unknown as Comments);
+    });
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(screen.getByText('Comments (5)')).toBeInTheDocument();
+    expect(placeholders()).toHaveLength(0);
+    expect(emptyState()).toBeNull();
+  });
+
+  it('treats a comments read that throws as a failure too', async () => {
     show({ world: world({ comment_count: 5 }) });
 
     await act(async () => {
       answerComments(Promise.reject(new Error('offline')) as unknown as Comments);
     });
 
-    expect(await screen.findByText('Comments (0)')).toBeInTheDocument();
-    expect(placeholders()).toHaveLength(0);
-    expect(toast.error).toHaveBeenCalled();
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(screen.getByText('Comments (5)')).toBeInTheDocument();
+    expect(emptyState()).toBeNull();
   });
 });
 

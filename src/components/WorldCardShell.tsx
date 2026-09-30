@@ -76,23 +76,25 @@ export function OverlayTitle({ name, className, onOpen }: { name: string; classN
       if (!ref.current?.closest('.group')?.matches(':hover')) setReveal(false);
     },
   };
-  return (
-    <Tip tip={clipped ? name : undefined} labelsChild={false}>
-      {onOpen ? (
-        // The heading keeps its place in the outline; the button inside it is the keyboard way in.
-        <h3 className="contents">
-          <button
-            type="button"
-            ref={ref as React.RefObject<HTMLButtonElement>}
-            {...titleAttrs}
-            onClick={(event) => { event.stopPropagation(); onOpen(); }}
-          >
-            {name}
-          </button>
-        </h3>
-      ) : (
-        <h3 ref={ref as React.RefObject<HTMLHeadingElement>} {...titleAttrs}>{name}</h3>
-      )}
+  const tip = clipped ? name : undefined;
+  // The heading keeps its place in the outline; the button inside it is the keyboard way in. The tip
+  // sits on the button, because a `contents` heading has no box to anchor to.
+  return onOpen ? (
+    <h3 className="contents">
+      <Tip tip={tip} labelsChild={false}>
+        <button
+          type="button"
+          ref={ref as React.RefObject<HTMLButtonElement>}
+          {...titleAttrs}
+          onClick={(event) => { event.stopPropagation(); onOpen(); }}
+        >
+          {name}
+        </button>
+      </Tip>
+    </h3>
+  ) : (
+    <Tip tip={tip} labelsChild={false}>
+      <h3 ref={ref as React.RefObject<HTMLHeadingElement>} {...titleAttrs}>{name}</h3>
     </Tip>
   );
 }

@@ -132,6 +132,8 @@ export function RemoteWorldDetailsModal({
   // Which listing the comments fetch last settled for, keyed so a previous listing's answer never reads
   // as this one's.
   const [commentsSettledFor, setCommentsSettledFor] = useState<string | null>(null);
+  // Which listing's last comments read failed, so its placeholders stop without claiming none exist.
+  const [commentsFailedFor, setCommentsFailedFor] = useState<string | null>(null);
   // Whether the listing details request has settled, answered or failed. Either way the row's entry
   // count stops speaking: the answer, or its absence, is the authority.
   const [detailsSettled, setDetailsSettled] = useState(false);
@@ -178,6 +180,7 @@ export function RemoteWorldDetailsModal({
   const seededComments = rowCount(world?.comment_count) ?? 0;
   const commentsAnswered = commentsSettledFor !== null && commentsSettledFor === listingKey;
   const commentsCount = commentsAnswered ? commentsTotal : seededComments;
+  const commentsFailed = commentsFailedFor !== null && commentsFailedFor === listingKey;
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
@@ -209,22 +212,28 @@ export function RemoteWorldDetailsModal({
    */
   const loadComments = async (worldId: string, wanted = COMMENTS_PAGE, prefetched: Promise<CommentsPage> | null = null) => {
     const reqId = ++commentsReqRef.current;
+    const current = () => mountedRef.current && reqId === commentsReqRef.current;
     setCommentsLoading(true);
+    let res: CommentsPage;
     try {
-      const res = await (prefetched ?? WorldStorageService.fetchComments(worldId, 1, wanted));
-      if (!mountedRef.current || reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
-      setCommentsTotal(res.total);
-      setCommentsHasMore(!!res.pagination?.next);
-      setCommentsShown(wanted);
-      setComments(res.data);
+      res = await (prefetched ?? WorldStorageService.fetchComments(worldId, 1, wanted));
+      if (res.success === false) throw new Error('error' in res ? res.error : undefined);
     } catch (error) {
-      if (mountedRef.current && reqId === commentsReqRef.current) toastError(error, 'Failed to load the comments');
-    } finally {
-      if (mountedRef.current && reqId === commentsReqRef.current) {
-        setCommentsLoading(false);
-        setCommentsSettledFor(worldId);
-      }
+      if (!current()) return;
+      // A failed read leaves the count and rows in hand; it never reads as a listing with no comments.
+      setCommentsLoading(false);
+      setCommentsFailedFor(worldId);
+      toastError(error, 'Failed to load the comments');
+      return;
     }
+    if (!current()) return; // superseded by a newer world's fetch
+    setCommentsLoading(false);
+    setCommentsTotal(res.total);
+    setCommentsHasMore(!!res.pagination?.next);
+    setCommentsShown(wanted);
+    setComments(res.data);
+    setCommentsSettledFor(worldId);
+    setCommentsFailedFor(null);
   };
 
   const handlePostComment = async () => {
@@ -287,12 +296,15 @@ export function RemoteWorldDetailsModal({
     const reqId = ++changelogReqRef.current;
     const current = () => mountedRef.current && reqId === changelogReqRef.current;
 
-    const apply = (details: ListingDetails | null) => {
-      const entries = details?.changelog ?? null;
-      setChangelog(entries);
+    const applyAside = (details: ListingDetails | null) => {
       setModelLicense(details?.modelLicense);
       setAssociations(details?.compatibleWorlds);
       setListingVisibility(details?.visibility);
+    };
+    const apply = (details: ListingDetails | null) => {
+      const entries = details?.changelog ?? null;
+      applyAside(details);
+      setChangelog(entries);
       setDetailsSettled(true);
       if (!tabPickedRef.current) setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
     };
@@ -300,7 +312,11 @@ export function RemoteWorldDetailsModal({
     const load = loadListingDetails(worldId);
     const cached = await load.cached;
     if (!current()) return;
-    if (cached) apply(cached);
+    // The catalog row is revalidated each open, and a disk entry can be visits old: a cached changelog
+    // that disagrees with the row's count waits for the fresh answer instead of moving the tab.
+    const rowEntries = rowCount(forWorld.changelog_count);
+    const cachedAgrees = rowEntries === undefined || cached?.changelog?.length === rowEntries;
+    if (cached) (cachedAgrees ? apply : applyAside)(cached);
 
     const fresh = await load.fresh;
     if (!current()) return;
@@ -311,6 +327,9 @@ export function RemoteWorldDetailsModal({
       apply(fresh.details);
     } else if (fresh.status === 'gone' || !cached) {
       apply(null);
+    } else if (!cachedAgrees) {
+      // No answer is coming, so the cached details are the best there is.
+      apply(cached);
     }
   };
 
@@ -321,6 +340,7 @@ export function RemoteWorldDetailsModal({
       setComments([]);
       setCommentsTotal(0);
       setCommentsSettledFor(null);
+      setCommentsFailedFor(null);
       setDetailsSettled(false);
       setCommentText('');
       setEditingId(null);
@@ -847,7 +867,7 @@ export function RemoteWorldDetailsModal({
                 ))}
                 {/* One row per expected comment, up to a page; a listing with none skips straight to the
                     empty state. */}
-                {!commentsAnswered && comments.length === 0 && Array.from({ length: Math.min(seededComments, COMMENTS_PAGE) }, (_, i) => (
+                {!commentsAnswered && !commentsFailed && comments.length === 0 && Array.from({ length: Math.min(seededComments, COMMENTS_PAGE) }, (_, i) => (
                   <Skeleton key={i} className="h-14 w-full" data-testid="comment-placeholder" />
                 ))}
                 {comments.length === 0 && (commentsAnswered ? !commentsLoading : seededComments === 0) && (
