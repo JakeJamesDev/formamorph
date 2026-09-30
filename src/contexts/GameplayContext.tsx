@@ -12,7 +12,7 @@ import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
-import type { AttachmentMap } from '../lib/actionAttachments';
+import { restoreAttachments, serializeAttachments, type AttachmentMap } from '../lib/actionAttachments';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -386,6 +386,7 @@ function useProvideGameplay() {
         ...(memoryDeleted.length ? { memoryDeleted } : {}),
         ...(memoryNotes.length ? { memoryNotes } : {}),
         ...(keepSceneImages && Object.keys(sceneImages).length ? { sceneImages } : {}),
+        ...(serializeAttachments(actionAttachments) ? { actionAttachments } : {}),
         ...(isAutosave ? { isAutosave: true } : {}),
       };
 
@@ -404,7 +405,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, actionAttachments, addSystemLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -479,8 +480,8 @@ function useProvideGameplay() {
           // Absent whenever the save was written without images — the story loads with its tag lines and
           // no pictures, which is the default.
           setSceneImages(migrated.sceneImages ?? {});
-          // Saves hold no attachments yet, so a load starts with none.
-          setActionAttachments({});
+          // Absent on a save written with no attachments ⇒ none.
+          setActionAttachments(restoreAttachments(migrated.actionAttachments));
           setPendingAttachments([]);
           addSystemLogEntry(`Game loaded from "${saveName}"`);
           setSaveLoads((n) => n + 1);

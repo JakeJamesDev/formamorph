@@ -310,6 +310,9 @@ export interface SaveObject {
    *  image is over a megabyte. Kept out of the messages on purpose: everything that walks the history
    *  parses those, and a megabyte in one made the narration reveal crawl (see lib/sceneImages). */
   sceneImages?: Record<string, string[]>;
+  /** The images the player attached to actions, by turn id. Always written when there are any, so a save
+   *  is self-contained. Absent ⇒ none. Out of the messages for the same reason as `sceneImages`. */
+  actionAttachments?: Record<string, ImageAttachment[]>;
   /** v2.x memory editing: memories the player wrote by hand. `anchorTurn` is the message-history length
    *  at creation, which places the note chronologically among the digests. Never judged by the selector —
    *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */
