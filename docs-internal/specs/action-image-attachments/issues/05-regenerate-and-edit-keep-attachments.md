@@ -12,6 +12,8 @@ Regenerating a turn sends that turn's stored images again, under the same rules 
 ## Acceptance criteria
 
 - [ ] A regenerate of a turn with attachments sends them on the passes that include attachments.
+- [ ] A regenerate stores the old turn's images again under the new turn id before the history prune runs. The prune from ticket 01 drops entries whose turn id is no longer in history, so a late re-store loses the images.
+- [ ] Verify on the dev route `#dev?view=gameViewer&fixture=whiteRoom&attach=sample`, which stages two images on the latest turn.
 - [ ] With the setting off, a regenerate sends no images.
 - [ ] Editing an action keeps its attachments, and removing one in the edit UI updates the map and the chat thumbnails.
 - [ ] Tests cover regenerate with the setting on and off, and removal in edit.
