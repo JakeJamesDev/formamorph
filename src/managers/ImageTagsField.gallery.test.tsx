@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 // The uploader itself is covered by its own tests; here it stands in as a marker carrying the slot's value
 // and the id its file input would use, which is what the add tile's label points at.
@@ -57,6 +58,7 @@ const setup = (images: string[], slots = 4) => {
       kind="character"
       onTagsChange={vi.fn()}
     />,
+    { wrapper: TooltipProvider },
   );
   return { onImagesChange };
 };

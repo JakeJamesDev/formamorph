@@ -13,6 +13,7 @@ import type {
   IssuesProps, LensBarProps, OpeningProps, PlacementControl, TestBenchProps, TriggersProps,
 } from '@/lib/testBench/benchProps';
 import { TestBench, TestBenchButton } from './TestBench';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { phValues } from '@/test/placeholderValues';
 // The panel renders whatever the rule pass produced, so the fixture goes through the real engine rather
@@ -101,7 +102,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
 
 const renderBench = (from: RuleWorld, over: BenchOver = {}, placementControl?: PlacementControl) => {
   const props = benchProps(groupFindings(runRules(from)), over);
-  render(<TestBench {...props} placementControl={placementControl} />);
+  render(<TestBench {...props} placementControl={placementControl} />, { wrapper: TooltipProvider });
   return props;
 };
 
