@@ -133,9 +133,27 @@ describe('the window commits before the card grid', () => {
     expect(screen.getAllByTestId('card')).toHaveLength(3);
   });
 
-  it('on fresh rows that arrive after the window is open', async () => {
+  it('on a reopen after the grid was up, which is what the changelog claims', async () => {
+    catalog.items = rows(3);
     const view = render(<Harness open={false} />);
     view.rerender(<Harness open />);
+    await screen.findAllByTestId('card');
+    await act(async () => {});
+    view.rerender(<Harness open={false} />);
+    await act(async () => {});
+    trace.commits = 0;
+    trace.shellCommit = null;
+    trace.firstCardCommit = null;
+
+    view.rerender(<Harness open />);
+    await screen.findAllByTestId('card');
+
+    expect(trace.shellCommit).not.toBeNull();
+    expect(trace.firstCardCommit).toBeGreaterThan(trace.shellCommit ?? Infinity);
+  });
+
+  it('on fresh rows that arrive after the window mounts open', async () => {
+    render(<Harness open />);
     await screen.findByText('Community Creations');
     trace.commits = 0;
     trace.firstCardCommit = null;

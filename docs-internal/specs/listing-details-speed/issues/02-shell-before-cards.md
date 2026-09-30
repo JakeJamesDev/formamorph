@@ -1,6 +1,6 @@
 # 02: Paint the window before the cards
 
-Status: in-progress
+Status: ready-for-human
 Base: 9ddcc93f
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
@@ -33,5 +33,9 @@ Spec Q8. Clicking Community Creations shows its window at once. The card grid re
 | 1× | reopen | 54 | 34 | 1 → 0 | 51 → 0 |
 | 4× | reopen | 411 | 132 | 6 → 4 | 626 → 317 |
 | 4× | warm 2 | 161 | 187 | 7 → 4 | 624 → 457 |
+
+Cold and warm 1 also ran at both rates and stayed in the noise (4× cold 220 → 240, warm 1 166 → 290; a single sample each, and the other runs of the same code read 223 and 170). They are not a win or a loss to claim.
+
+**Scope, from the review.** The deferral covers the first cards of an open. Once cards are up, a filter, page, or tab change renders at once, as before, so a like press redraws at once. A browser that mounts open with rows in hand gets no shell-first commit: React 18.3 returns a deferred value as is on the first render. The real catalog hook starts empty, so its rows always arrive after the mount and defer; only a mocked hook could mount with rows. Story 27 (cached open as fast as an empty one) is not measured. The tests use a card mock, so they prove commit order, not card cost.
 
 A timeline probe at 4× (throwaway, not kept) showed frames every 13–50 ms between the window and the first card, so the page stays live while the cards draw. Cards land later than before (about 590 ms against 280 ms on a warm open) because the render now yields to the frames.

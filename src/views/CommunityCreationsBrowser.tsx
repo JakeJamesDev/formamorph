@@ -519,6 +519,8 @@ const CommunityCreationsBrowser = ({
   const gridSettled = useRef(false);
   const deferredRows = gridSettled.current ? gridRows : lagRows;
   const gridPending = deferredRows !== gridRows;
+  // Skeleton cards stand in until the first rows have rendered; the pager waits with them.
+  const gridLoading = isLoadingRemoteWorlds || (gridPending && deferredRows.length === 0);
   useEffect(() => {
     if (!open) gridSettled.current = false;
     else if (!gridPending && gridRows.length > 0) gridSettled.current = true;
@@ -1214,7 +1216,7 @@ const CommunityCreationsBrowser = ({
               'grid grid-cols-1 gap-4 px-6 py-4',
               gridLayout === 'split' ? 'lg:grid-cols-2 xl:grid-cols-3' : 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
             )}>
-              {isLoadingRemoteWorlds || (gridPending && deferredRows.length === 0) ? (
+              {gridLoading ? (
                 gridLayout === 'split' ? Array(4).fill(0).map((_, index) => (
                   <WorldCardShell key={index} layout="split" loading name="" frameClassName="bg-card" />
                 )) : Array(4).fill(0).map((_, index) => (
@@ -1290,7 +1292,7 @@ const CommunityCreationsBrowser = ({
 
           {/* Frozen footer: pagination */}
           <div className="shrink-0 border-t px-6 py-3">
-            {!isLoadingRemoteWorlds && filteredRemoteWorlds.length > 0 && (
+            {!gridLoading && filteredRemoteWorlds.length > 0 && (
               <Pager page={currentPage} pageCount={totalPages} onPageChange={setCurrentPage} />
             )}
           </div>
