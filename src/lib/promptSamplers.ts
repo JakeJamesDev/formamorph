@@ -20,6 +20,11 @@ export const PROMPT_SAMPLER_PINS: Partial<Record<AIRequestType, Partial<Record<P
   // The tag pass names what a scene shows. Not an extraction (0 gives the same five flat tags for any
   // action) and not creative writing either, so it sits low but non-zero.
   sceneTags: { temperature: 0.3 },
+  imageTags: { temperature: 0.3 },
+  // The editor's buttons re-roll on a second click, so they sit above 0.
+  descriptionSummary: { temperature: 0.3 },
+  // A faithful rewrite the author reads as prose; 0 gives flat, near-identical phrasing on our tiers.
+  descriptionBridge: { temperature: 0.6 },
   thinking: { temperature: 0.4, repetitionPenalty: 1 },
 };
 

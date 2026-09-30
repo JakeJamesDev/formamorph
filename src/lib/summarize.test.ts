@@ -1,43 +1,36 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { summarizeDescription } from './summarize';
+import { summarizeDescription, SUMMARIZE_PROMPT } from './summarize';
+import { sentBody, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
 
-const opts = { endpointUrl: 'http://x/v1/chat/completions', apiToken: 't', modelName: 'm' };
-
-function mockFetch(impl: () => Response | Promise<Response>) {
-  vi.stubGlobal('fetch', vi.fn(impl));
-}
+const opts = { snapshot: textSnapshot() };
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('summarizeDescription', () => {
-  it('returns the trimmed message content on success', async () => {
-    mockFetch(() =>
-      new Response(JSON.stringify({ choices: [{ message: { content: '  A short summary.  ' } }] })),
-    );
+  it('returns the trimmed answer on success', async () => {
+    stubStream(sseReply('  A short summary.  '));
     await expect(summarizeDescription('long text', opts)).resolves.toBe('A short summary.');
   });
 
-  it('sends the model, prompt, and a bearer token', async () => {
-    const fetchSpy = vi.fn((_url: string, _init: RequestInit) =>
-      new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] })),
-    );
-    vi.stubGlobal('fetch', fetchSpy);
+  it('sends the prompt, its cap, its sampler pin, and a bearer token through the pipeline', async () => {
+    const spy = stubStream(sseReply('ok'));
     await summarizeDescription('desc', opts);
-    const [, init] = fetchSpy.mock.calls[0];
-    const body = JSON.parse(init.body as string);
+    const body = sentBody(spy);
     expect(body.model).toBe('m');
-    expect(body.stream).toBe(false);
-    expect(body.messages.at(-1)).toEqual({ role: 'user', content: 'desc' });
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer t');
+    expect(body.stream).toBe(true);
+    expect(body.max_tokens).toBe(80);
+    expect(body.temperature).toBe(0.3);
+    expect(body.messages).toEqual([{ role: 'system', content: SUMMARIZE_PROMPT }, { role: 'user', content: 'desc' }]);
+    expect((spy.mock.calls[0][1].headers as Record<string, string>).Authorization).toBe('Bearer t');
   });
 
   it('throws on a non-OK response', async () => {
-    mockFetch(() => new Response('nope', { status: 500 }));
+    stubStream(() => new Response('nope', { status: 500 }));
     await expect(summarizeDescription('x', opts)).rejects.toThrow('HTTP 500');
   });
 
-  it('throws on an empty content response', async () => {
-    mockFetch(() => new Response(JSON.stringify({ choices: [{ message: { content: '   ' } }] })));
-    await expect(summarizeDescription('x', opts)).rejects.toThrow('Empty summary response');
+  it('throws on an empty answer', async () => {
+    stubStream(sseReply('   '));
+    await expect(summarizeDescription('x', opts)).rejects.toThrow('empty answer');
   });
 });

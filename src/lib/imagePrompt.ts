@@ -1,6 +1,8 @@
-// One-shot, non-streaming helper that turns a world subject's description into a booru-tag image prompt
-// via the configured chat-completions (text) endpoint. Mirrors summarize.ts.
+// One-shot helper that turns a world subject's description into a booru-tag image prompt through the
+// text request pipeline.
 
+import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import { requestAiText } from '@/lib/aiRequest/aiText';
 import { renderPromptTemplate } from './promptTemplate';
 
 export type ImageSubjectKind = 'character' | 'location' | 'world';
@@ -46,42 +48,21 @@ export function normalizeBooruTags(raw: string): string {
   return out.join(', ');
 }
 
-interface ChatCompletion {
-  choices?: { message?: { content?: string } }[];
-}
-
 /**
- * Build an image prompt for `subject` via the chat-completions endpoint. Throws on a non-OK response or
- * an empty/unparseable result; the caller surfaces failures (and ignores `AbortError`).
+ * Build an image prompt for `subject` through the request pipeline. Throws on a failed or empty result;
+ * the caller surfaces failures (and ignores `AbortError`).
  */
 export async function buildImagePrompt(
   subject: { description: string; kind: ImageSubjectKind },
-  opts: { endpointUrl: string; apiToken: string; modelName: string; tagPrompt?: string; signal?: AbortSignal },
+  opts: { snapshot: AiSettingsSnapshot; tagPrompt?: string; signal?: AbortSignal },
 ): Promise<string> {
   // The subject's name is deliberately not sent: models answer with it as a tag, and no image model knows
   // a person's name. An author who wants one in the tags types it there.
-  const user = `Description:\n${subject.description}`;
-  const res = await fetch(opts.endpointUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(opts.apiToken ? { Authorization: `Bearer ${opts.apiToken}` } : {}),
-    },
-    body: JSON.stringify({
-      model: opts.modelName,
-      messages: [
-        { role: 'system', content: composeSystem(opts.tagPrompt || DEFAULT_TAG_PROMPT, subject.kind) },
-        { role: 'user', content: user },
-      ],
-      max_tokens: 200,
-      stream: false,
-    }),
-    signal: opts.signal,
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-  const json = (await res.json()) as ChatCompletion;
-  const content = json?.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || !content.trim()) throw new Error('Empty image-prompt response');
+  const content = await requestAiText(opts.snapshot, {
+    systemPrompt: composeSystem(opts.tagPrompt || DEFAULT_TAG_PROMPT, subject.kind),
+    messages: [{ role: 'user', content: `Description:\n${subject.description}` }],
+    requestType: 'imageTags',
+    maxTokensOverride: 200,
+  }, { signal: opts.signal });
   return normalizeBooruTags(content);
 }

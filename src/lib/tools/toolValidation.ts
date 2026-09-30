@@ -1,5 +1,5 @@
 import type { AIRequestType, Tool, ToolEnabledMap, ToolHandler, ToolLookupSource, ToolParam, ToolParamType } from '@/types';
-import { ALL_REQUEST_KINDS } from '@/lib/reasoningEffort';
+import { PROMPT_REQUEST_KINDS } from '@/lib/reasoningEffort';
 import { TOOL_CATALOG } from './toolCatalog';
 
 /** The longest Tool name endpoints accept. */
@@ -34,7 +34,7 @@ const USER_LOOKUP_SOURCES: readonly ToolLookupSource[] = ['entities', 'locations
 
 /** Whether a user Tool can store `handler`, so a copy of a Tool with it can save. */
 export const userCanStore = (handler: ToolHandler) => handler.kind !== 'lookup' || USER_LOOKUP_SOURCES.includes(handler.source);
-const REQUEST_KINDS: readonly string[] = ALL_REQUEST_KINDS;
+const REQUEST_KINDS: readonly string[] = PROMPT_REQUEST_KINDS;
 
 /** Known prompt kinds only; a kind from a newer version drops. Null when `raw` isn't a list. */
 export function parseOfferedTo(raw: unknown): AIRequestType[] | null {
