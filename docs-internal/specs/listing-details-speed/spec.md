@@ -9,6 +9,8 @@ Server side: the FormamorphServer repo, `docs-internal/specs/listing-details-spe
 
 When a reader opens a listing in Community Creations, the details window builds itself in stages. The Changelog | Comments switch appears only after the listing details answer, so the right column jumps down. The comments header reads "Comments (0)" and then changes. Linked Content and Compatible Worlds appear late and push the left column around. Each reopen of a listing, even one opened a minute ago, waits a full round trip again. The round trip is about 180 ms at best and over 500 ms on a new connection.
 
+Community Creations itself opens slower with a cached catalog than with an empty one. The cached cards render in the same step that shows the window, so the window waits on them. On a slow device, that wait is over a second.
+
 ## Solution
 
 The window opens in its final layout and fills in without moving.
@@ -18,6 +20,7 @@ The window opens in its final layout and fills in without moving.
 - Sections that wait on the network hold their space until the answer arrives.
 - Listing details are kept on disk. A listing opened before shows its last known details at once, and the fresh answer replaces them.
 - Resting the pointer on a card starts loading that listing, so the data is often ready by the click.
+- Community Creations shows its window first and fills in the cards after. Cards render once per catalog answer, and tooltips cost nothing until someone uses one.
 
 ## User Stories
 
@@ -46,6 +49,12 @@ The window opens in its final layout and fills in without moving.
 23. As a reader, I want a prefetch that is still running to be used by the open, so that the open never sends the same request twice.
 24. As the operator, I want at most one prefetch in flight at a time, so that server load stays bounded.
 25. As a website reader, I want the same behavior on formamorph.ai, so that the site and the app match.
+26. As a reader, I want Community Creations to appear the moment I click it, so that the app feels responsive.
+27. As a reader with a cached catalog, I want the window to open as fast as it does with an empty cache, so that caching never makes the open slower.
+28. As a reader on a slow device, I want the window to stay responsive while the cards render, so that I can scroll, type, or close it at once.
+29. As a reader, I want the cards to update in place when the fresh catalog arrives, so that unchanged cards don't flicker or stall.
+30. As a reader, I want every tooltip to keep working, so that the speedup costs no help text.
+31. As a keyboard and screen-reader user, I want every tooltip trigger to keep its accessible name, so that the speedup costs no accessibility.
 
 ## Implementation Decisions
 
@@ -59,6 +68,12 @@ Rulings settled in the session that wrote this spec:
 - **Q6. Hover prefetch is guarded.** It starts after the pointer rests on a card for about 150 ms, or when a card gets keyboard focus. It never starts from a touch pointer. A new prefetch cancels the one before it. A listing whose details are already cached in this visit is not prefetched. A prefetch loads the listing details (into the disk cache) and the first comments page (in memory, for the next open only). An open that finds a prefetch in flight waits for it instead of sending its own request.
 - **Q7. Listing details are cached on disk.** The cache lives in IndexedDB beside the catalog. It holds exactly what the details fetch returns, never a thumbnail. Entries are keyed by listing id and reader, the same reader identity the catalog tag uses. An open shows the cached entry at once and always fetches fresh. A 404 drops the entry. A network failure keeps it. The store keeps about 300 entries, evicting the least recently used. The age-gate purge clears it with the other community caches.
 
+- **Q8. The window paints before the cards.** Opening Community Creations commits the window shell first. The card grid renders after, as a transition, so the first paint never waits on it. This applies to cached and fresh rows alike.
+- **Q9. One catalog answer is one grid render.** The catalog loader batches the states it sets (rows, the anonymous-likes flag, the syncing flags) into one commit per step. Cards are memoized. A fresh catalog row that matches the cached row keeps the cached object, so its card skips the render.
+- **Q10. Tooltips cost nothing until used.** An idle `Tip` does not build a full tooltip root, store, and portal. The approach is picked by a prototype that measures both candidates: one shared root through Base UI's `Tooltip.createHandle()`, or the real tooltip mounted on first hover or focus. Either way, the trigger keeps its accessible name from the first render, and the tooltip opens on the first hover with no extra delay. The change lives in `Tip`, so every surface gains it.
+
+Profiling that led to Q8–Q10 (production build, Playwright + CDP, warm open): the window became visible at 272–287 ms (1.2–1.4 s at 4× CPU throttle) against 79–103 ms with an empty cache. Data work was small: IndexedDB read of 694 rows 6 ms, write 14 ms, JSON parse 2 ms, style and layout ~40 ms. Base UI tooltip roots and triggers were 30–50% of each render block, with about 100 mounted per open. Each open committed 3–4 full grid renders.
+
 Modules:
 
 - **Listing details cache** (new, deep): get, put, drop, and purge, with the reader key and the size cap inside. The window and the prefetcher use it; neither knows about IndexedDB.
@@ -66,6 +81,9 @@ Modules:
 - **Details window:** always-shown switch, the choice guard, catalog-seeded tab state and comment count, placeholders.
 - **Community card / browser:** the dwell, focus, and touch rules for prefetch.
 - **Community cache purge:** adds the new store.
+- **Catalog sync hook:** batched commits and row reuse.
+- **Community browser / card:** the shell-first transition and card memoization.
+- **`Tip`:** the idle-cost change.
 
 API contract: catalog rows gain `changelog_count` (integer, zero or more). No world or save export shape changes.
 
@@ -77,6 +95,11 @@ A good test drives the window, the cache, or the route the way a reader or clien
 - **Details window seam:** the window rendered with the storage service mocked, as in the existing `RemoteWorldDetailsModal.*` tests. It covers the always-shown switch, the disabled and enabled states, the author case, the old-server case, the choice guard against a late answer, the seeded comment count, placeholders at zero and above zero, reserved space for late sections, and cached details shown first and then replaced.
 - **Cache module seam:** the cache on fake-indexeddb, as in the community cache purge tests. It covers the reader key, 404 drops, the size cap, and the purge.
 - **Prefetch seam:** the card or browser with fake timers. It covers the dwell delay, a sweep that sends nothing, keyboard focus, touch that sends nothing, cancel on a new prefetch, and an open that reuses the prefetch in flight.
+
+- **Catalog sync seam:** the hook with a mocked catalog fetch. It covers one commit per answer, and row objects reused when a fresh row matches.
+- **Card render seam:** the browser rendered with a React `Profiler`. It covers the shell committing before the grid, and unchanged cards skipping the render when the fresh catalog lands.
+- **`Tip` seam:** the existing tooltip tests. They cover the accessible name before any hover, the popup opening on first hover and focus, and no tooltip root or portal mounted for an idle trigger.
+- **Speed evidence:** the profiling harness runs on a production build before and after, at 1× and 4× CPU. The ticket records the window-visible time, the main-thread blocks, and the tooltip share. The harness moves from the session scratchpad into `testing/`.
 
 Each guard is proved to bite by reinstating the behavior it replaces.
 
@@ -92,3 +115,5 @@ Each guard is proved to bite by reinstating the behavior it replaces.
 - The server already dropped the base64 thumbnail from the details response (FormamorphServer `f7b4e60`). The response went from 32–100 KB to about 1 KB.
 - Open for the next iteration: the form of the Linked Content and Compatible Worlds placeholder. Most listings have neither, so reserved space that then collapses is also a jump. Counts on the catalog row would settle it the way Q3 does.
 - Open for the next iteration: whether disabled Changelog carries a tooltip such as "No changelog yet".
+- Open for the next iteration: a target time for the window-visible number. This spec records before and after; it sets no bar.
+- Moving work to a worker was ruled out for now: the data work is ~20 ms, and a worker can't render React.
