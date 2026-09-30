@@ -192,8 +192,8 @@ describe('generateImage dispatcher', () => {
 
 describe('resolveImageEndpoint', () => {
   it('falls back to the provider default when the endpoint is blank', () => {
-    expect(resolveImageEndpoint('a1111', '')).toBe('http://127.0.0.1:7860');
-    expect(resolveImageEndpoint('comfyui', '   ')).toBe('http://127.0.0.1:8188');
+    expect(resolveImageEndpoint('a1111', '')).toBe('http://localhost:7860');
+    expect(resolveImageEndpoint('comfyui', '   ')).toBe('http://localhost:8188');
     expect(resolveImageEndpoint('openai', '')).toBe(''); // cloud has no local default
   });
 

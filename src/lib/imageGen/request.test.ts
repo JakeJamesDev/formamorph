@@ -54,7 +54,7 @@ describe('buildImageRequest', () => {
       model: 'sdxl.safetensors', adetailer: true, seed: -1,
     });
     expect(opts).toEqual({
-      endpointUrl: 'http://127.0.0.1:7860', // blank endpoint → the provider default
+      endpointUrl: 'http://localhost:7860', // blank endpoint → the provider default
       apiToken: 'tok',
       workflow: '{}',
       invokeEncoder: 'enc',
