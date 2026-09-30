@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **🛠️ Developer tooling**
+  - **`FM_HOLD_FULL_RELOAD=1` stops the dev server from reloading the whole page after an edit.** Edits that update in place still show at once. For any other edit, the server sends an `fm:full-reload-held` event instead, and you refresh when you are ready.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**
