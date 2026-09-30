@@ -576,7 +576,7 @@ export function RemoteWorldDetailsModal({
                 ) : art}
                 actions={portrait ? null : actions}
                 meta={
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4" data-testid="details-meta">
                     {/* Only its author and the staff ever open an unlisted listing, so it says plainly
                         what unlisted costs rather than badging a state nobody can act on. */}
                     {unlisted && (
@@ -614,22 +614,6 @@ export function RemoteWorldDetailsModal({
                       </div>
                     )}
 
-                    {/* What the download installs beside the world, and what the player may add to it.
-                        Absent for a world that follows nothing, and against a server without the routes. */}
-                    {capabilities.localLibrary && <DownloadLinkedContent review={downloadPlan} />}
-
-                    {/* Where a component fits, for a player deciding whether to take it. Each world is a
-                        download of its own; this one installs the component and nothing else. */}
-                    {listingComponentKind && (
-                      <ListingCompatibleWorlds
-                        groups={worldGroups}
-                        kind={listingComponentKind}
-                        {...(onOpenListing
-                          ? { onOpenWorld: (worldId: string) => onOpenListing({ id: worldId, kind: 'world' }) }
-                          : {})}
-                      />
-                    )}
-
                     {!portrait && countCells}
 
                     {/* What the file itself permits, read from it at publish. A downloader decides here
@@ -642,7 +626,7 @@ export function RemoteWorldDetailsModal({
                       </div>
                     )}
 
-                    {/* Quiet and at the bottom, under everything the page is actually for. Never on your
+                    {/* Quiet, under everything the page is actually for. Never on your
                         own listing — reporting yourself is a way into the queue, not moderation. */}
                     {reportsEnabled && !isOwnListing && (
                       <div className="col-span-2">
@@ -661,6 +645,24 @@ export function RemoteWorldDetailsModal({
                           <Flag className="h-3.5 w-3.5" /> Report This {KIND_LABELS[kindOf(world)].one}
                         </Button>
                       </div>
+                    )}
+
+                    {/* Last in the column: they arrive with the details answer, so a late section pushes
+                        nothing the reader can already see. */}
+                    {/* What the download installs beside the world, and what the player may add to it.
+                        Absent for a world that follows nothing, and against a server without the routes. */}
+                    {capabilities.localLibrary && <DownloadLinkedContent review={downloadPlan} />}
+
+                    {/* Where a component fits, for a player deciding whether to take it. Each world is a
+                        download of its own; this one installs the component and nothing else. */}
+                    {listingComponentKind && (
+                      <ListingCompatibleWorlds
+                        groups={worldGroups}
+                        kind={listingComponentKind}
+                        {...(onOpenListing
+                          ? { onOpenWorld: (worldId: string) => onOpenListing({ id: worldId, kind: 'world' }) }
+                          : {})}
+                      />
                     )}
                   </div>
                 }
