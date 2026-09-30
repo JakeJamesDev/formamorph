@@ -53,7 +53,6 @@ import {
   WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
 } from '@/lib/traitGates';
 import { isAlwaysOn } from '@/lib/traitEffects';
-import { offeredWorldTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
   Trait, TraitGroup, TraitLink, World,
@@ -2042,16 +2041,14 @@ const traitDefaultGated: Rule = {
 
 /** Why a link adds nothing to its bearer's tree. */
 type Redundancy =
-  | { reason: 'offered' }
   | { reason: 'reached'; by: TraitLink }
   | { reason: 'duplicate' };
 
 /** Why the link at `i` of `links`, in tree order, adds nothing, or null when it adds something. */
 function redundancyOf(
-  lists: Pick<BearerWorld, 'traits' | 'traitGroups'>, links: readonly TraitLink[], i: number, offered: ReadonlySet<string>,
+  lists: Pick<BearerWorld, 'traits' | 'traitGroups'>, links: readonly TraitLink[], i: number,
 ): Redundancy | null {
   const link = links[i];
-  if (offered.has(link.originalId)) return { reason: 'offered' };
   const by = links.find((other) => other.kind === 'group' && other.originalId !== link.originalId
     && broughtIds(lists, other.originalId).includes(link.originalId));
   if (by) return { reason: 'reached', by };
@@ -2059,11 +2056,8 @@ function redundancyOf(
 }
 
 /** What follows "“Albus” links “Smite”" in a redundant-link finding. */
-function redundancyTail(why: Redundancy, bearer: string, persona: boolean, originalName: (link: TraitLink) => string): string {
-  if (why.reason === 'reached') return `, which its link to ${quote(originalName(why.by))} already brings`;
-  if (why.reason === 'duplicate') return ' twice';
-  const played = persona ? `, so the link is ignored while ${bearer} is played` : '';
-  return `, which the top level already offers the player${played}`;
+function redundancyTail(why: Redundancy, originalName: (link: TraitLink) => string): string {
+  return why.reason === 'reached' ? `, which its link to ${quote(originalName(why.by))} already brings` : ' twice';
 }
 
 const traitLinkRedundant: Rule = {
@@ -2071,25 +2065,19 @@ const traitLinkRedundant: Rule = {
   severity: 'warning',
   section: 'traits',
   summary: (count) => `${count} links bring a trait or group their bearer already has`,
-  // The Custom Persona entity and a Persona-marked entity play as the player, whose top level already offers
-  // every root item. Any bearer can hold one original twice through a linked group.
+  // Any bearer can hold one original twice through a linked group.
   check: (world) => {
     const lists = { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [] };
-    const root = offeredWorldTraits(lists.traits, lists.traitGroups);
-    const rootIds = new Set([...root.traits, ...root.groups].map((item) => item.id));
-    const none = new Set<string>();
-    const holders = (world.entities ?? []).map((e) =>
-      ({ entity: e, rootOffers: canBePlayer(e) ? rootIds : none, persona: !!e.persona }));
     const originalName = (link: TraitLink) => labelOf(originalOf(lists, link.originalId)?.item.name ?? link.originalName, world);
-    return holders.flatMap(({ entity, rootOffers, persona }) => {
+    return (world.entities ?? []).flatMap((entity) => {
       const links = linksInTreeOrder(entity);
       const bearer = quote(labelOf(entity.name ?? '', world));
       return links.flatMap((link, i) => {
         if (!originalOf(lists, link.originalId)) return [];
-        const why = redundancyOf(lists, links, i, rootOffers);
+        const why = redundancyOf(lists, links, i);
         if (!why) return [];
         const item = linkItem(link, originalName(link), world);
-        return [finding(traitLinkRedundant, `${bearer} links ${quote(item.name)}${redundancyTail(why, bearer, persona, originalName)}`, [item])];
+        return [finding(traitLinkRedundant, `${bearer} links ${quote(item.name)}${redundancyTail(why, originalName)}`, [item])];
       });
     });
   },

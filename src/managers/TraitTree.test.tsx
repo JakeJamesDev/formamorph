@@ -8,9 +8,18 @@ describe('TraitDropRefusalNotice', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Albus already has Paladin.');
   });
 
-  it('says the player already has a top-level trait refused from Custom Persona', () => {
-    render(<TraitDropRefusalNotice refusal={{ reason: 'offered', name: 'Brave' }} placeholders={[]} onDismiss={() => {}} />);
-    expect(screen.getByRole('status')).toHaveTextContent('The player already has Brave at the top level.');
+  it('names the one entity that keeps a linked Blueprint in Blueprints', () => {
+    render(<TraitDropRefusalNotice refusal={{ reason: 'blueprint-linked', name: 'Paladin', bearers: ['Albus'] }} placeholders={[]} onDismiss={() => {}} />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Paladin stays in Blueprints, because Albus links to it or to something in it. Remove those links first.',
+    );
+  });
+
+  it('lists every entity that keeps a linked Blueprint in Blueprints', () => {
+    render(<TraitDropRefusalNotice refusal={{ reason: 'blueprint-linked', name: 'Classes', bearers: ['Albus', 'Bo', 'Cy'] }} placeholders={[]} onDismiss={() => {}} />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Classes stays in Blueprints, because Albus, Bo and Cy link to it or to something in it. Remove those links first.',
+    );
   });
 
   it('names a refused trait and asks for its stat effects to go first', () => {

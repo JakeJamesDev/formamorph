@@ -10,7 +10,7 @@ import { addOwnedGroup, addOwnedTrait, findOwnedItem, removeOwnedItem, withOwned
 import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { removeLink } from '@/lib/traitLinks';
-import { blueprintsGroup, duplicateTraitNode, ownedTraitTree } from '@/lib/traitTree';
+import { blueprintsGroup, duplicateTraitNode, isBlueprintItem, ownedTraitTree } from '@/lib/traitTree';
 import { randomUUID } from '@/lib/uuid';
 import type { FocusFieldHint } from '@/types';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
@@ -204,7 +204,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
   // In Advanced, the link button sits in the frozen footer, below every panel tab. A link row's footer always
   // shows, with Reset to Blueprint and Edit Blueprint.
   const footer = () => {
-    const linkTo = advanced && shownOriginalId && originalOf({ traits, traitGroups }, shownOriginalId)
+    const linkTo = advanced && shownOriginalId && isBlueprintItem({ traits, traitGroups }, shownOriginalId)
       ? <LinkToBearerButton originalId={shownOriginalId} /> : null;
     if (linkRow && linkBearer && shownOriginalId) {
       return <LinkFooter bearer={linkBearer} row={linkRow} onEditBlueprint={() => onSelect(shownOriginalId)}>{linkTo}</LinkFooter>;

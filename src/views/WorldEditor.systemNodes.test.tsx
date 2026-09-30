@@ -75,16 +75,25 @@ describe('the + menu', () => {
 });
 
 describe('removing a system node', () => {
-  it('removes Blueprints after a confirmation that its traits become offered, moving them to the top level', () => {
+  it('removes Blueprints after a confirmation that its traits become offered and its links go, moving them to the top level', () => {
     const { ctx } = renderWorldEditorBench(FULL, 'advanced');
     openTab(/Traits/);
     const blueprints = treeRow('Blueprints')!;
     expect(within(blueprints).queryByRole('button', { name: 'Duplicate' })).toBeNull();
     fireEvent.click(within(blueprints).getByRole('button', { name: 'Remove Blueprints' }));
-    expect(screen.getByText('Its traits move to the top level, where the player can pick them.')).toBeInTheDocument();
+    expect(screen.getByText('Its traits move to the top level, where the player can pick them. This also deletes its 2 links.'))
+      .toBeInTheDocument();
     confirm();
     expect(ctx().traitGroups).toEqual([]);
     expect(ctx().traits.find((t) => t.id === 't-paladin')?.groupId).toBeNull();
+    expect(marked(ctx)).not.toHaveProperty('traitLinks');
+  });
+
+  it('removes Blueprints with no links without mentioning them', () => {
+    renderWorldEditorBench({ ...FULL, entities: [] }, 'advanced');
+    openTab(/Traits/);
+    fireEvent.click(within(treeRow('Blueprints')!).getByRole('button', { name: 'Remove Blueprints' }));
+    expect(screen.getByText('Its traits move to the top level, where the player can pick them.')).toBeInTheDocument();
   });
 
   it('removes an empty Blueprints group without asking', () => {

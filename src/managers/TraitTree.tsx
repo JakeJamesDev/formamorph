@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
 import { Folder, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
 import {
@@ -44,8 +44,16 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
 };
 
 /** The line after a refused drop: an entity's trait would gain stat effects, the entity already has the
- *  trait, the Custom Persona entity left the top level, or a linked world item would become owned. The
- *  dragged item stays put. */
+ *  trait, the Custom Persona entity left the top level, a linked world item would become owned, or a linked
+ *  Blueprint would leave Blueprints. The dragged item stays put. */
+/** `A`, `A and B`, `A, B and C`, each name in bold. */
+const bearerList = (names: readonly string[], placeholders: Placeholder[]) => names.map((n, i) => (
+  <Fragment key={i}>
+    {i === 0 ? '' : i === names.length - 1 ? ' and ' : ', '}
+    <strong><PlaceholderText text={n} placeholders={placeholders} /></strong>
+  </Fragment>
+));
+
 export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   refusal: TraitDropRefusal;
   placeholders: Placeholder[];
@@ -56,8 +64,11 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
     <DropRefusalNotice onDismiss={onDismiss}>
       {refusal.reason === 'duplicate' ? (
         <><PlaceholderText text={refusal.bearer} placeholders={placeholders} /> already has {name}.</>
-      ) : refusal.reason === 'offered' ? (
-        <>The player already has {name} at the top level.</>
+      ) : refusal.reason === 'blueprint-linked' ? (
+        <>
+          {name} stays in Blueprints, because {bearerList(refusal.bearers, placeholders)}{' '}
+          {refusal.bearers.length === 1 ? 'links' : 'link'} to it or to something in it. Remove those links first.
+        </>
       ) : refusal.reason === 'root' ? (
         <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
       ) : refusal.reason === 'linked' ? (

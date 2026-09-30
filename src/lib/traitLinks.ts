@@ -7,7 +7,7 @@ import { makeLink, originalOf, type BearerWorld } from './bearers';
 import {
   effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, resetLinkTraitOverrides, setLinkEdits, setLinkOverride,
 } from './blueprints';
-import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isDescendantGroup } from './traitTree';
+import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isBlueprintItem, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 
 type WorldTraitLists = Pick<BearerWorld, 'traits' | 'traitGroups'>;
@@ -45,17 +45,17 @@ export function linkedTraits(world: WorldTraitLists, link: TraitLink, originalId
 export const linksTo = (entities: readonly Entity[], originalId: string): number =>
   entities.reduce((n, e) => n + (e.traitLinks ?? []).filter((l) => l.originalId === originalId).length, 0);
 
-const linksOriginal = (entity: Entity, originalId: string) => entity.traitLinks?.some((l) => l.originalId === originalId);
-
-/** Every entity without its links to the original; the same array when none links it. */
-export function dropLinksTo(entities: Entity[], originalId: string): Entity[] {
-  if (!entities.some((e) => linksOriginal(e, originalId))) return entities;
-  return entities.map((e) =>
-    (linksOriginal(e, originalId) ? withLinks(e, e.traitLinks!.filter((l) => l.originalId !== originalId)) : e));
+/** Every entity without its links to the originals; the same array when none links one. */
+export function dropLinksTo(entities: Entity[], originalIds: string | ReadonlySet<string>): Entity[] {
+  const gone = typeof originalIds === 'string' ? new Set([originalIds]) : originalIds;
+  const linksGone = (e: Entity) => e.traitLinks?.some((l) => gone.has(l.originalId));
+  if (!entities.some(linksGone)) return entities;
+  return entities.map((e) => (linksGone(e) ? withLinks(e, e.traitLinks!.filter((l) => !gone.has(l.originalId))) : e));
 }
 
-/** Link the original at the end of the bearer's top level. Null when the id is not an original. */
+/** Link the original at the end of the bearer's top level. Null when the id is not a Blueprints item. */
 export function addLink(world: WorldTraitLists, bearer: Entity, originalId: string, id: string): Entity | null {
+  if (!isBlueprintItem(world, originalId)) return null;
   const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) });
   return link && withLinks(bearer, [...(bearer.traitLinks ?? []), link]);
 }

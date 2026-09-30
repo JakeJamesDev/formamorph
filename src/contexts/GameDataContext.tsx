@@ -7,6 +7,7 @@ import { registerDevHook } from '@/lib/devRouter';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLinksTo } from '@/lib/traitLinks';
+import { blueprintItemIds } from '@/lib/traitTree';
 import { neededCopies, syncBlueprintCopies } from '@/lib/blueprintCopies';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
@@ -261,8 +262,12 @@ function useProvideGameData() {
   }, []);
 
   // Removing a group reparents its direct children (subgroups + traits) to the group's own parent,
-  // rather than orphaning them under a deleted id. Blueprints' children go to the top level wherever it sits.
+  // rather than orphaning them under a deleted id. Blueprints' children go to the top level wherever it sits,
+  // and every link into it goes, since only Blueprints items are linked.
   const removeTraitGroup = useCallback((groupId: string) => {
+    const unlinked = traitGroups.find(g => g.id === groupId)?.system === 'blueprints'
+      ? blueprintItemIds({ traits, traitGroups })
+      : new Set([groupId]);
     const heirOf = (groups: TraitGroup[]) => {
       const group = groups.find(g => g.id === groupId);
       return group?.system === 'blueprints' ? null : group?.parentId ?? null;
@@ -277,8 +282,8 @@ function useProvideGameData() {
       const parentId = heirOf(traitGroups);
       return prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t));
     });
-    setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
-  }, [traitGroups]);
+    setEntities(prevEntities => dropLinksTo(prevEntities, unlinked));
+  }, [traits, traitGroups]);
 
   const updateWorldOverview = useCallback((updates: Partial<WorldOverview>) => {
     setWorldOverview(prev => ({ ...prev, ...updates }));

@@ -12,6 +12,18 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.1.0** (just released below)._
 
+### Minor Changes
+
+#### ➖ Removed
+
+- **👤 User-facing**
+  - **In the Traits tab, a trait link can point only at a Blueprints trait or group, never at a top-level one.** **Link To…** shows only on Blueprints items. A drag of a Blueprints item out of Blueprints is refused while an entity links it or something in it, and the notice names those entities. Removing the Blueprints group also removes every link into it, and its confirmation gives the count.
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **In the Traits tab, dragging a top-level trait or group onto an entity moves it to that entity in Basic and Advanced alike.** Before, Advanced tried to link it, and the Custom Persona entity refused it because the player already had it.
+
 ---
 
 <details>

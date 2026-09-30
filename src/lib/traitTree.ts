@@ -106,6 +106,17 @@ export function blueprintsSubtreeIds(groups: readonly TraitGroup[]): Set<string>
   return new Set(blueprints ? [blueprints.id, ...groupsBelow(groups, blueprints.id).map((g) => g.id)] : []);
 }
 
+/** Every world trait and group inside Blueprints, the group itself left out: the only items a link may point at. */
+export function blueprintItemIds(lists: WorldTraitLists): Set<string> {
+  const inBlueprints = blueprintsSubtreeIds(lists.traitGroups);
+  const ids = new Set([...inBlueprints].filter((id) => lists.traitGroups.find((g) => g.id === id)?.system !== 'blueprints'));
+  for (const t of lists.traits) if (t.groupId != null && inBlueprints.has(t.groupId)) ids.add(t.id);
+  return ids;
+}
+
+/** Whether the world trait or group sits inside Blueprints. */
+export const isBlueprintItem = (lists: WorldTraitLists, id: string): boolean => blueprintItemIds(lists).has(id);
+
 /** The world's traits and groups without Blueprints and everything below it: what the root offers the player.
  *  The bearer resolver builds the player bearer from it; the trait runtime falls back to it only for a world
  *  given without bearers. */
@@ -264,8 +275,8 @@ export function entityRootTraitTree(entity: Entity, world: Pick<WorldTraitLists,
 }
 
 /** Why a drop was refused: `offender`, inside the dragged `name`, has stat effects; the bearer's tree already
- *  holds the original `name`; the top level already offers it to the player; or the Custom Persona entity
- *  `name` left the top level. */
+ *  holds the original `name`; the Custom Persona entity `name` left the top level; a linked world item would
+ *  become owned; or a linked Blueprint would leave Blueprints. */
 export type TraitDropRefusal =
   | {
     reason: 'stats';
@@ -276,10 +287,11 @@ export type TraitDropRefusal =
     owner: string | null;
   }
   | { reason: 'duplicate'; name: string; bearer: string }
-  | { reason: 'offered'; name: string }
   | { reason: 'root'; name: string }
   /** A world item moved into an entity while `links` entities link it or something below it. */
-  | { reason: 'linked'; name: string; links: number };
+  | { reason: 'linked'; name: string; links: number }
+  /** A Blueprints item moved out of Blueprints while the `bearers` link it or something below it. */
+  | { reason: 'blueprint-linked'; name: string; bearers: string[] };
 
 export interface OwnedTraitDropOptions {
   /** Whether a world row dropped into an entity links it. Off, the row moves in as the entity's own item. */
@@ -416,23 +428,15 @@ export function withOwnedLists(entity: Entity, traits: Trait[], traitGroups: Tra
   };
 }
 
-/**
- * Why the bearer node can't link the original; null when it can. A bearer's tree holds each original once.
- * The Custom Persona entity's tree is the player's, which already has every original outside Blueprints.
- */
+/** Why the bearer node can't link the original; null when it can. A bearer's tree holds each original once. */
 export function linkRefusal(
   world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
-): Extract<TraitDropRefusal, { reason: 'duplicate' | 'offered' }> | null {
+): Extract<TraitDropRefusal, { reason: 'duplicate' }> | null {
   const bearerWorld = { ...world, entities };
   const resolved = resolveBearers(bearerWorld, undefined).bearers.find((b) => b.id === nodeId);
   if (!resolved || !holdsOriginal(bearerWorld, resolved, originalId)) return null;
   const name = originalOf(world, originalId)?.item.name ?? '';
-  const entity = entities.find((e) => e.id === nodeId);
-  const offered = offeredWorldTraits(world.traits, world.traitGroups);
-  if (entity?.customPersona && [...offered.traits, ...offered.groups].some((item) => item.id === originalId)) {
-    return { reason: 'offered', name };
-  }
-  return { reason: 'duplicate', name, bearer: entity?.name ?? '' };
+  return { reason: 'duplicate', name, bearer: entities.find((e) => e.id === nodeId)?.name ?? '' };
 }
 
 /**
@@ -514,10 +518,11 @@ export function applyOwnedTraitDrop(
   const moved = (entities: Entity[], worldOut?: { traits: Trait[]; groups: TraitGroup[] }): OwnedTraitDrop =>
     ({ kind: 'moved', ...(worldOut ? { world: worldOut } : {}), entities });
 
-  // A world row dropped into an entity links it there; the original stays where it is. With links off it
-  // moves in, and an original some entity links stays, so no link is left pointing at an owned item.
+  // A Blueprints row dropped into an entity links it there; the original stays where it is. Any other world
+  // row, or any row with links off, moves in, and an original some entity links stays, so no link is left
+  // pointing at an owned item.
   if (!isNode && from === null && to !== null) {
-    if (createLinks) {
+    if (createLinks && isBlueprintItem(world, activeId)) {
       const refused = duplicateIn(to, activeId);
       if (refused) return refused;
       const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
@@ -525,6 +530,14 @@ export function applyOwnedTraitDrop(
     }
     const links = entities.reduce((n, e) => n + (e.traitLinks ?? []).filter((l) => subtree.has(l.originalId)).length, 0);
     if (links) return { kind: 'refused', refusal: { reason: 'linked', name: movedItem.name, links } };
+  }
+  // A linked Blueprint stays in Blueprints, so every link points into it.
+  if (!isNode && from === null && to === null && isBlueprintItem(world, activeId)) {
+    const parentAfter = movedGroup ? movedGroup.parentId : (movedItem as Trait).groupId;
+    if (parentAfter == null || !blueprintsSubtreeIds(dropped.groups).has(parentAfter)) {
+      const bearers = entities.filter((e) => e.traitLinks?.some((l) => subtree.has(l.originalId))).map((e) => e.name);
+      if (bearers.length) return { kind: 'refused', refusal: { reason: 'blueprint-linked', name: movedItem.name, bearers } };
+    }
   }
   if (!isNode && from !== to && to !== null) {
     for (const { link } of linksCarried(tree, activeId)) {

@@ -2016,22 +2016,6 @@ describe('trait link rules', () => {
       expect(opened(found)).toEqual([['l-1']]);
     });
 
-    it('reports a Custom Persona entity’s link to what the top level already offers', () => {
-      const found = only(linked([newcomer({ traitLinks: [link('cp-faithful', 'faithful', 'trait')] })]), rule);
-      expect(found.map((f) => f.message)).toEqual(['“Newcomer” links “Faithful”, which the top level already offers the player']);
-      expect(opened(found)).toEqual([['cp-faithful']]);
-    });
-
-    it('reports a Persona’s link to what the top level offers, and not a cast entity’s', () => {
-      const links = { traitLinks: [link('l-faithful', 'faithful', 'trait')] };
-      const found = only(linked([albus({ ...links, persona: true })]), rule);
-      expect(found.map((f) => f.message)).toEqual([
-        '“Albus” links “Faithful”, which the top level already offers the player, so the link is ignored while “Albus” is played',
-      ]);
-      expect(opened(found)).toEqual([['l-faithful']]);
-      expect(only(linked([albus(links)]), rule)).toEqual([]);
-    });
-
     it('leaves a link to a missing original alone', () => {
       expect(only(linked([albus({ traitLinks: [link('l-1', 'gone', 'trait'), link('l-2', 'gone', 'trait')] })]), rule)).toEqual([]);
     });
