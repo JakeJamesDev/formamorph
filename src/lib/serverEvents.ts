@@ -96,9 +96,8 @@ export function eventState(event: ServerEvent, now: Date = new Date()): EventSta
  * @param now - The instant to judge against; defaults to the current time
  */
 export function eventPhase(event: ServerEvent, now: Date = new Date()): ServerEventPhase {
-  if (resultsAnnounced(event)) return 'end';
-  const ends = parseServerDate(event.endsAt);
-  return ends && ends.getTime() <= now.getTime() ? 'end' : 'start';
+  const state = eventState(event, now);
+  return state === 'scheduled' || state === 'active' ? 'start' : 'end';
 }
 
 /** The broadcast an acknowledgment of this phase should mark read; null when the event carries none. */
