@@ -27,6 +27,13 @@ export const ATTACH_REFUSAL_COPY: Record<AttachRefusal, string> = {
 
 const EMPTY: ImageAttachment[] = [];
 
+/** The images on the clipboard of a paste. Empty when the paste carries text, so a copy from a spreadsheet
+ *  or a page still inserts its text. */
+export function pastedImageFiles(dt: Pick<DataTransfer, 'files' | 'getData'> | null): File[] {
+  if (!dt || dt.getData('text/plain')) return [];
+  return Array.from(dt.files ?? []).filter((file) => file.type.startsWith('image/'));
+}
+
 /** Shrink and re-encode one image file. Null when the browser can't decode it. */
 async function encodeAttachment(file: File): Promise<ImageAttachment | null> {
   const source = await fileToDataUrl(file);
