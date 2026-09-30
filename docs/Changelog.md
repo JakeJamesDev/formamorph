@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 3.1.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.1.0** — the latest released version.
+> ✅ **2.0.0 – 3.1.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.1.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,14 +10,19 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.1.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.1.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.1.1 — Released 2026-09-30</strong> — Persona entities own stat traits — trait links point only at Blueprints — Custom Persona stats at game start — Novita thinking switch — whole words in tables (click to expand)</summary>
 
 ### Minor Changes
 
 #### ➕ Added
 
 - **👤 User-facing**
-  - **In the World Editor, a Playable, Persona-Only or Custom Persona entity can own traits with Stat Changes and Stat Availability.** They apply while the player plays as that entity and reverse on a switch. Drag a stat trait or a group holding one onto the entity, or detach a link, and the stats stay. Such a trait has a Stats tab with a line that says when its stats apply. Any other entity still refuses stat traits. Remove an entity's persona mark, and its stat traits stay, but their stats do nothing. A character card keeps an entity's own stat traits.
+  - **In the World Editor, a Playable, Persona-Only or Custom Persona entity can own traits with Stat Changes and Stat Availability.** They apply while the player plays as that entity and reverse on a switch. Drag a stat trait or a group holding one onto the entity, or detach a link, and the stats stay. Such a trait has a Stats tab with a line that says when its stats apply. Any other entity still refuses stat traits. Remove an entity's persona mark, and its stat traits stay, but their stats do nothing. A character card keeps an entity's own stat traits. The Test Bench checks them like any other stat trait.
 
 #### ➖ Removed
 
@@ -28,10 +33,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **In the Traits tab, dragging a top-level trait or group onto an entity moves it to that entity in Basic and Advanced alike.** Before, Advanced tried to link it, and the Custom Persona entity refused it because the player already had it.
+  - **The Test Bench's pinned placeholder check reads traits an entity owns.** Before, it read only the world's top-level and Blueprints traits.
   - **A new game as None applies the Custom Persona entity's stat traits.** Their Stat Changes now land at the start and show in the Enter World preview. Before, the stats they turned on opened at their authored value.
-  - **The Test Bench reads traits an entity owns.** A stat that a persona entity's trait turns on no longer shows as never enabled. The stat toggle, clamped starting value and pinned placeholder checks cover owned traits too.
   - **On Novita, DeepSeek V3.1 and later and GLM 4.5 and later stop thinking on prompts with Native Reasoning off.** Short passes such as Location Change and Time Passed no longer fail with "The model reached its token limit before it wrote an answer." Each request sends Novita's `enable_thinking: false`.
   - **Tables in narration and world descriptions wrap only between words.** A narrow column no longer splits a short word such as a name across lines.
+
+</details>
 
 ---
 
