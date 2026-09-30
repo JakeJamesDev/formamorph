@@ -5,10 +5,12 @@ import { AGE_GATE_VERSION } from '@/lib/ageGate';
 import AuthService from '@/services/AuthService';
 import { ProfilePage } from './ProfilePage';
 import { leaveTo } from '../leaveSite';
+import { purgeCommunityCaches } from '@/lib/communityCaches';
 import { res, resetAccountPage, signIn } from '../test/support';
 
 // jsdom implements no navigation, so where a declined gate sent the reader is only observable here.
 vi.mock('../leaveSite', () => ({ leaveTo: vi.fn() }));
+vi.mock('@/lib/communityCaches', () => ({ purgeCommunityCaches: vi.fn().mockResolvedValue(undefined) }));
 
 /** The record the app writes when a player accepts the gate inside `/play/`. */
 const alreadyAttested = () => localStorage.setItem('FORMAMORPH_ageGate', JSON.stringify({
@@ -58,6 +60,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.mocked(leaveTo).mockClear();
+  vi.mocked(purgeCommunityCaches).mockClear();
 });
 
 describe('the age gate in front of a profile', () => {
@@ -386,6 +389,53 @@ describe('the age gate in front of a profile', () => {
 
     expect(leaveTo).toHaveBeenCalledWith('/');
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('the community caches behind the age gate', () => {
+  it('drops them while the gate is unanswered', async () => {
+    serverHas(PROFILE);
+    render(<ProfilePage username="wren_hallow" />);
+
+    await screen.findByText('Adult Content Ahead');
+
+    await waitFor(() => expect(purgeCommunityCaches).toHaveBeenCalledTimes(1));
+  });
+
+  it('drops them again on every decline, and only then leaves', async () => {
+    serverHas(PROFILE);
+    render(<ProfilePage username="wren_hallow" />);
+    await screen.findByText('Adult Content Ahead');
+    await waitFor(() => expect(purgeCommunityCaches).toHaveBeenCalledTimes(1));
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Decline' }));
+
+    await waitFor(() => expect(leaveTo).toHaveBeenCalledWith('/'));
+    expect(purgeCommunityCaches).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps them for a reader who answered', async () => {
+    alreadyAttested();
+    serverHas(PROFILE);
+    render(<ProfilePage username="wren_hallow" />);
+
+    await screen.findByRole('heading', { name: 'wren_hallow' });
+
+    expect(purgeCommunityCaches).not.toHaveBeenCalled();
+  });
+
+  it('keeps them when the account answer cannot be read', async () => {
+    signIn({ username: 'signed-in-reader' });
+    serverHas(PROFILE);
+    const existingFetch = vi.mocked(fetch).getMockImplementation();
+    vi.mocked(fetch).mockImplementation((input, init) => String(input).endsWith('/policies/age-gate')
+      ? Promise.reject(new Error('offline'))
+      : existingFetch!(input, init));
+    render(<ProfilePage username="wren_hallow" />);
+
+    await screen.findByRole('button', { name: 'Retry' });
+
+    expect(purgeCommunityCaches).not.toHaveBeenCalled();
   });
 });
 
