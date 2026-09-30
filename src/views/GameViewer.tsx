@@ -443,7 +443,7 @@ const GameViewer = ({
   // new game and a loaded save alike — so every prompt resolves against it without touching the player's
   // global selection. Re-pinning from Settings writes back through `setWorldPreset`.
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
-  const { beginSessionPreset, endSessionPreset } = settings;
+  const { beginSessionPreset, endSessionPreset, promptAttachments } = settings;
   // A library folder can carry a preset for every world inside it. The world's own pin still wins, and a
   // level naming a deleted preset drops silently to the next — the arrangement is read straight from
   // device-local storage, since it is a library preference the game never writes back to.
@@ -1957,6 +1957,7 @@ const GameViewer = ({
     characterDiaries,
     describeCharacters,
     imageAttachments,
+    promptAttachments,
     language,
   });
 

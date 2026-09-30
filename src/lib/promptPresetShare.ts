@@ -3,6 +3,7 @@ import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './pr
 import type { AIRequestType, Tool, ToolEnabledMap } from '@/types';
 import { MAX_REASONING_BUDGET_PCT, parsePromptReasoningSetting } from './reasoningEffort';
 import { sanitizeMaxOutput, type PromptMaxOutputMap } from './promptMaxOutput';
+import { sanitizePromptAttachments, type PromptAttachmentsMap } from './promptAttachments';
 import { isCatalogToolId } from './tools/toolCatalog';
 import { catalogToolNamed, isRecord, parseToolEnabledMap } from './tools/toolValidation';
 import { parseToolList } from './tools/toolPack';
@@ -26,6 +27,7 @@ export interface SharedPreset {
   reasoning?: ReasoningMap;
   reasoningBudget?: ReasoningBudgetMap;
   maxOutput?: PromptMaxOutputMap;
+  attachments?: PromptAttachmentsMap;
   verbatim?: VerbatimMap;
   overview?: PresetOverview;
   /** Catalog Tool switches only. */
@@ -43,6 +45,7 @@ export interface ImportedPreset {
   reasoning?: ReasoningMap;
   reasoningBudget?: ReasoningBudgetMap;
   maxOutput?: PromptMaxOutputMap;
+  attachments?: PromptAttachmentsMap;
   verbatim?: VerbatimMap;
   overview?: PresetOverview;
   enabledTools?: ToolEnabledMap;
@@ -63,7 +66,7 @@ export interface ParseResult {
  *  values/tuning by the caller before export. `tools` is the player's user Tool list; the switched-on ones
  *  travel as copies, since their ids are local. */
 export function buildSharedPreset(
-  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview; enabledTools?: ToolEnabledMap; tools?: readonly Tool[] },
+  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; attachments?: PromptAttachmentsMap; verbatim?: VerbatimMap; overview?: PresetOverview; enabledTools?: ToolEnabledMap; tools?: readonly Tool[] },
   appVersion: string,
 ): SharedPreset {
   const enabledTools = parseToolEnabledMap(input.enabledTools, isCatalogToolId);
@@ -79,6 +82,7 @@ export function buildSharedPreset(
     ...(input.reasoning && Object.keys(input.reasoning).length ? { reasoning: input.reasoning } : {}),
     ...(input.reasoningBudget && Object.keys(input.reasoningBudget).length ? { reasoningBudget: input.reasoningBudget } : {}),
     ...(input.maxOutput && Object.keys(input.maxOutput).length ? { maxOutput: input.maxOutput } : {}),
+    ...(input.attachments && Object.keys(input.attachments).length ? { attachments: input.attachments } : {}),
     ...(input.verbatim && Object.keys(input.verbatim).length ? { verbatim: input.verbatim } : {}),
     ...(input.overview && hasOverviewContent(input.overview) ? { overview: input.overview } : {}),
     ...(enabledTools ? { enabledTools } : {}),
@@ -159,6 +163,8 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   if (reasoningBudget) preset.reasoningBudget = reasoningBudget;
   const maxOutput = sanitizeMaxOutput(o.maxOutput);
   if (maxOutput) preset.maxOutput = maxOutput;
+  const attachments = sanitizePromptAttachments(o.attachments);
+  if (attachments) preset.attachments = attachments;
   const verbatim = sanitizeVerbatim(o.verbatim);
   if (verbatim) preset.verbatim = verbatim;
   const overview = sanitizeOverview(o.overview);

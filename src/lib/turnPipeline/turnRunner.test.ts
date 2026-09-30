@@ -821,11 +821,35 @@ describe('image attachments', () => {
     for (const message of narration.messages.slice(0, -1)) expect(typeof message.content).toBe('string');
   });
 
-  it('sends the images to no pass but the narration', async () => {
+  it('sends the images to no pass but the narration by default', async () => {
     const finished = ok((await attached()).result);
     const others = finished.passes.filter((p) => p.id !== 'narration');
     expect(others.length).toBeGreaterThan(5);
     for (const pass of others) expect(hasParts(pass.request), pass.id).toBe(false);
+  });
+
+  it('sends the images to a pass whose flag is on, and to none whose flag is off', async () => {
+    const finished = ok((await attached({ settings: { promptAttachments: { director: true, statUpdates: true, narration: false } } })).result);
+    const withParts = finished.passes.filter((p) => hasParts(p.request)).map((p) => p.id);
+    expect(withParts.sort()).toEqual(['director', 'statUpdates']);
+  });
+
+  it('puts the images after the final user text on a non-narration pass', async () => {
+    const plain = outcome(ok((await run({ settings: { imageAttachments: true } })).result), 'director').request;
+    const director = outcome(ok((await attached({ settings: { promptAttachments: { director: true } } })).result), 'director').request;
+    expect(director.messages.at(-1)).toEqual({
+      role: 'user',
+      content: [
+        { type: 'text', text: plain.messages.at(-1)?.content },
+        { type: 'image_url', image_url: { url: IMAGES[0].dataUrl } },
+        { type: 'image_url', image_url: { url: IMAGES[1].dataUrl } },
+      ],
+    });
+  });
+
+  it('keeps the flags from sending anything while the setting is off', async () => {
+    const finished = ok((await attached({ settings: { imageAttachments: false, promptAttachments: { director: true } } })).result);
+    for (const pass of finished.passes) expect(hasParts(pass.request), pass.id).toBe(false);
   });
 
   it('sends no image anywhere with the setting off', async () => {

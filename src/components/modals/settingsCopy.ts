@@ -293,7 +293,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   imageAttachments: {
     label: 'Image Attachments',
     description: 'Lets you attach up to 4 images to an action',
-    info: `Adds an attach button to the action box. The images go to the **Narration** request with your action text, on that turn only.
+    info: `Adds an attach button to the action box. The images go with your action text, on that turn only. Each prompt's **Include Attachments** option decides which requests get them. **Narration** has it on by default.
 
 - Your model must read images. A text-only model returns an error.
 - Each image is shrunk to 1568 px on its long side before it's sent.`,
@@ -546,6 +546,10 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   promptEndpoint: {
     label: 'Endpoint',
     description: 'Routes this prompt to a specific endpoint',
+  },
+  promptAttachments: {
+    label: 'Include Attachments',
+    description: 'Sends the images attached to your action with this prompt',
   },
   promptMaxOutput: {
     label: 'Max Output',

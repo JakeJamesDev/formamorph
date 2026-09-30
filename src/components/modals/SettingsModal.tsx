@@ -62,6 +62,8 @@ import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, 
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { useEndpointReachable } from '@/lib/useEndpointReachable';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
+import { includesAttachments } from '@/lib/promptAttachments';
+import { useImageAttachments } from '@/lib/useImageAttachments';
 import { isMaxOutputKind, shippedMaxOutput, MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
@@ -208,6 +210,22 @@ function MaxOutputControl({ custom, value, shipped, disabled, onCustomChange, on
         />
         <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{custom ? `${shown} tok` : `Auto · ${shown} tok`}</span>
       </div>
+    </div>
+  );
+}
+
+/** A prompt's Include Attachments row. On sends the turn's attached images with this prompt's request. */
+interface AttachmentsControlProps {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (include: boolean) => void;
+}
+function AttachmentsControl({ checked, disabled, onChange }: AttachmentsControlProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <Checkbox id="promptAttachments" checked={checked} disabled={disabled} onCheckedChange={(c) => onChange(c === true)} />
+      <label htmlFor="promptAttachments" className="text-label">{SETTINGS_COPY.promptAttachments.label}</label>
+      <span className="hidden sm:inline text-helper text-muted-foreground">{SETTINGS_COPY.promptAttachments.description}</span>
     </div>
   );
 }
@@ -375,8 +393,10 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
  *  them), the per-prompt Native Reasoning override (the effort level on external endpoints, or the token budget
  *  on the local engine), plus one override row per tunable sampler.
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
-function PromptOptionsPanel({ endpoint, maxOutput, verbatim, reasoning, samplers, disabled, readOnlyReason, onRequestEdit }: {
+function PromptOptionsPanel({ endpoint, attachments, maxOutput, verbatim, reasoning, samplers, disabled, readOnlyReason, onRequestEdit }: {
   endpoint: React.ComponentProps<typeof PromptEndpointField>;
+  /** Absent while Image Attachments is off. */
+  attachments: Omit<AttachmentsControlProps, 'disabled'> | null;
   /** Absent on a prompt without a Max Output row. */
   maxOutput: Omit<MaxOutputControlProps, 'disabled'> | null;
   verbatim: { value: number; set: (n: number) => void } | null;
@@ -400,6 +420,7 @@ function PromptOptionsPanel({ endpoint, maxOutput, verbatim, reasoning, samplers
           it no longer narrows the whole panel; the scroll frame supplies the right-hand gutter. */}
       <div className="space-y-5 py-3">
         <PromptEndpointField {...endpoint} disabled={disabled} />
+        {attachments && <AttachmentsControl {...attachments} disabled={disabled} />}
         {maxOutput && <MaxOutputControl {...maxOutput} disabled={disabled} />}
         {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
         {reasoning && <PromptReasoningField {...reasoning} disabled={disabled} />}
@@ -556,6 +577,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
   useEffect(() => { if (initialEndpointTab) setEndpointTab(initialEndpointTab); }, [initialEndpointTab]);
   const settings = useSettings();
+  const imageAttachmentsOn = useImageAttachments();
   const {
     language,
     endpointUrl,
@@ -621,6 +643,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setPromptReasoning,
     promptReasoningBudget,
     setPromptReasoningBudget,
+    promptAttachments,
+    setPromptAttachments,
     promptMaxOutput,
     setPromptMaxOutputCustom,
     setPromptMaxOutputValue,
@@ -1240,6 +1264,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       enabled: promptTarget.presetId !== null,
     },
   };
+  // Hidden while Image Attachments is off; the stored flags stay.
+  const attachmentsControl = imageAttachmentsOn
+    ? { checked: includesAttachments(promptAttachments, activeKind), onChange: (include: boolean) => setPromptAttachments(activeKind, include) }
+    : null;
   // The cap this prompt sends, which the Max Output row reads.
   const maxOutputControl = isMaxOutputKind(activeKind)
     ? {
@@ -2068,6 +2096,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 <ScrollArea className="mt-4 flex-1 min-h-0">
                   <PromptOptionsPanel
                     endpoint={endpointControl}
+                    attachments={attachmentsControl}
                     maxOutput={maxOutputControl}
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
                     reasoning={reasoningControl}
