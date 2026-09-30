@@ -1,27 +1,16 @@
 /**
- * Pure reasoning about the staff side of a timed server event: which state it is in, which group of the
+ * Pure reasoning about the staff side of a timed server event: how its state reads, which group of the
  * Events tab it belongs to, and which controls its row offers whom. No React, no network — the tab, its
- * dialogs and their tests all read the same answers from here.
- *
- * The state is derived rather than read off the row, the way the server derives it: the only stateful
- * stamp an event carries is its cancellation, and a list built from a `state` field would be stale the
- * moment a window closed between two reads.
+ * dialogs and their tests all read the same answers from here. The state itself is `eventState`.
  */
 import { parseServerDate } from './serverDate';
 import { PLACE_LABELS, tiedForFirstLine } from './placeLabels';
-import { firstPlaceOf, isContestEvent, placementsOf, resultsAnnounced } from './serverEvents';
+import { eventState, firstPlaceOf, isContestEvent, placementsOf, resultsAnnounced } from './serverEvents';
+import type { EventState } from './serverEvents';
 import type { ServerEvent } from '@/types';
 
-/**
- * Where an event stands, as staff see it.
- *
- * `judging` is a contest whose window has closed with its results still to come — the one state that asks
- * something of whoever is looking, which is why it is told apart from `ended` rather than folded into it.
- */
-export type AdminEventState = 'active' | 'judging' | 'scheduled' | 'ended' | 'canceled';
-
 /** How each state reads on its badge. */
-export const ADMIN_EVENT_STATE_LABELS: Record<AdminEventState, string> = {
+export const ADMIN_EVENT_STATE_LABELS: Record<EventState, string> = {
   active: 'Active',
   judging: 'Judging',
   scheduled: 'Scheduled',
@@ -30,34 +19,13 @@ export const ADMIN_EVENT_STATE_LABELS: Record<AdminEventState, string> = {
 };
 
 /** The tint each state badge carries, so the five read apart at a glance. */
-export const ADMIN_EVENT_STATE_STYLES: Record<AdminEventState, string> = {
+export const ADMIN_EVENT_STATE_STYLES: Record<EventState, string> = {
   active: 'bg-success/10 text-success',
   judging: 'bg-warning/10 text-warning',
   scheduled: 'bg-info/10 text-info',
   ended: 'bg-muted text-muted-foreground',
   canceled: 'bg-destructive/10 text-destructive',
 };
-
-/**
- * Which of the five states an event is in.
- *
- * @param now - The instant to judge against; defaults to the current time
- */
-export function adminEventState(event: ServerEvent, now: Date = new Date()): AdminEventState {
-  if (event.cancelledAt) return 'canceled';
-
-  const starts = parseServerDate(event.startsAt);
-  const ends = parseServerDate(event.endsAt);
-
-  // An unreadable window is shown as over rather than as running: a banner nobody can date is one
-  // nothing should be posted about.
-  if (!starts || !ends) return 'ended';
-
-  if (now.getTime() < starts.getTime()) return 'scheduled';
-  if (now.getTime() < ends.getTime()) return 'active';
-
-  return isContestEvent(event) && !resultsAnnounced(event) ? 'judging' : 'ended';
-}
 
 /** The three groups the Events tab lists, in the order it lists them. */
 export interface AdminEventGroups {
@@ -84,7 +52,7 @@ export function groupAdminEvents(
   const groups: AdminEventGroups = { happeningNow: [], scheduled: [], past: [] };
 
   for (const event of events) {
-    const state = adminEventState(event, now);
+    const state = eventState(event, now);
     if (state === 'canceled' && !viewerIsAdmin) continue;
 
     if (state === 'active' || state === 'judging') groups.happeningNow.push(event);
@@ -141,7 +109,7 @@ export function adminEventActions(
   viewerIsAdmin: boolean,
   now: Date = new Date(),
 ): AdminEventActions {
-  const state = adminEventState(event, now);
+  const state = eventState(event, now);
   const podium = viewerIsAdmin && isContestEvent(event) && !event.cancelledAt;
 
   return {
@@ -159,7 +127,7 @@ export function adminEventActions(
  * @param now - The instant to judge against; defaults to the current time
  */
 export function adminEventSummary(event: ServerEvent, now: Date = new Date()): string {
-  const state = adminEventState(event, now);
+  const state = eventState(event, now);
 
   if (state === 'canceled') return 'Canceled — entries released and notices recalled';
   if (state === 'scheduled') return 'Not started — staff only until it opens';

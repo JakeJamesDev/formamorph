@@ -4,7 +4,7 @@
  * tab, its slim bar and their tests all read the same answers from here.
  */
 import { parseServerDate } from './serverDate';
-import { isContestEvent, placeOf, placementsOf, resultsAnnounced } from './serverEvents';
+import { eventState, isContestEvent, placeOf, placementsOf } from './serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { ContestPlace, ServerEvent } from '@/types';
 
@@ -21,32 +21,26 @@ export type ContestPhase = 'live' | 'judging' | 'decided';
 const byNewestStart = (a: ServerEvent, b: ServerEvent): number =>
   (parseServerDate(b.startsAt)?.getTime() ?? 0) - (parseServerDate(a.startsAt)?.getTime() ?? 0);
 
-/** Whether a contest is inside its window — running now, rather than scheduled or over. */
-export function isContestRunning(event: ServerEvent, now: Date = new Date()): boolean {
-  if (event.cancelledAt) return false;
-  const starts = parseServerDate(event.startsAt);
-  const ends = parseServerDate(event.endsAt);
-  if (!starts || !ends) return false;
-  return starts.getTime() <= now.getTime() && now.getTime() < ends.getTime();
-}
-
 /**
- * Which of its three states a contest is in.
+ * Which of its three states a contest is in, as players see it — `eventState` in player words.
  *
- * The announcement outranks the clock: a contest decided early is decided, and one whose window is still
- * open on a slow clock has not reopened for entries.
+ * @returns null for a contest players never see: one not started yet, or called off
  */
-export function contestPhase(event: ServerEvent, now: Date = new Date()): ContestPhase {
-  if (resultsAnnounced(event)) return 'decided';
-  return isContestRunning(event, now) ? 'live' : 'judging';
+export function contestPhase(event: ServerEvent, now: Date = new Date()): ContestPhase | null {
+  const state = eventState(event, now);
+  if (state === 'active') return 'live';
+  if (state === 'judging') return 'judging';
+  if (state === 'ended') return 'decided';
+  return null;
 }
 
-/** The contests among a list of events, running ones first and then newest window first. */
+/** The contests among a list of events that players may browse, running ones first and then newest window first. */
 export function contestsOf(events: ServerEvent[], now: Date = new Date()): ServerEvent[] {
+  // Staff read the same feed with scheduled and canceled events in it; those stay on the Events tab.
   return events
-    .filter((event) => isContestEvent(event) && !event.cancelledAt)
+    .filter((event) => isContestEvent(event) && contestPhase(event, now) !== null)
     .sort((a, b) => {
-      const running = Number(isContestRunning(b, now)) - Number(isContestRunning(a, now));
+      const running = Number(contestPhase(b, now) === 'live') - Number(contestPhase(a, now) === 'live');
       if (running !== 0) return running;
       return byNewestStart(a, b);
     });
@@ -60,7 +54,7 @@ export function contestsOf(events: ServerEvent[], now: Date = new Date()): Serve
  * offering an entry the server would refuse is worse than offering none.
  */
 export function activeContestOf(events: ServerEvent[], now: Date = new Date()): ServerEvent | null {
-  return events.find((event) => isContestEvent(event) && isContestRunning(event, now)) ?? null;
+  return events.find((event) => isContestEvent(event) && contestPhase(event, now) === 'live') ?? null;
 }
 
 /**
@@ -69,16 +63,9 @@ export function activeContestOf(events: ServerEvent[], now: Date = new Date()): 
  * What the end-of-contest poster is still owed for. Read from the contests feed rather than the events
  * poll, which carries only what is running: a player who launches the app the morning after a deadline
  * was never online for the transition, and the poll has nothing left to tell them.
- *
- * The clock is checked rather than `contestPhase`, which reads a contest that has not started yet as
- * judging — staff see scheduled ones in this feed.
  */
 export function judgingContestsOf(events: ServerEvent[], now: Date = new Date()): ServerEvent[] {
-  return events.filter((event) => {
-    if (!isContestEvent(event) || event.cancelledAt || resultsAnnounced(event)) return false;
-    const ends = parseServerDate(event.endsAt);
-    return Boolean(ends && ends.getTime() <= now.getTime());
-  });
+  return events.filter((event) => isContestEvent(event) && contestPhase(event, now) === 'judging');
 }
 
 /**
@@ -261,7 +248,7 @@ export interface ContestSection {
   contests: ServerEvent[];
 }
 
-/** The heading over everything still going on — running, being judged, or not yet started. */
+/** The heading over everything still going on — running or being judged. */
 const CURRENT_LABEL = 'Current';
 
 /** The heading a contest whose start cannot be read is filed under, rather than being dropped. */

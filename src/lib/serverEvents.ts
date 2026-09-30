@@ -58,6 +58,38 @@ export function firstPlaceOf(event: ServerEvent): EventPlacement[] {
 }
 
 /**
+ * Where an event stands in its life. `judging` is a contest whose window has closed with its results
+ * still to come.
+ */
+export type EventState = 'scheduled' | 'active' | 'judging' | 'ended' | 'canceled';
+
+/**
+ * Which state an event is in — the one lifecycle every surface reads, staff and player alike.
+ *
+ * Derived rather than read off the row, the way the server derives it: the only stamps an event carries
+ * are its cancellation and its announcement. The announcement outranks the clock, since it is what
+ * decides a contest.
+ *
+ * @param now - The instant to judge against; defaults to the current time
+ */
+export function eventState(event: ServerEvent, now: Date = new Date()): EventState {
+  if (event.cancelledAt) return 'canceled';
+  if (isContestEvent(event) && resultsAnnounced(event)) return 'ended';
+
+  const starts = parseServerDate(event.startsAt);
+  const ends = parseServerDate(event.endsAt);
+
+  // An unreadable window reads as over rather than running: nothing should be posted about an event
+  // nobody can date.
+  if (!starts || !ends) return 'ended';
+
+  if (now.getTime() < starts.getTime()) return 'scheduled';
+  if (now.getTime() < ends.getTime()) return 'active';
+
+  return isContestEvent(event) ? 'judging' : 'ended';
+}
+
+/**
  * Which phase to show for an event: its ending once the window has closed or its results are out, its
  * opening until then.
  *
