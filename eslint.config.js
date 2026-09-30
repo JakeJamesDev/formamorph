@@ -32,7 +32,7 @@ export default tseslint.config(
   // '.scratch' is throwaway work, including vendored third-party source to test against.
   // 'android' is the native project; `cap sync` copies the built bundle into it.
   // `.claude/worktrees` holds other sessions' checkouts; each lints itself.
-  { ignores: ['dist', 'site-dist', 'out', 'coverage', 'release', 'electron', 'docs-api', '.scratch', 'android', '.claude/worktrees'] },
+  { ignores: ['dist', 'site-dist', 'out', 'coverage', 'release', 'electron', 'docs-api', '.scratch', 'testing/open-speed/.build', 'android', '.claude/worktrees'] },
   {
     files: ['*.config.js'],
     languageOptions: {
