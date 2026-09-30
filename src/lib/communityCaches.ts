@@ -12,9 +12,11 @@
 import { clearCatalog } from './worldCatalog';
 import { clearThumbs } from './thumbnailCache';
 import { clearListingDetails } from './listingDetailsCache';
+import { forgetListingPrefetch } from './listingDetailsLoader';
 
 /** Drop the cached community listing, its thumbnails, and its details. Best-effort: a failed delete is not fatal. */
 export async function purgeCommunityCaches(): Promise<void> {
+  forgetListingPrefetch();
   await Promise.all([
     clearCatalog().catch((error: unknown) => console.error('Failed to drop the catalog cache:', error)),
     clearThumbs().catch((error: unknown) => console.error('Failed to drop the thumbnail cache:', error)),

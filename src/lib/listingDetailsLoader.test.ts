@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { loadListingDetails } from './listingDetailsLoader';
+import {
+  PREFETCH_REUSE_MS, forgetListingPrefetch, loadListingDetails, prefetchListing, takePrefetchedComments,
+} from './listingDetailsLoader';
 import { clearListingDetails, getCachedDetails, putCachedDetails } from './listingDetailsCache';
 import WorldStorageService, { type ListingDetails, type ListingDetailsRead } from '@/services/WorldStorageService';
 
@@ -23,11 +25,13 @@ const holdServer = () => vi.spyOn(WorldStorageService, 'readListingDetails')
 
 beforeEach(async () => {
   reader = 'account-1';
+  forgetListingPrefetch();
   vi.spyOn(console, 'error').mockImplementation(() => {});
   await clearListingDetails();
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -129,5 +133,107 @@ describe('loading a listing’s details', () => {
     expect(await getCachedDetails('w1')).toBeNull();
     reader = 'account-1';
     expect(await getCachedDetails('w1')).toBeNull();
+  });
+});
+
+describe('an open after a prefetch', () => {
+  const page = (total: number) => ({ success: true, data: [], pagination: {}, total }) as never;
+
+  it('waits for the prefetch in flight instead of asking again', async () => {
+    const read = holdServer();
+    const comments = vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(4));
+
+    prefetchListing('w1');
+    const load = loadListingDetails('w1');
+    const firstPage = takePrefetchedComments('w1');
+    answer({ status: 'ok', details: details('Today') });
+
+    expect(await load.fresh).toEqual({ status: 'ok', details: details('Today') });
+    expect(await firstPage).toMatchObject({ total: 4 });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(comments).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes a prefetch that answered moments ago, once', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const read = vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'ok', details: details('Today') });
+    vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(4));
+
+    prefetchListing('w1');
+    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')));
+    vi.setSystemTime(Date.now() + PREFETCH_REUSE_MS - 1000);
+
+    expect(await loadListingDetails('w1').fresh).toEqual({ status: 'ok', details: details('Today') });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(takePrefetchedComments('w1')).not.toBeNull();
+
+    // The next open reads fresh, and finds no comments held for it.
+    await loadListingDetails('w1').fresh;
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(takePrefetchedComments('w1')).toBeNull();
+  });
+
+  it('asks again when the prefetch answered too long ago', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const read = vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'ok', details: details('Today') });
+    vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(4));
+
+    prefetchListing('w1');
+    await vi.waitFor(async () => expect(await getCachedDetails('w1')).toEqual(details('Today')));
+    vi.setSystemTime(Date.now() + PREFETCH_REUSE_MS + 1000);
+
+    await loadListingDetails('w1').fresh;
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(takePrefetchedComments('w1')).toBeNull();
+  });
+
+  it('asks again when the prefetch got no answer', async () => {
+    const read = vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'unreachable' });
+    const comments = vi.spyOn(WorldStorageService, 'fetchComments')
+      .mockResolvedValue({ success: false, error: 'offline', data: [], total: 0, pagination: {} });
+
+    prefetchListing('w1');
+    await new Promise((resolve) => setTimeout(resolve, 0)); // let both reads settle
+    expect(comments).toHaveBeenCalledTimes(1);
+
+    expect(takePrefetchedComments('w1')).toBeNull();
+    await loadListingDetails('w1').fresh;
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops a prefetch no open waits on when the community caches are purged', async () => {
+    const read = holdServer();
+    vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(0));
+
+    prefetchListing('w1');
+    forgetListingPrefetch();
+
+    expect((read.mock.calls[0][1] as AbortSignal).aborted).toBe(true);
+    expect(takePrefetchedComments('w1')).toBeNull();
+  });
+
+  it('keeps a prefetch an open waits on when another card prefetches', async () => {
+    const read = holdServer();
+    vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(0));
+
+    prefetchListing('w1');
+    const load = loadListingDetails('w1');
+    prefetchListing('w2');
+
+    expect((read.mock.calls[0][1] as AbortSignal).aborted).toBe(false);
+    answer({ status: 'ok', details: details('Today') });
+    expect(await load.fresh).toEqual({ status: 'ok', details: details('Today') });
+  });
+
+  it('never hands one reader a prefetch read for another', async () => {
+    const read = holdServer();
+    vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(0));
+
+    prefetchListing('w1');
+    reader = 'account-2';
+
+    expect(takePrefetchedComments('w1')).toBeNull();
+    void loadListingDetails('w1');
+    expect(read).toHaveBeenCalledTimes(2);
   });
 });

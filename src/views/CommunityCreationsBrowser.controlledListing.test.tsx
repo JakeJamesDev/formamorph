@@ -9,11 +9,16 @@ import type { WorldRecord } from '@/components/WorldDetails';
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 vi.mock('@/services/AuthService', () => ({
-  default: { token: 'test-token', getCurrentUser: () => ({ username: 'reader' }) },
+  default: { token: 'test-token', isAuthenticated: () => true, getCurrentUser: () => ({ username: 'reader' }) },
 }));
 
 vi.mock('@/services/WorldStorageService', () => ({
-  default: { API_URL: 'https://example.test/api' },
+  // A card the pointer rests on prefetches its listing through these two.
+  default: {
+    API_URL: 'https://example.test/api',
+    readListingDetails: vi.fn(async () => ({ status: 'unreachable' })),
+    fetchComments: vi.fn(async () => ({ data: [], total: 0, pagination: {} })),
+  },
 }));
 
 const catalog = vi.hoisted(() => ({ worlds: [] as Record<string, unknown>[] }));

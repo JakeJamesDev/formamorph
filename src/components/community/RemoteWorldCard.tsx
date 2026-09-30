@@ -18,6 +18,7 @@ import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
+import { useListingPrefetch } from "@/lib/useListingPrefetch";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
 import { canModerate, isStaff } from "@/lib/roles";
@@ -81,6 +82,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
+  const prefetch = useListingPrefetch(worldId);
   // Player-facing noun for this listing's kind (World / Entity / Dictionary), for the download tooltips.
   const noun = KIND_LABELS[kindOf(world)].one.toLowerCase();
   const isAvatar = kindOf(world) === 'model';
@@ -138,6 +140,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
           : "bg-card",
       )}
       onClick={() => onView(world)}
+      {...prefetch}
       layout={layout}
       name={world.name}
       description={world.description}
