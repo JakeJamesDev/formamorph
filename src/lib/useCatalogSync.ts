@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { toastError } from "@/lib/linkToast";
 import WorldStorageService from "@/services/WorldStorageService";
-import AuthService from "@/services/AuthService";
 import { getCatalog, getCatalogAnonymousLikes, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
-import { readerKey } from "@/lib/anonymousLikes";
+import { currentReader } from "@/lib/currentReader";
 import { claimWatch, type ClaimWatch } from "@/lib/anonymousLikeClaim";
 import { catalogStale, type StaleWatch } from "@/lib/catalogStale";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
@@ -11,10 +10,6 @@ import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
 import { type CatalogWorld } from "@/lib/worldCatalog";
 import { reuseRows } from "@/lib/catalogRows";
-
-/** Who the catalog in hand belongs to, from the session this app holds. */
-const currentReader = (): string =>
-  readerKey(AuthService.isAuthenticated(), AuthService.currentUser?.id);
 
 /**
  * Owns the community catalog: the cached list of published items plus its loading/syncing flags.

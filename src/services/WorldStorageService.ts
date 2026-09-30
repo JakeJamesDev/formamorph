@@ -71,6 +71,12 @@ export interface ListingDetails {
   compatibleWorlds?: WorldAssociation[];
 }
 
+/** One listing read: its details, word that this reader may not see it, or no answer at all. */
+export type ListingDetailsRead =
+  | { status: 'ok'; details: ListingDetails }
+  | { status: 'gone' }
+  | { status: 'unreachable' };
+
 /** The publish refused because this author already has an entry in the contest. */
 export const CONTEST_ALREADY_ENTERED = 'CONTEST_ALREADY_ENTERED';
 
@@ -1021,31 +1027,46 @@ class WorldStorageService {
    * @param worldId - The listing's server id
    */
   async fetchListingDetails(worldId: string): Promise<ListingDetails | null> {
+    const read = await this.readListingDetails(worldId);
+    return read.status === 'ok' ? read.details : null;
+  }
+
+  /**
+   * The same read as {@link fetchListingDetails}, telling a listing this reader may not see apart from
+   * a request that got no answer. A 403 or 404 is gone; any other refusal or a thrown fetch is unreachable.
+   *
+   * @param worldId - The listing's server id
+   */
+  async readListingDetails(worldId: string): Promise<ListingDetailsRead> {
     try {
       const headers = this.readerHeaders();
       const response = await this.installFallbackFetch(
         `${this.API_URL}/worlds/${worldId}?includeChangelog=true`,
         { headers },
       );
-      if (!response.ok) return null;
+      if (response.status === 403 || response.status === 404) return { status: 'gone' };
+      if (!response.ok) return { status: 'unreachable' };
 
       const body = await response.json();
 
       // The relationship fields are absent against a server that has never heard of them, which is what
       // keeps the Linked Content and Compatible Worlds sections empty there rather than wrong.
       return {
-        changelog: changelogOf(body.data),
-        anonymousLikes: installHeaderInUse() && body.anonymousLikes === true,
-        modelLicense: body.data?.modelLicense,
-        visibility: body.data?.visibility,
-        requiredDependencies: (body.data?.requiredDependencies ?? []).map(
-          (row: { id?: string } | string) => (typeof row === 'string' ? row : String(row?.id ?? '')),
-        ).filter(Boolean),
-        compatibleWorlds: body.data?.compatibleWorlds ?? [],
+        status: 'ok',
+        details: {
+          changelog: changelogOf(body.data),
+          anonymousLikes: installHeaderInUse() && body.anonymousLikes === true,
+          modelLicense: body.data?.modelLicense,
+          visibility: body.data?.visibility,
+          requiredDependencies: (body.data?.requiredDependencies ?? []).map(
+            (row: { id?: string } | string) => (typeof row === 'string' ? row : String(row?.id ?? '')),
+          ).filter(Boolean),
+          compatibleWorlds: body.data?.compatibleWorlds ?? [],
+        },
       };
     } catch (error) {
       console.error('Error fetching the listing:', error);
-      return null;
+      return { status: 'unreachable' };
     }
   }
 

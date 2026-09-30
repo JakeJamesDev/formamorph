@@ -104,8 +104,8 @@ const pickDate = (day: string) => {
  * server's answer resolves to.
  */
 const serveChangelog = (entries: ChangelogEntry[] | null) =>
-  vi.spyOn(WorldStorageService, 'fetchListingDetails')
-    .mockResolvedValue({ anonymousLikes: false, changelog: entries === null ? null : changelogOf({ changelog: entries }) });
+  vi.spyOn(WorldStorageService, 'readListingDetails')
+    .mockResolvedValue({ status: 'ok', details: { anonymousLikes: false, changelog: entries === null ? null : changelogOf({ changelog: entries }) } });
 
 const show = (props: Record<string, unknown> = {}) =>
   render(
@@ -147,7 +147,7 @@ afterEach(() => {
 
 describe('whether the switch is usable', () => {
   it('draws the switch at once, with Changelog disabled, before the listing answers', () => {
-    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockReturnValue(new Promise(() => {}));
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockReturnValue(new Promise(() => {}));
 
     show();
 
@@ -160,7 +160,7 @@ describe('whether the switch is usable', () => {
 
     show();
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(await screen.findByText(/no comments yet/i)).toBeInTheDocument();
     expect(changelogTab()).toBeDisabled();
   });
@@ -189,7 +189,7 @@ describe('whether the switch is usable', () => {
 
     show({ currentUser: owner() });
 
-    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    await waitFor(() => expect(WorldStorageService.readListingDetails).toHaveBeenCalled());
     expect(await screen.findByText(/no comments yet/i)).toBeInTheDocument();
     expect(changelogTab()).toBeDisabled();
     expect(screen.queryByRole('button', { name: /add entry/i })).toBeNull();
@@ -255,15 +255,15 @@ describe('which panel opens first', () => {
 
 describe('a tab the reader picked', () => {
   it('survives a late answer whose default would be Changelog', async () => {
-    let answer: (v: Awaited<ReturnType<typeof WorldStorageService.fetchListingDetails>>) => void = () => {};
-    vi.spyOn(WorldStorageService, 'fetchListingDetails')
+    let answer: (v: Awaited<ReturnType<typeof WorldStorageService.readListingDetails>>) => void = () => {};
+    vi.spyOn(WorldStorageService, 'readListingDetails')
       .mockReturnValue(new Promise((resolve) => { answer = resolve; }));
 
     show({ downloadStateForWorld: () => 'update' });
 
     // The reader picks Comments while the details are still loading.
     fireEvent.click(commentsTab()!);
-    answer({ anonymousLikes: false, changelog: changelogOf({ changelog: [entry()] }) });
+    answer({ status: 'ok', details: { anonymousLikes: false, changelog: changelogOf({ changelog: [entry()] }) } });
 
     await waitFor(() => expect(changelogTab()).toBeEnabled());
     expect(await screen.findByText(/no comments yet/i)).toBeInTheDocument();

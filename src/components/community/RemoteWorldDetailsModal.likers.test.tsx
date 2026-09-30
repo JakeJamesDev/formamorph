@@ -68,7 +68,7 @@ beforeEach(() => {
   vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue({
     success: true, data: [], pagination: {}, total: 0,
   });
-  vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue(null);
+  vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'unreachable' });
 });
 
 afterEach(() => {

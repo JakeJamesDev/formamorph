@@ -767,6 +767,24 @@ describe('the listing changelog', () => {
     expect(await WorldStorageService.fetchListingDetails('w1')).toBeNull();
   });
 
+  it.each([403, 404])('reads a %i as a listing this reader may not see', async (status) => {
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'World not found' }, false, status));
+
+    expect(await WorldStorageService.readListingDetails('w1')).toEqual({ status: 'gone' });
+  });
+
+  it.each([429, 500])('reads a %i as no answer, not as gone', async (status) => {
+    vi.mocked(fetch).mockResolvedValue(res({ error: 'Try again' }, false, status));
+
+    expect(await WorldStorageService.readListingDetails('w1')).toEqual({ status: 'unreachable' });
+  });
+
+  it('reads a dead network as no answer', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('offline'));
+
+    expect(await WorldStorageService.readListingDetails('w1')).toEqual({ status: 'unreachable' });
+  });
+
   it('posts a new entry with its fields trimmed', async () => {
     AuthService.token = 'tok';
     vi.mocked(fetch).mockResolvedValue(res({ data: entryRow() }, true, 201));
