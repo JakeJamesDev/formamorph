@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Community Creations shows its window at once when you open it again, and the cards fill in after.** Before, the window waited for every card to draw, which took over a second on a slow device. Scroll, search, and **Back** stay responsive while the cards draw.
+  - **Image generation with a blank Endpoint on A1111, ComfyUI or InvokeAI calls `http://localhost` on that server's port.** Before, it called `127.0.0.1`, which fails for a server that listens only on IPv6.
 - **🛠️ Developer tooling**
   - **Image presets from `VITE_DEFAULT_IMAGE_PRESETS` reset to their `.env` values and follow later `.env` edits.** A preset now saves only the fields you change. Each other field reads its `.env` entry on every load. Before, **Reset** went to the built-in defaults, and a `.env` edit never reached a preset that was already saved.
 

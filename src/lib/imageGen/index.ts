@@ -13,9 +13,9 @@ export { buildImageRequest, type ImageSettings, type ImageRequest } from './requ
 /** Per-provider default endpoint, used when the Endpoint field is left blank. Local providers have a
  *  standard loopback address; the cloud provider has none (a base URL must be entered). */
 export const DEFAULT_ENDPOINT_BY_PROVIDER: Record<ImageProviderId, string> = {
-  a1111: 'http://127.0.0.1:7860',
-  comfyui: 'http://127.0.0.1:8188',
-  invokeai: 'http://127.0.0.1:9090',
+  a1111: 'http://localhost:7860',
+  comfyui: 'http://localhost:8188',
+  invokeai: 'http://localhost:9090',
   novelai: 'https://image.novelai.net',
   openai: '',
 };
