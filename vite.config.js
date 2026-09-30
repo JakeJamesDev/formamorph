@@ -16,25 +16,47 @@ const directSyncAppModules = {
   },
 }
 
-// FM_HOLD_FULL_RELOAD=1: swap Vite's full-page reloads for a custom event; in-place HMR still applies.
-const holdFullReloads = {
-  name: 'hold-full-reloads',
+// VITE_FM_HOLD_UPDATES=1: queue every HMR update and full reload per page until that page sends
+// fm:apply-held (the banner in src/lib/dev/heldUpdatesBanner.ts).
+const holdUpdates = {
+  name: 'hold-updates',
   apply: 'serve',
   configureServer(server) {
-    if (!process.env.FM_HOLD_FULL_RELOAD) return
+    if (!process.env.VITE_FM_HOLD_UPDATES) return
     const send = server.ws.send.bind(server.ws)
-    server.ws.send = (payload, ...rest) => {
-      if (typeof payload === 'object' && payload.type === 'full-reload') {
-        server.config.logger.info(`full reload held (${payload.path ?? 'page'})`, { timestamp: true })
-        return send({ type: 'custom', event: 'fm:full-reload-held', data: payload })
-      }
-      return send(payload, ...rest)
+    /** @type {WeakMap<object, { updates: Map<string, object>, reload: boolean }>} */
+    const queues = new WeakMap()
+    const queueOf = (client) => {
+      if (!queues.has(client)) queues.set(client, { updates: new Map(), reload: false })
+      return queues.get(client)
     }
+    const announce = (client) => {
+      const q = queueOf(client)
+      const files = [...new Set([...q.updates.values()].map((u) => u.path))]
+      client.send({ type: 'custom', event: 'fm:held', data: { files, reload: q.reload } })
+    }
+    server.ws.send = (payload, ...rest) => {
+      const held = typeof payload === 'object' && (payload.type === 'update' || payload.type === 'full-reload')
+      if (!held) return send(payload, ...rest)
+      server.config.logger.info(`${payload.type} held`, { timestamp: true })
+      for (const client of server.ws.clients) {
+        const q = queueOf(client)
+        if (payload.type === 'full-reload') q.reload = true
+        else for (const u of payload.updates) q.updates.set(`${u.type}:${u.path}:${u.acceptedPath}`, u)
+        announce(client)
+      }
+    }
+    server.ws.on('fm:apply-held', (_data, client) => {
+      const q = queueOf(client)
+      if (!q.reload && q.updates.size > 0) client.send({ type: 'update', updates: [...q.updates.values()] })
+      queues.delete(client)
+      announce(client)
+    })
   },
 }
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdFullReloads],
+  plugins: [react(), directSyncAppModules, holdUpdates],
   ...(process.env.E2E_SYNC_APP
     ? { cacheDir: path.resolve(__dirname, 'node_modules/.vite-sync-app') }
     : {}),
