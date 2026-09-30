@@ -169,15 +169,17 @@ An entity's active traits describe it to the AI, the same way the player's do. W
 
 > 💡 **Type `{{char}}` in a trait's text to name its bearer.** On an entity, it reads as that entity's name. On the player's traits, it reads as the persona's name, or "the player" with no persona. One *Paladin* text then names each Paladin.
 
-> 💡 **Entity traits can't have Stat Changes or Stat Availability.** Only the player has stats.
+To give a world trait or group to one entity, drag it onto the entity's node. It moves to that entity. A [Blueprints](#blueprints) item links instead, in Advanced mode.
+
+> 💡 **Only a persona's traits can have Stat Changes or Stat Availability.** Only the player has stats. A **Playable**, **Persona-Only** or [Custom Persona](#custom-persona) entity can own stat traits, and they apply when the player plays as it. Any other entity refuses them. Remove an entity's persona mark, and its stat traits stay, but their stats do nothing.
 
 ## Links
 
-**Advanced mode only.** A link gives a world trait to an entity without a copy. Write *Paladin* one time, then link it to every entity that can be a Paladin. The trait a link points to is its **original**.
+**Advanced mode only.** A link gives a [Blueprints](#blueprints) trait to an entity without a copy. Write *Paladin* one time under Blueprints, then link it to every entity that can be a Paladin. The trait a link points to is its **original**.
 
 Make a link in one of two ways:
 
-- **Drag** a world trait or group onto an entity node. The original stays where it is.
+- **Drag** a Blueprints trait or group onto an entity node. The original stays where it is.
 - **Select the original** and select **Link To…** at the top of its **Details** tab. Pick each entity that gets it. An entity that already has it shows as checked.
 
 A link row shows a link icon. It reads the original live until you change a field on the link. Edit the original, and every link that did not override that field changes. A linked group brings all of its traits, also ones you add later, and it keeps the original's **Pick Count**.
@@ -196,7 +198,9 @@ Select a link to edit it. The link's own **Details** show the original's name an
 Link rules:
 
 - **An entity has each original one time.** A second link to it, direct or through a linked group, is refused.
-- **Only world traits and groups can be originals.** To share an entity's own trait, move it to the world's traits or to [Blueprints](#blueprints), then link it.
+- **Only Blueprints traits and groups can be originals.** To share a top-level trait or an entity's own trait, move it into [Blueprints](#blueprints), then link it.
+- **A linked original stays in Blueprints.** Dragging it out is refused while an entity links it or something in it. The notice names those entities.
+- **Links to a top-level trait are removed.** A world or a card made before this rule loses those links, with their overrides, when it opens.
 - **Remove a link, and the original stays.** Delete the original, and its links go with it. The confirmation tells you how many.
 - **The player chooses at Enter World.** A player can change which linked traits an entity starts with, under the same rules as the entity's own traits.
 - **The AI reads a linked trait like the entity's own**, with that link's overrides.
@@ -220,16 +224,16 @@ On a link row's menu, **Detach** takes the place of **Duplicate**. It turns the 
 
 **Detach** rewrites the trait's text so it keeps this bearer's values. Each [blueprint chip](World-Editor-Placeholders#blueprint-chips) and each [pin by blueprint](#pins-by-blueprint) now names the entity's own [copy](World-Editor-Placeholders#copies). Any copy the trait needs and the entity lacks is made. Dragging an original onto an entity as its own trait, and moving an entity's own trait to another entity, do the same rewrite.
 
-Entity traits can't have stat effects. When the original has **Stat Changes** or **Stat Availability**, a confirmation asks first, and the trait comes without them.
+On a **Playable**, **Persona-Only** or Custom Persona entity, the trait keeps its **Stat Changes** and **Stat Availability**. On any other entity, a confirmation asks first, and the trait comes without them.
 
 ### Links in the Library
 
 An entity's links go with it to the library, to a character card and into a world bundle. Each link keeps the name of its original and its overrides. When the entity joins a world, each link binds to:
 
-1. The trait or group with the same id, when the world has it
-2. Else the one trait or group of its kind with the same name
+1. The Blueprints trait or group with the same id, when the world has it
+2. Else the one Blueprints trait or group of its kind with the same name
 
-With no match, or two, the link is dropped. A link to a trait the entity already has is dropped too. A requirement that names a bearer, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
+With no match, or two, the link is dropped. A top-level trait never matches. A link to a trait the entity already has is dropped too. A requirement that names a bearer, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
 
 The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **Reset**, **Remove Link** and **Detach**, and you can still remove a link that world lacks. Opened from the library, it shows them by name only.
 
@@ -239,7 +243,7 @@ The library entity editor shows links but never makes them. Opened from a world,
 
 - **A world has one Blueprints group.** It stays at the top level.
 - **Entities can't go under Blueprints.** Blueprints holds world traits and groups only.
-- **Remove it, and its traits move to the top level.** They're then offered to the player, so a confirmation asks first.
+- **Remove it, and its traits move to the top level.** They're then offered to the player, and every link to them goes, so a confirmation asks first and gives the link count.
 
 Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of their own, with the same rule.
 
@@ -250,9 +254,10 @@ Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of 
 Set the mark on the entity's **Profile** tab. **Custom Persona** is the fourth choice of the **Persona** control, beside **Cast**, **Playable** and **Persona-Only**. See [Custom Persona](Persona-Authoring#custom-persona) for the full rules.
 
 - **The Traits and Placeholders tabs always list it** as a bearer, so you can drag to it and link to it while it is empty.
+- **Drag a top-level trait onto it to make the trait the persona's.** The trait leaves the top level, so a player with a world persona no longer gets it.
+- **Its traits can change stats.** They apply when the player has no world persona.
 - **The picks carry over.** A player who switches between **None** and a library persona keeps their Custom Persona picks.
 - **In play, its traits sit with the world's top-level traits.** They have no separate heading.
-- **It can't link what the top level already offers.** The player has those traits already.
 - **It stays at the top level** of the **Traits** tab, in the order you set.
 
 > 💡 With Advanced mode off, links, Blueprints and the Custom Persona entity still show when they hold something, and you can still edit them. Only making new ones needs Advanced mode.

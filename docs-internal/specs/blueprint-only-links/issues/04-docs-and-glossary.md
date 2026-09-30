@@ -1,6 +1,6 @@
 # 04: Docs and glossary
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01, 02, 03
 
 Parent: [Blueprint-Only Links spec](../spec.md)
