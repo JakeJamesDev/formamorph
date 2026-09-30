@@ -12,6 +12,9 @@ function fileName(path: string): string {
   return path.slice(path.lastIndexOf('/') + 1);
 }
 
+/** Style files re-inject in place, so applying them never re-mounts a component. */
+const isStyle = (path: string) => /\.(css|scss|sass|less|styl|pcss|postcss)$/.test(path);
+
 function render(state: HeldState, apply: () => void): void {
   document.getElementById(BAR_ID)?.remove();
   if (state.files.length === 0 && !state.reload) return;
@@ -27,11 +30,13 @@ function render(state: HeldState, apply: () => void): void {
     border: '1px solid hsl(var(--border))', borderTop: 'none', boxShadow: '0 2px 8px rgb(0 0 0 / 0.25)',
   });
 
-  const count = state.files.length;
+  const names = state.files.map(fileName).join(', ');
   const text = document.createElement('span');
   text.textContent = state.reload
     ? 'Reload needed to apply the waiting changes'
-    : `${count} ${count === 1 ? 'file' : 'files'} changed: ${state.files.map(fileName).join(', ')}`;
+    : state.files.every(isStyle)
+      ? `Styles changed: ${names}`
+      : `Code changed, may reset what's open: ${names}`;
   text.title = state.files.join('\n');
   Object.assign(text.style, { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
 

@@ -17,7 +17,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **🛠️ Developer tooling**
-  - **`VITE_FM_HOLD_UPDATES=1` makes the dev server hold every edit until you apply it from a bar at the top of the page.** The bar names the changed files. **Apply** swaps them in without a reload. When a change needs a full reload, the bar shows **Reload** instead.
+  - **`VITE_FM_HOLD_UPDATES=1` makes the dev server hold every edit until you apply it from a bar at the top of the page.** The bar names the changed files and says whether they are styles only or code that may reset what's open. **Apply** swaps them in without a reload. When a change needs a full reload, the bar shows **Reload** instead.
 
 #### 🔧 Fixed
 
