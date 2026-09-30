@@ -31,6 +31,7 @@ const ALLOWED = [
   '@/components/menu/ProfileAvatarEditor',
   '@/lib/ageGate',
   '@/lib/apiBase',
+  '@/lib/communityCaches',
   '@/lib/deletionCancellation',
   '@/lib/serverDate',
   '@/lib/utils',
@@ -50,6 +51,12 @@ const FORBIDDEN_DOWNSTREAM = [
   '@/views/',
   '@/managers/',
 ];
+
+/**
+ * Modules the site loads only through a dynamic `import()`, so what they reach stays out of the account
+ * chunk. The walk records them and goes no further; a static import of one fails the test below.
+ */
+const LAZY = ['@/lib/communityCaches'];
 
 /** Every `@/...` specifier in a file, import and dynamic `import()` alike. */
 const appImports = (source: string): string[] =>
@@ -92,6 +99,7 @@ const reachableFrom = (roots = accountSourceFiles()): Map<string, string> => {
     const { specifier, via } = queue.shift()!;
     if (seen.has(specifier)) continue;
     seen.set(specifier, via);
+    if (LAZY.includes(specifier)) continue;
 
     const file = resolveApp(specifier);
     if (!file) continue;
@@ -125,11 +133,20 @@ describe('the site entry stays out of the game bundle', () => {
     expect(strays).toEqual([]);
   });
 
+  it('loads its lazy modules only through a dynamic import', () => {
+    const statics = accountSourceFiles().filter((path) =>
+      LAZY.some((specifier) => new RegExp(`from\\s*['"]${specifier}['"]`).test(readFileSync(path, 'utf-8'))));
+
+    expect(statics.map((path) => path.slice(SITE.length + 1))).toEqual([]);
+    expect(readFileSync(resolve(SITE, 'components', 'SiteAgeGate.tsx'), 'utf-8'))
+      .toContain("import('@/lib/communityCaches')");
+  });
+
   it('reaches a countable number of app modules, not an open-ended set', () => {
     // The list above is a denylist, so it only catches the ways in that somebody has already thought
     // of. This is the backstop: a leaf that starts dragging a subsystem along shows up as a jump here
     // even when nothing it pulls is named. Raise the ceiling deliberately, having looked at what moved.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(48);
+    expect(reachableFromSite().size).toBeLessThanOrEqual(49);
   });
 
   it('really does walk past the first hop', () => {
@@ -154,6 +171,7 @@ describe('the site entry stays out of the game bundle', () => {
       FILES.includes(path) || DIRECTORIES.some((directory) => path.startsWith(directory));
 
     const unscanned = [...reachableFromSite().keys()]
+      .filter((specifier) => !LAZY.includes(specifier))
       .map((specifier) => resolveApp(specifier))
       .filter((file): file is string => !!file)
       // Forward slashes, because the lists are written the way the Tailwind globs are.

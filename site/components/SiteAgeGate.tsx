@@ -18,6 +18,15 @@ import { SiteLayout } from './SiteLayout';
 
 type GateState = 'checking' | 'prompt' | 'accepted' | 'failed';
 
+/**
+ * Drop the community caches the way the game's gate does. The module loads on demand because it reaches
+ * the world store, which the account entry chunk must not carry.
+ */
+const purgeCommunityCaches = (): Promise<void> =>
+  import('@/lib/communityCaches')
+    .then((caches) => caches.purgeCommunityCaches())
+    .catch((error: unknown) => console.error('Failed to drop the community caches:', error));
+
 const initialState = (): GateState => {
   if (AuthService.isAuthenticated()) return 'checking';
   return isAgeAttested() ? 'accepted' : 'prompt';
@@ -93,6 +102,12 @@ export function SiteAgeGate({ children }: { children: ReactNode }) {
     return () => { current = false; };
   }, [readAttempt, sessionToken]);
 
+  // An unresolved or failed lookup is not an answer, so it drops nothing.
+  const unanswered = state === 'prompt';
+  useEffect(() => {
+    if (unanswered) void purgeCommunityCaches();
+  }, [unanswered]);
+
   if (state === 'accepted') {
     return (
       <SiteAgeGateAuthenticationContext.Provider value={authentication}>
@@ -140,8 +155,9 @@ export function SiteAgeGate({ children }: { children: ReactNode }) {
       open
       onAccept={() => { void accept(); }}
       // Declining is a refusal of the whole surface, not of this one profile, so it leaves for the
-      // landing page rather than returning the reader to a link they have already said no to.
-      onDecline={() => leaveTo('/')}
+      // landing page rather than returning the reader to a link they have already said no to. The purge
+      // finishes first: leaving would cancel a chunk still loading.
+      onDecline={() => { void purgeCommunityCaches().finally(() => leaveTo('/')); }}
       busy={saving}
       error={writeError}
       acceptLabel={writeError ? 'Retry' : 'Accept'}
