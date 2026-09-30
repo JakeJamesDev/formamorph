@@ -243,7 +243,7 @@ The library entity editor shows links but never makes them. Opened from a world,
 
 - **A world has one Blueprints group.** It stays at the top level.
 - **Entities can't go under Blueprints.** Blueprints holds world traits and groups only.
-- **Remove it, and its traits move to the top level.** They're then offered to the player, and every link to them goes, so a confirmation asks first and gives the link count.
+- **Remove it, and each linked item becomes its entities' own trait.** Every link into Blueprints is [detached](#detach), and the linked originals are deleted. Unlinked traits move to the top level, where the player can pick them. A confirmation asks first. It gives the link count and names each cast entity whose copies lose their stat changes.
 
 Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of their own, with the same rule.
 

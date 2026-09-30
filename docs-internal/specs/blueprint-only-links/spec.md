@@ -54,6 +54,8 @@ Persona entities also can't own stat-changing traits. A stat trait reaches a per
 | Q8 | Detach keeps stat changes and toggles on persona entities. Other entities strip them after the confirmation. |
 | Q9 | Cards read owned traits' stat changes and toggles, as they read link overrides. Unknown stat ids go dormant. |
 | Q10 | An owned trait shows the Stats tab on a persona entity, or on any entity when it already has stat effects. |
+| Q11 | Removing the Blueprints group works item by item. Each linked item, with everything below it, is detached into every entity that links it, then deleted. Unlinked items move to the top level. |
+| Q12 | When a Q11 detach into a cast entity strips stat changes, the removal confirmation names those entities. |
 
 **Amends:** trait-links Q58 (the `offered` refusal), Q63 (the note now also covers owned traits), Q71 and Q72 (**Link To…** placement and the Custom Persona check), Q53 (Detach strip); the trait-links rule that a world row dropped on an entity links it.
 

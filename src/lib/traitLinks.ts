@@ -3,11 +3,11 @@
 
 import type { Entity, Trait, TraitGroup, TraitLink, TraitLinkFields } from '@/types';
 import { randomUUID } from './uuid';
-import { makeLink, originalOf, type BearerWorld } from './bearers';
+import { broughtIds, makeLink, originalOf, type BearerWorld } from './bearers';
 import {
   effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, resetLinkTraitOverrides, setLinkEdits, setLinkOverride,
 } from './blueprints';
-import { buildTraitTree, canOwnStatTraits, flattenTraitTree, groupsBelow, hasStatEffects, isBlueprintItem, isDescendantGroup } from './traitTree';
+import { blueprintItemIds, blueprintsGroup, buildTraitTree, canOwnStatTraits, flattenTraitTree, groupsBelow, hasStatEffects, isBlueprintItem, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 
 type WorldTraitLists = Pick<BearerWorld, 'traits' | 'traitGroups'>;
@@ -140,4 +140,47 @@ export function detachLink(world: WorldTraitLists, entity: Entity, linkId: strin
   }));
   const owned = withOwnedTraits(entity, [...(entity.traits ?? []), ...traits], [...(entity.traitGroups ?? []), ...groups]);
   return { entity: removeLink(owned, linkId), newId: ids.get(link.originalId)! };
+}
+
+/** The world and entities after the Blueprints group goes, with what the confirmation reports. */
+export interface BlueprintsRemoval {
+  traits: Trait[];
+  traitGroups: TraitGroup[];
+  entities: Entity[];
+  /** Links turned into their entity's own copy. */
+  detached: number;
+  /** Entities whose copies lose stat effects, in entity order. */
+  strippedOn: string[];
+  /** Whether any unlinked item moves to the top level. */
+  movedUp: boolean;
+}
+
+/**
+ * Remove the Blueprints group item by item: each link into it is detached into its entity, the linked items
+ * and everything below them are deleted, and the rest move to the top level. Null without a Blueprints group.
+ */
+export function removeBlueprints(world: WorldTraitLists, entities: readonly Entity[]): BlueprintsRemoval | null {
+  const bp = blueprintsGroup(world.traitGroups);
+  if (!bp) return null;
+  const items = blueprintItemIds(world);
+  const gone = new Set<string>();
+  const strippedOn: string[] = [];
+  let detached = 0;
+  const entitiesOut = entities.map((entity) => {
+    let next = entity;
+    for (const link of entity.traitLinks ?? []) {
+      if (!items.has(link.originalId)) continue;
+      broughtIds(world, link.originalId).forEach((id) => gone.add(id));
+      if (detachDropsStats(world, next, link) && !strippedOn.includes(entity.name)) strippedOn.push(entity.name);
+      const res = detachLink(world, next, link.id);
+      if (res) { next = res.entity; detached += 1; }
+    }
+    return next;
+  });
+  const traits = world.traits.filter((t) => !gone.has(t.id)).map((t) => (t.groupId === bp.id ? { ...t, groupId: null } : t));
+  const traitGroups = world.traitGroups
+    .filter((g) => g.id !== bp.id && !gone.has(g.id))
+    .map((g) => (g.parentId === bp.id ? { ...g, parentId: null } : g));
+  const movedUp = [...traits, ...traitGroups].some((item) => items.has(item.id));
+  return { traits, traitGroups, entities: entitiesOut, detached, strippedOn, movedUp };
 }
