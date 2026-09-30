@@ -1,0 +1,28 @@
+# 04: Show hidden and private counts
+
+Status: ready-for-agent
+Blocked by: 01, 02, 03
+Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
+Reasoning effort: high
+Repo: formamorph
+Spec: ../spec.md (Implementation Decisions › Client display, Client ordering)
+
+Model rationale: a new visual state on a shared control, four surfaces, the optimistic like path, and a design-approval stop.
+
+## What to build
+
+A player sees a heart with "—" on a hidden contest entry, on its card, in the details modal, and on profile rows. A tooltip explains that likes show after the winners are announced. The heart still likes and unlikes, and the dash stays after the press. The author and staff see their number with a tooltip saying only they and staff see it until results. Sorting the catalog by likes puts hidden entries with the zero-like listings.
+
+## Acceptance criteria
+
+- [ ] One pure helper reads a listing record and returns a number, a private number, or hidden. Every count surface uses it: the community card, the details modal, profile creation rows, and the profile total.
+- [ ] A hidden count shows a heart with "—" and the results tooltip. The heart stays pressable.
+- [ ] A private count shows the number and the private tooltip.
+- [ ] A like press on a hidden entry shows no optimistic number and keeps the hidden state from the reply.
+- [ ] The client likes sort treats a hidden count as 0.
+- [ ] A record with no flags behaves as today.
+- [ ] The dash state is added to the design-system showcase, and the user approves it before merge.
+- [ ] Tooltip copy passes the copy sweep.
+- [ ] Tests: the helper, one LikeButton render test for the dash and both tooltips, and the like-press path.
+- [ ] Changelog line in In Progress.
+- [ ] Four gates green.
