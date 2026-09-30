@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **A listing's details window always shows the Changelog | Comments switch, so the right column no longer jumps when the window opens.** **Changelog** stays dimmed until the listing has entries. On your own listing it works at once, so you can start a changelog. A tab you press while the window loads stays selected when the listing details arrive.
   - **Community Creations shows its window at once when you open it again, and the cards fill in after.** Before, the window waited for every card to draw, which took over a second on a slow device. Scroll, search, and **Back** stay responsive while the cards draw. When the latest catalog arrives, only the cards that changed draw again. Tooltips now share one popup, so every screen with many tooltips draws faster, not only this one.
   - **Image generation with a blank Endpoint on A1111, ComfyUI or InvokeAI calls `http://localhost` on that server's port.** Before, it called `127.0.0.1`, which fails for a server that listens only on IPv6.
 - **🛠️ Developer tooling**

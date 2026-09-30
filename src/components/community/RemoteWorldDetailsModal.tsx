@@ -167,6 +167,9 @@ export function RemoteWorldDetailsModal({
   /** The same guard for the changelog fetch, which races the same way. */
   const changelogReqRef = useRef(0);
 
+  /** Whether the reader picked a tab in this open; a late default never overrides a pick. */
+  const tabPickedRef = useRef(false);
+
   // Neither request id survives an unmount: a modal closed with the app still holds the newest id, so
   // the late answer passes its own guard and sets state on a tree that is gone.
   const mountedRef = useMountedRef();
@@ -261,7 +264,7 @@ export function RemoteWorldDetailsModal({
     setModelLicense(details?.modelLicense);
     setAssociations(details?.compatibleWorlds);
     setListingVisibility(details?.visibility);
-    setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
+    if (!tabPickedRef.current) setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
   };
 
   // Fetch comments and the changelog whenever the detail modal opens for a world.
@@ -277,6 +280,7 @@ export function RemoteWorldDetailsModal({
       setModelLicense(undefined);
       setAssociations(undefined);
       setListingVisibility(undefined);
+      tabPickedRef.current = false;
       setTab('comments');
       setReportTarget(null);
       loadComments(world._id || world.id, COMMENTS_PAGE);
@@ -616,22 +620,29 @@ export function RemoteWorldDetailsModal({
 
             {/* Right column: the changelog and the comments, one at a time. */}
             <div className={cn(splitColumnClasses(collapsed).right, "space-y-3")}>
-              {/* Absent entirely when there is nothing to switch to — a listing with no changelog looks
-                  exactly as it always did, which is most of them. Its author sees the switch regardless,
-                  so the way to start a changelog is where the changelog will appear. */}
-              {changelog && (changelog.length > 0 || isOwnListing) && (
-                <ToggleGroup
-                  type="single"
-                  value={tab}
-                  // A single ToggleGroup clears its value when the active item is clicked again; one panel
-                  // is always shown, so an empty result is ignored rather than stored.
-                  onValueChange={(next) => { if (next) setTab(next as ChangelogTab); }}
-                  className="w-full"
+              {/* Always drawn, so the column never jumps. Changelog waits for entries; the author's own
+                  listing opens it regardless, so the way to start a changelog is where it will appear. */}
+              <ToggleGroup
+                type="single"
+                value={tab}
+                // A single ToggleGroup clears its value when the active item is clicked again; one panel
+                // is always shown, so an empty result is ignored rather than stored.
+                onValueChange={(next) => {
+                  // Pressing the active tab still counts as a pick, so a late default can't move it.
+                  tabPickedRef.current = true;
+                  if (next) setTab(next as ChangelogTab);
+                }}
+                className="w-full"
+              >
+                <ToggleGroupItem
+                  value="changelog"
+                  className="flex-1"
+                  disabled={!(changelog && (changelog.length > 0 || isOwnListing))}
                 >
-                  <ToggleGroupItem value="changelog" className="flex-1">Changelog</ToggleGroupItem>
-                  <ToggleGroupItem value="comments" className="flex-1">Comments</ToggleGroupItem>
-                </ToggleGroup>
-              )}
+                  Changelog
+                </ToggleGroupItem>
+                <ToggleGroupItem value="comments" className="flex-1">Comments</ToggleGroupItem>
+              </ToggleGroup>
 
               {changelog && tab === 'changelog' ? (
                 <ChangelogPanel
