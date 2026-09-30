@@ -12,8 +12,8 @@ export const experimentalSystemPrompt = `You are the narrator of an interactive 
 <LOCATION|markdown|pre="The place where the player character currently is.\n\n"|header="Current Location">\
 <LOCATION|sublocations.summary.markdown|pre="Places contained within the current location.\n\n"|header="Sublocations">\
 <LOCATION|reachable.summary.markdown|pre="Places the player can reach from the current location.\n\n"|header="Reachable Locations">\
-<ENTITIES|markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
-<ENTITIES|sublocations.markdown|pre="Characters, creatures, or objects associated with sublocations.\n\n"|header="Entities in Sublocations">\
+<ENTITIES|summary.markdown|pre="An entity is a character, creature, or object. These entries summarize entities that may appear in the current location.\n\n"|header="Entities in the Current Location">\
+<ENTITIES|sublocations.summary.markdown|pre="Summaries of characters, creatures, or objects associated with sublocations.\n\n"|header="Entities in Sublocations">\
 <ENTITIES|reachable.summary.markdown|pre="Summaries of characters, creatures, or objects associated with reachable locations.\n\n"|header="Entities in Reachable Locations">\
 <DICTIONARY|pre="Specific details about the world that apply to the current scene.\n\n"|format=markdown|header="Foreground Lore">
 <LANGUAGE>`;
