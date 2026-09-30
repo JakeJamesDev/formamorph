@@ -68,4 +68,7 @@ _shots/
 *.jks
 *.keystore
 _coloraudit/
+# Open-speed harness build and output
+testing/open-speed/.build/
+testing/open-speed/results.json
 *.tsbuildinfo
