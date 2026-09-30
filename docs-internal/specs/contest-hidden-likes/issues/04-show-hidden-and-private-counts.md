@@ -1,7 +1,7 @@
 # 04: Show hidden and private counts
 
-Status: ready-for-human
-Status note: client 69513ca5. Waiting on the user's approval of the dash state in the showcase (Community Cards › Like Counts). Needs the server tickets 01-03 deployed first.
+Status: done
+Status note: client 69513ca5, review fold-in af009b59. The user approved the dash state on 2026-09-30. Needs the server tickets 01-03 deployed before the client ships.
 Base: e822d2f5
 Blocked by: 01, 02, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -23,7 +23,7 @@ A player sees a heart with "—" on a hidden contest entry, on its card, in the 
 - [x] A like press on a hidden entry shows no optimistic number and keeps the hidden state from the reply.
 - [x] The client likes sort treats a hidden count as 0.
 - [x] A record with no flags behaves as today.
-- [ ] The dash state is added to the design-system showcase, and the user approves it before merge.
+- [x] The dash state is added to the design-system showcase, and the user approves it before merge.
 - [x] Tooltip copy passes the copy sweep.
 - [x] Tests: the helper, one LikeButton render test for the dash and both tooltips, and the like-press path.
 - [x] Changelog line in In Progress.
