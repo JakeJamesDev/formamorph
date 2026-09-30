@@ -1,6 +1,7 @@
 # 05: Always-shown Changelog switch
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: e822d2f5
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

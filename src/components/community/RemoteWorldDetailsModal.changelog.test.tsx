@@ -145,45 +145,53 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('whether the switch is there at all', () => {
-  it('is absent for a reader when the listing has no changelog', async () => {
-    // Most listings. The panel has to look exactly as it did before any of this existed.
+describe('whether the switch is usable', () => {
+  it('draws the switch at once, with Changelog disabled, before the listing answers', () => {
+    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockReturnValue(new Promise(() => {}));
+
+    show();
+
+    expect(changelogTab()).toBeDisabled();
+    expect(commentsTab()).toBeEnabled();
+  });
+
+  it('keeps Changelog disabled for a reader when the listing has no changelog', async () => {
     serveChangelog([]);
 
     show();
 
     await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
-    expect(changelogTab()).toBeNull();
-    expect(commentsTab()).toBeNull();
     expect(await screen.findByText(/no comments yet/i)).toBeInTheDocument();
+    expect(changelogTab()).toBeDisabled();
   });
 
-  it('is there for a reader once the listing has one', async () => {
+  it('enables Changelog for a reader once the listing has entries', async () => {
     serveChangelog([entry()]);
 
     show();
 
-    expect(await screen.findByText('Changelog')).toBeInTheDocument();
+    await waitFor(() => expect(changelogTab()).toBeEnabled());
   });
 
-  it('is there for the listing owner even with nothing in it', async () => {
+  it('enables Changelog for the listing owner even with nothing in it', async () => {
     // The entry point belongs where the result will appear, so an author with no history yet still finds
     // the door rather than having to publish an update to be offered one.
     serveChangelog([]);
 
     show({ currentUser: owner() });
 
-    expect(await screen.findByText('Changelog')).toBeInTheDocument();
+    await waitFor(() => expect(changelogTab()).toBeEnabled());
   });
 
-  it('stays away entirely when the server does not keep changelogs', async () => {
-    // An older community deploy. No tab, no error — the feature is simply not here.
+  it('keeps Changelog disabled when the server does not keep changelogs', async () => {
+    // An older community deploy. The switch is there; nothing in it can be opened, and nothing breaks.
     serveChangelog(null);
 
     show({ currentUser: owner() });
 
     await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
-    expect(changelogTab()).toBeNull();
+    expect(await screen.findByText(/no comments yet/i)).toBeInTheDocument();
+    expect(changelogTab()).toBeDisabled();
     expect(screen.queryByRole('button', { name: /add entry/i })).toBeNull();
   });
 });
@@ -242,6 +250,24 @@ describe('which panel opens first', () => {
     fireEvent.click(await screen.findByText('Changelog'));
 
     expect(await screen.findByText('The drowned quarter is walkable now.')).toBeInTheDocument();
+  });
+});
+
+describe('a tab the reader picked', () => {
+  it('survives a late answer whose default would be Changelog', async () => {
+    let answer: (v: Awaited<ReturnType<typeof WorldStorageService.fetchListingDetails>>) => void = () => {};
+    vi.spyOn(WorldStorageService, 'fetchListingDetails')
+      .mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+
+    show({ downloadStateForWorld: () => 'update' });
+
+    // The reader picks Comments while the details are still loading.
+    fireEvent.click(commentsTab()!);
+    answer({ anonymousLikes: false, changelog: changelogOf({ changelog: [entry()] }) });
+
+    await waitFor(() => expect(changelogTab()).toBeEnabled());
+    expect(await screen.findByText(/no comments yet/i)).toBeInTheDocument();
+    expect(screen.queryByText('The drowned quarter is walkable now.')).toBeNull();
   });
 });
 
