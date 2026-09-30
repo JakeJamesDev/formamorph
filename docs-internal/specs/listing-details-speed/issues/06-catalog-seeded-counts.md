@@ -1,6 +1,7 @@
 # 06: Catalog-seeded tab state and comment count
 
-Status: ready-for-agent
+Status: in-progress
+Base: fdd8a87c
 Blocked by: 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high

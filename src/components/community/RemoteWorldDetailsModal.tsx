@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { toastError } from "@/lib/linkToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,8 @@ import { LikersDialog } from "@/components/community/LikersDialog";
 import { ReportDialog, type ReportTarget } from "@/components/community/ReportDialog";
 import { useReportsEnabled } from "@/lib/useReportsEnabled";
 import { ChangelogPanel } from "@/components/community/ChangelogPanel";
-import { defaultChangelogTab, type ChangelogEntry, type ChangelogTab } from "@/lib/listingChangelog";
+import { defaultChangelogTab, defaultTabForCount, type ChangelogEntry, type ChangelogTab } from "@/lib/listingChangelog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WorldActionButton } from "@/components/WorldActionButton";
 import { DownloadLinkedContent } from "@/components/community/DownloadLinkedContent";
 import { useWorldDownloadPlan } from "@/lib/useWorldDownloadPlan";
@@ -99,6 +100,10 @@ const COMMENT_MAX = 4000;
 /** How many more comments each "Load more" adds to the window on screen. */
 const COMMENTS_PAGE = 20;
 
+/** A count the catalog row carries, or undefined against a server that predates the field. */
+const rowCount = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+
 const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'deviceDownloads' | 'likes' | 'comments' | 'moderation' | 'reports'> = {
   localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true,
 };
@@ -118,6 +123,9 @@ export function RemoteWorldDetailsModal({
   const [commentsShown, setCommentsShown] = useState(COMMENTS_PAGE);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  // Which listing the comments fetch last settled for, and whether it answered. Keyed by listing so a
+  // previous listing's answer never reads as this one's.
+  const [commentsSettled, setCommentsSettled] = useState<{ id: string; ok: boolean } | null>(null);
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
   // The comment being rewritten, and its draft text. Only one is open at a time.
@@ -153,6 +161,15 @@ export function RemoteWorldDetailsModal({
   // beat after the rest of the window.
   const unlisted = (listingVisibility ?? world?.visibility) === 'unlisted';
 
+  const listingKey = world ? String(world._id || world.id) : null;
+
+  // What the catalog row already says, so the tab state and the comments header are right on the first
+  // frame. The answers below correct them. Undefined changelog count: an older server, state unknown.
+  const seededChangelog = rowCount(world?.changelog_count);
+  const seededComments = rowCount(world?.comment_count) ?? 0;
+  const commentsAnswered = commentsSettled !== null && commentsSettled.id === listingKey;
+  const commentsCount = commentsAnswered && commentsSettled.ok ? commentsTotal : seededComments;
+
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
   const reportFeatureEnabled = useReportsEnabled(isAuthenticated && open);
@@ -183,6 +200,7 @@ export function RemoteWorldDetailsModal({
   const loadComments = async (worldId: string, wanted = COMMENTS_PAGE) => {
     const reqId = ++commentsReqRef.current;
     setCommentsLoading(true);
+    let ok = false;
     try {
       const res = await WorldStorageService.fetchComments(worldId, 1, wanted);
       if (!mountedRef.current || reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
@@ -190,8 +208,12 @@ export function RemoteWorldDetailsModal({
       setCommentsHasMore(!!res.pagination?.next);
       setCommentsShown(wanted);
       setComments(res.data);
+      ok = true;
     } finally {
-      if (mountedRef.current && reqId === commentsReqRef.current) setCommentsLoading(false);
+      if (mountedRef.current && reqId === commentsReqRef.current) {
+        setCommentsLoading(false);
+        setCommentsSettled({ id: worldId, ok });
+      }
     }
   };
 
@@ -264,11 +286,15 @@ export function RemoteWorldDetailsModal({
     setModelLicense(details?.modelLicense);
     setAssociations(details?.compatibleWorlds);
     setListingVisibility(details?.visibility);
+    const usable = Boolean(entries && (entries.length > 0 || isOwnListing));
     if (!tabPickedRef.current) setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
+    // A pick of a panel the answer says is not there falls back, rather than leaving the window waiting.
+    else if (!usable) setTab((current) => (current === 'changelog' ? 'comments' : current));
   };
 
-  // Fetch comments and the changelog whenever the detail modal opens for a world.
-  useEffect(() => {
+  // Reset before the first paint, so the window opens on the catalog row's tab and count rather than a
+  // frame of the previous listing's.
+  useLayoutEffect(() => {
     if (open && world) {
       setComments([]);
       setCommentText('');
@@ -281,8 +307,15 @@ export function RemoteWorldDetailsModal({
       setAssociations(undefined);
       setListingVisibility(undefined);
       tabPickedRef.current = false;
-      setTab('comments');
+      setTab(seededChangelog === undefined ? 'comments' : defaultTabForCount(seededChangelog, downloadStateForWorld(world)));
       setReportTarget(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, world?._id, world?.id]);
+
+  // Fetch comments and the changelog whenever the detail modal opens for a world.
+  useEffect(() => {
+    if (open && world) {
       loadComments(world._id || world.id, COMMENTS_PAGE);
       void loadListingDetails(world._id || world.id, world);
     }
@@ -321,6 +354,12 @@ export function RemoteWorldDetailsModal({
   // An offer the world's author turned away is the component author's business and the staff's. The
   // server already withholds it from everybody else; this decides it again rather than trusting a row
   // that arrived.
+  // Enabled once the listing is known to have entries (or is the reader's own). The row's count says so
+  // at open; the details answer, once it lands, is the authority.
+  const changelogUsable = changelog
+    ? changelog.length > 0 || isOwnListing
+    : seededChangelog !== undefined && (seededChangelog > 0 || isOwnListing);
+
   const worldGroups = useMemo(
     () => associationGroups(associations, isOwnListing || isStaff(currentUser)),
     [associations, isOwnListing, currentUser],
@@ -328,7 +367,6 @@ export function RemoteWorldDetailsModal({
 
   // The modal outlives the listing it is showing — it stays mounted while the catalog is browsed — so a
   // likers list left open would reopen itself over whichever listing came next, unasked.
-  const listingKey = world ? String(world._id || world.id) : null;
   useEffect(() => {
     setShowLikers(false);
   }, [open, listingKey]);
@@ -637,14 +675,21 @@ export function RemoteWorldDetailsModal({
                 <ToggleGroupItem
                   value="changelog"
                   className="flex-1"
-                  disabled={!(changelog && (changelog.length > 0 || isOwnListing))}
+                  disabled={!changelogUsable}
                 >
                   Changelog
                 </ToggleGroupItem>
                 <ToggleGroupItem value="comments" className="flex-1">Comments</ToggleGroupItem>
               </ToggleGroup>
 
-              {changelog && tab === 'changelog' ? (
+              {tab === 'changelog' && !changelog ? (
+                // Opened on the row's word that entries exist; the details answer has them.
+                <div className="space-y-3" data-testid="changelog-placeholder">
+                  {Array.from({ length: Math.min(seededChangelog ?? 1, 3) || 1 }, (_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : changelog && tab === 'changelog' ? (
                 <ChangelogPanel
                   worldId={world._id || world.id}
                   entries={changelog}
@@ -653,7 +698,7 @@ export function RemoteWorldDetailsModal({
                 />
               ) : (
                 <>
-              <h3 className="text-helper font-semibold text-muted-foreground">Comments ({commentsTotal})</h3>
+              <h3 className="text-helper font-semibold text-muted-foreground">Comments ({commentsCount})</h3>
 
               {capabilities.comments && isAuthenticated ? (
                 <div className="space-y-2 min-w-0">
@@ -771,7 +816,12 @@ export function RemoteWorldDetailsModal({
                     )}
                   </div>
                 ))}
-                {comments.length === 0 && !commentsLoading && (
+                {/* One row per expected comment, up to a page; a listing with none skips straight to the
+                    empty state. */}
+                {!commentsAnswered && comments.length === 0 && Array.from({ length: Math.min(seededComments, COMMENTS_PAGE) }, (_, i) => (
+                  <Skeleton key={i} className="h-14 w-full" data-testid="comment-placeholder" />
+                ))}
+                {comments.length === 0 && (commentsAnswered ? !commentsLoading : seededComments === 0) && (
                   <p className="text-helper text-muted-foreground">No comments yet.</p>
                 )}
                 {commentsHasMore && (

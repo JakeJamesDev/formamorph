@@ -162,7 +162,16 @@ export function defaultChangelogTab(
   entries: ChangelogEntry[] | null,
   downloadState: DownloadState,
 ): ChangelogTab {
-  if (!entries || entries.length === 0) return 'comments';
+  return defaultTabForCount(entries?.length ?? 0, downloadState);
+}
 
-  return downloadState === 'update' ? 'changelog' : 'comments';
+/**
+ * The same rule for a listing known only by its entry count, as the catalog row carries it.
+ *
+ * @param count - How many entries the listing has
+ * @param downloadState - What the reader's own copies say (see `lib/downloadState`)
+ * @returns The tab to open on
+ */
+export function defaultTabForCount(count: number, downloadState: DownloadState): ChangelogTab {
+  return count > 0 && downloadState === 'update' ? 'changelog' : 'comments';
 }
