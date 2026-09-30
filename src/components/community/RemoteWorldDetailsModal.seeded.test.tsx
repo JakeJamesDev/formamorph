@@ -6,6 +6,7 @@ import { RemoteWorldDetailsModal } from './RemoteWorldDetailsModal';
 import WorldStorageService from '@/services/WorldStorageService';
 import { changelogOf, type ChangelogEntry } from '@/lib/listingChangelog';
 import { type WorldRecord } from '@/components/WorldDetails';
+import { toast } from 'react-toastify';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 vi.mock('@/lib/useCachedThumbnail', () => ({ useCachedThumbnail: () => ({ src: '' }) }));
@@ -67,23 +68,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const show = (props: Record<string, unknown> = {}) =>
-  render(
-    <RemoteWorldDetailsModal
-      open
-      onOpenChange={() => {}}
-      world={world()}
-      collapsed={false}
-      onToggleCollapsed={() => {}}
-      isAuthenticated
-      openImageViewer={() => {}}
-      downloadStateForWorld={() => 'none'}
-      downloadProgress={{}}
-      onContextualDownload={() => {}}
-      currentUser={{ id: 'reader-1', username: 'reader-1', accountType: 'normal' } as unknown as WorldRecord}
-      {...props}
-    />
-  );
+const modal = (props: Record<string, unknown> = {}) => (
+  <RemoteWorldDetailsModal
+    open
+    onOpenChange={() => {}}
+    world={world()}
+    collapsed={false}
+    onToggleCollapsed={() => {}}
+    isAuthenticated
+    openImageViewer={() => {}}
+    downloadStateForWorld={() => 'none'}
+    downloadProgress={{}}
+    onContextualDownload={() => {}}
+    currentUser={{ id: 'reader-1', username: 'reader-1', accountType: 'normal' } as unknown as WorldRecord}
+    {...props}
+  />
+);
+
+const show = (props: Record<string, unknown> = {}) => render(modal(props));
 
 const changelogTab = () => screen.getByRole('radio', { name: 'Changelog' });
 const placeholders = () => screen.queryAllByTestId('comment-placeholder');
@@ -241,21 +243,79 @@ describe('the comments header and rows at open', () => {
     });
     await screen.findByText('Comments (0)');
 
-    rerender(
-      <RemoteWorldDetailsModal
-        open
-        onOpenChange={() => {}}
-        world={world({ id: 'w2', comment_count: 4 })}
-        collapsed={false}
-        onToggleCollapsed={() => {}}
-        isAuthenticated
-        openImageViewer={() => {}}
-        downloadStateForWorld={() => 'none'}
-        downloadProgress={{}}
-      />
-    );
+    rerender(modal({ world: world({ id: 'w2', comment_count: 4 }) }));
 
     expect(screen.getByText('Comments (4)')).toBeInTheDocument();
     expect(placeholders()).toHaveLength(4);
+  });
+
+  it('shows the row again, not the last answer, when the same listing is reopened', async () => {
+    const { rerender } = show({ world: world({ comment_count: 5 }) });
+    await act(async () => {
+      answerComments({ success: true, pagination: {}, total: 0, data: [] } as unknown as Comments);
+    });
+    await screen.findByText('Comments (0)');
+
+    rerender(modal({ open: false, world: world({ comment_count: 5 }) }));
+    rerender(modal({ open: true, world: world({ comment_count: 5 }) }));
+
+    expect(screen.getByText('Comments (5)')).toBeInTheDocument();
+    expect(placeholders()).toHaveLength(5);
+    expect(emptyState()).toBeNull();
+  });
+
+  it('settles on an empty thread, not the row count, when the comments request fails', async () => {
+    show({ world: world({ comment_count: 5 }) });
+
+    await act(async () => {
+      answerComments(Promise.reject(new Error('offline')) as unknown as Comments);
+    });
+
+    expect(await screen.findByText('Comments (0)')).toBeInTheDocument();
+    expect(placeholders()).toHaveLength(0);
+    expect(toast.error).toHaveBeenCalled();
+  });
+});
+
+describe('a listing switched to, or a reader who picked', () => {
+  it('opens on the new listing tab, not the last listing Changelog', () => {
+    const { rerender } = show({ world: world({ changelog_count: 2 }), downloadStateForWorld: () => 'update' });
+    expect(changelogTab()).toBeChecked();
+
+    rerender(modal({ world: world({ id: 'w2', changelog_count: 0 }), downloadStateForWorld: () => 'update' }));
+
+    expect(changelogTab()).not.toBeChecked();
+    expect(changelogTab()).toBeDisabled();
+  });
+
+  it('keeps a picked Comments when a late answer would have defaulted to Changelog', async () => {
+    show({ world: world({ changelog_count: 1 }), downloadStateForWorld: () => 'update' });
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Comments' }));
+    await act(async () => {
+      answerDetails({ anonymousLikes: false, changelog: changelogOf({ changelog: [entry()] }) } as Details);
+    });
+
+    await waitFor(() => expect(changelogTab()).toBeEnabled());
+    expect(screen.getByRole('radio', { name: 'Comments' })).toBeChecked();
+  });
+
+  it('drops the row Changelog when the details request fails, and leaves a picked Changelog', async () => {
+    show({ world: world({ changelog_count: 3 }) });
+
+    fireEvent.click(changelogTab());
+    await act(async () => {
+      answerDetails(null);
+    });
+
+    await waitFor(() => expect(changelogTab()).toBeDisabled());
+    expect(changelogTab()).not.toBeChecked();
+    expect(screen.queryByTestId('changelog-placeholder')).toBeNull();
+  });
+
+  it.each([-1, Number.NaN, '3', null])('ignores a row count of %s as no count', (bad) => {
+    show({ world: world({ changelog_count: bad }) });
+
+    expect(changelogTab()).toBeDisabled();
   });
 });

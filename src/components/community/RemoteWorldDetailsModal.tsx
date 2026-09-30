@@ -105,6 +105,13 @@ const COMMENTS_PAGE = 20;
 const rowCount = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 
+/** Whether the Changelog panel has something to open: a known entry count above zero, or the author's own. */
+const hasChangelog = (count: number | undefined, own: boolean): boolean =>
+  count !== undefined && (count > 0 || own);
+
+/** The most placeholder rows the Changelog panel holds while its entries load. */
+const CHANGELOG_PLACEHOLDERS = 3;
+
 const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary' | 'deviceDownloads' | 'likes' | 'comments' | 'moderation' | 'reports'> = {
   localLibrary: true, deviceDownloads: false, likes: true, comments: true, moderation: true, reports: true,
 };
@@ -124,9 +131,12 @@ export function RemoteWorldDetailsModal({
   const [commentsShown, setCommentsShown] = useState(COMMENTS_PAGE);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
-  // Which listing the comments fetch last settled for, and whether it answered. Keyed by listing so a
-  // previous listing's answer never reads as this one's.
-  const [commentsSettled, setCommentsSettled] = useState<{ id: string; ok: boolean } | null>(null);
+  // Which listing the comments fetch last settled for, keyed so a previous listing's answer never reads
+  // as this one's.
+  const [commentsSettledFor, setCommentsSettledFor] = useState<string | null>(null);
+  // Whether the listing details request has settled, answered or failed. Either way the row's entry
+  // count stops speaking: the answer, or its absence, is the authority.
+  const [detailsSettled, setDetailsSettled] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
   // The comment being rewritten, and its draft text. Only one is open at a time.
@@ -168,8 +178,8 @@ export function RemoteWorldDetailsModal({
   // frame. The answers below correct them. Undefined changelog count: an older server, state unknown.
   const seededChangelog = rowCount(world?.changelog_count);
   const seededComments = rowCount(world?.comment_count) ?? 0;
-  const commentsAnswered = commentsSettled !== null && commentsSettled.id === listingKey;
-  const commentsCount = commentsAnswered && commentsSettled.ok ? commentsTotal : seededComments;
+  const commentsAnswered = commentsSettledFor !== null && commentsSettledFor === listingKey;
+  const commentsCount = commentsAnswered ? commentsTotal : seededComments;
 
   // Off entirely for a signed-out reader and against a server without the feature, so no surface here
   // ever offers an action that would be refused.
@@ -201,7 +211,6 @@ export function RemoteWorldDetailsModal({
   const loadComments = async (worldId: string, wanted = COMMENTS_PAGE) => {
     const reqId = ++commentsReqRef.current;
     setCommentsLoading(true);
-    let ok = false;
     try {
       const res = await WorldStorageService.fetchComments(worldId, 1, wanted);
       if (!mountedRef.current || reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
@@ -209,11 +218,12 @@ export function RemoteWorldDetailsModal({
       setCommentsHasMore(!!res.pagination?.next);
       setCommentsShown(wanted);
       setComments(res.data);
-      ok = true;
+    } catch (error) {
+      if (mountedRef.current && reqId === commentsReqRef.current) toastError(error, 'Failed to load the comments');
     } finally {
       if (mountedRef.current && reqId === commentsReqRef.current) {
         setCommentsLoading(false);
-        setCommentsSettled({ id: worldId, ok });
+        setCommentsSettledFor(worldId);
       }
     }
   };
@@ -287,10 +297,8 @@ export function RemoteWorldDetailsModal({
     setModelLicense(details?.modelLicense);
     setAssociations(details?.compatibleWorlds);
     setListingVisibility(details?.visibility);
-    const usable = Boolean(entries && (entries.length > 0 || isOwnListing));
+    setDetailsSettled(true);
     if (!tabPickedRef.current) setTab(defaultChangelogTab(entries, downloadStateForWorld(forWorld)));
-    // A pick of a panel the answer says is not there falls back, rather than leaving the window waiting.
-    else if (!usable) setTab((current) => (current === 'changelog' ? 'comments' : current));
   };
 
   // Reset before the first paint, so the window opens on the catalog row's tab and count rather than a
@@ -298,6 +306,9 @@ export function RemoteWorldDetailsModal({
   useLayoutEffect(() => {
     if (open && world) {
       setComments([]);
+      setCommentsTotal(0);
+      setCommentsSettledFor(null);
+      setDetailsSettled(false);
       setCommentText('');
       setEditingId(null);
       setPendingDelete(null);
@@ -352,15 +363,14 @@ export function RemoteWorldDetailsModal({
   // own listing, and nothing on screen tells anybody else it exists.
   const canSeeLikers = capabilities.moderation && isStaff(currentUser);
 
+  // The row's count says so at open; the details answer, once it lands, is the authority.
+  const changelogUsable = hasChangelog(changelog ? changelog.length : detailsSettled ? undefined : seededChangelog, isOwnListing);
+  // A pick of a panel that is not there shows Comments, rather than a window waiting on entries.
+  const shownTab: ChangelogTab = tab === 'changelog' && !changelogUsable ? 'comments' : tab;
+
   // An offer the world's author turned away is the component author's business and the staff's. The
   // server already withholds it from everybody else; this decides it again rather than trusting a row
   // that arrived.
-  // Enabled once the listing is known to have entries (or is the reader's own). The row's count says so
-  // at open; the details answer, once it lands, is the authority.
-  const changelogUsable = changelog
-    ? changelog.length > 0 || isOwnListing
-    : seededChangelog !== undefined && (seededChangelog > 0 || isOwnListing);
-
   const worldGroups = useMemo(
     () => associationGroups(associations, isOwnListing || isStaff(currentUser)),
     [associations, isOwnListing, currentUser],
@@ -663,7 +673,7 @@ export function RemoteWorldDetailsModal({
                   listing opens it regardless, so the way to start a changelog is where it will appear. */}
               <ToggleGroup
                 type="single"
-                value={tab}
+                value={shownTab}
                 // A single ToggleGroup clears its value when the active item is clicked again; one panel
                 // is always shown, so an empty result is ignored rather than stored.
                 onValueChange={(next) => {
@@ -683,14 +693,14 @@ export function RemoteWorldDetailsModal({
                 <ToggleGroupItem value="comments" className="flex-1">Comments</ToggleGroupItem>
               </ToggleGroup>
 
-              {tab === 'changelog' && !changelog ? (
+              {shownTab === 'changelog' && !changelog ? (
                 // Opened on the row's word that entries exist; the details answer has them.
                 <div className="space-y-3" data-testid="changelog-placeholder">
-                  {Array.from({ length: Math.min(seededChangelog ?? 1, 3) || 1 }, (_, i) => (
+                  {Array.from({ length: Math.max(1, Math.min(seededChangelog ?? 1, CHANGELOG_PLACEHOLDERS)) }, (_, i) => (
                     <Skeleton key={i} className="h-16 w-full" />
                   ))}
                 </div>
-              ) : changelog && tab === 'changelog' ? (
+              ) : changelog && shownTab === 'changelog' ? (
                 <ChangelogPanel
                   worldId={world._id || world.id}
                   entries={changelog}
