@@ -116,6 +116,8 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
     ? onManageAddons
     : undefined;
 
+  const open = () => onView(world);
+
   const likeControl = (
     <LikeButton
       count={likeCountOf(world)}
@@ -139,7 +141,8 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
           ? "border-info bg-info/10 ring-1 ring-info"
           : "bg-card",
       )}
-      onClick={() => onView(world)}
+      onClick={open}
+      onOpen={open}
       {...prefetch}
       layout={layout}
       name={world.name}

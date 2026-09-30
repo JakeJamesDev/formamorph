@@ -20,8 +20,8 @@ const TITLE_MAX_LINES = 3;
  * slides up to show up to three lines. A name still clipped at three lines carries the full text
  * as a tip.
  */
-export function OverlayTitle({ name, className }: { name: string; className?: string }) {
-  const ref = useRef<HTMLHeadingElement>(null);
+export function OverlayTitle({ name, className, onOpen }: { name: string; className?: string; onOpen?: () => void }) {
+  const ref = useRef<HTMLElement>(null);
   const [clipped, setClipped] = useState(false);
   // Multi-line mode. Entered on card hover; left only when the collapse transition finishes, so
   // the exit animates instead of the clamp snapping the text to one line while max-height is
@@ -57,34 +57,49 @@ export function OverlayTitle({ name, className }: { name: string; className?: st
       card?.removeEventListener('pointerleave', leave);
     };
   }, [name]);
+  const titleAttrs = {
+    // The folder zoom fades every name on the board it is shrinking, and this is the name.
+    'data-tile-title': true,
+    // Until the first measure sets the vars, max-height resolves to none and the clamp alone
+    // clips — so there is no flash, just no slide yet.
+    className: cn(
+      'font-semibold text-white break-words max-h-[var(--title-collapsed)]',
+      reveal ? 'line-clamp-3' : 'line-clamp-1',
+      // easeOutExpo, as arbitrary properties: this config overloads duration-/ease-, so those
+      // utility forms are ambiguous and emit nothing.
+      'transition-[max-height] [transition-duration:350ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none',
+      'group-hover:max-h-[var(--title-expanded)]',
+      onOpen && 'block w-full text-left rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+      className,
+    ),
+    onTransitionEnd: () => {
+      if (!ref.current?.closest('.group')?.matches(':hover')) setReveal(false);
+    },
+  };
   return (
     <Tip tip={clipped ? name : undefined} labelsChild={false}>
-      <h3
-        ref={ref}
-        // The folder zoom fades every name on the board it is shrinking, and this is the name.
-        data-tile-title
-        // Until the first measure sets the vars, max-height resolves to none and the clamp alone
-        // clips — so there is no flash, just no slide yet.
-        className={cn(
-          'font-semibold text-white break-words max-h-[var(--title-collapsed)]',
-          reveal ? 'line-clamp-3' : 'line-clamp-1',
-          // easeOutExpo, as arbitrary properties: this config overloads duration-/ease-, so those
-          // utility forms are ambiguous and emit nothing.
-          'transition-[max-height] [transition-duration:350ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none',
-          'group-hover:max-h-[var(--title-expanded)]',
-          className,
-        )}
-        onTransitionEnd={() => {
-          if (!ref.current?.closest('.group')?.matches(':hover')) setReveal(false);
-        }}
-      >
-        {name}
-      </h3>
+      {onOpen ? (
+        // The heading keeps its place in the outline; the button inside it is the keyboard way in.
+        <h3 className="contents">
+          <button
+            type="button"
+            ref={ref as React.RefObject<HTMLButtonElement>}
+            {...titleAttrs}
+            onClick={(event) => { event.stopPropagation(); onOpen(); }}
+          >
+            {name}
+          </button>
+        </h3>
+      ) : (
+        <h3 ref={ref as React.RefObject<HTMLHeadingElement>} {...titleAttrs}>{name}</h3>
+      )}
     </Tip>
   );
 }
 
 interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Makes the name a real button that calls this, so the card opens from the keyboard. The frame's own click stays. */
+  onOpen?: () => void;
   /** The thumbnail node (an `img`, a `CachedThumbnail` or an entity's Morph art); a `Globe` fills the area when absent. */
   thumbnail?: ReactNode;
   /** Absolutely-positioned overlay over the thumbnail (e.g. a download button / progress bar). */
@@ -116,7 +131,7 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
  * Forwards a ref + spreads the rest onto the frame so a caller can attach dnd-kit listeners / `onClick`.
  */
 export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(function WorldCardShell(
-  { thumbnail, thumbnailOverlay, cornerAction, name, description, omitEmptyDescription, author, note, frameClassName, className, loading, layout = 'stacked', children, ...rest },
+  { thumbnail, thumbnailOverlay, cornerAction, onOpen, name, description, omitEmptyDescription, author, note, frameClassName, className, loading, layout = 'stacked', children, ...rest },
   ref,
 ) {
   const split = layout === 'split';
@@ -150,7 +165,7 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
         )}>
           {loading
             ? <Skeleton className="h-6 w-2/5 bg-white/20" />
-            : <OverlayTitle name={name} className="text-title" />}
+            : <OverlayTitle name={name} className="text-title" onOpen={onOpen} />}
           {/* Flex so a long author truncates inside the art rather than running past its edge. */}
           {!loading && author != null && (
             <div className="flex min-w-0 text-meta text-white/85">
