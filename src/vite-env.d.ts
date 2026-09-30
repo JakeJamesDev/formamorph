@@ -20,4 +20,6 @@ interface ImportMetaEnv {
   readonly VITE_API_URL_PROD: string;
   /** DEV only: the `#dev?…` query a launch entry lands on (see `devRouter.ts`). */
   readonly VITE_DEV_ROUTE?: string;
+  /** DEV only: hold HMR updates until the page applies them (see `heldUpdatesBanner.ts`). */
+  readonly VITE_FM_HOLD_UPDATES?: string;
 }
