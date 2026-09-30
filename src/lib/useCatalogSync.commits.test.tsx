@@ -3,6 +3,7 @@ import { render, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useCatalogSync } from './useCatalogSync';
 import { acceptAgeGate } from './ageGate';
+import { installId } from './anonymousLikes';
 import type { WorldRecord } from '@/components/WorldDetails';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -12,11 +13,12 @@ vi.mock('@/lib/featureFlags', () => ({ COMMUNITY_ENABLED: true }));
 const cache = vi.hoisted(() => ({
   items: [] as Record<string, unknown>[],
   anonymousLikes: false,
+  tag: null as { tag: string; reader: string } | null,
   finishWrite: null as null | (() => void),
 }));
 vi.mock('@/lib/worldCatalog', () => ({
   getCatalog: async () => cache.items,
-  getCatalogTag: async () => null,
+  getCatalogTag: async () => cache.tag,
   getCatalogAnonymousLikes: async () => cache.anonymousLikes,
   replaceCatalog: () => new Promise<void>((resolve) => { cache.finishWrite = resolve; }),
 }));
@@ -72,6 +74,8 @@ beforeEach(() => {
   server.calls = 0;
   localStorage.clear();
   acceptAgeGate();
+  // Cached rows show only to the reader their tag names: here, the signed-out reader's Install.
+  cache.tag = { tag: 'W/"cached"', reader: `install:${installId()}` };
 });
 
 describe('one commit per catalog step', () => {

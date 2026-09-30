@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
 import WorldStorageService from '@/services/WorldStorageService';
 import EventService from '@/services/EventService';
+import { replaceCatalog } from '@/lib/worldCatalog';
 import { toast } from 'react-toastify';
 import { daysFrom, serverEvent, stubMatchMedia, withoutProse } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
@@ -30,8 +31,7 @@ vi.mock('@/services/WorldStorageService', () => ({
   CONTEST_PLACED: 'CONTEST_PLACED',
 }));
 
-// The catalog's IndexedDB store. What a withdrawal corrects in it is not what this file is about; that
-// the entry leaves the grid is.
+// The catalog's IndexedDB store. What a withdrawal writes to it is read back from this mock.
 vi.mock('@/lib/worldCatalog', () => ({ replaceCatalog: vi.fn(async () => {}) }));
 
 const server = vi.hoisted(() => ({ events: [] as unknown[], detail: {} as Record<string, unknown> }));
@@ -708,6 +708,21 @@ describe('withdrawing an entry from the contest tab', () => {
 
     await waitFor(() => expect(WorldStorageService.withdrawFromContest).toHaveBeenCalledWith('Saltmarsh'));
     await waitFor(() => expect(gridNames()).toEqual(['Thawline']));
+  });
+
+  it('drops the private-count mark, because a withdrawn entry’s count is public', async () => {
+    server.events = [contest()];
+    catalog.items = [mine('Saltmarsh', { likes: 7, likesPrivate: true })];
+    renderBrowser();
+    await openContestTab();
+
+    await openWithdraw('Saltmarsh');
+    await userEvent.click(await screen.findByRole('button', { name: 'Withdraw It' }));
+
+    await waitFor(() => expect(replaceCatalog).toHaveBeenCalled());
+    const [saved] = vi.mocked(replaceCatalog).mock.calls.at(-1)![0];
+    expect(saved).toMatchObject({ name: 'Saltmarsh', likes: 7, contest_event_id: null });
+    expect(saved.likesPrivate).toBeUndefined();
   });
 
   it('leaves the entry where it is when the server refuses', async () => {

@@ -110,7 +110,7 @@ function readStoredFilters(storageKey: string, defaultSortField: string): Record
  * `viewerId` is the signed-in account, which the Liked and Mine facets need; without one they match nothing.
  *
  * `order` replaces the sort stage for a tab whose order is not the reader's to choose — the contest tab,
- * whose entries are shuffled while it runs and stand by likes once it is judged. The filters still apply;
+ * whose entries are shuffled until results are announced and stand by likes after. The filters still apply;
  * only what happens after them changes.
  */
 export function useCommunityBrowserFilters(

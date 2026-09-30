@@ -78,22 +78,25 @@ export function useCatalogSync(
 
     // Each step sets its states with no await between them, so one step is one commit.
     try {
-      const [cached, cachedAnonymousLikes] = await Promise.all([getCatalog(), getCatalogAnonymousLikes()]);
+      const [cached, cachedAnonymousLikes, storedTag] = await Promise.all([
+        getCatalog(), getCatalogAnonymousLikes(), getCatalogTag(),
+      ]);
       if (!isCurrent()) return;
+      // Rows carry their reader's liked marks and private like counts, so only the reader the tag names
+      // may see them. Untagged rows have no known reader and wait for the fetch.
+      const stored = cached.length ? storedTag : null;
+      const ownRows = stored?.reader === reader;
       setAnonymousLikes(cachedAnonymousLikes);
-      if (cached.length && !force) {
+      if (ownRows && !force) {
         setRemoteWorlds(cached);
       } else {
         setIsLoadingRemoteWorlds(true);
       }
       setIsSyncingCatalog(true);
 
-      // The tag is only worth sending back while the same reader is asking: liked marks and the
-      // listings a reader can see are their own, so another reader's tag would name another reader's
-      // catalog. A forced refresh sends none — it is asking for the list again on purpose.
-      const stored = cached.length ? await getCatalogTag() : null;
-      if (!isCurrent()) return;
-      const tag = !force && stored && stored.reader === reader ? stored.tag : null;
+      // The tag is only worth sending back while the same reader is asking: another reader's tag would
+      // name another reader's catalog. A forced refresh sends none — it asks for the list again on purpose.
+      const tag = !force && ownRows && stored ? stored.tag : null;
 
       // A sign-in changes the reader and starts a Claim in the same breath, and this refresh is the one
       // the change asked for. Ask before the marks have moved and the answer is missing the hearts the

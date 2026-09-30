@@ -297,6 +297,17 @@ describe('what a refusal does to the heart', () => {
     expect(screen.getByRole('button', { name: /Unlike — 4 likes/ })).toBeTruthy();
   });
 
+  it('puts the dash back on a hidden count, never a zero', async () => {
+    sync.items = [{ ...listing, likes: undefined, likesHidden: true }];
+    refuse(ANONYMOUS_LIKE_CODES.ADDRESS_CAP);
+    renderBrowser();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Like — likes hidden' }));
+
+    await waitFor(() => expect(toast.info).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Like — likes hidden' }).textContent?.trim()).toBe('—'));
+  });
+
   it('says one thing about the cap, and offers sign-in as the way past it', async () => {
     refuse(ANONYMOUS_LIKE_CODES.ADDRESS_CAP);
     const onGuestLike = vi.fn();
