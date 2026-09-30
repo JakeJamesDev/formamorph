@@ -35,7 +35,7 @@ The window opens in its final layout and fills in without moving.
 8. As a reader, I want the comments header to show the real count at once, so that it doesn't read "(0)" and then change.
 9. As a reader, I want placeholder rows where comments will appear, so that the list doesn't jump when they arrive.
 10. As a reader of a listing with no comments, I want the empty state at once, so that I don't watch placeholders for nothing.
-11. As a reader, I want Linked Content and Compatible Worlds to hold their space while they load, so that the left column doesn't move.
+11. As a reader, I want Linked Content and Compatible Worlds to arrive below everything else in the left column, so that nothing I'm reading moves.
 12. As a reader who opened a listing before, I want its details to show at once, so that a reopen feels instant.
 13. As a reader, I want cached details replaced by fresh ones in the background, so that I never keep reading stale data.
 14. As a reader, I want a listing that was deleted or hidden since my last visit to drop out of the cache, so that I don't see a listing I can't open.
@@ -65,9 +65,11 @@ Rulings settled in the session that wrote this spec:
 - **Q2. A late default never overrides a choice.** The default tab (Changelog when the listing has entries and the reader's copy needs an update, else Comments) applies only while the reader has not picked a tab in this open.
 - **Q3. The catalog carries the entry count.** Each catalog row gets `changelog_count`. The window reads it for the tab state and the default tab before the details answer. The details answer is the authority and corrects the count when they differ. A row without the field (older server) behaves as it does today: the state is unknown until the details answer.
 - **Q4. Comments start from the catalog count.** The header uses the row's `comment_count` until the comments fetch answers. Placeholder rows show only when the count is above zero, one per expected comment up to one page. At zero, the empty state shows at once.
-- **Q5. Late sections hold their space.** Linked Content and Compatible Worlds show a placeholder until the details answer. The exact form is open (see Further Notes).
+- **Q5. Late sections never move what the reader sees.** The form is ruled by Q11.
+- **Q11. Late sections go to the bottom of their column.** Ruled by the user (ticket 07). Linked Content and Compatible Worlds move to the end of the left column, so a late arrival pushes nothing above it. No placeholder, no reserved space, and no server field.
 - **Q6. Hover prefetch is guarded.** It starts after the pointer rests on a card for about 150 ms, or when a card gets keyboard focus. It never starts from a touch pointer. A new prefetch cancels the one before it. A listing whose details are already cached in this visit is not prefetched. A prefetch loads the listing details (into the disk cache) and the first comments page (in memory, for the next open only). An open that finds a prefetch in flight waits for it instead of sending its own request.
 - **Q7. Listing details are cached on disk.** The cache lives in IndexedDB beside the catalog. It holds exactly what the details fetch returns, never a thumbnail. Entries are keyed by listing id and reader, the same reader identity the catalog tag uses. An open shows the cached entry at once and always fetches fresh. A 404 drops the entry. A network failure keeps it. The store keeps about 300 entries, evicting the least recently used. The age-gate purge clears it with the other community caches.
+  - **Q7a. Ruling (ticket 08): what drops and what keeps.** A 403 or a 404 drops the entry: both mean the listing is not this reader's to see, which covers story 14's deleted or hidden listing. A 5xx, a 429, or a thrown fetch keeps it. When cached details are on screen and the fresh fetch fails that way, the window keeps showing them; on a 403 or 404 it clears them as today. With no cached entry, a failure behaves as today. The store may be its own IndexedDB database, as the thumbnail cache is, as long as the age-gate purge clears it.
 
 - **Q8. The window paints before the cards.** Opening Community Creations commits the window shell first. The card grid renders after, as a transition, so the first paint never waits on it. This applies to cached and fresh rows alike.
 - **Q9. One catalog answer is one grid render.** The catalog loader batches the states it sets (rows, the anonymous-likes flag, the syncing flags) into one commit per step. Cards are memoized. A fresh catalog row that matches the cached row keeps the cached object, so its card skips the render. As built (ticket 03): the loader commits once per step, and the browser adds its own commits in reaction to the settled flags, three per answer in all. No card renders in those extra commits, so the rule holds for cards, not for browser commits.
@@ -115,7 +117,6 @@ Each guard is proved to bite by reinstating the behavior it replaces.
 ## Further Notes
 
 - The server already dropped the base64 thumbnail from the details response (FormamorphServer `f7b4e60`). The response went from 32–100 KB to about 1 KB.
-- Open for the next iteration: the form of the Linked Content and Compatible Worlds placeholder. Most listings have neither, so reserved space that then collapses is also a jump. Counts on the catalog row would settle it the way Q3 does.
 - Open for the next iteration: whether disabled Changelog carries a tooltip such as "No changelog yet".
 - Open for the next iteration: a target time for the window-visible number. This spec records before and after; it sets no bar.
 - Moving work to a worker was ruled out for now: the data work is ~20 ms, and a worker can't render React.
