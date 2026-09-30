@@ -2,8 +2,8 @@
  * One listing's details, from disk at once and from the server when it answers.
  *
  * The fresh read always runs and keeps the disk current: an answer replaces the entry, a listing this
- * reader may not see drops it, and no answer leaves it. The cached read gives way to the fresh one, so
- * details from disk never land after the fresh answer and a slow disk never holds the fresh one back.
+ * reader may not see drops it, and no answer leaves it. The cached read gives way to a fresh answer, so
+ * details from disk never land after it and a slow disk never holds it back.
  */
 import WorldStorageService, { type ListingDetails, type ListingDetailsRead } from '@/services/WorldStorageService';
 import { dropCachedDetails, getCachedDetails, putCachedDetails } from '@/lib/listingDetailsCache';
@@ -36,9 +36,8 @@ const readFresh = async (listingId: string): Promise<ListingDetailsRead> => {
 /** Start reading a listing's details. */
 export function loadListingDetails(listingId: string): ListingDetailsLoad {
   const fresh = readFresh(listingId);
-  const cached = Promise.race([
-    getCachedDetails(listingId).catch(() => null),
-    fresh.then(() => null),
-  ]);
+  // Only a real answer supersedes the disk; after a failed request the cached details are all there is.
+  const answered = fresh.then((read) => (read.status === 'unreachable' ? new Promise<null>(() => {}) : null));
+  const cached = Promise.race([getCachedDetails(listingId).catch(() => null), answered]);
   return { cached, fresh };
 }

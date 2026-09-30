@@ -99,6 +99,15 @@ describe('loading a listing’s details', () => {
     expect(await getCachedDetails('w1')).toEqual(details('Last visit'));
   });
 
+  it('still hands back the cached details when the server fails before the disk answers', async () => {
+    await putCachedDetails('w1', details('Last visit'));
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'unreachable' });
+
+    const load = loadListingDetails('w1');
+
+    expect(await load.cached).toEqual(details('Last visit'));
+  });
+
   it('never answers from disk after the server has answered', async () => {
     await putCachedDetails('w1', details('Last visit'));
     vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'ok', details: details('Today') });

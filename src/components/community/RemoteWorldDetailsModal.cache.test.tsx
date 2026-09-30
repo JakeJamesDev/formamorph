@@ -106,6 +106,16 @@ describe('a listing opened before', () => {
     expect(screen.getByRole('radio', { name: 'Changelog' })).toBeEnabled();
   });
 
+  it('shows the cached details when the server fails before the disk answers', async () => {
+    await putCachedDetails('w1', details('From the last visit.'));
+    vi.mocked(WorldStorageService.readListingDetails).mockResolvedValue({ status: 'unreachable' });
+
+    render(modal('w1'));
+
+    expect(await screen.findByText('From the last visit.')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Changelog' })).toBeEnabled();
+  });
+
   it('clears the cached details when the listing is gone for this reader', async () => {
     await putCachedDetails('w1', details('From the last visit.'));
     render(modal('w1'));
