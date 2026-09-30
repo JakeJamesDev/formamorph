@@ -23,7 +23,7 @@ The server decides who sees a count. A listing's count is **hidden** when all th
 
 A hidden count is left out of every response, and the response says it is hidden. Sorting by likes treats a hidden count as 0, so the order shows no rank. Profile totals leave hidden likes out for the public.
 
-New clients show a hidden count as a heart with a dash. A tooltip explains that likes show after the winners are announced. The heart still works, so players can still like an entry. The author and staff see the real number, with a tooltip saying only they see it until results.
+New clients show a hidden count as a heart with a dash. A tooltip explains that likes show after the winners are announced. The heart still works, so players can still like an entry. The author and staff see the real number, with a tooltip saying only the author and staff see it until results.
 
 When staff announce results, every count of that contest shows for everyone. A withdrawn entry and the entries of a canceled contest stop being contest entries, so their counts show at once.
 
@@ -110,8 +110,8 @@ Old clients get no count for a hidden entry and show "0". Nothing leaks and noth
 
 - One pure helper reads a listing record and returns what to show: a number, a private number, or hidden. Every per-listing count uses it: the community card, the listing details modal, and profile creation rows.
 - The profile total stays a plain number for every reader, with no tooltip. The server already sends each reader the right total. (Q12, 2026-09-30)
-- A hidden count shows as a heart with "—". The heart stays pressable. A tooltip explains that likes show after the winners are announced.
-- A private count shows the number with a tooltip saying only the reader and staff see it until results.
+- A hidden count shows as a heart with "—". The heart stays pressable. Its tooltip reads "You'll see likes after staff announce the winners".
+- A private count shows the number. Its tooltip reads "Only the author and staff see this count until staff announce the winners". The wording names the author, so it stays true for a staff reader.
 - After a like press, the client keeps the hidden state from the reply. It never shows an optimistic number on a hidden entry.
 - Tooltip copy goes through the copy sweep.
 
