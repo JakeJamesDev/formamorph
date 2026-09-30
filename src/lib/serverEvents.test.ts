@@ -178,8 +178,12 @@ describe('eventPhase', () => {
     expect(eventPhase(decided(), NOW)).toBe('end');
   });
 
-  it('treats an unreadable end timestamp as still open rather than instantly over', () => {
-    expect(eventPhase(event({ endsAt: 'not a date' }), NOW)).toBe('start');
+  it('is the ending for an event called off mid-window', () => {
+    expect(eventPhase(event({ cancelledAt: at(-1) }), NOW)).toBe('end');
+  });
+
+  it('reads an unreadable window as over, as eventState does', () => {
+    expect(eventPhase(event({ endsAt: 'not a date' }), NOW)).toBe('end');
   });
 });
 
