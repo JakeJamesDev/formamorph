@@ -1,6 +1,7 @@
 # 01: Links only from Blueprints
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: a23713a0
 
 Parent: [Blueprint-Only Links spec](../spec.md)
 

@@ -30,7 +30,7 @@ describe('the Custom Persona entity in the world store', () => {
   const you = { id: 'you', name: 'Wanderer', customPersona: true, traitLinks: links, traitPlacement: { groupId: null, order: 3 } };
   const withPersona = {
     ...world('w', {}),
-    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'blueprints' }, { id: 'brave', name: 'Brave', statChanges: [] }],
+    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'blueprints' }, { id: 'brave', name: 'Brave', statChanges: [], groupId: 'blueprints' }],
     traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
     entities: [you],
   } as unknown as World;
@@ -65,13 +65,14 @@ describe('the Custom Persona entity in the world store', () => {
     expect(marked(result)?.traitLinks?.map((l) => l.id)).toEqual(['l2']);
   });
 
-  it("removing Blueprints moves its traits to the top level and keeps the Custom Persona entity's links to them", () => {
+  it("removing Blueprints moves its traits to the top level and drops the Custom Persona entity's links to them", () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(withPersona); });
+    expect(marked(result)?.traitLinks).toEqual(links);
     act(() => { result.current.removeTraitGroup('blueprints'); });
     expect(result.current.traitGroups).toEqual([]);
     expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
-    expect(marked(result)?.traitLinks).toEqual(links);
+    expect(marked(result)).not.toHaveProperty('traitLinks');
   });
 
   it('removing Blueprints inside another group still moves its traits to the top level', () => {

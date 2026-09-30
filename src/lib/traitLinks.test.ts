@@ -25,6 +25,15 @@ const world = {
 };
 
 describe('addLink', () => {
+  // The same world with Classes moved into Blueprints, the only place a link's original can sit.
+  const blueprinted = {
+    traits: world.traits,
+    traitGroups: [
+      group('bp', null, { name: 'Blueprints', system: 'blueprints' }),
+      ...world.traitGroups.map((g) => (g.id === 'classes' ? { ...g, parentId: 'bp' } : g)),
+    ],
+  };
+
   it('links an original at the end of the bearer\'s top level, after its owned items and links', () => {
     const bearer: Entity = {
       id: 'ash', name: 'Ash',
@@ -32,14 +41,21 @@ describe('addLink', () => {
       traitGroups: [group('g-own', null, { order: 1 })],
       traitLinks: [link('l1', 'wizard', 'trait', { order: 2 })],
     };
-    expect(addLink(world, bearer, 'classes', 'new')?.traitLinks).toEqual([
+    expect(addLink(blueprinted, bearer, 'classes', 'new')?.traitLinks).toEqual([
       link('l1', 'wizard', 'trait', { order: 2 }),
       { id: 'new', originalId: 'classes', kind: 'group', originalName: 'Classes', groupId: null, order: 3 },
     ]);
   });
 
   it('links nothing when the id is not an original', () => {
-    expect(addLink(world, { id: 'ash', name: 'Ash' }, 'gone', 'new')).toBeNull();
+    expect(addLink(blueprinted, { id: 'ash', name: 'Ash' }, 'gone', 'new')).toBeNull();
+  });
+
+  it('links nothing outside Blueprints, nor the Blueprints group itself (Q1)', () => {
+    expect(addLink(blueprinted, { id: 'ash', name: 'Ash' }, 'brave', 'new')).toBeNull();
+    expect(addLink(world, { id: 'ash', name: 'Ash' }, 'classes', 'new')).toBeNull();
+    expect(addLink(blueprinted, { id: 'ash', name: 'Ash' }, 'bp', 'new')).toBeNull();
+    expect(addLink(blueprinted, { id: 'ash', name: 'Ash' }, 'fire', 'new')?.traitLinks).toMatchObject([{ originalId: 'fire' }]);
   });
 });
 
@@ -217,7 +233,7 @@ describe('blueprint pins on links', () => {
   const plate = { placeholderId: 'garb', value: 'Plate' };
   const pinned = {
     traits: [trait('paladin', { name: 'Paladin', groupId: 'classes', placeholderPins: [tabard] }), trait('wizard', { groupId: 'classes' })],
-    traitGroups: [group('classes', null, { name: 'Classes' })],
+    traitGroups: [group('bp', null, { system: 'blueprints' }), group('classes', 'bp', { name: 'Classes' })],
   };
 
   it("stores no pin data of its own on a new link; the original's pin stays aimed at the blueprint", () => {

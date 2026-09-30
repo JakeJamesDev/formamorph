@@ -163,12 +163,13 @@ describe('the link button', () => {
     expect(flyoutRows('Link To')).toEqual(['#Heroes', 'Vex', '✓Wanderer']);
   });
 
-  it('checks the Custom Persona entity for a top-level trait, which the player already has', () => {
+  it('is absent on a top-level trait, since only Blueprints items link (Q1)', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(within(treeRow('Brave')!).getByText('Brave'));
-    openLinkFlyout();
-    expect(flyoutRows('Link To')).toEqual(['#Heroes', 'Vex', '✓Wanderer']);
+    expect(screen.queryByRole('button', { name: 'Link To…' })).not.toBeInTheDocument();
+    fireEvent.click(within(treeRow('Paladin')!).getByText('Paladin'));
+    expect(screen.getByRole('button', { name: 'Link To…' })).toBeInTheDocument();
   });
 
   it('shows on a selected link, acting on its original', () => {
