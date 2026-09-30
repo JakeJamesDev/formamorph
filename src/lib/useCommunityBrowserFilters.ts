@@ -55,10 +55,7 @@ const emptyFilters = (sortField = 'updated_at'): TabFilters => ({
 const emptyByTab = (defaultSortField: string): Record<BrowseTab, TabFilters> =>
   Object.fromEntries(BROWSE_TABS.map((t) => [t, emptyFilters(defaultSortField)])) as Record<BrowseTab, TabFilters>;
 
-/**
- * What one row compares on for a sort field. Dates parse to an epoch; downloads pass through, missing as 0;
- * likes go through `likesForSort`, so a hidden count sorts as 0.
- */
+/** What one row compares on for a sort field. */
 const sortValue = (world: WorldRecord, field: string): number => {
   if (field === 'likes') return likesForSort(world);
   if (field === 'downloads') return world.downloads || 0;

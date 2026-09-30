@@ -17,7 +17,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **👤 User-facing**
-  - **In Community Creations and on profiles, a contest entry shows its like count as a dash until the winners are announced.** A tooltip says when the likes will show. The heart still likes and unlikes the entry. The author and staff see the number, with a tooltip that says only they see it. A sort by likes puts hidden entries with the entries that have no likes.
+  - **In Community Creations and on profiles, a contest entry shows its like count as a dash until staff announce the winners.** A tooltip says when the likes will show. The heart still likes and unlikes the entry. The author and staff see the number, with a tooltip that says only they see it. A sort by likes puts hidden entries with the entries that have no likes.
 - **🛠️ Developer tooling**
   - **`VITE_FM_HOLD_UPDATES=1` makes the dev server hold every edit until you apply it from a bar at the top of the page.** The bar names the changed files and says whether they are styles only or code that may reset what's open. **Apply** swaps them in without a reload. When a change needs a full reload, the bar shows **Reload** instead.
 

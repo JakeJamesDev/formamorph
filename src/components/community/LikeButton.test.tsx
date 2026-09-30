@@ -35,7 +35,7 @@ describe('a hidden count', () => {
     await expectTip(screen.getByLabelText(HIDDEN_LIKES_TIP), HIDDEN_LIKES_TIP);
   });
 
-  it('stays pressable, and the dash stays while it likes', async () => {
+  it('stays pressable', async () => {
     const onToggle = vi.fn(async () => {});
     show({ visibility: 'hidden' }, { liked: false, onToggle });
 
@@ -67,7 +67,7 @@ describe('a private count', () => {
 });
 
 describe('a public count', () => {
-  it('reads as it always has, with no extra line', async () => {
+  it('shows the number with no extra line', async () => {
     show({ visibility: 'public', likes: 3 }, { liked: false, onToggle: vi.fn(async () => {}) });
 
     const heart = screen.getByRole('button', { name: 'Like — 3 likes' });
