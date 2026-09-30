@@ -50,6 +50,7 @@ export const TEST_SETTINGS: TurnSettings = {
   memoryDigests: true,
   characterDiaries: true,
   describeCharacters: true,
+  imageAttachments: false,
   language: 'English',
 };
 

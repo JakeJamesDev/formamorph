@@ -8,7 +8,7 @@ import type { AiStreamEvent } from '@/lib/aiRequest/aiStream';
 import type { ParsedDirector } from '@/lib/stagedPlanning';
 import { UNPARSEABLE_MESSAGE } from './turnErrors';
 import { navigableDestinations } from '@/lib/locationContext';
-import type { Connection, GameLocation } from '@/types';
+import type { Connection, GameLocation, ImageAttachment, RequestMessage } from '@/types';
 
 /**
  * The runner through its own interface: a fake request adapter stands in for the model, and the real pass
@@ -779,5 +779,67 @@ describe('a written page one', () => {
   it('counts blank text as no written page, so the model writes it', async () => {
     const { types } = await written({ input: { writtenNarration: '  \n' } });
     expect(types).toContain('narration');
+  });
+});
+
+describe('image attachments', () => {
+  const IMAGES: ImageAttachment[] = [
+    { id: 'first', mime: 'image/webp', dataUrl: 'data:image/webp;base64,Rmlyc3Q=' },
+    { id: 'second', mime: 'image/webp', dataUrl: 'data:image/webp;base64,U2Vjb25k' },
+  ];
+  const attached = (over: RunOptions = {}) =>
+    run({ ...over, input: { attachments: IMAGES, ...over.input }, settings: { imageAttachments: true, ...over.settings } });
+  const hasParts = (request: { messages: RequestMessage[] }) =>
+    request.messages.some((message) => typeof message.content !== 'string');
+
+  it('ends the narration request with the action text, then each image in attach order', async () => {
+    // The same turn with no images is the control: its last user message is the text the part must carry.
+    const plain = outcome(ok((await run({ settings: { imageAttachments: true } })).result), 'narration').request;
+    const narration = outcome(ok((await attached()).result), 'narration').request;
+    expect(narration.messages.at(-1)).toEqual({
+      role: 'user',
+      content: [
+        { type: 'text', text: plain.messages.at(-1)?.content },
+        { type: 'image_url', image_url: { url: IMAGES[0].dataUrl } },
+        { type: 'image_url', image_url: { url: IMAGES[1].dataUrl } },
+      ],
+    });
+  });
+
+  it('leaves the earlier history messages as the same strings', async () => {
+    // A real history holds earlier actions, which are user messages too.
+    const history: Partial<TurnMaterial> = {
+      trimmedHistory: [
+        { role: 'user', content: 'I step off the ferry.' },
+        { role: 'assistant', content: 'Previously…' },
+      ],
+    };
+    const plain = outcome(ok((await run({ material: history })).result), 'narration').request;
+    const narration = outcome(ok((await attached({ material: history })).result), 'narration').request;
+    expect(narration.messages.length).toBe(3);
+    expect(narration.messages.slice(0, -1)).toEqual(plain.messages.slice(0, -1));
+    for (const message of narration.messages.slice(0, -1)) expect(typeof message.content).toBe('string');
+  });
+
+  it('sends the images to no pass but the narration', async () => {
+    const finished = ok((await attached()).result);
+    const others = finished.passes.filter((p) => p.id !== 'narration');
+    expect(others.length).toBeGreaterThan(5);
+    for (const pass of others) expect(hasParts(pass.request), pass.id).toBe(false);
+  });
+
+  it('sends no image anywhere with the setting off', async () => {
+    const finished = ok((await attached({ settings: { imageAttachments: false } })).result);
+    for (const pass of finished.passes) expect(hasParts(pass.request), pass.id).toBe(false);
+  });
+
+  it('sends no image on the opening turn', async () => {
+    const finished = ok((await attached({ input: { isGameStarted: false, action: 'START GAME' } })).result);
+    for (const pass of finished.passes) expect(hasParts(pass.request), pass.id).toBe(false);
+  });
+
+  it('keeps the narration text-only when the turn has no images', async () => {
+    const finished = ok((await run({ settings: { imageAttachments: true } })).result);
+    expect(hasParts(outcome(finished, 'narration').request)).toBe(false);
   });
 });

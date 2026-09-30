@@ -12,6 +12,7 @@ import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
+import type { AttachmentMap } from '../lib/actionAttachments';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
@@ -29,6 +30,7 @@ import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
 import type {
   CharacterData,
   CodePins,
+  ImageAttachment,
   LogEntry,
   GameLocation,
   Stat,
@@ -156,6 +158,10 @@ function useProvideGameplay() {
   // the message list parses it, and a megabyte of base64 in a turn made the narration reveal crawl for the
   // rest of the session (see lib/sceneImages). Persisted only when the player opts in on the Save dialog.
   const [sceneImages, setSceneImages] = useState<SceneImageMap>({});
+  // The images each sent action carried, by turn id, and the ones waiting in the action box. Held beside the
+  // history for the same reason as scene images (see lib/actionAttachments).
+  const [actionAttachments, setActionAttachments] = useState<AttachmentMap>({});
+  const [pendingAttachments, setPendingAttachments] = useState<ImageAttachment[]>([]);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
@@ -473,6 +479,9 @@ function useProvideGameplay() {
           // Absent whenever the save was written without images — the story loads with its tag lines and
           // no pictures, which is the default.
           setSceneImages(migrated.sceneImages ?? {});
+          // Saves hold no attachments yet, so a load starts with none.
+          setActionAttachments({});
+          setPendingAttachments([]);
           addSystemLogEntry(`Game loaded from "${saveName}"`);
           setSaveLoads((n) => n + 1);
         }
@@ -703,6 +712,10 @@ function useProvideGameplay() {
     placeholderRolls,
     setPlaceholderRolls,
     sceneImages,
+    actionAttachments,
+    setActionAttachments,
+    pendingAttachments,
+    setPendingAttachments,
     setSceneImages,
     memoryPins,
     setMemoryPins,

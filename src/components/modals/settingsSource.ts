@@ -38,6 +38,7 @@ export type OutputSettingsSource = Pick<SettingsValue,
   | 'semanticDiaries' | 'setSemanticDiaries'
   | 'continueChoiceMode' | 'setContinueChoiceMode'
   | 'concurrentTurnRequests' | 'setConcurrentTurnRequests'
+  | 'imageAttachments' | 'setImageAttachments'
 > & { embeddingModel: EmbeddingDownload };
 
 /** Everything both sections read: the Settings dialog passes the live context, theme, and download. */

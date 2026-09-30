@@ -8,6 +8,7 @@ import type {
   TurnStage,
 } from './turnPlan';
 import { classifyTurnError, type TurnErrorKind } from './turnErrors';
+import { withImageParts } from '@/lib/aiRequest/imageParts';
 
 /**
  * The Turn Pipeline's runner: it executes one {@link TurnPlan} — the up-front router, the planning stages,
@@ -135,14 +136,20 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
   const requestsFor = (pass: TurnPassRecord): PlannedRequest[] => {
     if (pass.isReady && !pass.isReady(material)) return [];
     if (!pass.fanOut) {
-      return [{ pass, request: pass.buildRequest(plan.input, material) }];
+      return [{ pass, request: withAttachments(pass, pass.buildRequest(plan.input, material)) }];
     }
     const subjects = material.subjects?.[pass.id] ?? [];
     return subjects.map((subject) => {
       const scoped = { ...material, subject };
-      return { pass, subject, request: pass.buildRequest(plan.input, scoped) };
+      return { pass, subject, request: withAttachments(pass, pass.buildRequest(plan.input, scoped)) };
     });
   };
+
+  /** A built request with the turn's images on its last user message, for a pass the plan gives them to. */
+  const withAttachments = (pass: TurnPassRecord, request: TurnPassRequest): TurnPassRequest =>
+    plan.attachmentPasses.includes(pass.id)
+      ? { ...request, messages: withImageParts(request.messages, plan.attachments) }
+      : request;
 
   const send = (planned: PlannedRequest): Promise<string> => {
     const answer = request(planned.request, {

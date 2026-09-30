@@ -1,4 +1,4 @@
-import type { AIRequestType, ChatMessage, Entity } from '@/types';
+import type { AIRequestType, ChatMessage, Entity, ImageAttachment, RequestMessage } from '@/types';
 import type { AnatomyRun, RequestAnatomy } from '@/lib/requestAnatomy';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import type { StatRequestSnapshot } from '@/lib/statRequest';
@@ -53,6 +53,8 @@ export interface TurnSettings {
   characterDiaries: boolean;
   /** The Describe New Characters setting, which governs the discovery pass. */
   describeCharacters: boolean;
+  /** The Image Attachments setting. Off, no pass includes the action's images. */
+  imageAttachments: boolean;
   /** Narration language or style; anything but English appends a language directive to some prompts. */
   language: string;
 }
@@ -104,6 +106,8 @@ export interface TurnPlanInput {
   /** An Opening Narration's resolved text: page one as authored. The turn sends nothing before its
    *  post-narration stage. Blank counts as absent. */
   writtenNarration?: string;
+  /** The images the player attached to the action, in attach order. */
+  attachments?: ImageAttachment[];
   settings: TurnSettings;
   prompts: TurnPrompts;
 }
@@ -207,12 +211,13 @@ export function emptyTurnMaterial(seed: TurnMaterialSeed): TurnMaterial {
   };
 }
 
-/** One request, exactly as the request adapter receives it. */
-export interface TurnPassRequest {
+/** One request, exactly as the request adapter receives it. A pass builds text only; the runner adds the
+ *  turn's images to the passes that include them. */
+export interface TurnPassRequest<TMessage extends RequestMessage = RequestMessage> {
   statRequest?: StatRequestSnapshot;
   type: AIRequestType;
   systemPrompt: string;
-  messages: ChatMessage[];
+  messages: TMessage[];
   /** The cap the pass asks for; null means the request type's own default applies downstream. */
   maxTokens: number | null;
   /**
@@ -244,7 +249,7 @@ export interface TurnPassRecord<TParsed = unknown> {
    * nothing to ask about. Absent means always ready.
    */
   isReady?(material: TurnMaterial): boolean;
-  buildRequest(input: TurnPlanInput, material: TurnMaterial): TurnPassRequest;
+  buildRequest(input: TurnPlanInput, material: TurnMaterial): TurnPassRequest<ChatMessage>;
   parseResponse(raw: string, material: TurnMaterial): TParsed;
 }
 
@@ -262,4 +267,8 @@ export interface TurnPlan {
   writtenNarration: string | null;
   /** The due passes, in dispatch order. */
   passes: TurnPassRecord[];
+  /** The images this turn carries: the action's own, or none when the turn may not send them. */
+  attachments: ImageAttachment[];
+  /** The passes whose final request includes {@link attachments}. */
+  attachmentPasses: TurnPassId[];
 }

@@ -194,4 +194,26 @@ describe('planTurn', () => {
     const seen = planTurn(input()).passes.filter((p) => !p.fanOut).map((p) => p.id);
     expect(new Set(seen).size).toBe(seen.length);
   });
+
+  describe('image attachments', () => {
+    const IMAGE = { id: 'a', mime: 'image/webp', dataUrl: 'data:image/webp;base64,QQ==' };
+
+    it('marks only the narration as including them, and carries the images', () => {
+      const plan = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: true }));
+      expect(plan.attachmentPasses).toEqual(['narration']);
+      expect(plan.attachments).toEqual([IMAGE]);
+    });
+
+    it('includes them nowhere with the setting off', () => {
+      const plan = planTurn(input({ attachments: [IMAGE] }, { imageAttachments: false }));
+      expect(plan.attachmentPasses).toEqual([]);
+      expect(plan.attachments).toEqual([]);
+    });
+
+    it('includes them nowhere on the opening turn', () => {
+      const plan = planTurn(input({ attachments: [IMAGE], isGameStarted: false }, { imageAttachments: true }));
+      expect(plan.attachmentPasses).toEqual([]);
+      expect(plan.attachments).toEqual([]);
+    });
+  });
 });

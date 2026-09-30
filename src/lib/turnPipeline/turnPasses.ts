@@ -1,3 +1,4 @@
+import type { ChatMessage } from '@/types';
 import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
 import { renderPromptTemplate, renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
 import {
@@ -103,7 +104,7 @@ const labeledRequest = (
   base: Omit<TurnPassRequest, 'systemPrompt' | 'messages' | 'anatomy'>,
   system: TiledRuns,
   message: TiledRuns,
-): TurnPassRequest => ({
+): TurnPassRequest<ChatMessage> => ({
   ...base,
   systemPrompt: system.content,
   messages: [{ role: 'user', content: message.content }],

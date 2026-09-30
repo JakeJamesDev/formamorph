@@ -39,6 +39,8 @@ export interface DevRoute {
   mode?: string;
   /** Open the landed-on surface in its full-screen shell, for surfaces that have one. */
   fullscreen?: string;
+  /** Stage attached images on the game view (see `DEV_MODAL_TABS.gameViewerAttach`). */
+  attach?: string;
 }
 
 /** Parse the current hash into a DevRoute, or null when it isn't a `#dev` hash. */
@@ -57,7 +59,9 @@ function parseHash(hash: string): DevRoute | null {
   const probe = params.get('probe');
   const mode = params.get('mode');
   const fullscreen = params.get('fullscreen');
+  const attach = params.get('attach');
   if (fullscreen) route.fullscreen = fullscreen;
+  if (attach) route.attach = attach;
   if (probe) route.probe = probe;
   if (mode) route.mode = mode;
   if (view) route.view = view;
@@ -115,7 +119,7 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
@@ -127,6 +131,7 @@ export function installDevRouter(): () => void {
       if (opts?.fullscreen) params.set('fullscreen', '1');
       if (opts?.mode) params.set('mode', opts.mode);
       if (opts?.fixture) params.set('fixture', opts.fixture);
+      if (opts?.attach) params.set('attach', opts.attach);
       // A probe outlives the screen it was turned on over, so it carries across a goto unless replaced.
       const probe = opts?.probe ?? getDevRoute()?.probe;
       if (probe) params.set('probe', probe);

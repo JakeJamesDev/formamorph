@@ -45,6 +45,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   // The recorded narration never invented a character, so no discovery request was dispatched; the
   // setting's own effect on the plan is covered in planTurn.test.ts.
   describeCharacters: false,
+  imageAttachments: false,
   language: 'English',
 };
 

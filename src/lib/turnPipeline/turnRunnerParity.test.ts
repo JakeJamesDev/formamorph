@@ -3,7 +3,7 @@ import { planTurn } from './planTurn';
 import { runTurn, type TurnAdvance, type TurnRequestAdapter } from './turnRunner';
 import { fixture, recordedPasses, inputFor, narrationOf, expectedCap, PARITY_DESTINATIONS } from './parityTestInputs';
 import type { TurnMaterial, TurnPassId, TurnPassSubject } from './turnPlan';
-import type { ChatMessage } from '@/types';
+import type { ChatMessage, RequestMessage } from '@/types';
 import { parseDirectorCast } from '@/lib/stagedPlanning';
 import { planDirective } from '@/components/game/GamePrompts';
 
@@ -87,7 +87,7 @@ const replayAdvance = (index: number): TurnAdvance => {
 /** One turn replayed: the requests the pipeline emitted, in dispatch order. */
 const replay = async (index: number) => {
   const recorded = recordedPasses(fixture.turns[index]);
-  const emitted: { type: string; messages: ChatMessage[]; maxTokens: number | null; silent: boolean; attachTurnId: string | null }[] = [];
+  const emitted: { type: string; messages: RequestMessage[]; maxTokens: number | null; silent: boolean; attachTurnId: string | null }[] = [];
   const adapter: TurnRequestAdapter = async (request) => {
     emitted.push({
       type: request.type,

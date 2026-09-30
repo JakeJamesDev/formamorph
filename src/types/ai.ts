@@ -33,8 +33,22 @@ export interface ToolResultMessage {
   content: string;
 }
 
+/** One piece of a user message that carries images. */
+export type UserContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
+/** A user message with images: the text part first, then one part per image. Wire-only. */
+export interface UserPartsMessage {
+  role: 'user';
+  content: UserContentPart[];
+}
+
+/** A message one request states: history text, or this turn's user message with its images. */
+export type RequestMessage = ChatMessage | UserPartsMessage;
+
 /** Any message a chat-completions request may carry. Turn history holds only {@link ChatMessage}. */
-export type WireMessage = ChatMessage | AssistantToolCallMessage | ToolResultMessage;
+export type WireMessage = RequestMessage | AssistantToolCallMessage | ToolResultMessage;
 
 /** OpenAI-compatible chat-completion request body. */
 export interface ChatCompletionRequest {
