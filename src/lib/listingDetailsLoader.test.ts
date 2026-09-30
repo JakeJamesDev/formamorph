@@ -201,6 +201,33 @@ describe('an open after a prefetch', () => {
     expect(read).toHaveBeenCalledTimes(2);
   });
 
+  it('reads a failed comments page again on a re-hover, once the details are in hand', async () => {
+    vi.spyOn(WorldStorageService, 'readListingDetails').mockResolvedValue({ status: 'ok', details: details('Today') });
+    const comments = vi.spyOn(WorldStorageService, 'fetchComments')
+      .mockResolvedValueOnce({ success: false, error: 'offline', data: [], total: 0, pagination: {} })
+      .mockResolvedValue(page(4));
+
+    prefetchListing('w1');
+    await new Promise((resolve) => setTimeout(resolve, 0)); // let both reads settle
+    prefetchListing('w1');
+
+    expect(comments).toHaveBeenCalledTimes(2);
+    expect(await takePrefetchedComments('w1')).toMatchObject({ total: 4 });
+  });
+
+  it('never writes a read that lands after a purge back to disk', async () => {
+    holdServer();
+    const load = loadListingDetails('w1');
+    await load.cached;
+
+    forgetListingPrefetch();
+    answer({ status: 'ok', details: details('Before the purge') });
+    await load.fresh;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(await getCachedDetails('w1')).toBeNull();
+  });
+
   it('drops a prefetch no open waits on when the community caches are purged', async () => {
     const read = holdServer();
     vi.spyOn(WorldStorageService, 'fetchComments').mockResolvedValue(page(0));

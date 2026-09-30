@@ -49,6 +49,8 @@ let prefetch: Prefetch | null = null;
 
 /** Listings answered for a reader in this visit, which a prefetch then leaves alone. */
 const answered = new Set<string>();
+/** Bumped by a purge, so a read in flight across it never writes its answer back. */
+let generation = 0;
 const visitKey = (reader: string, listingId: string) => `${reader}\u0000${listingId}`;
 
 const hold = <T>(read: Promise<T>, isAnswer: (value: T) => boolean): Held<T> => {
@@ -71,11 +73,12 @@ const prefetchOf = (listingId: string): Prefetch | null =>
 const readFresh = async (listingId: string, signal?: AbortSignal): Promise<ListingDetailsRead> => {
   let reader: string;
   let read: ListingDetailsRead;
+  const startedIn = generation;
   try {
     reader = currentReader();
     read = await WorldStorageService.readListingDetails(listingId, signal);
     // An answer read for somebody who has since signed in or out is theirs, not the new reader's.
-    if (currentReader() !== reader) return read;
+    if (currentReader() !== reader || generation !== startedIn) return read;
   } catch {
     return { status: 'unreachable' };
   }
@@ -117,9 +120,18 @@ export function takePrefetchedComments(listingId: string): Promise<CommentsPage>
 /** Read a listing ahead of its open, unless this visit already has its details. */
 export function prefetchListing(listingId: string): void {
   const reader = currentReader();
-  if (answered.has(visitKey(reader, listingId))) return;
   const current = prefetchOf(listingId);
-  if (current && !current.joined && usable(current.details)) return;
+  if (answered.has(visitKey(reader, listingId)) || (current && !current.joined && usable(current.details))) {
+    // The details are in hand; a comments page that got no answer is read again.
+    const failed = current?.comments;
+    if (current && !current.joined && failed && failed.settledAt !== null && !failed.answered) {
+      current.comments = hold(
+        WorldStorageService.fetchComments(listingId, 1, COMMENTS_PAGE, current.controller.signal),
+        (page) => page.success,
+      );
+    }
+    return;
+  }
 
   if (prefetch && !prefetch.joined) prefetch.controller.abort();
   const controller = new AbortController();
@@ -135,4 +147,5 @@ export function forgetListingPrefetch(): void {
   if (prefetch && !prefetch.joined) prefetch.controller.abort();
   prefetch = null;
   answered.clear();
+  generation += 1;
 }

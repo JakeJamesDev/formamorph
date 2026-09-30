@@ -45,6 +45,26 @@ const openButton = () => screen.getByRole('button', { name: 'Drowned Coast' });
 
 afterEach(cleanup);
 
+describe('a clipped name', () => {
+  it('anchors its tip on the open button, which has a box, not on the heading around it', () => {
+    // jsdom lays nothing out; a tall scroll height past a small line height reads as a clipped name.
+    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(500);
+    const realStyle = window.getComputedStyle.bind(window);
+    const style = vi.spyOn(window, 'getComputedStyle').mockImplementation((el) => {
+      const computed = realStyle(el);
+      return new Proxy(computed, { get: (target, key) => (key === 'lineHeight' ? '20px' : Reflect.get(target, key)) });
+    });
+    try {
+      setup();
+      expect(openButton().hasAttribute('data-base-ui-tooltip-trigger')).toBe(true);
+      expect(openButton().closest('h3')?.hasAttribute('data-base-ui-tooltip-trigger')).toBe(false);
+    } finally {
+      scroll.mockRestore();
+      style.mockRestore();
+    }
+  });
+});
+
 describe('opening a card from the keyboard', () => {
   it('names the open button for the listing', () => {
     setup();

@@ -55,11 +55,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const modal = (id: string) => (
+const modal = (id: string, over: Record<string, unknown> = {}) => (
   <RemoteWorldDetailsModal
     open
     onOpenChange={() => {}}
-    world={world(id)}
+    world={{ ...world(id), ...over } as WorldRecord}
     collapsed={false}
     onToggleCollapsed={() => {}}
     isAuthenticated
@@ -125,6 +125,36 @@ describe('a listing opened before', () => {
 
     expect(screen.queryByText('From the last visit.')).toBeNull();
     expect(screen.getByRole('radio', { name: 'Changelog' })).toBeDisabled();
+  });
+
+  it('lets the catalog count, not a cached entry that disagrees, hold the tab until the answer', async () => {
+    // The disk says no entries; the row, read this open, says three and an update waits.
+    await putCachedDetails('w1', { anonymousLikes: false, changelog: [] });
+    const seen: boolean[] = [];
+    const view = render(modal('w1', { changelog_count: 3 }));
+    const record = () => seen.push(screen.getByRole('radio', { name: 'Changelog' }).getAttribute('aria-checked') === 'true');
+    record();
+    // Long enough for the disk read to land.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    record();
+
+    await answer('w1', { status: 'ok', details: details('From today.') });
+    await screen.findByText('From today.');
+    record();
+    view.unmount();
+
+    // Changelog from the first frame to the answer, never dropped to Comments and back.
+    expect(seen).toEqual([true, true, true]);
+  });
+
+  it('falls back to a disagreeing cached entry when the server does not answer', async () => {
+    await putCachedDetails('w1', details('From the last visit.'));
+    render(modal('w1', { changelog_count: 3 }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+
+    await answer('w1', { status: 'unreachable' });
+
+    expect(await screen.findByText('From the last visit.')).toBeInTheDocument();
   });
 
   it('never shows one listing’s cached details in the next listing’s window', async () => {

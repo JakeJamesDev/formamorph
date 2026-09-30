@@ -70,7 +70,7 @@ export function DetailTags({ tags }: { tags: string[] }) {
 }
 
 /** The single-column world-details layout shared by the local-world modal and the community details
- *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags. */
+ *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags → after. */
 export function WorldDetailsColumn({ thumbnail, actions, description, omitEmptyDescription, tags, meta, after, split = false, collapsed = false }: {
   thumbnail: React.ReactNode;
   actions: React.ReactNode;
