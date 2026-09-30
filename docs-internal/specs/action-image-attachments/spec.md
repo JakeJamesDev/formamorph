@@ -97,7 +97,9 @@ If the bundled local engine runs a pass that has images, the pass drops them and
 
 **Regenerate and edit**
 - A regenerate sends the turn's stored attachments again, under the same rules.
-- Editing an action keeps its attachments. The edit UI can remove an attachment. A removed attachment leaves the side map.
+- Editing an action keeps its attachments. The edit UI can remove an attachment. A removed attachment leaves the side map. Removal is staged and applies on Save.
+- The edit UI shows the thumbnails with remove buttons even when the setting is off (Q20). This is the one exception to "off hides all attachment UI": removing an image sends nothing.
+- With the setting off, a regenerate sends no images but still stores the old turn's images under the new turn id. Off stops sending. It never deletes the player's images.
 
 **Local engine**
 - The engine's message split turns a content-parts message into its text and drops the image parts. The engine then reports that it dropped images.
