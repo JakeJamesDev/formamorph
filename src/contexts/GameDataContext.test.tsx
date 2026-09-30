@@ -65,19 +65,25 @@ describe('the Custom Persona entity in the world store', () => {
     expect(marked(result)?.traitLinks?.map((l) => l.id)).toEqual(['l2']);
   });
 
-  it("removing Blueprints moves its traits to the top level and drops the Custom Persona entity's links to them", () => {
+  it("removing Blueprints detaches the Custom Persona entity's links into its own traits and moves the unlinked rest up (Q11)", () => {
+    const withLoner = {
+      ...withPersona,
+      traits: [...(withPersona.traits as unknown[]), { id: 'loner', name: 'Loner', statChanges: [], groupId: 'blueprints' }],
+    } as unknown as World;
     const { result } = renderHook(() => useGameData(), { wrapper });
-    act(() => { result.current.loadWorldData(withPersona); });
+    act(() => { result.current.loadWorldData(withLoner); });
     expect(marked(result)?.traitLinks).toEqual(links);
     act(() => { result.current.removeTraitGroup('blueprints'); });
     expect(result.current.traitGroups).toEqual([]);
-    expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
+    expect(result.current.traits.map((t) => [t.id, t.groupId])).toEqual([['loner', null]]);
     expect(marked(result)).not.toHaveProperty('traitLinks');
+    expect(marked(result)?.traits?.map((t) => t.name).sort()).toEqual(['Brave', 'Paladin']);
   });
 
-  it('removing Blueprints inside another group still moves its traits to the top level', () => {
+  it('removing Blueprints inside another group still moves its unlinked traits to the top level', () => {
     const nested = {
       ...withPersona,
+      entities: [],
       traitGroups: [{ id: 'lore', name: 'Lore', parentId: null }, { id: 'blueprints', name: 'Blueprints', parentId: 'lore', system: 'blueprints' }],
     } as unknown as World;
     const { result } = renderHook(() => useGameData(), { wrapper });

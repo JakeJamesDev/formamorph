@@ -75,18 +75,35 @@ describe('the + menu', () => {
 });
 
 describe('removing a system node', () => {
-  it('removes Blueprints after a confirmation that its traits become offered and its links go, moving them to the top level', () => {
-    const { ctx } = renderWorldEditorBench(FULL, 'advanced');
+  it('removes Blueprints after a confirmation, detaching its links and moving the unlinked rest up (Q11, Q12)', () => {
+    // Vex, a cast entity, links Wizard, which now changes stats; Loner sits in Blueprints unlinked.
+    const world = {
+      ...FULL,
+      traits: [
+        ...FULL.traits.map((t) => (t.id === 't-wizard' ? { ...t, statChanges: [{ statId: 'hp', value: 1, type: 'max' as const }] } : t)),
+        { id: 't-loner', name: 'Loner', statChanges: [], groupId: 'g-blueprints' },
+      ],
+      entities: [...FULL.entities, { id: 'e-vex', name: 'Vex', traitLinks: [
+        { id: 'l-vex', originalId: 't-wizard', kind: 'trait' as const, originalName: 'Wizard', groupId: null, order: 0 },
+      ] }],
+    } as World;
+    const { ctx } = renderWorldEditorBench(world, 'advanced');
     openTab(/Traits/);
     const blueprints = treeRow('Blueprints')!;
     expect(within(blueprints).queryByRole('button', { name: 'Duplicate' })).toBeNull();
     fireEvent.click(within(blueprints).getByRole('button', { name: 'Remove Blueprints' }));
-    expect(screen.getByText('Its traits move to the top level, where the player can pick them. This also deletes its 2 links.'))
-      .toBeInTheDocument();
+    expect(screen.getByText(
+      "Its 3 links become each entity's own trait, and the linked originals are deleted. "
+      + 'The copies on Vex lose their stat changes and stat toggles. '
+      + 'The other traits move to the top level, where the player can pick them.',
+    )).toBeInTheDocument();
     confirm();
     expect(ctx().traitGroups).toEqual([]);
-    expect(ctx().traits.find((t) => t.id === 't-paladin')?.groupId).toBeNull();
+    expect(ctx().traits.map((t) => [t.id, t.groupId ?? null]).filter(([id]) => id !== 't-brave')).toEqual([['t-loner', null]]);
     expect(marked(ctx)).not.toHaveProperty('traitLinks');
+    expect(marked(ctx).traits?.map((t) => t.name).sort()).toEqual(['Paladin', 'Wizard']);
+    const vex = ctx().entities.find((e) => e.id === 'e-vex')!;
+    expect(vex.traits).toMatchObject([{ name: 'Wizard', statChanges: [] }]);
   });
 
   it('removes Blueprints with no links without mentioning them', () => {

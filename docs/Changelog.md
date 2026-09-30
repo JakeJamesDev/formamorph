@@ -22,7 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➖ Removed
 
 - **👤 User-facing**
-  - **In the Traits tab, a trait link can point only at a Blueprints trait or group, never at a top-level one.** **Link To…** shows only on Blueprints items. A drag of a Blueprints item out of Blueprints is refused while an entity links it or something in it, and the notice names those entities. Removing the Blueprints group also removes every link into it, and its confirmation gives the count. A world made with 3.1.0 loses its links to top-level traits, with their overrides, when it opens. A character card's link binds only to a Blueprints trait or group, by id or by name.
+  - **In the Traits tab, a trait link can point only at a Blueprints trait or group, never at a top-level one.** **Link To…** shows only on Blueprints items. A drag of a Blueprints item out of Blueprints is refused while an entity links it or something in it, and the notice names those entities. Removing the Blueprints group turns each link into it into that entity's own trait and deletes the linked originals. Unlinked Blueprints traits move to the top level. The confirmation gives the link count and names each cast entity whose copies lose their stat changes. A world made with 3.1.0 loses its links to top-level traits, with their overrides, when it opens. A character card's link binds only to a Blueprints trait or group, by id or by name.
 
 #### 🔧 Fixed
 

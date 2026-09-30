@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  addLink, detachLink, detachDropsStats, dropLinksTo, editLinkTrait, linkedTraits, linksTo, originalPath, removeLink, resetLink,
+  addLink, detachLink, detachDropsStats, dropLinksTo, editLinkTrait, linkedTraits, linksTo, originalPath, removeBlueprints, removeLink, resetLink,
   resetLinkField, resetLinkTrait, setLinkField,
 } from './traitLinks';
 import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
@@ -276,5 +276,65 @@ describe('blueprint pins on links', () => {
     expect(detachLink(pinned, valued, 'l1')!.entity.traits![0].placeholderPins).toEqual([plate]);
     const unset: Entity = { id: 'bo', name: 'Bo', traitLinks: [link('l1', 'paladin', 'trait')] };
     expect(detachLink(pinned, unset, 'l1')!.entity.traits![0].placeholderPins).toEqual([tabard]);
+  });
+});
+
+describe('removeBlueprints (Q11, Q12)', () => {
+  // Blueprints holds Classes (Paladin, Wizard, Schools (Fire)) and Oath; Brave sits at the top level.
+  const bp = {
+    traits: [
+      ...world.traits,
+      trait('oath', { groupId: 'bp', order: 1 }),
+    ],
+    traitGroups: [
+      group('bp', null, { system: 'blueprints' }),
+      ...world.traitGroups.map((g) => (g.id === 'classes' ? { ...g, parentId: 'bp' } : g)),
+    ],
+  };
+  const ids = (list: readonly { id: string }[]) => list.map((x) => x.id).sort();
+
+  it('moves every item up and touches no entity when nothing links into Blueprints', () => {
+    const cast: Entity = { id: 'c', name: 'C' };
+    const out = removeBlueprints(bp, [cast])!;
+    expect(ids(out.traitGroups)).toEqual(['classes', 'schools']);
+    expect(out.traitGroups.find((g) => g.id === 'classes')?.parentId).toBeNull();
+    expect(out.traits.find((t) => t.id === 'oath')?.groupId).toBeNull();
+    expect(out.entities[0]).toBe(cast);
+    expect(out).toMatchObject({ detached: 0, strippedOn: [], movedUp: true });
+  });
+
+  it('detaches a linked item with its subtree into each linker, deletes it, and moves the unlinked rest up', () => {
+    const a: Entity = { id: 'a', name: 'A', traitLinks: [link('l1', 'classes', 'group')] };
+    const b: Entity = { id: 'b', name: 'B', persona: true, traitLinks: [link('l2', 'fire', 'trait')] };
+    const out = removeBlueprints(bp, [a, b])!;
+    // Classes goes with Paladin, Wizard, Schools and Fire; Oath moves up; Brave stays.
+    expect(ids(out.traits)).toEqual(['brave', 'oath']);
+    expect(out.traitGroups).toEqual([]);
+    expect(out.entities.map((e) => e.traitLinks)).toEqual([undefined, undefined]);
+    expect(out.entities[0].traitGroups?.map((g) => g.name).sort()).toEqual(['Classes', 'schools']);
+    expect(out.entities[1].traits?.map((t) => t.name)).toEqual(['fire']);
+    expect(out).toMatchObject({ detached: 2, movedUp: true });
+  });
+
+  it('keeps an unlinked group whose linked child goes, and reports nothing moving up when all is linked', () => {
+    const a: Entity = { id: 'a', name: 'A', traitLinks: [link('l1', 'wizard', 'trait')] };
+    const out = removeBlueprints(bp, [a])!;
+    expect(ids(out.traits)).toEqual(['brave', 'fire', 'oath', 'paladin']);
+    expect(out.traitGroups.find((g) => g.id === 'classes')?.parentId).toBeNull();
+    const all: Entity = { ...a, traitLinks: [link('l1', 'classes', 'group'), link('l2', 'oath', 'trait', { order: 1 })] };
+    expect(removeBlueprints(bp, [all])!.movedUp).toBe(false);
+  });
+
+  it('names each cast entity whose copies lose stat effects, once, and no persona', () => {
+    const statful = { ...bp, traits: bp.traits.map((t) => (t.id === 'oath' ? { ...t, statChanges: [{ statId: 's', value: 1, type: 'max' as const }] } : t)) };
+    const cast: Entity = { id: 'c', name: 'Cy', traitLinks: [link('l1', 'oath', 'trait'), link('l2', 'classes', 'group', { order: 1 })] };
+    const persona: Entity = { id: 'p', name: 'Pia', customPersona: true, traitLinks: [link('l3', 'oath', 'trait')] };
+    const out = removeBlueprints(statful, [cast, persona])!;
+    expect(out.strippedOn).toEqual(['Cy']);
+    expect(out.entities[1].traits?.[0].statChanges).toEqual([{ statId: 's', value: 1, type: 'max' }]);
+  });
+
+  it('is null without a Blueprints group', () => {
+    expect(removeBlueprints(world, [])).toBeNull();
   });
 });
