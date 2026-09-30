@@ -1,6 +1,7 @@
 # 04: Save Attachments
 
-Status: ready-for-agent
+Status: in-progress
+Base: 69487fd3
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
