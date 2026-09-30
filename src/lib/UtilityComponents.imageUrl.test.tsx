@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { ImageUpload } from './UtilityComponents';
 import { IMAGE_CAPS } from './imageOptim';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 // The downscale prompt owns a canvas encode; a pasted link must never reach it, which is what the
 // "no downscale" test below proves.
@@ -148,7 +149,7 @@ describe('ImageUpload unreadable-host badge', () => {
   it('says the host will not hand the picture over, naming it', async () => {
     statusForTest.current = 'unreadable';
 
-    render(<ImageUpload id="t" value="https://files.catbox.moe/a.png" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />);
+    render(<ImageUpload id="t" value="https://files.catbox.moe/a.png" onChange={vi.fn()} cap={IMAGE_CAPS.entity} />, { wrapper: TooltipProvider });
 
     // The badge is a marker with nothing but its tip to go on, so the tip is what has to name the host —
     // and it has to be reachable without a pointer.

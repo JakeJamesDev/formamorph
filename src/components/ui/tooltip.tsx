@@ -8,14 +8,29 @@ import { cn } from "@/lib/utils"
  *  fast enough to feel like part of the app and slow enough not to fire while the pointer crosses. */
 const TOOLTIP_DELAY_MS = 400
 
+type TipPayload = Pick<TipProps, "side" | "align"> & { tip: string }
+
+/** Joins every `Tip` trigger to the one root the provider mounts. One provider is mounted at a time. */
+const tipHandle = TooltipPrimitive.createHandle<TipPayload>()
+
 /**
  * Mounted once at the application root. It owns tooltip timing for the whole app: every tip waits the
- * same beat, and once one is open its neighbors open with no wait at all.
+ * same beat, and once one is open its neighbors open with no wait at all. It also holds the one root and
+ * popup every `Tip` shares, so an idle tip costs only its trigger.
  */
 function TooltipProvider({ children }: { children: React.ReactNode }) {
   return (
     <TooltipPrimitive.Provider delay={TOOLTIP_DELAY_MS} timeout={TOOLTIP_DELAY_MS}>
       {children}
+      <TooltipPrimitive.Root handle={tipHandle}>
+        {({ payload }) => payload && (
+          <TooltipPrimitive.Portal>
+            <TooltipPositioner side={payload.side} align={payload.align}>
+              <TooltipPopup>{payload.tip}</TooltipPopup>
+            </TooltipPositioner>
+          </TooltipPrimitive.Portal>
+        )}
+      </TooltipPrimitive.Root>
     </TooltipPrimitive.Provider>
   )
 }
@@ -87,22 +102,23 @@ interface TipProps {
  *
  * Tips do not open on tap, by Base UI's design and in parity with `title`. Nothing important belongs in
  * one.
+ *
+ * The popup lives in `TooltipProvider`, so a tip with no provider above it never opens.
  */
 function Tip({ tip, children, side = "top", align = "center", labelsChild }: TipProps) {
-  if (!tip) return children
+  const payload = React.useMemo(() => (tip ? { tip, side, align } : undefined), [tip, side, align])
+  if (!payload) return children
 
   const childProps = children.props as { "aria-label"?: string; "aria-labelledby"?: string }
   const names = labelsChild ?? !(childProps["aria-label"] || childProps["aria-labelledby"])
 
   return (
-    <Tooltip>
-      <TooltipTrigger aria-label={names ? tip : undefined} render={children} />
-      <TooltipPortal>
-        <TooltipPositioner side={side} align={align}>
-          <TooltipPopup>{tip}</TooltipPopup>
-        </TooltipPositioner>
-      </TooltipPortal>
-    </Tooltip>
+    <TooltipPrimitive.Trigger
+      handle={tipHandle}
+      payload={payload}
+      aria-label={names ? payload.tip : undefined}
+      render={children}
+    />
   )
 }
 

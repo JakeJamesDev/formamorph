@@ -218,8 +218,8 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      {/* One tooltip provider for the app: it owns the open delay and the instant-open window shared by
-          every tip, so no screen can time its own differently. */}
+      {/* One tooltip provider for the app: it owns the popup every tip shares, and the open delay and
+          instant-open window, so no screen can time its own differently. */}
       <TooltipProvider>
         <SettingsProvider>
           <LocalEngineManager />

@@ -13,6 +13,7 @@ import type { PinsWorld } from '@/components/editor/PlaceholderPinsSection';
 import LibraryPlaceholdersEditor from './LibraryPlaceholdersEditor';
 import PlaceholderManager from './PlaceholderManager';
 import { phValueId, phValues } from '@/test/placeholderValues';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 /** A color as jsdom stores it once set inline — `hsl(…)` comes back as `rgb(…)`, a `var()` form verbatim. */
 const cssColor = (value: string) => {
@@ -755,14 +756,14 @@ describe('PlaceholderManager — the preview sample', () => {
   });
 
   it('names itself Preview, and says on hover that the sample is only a look', async () => {
-    render(<PlaceholderManager placeholder={ph()} />);
+    render(<PlaceholderManager placeholder={ph()} />, { wrapper: TooltipProvider });
     await userEvent.hover(preview());
     await waitFor(() => expect(screen.getByText('Preview a sample of this placeholder')).toBeInTheDocument());
   });
 
   it('paints each direct chip’s run in its placeholder’s accent, named in the tip, literal text plain', async () => {
     siblings = [ph(), { id: 'p2', name: 'Hair', values: phValues(['Brown']) }, { id: 'p3', name: 'Eyes', values: phValues(['Green']) }];
-    render(<PlaceholderManager placeholder={ph({ values: phValues([`${chip('p2')} and ${chip('p3')}`]) })} />);
+    render(<PlaceholderManager placeholder={ph({ values: phValues([`${chip('p2')} and ${chip('p3')}`]) })} />, { wrapper: TooltipProvider });
     fireEvent.click(preview());
     const status = screen.getByRole('status', { name: 'Sample preview' });
     expect(status).toHaveTextContent('Brown and Green');
@@ -796,13 +797,13 @@ describe('PlaceholderManager — the preview sample', () => {
         ['p-hair', { kind: 'entity' as const, id: 'molly', name: 'Molly' }],
       ]),
     };
-    const { unmount } = render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p-eyes')]) })} />);
+    const { unmount } = render(<PlaceholderManager placeholder={ph({ values: phValues([chip('p-eyes')]) })} />, { wrapper: TooltipProvider });
     fireEvent.click(preview());
     await userEvent.hover(within(screen.getByRole('status', { name: 'Sample preview' })).getByText('Green'));
     await waitFor(() => expect(screen.getAllByText('Molly › Eyes').length).toBeGreaterThan(0));
     unmount();
     // Molly's own Hair drawing Molly's Eyes: the panel already says whose it is, so the tip reads bare.
-    render(<PlaceholderManager placeholder={{ ...hair, values: phValues([chip('p-eyes')]) }} />);
+    render(<PlaceholderManager placeholder={{ ...hair, values: phValues([chip('p-eyes')]) }} />, { wrapper: TooltipProvider });
     fireEvent.click(preview());
     await userEvent.hover(within(screen.getByRole('status', { name: 'Sample preview' })).getByText('Green'));
     await waitFor(() => expect(screen.getAllByText('Eyes').length).toBeGreaterThan(0));

@@ -2,6 +2,7 @@ import { render, screen, cleanup, within, fireEvent } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, afterEach } from 'vitest';
 import { RequestAnatomyView } from './RequestAnatomyView';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { renderPromptTemplateRuns } from '@/lib/promptTemplate';
 import { CONTEXT_HINTS, CONTEXT_LABELS, tilePieces, type AnatomyBlock, type AnatomyPiece } from '@/lib/requestAnatomy';
 
@@ -231,7 +232,7 @@ describe('RequestAnatomyView chips mode', () => {
   });
 
   it('collapses an assembled run to its own chip, short name out and the sentence in the tooltip', async () => {
-    render(<RequestAnatomyView blocks={BLOCKS} mode="chips" />);
+    render(<RequestAnatomyView blocks={BLOCKS} mode="chips" />, { wrapper: TooltipProvider });
     const chip = screen.getByText(CONTEXT_LABELS.condensed);
 
     await userEvent.hover(chip);
@@ -436,7 +437,7 @@ describe('RequestAnatomyView chip jumps', () => {
   });
 
   it('says where a chip goes before it is clicked', async () => {
-    render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" onJump={() => {}} />);
+    render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" onJump={() => {}} />, { wrapper: TooltipProvider });
 
     await userEvent.hover(screen.getByRole('button', { name: 'World' }));
 
@@ -456,7 +457,7 @@ describe('RequestAnatomyView chip jumps', () => {
   it('sends an assembled chip to the anatomy of the prompt that wrote its content', async () => {
     const jumps: unknown[] = [];
     const blocks = [block('user', [{ text: 'the plan', contextLabel: 'turn-plan' }])];
-    render(<RequestAnatomyView blocks={blocks} mode="chips" type="narration" onJump={(t) => jumps.push(t)} />);
+    render(<RequestAnatomyView blocks={blocks} mode="chips" type="narration" onJump={(t) => jumps.push(t)} />, { wrapper: TooltipProvider });
     const chip = screen.getByRole('button', { name: CONTEXT_LABELS['turn-plan'] });
     await userEvent.hover(chip);
     expect(await screen.findByText(/open the Planning prompt/)).toBeVisible();
@@ -478,7 +479,7 @@ describe('RequestAnatomyView chip jumps', () => {
   });
 
   it('leaves every chip inert without a handler, and promises no destination either', async () => {
-    render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" />);
+    render(<RequestAnatomyView blocks={BLOCKS} mode="chips" type="narration" />, { wrapper: TooltipProvider });
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     // Base UI stamps every live trigger, so its absence is the absence of a "where it goes" tip.
     expect(screen.getByText('World').hasAttribute('data-base-ui-tooltip-trigger')).toBe(false);

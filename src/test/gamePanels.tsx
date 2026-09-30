@@ -11,6 +11,7 @@ import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext
 import { setGameplayText } from '@/lib/gameplayTextStore';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
 import type { AITurnResult, ChatMessage, GameState, PlayerStat, Stat, Trait, World } from '@/types';
 
@@ -228,6 +229,7 @@ function renderPanel<P extends object>(
   let props = { ...defaults, ...overrides };
 
   const tree = () => (
+    <TooltipProvider>
     <SettingsProvider>
       <GameDataProvider>
         {/* Gameplay reads the playthrough's placeholder rolls from the session, same as in the app. */}
@@ -240,6 +242,7 @@ function renderPanel<P extends object>(
         </PlaceholderSessionProvider>
       </GameDataProvider>
     </SettingsProvider>
+    </TooltipProvider>
   );
 
   const view = render(tree());
