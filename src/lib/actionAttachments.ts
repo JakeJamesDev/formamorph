@@ -76,10 +76,6 @@ export const turnAttachments = (map: AttachmentMap, turnId: string | undefined):
 /** Forget the images of turns no longer in the history: a failed, rolled-back or re-generated turn. */
 export const pruneAttachments = (map: AttachmentMap, history: ChatMessage[]): AttachmentMap => pruneTurnMap(map, history);
 
-/** The map a save writes: as it is, or nothing when it has no entries. */
-export const serializeAttachments = (map: AttachmentMap): AttachmentMap | undefined =>
-  Object.keys(map).length ? map : undefined;
-
 /** The map a save holds, read back. A save is a file the player can edit, so entries that are not image
  *  lists are left out. Absent ⇒ none. */
 export function restoreAttachments(raw: unknown): AttachmentMap {
@@ -95,6 +91,6 @@ export function restoreAttachments(raw: unknown): AttachmentMap {
 
 const isAttachment = (value: unknown): value is ImageAttachment => {
   const v = value as Partial<ImageAttachment> | null;
-  return !!v && typeof v.id === 'string' && typeof v.mime === 'string'
-    && typeof v.dataUrl === 'string' && v.dataUrl.startsWith('data:image/');
+  return !!v && typeof v.id === 'string' && typeof v.mime === 'string' && typeof v.dataUrl === 'string'
+    && v.mime.startsWith('image/') && dataUrlMime(v.dataUrl).startsWith('image/');
 };
