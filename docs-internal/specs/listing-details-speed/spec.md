@@ -1,0 +1,94 @@
+# Spec: Listing details speed (client)
+
+Status: ready-for-agent
+Status note: first iteration, items 1–5; more items will follow.
+
+Server side: the FormamorphServer repo, `docs-internal/specs/listing-details-speed/spec.md`.
+
+## Problem Statement
+
+When a reader opens a listing in Community Creations, the details window builds itself in stages. The Changelog | Comments switch appears only after the listing details answer, so the right column jumps down. The comments header reads "Comments (0)" and then changes. Linked Content and Compatible Worlds appear late and push the left column around. Each reopen of a listing, even one opened a minute ago, waits a full round trip again. The round trip is about 180 ms at best and over 500 ms on a new connection.
+
+## Solution
+
+The window opens in its final layout and fills in without moving.
+
+- The Changelog | Comments switch is always there. Changelog is disabled until the app knows the listing has entries.
+- The catalog already tells the app how many changelog entries and comments a listing has, so most windows open with the right tab state and the right comment count at once.
+- Sections that wait on the network hold their space until the answer arrives.
+- Listing details are kept on disk. A listing opened before shows its last known details at once, and the fresh answer replaces them.
+- Resting the pointer on a card starts loading that listing, so the data is often ready by the click.
+
+## User Stories
+
+1. As a reader, I want the Changelog | Comments switch in the same place on every listing, so that the right column never jumps when the window opens.
+2. As a reader, I want Changelog disabled on a listing with no entries, so that I can see there is nothing to read there.
+3. As a reader, I want Changelog enabled the moment the window opens when the listing has entries, so that I don't wait for a second request to find out.
+4. As a reader with an update available for a listing I downloaded, I want the window to open on Changelog, so that I see what changed first.
+5. As a reader who clicked a tab while the window was loading, I want my choice to stay, so that a late answer doesn't switch the panel under me.
+6. As an author, I want Changelog enabled on my own listing even with no entries, so that I can start a changelog where it will appear.
+7. As a reader against a server that has never heard of changelogs, I want Changelog to stay disabled, so that nothing breaks.
+8. As a reader, I want the comments header to show the real count at once, so that it doesn't read "(0)" and then change.
+9. As a reader, I want placeholder rows where comments will appear, so that the list doesn't jump when they arrive.
+10. As a reader of a listing with no comments, I want the empty state at once, so that I don't watch placeholders for nothing.
+11. As a reader, I want Linked Content and Compatible Worlds to hold their space while they load, so that the left column doesn't move.
+12. As a reader who opened a listing before, I want its details to show at once, so that a reopen feels instant.
+13. As a reader, I want cached details replaced by fresh ones in the background, so that I never keep reading stale data.
+14. As a reader, I want a listing that was deleted or hidden since my last visit to drop out of the cache, so that I don't see a listing I can't open.
+15. As a reader who signs in, signs out, or switches accounts, I want details cached for another account never shown to me, so that one account's view never leaks to another.
+16. As a reader who resets the age gate, I want the details cache cleared with the other community caches, so that the purge is complete.
+17. As a reader on the desktop or Android app, I want the details cache to survive a restart, so that the first open after a restart is fast too.
+18. As a reader, I want the details cache to stay small, so that it doesn't grow without limit on my device.
+19. As a mouse user, I want a listing to start loading when I rest the pointer on its card, so that the window is often ready when I click.
+20. As a mouse user sweeping across a row of cards, I want no requests for cards I pass over, so that the app stays light.
+21. As a keyboard user, I want focus on a card to start loading it the same way, so that I get the same speed.
+22. As a touch user, I want no prefetch, so that nothing loads that I didn't ask for.
+23. As a reader, I want a prefetch that is still running to be used by the open, so that the open never sends the same request twice.
+24. As the operator, I want at most one prefetch in flight at a time, so that server load stays bounded.
+25. As a website reader, I want the same behavior on formamorph.ai, so that the site and the app match.
+
+## Implementation Decisions
+
+Rulings settled in the session that wrote this spec:
+
+- **Q1. The switch is always shown.** Changelog is disabled until the app knows the listing has at least one entry. An author's own listing enables Changelog regardless. This supersedes the Listing Changelog rule that the switch is absent on a listing with no entries.
+- **Q2. A late default never overrides a choice.** The default tab (Changelog when the listing has entries and the reader's copy needs an update, else Comments) applies only while the reader has not picked a tab in this open.
+- **Q3. The catalog carries the entry count.** Each catalog row gets `changelog_count`. The window reads it for the tab state and the default tab before the details answer. The details answer is the authority and corrects the count when they differ. A row without the field (older server) behaves as it does today: the state is unknown until the details answer.
+- **Q4. Comments start from the catalog count.** The header uses the row's `comment_count` until the comments fetch answers. Placeholder rows show only when the count is above zero, one per expected comment up to one page. At zero, the empty state shows at once.
+- **Q5. Late sections hold their space.** Linked Content and Compatible Worlds show a placeholder until the details answer. The exact form is open (see Further Notes).
+- **Q6. Hover prefetch is guarded.** It starts after the pointer rests on a card for about 150 ms, or when a card gets keyboard focus. It never starts from a touch pointer. A new prefetch cancels the one before it. A listing whose details are already cached in this visit is not prefetched. A prefetch loads the listing details (into the disk cache) and the first comments page (in memory, for the next open only). An open that finds a prefetch in flight waits for it instead of sending its own request.
+- **Q7. Listing details are cached on disk.** The cache lives in IndexedDB beside the catalog. It holds exactly what the details fetch returns, never a thumbnail. Entries are keyed by listing id and reader, the same reader identity the catalog tag uses. An open shows the cached entry at once and always fetches fresh. A 404 drops the entry. A network failure keeps it. The store keeps about 300 entries, evicting the least recently used. The age-gate purge clears it with the other community caches.
+
+Modules:
+
+- **Listing details cache** (new, deep): get, put, drop, and purge, with the reader key and the size cap inside. The window and the prefetcher use it; neither knows about IndexedDB.
+- **Listing details loader** (new): one function that returns cached details at once and fresh details when they arrive, and shares an in-flight request between a prefetch and an open. The window's current details fetch moves behind it.
+- **Details window:** always-shown switch, the choice guard, catalog-seeded tab state and comment count, placeholders.
+- **Community card / browser:** the dwell, focus, and touch rules for prefetch.
+- **Community cache purge:** adds the new store.
+
+API contract: catalog rows gain `changelog_count` (integer, zero or more). No world or save export shape changes.
+
+## Testing Decisions
+
+A good test drives the window, the cache, or the route the way a reader or client does and checks what they would see. It never checks internal state or call order.
+
+- **Server route seam:** supertest on the catalog list and the changelog routes, as in the existing changelog tests.
+- **Details window seam:** the window rendered with the storage service mocked, as in the existing `RemoteWorldDetailsModal.*` tests. It covers the always-shown switch, the disabled and enabled states, the author case, the old-server case, the choice guard against a late answer, the seeded comment count, placeholders at zero and above zero, reserved space for late sections, and cached details shown first and then replaced.
+- **Cache module seam:** the cache on fake-indexeddb, as in the community cache purge tests. It covers the reader key, 404 drops, the size cap, and the purge.
+- **Prefetch seam:** the card or browser with fake timers. It covers the dwell delay, a sweep that sends nothing, keyboard focus, touch that sends nothing, cancel on a new prefetch, and an open that reuses the prefetch in flight.
+
+Each guard is proved to bite by reinstating the behavior it replaces.
+
+## Out of Scope
+
+- Caching comments on disk.
+- Prefetch on touch devices.
+- Server response time; the round trip itself is the floor.
+- The inlined thumbnail on the details response. The server stopped sending it before this spec.
+
+## Further Notes
+
+- The server already dropped the base64 thumbnail from the details response (FormamorphServer `f7b4e60`). The response went from 32–100 KB to about 1 KB.
+- Open for the next iteration: the form of the Linked Content and Compatible Worlds placeholder. Most listings have neither, so reserved space that then collapses is also a jump. Counts on the catalog row would settle it the way Q3 does.
+- Open for the next iteration: whether disabled Changelog carries a tooltip such as "No changelog yet".
