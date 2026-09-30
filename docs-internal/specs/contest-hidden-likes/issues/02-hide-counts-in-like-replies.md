@@ -1,6 +1,7 @@
 # 02: Hide contest counts in like replies
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: c4b7873b
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -15,9 +16,9 @@ A player likes or unlikes a hidden contest entry, and the reply confirms the lik
 
 ## Acceptance criteria
 
-- [ ] The account like reply follows the contract: `{liked, likesHidden: true}` for a hidden count, and `likes` otherwise.
-- [ ] The guest-like reply follows the same contract on every path: a normal press, the path that answers when the feature is off, and the path for an Install whose claiming account already likes the listing.
-- [ ] Every reply keeps its `data` envelope.
-- [ ] Staff like-removal replies are unchanged.
-- [ ] Route tests cover each path for a hidden and a visible entry. Each guard bites when its path is reverted.
-- [ ] Server gates green.
+- [x] The account like reply follows the contract: `{liked, likesHidden: true}` for a hidden count, and `likes` otherwise.
+- [x] The guest-like reply follows the same contract on every path: a normal press, the path that answers when the feature is off, and the path for an Install whose claiming account already likes the listing.
+- [x] Every reply keeps its `data` envelope.
+- [x] Staff like-removal replies are unchanged.
+- [x] Route tests cover each path for a hidden and a visible entry. Each guard bites when its path is reverted.
+- [x] Server gates green.
