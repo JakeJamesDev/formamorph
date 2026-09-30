@@ -22,7 +22,9 @@ const ash: Entity = { id: 'ash', name: 'Ash', traits: [{ id: 'pack', name: 'Pack
 const world = (entities: Entity[]) => ({
   id: 'w',
   worldOverview: { name: 'w', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: true, tags: [] },
-  stats: [], locations: [], entities, traits: [{ id: 'paladin', name: 'Paladin', statChanges: [] }], statUpdates: [],
+  stats: [], locations: [], entities, statUpdates: [],
+  traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'blueprints' }],
+  traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
 } as unknown as World);
 
 function Harness({ entities }: { entities: Entity[] }) {

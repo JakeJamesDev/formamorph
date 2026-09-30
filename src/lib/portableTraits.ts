@@ -4,7 +4,7 @@ import type { Entity, Placeholder, PlaceholderGroup, RequirementBearer, Trait, T
 import { linksInTreeOrder, originalOf } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
-import { groupsBelow } from './traitTree';
+import { blueprintItemIds, groupsBelow, isBlueprintItem } from './traitTree';
 
 /** Off-world, a "playing as" or a named bearer on the entity itself names it by this id, since each copy has
  *  its own id. */
@@ -87,15 +87,16 @@ function rekeyed<V>(map: Record<string, V> | undefined, key: (id: string) => str
   return Object.keys(out).length ? out : undefined;
 }
 
-/** The world original the link points at by id, when it is one of the link's kind. */
+/** The world original the link points at by id, when it is a Blueprints item of the link's kind. */
 function originalById(world: TraitWorld, link: TraitLink): Original | null {
-  const original = originalOf(world, link.originalId);
+  const original = isBlueprintItem(world, link.originalId) ? originalOf(world, link.originalId) : null;
   return original?.kind === link.kind ? original : null;
 }
 
-/** The one world original of the link's kind that carries its stored name. Blueprints is not an original. */
+/** The one Blueprints item of the link's kind that carries its stored name. */
 function originalByName(world: TraitWorld, link: TraitLink): Original | null {
-  const list: readonly Named[] = link.kind === 'trait' ? world.traits : world.traitGroups.filter((g) => g.system !== 'blueprints');
+  const linkable = blueprintItemIds(world);
+  const list: readonly Named[] = (link.kind === 'trait' ? world.traits : world.traitGroups).filter((item) => linkable.has(item.id));
   const named = uniqueNamed(list, link.originalName);
   return named && originalOf(world, named.id);
 }

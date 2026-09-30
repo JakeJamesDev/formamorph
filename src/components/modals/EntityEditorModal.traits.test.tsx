@@ -204,13 +204,16 @@ describe("the library entity Traits tab's links", () => {
       { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Smite', groupId: null, order: 6 },
     ],
   };
-  /** A world with its own Class, where Paladin pins Garb and Wizard requires Paladin, and no Smite. */
+  /** A world with its own Class in Blueprints, where Paladin pins Garb and Wizard requires Paladin, and no Smite. */
   const world: LibraryEditorWorld = {
     traits: [
       { id: 'n-paladin', name: 'Paladin', groupId: 'n-class', statChanges: [], placeholderPins: [{ placeholderId: 'p-garb', value: 'plate' }] },
       { id: 'n-wizard', name: 'Wizard', groupId: 'n-class', statChanges: [], requires: [{ kind: 'trait', id: 'n-paladin' }] },
     ],
-    traitGroups: [{ id: 'n-class', name: 'Class', parentId: null }],
+    traitGroups: [
+      { id: 'n-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
+      { id: 'n-class', name: 'Class', parentId: 'n-blueprints' },
+    ],
     entities: [],
     placeholders: [{ id: 'p-garb', name: 'Garb', values: phValues(['plate', 'robes']) }],
   };

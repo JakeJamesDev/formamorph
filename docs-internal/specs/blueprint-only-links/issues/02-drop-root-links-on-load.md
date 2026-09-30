@@ -1,6 +1,7 @@
 # 02: Drop root links on load and import
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3b56bf19
 Blocked by: 01
 
 Parent: [Blueprint-Only Links spec](../spec.md)

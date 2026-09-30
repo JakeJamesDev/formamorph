@@ -12,10 +12,13 @@ import type { Entity, Trait, TraitLink } from '@/types';
 
 const trait = (id: string, name: string, groupId?: string): Trait => ({ id, name, statChanges: [], ...(groupId ? { groupId } : {}) });
 
-/** The world the entity leaves: a Class group of two classes, a root Smite, and Albus. */
+/** The world the entity leaves: Blueprints holding a Class group of two classes and a Smite, and Albus. */
 const home: TraitWorld = {
-  traits: [trait('w-paladin', 'Paladin', 'w-class'), trait('w-wizard', 'Wizard', 'w-class'), trait('w-smite', 'Smite')],
-  traitGroups: [{ id: 'w-class', name: 'Class', parentId: null }],
+  traits: [trait('w-paladin', 'Paladin', 'w-class'), trait('w-wizard', 'Wizard', 'w-class'), trait('w-smite', 'Smite', 'w-blueprints')],
+  traitGroups: [
+    { id: 'w-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
+    { id: 'w-class', name: 'Class', parentId: 'w-blueprints' },
+  ],
   entities: [{ id: 'albus', name: 'Albus' }],
 };
 

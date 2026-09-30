@@ -34,7 +34,8 @@ const WITH_COPY: World = benchEditorWorld({
     { id: 'garb', name: 'Class Garb', groupId: 'bp', values: [{ id: 'v-tabard', text: 'a tabard' }, { id: 'v-plate', text: 'plate' }] },
   ],
   placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' }],
-  traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], aiDescription: `Wears ${chip('garb')}.` }],
+  traitGroups: [{ id: 'tbp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+  traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'tbp', aiDescription: `Wears ${chip('garb')}.` }],
   // Albus links Paladin, whose text places the blueprint, so the store keeps his copy in use.
   entities: [{
     id: 'e-albus', name: 'Albus',

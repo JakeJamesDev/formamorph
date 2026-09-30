@@ -43,7 +43,8 @@ const WORLD: World = benchEditorWorld({
     { id: 'tone', name: 'Tone', values: [value('v-grain', chip('grain'))] },
     { id: 'grain', name: 'Grain', ownerId: 'tone', values: [value('v-fine', 'fine')] },
   ],
-  traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], aiDescription: `Wears ${chip('garb')}.` }],
+  traitGroups: [{ id: 'tbp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+  traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'tbp', aiDescription: `Wears ${chip('garb')}.` }],
   entities: [{
     id: 'molly', name: 'Molly', playerDescription: '', aiDescription: '', locations: [],
     // Molly links Paladin, whose text places the blueprint, so her copy is in use.

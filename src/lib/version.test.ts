@@ -836,3 +836,52 @@ describe('migrateWorld — exclusive groups to pick counts', () => {
     expect(twice.entities).toEqual(once.entities);
   });
 });
+
+describe('migrateWorld — links only into Blueprints', () => {
+  const link = (id: string, originalId: string, kind: 'trait' | 'group' = 'trait') =>
+    ({ id, originalId, kind, originalName: originalId, groupId: null, order: 0, overrides: { [originalId]: { isDefault: { value: true, blueprint: false } } } });
+  // A 3.1.0 world: Classes (Paladin) in Blueprints, Brave and Faction (Guard) at the top level.
+  const raw = () => ({
+    version: APP_VERSION,
+    traits: [
+      { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'classes' },
+      { id: 'brave', name: 'Brave', statChanges: [], groupId: null },
+      { id: 'guard', name: 'Guard', statChanges: [], groupId: 'faction' },
+    ],
+    traitGroups: [
+      { id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' },
+      { id: 'classes', name: 'Classes', parentId: 'bp' },
+      { id: 'faction', name: 'Faction', parentId: null },
+    ],
+    entities: [
+      { id: 'albus', name: 'Albus', traitLinks: [link('l1', 'paladin'), link('l2', 'brave'), link('l3', 'classes', 'group')] },
+      { id: 'mira', name: 'Mira', customPersona: true, traitLinks: [link('l4', 'faction', 'group'), link('l5', 'guard')] },
+      { id: 'tomas', name: 'Tomas', traitLinks: [link('l6', 'bp', 'group')] },
+      { id: 'vex', name: 'Vex' },
+    ],
+  });
+  const linkIds = (world: World) => world.entities.map((e) => e.traitLinks?.map((l) => l.id));
+
+  it('drops each link whose original sits outside Blueprints, overrides and all, and keeps the rest', () => {
+    const world = migrateWorld(raw());
+    expect(linkIds(world)).toEqual([['l1', 'l3'], undefined, undefined, undefined]);
+    expect(world.entities[0].traitLinks?.[0]).toEqual(raw().entities[0].traitLinks![0]);
+  });
+
+  it('removes the list outright when no link is left, so the entity stores none', () => {
+    const [, mira, tomas, vex] = migrateWorld(raw()).entities;
+    expect(mira).not.toHaveProperty('traitLinks');
+    expect(tomas).not.toHaveProperty('traitLinks');
+    expect(vex).toEqual(raw().entities[3]);
+  });
+
+  it('drops every link in a world with no Blueprints group', () => {
+    const bare = { ...raw(), traitGroups: raw().traitGroups.filter((g) => g.id !== 'bp') };
+    expect(linkIds(migrateWorld(bare))).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it('is idempotent', () => {
+    const once = migrateWorld(raw());
+    expect(migrateWorld(JSON.parse(JSON.stringify(once))).entities).toEqual(once.entities);
+  });
+});

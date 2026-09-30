@@ -255,8 +255,7 @@ export function editorGateInput(world: BearerWorld): GateInput {
 /**
  * Whether the bearer's tree already holds `originalId`, or anything a link to it would bring. The player
  * bearer and the Custom Persona entity hold every root item outside Blueprints, whatever the persona the
- * bearer was resolved under, so the Custom Persona entity cannot link what the root already offers and the
- * check reads the same in the editor and in play.
+ * bearer was resolved under, so the check reads the same in the editor and in play.
  */
 export function holdsOriginal(world: BearerWorld, bearer: Bearer, originalId: string): boolean {
   const held = new Set(bearer.linkOf.keys());

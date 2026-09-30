@@ -63,9 +63,10 @@ const WORLD: World = benchEditorWorld({
       traitLinks: [{ id: 'l-tamer', originalId: 't-tamer', kind: 'trait', originalName: 'Beast Tamer', groupId: null, order: 1 }],
     },
   ],
+  traitGroups: [{ id: 'g-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
   traits: [
     { id: 't-paladin', name: 'Paladin', statChanges: [] },
-    { id: 't-tamer', name: 'Beast Tamer', statChanges: [{ statId: 's1', value: 1 }] },
+    { id: 't-tamer', name: 'Beast Tamer', groupId: 'g-blueprints', statChanges: [{ statId: 's1', value: 1 }] },
   ],
 } as Partial<World>);
 
@@ -217,7 +218,7 @@ describe('the entity Traits tab as a mirror', () => {
     openMirror('Ash');
     fireEvent.click(screen.getByRole('button', { name: 'Open Beast Tamer' }));
     const line = screen.getByText(/^Linked from/);
-    expect(line).toHaveTextContent('Linked from Beast Tamer');
+    expect(line).toHaveTextContent('Linked from Blueprints › Beast Tamer');
     expect(within(line).queryByRole('button')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit Blueprint' })).toBeNull();
     openTraitFieldsTab('Availability');

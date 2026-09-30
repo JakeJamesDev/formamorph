@@ -30,10 +30,13 @@ const WORLD: World = benchEditorWorld({
     { id: 's-warmth', name: 'Warmth', type: 'number', description: '', min: 0, max: 10, value: 4, regen: 0, descriptors: [] },
     { id: 's-damp', name: 'Damp', type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [] },
   ],
-  traitGroups: [{ id: 'g-classes', name: 'Classes', parentId: null, order: 0 }],
+  traitGroups: [
+    { id: 'g-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
+    { id: 'g-classes', name: 'Classes', parentId: 'g-blueprints', order: 0 },
+  ],
   traits: [
     { id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'g-classes' },
-    { id: 't-tamer', name: 'Beast Tamer', statChanges: [], order: 1 },
+    { id: 't-tamer', name: 'Beast Tamer', statChanges: [], groupId: 'g-blueprints', order: 1 },
     // One Bench finding: a pin naming a placeholder that doesn't exist.
     { id: 't-oath', name: 'Hollow Oath', statChanges: [], order: 2, placeholderPins: [{ placeholderId: 'gone', value: 'ash' }] },
   ],
