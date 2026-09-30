@@ -10,6 +10,7 @@ import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
 import { type CatalogWorld } from "@/lib/worldCatalog";
+import { reuseRows } from "@/lib/catalogRows";
 
 /** Who the catalog in hand belongs to, from the session this app holds. */
 const currentReader = (): string =>
@@ -73,12 +74,18 @@ export function useCatalogSync(
     // has closed, so a late answer would pass the guard and set state on a tree that is gone.
     const isCurrent = () => mountedRef.current
       && requestGeneration.current === request && currentReader() === reader;
+    // Success or failure, an attempt finished: misses may now be trusted.
+    const settle = () => {
+      setIsLoadingRemoteWorlds(false);
+      setIsSyncingCatalog(false);
+      setCatalogSettled(true);
+    };
 
+    // Each step sets its states with no await between them, so one step is one commit.
     try {
-      const cached = await getCatalog();
+      const [cached, cachedAnonymousLikes] = await Promise.all([getCatalog(), getCatalogAnonymousLikes()]);
       if (!isCurrent()) return;
-      setAnonymousLikes(await getCatalogAnonymousLikes());
-      if (!isCurrent()) return;
+      setAnonymousLikes(cachedAnonymousLikes);
       if (cached.length && !force) {
         setRemoteWorlds(cached);
       } else {
@@ -104,26 +111,28 @@ export function useCatalogSync(
       const result = await WorldStorageService.fetchCatalog(tag);
       if (!isCurrent()) return;
       if (result.status === 'fresh') {
-        setRemoteWorlds(result.data as WorldRecord[]);
+        // Rows held are this reader's: a change of reader cleared them before this request.
+        const fresh = result.data as WorldRecord[];
+        setRemoteWorlds((held) => reuseRows(held, fresh));
         setAnonymousLikes(result.anonymousLikes);
+      } else if (result.status === 'error' && !cached.length) {
+        toastError(result.error, 'Failed to fetch worlds');
+      }
+      settle();
+
+      // 'unchanged': the rows already rendered are the answer. Nothing is written, and the tag beside
+      // them still describes them.
+      if (result.status === 'fresh') {
         await replaceCatalog(
           result.data as CatalogWorld[],
           result.tag ? { tag: result.tag, reader } : null,
           result.anonymousLikes,
-        );
-      } else if (result.status === 'error' && !cached.length) {
-        toastError(result.error, 'Failed to fetch worlds');
+        ).catch((error: unknown) => console.error('Error caching world catalog:', error));
       }
-      // 'unchanged': the rows already rendered are the answer. Nothing is written, and the tag beside
-      // them still describes them.
     } catch (error) {
-      if (isCurrent()) console.error('Error loading world catalog:', error);
-    } finally {
       if (isCurrent()) {
-        setIsLoadingRemoteWorlds(false);
-        setIsSyncingCatalog(false);
-        // Success or failure, an attempt finished: misses may now be trusted.
-        setCatalogSettled(true);
+        console.error('Error loading world catalog:', error);
+        settle();
       }
     }
   };

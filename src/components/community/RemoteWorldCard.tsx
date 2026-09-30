@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { EyeOff, Download, MessageSquare, Puzzle, Trash2, ShieldAlert, ShieldCheck, TicketX } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { Progress } from "@/components/ui/progress";
@@ -70,8 +71,9 @@ interface RemoteWorldCardProps {
 }
 
 /** A single card in the community browser grid: thumbnail with a contextual download/hide overlay, plus title,
- *  description, author, counts, tags, and (for owners/admins) a delete control. */
-export function RemoteWorldCard({
+ *  description, author, counts, tags, and (for owners/admins) a delete control.
+ *  Memoized: a catalog refresh that keeps a row's object skips its card. */
+export const RemoteWorldCard = memo(function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease,
   placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav,
@@ -344,4 +346,4 @@ export function RemoteWorldCard({
       )}
     </WorldCardShell>
   );
-}
+});
