@@ -7,7 +7,7 @@ import type { ReasoningEffortField } from '@/lib/reasoningEffort';
  */
 export const REASONING_DIALECTS = [
   'unknown', 'engine', 'openai', 'lmstudio', 'vllm', 'openrouter',
-  'anthropic-budget', 'anthropic-adaptive', 'google-2.5', 'google-3', 'moonshot-k3', 'moonshot-k2',
+  'anthropic-budget', 'anthropic-adaptive', 'google-2.5', 'google-3', 'moonshot-k3', 'moonshot-k2', 'novita',
 ] as const;
 
 export type ReasoningDialect = (typeof REASONING_DIALECTS)[number];
@@ -21,7 +21,7 @@ type FieldLabel = 'Effort' | 'Budget' | 'Reasoning';
 /** One field a dialect writes, named by its path from the body root. */
 interface FieldWrite {
   readonly path: readonly string[];
-  readonly value: string | number;
+  readonly value: string | number | boolean;
   /** The settings word for this field. `Reasoning` is the switch itself. */
   readonly label: FieldLabel;
 }
@@ -74,7 +74,8 @@ const THINKING_DISABLED: readonly FieldWrite[] = [{ path: ['thinking', 'type'], 
  * under-cap rule, and the 400 that `type: enabled` returns on Claude 4.7 and later); Google's OpenAI
  * compatibility page (`google.thinking_config`, with
  * `thinking_budget` on 2.5 and `thinking_level` on 3.x, and the documented budget per effort); Kimi's chat
- * API reference (k3 takes `reasoning_effort` and always thinks, k2.6 switches with `thinking.type`).
+ * API reference (k3 takes `reasoning_effort` and always thinks, k2.6 switches with `thinking.type`). Novita's
+ * chat-completions reference, read 2026-09-30 (`enable_thinking`, default `true`).
  */
 export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
   // What the app sends wherever nothing has named a dialect. This row is the compatibility contract: change
@@ -120,6 +121,8 @@ export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
   'google-3': { levelPath: ['google', 'thinking_config', 'thinking_level'], offRejected: true },
   'moonshot-k3': { levelPath: EFFORT_PATH, offRejected: true },
   'moonshot-k2': { off: THINKING_DISABLED },
+  // Thinking is on by default, so only off is spelled.
+  novita: { off: [{ path: ['enable_thinking'], value: false, label: 'Reasoning' }] },
 };
 
 /** Every field shape a dialect writes. One optional per spelling, so the table and the body type move together. */
@@ -130,6 +133,7 @@ export interface ReasoningBodyFields {
   reasoning?: { effort?: ReasoningEffortField; max_tokens?: number };
   thinking?: { type?: 'enabled' | 'adaptive' | 'disabled'; budget_tokens?: number };
   google?: { thinking_config?: { thinking_budget?: number; thinking_level?: string } };
+  enable_thinking?: boolean;
 }
 
 /** What one request wants to say about reasoning, before any dialect spells it. */
@@ -179,7 +183,7 @@ export function reasoningDialectTakesLevel(dialect: ReasoningDialect): boolean {
 }
 
 /** Writes one value at its path, building the objects the path passes through. */
-function writePath(body: Record<string, unknown>, path: readonly string[], value: string | number): void {
+function writePath(body: Record<string, unknown>, path: readonly string[], value: string | number | boolean): void {
   let node = body;
   for (const key of path.slice(0, -1)) {
     if (!node[key] || typeof node[key] !== 'object') node[key] = {};
@@ -189,13 +193,13 @@ function writePath(body: Record<string, unknown>, path: readonly string[], value
 }
 
 /** Reads the value at a path, or `undefined` when the body does not carry it. `0` reads as present. */
-function readPath(body: unknown, path: readonly string[]): string | number | undefined {
+function readPath(body: unknown, path: readonly string[]): string | number | boolean | undefined {
   let node: unknown = body;
   for (const key of path) {
     if (!node || typeof node !== 'object') return undefined;
     node = (node as Record<string, unknown>)[key];
   }
-  return typeof node === 'string' || typeof node === 'number' ? node : undefined;
+  return typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean' ? node : undefined;
 }
 
 /**
@@ -251,7 +255,7 @@ export interface ReasoningWireField {
   label: FieldLabel;
   /** What the body calls it, dotted where the dialect nests it. */
   name: string;
-  value: string | number;
+  value: string | number | boolean;
 }
 
 /**

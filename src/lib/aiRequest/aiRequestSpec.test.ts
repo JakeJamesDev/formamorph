@@ -760,6 +760,8 @@ describe('dialects — one spelling per row', () => {
     ['google-3', { google: { thinking_config: { thinking_level: 'high' } } }],
     ['moonshot-k3', { reasoning_effort: 'high' }],
     ['moonshot-k2', {}],
+    // Thinking is Novita's default, so an on request says nothing.
+    ['novita', {}],
   ] as const)('spells a 50%% budget at High the %s way', (dialect, expected) => {
     expect(speaks(speaking(dialect))).toEqual(expected);
   });
@@ -777,6 +779,7 @@ describe('dialects — one spelling per row', () => {
     ['google-3', {}],
     ['moonshot-k3', {}],
     ['moonshot-k2', { thinking: { type: 'disabled' } }],
+    ['novita', { enable_thinking: false }],
   ] as const)('spells a switched-off prompt the %s way', (dialect, expected) => {
     expect(speaks(speaking(dialect), { promptReasoning: { narration: 'none' } })).toEqual(expected);
   });
