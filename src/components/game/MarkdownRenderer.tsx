@@ -25,7 +25,8 @@ const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] = [
 
 // Streamdown boxes every table in a bordered card inside a second bordered scroller. Our markdown
 // surfaces are already panels, so that reads as a box in a box. Keep the scroller and the solid fill
-// that sets rows off against a translucent panel; drop the borders.
+// that sets rows off against a translucent panel; drop the borders. Cells opt out of the root's
+// `overflow-wrap: anywhere`, which drops a column's min-content to one letter and splits short words.
 // Streamdown ships no highlighter of its own; the code plugin supplies Shiki, themed off the app's
 // palette so a fence matches the stat-code editor.
 const PLUGINS: ComponentProps<typeof Streamdown>['plugins'] = {
@@ -75,7 +76,7 @@ function rehypePluginsFor(tinted: boolean, dialogue: boolean): ComponentProps<ty
 const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
   table: ({ node: _node, className, children, ...props }) => (
     <div
-      className="my-4 overflow-x-auto rounded-md bg-background [&_tr]:divide-x [&_tr]:divide-border"
+      className="my-4 overflow-x-auto rounded-md bg-background [&_tr]:divide-x [&_tr]:divide-border [&_td]:[overflow-wrap:break-word] [&_th]:[overflow-wrap:break-word]"
       data-streamdown="table-wrapper"
     >
       <table className={cn('w-full divide-y divide-border', className)} data-streamdown="table" {...props}>
