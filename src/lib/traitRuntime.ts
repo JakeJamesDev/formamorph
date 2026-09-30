@@ -42,15 +42,16 @@ export interface TraitRuntimeState {
 
 /** The authored world, for exclusive-group lookups and gates. Absent `entities` or `persona`, no "playing
  *  as" requirement holds. */
-export interface TraitWorld {
+export type TraitWorld = {
   traits: Trait[];
   groups: TraitGroup[];
-  entities?: readonly GateEntity[];
   persona?: PersonaRef;
+} & (
+  | { entities?: readonly GateEntity[]; bearers?: undefined }
   /** Every present bearer as the gate module reads it, the player first (see lib/bearers). Absent ⇒ only
-   *  the world's offered traits gate. */
-  bearers?: readonly GateOwner[];
-}
+   *  the world's offered traits gate. The entities name the Custom Persona entity among them. */
+  | { entities: readonly GateEntity[]; bearers: readonly GateOwner[] }
+);
 
 /** The traits currently in force: everything in the player's list that isn't switched off. */
 export function activeTraits(traits: readonly Trait[], disabledTraitIds: readonly string[]): Trait[] {
