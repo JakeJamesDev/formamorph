@@ -155,6 +155,16 @@ describe('paste and drop with Image Attachments on', () => {
     expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.notImage);
   });
 
+  it('keeps the images of two pastes that arrive while the first is still encoding', async () => {
+    const view = setup();
+    const box = await zone();
+    await act(async () => {
+      fireEvent.paste(box, { clipboardData: clipboard([fakeImageFile('1x1')]) });
+      fireEvent.paste(box, { clipboardData: clipboard([fakeImageFile('2x2')]) });
+    });
+    await waitFor(() => expect(view.gameplay().pendingAttachments).toHaveLength(2));
+  });
+
   it('caps pending images at four across a picked set, a paste and a drop', async () => {
     const warn = vi.spyOn(toast, 'warn');
     const view = setup();

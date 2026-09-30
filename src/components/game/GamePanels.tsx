@@ -596,19 +596,24 @@ export const MiddlePanel = ({
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const imageAttachments = useImageAttachments();
 
-  // The attach button's picker. One attach at a time, so the cap counts what is already pending.
+  // The picker, paste and drop all attach here. The cap counts what is pending when each intake finishes.
   const attachInput = useRef<HTMLInputElement>(null);
   const [attaching, setAttaching] = useState(false);
   const mounted = useMountedRef();
+  const pendingNow = useRef(pendingAttachments);
+  pendingNow.current = pendingAttachments;
   const attachFiles = async (files: File[]) => {
     if (files.length === 0) return;
     setAttaching(true);
     try {
-      const { pending, refused } = await addToPending(pendingAttachments, files);
+      const base = pendingNow.current;
+      const { pending, refused } = await addToPending(base, files);
       if (!mounted.current) return;
       // Only the new images join: a send while they encoded has already taken the old ones.
-      const added = pending.slice(pendingAttachments.length);
-      setPendingAttachments((prev) => [...prev, ...added].slice(0, MAX_ATTACHMENTS));
+      const added = pending.slice(base.length);
+      const kept = added.slice(0, Math.max(0, MAX_ATTACHMENTS - pendingNow.current.length));
+      if (kept.length < added.length && !refused.includes('limit')) refused.push('limit');
+      setPendingAttachments((prev) => [...prev, ...kept].slice(0, MAX_ATTACHMENTS));
       for (const reason of refused) toast.warn(ATTACH_REFUSAL_COPY[reason]);
     } finally {
       if (mounted.current) setAttaching(false);
