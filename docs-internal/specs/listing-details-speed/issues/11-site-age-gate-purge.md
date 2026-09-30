@@ -1,6 +1,6 @@
 # 11: Clear the community caches on the website's age gate
 
-Status: in-progress
+Status: ready-for-human
 Base: 45b59f13
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
