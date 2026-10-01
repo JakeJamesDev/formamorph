@@ -20,6 +20,18 @@ _Avoid_: function (wire-format word), instrument (a Test Bench part)
 The part of a Tool that runs when the AI calls it: a Lookup (searches world data), a Template (returns chip text), or a Script (sandboxed code that reads the world and the current scene).
 _Avoid_: resolver, source
 
+**Formaquestion**:
+The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save.
+_Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
+
+**Docs Index**:
+The player docs bundled into the app, split into sections at their headings, with three operations: list the contents, search by keyword, and get sections by id. It needs no network and no model. Help topics are not in it.
+_Avoid_: knowledge base, embeddings, docs database
+
+**Surface**:
+A screen, a dialog or a tab that a player can have open, named by one id. The surface registry holds the ids that are open now, and the surface map ties each player-facing id to the docs section that explains it.
+_Avoid_: view, page, route (dev-router words), screen (one kind of Surface)
+
 **Connection**:
 An authored travel link between two locations — one-way or two-way. A Connection has one leg per direction of travel, and each leg carries its own optional Travel Hint. The narrator gets the hint of the leg the player travels. Where a Connection exists between a pair, it replaces that pair's implicit navigation.
 _Avoid_: edge (internal only), path, route

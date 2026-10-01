@@ -12,8 +12,8 @@ import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import { runToolCall } from '@/lib/tools/toolRunner';
 import { toolSchema } from '@/lib/tools/toolSchema';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
-import type { AssistantToolCallMessage, Tool, ToolResultMessage, WireMessage } from '@/types';
-import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
+import type { AssistantToolCallMessage, RequestMessage, Tool, ToolResultMessage, WireMessage } from '@/types';
+import type { AiRequestBody, AiRequestSpec as AnyRequestSpec } from './aiRequestSpec';
 import { AiStreamError } from './aiStream';
 import { DEFAULT_TOOL_ROUND_CAP, streamAiToolLoop, type AiToolLoopEvent, type AiToolLoopOptions } from './toolLoop';
 
@@ -24,6 +24,9 @@ const snapshot = buildToolSnapshot(authoredChipScene(world), world.dictionaries 
 const GET_ENTITY: Tool = TOOL_CATALOG.find((t) => t.id === 'get_entity')!;
 const BRAM_FACT = 'only one arm';
 const ODETTE_FACT = 'burn scar';
+
+/** A request whose offered functions are Tools, which the Tool Runner can run. */
+type AiRequestSpec = AnyRequestSpec<RequestMessage, Tool>;
 
 const spec = (tools: readonly Tool[] | null = [GET_ENTITY]): AiRequestSpec => ({
   url: 'http://localhost:1234/v1/chat/completions',

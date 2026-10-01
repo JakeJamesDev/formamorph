@@ -1,6 +1,7 @@
-import type { AssistantToolCallMessage, Tool, ToolCallPart, WireMessage } from '@/types';
+import type { AssistantToolCallMessage, RequestMessage, Tool, ToolCallPart, WireMessage } from '@/types';
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import type { ToolCallFailure, ToolCallResult } from '@/lib/tools/toolRunner';
+import type { OfferedFunction } from '@/lib/tools/toolSchema';
 import { answerStart } from '@/lib/aiResponse';
 import { CHARS_PER_TOKEN } from '@/lib/memoryUtils';
 import { trimToLastSentence } from '@/lib/outputLength';
@@ -29,7 +30,8 @@ import {
 export const DEFAULT_TOOL_ROUND_CAP = 6;
 
 /** Runs one call of `tool` with the argument text the model streamed. Stop reaches it through `signal`. */
-export type ToolExecutor = (tool: Tool, argumentsText: string, signal?: AbortSignal) => Promise<ToolCallResult>;
+export type ToolExecutor<TTool extends OfferedFunction = Tool> =
+  (tool: TTool, argumentsText: string, signal?: AbortSignal) => Promise<ToolCallResult>;
 
 /** Why a call in a round produced an error result: the runner's own kinds, or a call the loop refused. */
 export type AiToolRoundFailure = ToolCallFailure | 'unknown' | 'limit';
@@ -62,9 +64,9 @@ export type AiToolLoopEvent =
   /** The round after the calls sent its first token, even a held one. */
   | { type: 'roundStarted' };
 
-export interface AiToolLoopOptions extends AiStreamOptions {
+export interface AiToolLoopOptions<TTool extends OfferedFunction = Tool> extends AiStreamOptions {
   /** Runs the offered Tools. Without it, the request goes out as the plain stream. */
-  execute?: ToolExecutor;
+  execute?: ToolExecutor<TTool>;
   /** Calls one Tool may make per request where the Tool sets no limit of its own. */
   callLimit?: number;
   roundCap?: number;
@@ -139,9 +141,9 @@ async function* streamCapped(spec: AiStreamSpec, options: AiStreamOptions): Asyn
  * events carrying every round's thinking so far, and a `toolRound` per tool round when capturing. Without
  * Tools on the wire, this is the plain stream under the Answer Cap.
  */
-export async function* streamAiToolLoop(
-  spec: AiRequestSpec,
-  options: AiToolLoopOptions,
+export async function* streamAiToolLoop<TTool extends OfferedFunction = Tool>(
+  spec: AiRequestSpec<RequestMessage, TTool>,
+  options: AiToolLoopOptions<TTool>,
 ): AsyncGenerator<AiToolLoopEvent, void, void> {
   const tools = spec.tools;
   const { signal, execute } = options;

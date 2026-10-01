@@ -1,6 +1,7 @@
 # 22: Docs lookup function
 
-Status: ready-for-agent
+Status: in-progress
+Base: 15319e49
 Blocked by: 20 — Ask a question
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

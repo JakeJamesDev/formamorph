@@ -7,8 +7,10 @@ import { ABORTED_FINISH_REASON } from '@/lib/aiRequest/aiStream';
 import { streamAiToolLoop } from '@/lib/aiRequest/toolLoop';
 import { stripReasoningLive } from '@/lib/aiResponse';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
+import { toolsSupported } from '@/lib/reasoningEffort';
 import type { RequestMessage } from '@/types';
-import { helpSystemPrompt, helpUserMessage } from './helpPrompt';
+import { createDocsLookup, docsContents, DOCS_LOOKUP } from './docsLookup';
+import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /** The most docs sections one help request holds. */
 export const HELP_SECTION_LIMIT = 5;
@@ -85,28 +87,51 @@ function historyMessages(history: readonly HelpTurn[]): RequestMessage[] {
 }
 
 /**
- * Asks one help question. Sends exactly one request, in retrieval mode: the sections that match the
- * question go in the prompt, after the earlier exchanges. Throws the request pipeline's errors, and an
- * error for an empty answer.
+ * Asks one help question, after the earlier exchanges. The endpoint's known capability picks the mode
+ * before anything is sent, and a failed request is never sent again in the other mode (ADR-0008).
+ *
+ * - Lookup mode, where the endpoint is known to take function calls: the prompt holds the contents list and
+ *   the best search hit, and the model reads more sections through the docs lookup.
+ * - Retrieval mode, everywhere else: the sections that match the question go in the prompt, in one request.
+ *
+ * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
   question, history = [], language = '', snapshot, index, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
-  const sources = helpSections(index, helpSearchQuery(question, history));
+  const found = helpSections(index, helpSearchQuery(question, history));
+  const lookupMode = toolsSupported(snapshot.resolveTarget('help').reasoning);
+  const inPrompt = lookupMode ? found.slice(0, 1) : found;
+  const lookup = lookupMode
+    ? createDocsLookup(index, {
+        budget: HELP_DOCS_CHAR_BUDGET - inPrompt.reduce((size, section) => size + section.markdown.length, 0),
+        searchLimit: HELP_SECTION_LIMIT,
+        held: inPrompt,
+      })
+    : null;
   const spec = buildAiRequestSpec(snapshot, {
-    systemPrompt: helpSystemPrompt(language),
-    messages: [...historyMessages(history), { role: 'user', content: helpUserMessage(question, sources) }],
+    systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
+    messages: [...historyMessages(history), {
+      role: 'user',
+      content: lookup ? helpLookupUserMessage(question, docsContents(index), inPrompt) : helpUserMessage(question, inPrompt),
+    }],
     requestType: 'help',
     maxTokensOverride: HELP_MAX_TOKENS,
+    ...(lookup && { tools: [DOCS_LOOKUP] }),
   });
   let text = '';
-  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl })) {
-    if (event.type === 'delta') {
+  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, ...(lookup && { execute: lookup.execute }) })) {
+    if (event.type === 'toolCalls') {
+      // What the model wrote before a call is not the answer.
+      if (text) yield { type: 'answer', text: '' };
+      text = '';
+    } else if (event.type === 'delta') {
       const next = stripReasoningLive(event.content).trimStart();
       if (next === text) continue;
       text = next;
       yield { type: 'answer', text };
     } else if (event.type === 'done') {
+      const sources = [...(lookup?.fetched() ?? []), ...inPrompt];
       const stopped = event.result.finishReason === ABORTED_FINISH_REASON;
       const answer = stripReasoningLive(event.result.content).trim();
       if (!answer && !stopped) {
