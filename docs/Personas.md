@@ -17,17 +17,19 @@ No copy is made. The entity is now one of your personas, and you can still add i
 ## How to Set a Default Persona
 
 1. Open the library's **Entities** tab.
-2. Right-click a persona tile and select **Set as Default Persona**.
+2. Right-click a persona tile.
+3. Select **Set as Default Persona**.
 
 A **Default** badge marks it. To remove it, right-click the tile and select **Clear Default Persona**.
 
 ## How to Pick a Persona
 
-1. On the main menu, select a world and select **Enter World**.
-2. Open the **Persona** category. It shows when at least one persona is available.
-3. Select **None**, an entity under **From This World**, or one under **Your Personas**.
-4. If the world shows a **Custom Persona** in **None**'s place, type your **Name** and, if you like, a **Description**.
-5. Select **Start game**.
+1. On the main menu, select a world.
+2. Select **Enter World**.
+3. Open the **Persona** category. It shows when at least one persona is available.
+4. Select **None**, an entity under **From This World**, or one under **Your Personas**.
+5. If the world shows a **Custom Persona** in **None**'s place, type your **Name** and, if you like, a **Description**.
+6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
 
 ## How to Change Persona During Play
 

@@ -12,25 +12,27 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 
 ## How to Add Your Own Entities to a Game
 
-1. On the main menu, select a world and select **Enter World**.
-2. Open the **Library Additions** category.
-3. Select the entities and dictionaries from your library that this game should have.
-4. To start future games in this world with the same picks, select **Remember Additions**.
-5. Select **Start game**.
+1. On the main menu, select a world.
+2. Select **Enter World**.
+3. Open the **Library Additions** category.
+4. Select the entities and dictionaries from your library that this game should have.
+5. To start future games in this world with the same picks, select **Remember Additions**.
+6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
 
 ## How to Remove a Cast Member
 
 1. During play, open the side panel's **Entities** tab.
 2. Find the entry and select its trash button, **Remove** followed by its name.
-3. In the **Remove …?** dialog, select **Confirm**.
+3. Select **Confirm** in the **Remove …?** dialog.
 
 Only story-invented entities and Library Additions have the button. See [Removing One](#removing-one).
 
 ## How to Get Descriptions for New Entities
 
-1. Open **Settings** and select **Advanced** next to the title.
-2. Open the **Output** tab.
-3. In the **Characters** section, turn on **Describe New Characters**.
+1. Open **Settings**.
+2. Select **Advanced** next to the title.
+3. Open the **Output** tab.
+4. In the **Characters** section, turn on **Describe New Characters**.
 
 ---
 
@@ -123,7 +125,7 @@ You start on the default opening in three cases:
 
 - No source has an opening for your start.
 - The author switched the world's openings list off. This turns off every row above, Self openings and Library Additions included.
-- The world, its entities and its locations have no openings at all. Openings that only Library Additions bring don't switch the list on.
+- The world, its entities and its locations have no openings, and your persona brings no Self openings. Openings that only Library Additions bring don't switch the list on.
 
 An entity you play as your [persona](Personas#play-a-worlds-own-entity) keeps its Others openings out of the draw, so page one never greets you as yourself. Its Self openings, if any, replace every other opening.
 

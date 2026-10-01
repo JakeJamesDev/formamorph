@@ -2,7 +2,7 @@
 
 In the browser and on Android, Formamorph starts on the **Demo AI**. It is a small free model, and it is there so you can try the app with no setup. The desktop app starts on its **Built-In Engine** instead.
 
-The AI writes everything you read. A stronger model gives you sharper narration, a better memory of your story, and entities that stay in character. Nothing else changes the experience as much.
+The AI writes everything you read. A stronger model gives you sharper narration, a better memory of your story, and entities that act the same from turn to turn. Nothing else changes the experience as much.
 
 Every route ends in the same place: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode.
 
@@ -15,30 +15,37 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 5. Turn on the **Start server** switch.
 6. Load your model with the model loader. The **Developer** tab shows the server address, such as `http://localhost:1234`.
 7. In Formamorph, open Settings → **Endpoints** → **Text**.
-8. In the **Preset** list, select **Add New Preset…** and name the preset.
-9. Paste the server address into **Endpoint URL**.
-10. Leave **API Token** empty.
-11. Type the model identifier that LM Studio shows into **Model Name**.
+8. In the **Preset** list, select **Add New Preset…**.
+9. Type a name in **New Preset**.
+10. Select **Save**.
+11. Paste the server address into **Endpoint URL**.
+12. Leave **API Token** empty.
+13. Type the model identifier that LM Studio shows into **Model Name**.
 
 ## How to Connect Ollama
 
 1. Download Ollama from [ollama.com/download](https://ollama.com/download) and install it.
 2. Download a model: `ollama pull <model>`. Use a model name from the Ollama library.
-3. Set the environment variable `OLLAMA_ORIGINS` to `*`. Your browser blocks the connection without it. See [Set OLLAMA_ORIGINS](#set-ollama_origins).
+3. Set the environment variable `OLLAMA_ORIGINS` to `*`. Your browser blocks the connection without it. See [OLLAMA_ORIGINS on Each System](#ollama_origins-on-each-system).
 4. In Formamorph, open Settings → **Endpoints** → **Text**.
-5. In the **Preset** list, select **Add New Preset…** and name the preset.
-6. Type `http://localhost:11434` into **Endpoint URL**.
-7. Leave **API Token** empty.
-8. Type the model's name into **Model Name**, exactly as `ollama ls` lists it.
+5. In the **Preset** list, select **Add New Preset…**.
+6. Type a name in **New Preset**.
+7. Select **Save**.
+8. Type `http://localhost:11434` into **Endpoint URL**.
+9. Leave **API Token** empty.
+10. Type the model's name into **Model Name**, exactly as `ollama ls` lists it.
 
 ## How to Connect a Hosted API
 
-1. Make an account with a service that offers an **OpenAI-compatible chat-completions** endpoint, and get an API token.
-2. Open Settings → **Endpoints** → **Text**.
-3. In the **Preset** list, select **Add New Preset…** and name the preset.
-4. Paste the service's chat-completions URL into **Endpoint URL**. It usually ends in `/v1/chat/completions`.
-5. Paste your token into **API Token**. Some services call it an API key.
-6. Type the identifier of the model you want into **Model Name**.
+1. Make an account with a service that offers an **OpenAI-compatible chat-completions** endpoint.
+2. Get an API token from the service. Some services call it an API key.
+3. Open Settings → **Endpoints** → **Text**.
+4. In the **Preset** list, select **Add New Preset…**.
+5. Type a name in **New Preset**.
+6. Select **Save**.
+7. Paste the service's chat-completions URL into **Endpoint URL**. It usually ends in `/v1/chat/completions`.
+8. Paste your token into **API Token**.
+9. Type the identifier of the model you want into **Model Name**.
 
 ## How to Use the Desktop Engine
 
@@ -86,9 +93,9 @@ In the browser, Chrome may block a public page from reaching your own network. T
 
 > 💡 If the connection fails, select **Trouble Connecting?** under **Endpoint URL**. It opens a checklist of the usual causes.
 
-## Set OLLAMA_ORIGINS
+## OLLAMA_ORIGINS on Each System
 
-How to set the variable depends on your system:
+How you set the variable depends on your system:
 
 | System | How |
 |---|---|
@@ -106,7 +113,7 @@ The **Local model** dialog has three views: **Installed**, **Recommended** and *
 
 The desktop app also connects to a local server or a hosted service. The steps are the same as above. The browser and Android builds have no **Built-In Engine**.
 
-## Set Up Your AI
+## The Set Up Your AI Dialog
 
 On the desktop app, a **Set up your AI** dialog opens when the engine has no model to run. It also opens when you enter a world and the AI can't be reached.
 

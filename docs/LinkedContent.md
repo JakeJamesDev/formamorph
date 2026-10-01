@@ -15,36 +15,42 @@ For an independent copy of an item you already have, open the copy's menu and se
 
 1. In the library, right-click the entity or dictionary tile. Or, in the World Editor, open the linked copy's menu.
 2. Select **Check for Updates**. If a world is behind, **Update Available** opens.
-3. For each world, pick **Update**, **Use Author's**, **Keep Mine** or **Unlink**. Select **View Changes** to compare first.
-4. Select **Apply Updates**.
+3. To compare a world first, select **View Changes**.
+4. For each world, pick **Update**, **Use Author's**, **Keep Mine** or **Unlink**.
+5. Select **Apply Updates**.
 
 A linked copy of your own item also updates the next time you open its world.
 
 ## How to Publish Linked Content
 
-1. On the main menu, select your world and select **Publish World**.
-2. Under **Linked Content**, check **Include as required** for each item that should download with the world.
-3. For a source of yours with no listing yet, pick **Public** or **Unlisted**. It publishes first.
-4. Select **Publish**. If a source is refused, read the reason and select **Retry**.
+1. On the main menu, select your world.
+2. Select **Publish World**.
+3. Under **Linked Content**, check **Include as required** for each item that should download with the world.
+4. For a source of yours with no listing yet, pick **Public** or **Unlisted**. It publishes first.
+5. Select **Publish**.
+6. If a source is refused, read the reason and select **Retry**.
 
-## How to Offer an Entity as an Add-on
+## How to Offer an Entity or Dictionary as an Add-on
 
-1. In the library, open the entity or dictionary and select **Publish**.
-2. Set **Listing** to **Public**. An **Unlisted** listing can't be an add-on.
-3. Under **Compatible Worlds**, check **Offer as add-on** for each world.
-4. Select **Publish**. The world's author then reviews the offer.
+1. In the library, open the entity or dictionary.
+2. Select **Publish**.
+3. Set **Listing** to **Public**. An **Unlisted** listing can't be an add-on.
+4. Under **Compatible Worlds**, check **Offer as add-on** for each world.
+5. Select **Publish**. The world's author then reviews the offer.
 
 ## How to Review Add-ons for Your World
 
-1. In Community Creations, find your own published world and select **Manage Add-ons**.
-2. **Show** starts on **Needs Attention**. Set each offer to **Approved**, **Unreviewed** or **Declined**. **Mark Reviewed** accepts a changed source and keeps your answer.
-3. Select **Save Changes**.
+1. In Community Creations, find your own published world.
+2. Select **Manage Add-ons**.
+3. **Show** starts on **Needs Attention**. Set each offer to **Approved**, **Unreviewed** or **Declined**. **Mark Reviewed** accepts a changed source and keeps your answer.
+4. Select **Save Changes**.
 
 ## How to Import an Entity or Dictionary File
 
-1. In the library, select **Import Entity** or **Import Dictionary**, and pick one file.
-2. If the file names worlds, the import review opens. Under **Add to Your Worlds**, check each world that should get a linked copy.
-3. Select **Import Entity** or **Import Dictionary**.
+1. In the library, select **Import Entity** or **Import Dictionary**.
+2. Pick one file.
+3. If the file names worlds, the import review opens. Under **Add to Your Worlds**, check each world that should get a linked copy.
+4. Select **Import Entity** or **Import Dictionary**.
 
 See [Importing an Entity or Dictionary File](#importing-an-entity-or-dictionary-file).
 
