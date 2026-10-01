@@ -69,6 +69,9 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q30 | The docs lookup is an app-internal function call, outside the Tool catalog. A new ADR records it |
 | Q31 | 26 tickets: paired docs pages share a ticket; the known-gaps list shrinks ticket by ticket and ticket 13 deletes it |
 | Q32 | The Formaquestion tickets run beside the docs tickets. Only the probe baseline waits for complete docs |
+| Q33 | Window structure A: three tabs (Ask, Search, Guide), one part at a time. Refines Q13 (ticket 14) |
+| Q34 | The launcher is a tab on the right screen edge at mid height, in the window's top layer. Refines Q22. The bottom-right corner covers Send on mobile (ticket 14) |
+| Q35 | The window opens and closes with motion: it zooms out of the launcher and back, and the mobile sheet slides from the right edge. Reduced motion shows and hides at once. Durations are the prototype's (200ms open, 150ms close) until the patterns are approved (ticket 14) |
 
 ## User Stories
 
