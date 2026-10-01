@@ -5,7 +5,7 @@ import { seedDevRouteFromEnv } from './devRouter';
 import { DEV_PUBLISH_SAMPLES } from './devPublishSample';
 import { BROWSE_TABS } from './browseTabs';
 import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
-import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
+import { SETTINGS_ENDPOINT_TABS, SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { TOOL_EDIT_TABS } from '@/components/modals/toolsView';
 import { PROMPT_SURFACE_ROUTES, PRESET_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
@@ -130,6 +130,10 @@ describe('dev-router coverage guard', () => {
   // renamed there without updating the DEV_MODAL_TABS ledger, this fails — forcing conscious coverage.
   it('ledger lists exactly the Settings modal tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.settings]).toEqual(SETTINGS_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the Endpoints tabs the surface renders', () => {
+    expect([...DEV_MODAL_TABS.settingsEndpoints]).toEqual(SETTINGS_ENDPOINT_TABS.map((t) => t.route));
   });
 
   // Drift guard for the third level: a new prompt surface must be consciously made routable.

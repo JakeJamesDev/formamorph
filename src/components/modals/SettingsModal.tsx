@@ -5,7 +5,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { useTheme } from '../theme-provider';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
-import { settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
+import { endpointTabForRoute, settingsTabsFor, SETTINGS_ENDPOINT_TABS, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
 import { blankTool } from '@/lib/tools/toolDraft';
@@ -502,8 +502,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // Asking for a tab Simple hides is asking for Advanced: `goto('settings', { tab: 'prompts' })` and the
   // image dialog's jump to the Tag Prompt editor both name a destination, and landing somewhere else
   // instead is the dev-router failure that is hardest to notice.
+  // A dev-router `tab=endpoints&subtab=…` names an Endpoints tab, the same slot the Tools tab reads.
+  const requestedEndpointTab = initialEndpointTab
+    ?? (initialTab === 'endpoints' ? endpointTabForRoute(initialPromptTab) : undefined);
   const wantsAdvancedTab = (!!initialTab && settingsTabsFor(false).every((t) => t.value !== initialTab))
-    || initialEndpointTab === 'img-tagprompt';
+    || requestedEndpointTab === 'img-tagprompt';
   const [mode, setModeState] = useState<SettingsMode>(() =>
     forcedMode ?? routeMode ?? (wantsAdvancedTab ? 'advanced' : readSettingsMode()));
   const setMode = useCallback((next: SettingsMode) => { setModeState(next); writeSettingsMode(next); }, []);
@@ -522,7 +525,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('settings', { active: isOpen });
   const dismissTutorial = useCallback(() => { if (tutorial) dismiss(tutorial.id); }, [tutorial, dismiss]);
   const [activeTab, setActiveTab] = useState<string>(initialTab ?? visibleTabs[0].value);
-  const [endpointTab, setEndpointTab] = useState<string>(initialEndpointTab ?? 'text-endpoint');
+  const [endpointTab, setEndpointTab] = useState<string>(requestedEndpointTab ?? 'text-endpoint');
   // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
   useEffect(() => {
     if (!visibleTabs.some((t) => t.value === activeTab)) setActiveTab(visibleTabs[0].value);
@@ -575,7 +578,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   };
   // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
-  useEffect(() => { if (initialEndpointTab) setEndpointTab(initialEndpointTab); }, [initialEndpointTab]);
+  useEffect(() => { if (requestedEndpointTab) setEndpointTab(requestedEndpointTab); }, [requestedEndpointTab]);
   const settings = useSettings();
   const imageAttachmentsOn = useImageAttachments();
   const {
@@ -1456,9 +1459,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           <TabsContent value="endpoints" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <Tabs value={activeEndpointTab} onValueChange={setEndpointTab} className="flex flex-col flex-1 min-h-0">
               <TabsList className={`grid w-full flex-shrink-0 ${imageGenDisabled || !advanced ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                <TabsTrigger value="text-endpoint">Text</TabsTrigger>
-                <TabsTrigger value="img-endpoint">Image</TabsTrigger>
-                {!imageGenDisabled && advanced && <TabsTrigger value="img-tagprompt">Tag Prompt</TabsTrigger>}
+                {SETTINGS_ENDPOINT_TABS
+                  .filter((t) => !('advancedOnly' in t) || (advanced && !imageGenDisabled))
+                  .map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               {/* Preset selector: swaps the whole endpoint field set. The read-only built-ins are the shared

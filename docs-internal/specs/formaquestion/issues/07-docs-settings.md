@@ -1,6 +1,7 @@
 # 07: New page, Settings
 
-Status: ready-for-agent
+Status: in-progress
+Base: 618cf31e
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

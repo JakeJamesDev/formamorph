@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The wiki has a new Settings page that explains each setting in the Display, Output, Endpoints and Data tabs.** It marks the settings that show in Advanced mode only, and gives numbered steps to change the narration layout, turn on a thinking mode, limit active characters and restore the default worlds.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

@@ -8,6 +8,7 @@
 - [🧠 Story Memory](Memory)
 - [🎭 Entities in Play](Entities)
 - [🪪 Personas](Personas)
+- [⚙️ Settings](Settings)
 
 **Reference**
 - [✍️ Text Formatting](TextFormatting)
