@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { useSurface } from '@/lib/surface/useSurface';
 import { renderReporting as render } from '@/test/surfaceReporter';
-import { SurfaceLayer, SurfaceTab, useSurfaceTab } from './surface';
+import { SurfaceLayer, SurfaceReporterContext, SurfaceTab, useSurfaceTab } from './surface';
 
 afterEach(cleanup);
 
@@ -140,6 +140,21 @@ describe('with no reporter', () => {
     );
     expect(screen.getByText('Body')).toBeInTheDocument();
     expect(surfaceRegistry.get()).toEqual({ screen: null, dialog: null, tabs: [] });
+  });
+});
+
+describe('a reporter that arrives late', () => {
+  it('gets the entries that were already mounted, each at its own place', () => {
+    const tree = (
+      <SurfaceLayer id="mainMenu">
+        <TabHost ledger="mainMenu" tab="models" />
+        <SurfaceLayer id="backup" />
+      </SurfaceLayer>
+    );
+    const view = renderBare(<SurfaceReporterContext.Provider value={null}>{tree}</SurfaceReporterContext.Provider>);
+    expect(surfaceRegistry.get()).toEqual({ screen: null, dialog: null, tabs: [] });
+    view.rerender(<SurfaceReporterContext.Provider value={surfaceRegistry}>{tree}</SurfaceReporterContext.Provider>);
+    expect(surfaceRegistry.get()).toEqual({ screen: 'mainMenu', dialog: 'backup', tabs: [] });
   });
 });
 

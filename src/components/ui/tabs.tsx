@@ -20,7 +20,7 @@ const Tabs = React.forwardRef<
       value={value}
       defaultValue={defaultValue}
       onValueChange={(next) => {
-        setOwn(next)
+        if (value === undefined) setOwn(next)
         onValueChange?.(next)
       }}
       {...props} />

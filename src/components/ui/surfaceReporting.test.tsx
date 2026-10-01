@@ -74,6 +74,43 @@ describe('the shared dialog', () => {
   });
 });
 
+describe('a dialog with no surface', () => {
+  it('reports nothing, and keeps the tabs inside it out of the screen under it', () => {
+    render(
+      <SurfaceLayer id="mainMenu">
+        <Dialog open>
+          <DialogContent aria-describedby={undefined}>
+            <DialogTitle>Confirm</DialogTitle>
+            <Tabs surfaceTabs="settings" value="display"><TabsList><TabsTrigger value="display">Display</TabsTrigger></TabsList></Tabs>
+          </DialogContent>
+        </Dialog>
+      </SurfaceLayer>,
+    );
+    expect(surface()).toEqual({ screen: 'mainMenu', dialog: null, tabs: [] });
+  });
+
+  it('keeps what the player typed when its surface starts or stops', async () => {
+    function Picker({ reports }: { reports: boolean }) {
+      return (
+        <Dialog open>
+          <DialogContent surface={reports ? 'menu' : undefined} aria-describedby={undefined}>
+            <DialogTitle>Saves</DialogTitle>
+            <input aria-label="Filter" />
+          </DialogContent>
+        </Dialog>
+      );
+    }
+    const view = render(<Picker reports />);
+    await userEvent.type(screen.getByRole('textbox', { name: 'Filter' }), 'autumn');
+    view.rerender(<Picker reports={false} />);
+    expect(screen.getByRole('textbox', { name: 'Filter' })).toHaveValue('autumn');
+    expect(surface().dialog).toBeNull();
+    view.rerender(<Picker reports />);
+    expect(screen.getByRole('textbox', { name: 'Filter' })).toHaveValue('autumn');
+    expect(surface().dialog).toBe('menu');
+  });
+});
+
 describe('the shared tab strips', () => {
   it('reports the tab of a strip that keeps its own value', async () => {
     render(<SettingsDialog open uncontrolled />);
