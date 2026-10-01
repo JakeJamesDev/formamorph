@@ -118,6 +118,27 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'settingsToolEdit.parameters': { page: 'Tools', anchor: 'parameters' },
   'settingsToolEdit.handler': { page: 'Tools', anchor: 'handler' },
 
+  community: { page: 'Community-Creations', anchor: '-community-creations' },
+  ...Object.fromEntries(
+    tabsOf('community').map((id) => [id, { page: 'Community-Creations', anchor: id === 'community.contest' ? 'contests' : 'the-tabs' }]),
+  ),
+  publish: { page: 'Community-Creations', anchor: 'the-publish-dialog' },
+  'publish.world': { page: 'Community-Creations', anchor: 'the-publish-dialog' },
+  'publish.prompt': { page: 'Community-Creations', anchor: 'publishing-a-prompt-preset' },
+  eventAck: { page: 'Community-Creations', anchor: 'event-posters-and-banners' },
+  ...Object.fromEntries(tabsOf('eventAck').map((id) => [id, { page: 'Community-Creations', anchor: 'event-posters-and-banners' }])),
+  ageGate: { page: 'Community-Creations', anchor: 'the-adult-content-warning' },
+  auth: { page: 'Community-Creations', anchor: 'login-and-register' },
+  privacyPolicy: { page: 'Community-Creations', anchor: 'the-privacy-policy' },
+  profile: { page: 'Community-Creations', anchor: 'the-user-profile-dialog' },
+  'profile.messages': { page: 'Community-Creations', anchor: 'the-user-profile-dialog' },
+  'profile.notifications': { page: 'Community-Creations', anchor: 'the-follow-feed' },
+  'profile.terms': { page: 'Community-Creations', anchor: 'publishing-terms' },
+  deleteAccount: { page: 'Community-Creations', anchor: 'account-deletion' },
+  deletionCancelled: { page: 'Community-Creations', anchor: 'account-deletion' },
+  feedbackHub: { page: 'Community-Creations', anchor: 'bugs-and-suggestions' },
+  ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, { page: 'Community-Creations', anchor: 'bugs-and-suggestions' }])),
+
   'worldEditor.overview': { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   'worldEditor.stats': { page: 'World-Editor-Stats', anchor: '-world-editor-stats' },
   'worldEditor.entities': { page: 'World-Editor-Entities', anchor: '-world-editor-entities' },
@@ -166,12 +187,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 
 /** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
-  // Community Creations
-  '10': [
-    'community', 'profile', 'auth', 'feedbackHub', 'eventAck', 'publish', 'ageGate',
-    'privacyPolicy', 'deleteAccount', 'deletionCancelled', ...tabsOf('community'), ...tabsOf('publish'),
-    ...tabsOf('profile'), ...tabsOf('feedbackHub'), ...tabsOf('eventAck'),
-  ],
   // Avatars, Image Generation
   '11': ['avatar', 'modelDetails'],
   // Test Bench, editor basics. Every tour step maps to the one Authoring Tour heading.

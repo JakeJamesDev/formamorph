@@ -12,6 +12,7 @@
 - [🧠 Story Memory](Memory)
 - [🎭 Entities in Play](Entities)
 - [🪪 Personas](Personas)
+- [🌐 Community Creations](Community-Creations)
 - [⚙️ Settings](Settings)
   - [📜 Prompts](Prompts)
   - [🧰 Tools](Tools)
