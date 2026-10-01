@@ -25,7 +25,7 @@ To test scan depth, open **History** and paste earlier messages, oldest first.
 ## How to Preview the Opening
 
 1. Open the Test Bench, then select the **Opening** tab.
-2. Pick a character in **Testing as**.
+2. In **Testing as**, pick who you play.
 3. Read the **Opening Pool**. Select an opening to see what it sends on turn one.
 4. Select **Reroll** to draw new Wildcard values.
 
@@ -41,7 +41,7 @@ Where a result ends in the AI's choice, the bench says so. For example, **AI Con
 
 The **Test Bench** flask button sits at the right of the World Editor's header. Its badge counts findings.
 
-- A bright badge counts new findings: ones you haven't seen yet.
+- An amber badge counts new findings: ones you haven't seen yet.
 - A gray badge counts every finding, after you've seen them all.
 
 ### The Bench Popover
@@ -63,9 +63,9 @@ On desktop, the panel can sit inside the editor's list panel or beside it. Selec
 
 ### Testing As and At
 
-**Triggers**, **AI Context** and **Opening** read the bar under the tabs: **Testing as** a character, **at** a location.
+**Triggers**, **AI Context** and **Opening** read the bar under the tabs: **Testing as** who you play, **at** a location.
 
-- **Testing as** lists the traits in groups where the player picks one. **Anyone** tests with no character.
+- **Testing as** lists the traits in groups where the player picks one. **Anyone** tests with no pick.
 - **at** lists every location. **Nowhere** tests with no location.
 
 Your pick stays when you switch tabs. A broken pin on the picked character shows in red under the bar.

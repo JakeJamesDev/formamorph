@@ -1,6 +1,6 @@
 # 12: New page, Test Bench, and editor basics
 
-Status: in-progress
+Status: ready-for-human
 Base: 748f020c
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -22,9 +22,9 @@ Recommended model rationale: one new page and one extension over well-bounded ed
 
 ## Acceptance criteria
 
-- [ ] The Test Bench page exists, follows the writing guide and uses exact control names
-- [ ] Every bench Instrument and tab maps to a heading
-- [ ] The World Editor index covers modes, search, the tour and discard
-- [ ] The sidebar and the home index list the new page
-- [ ] The known-gaps entries for these surfaces are removed, and the coverage test passes
-- [ ] Four gates green
+- [x] The Test Bench page exists, follows the writing guide and uses exact control names
+- [x] Every bench Instrument and tab maps to a heading
+- [x] The World Editor index covers modes, search, the tour and discard
+- [x] The sidebar and the home index list the new page
+- [x] The known-gaps entries for these surfaces are removed, and the coverage test passes
+- [x] Four gates green
