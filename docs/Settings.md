@@ -14,6 +14,24 @@ To open it, select **Menu** on the main menu, then **Settings**. During a game, 
 
 The game changes at once. See [Narration](#narration) for what each layout shows.
 
+## How to Color Quoted Speech
+
+1. Open **Settings**.
+2. Open the **Display** tab.
+3. In the **Accessibility** section, select the **Quote Color** checkbox.
+4. To use your own color, set **Light Mode Color** or **Dark Mode Color**. The row names the mode on screen. **Reset to Theme** brings back the theme's color.
+
+To set quoted speech in italic, select **Quote Italic**. It works with or without **Quote Color**.
+
+## How to Change the Narration Font
+
+1. Open **Settings**.
+2. Open the **Display** tab.
+3. In the **Accessibility** section, pick a typeface in the **Narration Font** list.
+4. To tune it, select **Customize…** beside the list.
+
+The font changes the story text only. **Use Global** uses the app's **Font**.
+
 ## How to Turn On a Thinking Mode
 
 1. Open **Settings**.
@@ -25,7 +43,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 ## How to Limit Active Characters
 
 1. Open **Settings**.
-2. Select **Advanced** next to the title.
+2. In the switch next to the title, select **Advanced**.
 3. Open the **Output** tab.
 4. Under **Thinking**, select **Staged**. The **Limit Active Characters** row shows only in this mode.
 5. Select the **Limit Active Characters** checkbox.
@@ -34,7 +52,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 ## How to Restore Default Worlds
 
 1. Open **Settings**.
-2. Select **Advanced** next to the title.
+2. In the switch next to the title, select **Advanced**.
 3. Open the **Data** tab.
 4. In the **Storage** section, select **Restore Default Worlds**. The button is off when you have deleted none of the bundled worlds.
 5. Select **Confirm** in **Restore Default Worlds**.
@@ -138,7 +156,7 @@ Turn on **Show Reasoning** to read what a mode wrote.
 | Setting | What it does |
 |---|---|
 | **Limit Active Characters** | **Advanced**, **Staged** only. Sets the largest number of entities the director stages each turn. Each staged entity adds its own request. With the checkbox off, the scene stages as many as it needs. |
-| **Native Reasoning** | **Advanced.** Sets whether a reasoning model thinks, and how hard. The checkbox turns reasoning off. The list sets the effort, and **Model Default** sends no hint. Every prompt set to **Global** follows this row. A model with no native reasoning shows a note here in place of the control. |
+| **Native Reasoning** | **Advanced.** Sets whether a reasoning model thinks, and how hard. The checkbox turns reasoning off. The list sets the effort, and **Model Default** sends no hint. Every prompt set to **Global** follows this row. A model with no native reasoning shows a note here in place of the control. A model that always reasons keeps the checkbox on, with a note. |
 
 ### Tools
 
@@ -202,26 +220,26 @@ The **Preset** list holds your saved endpoints. **Default** is the shared cloud 
 | **Model Name** | The model the endpoint uses, exactly as the server names it |
 | **Context Window (tokens)** | **Advanced.** How much the model keeps in context. **Detect** asks the server. |
 | **Max Output Tokens** | **Advanced.** Caps how long each answer can be. It does not cap reasoning. Select **Override endpoint limit** to set it; without it, there is **No Limit**. |
-| **Sampling** | **Advanced.** **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a switch. A switch that is off sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
+| **Sampling** | **Advanced.** A section of five rows: **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a switch. A switch that is off sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
 
 **Reset AI Endpoint** sets the URL, model name, token and limits back to their defaults.
 
 ### Built-In Engine
 
-On the desktop app, the **Built-In Engine** preset shows the engine's own panel in place of the fields. It has its own **Simple** and **Advanced** switch. See [The Desktop Engine](Connect-Your-Own-AI#the-desktop-engine).
+On the desktop app, the **Built-In Engine** preset shows the engine's own panel in place of the fields. It has its own **Simple** and **Advanced** switch. Every row below **Local Model** is in the **Engine** section. See [The Desktop Engine](Connect-Your-Own-AI#the-desktop-engine).
 
 | Setting | What it does |
 |---|---|
 | **Local Model** | **Manage Models…** opens the **Local model** dialog to download and load a model |
 | **Context Size** | How much recent story the model can see. More context uses more GPU memory. Lower it first when a model does not fit. |
-| **GPU** | Simple only. Runs the model on the GPU. Off runs it on the CPU, which is slower. |
-| **GPU Layers**, **Layers** | Advanced only. **Auto** puts as many layers on the GPU as fit. **Max** puts all of them there and can run out of memory. **Custom** sets the count in **Layers**. |
-| **GPU Device** | Which GPU loads the model. **Auto** picks your discrete GPU. **All GPUs** splits a model across every GPU. Shows while the GPU is in use. |
-| **Flash Attention** | Advanced only. Uses less GPU memory and is often faster. Turn it off only if an old GPU cannot run it. |
-| **Parallel Requests** | Advanced only. How many requests the model answers at the same time. More is faster, but each request gets less context and more GPU memory goes to them. |
-| **Temperature** | How bold each word choice is. About 0.7 fits most story models. |
+| **GPU** | **Simple** on the panel. Runs the model on the GPU. Off runs it on the CPU, which is slower. |
+| **GPU Layers**, **Layers** | **Advanced** on the panel. **Auto** puts as many layers on the GPU as fit. **Max** puts all of them there and can run out of memory. **Custom** sets the count in **Layers**. |
+| **GPU Device** | Which GPU loads the model. **Auto** uses your discrete GPU, or all of them when you have more than one, or the integrated GPU when you have none. **All GPUs** always splits a model across every GPU. Pick a GPU by name to use only that one. Shows while the GPU is in use. |
+| **Flash Attention** | **Advanced** on the panel. Uses less GPU memory and is often faster. Turn it off only if an old GPU cannot run it. |
+| **Parallel Requests** | **Advanced** on the panel. How many requests the model answers at the same time. More is faster, but each request gets less context and more GPU memory goes to them. |
+| **Temperature** | How much randomness the model uses when it picks each word. About 0.7 fits most story models. |
 | **Max Output Tokens** | Caps how long each answer can be. An answer at the cap ends at its last full sentence. |
-| **Top-p**, **Top-k**, **Min-p**, **Repetition Penalty** | Advanced only. Sampling limits on which words the model picks. |
+| **Top-p**, **Top-k**, **Min-p**, **Repetition Penalty** | **Advanced** on the panel. Sampling limits on which words the model picks. |
 
 Sampling changes apply on the next turn. The other changes need **Save & Reload Model**. **Reset to Defaults** sets the panel back.
 
@@ -231,15 +249,25 @@ Sampling changes apply on the next turn. The other changes need **Save & Reload 
 |---|---|
 | **Preset** | Your saved image endpoints. You can edit each one, **Default** too. |
 | **Enable Image Generation** | Shows the **Generate with AI** buttons. Off hides the rest of this tab and **Scene Images**. |
+
+The **Connection** section sets which server makes the images.
+
+| Setting | What it does |
+|---|---|
 | **Provider** | ComfyUI, InvokeAI, Automatic1111 / Forge, NovelAI, or an OpenAI-compatible service on the desktop app. **How to Set Up** shows the steps for the picked provider. |
 | **Endpoint URL**, **API Token** | The image server address and its token |
 | **Model** | The checkpoint that makes the image |
+
+The **Image** section sets how each image is made.
+
+| Setting | What it does |
+|---|---|
 | **Prompt Prefix** | Quality and style tags put before every image prompt |
 | **Negative Prompt** | Tags the image must not have |
 | **Portrait (W × H)**, **Landscape (W × H)** | **Advanced.** Image sizes. Portraits are for entities. Landscapes are for locations and thumbnails. |
 | **Steps / CFG** | Sampling steps and how closely the image follows the prompt |
 | **Sampler** | The sampling method |
-| **Face Fix** | Automatic1111 / Forge and InvokeAI only. Draws faces again in a second pass. On InvokeAI it about doubles the time. |
+| **Face Fix** | Automatic1111 / Forge and InvokeAI only. Draws faces again in a second pass. On Automatic1111 / Forge it needs the **ADetailer** extension on your server. On InvokeAI it about doubles the time. |
 | **Workflow (API Format)** | **Advanced**, ComfyUI only. Replaces the default ComfyUI graph. **How to Get This** shows how to export one. |
 | **Board** | **Advanced**, InvokeAI only. The InvokeAI board that gets the images |
 | **Qwen3 Encoder**, **Z-Image VAE**, **Anima VAE** | **Advanced**, InvokeAI only. Shows for a Z-Image or Anima model. Leave them empty to pick one automatically. |
