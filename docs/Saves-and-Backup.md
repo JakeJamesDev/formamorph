@@ -1,6 +1,6 @@
 # 💾 Saves and Backup
 
-A save keeps one game's progress. A backup keeps everything you made or downloaded: worlds, saves, entities and dictionaries, in one file. Formamorph keeps all of it on your device. It sends an item to a server only when you publish it.
+A save keeps one game's progress. A backup keeps your worlds, saves, library entities and library dictionaries in one file. Formamorph keeps all of it on your device. It sends an item to a server only when you publish it.
 
 > To start a new game instead, see [Starting a Game](Starting-a-Game).
 
@@ -40,7 +40,7 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 
 Each save goes into the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
 
-## How to Back Up Everything
+## How to Make a Backup
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Backup** button.

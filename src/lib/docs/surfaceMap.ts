@@ -196,12 +196,3 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   avatar: { page: 'Avatars', anchor: 'character-customization' },
   modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },
 };
-
-/** A Formaquestion docs ticket that writes a missing section (`docs-internal/specs/formaquestion/issues/`). */
-export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' | '11' | '12';
-
-/** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
-export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {};
-
-/** Help topics with no docs heading yet, by owning ticket. */
-export const KNOWN_HELP_TOPIC_GAPS: Partial<Record<DocsTicket, readonly string[]>> = {};

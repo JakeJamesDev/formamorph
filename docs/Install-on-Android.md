@@ -106,11 +106,11 @@ The update dialog has a **Release channel** selector. Set it to **Pre-release** 
 
 ## 📤 Save Exports to a Folder
 
-Exporting on Android opens Android's **Save As** picker. That covers worlds, saves, backups, dictionaries, presets, stat-code packs, character cards, avatars, stories, and AI-context dumps.
+Exporting on Android opens Android's **Save As** picker. That covers worlds, saves, backups, dictionaries, presets, stat-code packs, entity cards, avatars, stories, and AI-context dumps.
 
 The file stays in the folder you choose. Canceling the picker leaves without saving or showing an error.
 
-**Importing needs no new steps.** A world, save, character card, or VRM comes in through the normal file picker, the same as on desktop.
+**Importing needs no new steps.** A world, save, entity card, or VRM comes in through the normal file picker, the same as on desktop.
 
 ## 🏠 A Model on Your Own Network
 

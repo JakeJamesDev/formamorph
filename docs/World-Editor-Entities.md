@@ -8,7 +8,7 @@ Entities are the people, creatures and things in your world: a ferryman, an eel-
 
 Without entities, the narrator invents a stranger, names them, and forgets both by the next turn. An entity is a fixed person or thing the story can come back to. The AI reads about it again each time the player is at one of its locations.
 
-The default prompt introduces entities as "Characters and things that **may** appear in this location". That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the prompt editor.
+The default prompt introduces entities as "Characters and things that **may** appear in this location". That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the [prompt editor](Prompts#how-to-edit-a-prompt).
 
 ## How to Add an Entity
 
@@ -140,7 +140,7 @@ An entity can have its own openings, so it can start the scene in its own voice.
 
 ## Images and models
 
-The image and the 3D model are for the player's screen. **Image Tags** are booru tags for AI image generation only. The ✨ toolbar can write a draft of the tags from the description. When you upload an image that has a prompt in its file, the editor offers to use that prompt. The narrator reads none of this.
+The image and the 3D model are for the player's screen. **Image Tags** are booru tags for AI [image generation](Image-Generation#scene-images) only. The ✨ toolbar can write a draft of the tags from the description. When you upload an image that has a prompt in its file, the editor offers to use that prompt. The narrator reads none of this.
 
 An image field takes an uploaded file or a web address. See [Upload or link](World-Editor-Overview#upload-or-link).
 

@@ -55,7 +55,7 @@ See [Sharing a Preset](#sharing-a-preset) for what a shared preset holds.
 
 ## How to Publish a Prompt Preset
 
-You must sign in to Community Creations to publish.
+You must log in to Community Creations to publish. See [Login and Register](Community-Creations#login-and-register).
 
 1. Select your own preset in the **Preset** list.
 2. Select **Overview** at the top of the list of prompts.
@@ -68,10 +68,10 @@ Without a model in **Models**, **Publish** opens **Add a Model**. Select **Open 
 ## How to Use a Preset for One World
 
 1. On the main menu, select the world.
-2. Under the world's details, open the **Prompts** list.
+2. In the world dialog, open the **Prompts** list.
 3. Select a preset. **Use global preset** goes back to the preset that Settings has active.
 
-That world now runs on the preset you picked. Your other worlds do not change. A library folder can also carry a preset, and the list then shows **Use group preset**. The world's own pick comes first.
+That world now runs on the preset you picked. Your other worlds do not change. A library [Group](Library#groups) can also carry a preset, and the list then shows **Use group preset**. The world's own pick comes first.
 
 While you play a world with its own preset, the **Prompts** tab edits that world's pick. A note under the **Preset** list tells you so.
 
@@ -103,7 +103,7 @@ The buttons next to the **Preset** list act on the active preset. On a narrow sc
 |---|---|
 | **Rename** | Changes your preset's name |
 | **Export** | Opens the share code and the `.json` download. Built-in presets have it too. |
-| **Publish** | Lists your preset in Community Creations. Shows while you are signed in. |
+| **Publish** | Lists your preset in Community Creations. Shows while you are logged in. |
 | **Reset** | Sets every prompt in your preset back to its shipped text |
 | **Delete** | Removes your preset |
 
@@ -159,7 +159,7 @@ The list on the left groups the prompts by the job they do. A prompt shows only 
 | **Summaries** | Memory | Condenses an older turn into one line that the AI can still read later. Runs when a turn is too old to go word for word. | **Memory Summaries** is on |
 | **Milestone Select** | Memory | Decides between turns which summaries stay in long-term memory | **Memory Summaries** is on |
 | **Diary** | Memory | Writes a private, first-person note from each present entity. Runs when a turn is too old to go word for word. | **Character Diaries** is on and **Thinking** is **Staged** |
-| **Scene Tags** | Images | Tags the action of the scene for the scene image, after narration | **Enable Image Generation** is on |
+| **Scene Tags** | Images | Tags the action of the scene for the [scene image](Image-Generation#scene-images), after narration | **Enable Image Generation** is on |
 
 The settings in the last column are in Settings → **Output**, and **Enable Image Generation** is in Settings → **Endpoints** → **Image**. See [Settings](Settings). A line above each editor repeats what the prompt does.
 

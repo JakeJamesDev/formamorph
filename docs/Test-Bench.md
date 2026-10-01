@@ -11,7 +11,7 @@ The bench shows only what the app computes from your world. It never calls the A
 3. Select a name on a finding to go to that item in the editor.
 4. Select **Fix** or **Fix All** when a finding has one. Otherwise, edit the item yourself.
 
-The list updates as you edit. To see every tool, select **Open Test Bench** at the bottom of the popover.
+The list updates as you edit. To see the full bench, select **Open Test Bench** at the bottom of the popover.
 
 ## How to Test Which Dictionary Entries Trigger
 
@@ -68,7 +68,7 @@ On desktop, the panel can sit inside the editor's list panel or beside it. Selec
 - **Testing as** lists the traits in groups where the player picks one. **Anyone** tests with no pick.
 - **at** lists every location. **Nowhere** tests with no location.
 
-Your pick stays when you switch tabs. A broken pin on the picked character shows in red under the bar.
+Your pick stays when you switch tabs. A broken pin on your **Testing as** pick shows in red under the bar.
 
 ## Issues
 
@@ -111,7 +111,7 @@ The **AI Context** tab shows what the AI gets from the location in the **at** li
 
 ## Opening
 
-The **Opening** tab shows turn one of a new game as the **Testing as** character.
+The **Opening** tab shows turn one of a new game for your **Testing as** pick.
 
 - **Persona** picks who you play, when the world has persona choices.
 - **Opening Pool** lists every opening a new game here can draw, with its chance.

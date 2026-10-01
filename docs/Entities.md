@@ -14,7 +14,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 
 1. On the main menu, select a world.
 2. Select **Enter World**.
-3. Open the **Library Additions** category.
+3. Open the **Library Additions** category. See [Library Additions](Starting-a-Game#library-additions).
 4. Select the entities and dictionaries from your library that this game should have.
 5. To start future games in this world with the same picks, select **Remember Additions**.
 6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
@@ -74,7 +74,7 @@ That keeps your **Entities** tab to the ones actually in the room with you.
 
 ## Descriptions
 
-Settings → **Output** → **Characters** → **Describe New Characters**. The **Characters** section shows in **Advanced** mode only.
+[Settings](Settings#characters) → **Output** → **Characters** → **Describe New Characters**. The **Characters** section shows in **Advanced** mode only.
 
 Turn this on, and each invented entity also gets a written description. You can then open it from the **Entities** tab and read who it is, the same as an authored entity.
 

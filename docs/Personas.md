@@ -57,7 +57,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 | **AI-Facing Description** | **Descriptions** | Who you are. |
 | **Image** | **Profile** | Your portrait. It shows in the picker and in the game's side panel. |
 
-The **All | Personas** switch above the grid shows only your personas. That view keeps your folders and tile sizes. Dragging, resizing and folder edits are off while it's on.
+The **All | Personas** switch above the grid shows only your personas. That view keeps your Groups and tile sizes. Dragging, resizing and Group edits are off while it's on. See [The Library Tabs](Library#the-library-tabs).
 
 > 💡 Narration still says "you". Entities use your name only after they learn it in the story.
 

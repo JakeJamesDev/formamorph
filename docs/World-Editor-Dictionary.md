@@ -33,7 +33,7 @@ The rule: **if the AI reads it, it can activate an entry.** A **turn** is one ac
 | **Your notes** and the **action** you sent | Always |
 | **Earlier turns**: your actions and the AI's narration | As far back as the entry's **Scan Depth** |
 
-> 💡 Keywords match **the exact text the AI gets**. Where your prompt sends a *summary*, the game scans the summary. A keyword that is only in an entity's full description doesn't match when the AI got the short form. Check which form your prompt sends in **Settings → Prompts** (Advanced mode only).
+> 💡 Keywords match **the exact text the AI gets**. Where your prompt sends a *summary*, the game scans the summary. A keyword that is only in an entity's full description doesn't match when the AI got the short form. Check which form your prompt sends in Settings → [Prompts](Prompts) (Advanced mode only).
 
 The scan covers the blocks your prompt uses. If you remove the location, entities or notes chip from your prompt, the game doesn't scan that block.
 
@@ -85,7 +85,7 @@ Two checkboxes change the **Secondary Keywords** test:
 
 ## Semantic Lore
 
-**Semantic Lore** is a player setting in **Settings → Output → Lore**, in Advanced mode. It is off by default. It activates entries by meaning, after the keyword scan. Write *"the ruined tower"*, and an *Old Beacon* entry can activate with no keyword present. It only adds entries. Keyword activation doesn't change.
+**Semantic Lore** is a player setting in [Settings](Settings#lore) → **Output** → **Lore**, in Advanced mode. It is off by default. It activates entries by meaning, after the keyword scan. Write *"the ruined tower"*, and an *Old Beacon* entry can activate with no keyword present. It only adds entries. Keyword activation doesn't change.
 
 ## Background and Foreground
 
@@ -99,7 +99,7 @@ By default, Background comes earlier in the prompt than Foreground. **You contro
 
 Books group related entries. The order of the books sets the order of the injected entries. Disable a book to turn off every entry in it.
 
-A book's **Enabled** state is a *default* that the player can change. Before a game starts, the player can get a step that lets them enable, disable and reorder your books, together with the dictionaries from their own library. The step shows only when there's a choice to make: the world has more than one book, or the player's library has one dictionary at least.
+A book's **Enabled** state is a *default* that the player can change. Before a game starts, the player can get a step that lets them enable, disable and reorder your books, together with the dictionaries from their own library. See [Library Additions](Starting-a-Game#library-additions). The step shows only when there's a choice to make: the world has more than one book, or the player's library has one dictionary at least.
 
 Select a book in the tree to open its panel. It has two tabs.
 

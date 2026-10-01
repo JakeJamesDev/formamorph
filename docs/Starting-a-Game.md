@@ -64,7 +64,7 @@ Select a world in the library to open it. The dialog shows the world's author an
 | **Duplicate World** | Makes a copy of the world |
 | **Export World** | Saves the world as a file |
 | **Make Available Offline** | Downloads the world's linked images. Shows only for a world that has them. |
-| **Publish World** | Publishes the world to Community Creations. Shows when you are signed in. |
+| **Publish World** | Publishes the world to Community Creations. Shows when you are logged in. |
 
 Under the buttons:
 

@@ -182,13 +182,13 @@ A [blueprint chip](#blueprint-chips) works only in the text of an original trait
 
 ## Placeholders that belong to an entity or a dictionary
 
-An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. These placeholders travel with their owner in a character card, a dictionary file and a published listing. They show under their owner in the list, not in a group.
+An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. These placeholders travel with their owner in an entity card, a dictionary file and a published listing. They show under their owner in the list, not in a group.
 
 ## Groups
 
 Groups are folders for the shared list, like the groups on the **Entities** tab. The **+** menu offers **Add Group**, **Add Placeholder** and **Add Blueprints Group**. Drag a placeholder under a group to put it there, and drag a group under another group to nest it.
 
-Groups are for the editor only. They **never reach the AI**, and a character card or a dictionary file doesn't keep them.
+Groups are for the editor only. They **never reach the AI**, and an entity card or a dictionary file doesn't keep them.
 
 ## Blueprints
 
@@ -196,7 +196,7 @@ A blueprint is a placeholder that exists to be copied. Each entity that needs it
 
 Select **+**, then **Add Blueprints Group**. A group named **Blueprints** appears. It works like the [Blueprints group of the Traits tab](World-Editor-Traits#blueprints):
 
-- **A world has one Blueprints group.** It stays at the top level and holds world placeholders and folders. **Add Blueprints Group** leaves the menu while one exists.
+- **A world has one Blueprints group.** It stays at the top level and holds world placeholders and groups. **Add Blueprints Group** leaves the menu while one exists.
 - **A blueprint is never a World placeholder.** One placeholder never reads different values in different places. With no Custom Persona entity, the player is the one bearer, so a blueprint reads its own values there.
 - **A move out of the group is refused while something uses the blueprint.** A trait's text or pin, a blueprint value or a copy counts as a use. The notice names each use.
 - **Remove the group, and the same check runs.** An unused group removes with no notice.
@@ -208,9 +208,9 @@ Move a world placeholder into the group to make it a blueprint. The move is refu
 A copy is a placeholder that an entity owns. It reads its blueprint live, and it appears by itself.
 
 - **A copy appears when a trait needs it.** Add, link or move a trait that pins or places a blueprint, and its bearer gets a copy. Copies of the blueprints that its values place come with it.
-- **A root trait makes copies for every Persona entity** and for the Custom Persona entity, so each playable persona can customize them.
+- **A top-level trait makes copies for every Playable and Persona-Only entity** and for the Custom Persona entity, so each playable persona can customize them.
 - **A copy is named after its blueprint**, such as *Albus.Class Garb*. You can't rename it. Each owner has one copy per blueprint.
-- **A copy stays with its owner.** A drag to another owner, the world list or a folder is refused. **Duplicate** is hidden.
+- **A copy stays with its owner.** A drag to another owner, the world list or a group is refused. **Duplicate** is hidden.
 - **An untouched copy goes when its last use leaves.** A copy you edited stays, so your work is never deleted. The Test Bench notes it.
 
 A copy's panel lists **Blueprint Values** and **Own Values**. A copy is **live until edited**. You change one value at a time:
@@ -226,7 +226,7 @@ A value that the blueprint adds later shows in every copy. A copy keeps its blue
 
 ### Copies in Other Worlds
 
-A character card carries the blueprints its copies reach, so a copy keeps its origin. A library persona's links keep their overrides.
+An entity card carries the blueprints its copies reach, so a copy keeps its origin. A library persona's links keep their overrides.
 
 When an entity joins a world, each copy binds to a blueprint by id, then by unique name. With no match, the copy becomes a plain owned placeholder with its values, and the pins that named the blueprint move to it.
 
