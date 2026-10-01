@@ -202,7 +202,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - It builds on the existing AI Request Spec, AI Stream and tool loop. It does not add a second request path.
 - The request kind is a new editor request kind (Q9). It follows the active endpoint, has a fixed prompt, forces reasoning off and has no Settings tab. Its temperature and penalties are pinned explicitly.
 - Two modes, chosen before the request from the endpoint's known capability:
-  - **Lookup mode:** the request offers a docs lookup function. The prompt carries the contents list and the section mapped to the current surface. The model fetches the sections it needs.
+  - **Lookup mode:** the request offers a docs lookup function. The prompt carries the search hits under the retrieval budget and the section mapped to the current surface, with no contents list (Q49, Q50). The model fetches more sections by search words or by a shown section id.
   - **Retrieval mode:** the app runs the keyword search on the question and puts the top sections in the prompt. No function is offered.
 - The choice is not a retry. A request never goes out twice. This keeps the "no runtime fallback" rule of ADR-0008.
 - The docs lookup is not a Tool (Q30). It never appears in the Tools tab, no preset enables it, and the Output → Tools switch does not affect it. It uses the same capability gate as Tools. A new ADR records this.
