@@ -1,5 +1,5 @@
 /** The docs coverage checks: one readable line per problem, over docs passed in as data. */
-import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK } from './headingAnchors';
+import { docHeadings, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText } from './headingAnchors';
 import { docsHrefs, hrefParts } from './docsLinks';
 
 /** Docs pages by wiki page name (the file name without `.md`). */
@@ -136,8 +136,6 @@ export function indexProblems(pages: DocsPages, indexPage: string): string[] {
     .map((page) => `${indexPage} does not list ${page}`);
 }
 
-const HOW_TO_HEADING = /^How to /;
-
 /** Guide-page "How to…" headings whose next non-blank line is not a keyword line with words in it. */
 export function keywordLineProblems(pages: DocsPages): string[] {
   const problems: string[] = [];
@@ -145,8 +143,8 @@ export function keywordLineProblems(pages: DocsPages): string[] {
     if (NON_GUIDE_PAGES.includes(page)) continue;
     const lines = markdown.split(/\r?\n/);
     for (const heading of docHeadings(markdown)) {
-      const text = heading.text.replace(MARKDOWN_LINK, '$1').replace(/[*`]/g, '').trim();
-      if (!HOW_TO_HEADING.test(text)) continue;
+      const text = plainText(heading.text);
+      if (!isHowToHeading(text)) continue;
       const next = lines.slice(heading.line + 1).find((line) => line.trim() !== '') ?? '';
       const list = KEYWORD_LINE.exec(next)?.[1] ?? '';
       if (!/[\p{L}\p{N}]/u.test(list)) problems.push(`${page}:${heading.line + 1} heading ${text} has no keyword line under it`);

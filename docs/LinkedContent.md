@@ -5,7 +5,7 @@ How a world's entities and dictionaries follow a library item, and what that lin
 > The same story, in short, is the `?` beside the **Linked** badge in the [World Editor](WorldEditor) and in the title bar of **Update Available** and **Update This World**.
 
 ## How to Link a Copy to Your Library
-<!-- keywords: save entity, sync, connect, share between worlds, reuse, library item -->
+<!-- keywords: save entity, sync, connect, share between worlds, reuse, item -->
 
 1. In the World Editor, open the entity or dictionary.
 2. Select **Save to Library**. The copy is saved as a library item and follows it.
@@ -34,7 +34,7 @@ A linked copy of your own item also updates the next time you open its world.
 6. If a source is refused, read the reason and select **Retry**.
 
 ## How to Offer an Entity or Dictionary as an Add-on
-<!-- keywords: addon, extra, optional, dlc, mod, share, compatible -->
+<!-- keywords: extra, optional, dlc, mod, share, compatible -->
 
 1. In the library, open the entity or dictionary.
 2. Select **Publish**.
@@ -43,7 +43,7 @@ A linked copy of your own item also updates the next time you open its world.
 5. Select **Publish**. The world's author then reviews the offer.
 
 ## How to Review Add-ons for Your World
-<!-- keywords: addon, approve, decline, accept, reject, moderate, offers -->
+<!-- keywords: approve, decline, accept, reject, moderate, offers -->
 
 1. In Community Creations, find your own published world.
 2. Select **Manage Add-ons**.
@@ -51,7 +51,7 @@ A linked copy of your own item also updates the next time you open its world.
 4. Select **Save Changes**.
 
 ## How to Repair a Missing Source
-<!-- keywords: broken link, fix, missing, deleted, relink, error, unlink -->
+<!-- keywords: broken link, fix, deleted, relink, error, unlink -->
 
 1. In the World Editor, open the [Test Bench](Test-Bench#issues)'s **Issues** list.
 2. Select **Check Sources**.

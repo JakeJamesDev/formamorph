@@ -5,7 +5,7 @@ Community Creations is where players share what they make. You can download worl
 > Browsing and downloading need no account. Comments, follows, Reports and publishing need you to log in.
 
 ## How to Download a World
-<!-- keywords: get, find, browse, install, community worlds, workshop, online, add to library -->
+<!-- keywords: get, find, browse, install, community, workshop, online, add to library -->
 
 1. On the main menu, select **Community Creations**.
 2. If the **Adult Content Ahead** dialog opens, read it and select **Accept**.
@@ -28,7 +28,7 @@ The world goes into your library. To play it, see [How to Start a Game](Starting
 The listing takes its name, description, image and tags from the world itself. Set them in the World Editor before you publish. See [What a Listing Shows](#what-a-listing-shows).
 
 ## How to Update a Listing
-<!-- keywords: new version, republish, upload again, change, edit published world, push update, changelog -->
+<!-- keywords: new version, republish, upload again, change, edit published world, push, changelog -->
 
 1. Open the item's publish dialog. For a world, select **Publish World** in the world dialog. For other kinds, see [Where to Publish Each Kind](#where-to-publish-each-kind).
 2. Under **Or update existing world:**, select your listing.

@@ -16,7 +16,7 @@ To open it, select **Menu** on the main menu, then **Settings**. During a game, 
 The game changes at once. See [Narration](#narration) for what each layout shows.
 
 ## How to Color Quoted Speech
-<!-- keywords: quotes, dialogue, highlight, talking, italic, colour, text color -->
+<!-- keywords: dialogue, highlight, talking, italic, colour, text -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.
@@ -36,7 +36,7 @@ To set quoted speech in italic, select **Quote Italic**. It works with or withou
 The font changes the story text only. **Use Global** uses the app's **Font**.
 
 ## How to Turn On a Thinking Mode
-<!-- keywords: reasoning, think, planning, smarter, better answers, chain of thought, cot -->
+<!-- keywords: reasoning, planning, smarter, better answers, chain of thought, cot -->
 
 1. Open **Settings**.
 2. Open the **Output** tab.
@@ -45,7 +45,7 @@ The font changes the story text only. **Use Global** uses the app's **Font**.
 The line under the control says what the picked mode does. **Native** adds no thinking step. See [Reasoning](#reasoning) for the cost of each mode.
 
 ## How to Limit Active Characters
-<!-- keywords: entities, max, cap, too many characters, speed, staged, fewer -->
+<!-- keywords: entities, max, cap, too many, speed, staged, fewer -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.
@@ -55,7 +55,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 6. Type the largest number of entities to stage each turn. The default is 5.
 
 ## How to Restore Default Worlds
-<!-- keywords: get back, deleted worlds, bundled, built-in, starter worlds, reinstall, recover -->
+<!-- keywords: get back, deleted, bundled, built-in, starter, reinstall, recover -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.

@@ -1,6 +1,6 @@
 # 27: Search in player words
 
-Status: in-progress
+Status: ready-for-human
 Base: 9a010b82
 Blocked by: 15, 20
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -44,7 +44,7 @@ Recommended model rationale: a pass over every docs page plus a ranking change w
 - ✅ `keywordLineProblems` fails a guide-page "How to…" heading whose next non-blank line is not a keyword line with a word in it.
 - 🧪 Each guard was proven to bite by putting the bug back: keyword terms out of the heading set (3 tests red), keyword line kept in the text (3), no stemming (2), the check never reporting (1), one docs page losing a keyword line (2).
 
-**Question set.** `testing/baseline/help-retrieval-cases.json`: 66 player-worded questions, 2 for each of the 33 docs pages. A subagent wrote them from the section headings only, with no access to the section text. I wrote the keyword lines without reading the questions, and changed no keyword line to fit them after. Four keyword lines changed after the first run, and only to stop them stealing guide-worded questions from other sections.
+**Question set.** `testing/baseline/help-retrieval-cases.json`: 66 player-worded questions, 2 for each of the 33 docs pages. A subagent wrote them from the section headings only, with no access to the section text. I wrote the keyword lines without reading the questions, and changed no keyword line to fit them after. After the first run, four keyword lines lost words that pulled guide-worded questions to the wrong section. After review, every keyword line lost the words its own heading already holds (search unchanged, since those words were heading terms already), and a few fragments that removal left behind.
 
 **Search numbers** (`help-retrieval-probe.cli.ts --before 9a010b82`, no model, exact). "Sent" is the ticket 20 measure: the right section is among the sections retrieval mode puts in the prompt.
 
@@ -53,13 +53,13 @@ Recommended model rationale: a pass over every docs page plus a ranking change w
 | Guide wording, every "How to…" heading (168) | before | 167 (99%) | 161 (96%) | 167 (99%) |
 | | after | **168 (100%)** | 162 (96%) | 168 (100%) |
 | Player wording, blind set (66) | before | 9 (14%) | 6 (9%) | 8 (12%) |
-| | after | **32 (48%)** | 20 (30%) | 31 (47%) |
+| | after | **31 (47%)** | 20 (30%) | 30 (45%) |
 | Ticket 20 guide wording (8) | before | 8 | 8 | 8 |
 | | after | 8 | 8 | 8 |
 | Ticket 20 player wording (8) | before | 2 | 1 | 2 |
 | | after | 8 | 6 | 8 |
 
-The ticket 20 player questions were known while the keywords were written, so the blind set is the honest number.
+The guide-wording rise from 167 to 168 is not a gain: the new hit is ticket 25's screenshot section, which the base commit does not have. Guide wording does not drop on any question. The ticket 20 player questions were known while the keywords were written, so the blind set is the honest number.
 
 **Answer numbers** (`help-probe.cli.ts --runs 6 --before 9a010b82`, cloud default endpoint, 21 cases × 3 arms × 6 runs, one batch of 378 requests, 0 failed). The `before` arm is the same request with the base commit's search.
 
@@ -73,10 +73,22 @@ The ticket 20 player questions were known while the keywords were written, so th
 | | before | – | – | 47% | 100% |
 | Covered (96) | no-docs control | 13% | 7% | 0% | 100% |
 
+These player questions were known while the keywords were written. The blind set has no keyed facts, so its answer run (`help-probe.cli.ts --cases help-retrieval-cases.json --runs 3 --before 9a010b82`, 66 cases × 3 arms × 3 runs, one batch of 594 requests, 0 failed) reads what the model did with what it got:
+
+| Blind set, 198 answers per arm | Numbered steps | Declined | Flagged (not from the guide) | Invented names |
+|---|---|---|---|---|
+| after | **70%** | **18%** | **14%** | 0.24 |
+| before | 54% | 24% | 22% | 0.34 |
+| no-docs control | 86% | 1% | 100% | 1.45 |
+
+When the new search sends the right section, the model answers with steps 96% of the time and flags 1%. When it misses, it flags 25% and declines 32%.
+
 **Findings, not fixed here:**
 
 - 📜 13 of the 34 blind misses rank a released changelog section first. Long changelog sections match many words of a long question, and the coverage factor rewards that. A ranking fix belongs with ticket 26 or 28.
 - 📁 With the right section sent, the model still declines "make a folder" 6 of 6 times: the section says Group and never says folder, and the keyword line is hidden from the model. A docs line such as "A Group is a folder of tiles" would fix the answer; that is a docs content call.
 - ⏱️ `vite-node` start-up took 25–90 s per probe run on this machine today, while other sessions ran their suites.
 
-**Gates:** typecheck 0 (20 s), lint 0 (18 s, 4 warnings in files this ticket does not touch), test 0 (16,094 passed, 125 s wall, exits at once), build 0 (19 s). The harness files typecheck clean under a scratch config with Node types; the root config does not include `testing/`.
+**Review fold-in.** Standards: one shared `plainText` and `isHowToHeading` in `headingAnchors.ts` for the index, the check and the probe; one per-arm index lookup in the answer probe; shorter comments; the keyword-line rule got its own changelog line under a **Formaquestion** group. Spec: keyword lines lost every word their own heading holds; the changelog no longer claims every word form; the blind set got an answer run (above); the guide-wording 167 → 168 is labeled as not a gain. Kept: `KEYWORD_LINE` stays in `headingAnchors.ts`, which holds the other docs-markdown syntax; `refDocsIndex.ts` calls the same `releasedMinorChangelog` and `NON_GUIDE_PAGES` the build uses; the real-docs "make a folder" test is a deliberate integration check.
+
+**Gates** (fold-in): typecheck 0 (71 s), lint 0 (35 s, 4 warnings in files this ticket does not touch), test 0 (16,099 passed, 137 s wall, exits at once), build 0 (66 s). One earlier suite run failed `EventFormDialog.test.tsx` once while the cloud probe and other sessions loaded the machine; the file passes alone (40 of 40) and in the rerun. The harness files typecheck clean under a scratch config with Node types; the root config does not include `testing/`.

@@ -5,7 +5,7 @@ A new game starts at **Enter World**. One dialog holds every choice before page 
 > After the story starts, see [How to Play](How-to-Play).
 
 ## How to Start a Game
-<!-- keywords: play, new game, begin, enter, launch, new story, new run -->
+<!-- keywords: play, new, begin, enter, launch, new story, new run -->
 
 1. On the main menu, open the library's **Worlds** tab and select a world. The world dialog opens.
 2. Select **Enter World**.
@@ -18,7 +18,7 @@ A world with nothing to choose skips the **Enter World** dialog.
 For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a-persona). To add entities from your library, see [How to Add Your Own Entities to a Game](Entities#how-to-add-your-own-entities-to-a-game).
 
 ## How to Start with the Defaults
-<!-- keywords: quick start, skip, fast, jump in, random, no setup -->
+<!-- keywords: quick, skip, fast, jump in, random, no setup -->
 
 1. On the main menu, select a world.
 2. Select **Quick Start**. In portrait it is the icon beside **Enter World**.
@@ -35,7 +35,7 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 **Start game** stays off until every group has its minimum picks. A group that is short shows *Choose 1 more trait*.
 
 ## How to Pick a Starting Location
-<!-- keywords: choose, spawn, begin, where to start, random, place -->
+<!-- keywords: choose, spawn, begin, random, place -->
 
 1. In the **Enter World** dialog, open **Starting Location**.
 2. Select a location, or **Random** to let the world choose.
@@ -49,7 +49,7 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 4. To start future games in this world with the same picks, select **Remember Additions**.
 
 ## How to Read the Introduction Again
-<!-- keywords: readme, intro, show again, see again, info, description -->
+<!-- keywords: readme, intro, show, see, info, description -->
 
 1. Select **Enter World** on the world.
 2. In the **Enter World** dialog, select **Introduction** at the top.

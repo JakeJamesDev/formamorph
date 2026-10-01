@@ -5,7 +5,7 @@ The library is the main menu's board of everything on this device: your worlds, 
 > A world's own copy of a library entity or dictionary is a linked copy. See [Linked Content](LinkedContent).
 
 ## How to Import a World
-<!-- keywords: load, open, add, bring in, json file, upload, install, file, downloaded world -->
+<!-- keywords: load, open, add, bring in, json file, upload, install, file, downloaded -->
 
 1. On the **Worlds** tab, select **Import World**.
 2. Select one or more world `.json` files.

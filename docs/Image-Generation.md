@@ -5,7 +5,7 @@ Formamorph can draw images with an image server that you connect. It makes portr
 > Image generation is off until you turn it on. To connect a text AI, see [Connect Your Own AI](Connect-Your-Own-AI).
 
 ## How to Turn On Image Generation
-<!-- keywords: enable, pictures, art, images, stable diffusion, ai art, set up, generate, illustrations -->
+<!-- keywords: enable, pictures, art, stable diffusion, ai art, set up, illustrations -->
 
 1. Open **Settings**, then the **Endpoints** tab, then the **Image** tab.
 2. Select the **Enable Image Generation** checkbox.
@@ -71,7 +71,7 @@ You need a NovelAI subscription.
 NovelAI starts at 1024×1024 and 28 steps. **Opus** subscribers get one free image per request at those values or lower. Larger images or more steps spend Anlas. **Stop** can't cancel an image that NovelAI has started, so that image can still cost Anlas.
 
 ## How to Connect an OpenAI-Compatible Service
-<!-- keywords: dall-e, dalle, gpt-image, openai, api key, cloud, set up -->
+<!-- keywords: dall-e, dalle, gpt-image, api key, cloud, set up -->
 
 This provider works only in the [desktop app](Connect-Your-Own-AI). The desktop app sends the requests for you, so the service needs no CORS setup.
 
@@ -83,7 +83,7 @@ This provider works only in the [desktop app](Connect-Your-Own-AI). The desktop 
 This provider ignores **Negative Prompt**, **Steps / CFG** and **Sampler**. Each image is 1024×1024, 1536×1024 or 1024×1536, whichever shape is nearest to the size you set.
 
 ## How to Use Your Own ComfyUI Workflow
-<!-- keywords: graph, custom, nodes, json, api format, lora, template, own setup -->
+<!-- keywords: graph, custom, nodes, json, api format, lora, template, setup -->
 
 The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI graph that Formamorph sends. **How to Get This** shows these steps too.
 
@@ -96,7 +96,7 @@ The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI
 **Reset to Defaults** puts back the default graph.
 
 ## How to Turn On Scene Images
-<!-- keywords: every turn, automatic, pictures, illustrations, art, each turn, show images -->
+<!-- keywords: every, automatic, pictures, illustrations, art, each, show -->
 
 1. Turn on image generation. See [How to Turn On Image Generation](#how-to-turn-on-image-generation).
 2. Open **Settings**, then the **Display** tab.

@@ -53,7 +53,7 @@ Memories you write are always kept. The story never judges them.
 Memories you wrote have no pin button, because the story never lets them go.
 
 ## How to Undo Your Memory Changes
-<!-- keywords: reset, revert, restore, deleted memory, bring back, original -->
+<!-- keywords: reset, revert, restore, deleted, bring back, original -->
 
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
@@ -63,7 +63,7 @@ Memories you wrote have no pin button, because the story never lets them go.
 To bring back one deleted memory instead, select the **Deleted** filter chip, then **Restore This Memory** on that memory.
 
 ## How to Turn Memory Off
-<!-- keywords: disable, summaries, stop, no memory, faster, remove -->
+<!-- keywords: disable, summaries, stop, faster, remove -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
@@ -73,7 +73,7 @@ To bring back one deleted memory instead, select the **Deleted** filter chip, th
 During play, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
 
 ## How to Date Each Memory
-<!-- keywords: time, timestamp, day, calendar, clock, when, dates -->
+<!-- keywords: time, timestamp, day, calendar, clock -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.

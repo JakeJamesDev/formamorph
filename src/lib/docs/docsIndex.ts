@@ -3,7 +3,7 @@
  * needs no network and no model. Section ids are `<page>#<anchor>`, with the wiki's anchor rule.
  */
 import { stemmer } from 'stemmer';
-import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, type DocHeading } from './headingAnchors';
+import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, type DocHeading } from './headingAnchors';
 import type { DocsPages } from './docsChecks';
 import { sectionParts } from './sectionParts';
 
@@ -44,11 +44,6 @@ export interface DocsIndex {
    * returns all its parts in order.
    */
   get(ids: readonly string[]): DocSection[];
-}
-
-/** A heading's source text as a reader sees it. */
-function plainText(text: string): string {
-  return text.replace(MARKDOWN_LINK, '$1').replace(/[*`]/g, '').trim();
 }
 
 /** A section with its heading level (0 for text above the page's first heading) and its base id. */
@@ -148,11 +143,7 @@ const STOP_WORDS = new Set([
 /** A word, a number, or a hyphenated run of them. */
 const WORD = /[\p{L}\p{N}]+(?:\.\p{N}+)*(?:-[\p{L}\p{N}]+)*/gu;
 
-/**
- * The search terms of a text: lowercase words and numbers, stop words dropped, each word cut to its Porter
- * stem so "folders" finds "Folder" and "deleting" finds "Delete". A hyphenated word also gives its parts
- * joined, so "re-generate" finds "regenerate".
- */
+/** A text's Porter-stemmed words and numbers, stop words dropped; a hyphenated word also gives its joined form. */
 function searchTerms(text: string): string[] {
   const words = text.replace(MARKDOWN_LINK, '$1').toLowerCase().match(WORD) ?? [];
   return words
@@ -211,7 +202,6 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
     const bodyTerms = searchTerms(section.level > 0 ? lines.slice(1).join('\n') : section.markdown);
     return {
       section,
-      // A keyword-line term counts as a heading term.
       heading: new Set([...(section.level > 0 ? searchTerms(section.heading) : []), ...section.keywords.flatMap(searchTerms)]),
       trail: new Set(section.trail.flatMap(searchTerms)),
       body: termCounts(bodyTerms),

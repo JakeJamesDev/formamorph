@@ -32,6 +32,7 @@
 // Usage: npx vite-node testing/baseline/harness/help-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--only backup-docs,regen-player]
 //          [--parallel 4] [--alt FILE] [--before REF] [--lookup] [--flag] [--show]
+//          [--cases help-retrieval-cases.json]  (a case with no `wording` counts as player wording, no `facts` as none)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
@@ -75,7 +76,8 @@ const ARMS: Arm[] = [
 const ALT_SYSTEM_PROMPT = altFile ? readFileSync(altFile, 'utf8').trim() : '';
 
 const BASELINE = path.resolve('testing/baseline');
-const allCases = (JSON.parse(readFileSync(path.join(BASELINE, 'help-cases.json'), 'utf8')) as { cases: HelpCase[] }).cases;
+const allCases = (JSON.parse(readFileSync(path.join(BASELINE, argVal('--cases', 'help-cases.json')), 'utf8')) as { cases: Partial<HelpCase>[] }).cases
+  .map((c): HelpCase => ({ id: c.id ?? '', question: c.question ?? '', section: c.section, wording: c.wording ?? 'player', facts: c.facts ?? [] }));
 const cases = only ? allCases.filter((c) => only.split(',').includes(c.id)) : allCases;
 
 /**
@@ -94,7 +96,9 @@ function mismatchPartner(c: HelpCase): HelpCase {
 }
 
 const index = bundledDocsIndex();
-const beforeIndex = beforeRef ? (await refDocsIndex(beforeRef)).index : null;
+const beforeIndex = beforeRef ? (await refDocsIndex(beforeRef)).index : index;
+/** The Docs Index an arm searches. */
+const indexOf = (arm: Arm) => (arm === 'before' ? beforeIndex : index);
 const allDocs = index.contents()
   .flatMap((page) => index.get(page.sections.map((section) => section.id)))
   .map((section) => section.markdown)
@@ -196,7 +200,7 @@ async function lookupRequest(c: HelpCase): Promise<Sample> {
 
 async function request(arm: Arm, c: HelpCase): Promise<Sample> {
   if (arm === 'lookup') return lookupRequest(c);
-  const sections = arm === 'no-docs' ? [] : helpSections(arm === 'before' && beforeIndex ? beforeIndex : index, (arm === 'mismatch' ? mismatchPartner(c) : c).question);
+  const sections = arm === 'no-docs' ? [] : helpSections(indexOf(arm), (arm === 'mismatch' ? mismatchPartner(c) : c).question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
     ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS }
     : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS });
@@ -273,7 +277,7 @@ const retrievalOf = (docsIndex: typeof index) => new Map(cases.map((c) => {
   return [c.id, { ids: sections.map((s) => s.id), chars: sections.reduce((sum, s) => sum + s.markdown.length, 0), hit: c.section ? sections.some((s) => s.id === c.section) : null }];
 }));
 const retrieval = retrievalOf(index);
-const beforeRetrieval = beforeIndex ? retrievalOf(beforeIndex) : retrieval;
+const retrievalByIndex = new Map([[index, retrieval], [beforeIndex, beforeIndex === index ? retrieval : retrievalOf(beforeIndex)]]);
 
 // One job per run, case and arm, with the two arms of a question next to each other in time.
 const jobs: (() => Promise<Row>)[] = [];
@@ -330,7 +334,7 @@ console.log('\ncase                     arm      hit  facts complete bold steps 
 for (const c of cases) {
   for (const arm of ARMS) {
     const m = summarize(arm, new Set([c.id]));
-    const hit = (arm === 'before' ? beforeRetrieval : retrieval).get(c.id)?.hit;
+    const hit = retrievalByIndex.get(indexOf(arm))?.get(c.id)?.hit;
     const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : arm === 'lookup' ? m.reached : hit ? 'yes' : ' NO';
     console.log([
       c.id.padEnd(24), arm.padEnd(8), sent.padEnd(4),

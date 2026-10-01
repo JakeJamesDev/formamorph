@@ -11,7 +11,7 @@ The AI can't keep your whole world in its context at one time. If you write ever
 A dictionary entry uses no context until a keyword matches. Mention the Gloamwater, and the AI knows what it is.
 
 ## How to Add a Dictionary Entry
-<!-- keywords: lorebook, keywords, trigger, lore, new entry, create -->
+<!-- keywords: lorebook, keywords, trigger, lore, new, create -->
 
 1. Open the **Dictionary** tab.
 2. If the world has no book yet, type a name in the **Search or add new dictionaries** box and select the **+** button (**Add to Dictionary**).

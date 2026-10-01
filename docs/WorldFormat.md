@@ -7,7 +7,7 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 > 📄 This page covers world files only. It does not describe save files.
 
 ## How to Edit a World File by Hand
-<!-- keywords: json, text editor, manual, raw, modify file, notepad, tweak, fields -->
+<!-- keywords: json, text editor, manual, raw, modify, notepad, tweak, fields -->
 
 1. In the main menu, select the world. In its [world dialog](Starting-a-Game#the-world-dialog), select **Export World**.
 2. Open the `.json` file in a text editor. Make your changes.
@@ -18,7 +18,7 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 The import adds a new world. It never replaces the world you exported. Import skips a file that fails to load, and the menu tells you.
 
 ## How to Add a Stat
-<!-- keywords: json, file, stats list, by hand, manual, schema, field -->
+<!-- keywords: json, file, list, by hand, manual, schema, field -->
 
 1. Add an object to the top-level `stats` list.
 2. Give it a new `id` and a `name`. Stat code and the AI find a stat by its name, so keep names unique.
@@ -32,7 +32,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 ```
 
 ## How to Add a Trait
-<!-- keywords: json, file, traits list, by hand, manual, schema, field -->
+<!-- keywords: json, file, list, by hand, manual, schema, field -->
 
 1. Add an object to the top-level `traits` list. For a trait that one entity owns, add it to that entity's `traits` list.
 2. Give it a new `id` and a `name`. Trait ids must be unique across the world and every entity.
@@ -47,7 +47,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 ```
 
 ## How to Add an Entity
-<!-- keywords: json, file, entities list, by hand, manual, schema, character, npc -->
+<!-- keywords: json, file, list, by hand, manual, schema, character, npc -->
 
 1. Add an object to the top-level `entities` list.
 2. Give it a new `id` and a `name`.

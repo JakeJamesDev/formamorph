@@ -7,7 +7,7 @@ A Tool only reads. It never changes the world, the save or your settings.
 The **Tools** tab in Settings lists the built-in Tools and your own Tools. It shows in **Advanced** mode only. To open it, open **Settings**, select **Advanced** in the switch next to the title, then open the **Tools** tab.
 
 ## How to Turn On Tools
-<!-- keywords: function calling, tool calling, enable, ai call, let the ai use, functions -->
+<!-- keywords: function calling, calling, enable, ai call, let the ai use, functions -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.

@@ -11,7 +11,7 @@ The **Placeholders** tab, the palette strip and value pins are **Advanced mode o
 Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} stranger"* one time, and it reads as a real detail in each playthrough. It can be the same detail each time, or a new one.
 
 ## How to Make a Placeholder
-<!-- keywords: wildcard, variable, random, macro, template, {{}}, curly braces, random value -->
+<!-- keywords: wildcard, variable, random, macro, template, curly braces, random value -->
 
 1. Switch the World Editor to Advanced mode, and open the **Placeholders** tab.
 2. Type the name in the search box, such as *Eye Color*.

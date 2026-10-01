@@ -24,7 +24,7 @@ The window stays open when you go to a different screen or open a dialog. You ca
 Your AI writes the answer from the guide sections that match your question. To end an answer early, select **Stop**. The text so far stays. See [Ask](#ask).
 
 ## How to Ask a Follow-Up Question
-<!-- keywords: more, another, next question, keep asking, continue, conversation, clear -->
+<!-- keywords: more, another, next, keep, continue, conversation, clear -->
 
 1. Ask a question.
 2. After the answer, type your next question in **Ask a Question**, such as "and then?".
@@ -54,7 +54,7 @@ Your model must read images. The screenshot goes with that question only. A foll
 The best matches are first. Each result shows the section, its page and the start of its text.
 
 ## How to Read a Guide Page
-<!-- keywords: docs, wiki, manual, browse, contents, table of contents, help pages -->
+<!-- keywords: docs, wiki, manual, browse, contents, table of contents, help -->
 
 1. Open Formaquestion.
 2. Select the **Guide** tab.
@@ -64,7 +64,7 @@ The best matches are first. Each result shows the section, its page and the star
 To go back to the list of pages, select **Contents** above the section.
 
 ## How to Get Help for the Screen You Have Open
-<!-- keywords: this page, current, where am i, context, what does this do, help here -->
+<!-- keywords: this page, current, where am i, context, here -->
 
 1. Open the screen, dialog or tab that you need help with.
 2. Open Formaquestion.

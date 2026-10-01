@@ -25,7 +25,7 @@ The default prompt introduces entities as "Characters and things that **may** ap
 To add a copy of an entity from your library, select **Add Entity** at the bottom of the editor.
 
 ## How to Import a SillyTavern Card
-<!-- keywords: character card, tavern card, png, chub, st, bring in, load character -->
+<!-- keywords: character, tavern, png, chub, st, bring in, load character -->
 
 1. On the Main Menu, open the library's **Entities** tab.
 2. Select **Import Entity**.

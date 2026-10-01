@@ -28,7 +28,7 @@ To check a world before you play it, see [🧪 Test Bench](Test-Bench).
 The app remembers your pick for every world. You can't switch while the Authoring Tour runs.
 
 ## How to Find and Replace Text
-<!-- keywords: search, ctrl+f, rename everywhere, find text, change all, replace all -->
+<!-- keywords: search, ctrl+f, rename everywhere, change all -->
 
 1. Select the magnifier button in the header, or press **Ctrl+F**. Press **Ctrl+H** to open it with the replace row.
 2. Type in the **Find** box. Select **Match case** or **Match whole word** to narrow the search.
@@ -45,7 +45,7 @@ The app remembers your pick for every world. You can't switch while the Authorin
 The tour opens the World Editor on a new world. Your other worlds don't change.
 
 ## How to Save or Discard Your Changes
-<!-- keywords: unsaved, cancel, undo changes, exit, leave, throw away, revert, keep -->
+<!-- keywords: unsaved, cancel, undo, exit, leave, throw away, revert, keep -->
 
 1. Select the back arrow at the top left of the editor.
 2. In the **Unsaved changes** dialog, select **Save & Exit** to keep your changes. Select **Exit Without Saving** to discard them.
