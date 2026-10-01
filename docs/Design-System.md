@@ -469,7 +469,7 @@ On mobile, preserve the same text-first row and minimum height. Wrapping increas
 
 Open `#dev?modal=designSystem&tab=context-menu&subtab=picker` or use `subtab=create` for the naming form. These routes use local demonstration state and production components. They do not change stored library data or ship a prototype route.
 
-New functional labels and error/status sentences follow the [Writing Guide](Writing-Guide.md) by role. Authored names retain their voice. The [review record](../docs-internal/designs/design-system/group-picker-review.md) records behavior evidence and unresolved STE limits; brevity does not certify label grammar.
+New functional labels and error/status sentences follow the [Writing Guide](Writing-Guide) by role. Authored names retain their voice. The [review record](../docs-internal/designs/design-system/group-picker-review.md) records behavior evidence and unresolved STE limits; brevity does not certify label grammar.
 
 ## Pattern: Lists With Controls or Metadata
 
@@ -516,7 +516,7 @@ The Rich Lists reference uses the same production row components as World Editor
 
 ### Writing review
 
-The reference descriptions, control labels, dynamic status, and accessible action names were reviewed by role through the [Writing Guide](Writing-Guide.md). Authored character, location, and save names retain their voices. Standalone label grammar, complete technical-term admission, reused production copy, and dynamic substitutions remain unverified; the [review record](../docs-internal/designs/design-system/rich-lists-scrollbars-review.md) records those limits.
+The reference descriptions, control labels, dynamic status, and accessible action names were reviewed by role through the [Writing Guide](Writing-Guide). Authored character, location, and save names retain their voices. Standalone label grammar, complete technical-term admission, reused production copy, and dynamic substitutions remain unverified; the [review record](../docs-internal/designs/design-system/rich-lists-scrollbars-review.md) records those limits.
 
 ## Standard: Scrollbars
 
@@ -579,11 +579,11 @@ The reference descriptions and local status messages were reviewed by copy role 
 
 ## Functional writing
 
-Keep setting descriptions verb-first or in second person, no more than 12 words, with no period on a one-sentence line. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide.md).
+Keep setting descriptions verb-first or in second person, no more than 12 words, with no period on a one-sentence line. Put necessary additional detail behind `HintInfo`. Do not claim ASD-STE100 compliance from length or tone alone; use the vocabulary, grammar, meaning, and evidence process in the [Writing Guide](Writing-Guide).
 
 ### Field help order
 
-A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line, using only labels and registered terms as the [Writing Guide's help-line test](Writing-Guide.md) requires. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
+A field reads top to bottom as label, help, control. The label names the field. The `Hint` sits directly under the label and says what the field does, in one line, using only labels and registered terms as the [Writing Guide's help-line test](Writing-Guide) requires. The control comes last. A `HintInfo` goes beside the label, never under the control. A control never has a `Hint` after it, so a reader always knows what a field is before reaching it, and a tall control never pushes its own explanation out of view.
 
 Two placements sit beside a control instead of above it:
 
