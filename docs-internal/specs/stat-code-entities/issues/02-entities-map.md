@@ -11,6 +11,11 @@ Parent: [Stat Code Entities spec](../spec.md)
 
 Stat code gets an `entities` global. Each entry has `name` and `traits`, in the shape `persona` has. Stat code can read and switch any listed entity's traits, and `persona` becomes the played persona's `entities` entry (Q5–Q8).
 
+## Notes from ticket 01
+
+- Authored entity names reach stat code through `codeEntities` on `useResolvedWorld`. GameViewer may not read the raw entity list (a persona-readers test forbids it), and Bearers carry rolled names. Build on that field.
+- `StatCodeResult` has flat persona fields: `personaTraits`, `unknownPersonaTraits` and `personaAcquiredWrites`. The per-entity result replaces them; it does not sit beside them.
+
 ## Acceptance criteria
 
 - [ ] `entities` lists authored entities, library characters added at Enter World, and the played persona. Characters the narrator invents are not listed (Q5).
