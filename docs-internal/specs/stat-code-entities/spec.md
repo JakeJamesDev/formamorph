@@ -39,8 +39,8 @@ Each entity's `traits` map works like `traits`. `enabled` is writable and switch
 
 - **Q1. `persona` is the played persona only.** Under a library persona, the world's Custom Persona entity is not `persona`. The Custom Persona entity is `persona` only under None.
 - **Q2. Persona trait writes work as `traits` does.** `enabled` is writable, `acquired` is read-only and a write to it is dropped and reported.
-- **Q3. An entity's `traits` lists only that Bearer's own set**, owned or linked. A name outside it reads as undefined, like an unknown name in `traits`.
-- **Q4. With no persona entity in play, `persona` is an empty entry.** `name` is `''` and `traits` is empty, so `persona.traits['X']?.enabled` never throws.
+- **Q3. An entity's `traits` lists only that Bearer's own set**, owned or linked. A name outside it reads as a blank entry, like an unknown name in `traits`: `enabled` and `acquired` are false, and a write is dropped and reported as an unknown trait.
+- **Q4. With no persona entity in play, `persona` is an empty entry.** `name` is `''` and `traits` holds no names, so every name reads as a blank entry (Q3) and `persona.traits['X'].enabled` never throws.
 - **Q5. `entities` lists authored entities, library characters added at Enter World, and the played persona.** Characters the narrator invents in play are not listed.
 - **Q6. Stat code can switch any listed entity's traits**, through the same owned-trait path cascades use.
 - **Q7. Of two entities sharing a code name, the later one wins.** This is the rule `traits` and `placeholders` use. The editor's name-drift check warns the author.
@@ -133,7 +133,7 @@ Each entity's `traits` map works like `traits`. `enabled` is writable and switch
   - A persona write switches the owned trait and leaves `playerTraits` alone.
   - A world trait and a persona trait with one name stay separate.
   - The Custom Persona entity is `persona` under None and is not `persona` under a library persona.
-  - With no persona entity, `persona.traits['X']?.enabled` is undefined and the run doesn't fail.
+  - With no persona entity, `persona.traits['X'].enabled` reads false, a write to it is dropped and reported, and the run doesn't fail.
   - An entity write switches that entity's trait and cascades.
   - `persona` and `entities[persona.name]` are one entry.
   - The later of two same-named entities wins.
