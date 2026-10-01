@@ -78,7 +78,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Backup](Saves-and-Backup#the-backup--restore-dialog) | One file with your worlds, saves, library entities and library dictionaries |
 | [Avatar](Avatars) | A 3D model of you, the player, from a VRM file |
 | [Permissive License](Avatars#the-permissive-license) | A VRM license that allows every use the community needs. An Avatar needs it to publish. |
-| [Profile Picture](Avatars#avatars-3d-models-and-profile-pictures) | The image on your Community Creations account. It is not an Avatar. |
+| [Profile Image](Avatars#avatars-3d-models-and-profile-images) | The image on your Community Creations account. It is not an Avatar. |
 
 ## 🌐 Community Creations
 

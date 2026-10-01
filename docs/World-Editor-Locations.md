@@ -94,7 +94,7 @@ The **Locations** tab has two views. Switch between them with **List** and **Can
 
 **Edit Full Screen** opens the canvas at full size, with undo and redo, search and a minimap. Right-click a box and select **Edit Location** to open its panel.
 
-Nothing on the canvas moves until you move it or ask for a layout. **Auto Arrange All** in the toolbar lays out every box. Right-click a location with sub-locations and select **Auto Arrange** to lay out only its children. The in-game map uses your canvas layout.
+Nothing on the canvas moves until you move it or ask for a layout. With nothing selected, **Auto Arrange All** in the toolbar lays out every box. With a box selected, the button reads **Auto Arrange** and lays out only its group. Right-click a location with sub-locations and select **Auto Arrange** to lay out only its children. The in-game map uses your canvas layout.
 
 ## The panel
 

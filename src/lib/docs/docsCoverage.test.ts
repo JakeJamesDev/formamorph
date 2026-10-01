@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { HELP_TOPICS } from '@/lib/helpTopics';
 import {
-  docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, surfaceCoverageProblems, type DocsPages,
+  docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, surfaceCoverageProblems,
+  HOME_PAGE, SIDEBAR_PAGE, type DocsPages,
 } from './docsChecks';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, SURFACE_MAP } from './surfaceMap';
 
@@ -40,7 +41,7 @@ describe('docs coverage of the app', () => {
   });
 
   it('lists every guide page on the home page and in the sidebar', () => {
-    expect([...indexProblems(DOCS, 'Home'), ...indexProblems(DOCS, '_Sidebar')]).toEqual([]);
+    expect([...indexProblems(DOCS, HOME_PAGE), ...indexProblems(DOCS, SIDEBAR_PAGE)]).toEqual([]);
   });
 
   it('links every glossary term to the page that explains it', () => {
@@ -54,17 +55,18 @@ const PAGES: DocsPages = {
   'Design-System': '# Design System\n',
 };
 
+const PANEL = { 'stats.panel': { page: 'Stats', anchor: 'the-panel' } };
+const STATS = { page: 'Stats', anchor: '-stats' };
+
 function coverage(overrides: Partial<Parameters<typeof surfaceCoverageProblems>[0]>) {
   return surfaceCoverageProblems({
     surfaceIds: ['stats', 'stats.panel', 'admin'],
-    map: { stats: { page: 'Stats', anchor: '-stats' }, 'stats.panel': { page: 'Stats', anchor: 'the-panel' } },
+    map: { ...PANEL, stats: STATS },
     exclusions: { admin: 'staff' },
     pages: PAGES,
     ...overrides,
   });
 }
-
-const PANEL = { 'stats.panel': { page: 'Stats', anchor: 'the-panel' } };
 
 describe('surfaceCoverageProblems', () => {
   it('passes a surface that is mapped or excluded', () => {
@@ -72,7 +74,7 @@ describe('surfaceCoverageProblems', () => {
   });
 
   it('fails a surface with no map entry', () => {
-    expect(coverage({ map: { stats: { page: 'Stats', anchor: '-stats' } } })).toEqual([
+    expect(coverage({ map: { stats: STATS } })).toEqual([
       'stats.panel has no docs section: add it to the surface map',
     ]);
   });
@@ -99,7 +101,8 @@ describe('surfaceCoverageProblems', () => {
   });
 
   it('fails a listed id that is not a surface', () => {
-    expect(coverage({ map: { ...PANEL, stats: { page: 'Stats', anchor: '-stats' }, 'stats.gone': { page: 'Stats', anchor: '-stats' } }, exclusions: { admin: 'staff', old: 'dev' } })).toEqual([
+    const map = { ...PANEL, stats: STATS, 'stats.gone': STATS };
+    expect(coverage({ map, exclusions: { admin: 'staff', old: 'dev' } })).toEqual([
       'stats.gone is listed but is not a surface id',
       'old is listed but is not a surface id',
     ]);

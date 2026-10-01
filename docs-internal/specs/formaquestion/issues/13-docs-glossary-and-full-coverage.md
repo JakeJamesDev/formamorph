@@ -1,6 +1,7 @@
 # 13: Glossary, and full coverage
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 9edac2fd
 Blocked by: 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -19,10 +20,10 @@ Recommended model rationale: the cross-page pass needs the whole corpus in view 
 
 ## Acceptance criteria
 
-- [ ] The glossary page exists and every term links its home page
-- [ ] No developer-only term is on the glossary page
-- [ ] No two pages contradict each other on a statement found in the pass; each fix is listed in the commit body
-- [ ] The home index and the sidebar list every player page
-- [ ] The known-gaps list no longer exists, and the coverage test passes on the exclusion list alone
-- [ ] Every help topic links a docs heading
-- [ ] Four gates green
+- [x] The glossary page exists and every term links its home page
+- [x] No developer-only term is on the glossary page
+- [x] No two pages contradict each other on a statement found in the pass; each fix is listed in the commit body
+- [x] The home index and the sidebar list every player page
+- [x] The known-gaps list no longer exists, and the coverage test passes on the exclusion list alone
+- [x] Every help topic links a docs heading
+- [x] Four gates green

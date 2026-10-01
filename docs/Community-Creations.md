@@ -223,7 +223,7 @@ Comments have no replies. **Load more** shows older comments. You must log in to
 
 ### An Author's Profile
 
-Select an author's or a commenter's name to open their profile. It shows their profile picture, **Member since**, and their followers, Likes and downloads. Their creations are grouped by kind. Select one to open it in Community Creations.
+Select an author's or a commenter's name to open their profile. It shows their profile image, **Member since**, and their followers, Likes and downloads. Their creations are grouped by kind. Select one to open it in Community Creations.
 
 Select **Follow** to follow the author. **Following** means you already do; select it to stop. **Report Profile** sends a Report about the person.
 
@@ -378,7 +378,7 @@ Read the policy any time at [formamorph.ai/privacy](https://formamorph.ai/privac
 
 ### The User Profile Dialog
 
-Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile picture, **Member since** and your stats. Select your profile picture to change it. See [How to Change Your Profile Picture](Avatars#how-to-change-your-profile-picture).
+Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile image, **Member since** and your stats. Select your profile image to change it. See [How to Change Your Profile Image](Avatars#how-to-change-your-profile-image).
 
 The header has **Change Password**, **Logout** and **Delete Account**.
 

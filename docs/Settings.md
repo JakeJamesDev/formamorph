@@ -278,7 +278,7 @@ The **Image** section sets how each image is made.
 
 ## Data
 
-Saves, the Authoring Tour, and stored data. To back up your worlds and saves, use **Backup & Restore** in the main menu's **Menu**. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
+Saves, the Authoring Tour, and stored data. To back up your worlds, saves, library entities and library dictionaries, use [Backup & Restore](Saves-and-Backup#the-backup--restore-dialog) in the main menu's **Menu**. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 
 ### Saves
 

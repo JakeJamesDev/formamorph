@@ -10,8 +10,13 @@ export interface DocTarget {
   anchor: string;
 }
 
+/** The wiki's start page, which holds the page index. */
+export const HOME_PAGE = 'Home';
+/** The wiki's navigation page, which holds the second page index. */
+export const SIDEBAR_PAGE = '_Sidebar';
+
 /** Pages in `docs/` that are not part of the player guide, so nothing in the app points at them. */
-export const NON_GUIDE_PAGES: readonly string[] = ['_Sidebar', 'Design-System', 'Writing-Guide'];
+export const NON_GUIDE_PAGES: readonly string[] = [SIDEBAR_PAGE, 'Design-System', 'Writing-Guide'];
 
 type AnchorIndex = Map<string, Set<string>>;
 
@@ -113,10 +118,10 @@ function docsHrefs(source: string): string[] {
   return hrefs;
 }
 
-/** The page part of an href, empty for a same-page link. */
-function hrefPage(href: string): string {
+/** An href's page, empty for a same-page link, and its decoded anchor, null when it names none. */
+function hrefParts(href: string): { page: string; anchor: string | null } {
   const hash = href.indexOf('#');
-  return hash < 0 ? href : href.slice(0, hash);
+  return hash < 0 ? { page: href, anchor: null } : { page: href.slice(0, hash), anchor: safeDecode(href.slice(hash + 1)) };
 }
 
 /** Problems with links between docs pages: a missing page, a missing heading, or a `.md` suffix. */
@@ -127,9 +132,7 @@ export function docsLinkProblems(pages: DocsPages): string[] {
     forEachProseLine(markdown, (source, line) => {
       for (const href of docsHrefs(source)) {
         const where = `${page}:${line + 1} links ${href}`;
-        const pagePart = hrefPage(href);
-        const hash = href.indexOf('#');
-        const anchor = hash < 0 ? null : safeDecode(href.slice(hash + 1));
+        const { page: pagePart, anchor } = hrefParts(href);
         if (pagePart.endsWith('.md')) {
           problems.push(`${where}: write ${pagePart.slice(0, -3)}, the wiki page name`);
           continue;
@@ -148,10 +151,10 @@ export function docsLinkProblems(pages: DocsPages): string[] {
 export function indexProblems(pages: DocsPages, indexPage: string): string[] {
   const listed = new Set<string>();
   forEachProseLine(pages[indexPage] ?? '', (source) => {
-    for (const href of docsHrefs(source)) listed.add(hrefPage(href));
+    for (const href of docsHrefs(source)) listed.add(hrefParts(href).page);
   });
   return Object.keys(pages)
-    .filter((page) => page !== 'Home' && page !== indexPage && !NON_GUIDE_PAGES.includes(page) && !listed.has(page))
+    .filter((page) => page !== HOME_PAGE && page !== indexPage && !NON_GUIDE_PAGES.includes(page) && !listed.has(page))
     .map((page) => `${indexPage} does not list ${page}`);
 }
 
@@ -173,7 +176,7 @@ export function glossaryProblems(pages: DocsPages): string[] {
   });
   return rows
     .filter(({ cell }) => !docsHrefs(cell).some((href) => {
-      const page = hrefPage(href);
+      const { page } = hrefParts(href);
       return page !== '' && page !== GLOSSARY_PAGE && pageProblem(index, page) === null;
     }))
     .map(({ cell, line }) => `${GLOSSARY_PAGE}:${line + 1} term ${cell} links no guide page`);
