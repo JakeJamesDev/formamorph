@@ -180,6 +180,12 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'dictionaryEditor.overview': { page: 'World-Editor-Dictionary', anchor: 'in-the-library' },
   'dictionaryEditor.dictionary': { page: 'World-Editor-Dictionary', anchor: 'in-the-library' },
   'dictionaryEditor.placeholders': ENTITY_OWNED_PLACEHOLDERS,
+
+  'worldEditorBench.issues': { page: 'Test-Bench', anchor: 'issues' },
+  'worldEditorBench.triggers': { page: 'Test-Bench', anchor: 'triggers' },
+  'worldEditorBench.aiContext': { page: 'Test-Bench', anchor: 'ai-context' },
+  'worldEditorBench.opening': { page: 'Test-Bench', anchor: 'opening' },
+  ...Object.fromEntries(tabsOf('worldEditorTour').map((id) => [id, { page: 'WorldEditor', anchor: 'the-authoring-tour' }])),
 };
 
 /** A Formaquestion docs ticket that writes a missing section (`docs-internal/specs/formaquestion/issues/`). */
@@ -189,8 +195,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
   // Avatars, Image Generation
   '11': ['avatar', 'modelDetails'],
-  // Test Bench, editor basics. Every tour step maps to the one Authoring Tour heading.
-  '12': [...tabsOf('worldEditorBench'), ...tabsOf('worldEditorTour')],
 };
 
 /** Help topics with no docs heading yet, by owning ticket. */
