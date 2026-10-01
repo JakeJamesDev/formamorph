@@ -39,8 +39,8 @@ describe('a rename through owner entries', () => {
   });
 
   it('rewrites a dictionary’s placeholder under its entry', () => {
-    expect(rename('dictionaries.Weather.placeholders.Sky.pin("grey");', { kind: 'placeholder', id: 'sky' }, 'Sky', 'Cloud Cover'))
-      .toBe('dictionaries.Weather.placeholders[\'Cloud Cover\'].pin("grey");');
+    expect(rename('dictionaries.Weather.placeholders.Sky.pin("gray");', { kind: 'placeholder', id: 'sky' }, 'Sky', 'Cloud Cover'))
+      .toBe('dictionaries.Weather.placeholders[\'Cloud Cover\'].pin("gray");');
   });
 
   it('rewrites a dictionary’s key in dictionaries and in its old path', () => {

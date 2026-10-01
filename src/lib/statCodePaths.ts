@@ -187,8 +187,7 @@ export interface PlaceholderWalk {
 
 /**
  * Walk `segments` into the map from `from`, or from the top, stopping at the first one no node answers. On an
- * entry, a member of its own
- * wins the name over a child that shares it, so the walk stops there too.
+ * entry, a member of its own wins the name over a child that shares it, so the walk stops there too.
  *
  * The one walk over the map. The sandbox reads a path by building the map's objects, and every other surface
  * reads one by coming through here, so what the editor offers and checks cannot disagree with what runs.
