@@ -1,6 +1,6 @@
 # 29: Surface label table
 
-Status: in-progress
+Status: ready-for-human
 Base: ed5c3173
 Blocked by: 23
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
