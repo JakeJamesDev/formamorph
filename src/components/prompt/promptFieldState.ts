@@ -142,3 +142,30 @@ export function $replaceFlatRange(
   range.focus.set(point.key, point.offset, point.type);
   $setSelection(range);
 }
+
+/** How many unanswered edits a field remembers; a host lagging further than this reads as an outside change. */
+const MAX_PENDING_ECHOES = 64;
+
+/** Tells a field's own edits coming back from its host apart from outside changes. A host can hand back an
+ *  older edit after newer ones are already typed; that late echo is still ours and must not rebuild the field. */
+export function createEchoLedger(initial: string) {
+  let settled = initial;
+  const pending: string[] = [];
+  return {
+    /** Records an edit on its way to the host. False when it repeats the latest, so there is nothing to send. */
+    send(next: string): boolean {
+      if (next === (pending.at(-1) ?? settled)) return false;
+      pending.push(next);
+      if (pending.length > MAX_PENDING_ECHOES) pending.shift();
+      return true;
+    },
+    /** True when the host's value is one of this field's edits; false means it changed from outside. */
+    receive(value: string): boolean {
+      const index = pending.indexOf(value);
+      const echo = index >= 0 || (pending.length === 0 && value === settled);
+      settled = value;
+      pending.splice(0, index >= 0 ? index + 1 : pending.length);
+      return echo;
+    },
+  };
+}

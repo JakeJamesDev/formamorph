@@ -47,7 +47,7 @@ import {
   ActiveValueContext, EditValueContext, OpenValuesContext,
   type ActiveValueRelay, type EditValueRelay, type OpenValueView,
 } from './openValueContext';
-import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
+import { buildEditorState, createEchoLedger, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin, useChipInsertRegistration } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
@@ -281,8 +281,8 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
 
 // --- plugins ---
 
-/** Two-way sync between the controlled `value` string and the Lexical editor state. Our own edits set
- *  `expected` first so the external-value effect never rebuilds (and jolts the caret) on an echo. */
+/** Two-way sync between the controlled `value` string and the Lexical editor state. Our own edits go through
+ *  the echo ledger, so the external-value effect never rebuilds (and jolts the caret) on an echo. */
 function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
   value: string;
   onChange: (v: string) => void;
@@ -291,7 +291,7 @@ function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
   onExternalValue?: () => void;
 }) {
   const [editor] = useLexicalComposerContext();
-  const expected = useRef(value);
+  const [echoes] = useState(() => createEchoLedger(value));
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const parseRef = useRef(parse);
@@ -316,26 +316,23 @@ function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
   }, [editor]);
 
   useEffect(() => {
-    if (value === expected.current) return;
-    expected.current = value;
+    if (echoes.receive(value)) return;
     // `history-merge` folds the rebuild into the current history entry instead of pushing one.
     editor.update(
       () => buildEditorState(value, parseRef.current),
       userActed.current ? undefined : { tag: 'history-merge' },
     );
     onExternalRef.current?.();
-  }, [value, editor]);
+  }, [value, editor, echoes]);
 
   useEffect(
     () => editor.registerUpdateListener(({ editorState }) => {
       editorState.read(() => {
         const next = serializeRoot();
-        if (next === expected.current) return;
-        expected.current = next;
-        onChangeRef.current(next);
+        if (echoes.send(next)) onChangeRef.current(next);
       });
     }),
-    [editor],
+    [editor, echoes],
   );
   return null;
 }

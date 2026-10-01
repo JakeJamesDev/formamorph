@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PromptField from './PromptField';
 import { promptVocabulary } from '@/lib/chipVocabulary';
@@ -158,5 +158,44 @@ describe('Header in the shared prompt editor', () => {
     await user.paste(clipboard!);
     expect(screen.getByTestId('stored').textContent).toBe(TOKEN);
     expect(screen.getByText('</player_character>')).toBeInTheDocument();
+  });
+
+  it('keeps the caret where you type in the middle of Header', async () => {
+    const user = userEvent.setup();
+    render(<Field />);
+    await user.click(screen.getByText('<player_character>'));
+    const header = screen.getByLabelText('Header') as HTMLInputElement;
+    await user.click(header);
+    header.setSelectionRange(6, 6);
+    await user.keyboard('-1');
+    expect(header).toHaveValue('player-1 character');
+    expect(splitToken(screen.getByTestId('stored').textContent!)?.header).toBe('player-1 character');
+  });
+
+  it('keeps every keystroke when the field hands an edit back late', async () => {
+    // A host that commits each edit later than the next keystroke, the way a loaded machine lags one.
+    const held: Array<() => void> = [];
+    function LaggingField() {
+      const [value, setValue] = useState(TOKEN);
+      return <>
+        <output data-testid="stored">{value}</output>
+        <PromptField value={value} onChange={next => held.push(() => setValue(next))} vocabulary={vocab} />
+      </>;
+    }
+    const user = userEvent.setup();
+    render(<LaggingField />);
+    await user.click(screen.getByText('<player_character>'));
+    const header = screen.getByLabelText('Header');
+    await user.clear(header);
+    act(() => held.splice(0).forEach(commit => commit()));
+    await user.type(header, 'r');
+    const lateEcho = held.splice(0);
+    await user.type(header, 'o');
+    act(() => lateEcho.forEach(commit => commit()));
+    await user.type(header, 'le');
+    act(() => held.splice(0).forEach(commit => commit()));
+    expect(screen.getByLabelText('Header')).toBe(header);
+    expect(header).toHaveValue('role');
+    expect(splitToken(screen.getByTestId('stored').textContent!)?.header).toBe('role');
   });
 });

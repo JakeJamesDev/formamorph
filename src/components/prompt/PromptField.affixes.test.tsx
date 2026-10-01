@@ -80,6 +80,17 @@ describe('inline conditional text in the prompt editor', () => {
     expect(onChange).toHaveBeenLastCalledWith('Before\n<PERSONA|markdown|pre="New heading"|post="\n">\nAfter');
   });
 
+  it('keeps the caret where you type in the middle of an affix', async () => {
+    const user = userEvent.setup();
+    render(<Field />);
+    await user.click(screen.getByText('## Player Character'));
+    const prepend = screen.getByLabelText('Prepend');
+    await user.click(prepend);
+    (prepend as HTMLInputElement).setSelectionRange(3, 3);
+    await user.keyboard('Our ');
+    expect(prepend).toHaveValue('↵##Our  Player Character↵');
+  });
+
   it('shows read-only affixes through the same disabled options', async () => {
     const onChange = vi.fn();
     render(<Field readOnly onChange={onChange} />);
