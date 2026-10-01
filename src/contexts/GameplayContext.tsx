@@ -9,6 +9,7 @@ import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
 import { flattenEnabledBookEntries } from '../lib/dictionaryUtils';
 import { getGameplayText, setGameplayText } from '../lib/gameplayTextStore';
+import { turnActivity } from '../lib/turnActivity';
 import { usePlaceholderSession } from './PlaceholderSessionContext';
 import { parseTurnContent, serializeTurnContent } from '../lib/turnDigest';
 import type { SceneImageMap } from '../lib/sceneImages';
@@ -192,6 +193,9 @@ function useProvideGameplay() {
   // which is true across the whole turn (setup/thinking/aux). The reveal view keys on this so the stale
   // last-turn text can't animate during setup (e.g. the re-generate flash).
   const [isRevealingNarration, setIsRevealingNarration] = useState(false);
+  // Formaquestion holds its Send while a turn generates. Leaving the game ends the turn.
+  useEffect(() => { turnActivity.set(isWaitingForAI); }, [isWaitingForAI]);
+  useEffect(() => () => turnActivity.set(false), []);
   const [fullMessageHistory, setFullMessageHistory] = useState<ChatMessage[]>([]);
   const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
   // The page the player has deliberately paged back to; null means "follow the latest turn".

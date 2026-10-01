@@ -21,6 +21,14 @@ The window stays open when you go to a different screen or open a dialog. You ca
 
 Your AI writes the answer from the guide sections that match your question. To end an answer early, select **Stop**. The text so far stays. See [Ask](#ask).
 
+## How to Ask a Follow-Up Question
+
+1. Ask a question.
+2. After the answer, type your next question in **Ask a Question**, such as "and then?".
+3. Select **Send**.
+
+The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear** above the conversation.
+
 ## How to Search the Guide
 
 1. Open Formaquestion.
@@ -93,12 +101,16 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
-- Each question stands alone. The AI does not get your earlier questions.
+- The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again.
+- The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
+- **Clear** removes every question and answer, and ends an answer that is coming in.
+- While a game turn generates, **Send** waits. **Search** and **Guide** still work.
+- The answer is in your **AI Language**. Control names stay as the guide writes them. See [Settings](Settings).
 - Enter sends the question. Shift+Enter starts a new line.
 - **Stop** ends an answer and keeps its text.
 - With no AI connected, **Send** shows the guide sections that match your question. The Demo AI always counts as connected.
 - When the AI does not answer, an error message shows, and the guide sections that match your question show in place of the answer. Text that came before the failure stays.
-- The conversation stays while the app is open. The app does not store it.
+- The conversation stays while the app is open, also when you close the window or go to a different screen. The app does not store it, so a reload or a restart empties it.
 - The answer comes from your active text endpoint, with reasoning off. See [Connect Your Own AI](Connect-Your-Own-AI).
 
 An answer can be wrong. Use **Sources** to check it against the guide.

@@ -5,7 +5,11 @@ import { reasoningCapabilityFromLevels } from '@/lib/reasoningEffort';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { AiStreamError } from '@/lib/aiRequest/aiStream';
 import type { AIRequestType } from '@/types';
-import { askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, type HelpEvent, type HelpQuestion } from './helpSession';
+import { languageDirective } from '@/lib/languages';
+import { HELP_SYSTEM_PROMPT } from './helpPrompt';
+import {
+  askHelp, helpSearchQuery, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_HISTORY_EXCHANGES, type HelpEvent, type HelpQuestion, type HelpTurn,
+} from './helpSession';
 
 const PAGES = {
   Stats: '# 📊 Stats\n\nStats are numbers.\n\n## How to Add a Stat\n\n1. Open the **Stats** tab.\n2. Select **Add Stat**.\n',
@@ -211,5 +215,86 @@ describe('a request that fails', () => {
     const fetchImpl: FetchSpy = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
     await expect(collect(ask('add a trait', fetchImpl)))
       .rejects.toThrow('Failed to fetch');
+  });
+});
+
+describe('a follow-up', () => {
+  const turn = (question: string, answer: string): HelpTurn => ({ question, answer });
+
+  it('carries the earlier questions and answers as text, and no earlier docs sections', async () => {
+    const fetchImpl = replyWith(sseReply('Select **Add Trait** again.'));
+    const history = [turn('How do I import a world?', '1. Select **Import**.'), turn('How do I add a trait?', '1. Open the **Traits** tab.')];
+    await collect(ask('and then?', fetchImpl, { history }));
+
+    const { messages } = bodyOf(fetchImpl);
+    expect(messages.slice(1, -1)).toEqual([
+      { role: 'user', content: 'How do I import a world?' },
+      { role: 'assistant', content: '1. Select **Import**.' },
+      { role: 'user', content: 'How do I add a trait?' },
+      { role: 'assistant', content: '1. Open the **Traits** tab.' },
+    ]);
+    expect(messages.at(-1)?.content).toContain('Question: and then?');
+    expect(messages.filter((message) => message.content.includes('<guide>'))).toHaveLength(1);
+  });
+
+  it(`leaves out the oldest exchanges past the last ${HELP_HISTORY_EXCHANGES}`, async () => {
+    const fetchImpl = replyWith(sseReply('Done.'));
+    const history = Array.from({ length: HELP_HISTORY_EXCHANGES + 2 }, (_, n) => turn(`question ${n}`, `answer ${n}`));
+    await collect(ask('and then?', fetchImpl, { history }));
+
+    const earlier = bodyOf(fetchImpl).messages.slice(1, -1).map((message) => message.content);
+    expect(earlier).toHaveLength(HELP_HISTORY_EXCHANGES * 2);
+    expect(earlier[0]).toBe('question 2');
+    expect(earlier.at(-1)).toBe(`answer ${HELP_HISTORY_EXCHANGES + 1}`);
+  });
+
+  it('leaves out an earlier question that got no answer text', async () => {
+    const fetchImpl = replyWith(sseReply('Done.'));
+    await collect(ask('and then?', fetchImpl, { history: [turn('How do I add a stat?', 'Open **Stats**.'), turn('How do I add a trait?', '  ')] }));
+    expect(bodyOf(fetchImpl).messages.slice(1, -1).map((message) => message.content)).toEqual(['How do I add a stat?', 'Open **Stats**.']);
+  });
+
+  it('finds the sections of the earlier topic when it has no keywords of its own', async () => {
+    const fetchImpl = replyWith(sseReply('Done.'));
+    const events = await collect(ask('and then?', fetchImpl, { history: [turn('How do I import a world?', '1. Select **Import**.')] }));
+    const done = events.at(-1);
+    expect(done?.type === 'done' && done.sources[0].id).toBe('Library#how-to-import-a-world');
+  });
+
+  it('searches with the previous question and not the ones before it', () => {
+    const history = [turn('How do I add a stat?', 'a'), turn('How do I import a world?', 'b')];
+    expect(helpSearchQuery('and then?', history)).toBe('How do I import a world? and then?');
+  });
+
+  it('searches with the previous question that got an answer', () => {
+    const history = [turn('How do I import a world?', 'a'), turn('How do I add a stat?', '')];
+    expect(helpSearchQuery('and then?', history)).toBe('How do I import a world? and then?');
+  });
+
+  it('searches with the question alone when nothing came before', () => {
+    expect(helpSearchQuery('How do I add a trait?', [])).toBe('How do I add a trait?');
+  });
+});
+
+describe('the AI Language', () => {
+  it('adds the directive to the prompt for a language other than English, and keeps the control names', async () => {
+    const english = replyWith(sseReply('Done.'));
+    const spanish = replyWith(sseReply('Hecho.'));
+    await collect(ask('How do I add a trait?', english, { language: 'English' }));
+    await collect(ask('How do I add a trait?', spanish, { language: 'Spanish' }));
+
+    const englishPrompt = bodyOf(english).messages[0].content;
+    const spanishPrompt = bodyOf(spanish).messages[0].content;
+    expect(englishPrompt).toBe(HELP_SYSTEM_PROMPT);
+    expect(spanishPrompt.startsWith(HELP_SYSTEM_PROMPT)).toBe(true);
+    const added = spanishPrompt.slice(HELP_SYSTEM_PROMPT.length);
+    expect(added).toContain(languageDirective('answers', 'Spanish'));
+    expect(added).toMatch(/control name exactly as the guide writes it/);
+  });
+
+  it('adds no directive with no language set', async () => {
+    const fetchImpl = replyWith(sseReply('Done.'));
+    await collect(ask('How do I add a trait?', fetchImpl, { language: '  ' }));
+    expect(bodyOf(fetchImpl).messages[0].content).toBe(HELP_SYSTEM_PROMPT);
   });
 });

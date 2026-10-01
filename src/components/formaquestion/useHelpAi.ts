@@ -7,6 +7,8 @@ import { useAiReachable } from '@/lib/useAiReachable';
 /** What a help question needs from the app's AI settings. */
 export interface HelpAi {
   snapshot: AiSettingsSnapshot;
+  /** The AI Language setting. */
+  language: string;
   /** False when the active AI cannot answer, null while the check runs or has not run. */
   reachable: boolean | null;
   /** Checks the active AI again, now. */
@@ -19,10 +21,10 @@ export interface HelpAi {
  */
 export function useHelpAi(enabled: boolean): HelpAi {
   const snapshot = useAiSettingsSnapshot();
-  const { activeTextEndpointIsDemoAI } = useSettings();
+  const { activeTextEndpointIsDemoAI, language } = useSettings();
   const { reachable, revalidate } = useAiReachable({ enabled: enabled && !activeTextEndpointIsDemoAI });
   return useMemo(
-    () => ({ snapshot, reachable: activeTextEndpointIsDemoAI ? true : reachable, revalidate }),
-    [snapshot, activeTextEndpointIsDemoAI, reachable, revalidate],
+    () => ({ snapshot, language, reachable: activeTextEndpointIsDemoAI ? true : reachable, revalidate }),
+    [snapshot, language, activeTextEndpointIsDemoAI, reachable, revalidate],
   );
 }

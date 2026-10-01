@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
-import { ChevronRight, SendHorizontal, Square } from 'lucide-react';
+import { ChevronRight, Eraser, SendHorizontal, Square } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -119,15 +119,29 @@ function Conversation({ guide, exchanges, busy, onOpen }: {
   );
 }
 
-function AskField({ draft, onDraftChange, busy, onSend, onStop }: {
+/** The row above the conversation, with the control that empties it. */
+function ClearRow({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="flex shrink-0 items-center justify-end border-b px-2 py-1">
+      <Button variant="link" size="sm" className="gap-1 px-1 text-foreground" onClick={onClear}>
+        <Eraser aria-hidden className="h-4 w-4" />
+        Clear
+      </Button>
+    </div>
+  );
+}
+
+function AskField({ draft, onDraftChange, busy, held, onSend, onStop }: {
   draft: string;
   onDraftChange: (text: string) => void;
   busy: boolean;
+  /** A game turn generates, so Send waits. */
+  held: boolean;
   onSend: (question: string) => void;
   onStop: () => void;
 }) {
   const question = draft.trim();
-  const canSend = !busy && question.length > 0;
+  const canSend = !busy && !held && question.length > 0;
   const send = () => {
     if (!canSend) return;
     onSend(question);
@@ -140,30 +154,33 @@ function AskField({ draft, onDraftChange, busy, onSend, onStop }: {
     send();
   };
   return (
-    <div className="flex shrink-0 items-end gap-2 border-t p-3">
-      <Textarea
-        data-fq-autofocus=""
-        aria-label="Ask a Question"
-        placeholder="Ask a Question"
-        value={draft}
-        rows={2}
-        onChange={(event) => onDraftChange(event.target.value)}
-        onKeyDown={onKeyDown}
-        className="min-h-[44px] resize-none"
-      />
-      {busy ? (
-        <Tip tip="Stop">
-          <Button variant="outline" size="icon" className="shrink-0" onClick={onStop}>
-            <Square aria-hidden className="h-4 w-4" />
-          </Button>
-        </Tip>
-      ) : (
-        <Tip tip="Send">
-          <Button size="icon" className="shrink-0" disabled={!canSend} onClick={send}>
-            <SendHorizontal aria-hidden className="h-4 w-4" />
-          </Button>
-        </Tip>
-      )}
+    <div className="flex shrink-0 flex-col gap-2 border-t p-3">
+      {held && !busy && <Hint>Wait for the game turn to finish to send a question</Hint>}
+      <div className="flex items-end gap-2">
+        <Textarea
+          data-fq-autofocus=""
+          aria-label="Ask a Question"
+          placeholder="Ask a Question"
+          value={draft}
+          rows={2}
+          onChange={(event) => onDraftChange(event.target.value)}
+          onKeyDown={onKeyDown}
+          className="min-h-[44px] resize-none"
+        />
+        {busy ? (
+          <Tip tip="Stop">
+            <Button variant="outline" size="icon" className="shrink-0" onClick={onStop}>
+              <Square aria-hidden className="h-4 w-4" />
+            </Button>
+          </Tip>
+        ) : (
+          <Tip tip="Send">
+            <Button size="icon" className="shrink-0" disabled={!canSend} onClick={send}>
+              <SendHorizontal aria-hidden className="h-4 w-4" />
+            </Button>
+          </Tip>
+        )}
+      </div>
     </div>
   );
 }
@@ -178,8 +195,9 @@ export function AskPanel({ guide, chat, draft, onDraftChange, onOpen }: {
 }) {
   return (
     <>
+      {chat.exchanges.length > 0 && <ClearRow onClear={chat.clear} />}
       <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} onOpen={onOpen} />
-      <AskField draft={draft} onDraftChange={onDraftChange} busy={chat.busy} onSend={chat.ask} onStop={chat.stop} />
+      <AskField draft={draft} onDraftChange={onDraftChange} busy={chat.busy} held={chat.held} onSend={chat.ask} onStop={chat.stop} />
     </>
   );
 }

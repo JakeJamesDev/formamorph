@@ -19,7 +19,7 @@ const SIDEBAR = '- [Home](Home)\n- [Library](Library)\n- [Settings](Settings)\n'
 const guide = createGuide(createDocsIndex({ pages: PAGES, sidebar: SIDEBAR }));
 
 /** An empty conversation: these tests are about the guide's first row. */
-const NO_CHAT: HelpChat = { exchanges: [], busy: false, ask: () => {}, stop: () => {} };
+const NO_CHAT: HelpChat = { exchanges: [], busy: false, held: false, ask: () => {}, stop: () => {}, clear: () => {} };
 
 afterEach(cleanup);
 

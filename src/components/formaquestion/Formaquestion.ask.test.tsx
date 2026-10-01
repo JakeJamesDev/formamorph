@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { closeErrorDetails } from '@/lib/errorDetails';
 import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
+import { turnActivity } from '@/lib/turnActivity';
 import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
 import type { HelpAi } from './useHelpAi';
 
@@ -53,7 +54,7 @@ function slowRefusal() {
 beforeEach(() => {
   localStorage.clear();
   ai.enabled = [];
-  ai.current = { snapshot: textSnapshot(), reachable: true, revalidate: vi.fn(async () => true) };
+  ai.current = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: vi.fn(async () => true) };
 });
 afterEach(() => {
   act(() => {
@@ -164,6 +165,74 @@ describe('the conversation while an answer comes in', () => {
     act(() => push('More words.'));
     await waitFor(() => expect(conversation()).toHaveTextContent('More words.'));
     expect(viewport.scrollTop).toBe(100);
+  });
+});
+
+describe('the conversation', () => {
+  it('writes nothing to browser storage', async () => {
+    stubStream(sseReply('Select **Add Trait**.'));
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    const opens = vi.fn();
+    vi.stubGlobal('indexedDB', { open: opens });
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await within(conversation()).findByRole('group', { name: 'Sources' });
+    await send(field, 'and then?');
+    await waitFor(() => expect(within(conversation()).getAllByRole('group', { name: 'Sources' })).toHaveLength(2));
+    await userEvent.type(field, 'a question in progress');
+    fireEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+    fireEvent.click(helpTab());
+
+    expect(writes).not.toHaveBeenCalled();
+    expect(opens).not.toHaveBeenCalled();
+    expect(conversation()).toHaveTextContent('and then?');
+  });
+
+  it('is empty after Clear, which also ends the answer that is coming in', async () => {
+    stubStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    await send(field, 'How do I add a trait?');
+    await within(conversation()).findByRole('group', { name: 'Sources' });
+
+    const reply = openSseReply([sseFrame({ content: '1. Open the **Stats** tab.' })]);
+    stubStream(reply.respond);
+    await send(field, 'How do I add a stat?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('Open the Stats tab.'));
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(conversation()).not.toHaveTextContent('How do I add a trait?');
+    expect(conversation()).not.toHaveTextContent('Open the Stats tab.');
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+    await waitFor(() => expect(reply.cancel).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('during a game turn', () => {
+  afterEach(() => act(() => turnActivity.set(false)));
+
+  it('holds Send and says why, keeps the search working, and sends once the turn ends', async () => {
+    const fetchSpy = stubStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    act(() => turnActivity.set(true));
+    await userEvent.type(field, 'How do I add a trait?{Enter}');
+
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    expect(screen.getByText('Wait for the game turn to finish to send a question')).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(field).toHaveValue('How do I add a trait?');
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Search' }));
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search the Guide' }), 'trait');
+    expect(within(screen.getByRole('list', { name: 'Search Results' })).getAllByRole('button')[0]).toHaveTextContent('How to Add a Trait');
+    await userEvent.click(screen.getByRole('tab', { name: 'Ask' }));
+
+    act(() => turnActivity.set(false));
+    expect(screen.queryByText('Wait for the game turn to finish to send a question')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await within(conversation()).findByRole('group', { name: 'Sources' });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -51,8 +51,10 @@ function useSampleChat(): HelpChat {
   return useMemo(() => ({
     exchanges,
     busy: false,
+    held: false,
     ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, answer: '', status: 'no-ai', sources: [] }]),
     stop: () => {},
+    clear: () => setExchanges([]),
   }), [exchanges]);
 }
 

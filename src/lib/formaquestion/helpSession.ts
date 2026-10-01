@@ -7,7 +7,8 @@ import { ABORTED_FINISH_REASON } from '@/lib/aiRequest/aiStream';
 import { streamAiToolLoop } from '@/lib/aiRequest/toolLoop';
 import { stripReasoningLive } from '@/lib/aiResponse';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
-import { HELP_SYSTEM_PROMPT, helpUserMessage } from './helpPrompt';
+import type { RequestMessage } from '@/types';
+import { helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /** The most docs sections one help request holds. */
 export const HELP_SECTION_LIMIT = 5;
@@ -18,8 +19,21 @@ export const HELP_DOCS_CHAR_BUDGET = 12_000;
 /** The answer cap in tokens: room for a long list of steps. */
 export const HELP_MAX_TOKENS = 800;
 
+/** The most earlier exchanges one help request carries, newest kept. */
+export const HELP_HISTORY_EXCHANGES = 4;
+
+/** An earlier question and the answer text it got. */
+export interface HelpTurn {
+  question: string;
+  answer: string;
+}
+
 export interface HelpQuestion {
   question: string;
+  /** The earlier exchanges of the conversation, oldest first. The request keeps the newest that have an answer. */
+  history?: readonly HelpTurn[];
+  /** The AI Language setting. */
+  language?: string;
   snapshot: AiSettingsSnapshot;
   index: DocsIndex;
   /** Stop: the stream ends and the answer so far is kept. */
@@ -48,15 +62,40 @@ export function helpSections(index: DocsIndex, question: string, budget = HELP_D
   return kept;
 }
 
+/** The earlier exchanges a request carries: the newest that got answer text, at most the cap. */
+function keptHistory(history: readonly HelpTurn[]): HelpTurn[] {
+  return history.filter((turn) => turn.answer.trim()).slice(-HELP_HISTORY_EXCHANGES);
+}
+
+/**
+ * The text a question is searched with. A follow-up such as "and then?" has few keywords of its own, so
+ * the search also uses the previous question.
+ */
+export function helpSearchQuery(question: string, history: readonly HelpTurn[]): string {
+  const previous = keptHistory(history).at(-1);
+  return previous ? `${previous.question} ${question}` : question;
+}
+
+/** The earlier exchanges as chat messages: the question and answer text only. */
+function historyMessages(history: readonly HelpTurn[]): RequestMessage[] {
+  return keptHistory(history).flatMap((turn): RequestMessage[] => [
+    { role: 'user', content: turn.question },
+    { role: 'assistant', content: turn.answer },
+  ]);
+}
+
 /**
  * Asks one help question. Sends exactly one request, in retrieval mode: the sections that match the
- * question go in the prompt. Throws the request pipeline's errors, and an error for an empty answer.
+ * question go in the prompt, after the earlier exchanges. Throws the request pipeline's errors, and an
+ * error for an empty answer.
  */
-export async function* askHelp({ question, snapshot, index, signal, fetchImpl }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
-  const sources = helpSections(index, question);
+export async function* askHelp({
+  question, history = [], language = '', snapshot, index, signal, fetchImpl,
+}: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
+  const sources = helpSections(index, helpSearchQuery(question, history));
   const spec = buildAiRequestSpec(snapshot, {
-    systemPrompt: HELP_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: helpUserMessage(question, sources) }],
+    systemPrompt: helpSystemPrompt(language),
+    messages: [...historyMessages(history), { role: 'user', content: helpUserMessage(question, sources) }],
     requestType: 'help',
     maxTokensOverride: HELP_MAX_TOKENS,
   });

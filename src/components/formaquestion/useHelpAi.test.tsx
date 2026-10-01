@@ -8,6 +8,7 @@ const settings = vi.hoisted(() => ({
   activeApiToken: '',
   activeModelName: 'default',
   activeTextEndpointIsDemoAI: false,
+  language: 'Spanish',
 }));
 vi.mock('@/contexts/SettingsContext', () => ({ useSettings: () => settings }));
 vi.mock('@/lib/aiRequest/useAiSettingsSnapshot', () => ({ useAiSettingsSnapshot: () => ({}) }));
@@ -48,5 +49,11 @@ describe('useHelpAi', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(result.current.reachable).toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('passes the AI Language setting', () => {
+    deadServer();
+    const { result } = renderHook(() => useHelpAi(false));
+    expect(result.current.language).toBe('Spanish');
   });
 });

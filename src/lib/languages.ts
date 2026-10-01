@@ -18,8 +18,8 @@ export const isEnglishLanguage = (language: string): boolean => {
   return value === '' || value === 'english';
 };
 
-/** The player-facing prompts that carry a language chip. The id is also the noun its directive names. */
-export type LanguageSurface = 'narration' | 'choices';
+/** The player-facing prompts that carry a language directive. The id is also the noun its directive names. */
+export type LanguageSurface = 'narration' | 'choices' | 'answers';
 
 /**
  * What one surface's `<LANGUAGE>` chip renders to — the imperative directive, or nothing at all when the

@@ -85,7 +85,7 @@ export const SETTINGS_COPY = {
   aiLanguage: {
     label: 'AI Language',
     description: 'Sets the language or style the AI writes in',
-    info: `Applies to the narration and the choices.
+    info: `Applies to the narration, the choices and the answers in Formaquestion.
 
 Pick a suggestion or type your own. A **style** works too, like *formal English* or *pirate speak*.`,
   },
