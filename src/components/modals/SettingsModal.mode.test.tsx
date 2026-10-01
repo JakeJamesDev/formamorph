@@ -91,6 +91,21 @@ describe('settings mode', () => {
     expect(screen.getByRole('tab', { name: 'Prompts', selected: true })).toBeTruthy();
   });
 
+  it('opens on the Endpoints tab the route names, in Advanced for Tag Prompt', () => {
+    const openOnEndpoint = (subtab: string) => render(
+      <ThemeProvider>
+        <SettingsProvider>
+          <SettingsModal isOpen onOpenChange={() => {}} initialTab="endpoints" initialPromptTab={subtab} />
+        </SettingsProvider>
+      </ThemeProvider>,
+    );
+    const { unmount } = openOnEndpoint('image');
+    expect(screen.getByRole('tab', { name: 'Image', selected: true })).toBeTruthy();
+    unmount();
+    openOnEndpoint('tagPrompt');
+    expect(screen.getByRole('tab', { name: 'Tag Prompt', selected: true })).toBeTruthy();
+  });
+
   it('hides Paragraph Limit and Markdown Formatting on Display in Simple only', () => {
     const { unmount } = openSettings('simple');
     expect(screen.queryByText('Paragraph Limit')).toBeNull();

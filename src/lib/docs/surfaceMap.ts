@@ -59,11 +59,20 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   memoryManager: { page: 'Memory', anchor: 'the-memory-manager' },
   persona: { page: 'Personas', anchor: 'change-it-in-game' },
   replaceSource: { page: 'LinkedContent', anchor: 'the-three-repairs' },
+  settings: { page: 'Settings', anchor: '\u{FE0F}-settings' },
   worldEditor: { page: 'WorldEditor', anchor: '\u{FE0F}-world-editor' },
   worldUpdate: { page: 'LinkedContent', anchor: 'update-this-world' },
 
   'gameViewer.entities': { page: 'Entities', anchor: '-entities-in-play' },
   'gameViewer.memory': { page: 'Memory', anchor: 'the-memory-tab' },
+
+  'settings.display': { page: 'Settings', anchor: 'display' },
+  'settings.output': { page: 'Settings', anchor: 'output' },
+  'settings.endpoints': { page: 'Settings', anchor: 'endpoints' },
+  'settings.data': { page: 'Settings', anchor: 'data' },
+  'settingsEndpoints.text': { page: 'Settings', anchor: 'text' },
+  'settingsEndpoints.image': { page: 'Settings', anchor: 'image' },
+  'settingsEndpoints.tagPrompt': { page: 'Settings', anchor: 'tag-prompt' },
 
   'worldEditor.overview': { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   'worldEditor.stats': { page: 'World-Editor-Stats', anchor: '-world-editor-stats' },
@@ -118,8 +127,6 @@ export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]
     'gameViewer', 'entity', 'export', 'intro', 'editText', 'location', 'aiContext', 'enterWorld', 'demoAI',
     'likePrompt', 'errorDetails', 'gameViewer.notes', 'gameViewer.logs', ...tabsOf('gameViewerLayout'),
   ],
-  // Settings
-  '07': ['settings', 'settings.display', 'settings.output', 'settings.endpoints', 'settings.data'],
   // Prompts and Tools
   '08': [
     'settings.prompts', 'settings.tools', ...tabsOf('settingsToolEdit'), ...tabsOf('settingsPromptSurfaces'),

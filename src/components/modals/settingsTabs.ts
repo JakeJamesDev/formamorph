@@ -26,6 +26,21 @@ export function asSettingsTab(value: string | undefined): SettingsTabId | undefi
   return SETTINGS_TABS.some((t) => t.value === value) ? value as SettingsTabId : undefined;
 }
 
+/** The Endpoints tab's own tabs, in order. `route` is the dev-router `subtab=…` name and the surface id. */
+export const SETTINGS_ENDPOINT_TABS = [
+  { value: 'text-endpoint', route: 'text', label: 'Text' },
+  { value: 'img-endpoint', route: 'image', label: 'Image' },
+  // Also hidden while image generation is off.
+  { value: 'img-tagprompt', route: 'tagPrompt', label: 'Tag Prompt', advancedOnly: true },
+] as const;
+
+export type SettingsEndpointTab = (typeof SETTINGS_ENDPOINT_TABS)[number]['value'];
+
+/** The Endpoints tab a dev-router `subtab=…` names, or nothing. */
+export function endpointTabForRoute(route: string | undefined): SettingsEndpointTab | undefined {
+  return SETTINGS_ENDPOINT_TABS.find((t) => t.route === route)?.value;
+}
+
 /** The tabs one settings mode shows. Simple drops the `advancedOnly` ones. */
 export function settingsTabsFor(advanced: boolean) {
   return SETTINGS_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
