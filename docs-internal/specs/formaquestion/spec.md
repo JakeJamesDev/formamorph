@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: formaquestion — spec
-Status note: 30 tickets in issues/. 29 and 30 are follow-ups from the ticket 23 and 24 reviews. 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
+Status note: 31 tickets in issues/. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
 
 ## Problem Statement
 
@@ -88,6 +88,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q50 | The lookup prompt drops the contents list, and a re-probe must show the scores hold; otherwise the list comes back (ticket 28) |
 | Q51 | The surface hint uses a table of exact UI labels per surface id, not names derived from ids (ticket 29) |
 | Q52 | A flagged answer keeps its general-knowledge marker in the follow-up history (ticket 30) |
+| Q53 | Lookup mode stays in the code but ships off: every question uses retrieval. After ticket 27, retrieval scored 48/48 and lookup 45/48 at about twice the tokens. Refines Q48 (ticket 31) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
