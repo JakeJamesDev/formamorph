@@ -140,7 +140,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 
 35. As a new player with no AI connected, I want to search the guide in Formaquestion, so that I can find how to connect one.
 36. As a player whose request failed, I want the matching docs sections shown in place of an error only, so that I still get help.
-37. As a player whose request failed, I want the error toast with its details, so that I can fix the connection.
+37. As a player whose request failed, I want the app's standard failure toast, so that I can fix the problem: the connection guide when the server cannot be reached, and Error Details for any other failure.
 38. As a player on a model with no tool support, I want an AI answer all the same, so that my model choice does not remove the feature.
 39. As a player on the default cloud endpoint, I want Formaquestion to work before I set anything up, so that I get help when I need it most.
 40. As an offline player on desktop or Android, I want the full guide in the app, so that I do not need the wiki.
@@ -238,7 +238,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - F1 toggles the window (Q36). F1 and the launcher are inactive while the first-run intro animation covers the Main Menu. Tutorial popovers and Authoring Tour steps do not block F1 (ticket 16 ruling).
 - The window is built in slices: ticket 16 ships the Search and Guide tabs, and ticket 20 adds the Ask tab and the conversation. Below the mobile breakpoint, until ticket 17, the launcher hides, F1 does nothing, and an open window hides with its state kept.
 - Send is unavailable while a turn generates (Q16). The window reads that state; it does not join the Turn Pipeline.
-- A failed request shows the standard error toast with Error Details, and the window shows the docs search for the question.
+- A failed request shows the app's shared AI-failure toast, the same as in play: an unreachable server gets "Couldn't reach your AI server." with **Fix connection →**, which opens the Connect Your Own AI page in the reader; any other failure gets Error Details. The window shows the docs search for the question.
 - "Learn more" in a help topic opens the window's reader at the linked section (Q26). The wiki URL builder stays for links outside the app.
 
 ### Docs work
