@@ -17,8 +17,8 @@ import { surfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /**
- * Switches lookup mode on for every help question. It ships off (ADR-0009): retrieval mode answered as
- * completely for about half the tokens. Not a player setting, and in no preset or export.
+ * Switches lookup mode on for every help question. Off ships (ADR-0009). Not a player setting, and in no
+ * preset or export.
  */
 export const HELP_LOOKUP_MODE = false;
 
