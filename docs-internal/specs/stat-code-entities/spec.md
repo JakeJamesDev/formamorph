@@ -1,7 +1,7 @@
 # Stat Code Entities: `persona` and `entities`
 
 Status: ready-for-agent
-Status note: Tickets 01–06 cut 2026-10-01 under `issues/`. Frontier at start: 01, 05.
+Status note: Tickets 01–06 cut 2026-10-01 under `issues/`; 07 added 2026-10-01 (Q26). Frontier at start: 01, 05.
 Spec session: stat-code-entities — spec
 
 ## Problem Statement
@@ -50,7 +50,8 @@ Each entity's `traits` map works like `traits`. `enabled` is writable and switch
 - **Q11. Every owned placeholder is reached through its owner, and only there.** An entity's placeholders are `entities['X'].placeholders`, and so `persona.placeholders` for the played persona. A dictionary's are `dictionaries['X'].placeholders`. The owner path `placeholders.Owner.Name` is removed.
 - **Q12. `placeholders` holds only the world's own placeholders.** Owner names no longer share its namespace, so the bare-name and owner-name claim rules go away. Placeholder groups and nesting within the world's own list keep their paths.
 - **Q13. `dictionaries` is a new global** that maps each dictionary by code name. Each entry has `id`, `name` and `placeholders`. Of two dictionaries sharing a code name, the later one wins (Q7).
-- **Q14. A library persona's and added characters' placeholders are readable and pinnable** through their `entities` entries. This reverses the rule that stat code never reads a persona's placeholders. An unknown name reads as a blank entry, as an unknown placeholder does today, so code that names a placeholder it can't know never throws.
+- **Q14. A library persona's and added characters' placeholders are readable and pinnable** through their `entities` entries. This reverses the rule that stat code never reads a persona's placeholders. An unknown name reads as a blank entry, as an unknown placeholder does today, so code that names a placeholder it can't know never throws. Added characters' placeholders join through ticket 07 (Q26).
+- **Q26. Stat code never shows a placeholder that play doesn't roll.** Play doesn't roll placeholders owned by added characters or by library dictionaries picked at Enter World, so their chips read empty in narration. Ticket 07 adds them to the session's placeholder set and rolls them, then exposes them in `entities` and `dictionaries`. Until then, `entities['Added'].placeholders` holds no names, and `dictionaries` lists only the world's authored dictionaries.
 - **Q15. The story clock is one `clock` object.** `clock.day`, `clock.daypart`, `clock.deltaHours` and `clock.elapsedHours` read the end of the turn. `clock.previous.day` and `clock.previous.daypart` read its start, as `self.previous` does for a stat. The six flat clock globals are removed. All fields are read-only.
 - **Q16. `currentStatId` is removed.** `self.id` is the one route to the stat's id.
 - **Q17. Identity and state fields match across entries.** A placeholder entry gains `id` and `name`, read-only. A stat entry gains `enabled`, read-only: false while a trait's stat toggle switches the stat off.
