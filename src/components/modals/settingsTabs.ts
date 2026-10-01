@@ -30,15 +30,21 @@ export function asSettingsTab(value: string | undefined): SettingsTabId | undefi
 export const SETTINGS_ENDPOINT_TABS = [
   { value: 'text-endpoint', route: 'text', label: 'Text' },
   { value: 'img-endpoint', route: 'image', label: 'Image' },
-  // Also hidden while image generation is off.
-  { value: 'img-tagprompt', route: 'tagPrompt', label: 'Tag Prompt', advancedOnly: true },
+  { value: 'img-tagprompt', route: 'tagPrompt', label: 'Tag Prompt', advancedOnly: true, needsImageGen: true },
 ] as const;
 
 export type SettingsEndpointTab = (typeof SETTINGS_ENDPOINT_TABS)[number]['value'];
 
-/** The Endpoints tab a dev-router `subtab=…` names, or nothing. */
+/** Maps a dev-router `subtab=…` name to its Endpoints tab. */
 export function endpointTabForRoute(route: string | undefined): SettingsEndpointTab | undefined {
   return SETTINGS_ENDPOINT_TABS.find((t) => t.route === route)?.value;
+}
+
+/** The Endpoints tabs one settings mode shows. Simple drops the `advancedOnly` ones; image generation off
+ *  drops the `needsImageGen` ones. */
+export function endpointTabsFor(advanced: boolean, imageGenOn: boolean) {
+  return SETTINGS_ENDPOINT_TABS.filter((t) =>
+    (advanced || !('advancedOnly' in t && t.advancedOnly)) && (imageGenOn || !('needsImageGen' in t && t.needsImageGen)));
 }
 
 /** The tabs one settings mode shows. Simple drops the `advancedOnly` ones. */

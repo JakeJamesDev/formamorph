@@ -18,7 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Help and Wiki:**
-    - **The wiki has a new Settings page that explains each setting in the Display, Output, Endpoints and Data tabs.** It marks the settings that show in Advanced mode only, and gives numbered steps to change the narration layout, turn on a thinking mode, limit active characters and restore the default worlds.
+    - **The wiki has a new Settings page that explains each setting in the Display, Output, Endpoints and Data tabs.** It marks the settings that show in Advanced mode only, and gives numbered steps to change the narration layout, color quoted speech, change the narration font, turn on a thinking mode, cap the entities in a Staged turn and restore the default worlds.
     - **The wiki has new How to Play and Starting a Game pages that explain how a game starts and how each turn works.** Starting a Game walks through Enter World, Quick Start, starting traits, the starting location and Library Additions. How to Play gives numbered steps to take an action, use a choice, direct the story, attach images, re-generate, edit, rewind, change location and export the story. It also covers the side panels, the game menu, the AI Context inspector and Error Details. The **?** help beside the action box links to it.
 
 #### 🔧 Fixed

@@ -5,7 +5,7 @@ import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TO
 import { useTheme } from '../theme-provider';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
-import { endpointTabForRoute, settingsTabsFor, SETTINGS_ENDPOINT_TABS, type SettingsTabId } from '@/components/modals/settingsTabs';
+import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
 import { blankTool } from '@/lib/tools/toolDraft';
@@ -1024,6 +1024,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
   // Tag Prompt only exists while image generation is on; fall back to Image so the panel is never blank.
   const activeEndpointTab = imageGenDisabled && endpointTab === 'img-tagprompt' ? 'img-endpoint' : endpointTab;
+  const visibleEndpointTabs = endpointTabsFor(advanced, !imageGenDisabled);
   const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
 
   // Each prompt has a System editor, an Options sub-tab, and — for the aux prompts — a User-message editor.
@@ -1458,10 +1459,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
 
           <TabsContent value="endpoints" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <Tabs value={activeEndpointTab} onValueChange={setEndpointTab} className="flex flex-col flex-1 min-h-0">
-              <TabsList className={`grid w-full flex-shrink-0 ${imageGenDisabled || !advanced ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                {SETTINGS_ENDPOINT_TABS
-                  .filter((t) => !('advancedOnly' in t) || (advanced && !imageGenDisabled))
-                  .map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
+              <TabsList className={`grid w-full flex-shrink-0 ${visibleEndpointTabs.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {visibleEndpointTabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               {/* Preset selector: swaps the whole endpoint field set. The read-only built-ins are the shared
