@@ -284,7 +284,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   continueTheStory: {
     label: 'Continue the Story',
     description: 'Adds a choice that nudges the story forward',
-    info: `A **[Continue the Story]** button appears under the choices. Press it and the turn runs with that text as your action. The story reads it as a nudge to keep going, not as something your character does.
+    info: `Shows a **[Continue the Story]** button under the choices. Like any choice, it puts its text in the action box, and you send it. The story reads it as a nudge to keep going, not as something your character does.
 
 **Always** keeps the button even when the **Choices** request is off.`,
   },
