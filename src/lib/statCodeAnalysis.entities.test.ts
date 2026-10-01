@@ -14,10 +14,10 @@ const messages = (code: string, options?: Parameters<typeof statCodeDiagnostics>
 
 // Two entities share the code name Rook; the later one's set is what code reads.
 const entities = [
-  { name: 'Mira', traits: ['Scarred', 'Night Owl'] },
-  { name: 'Old Rook', traits: ['Calm'] },
-  { name: 'Rook', traits: ['Calm'] },
-  { name: 'Rook', traits: ['Angry', 'Loyal'] },
+  { id: 'mira', name: 'Mira', persona: true, traits: ['Scarred', 'Night Owl'] },
+  { id: 'old-rook', name: 'Old Rook', persona: false, traits: ['Calm'] },
+  { id: 'rook', name: 'Rook', persona: false, traits: ['Calm'] },
+  { id: 'later-rook', name: 'Rook', persona: false, traits: ['Angry', 'Loyal'] },
 ];
 
 describe('entities in stat code', () => {

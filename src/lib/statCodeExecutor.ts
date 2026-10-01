@@ -73,6 +73,9 @@ export interface StatCodeResult {
   placeholders?: PlaceholderWrite[];
   /** Paths the code wrote that no placeholder answers, as code spelled them; each write was dropped. */
   unknownPlaceholders?: string[];
+  /** Paths the code wrote through an owner no run can know, an unknown entity or dictionary or the empty
+   *  persona, as labels; each write was dropped. */
+  unknownOwnerPlaceholders?: string[];
   /** The traits the code switched, in map order. Absent when it switched none. */
   traits?: TraitWrite[];
   /** Names the code switched that no trait has; each switch was dropped. */
@@ -139,6 +142,16 @@ export interface SandboxEntity {
   type?: string;
   pronouns?: string;
   inScene?: boolean;
+  /** The entity's owner node in the placeholder tree. Absent, its `placeholders` holds no names. */
+  placeholders?: SandboxPlaceholderNode;
+}
+
+/** One entry of the sandbox's `dictionaries`: a book's code name, and its owner node in the placeholder tree. */
+export interface SandboxDictionary {
+  name: string;
+  id?: string;
+  /** Absent, its `placeholders` holds no names. */
+  placeholders?: SandboxPlaceholderNode;
 }
 
 /** A stat's value and max, as one turn input carries them. */
@@ -219,6 +232,9 @@ const ROLL_HOOK = '__formamorphRollPlaceholder';
 const PLACEHOLDER_WRITES = '__formamorphPlaceholderWrites';
 const TRAIT_WRITES = '__formamorphTraitWrites';
 const ENTITY_WRITES = '__formamorphEntityWrites';
+const DICTIONARY_WRITES = '__formamorphDictionaryWrites';
+// The `placeholders` prelude's view of one owner node, which the owner entries' `placeholders` read.
+const OWNER_VIEW = '__formamorphOwnerPlaceholders';
 const STAT_WRITES = '__formamorphStatWrites';
 // Writes to `self.enabled` on a `self` that is no entry of `stats`.
 const SELF_WRITES = '__formamorphSelfWrites';
@@ -316,9 +332,11 @@ interface FlatPlaceholderMap {
   indexOf: ReadonlyMap<SandboxPlaceholderNode, number>;
 }
 
-/** Flatten the map. A node shared by two keys takes one index, so it holds one pin state, and a world whose
- *  placeholders hold each other terminates. */
-function flattenPlaceholderMap(top: readonly SandboxPlaceholderNode[]): FlatPlaceholderMap {
+/** Flatten the map and the owner nodes the entries carry. A node shared by two routes takes one index, so it
+ *  holds one pin state, and a world whose placeholders hold each other terminates. */
+function flattenPlaceholderMap(
+  top: readonly SandboxPlaceholderNode[], owned: readonly (SandboxPlaceholderNode | undefined)[],
+): FlatPlaceholderMap {
   const indexOf = new Map<SandboxPlaceholderNode, number>();
   const nodes: SandboxPlaceholderNode[] = [];
   const visit = (node: SandboxPlaceholderNode) => {
@@ -328,6 +346,7 @@ function flattenPlaceholderMap(top: readonly SandboxPlaceholderNode[]): FlatPlac
     for (const child of node.children ?? []) visit(child);
   };
   for (const node of top) visit(node);
+  for (const node of owned) if (node) visit(node);
   return { top, nodes, indexOf };
 }
 
@@ -342,6 +361,9 @@ function flattenPlaceholderMap(top: readonly SandboxPlaceholderNode[]): FlatPlac
  * so the last of `pin`, `value` and `unpin` a run calls wins. Rows are `[index, 'set', value]` or
  * `[index, 'unpin']`; an entry a run replaced wholesale is a write of itself when it is a string or a list,
  * else of its own value.
+ *
+ * It also hands back the view of an owner node by index, which `entities`, `persona` and `dictionaries` read
+ * as each entry's `placeholders`, so a node reached by two routes is one object with one pin state.
  *
  * `stats` and `traits` are flat maps and share `trackedMapPrelude`. This one does not: its objects nest, one
  * node sits at two keys, and a key a run adds has to be told apart from the members its node was built with.
@@ -359,7 +381,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     top: keyed(top),
   };
   return [
-    `const [placeholders, ${PLACEHOLDER_WRITES}] = ((stringify, keys, isArray, define, roll) => {`,
+    `const [placeholders, ${PLACEHOLDER_WRITES}, ${OWNER_VIEW}] = ((stringify, keys, isArray, define, roll) => {`,
     `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
     `  const states = [];`,
     `  const strays = Object.create(null);`,
@@ -377,18 +399,18 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `      define(target, field, { enumerable: true, get: () => held, set: () => { if (!state.readOnly.includes(field)) state.readOnly.push(field); } });`,
     `    }`,
     `  };`,
-    `  const strayAt = (path, key) => {`,
+    `  const strayAt = (path, key, absent) => {`,
     `    const at = stringify([...path, key]);`,
     `    if (strays[at]) return strays[at].entry;`,
-    `    const state = { value: '', text: '', assigned: false, unpinned: false, readOnly: [], path: [...path, key] };`,
+    `    const state = { value: '', text: '', assigned: false, unpinned: false, readOnly: [], path: [...path, key], absent };`,
     `    const entry = Object.create(null);`,
     `    entry.values = []; entry.roll = () => '';`,
     `    track(entry, state, '', '');`,
     `    strays[at] = { entry, state };`,
     `    return entry;`,
     `  };`,
-    `  const view = (target, path) => new Proxy(target, {`,
-    `    get: (t, key) => (typeof key !== 'string' || key in t ? t[key] : strayAt(path, key)),`,
+    `  const view = (target, path, absent = false) => new Proxy(target, {`,
+    `    get: (t, key) => (typeof key !== 'string' || key in t ? t[key] : strayAt(path, key, absent)),`,
     `  });`,
     `  const targets = spec.nodes.map(() => Object.create(null));`,
     `  const views = spec.nodes.map((n, i) => view(targets[i], n.p));`,
@@ -438,21 +460,30 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `      else if (states[i].assigned) rows.push([i, 'set', states[i].value]);`,
     `    });`,
     `    const missed = [];`,
+    `    const missedOwners = [];`,
     `    const seen = Object.create(null);`,
-    `    const miss = (path) => { const at = stringify(path); if (!seen[at]) { seen[at] = 1; missed.push(path); } };`,
-    `    for (const { object, built, path } of scanned) {`,
-    `      for (const key of keys(object)) if (!(key in built)) miss([...path, key]);`,
+    `    const miss = (path, absent) => { const at = stringify(path); if (!seen[at]) { seen[at] = 1; (absent ? missedOwners : missed).push(path); } };`,
+    `    for (const { object, built, path, absent } of scanned) {`,
+    `      for (const key of keys(object)) if (!(key in built)) miss([...path, key], absent);`,
     `    }`,
     `    for (const at of keys(strays)) {`,
     `      const state = strays[at].state;`,
-    `      if (state.assigned || state.unpinned) miss(state.path);`,
+    `      if (state.assigned || state.unpinned) miss(state.path, state.absent);`,
     `    }`,
     `    const readOnly = [];`,
     `    spec.nodes.forEach((n, i) => { if (n.e) for (const field of states[i].readOnly) readOnly.push([...n.p, field]); });`,
     `    for (const at of keys(strays)) for (const field of strays[at].state.readOnly) readOnly.push([...strays[at].state.path, field]);`,
-    `    return stringify([rows, missed, readOnly]);`,
+    `    return stringify([rows, missed, readOnly, missedOwners]);`,
     `  };`,
-    `  return [view(root, []), readWrites];`,
+    // An owner entry's `placeholders`: its node's view, or an empty owner of its own whose writes the reader
+    // scans like any node's. `absent` marks the owner no run can know: an unknown name or the empty persona.
+    `  const ownerView = (at, path, absent) => {`,
+    `    if (at >= 0) return views[at];`,
+    `    const target = Object.create(null);`,
+    `    scanned.push({ object: target, built: Object.create(null), path, absent });`,
+    `    return view(target, path, absent);`,
+    `  };`,
+    `  return [view(root, []), readWrites, ownerView];`,
     `})(JSON.stringify, Object.keys, Array.isArray, Object.defineProperty, globalThis.${ROLL_HOOK});`,
     `delete globalThis.${ROLL_HOOK};`,
   ].join('\n');
@@ -485,7 +516,7 @@ const traitData = (entries: readonly SandboxTrait[]) =>
     [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
 
 /** The fields on an entity entry that a write never reaches. */
-const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits'] as const;
+const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders'] as const;
 
 /** The entities as the sandbox keys them: the later of two sharing a name wins, and the played persona
  *  holds its own name whatever comes after it. */
@@ -496,14 +527,16 @@ export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], p
 }
 
 /**
- * The `entities` and `persona` prelude. Each entry is frozen, its `traits` a trait map of its own. An unknown
- * name reads as a blank entry whose `traits` holds no names, so a switch through it is dropped and reported as
- * an unknown entity. `persona` is the played persona's entry, or a blank one of its own. Rows are
+ * The `entities` and `persona` prelude. Each entry is frozen, its `traits` a trait map of its own and its
+ * `placeholders` its owner node's view. An unknown name reads as a blank entry whose `traits` and
+ * `placeholders` hold no names, so a switch through it is dropped and reported as an unknown entity. `persona` is the played persona's entry, or a blank one of its own. Rows are
  * `[name, unknownEntity, traitRows]`, one per entry the run wrote into.
  */
-const entitiesPrelude = (keyed: ReadonlyMap<string, SandboxEntity>, persona: SandboxEntity): string => {
-  const data = ({ id = '', type = '', pronouns = '', inScene = false, traits }: SandboxEntity) =>
-    ({ id, type, pronouns, inScene, traits: traitData(traits) });
+const entitiesPrelude = (
+  keyed: ReadonlyMap<string, SandboxEntity>, persona: SandboxEntity, indexOf: FlatPlaceholderMap['indexOf'],
+): string => {
+  const data = ({ id = '', type = '', pronouns = '', inScene = false, traits, placeholders }: SandboxEntity) =>
+    ({ id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders) });
   const spec = {
     entities: [...keyed].map(([name, entity]) => [name, data(entity)]),
     persona: persona.name ? null : data(persona),
@@ -517,7 +550,8 @@ const entitiesPrelude = (keyed: ReadonlyMap<string, SandboxEntity>, persona: San
     `    const [traits, rows] = traitMap(data.traits || {});`,
     `    const written = [];`,
     `    readers.push([key, unknown, rows, written]);`,
-    `    const values = { id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits };`,
+    `    const placeholders = ${OWNER_VIEW}(data.ph ?? -1, [key || 'persona'], unknown || !key);`,
+    `    const values = { id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits, placeholders };`,
     `    const out = {};`,
     `    for (const field of ${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}) {`,
     `      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });`,
@@ -539,6 +573,53 @@ const entitiesPrelude = (keyed: ReadonlyMap<string, SandboxEntity>, persona: San
     `})(JSON.stringify, Object.keys, Object.freeze, Object.defineProperty);`,
   ].join('\n');
 };
+
+/** The index of an owner node in the flattened map, or -1 where the owner has none. */
+const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceholderNode | undefined): number =>
+  (node ? indexOf.get(node) ?? -1 : -1);
+
+/** The fields on a dictionary entry. None takes a write. */
+const DICTIONARY_FIELDS = ['id', 'name', 'placeholders'] as const;
+
+/**
+ * The `dictionaries` prelude. Each entry is frozen and keyed by code name, the later of two sharing one
+ * winning. An unknown name reads as a blank entry whose `placeholders` holds no names. Rows are
+ * `[name, writtenFields]`, one per entry the run wrote a field of.
+ */
+const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], indexOf: FlatPlaceholderMap['indexOf']): string => {
+  const spec = [...new Map(dictionaries.map((book) => [book.name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders) }]))];
+  return [
+    `const [dictionaries, ${DICTIONARY_WRITES}] = ((stringify, freeze, define) => {`,
+    `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
+    `  const readers = [];`,
+    `  const entry = (key, data, unknown) => {`,
+    `    const written = [];`,
+    `    readers.push([key, written]);`,
+    `    const values = { id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, [key], unknown) };`,
+    `    const out = {};`,
+    `    for (const field of ${JSON.stringify(DICTIONARY_FIELDS)}) {`,
+    `      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });`,
+    `    }`,
+    `    return freeze(out);`,
+    `  };`,
+    `  const map = Object.create(null);`,
+    `  for (const [name, data] of spec) map[name] = entry(name, data, false);`,
+    `  const strays = Object.create(null);`,
+    `  const dictionaries = new Proxy(freeze(map), {`,
+    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
+    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1 }, true)),`,
+    `  });`,
+    `  return [dictionaries, () => stringify(readers.filter((row) => row[1].length))];`,
+    `})(JSON.stringify, Object.freeze, Object.defineProperty);`,
+  ].join('\n');
+};
+
+/** The read-only fields the run wrote on `dictionaries` entries, as code spelled them. */
+function readDictionaryWrites(dump: string): string[] {
+  const parsed: unknown = JSON.parse(dump);
+  return (Array.isArray(parsed) ? parsed : []).flatMap((row) =>
+    (Array.isArray(row) && typeof row[0] === 'string' ? readOnlyPaths(memberPath('dictionaries', row[0]), row[1]) : []));
+}
 
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
 const memberPath = (root: string, name: string) =>
@@ -642,9 +723,9 @@ const writtenText = (value: unknown): string | null => (typeof value === 'string
 function readPlaceholderWrites(
   dump: string,
   nodes: readonly SandboxPlaceholderNode[],
-): { writes: PlaceholderWrite[]; unknown: string[]; readOnly: string[] } | { error: string } {
+): { writes: PlaceholderWrite[]; unknown: string[]; unknownOwned: string[]; readOnly: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
-  const [rows, missed, readOnlyRows] = Array.isArray(parsed) ? parsed : [];
+  const [rows, missed, readOnlyRows, missedOwners] = Array.isArray(parsed) ? parsed : [];
   const writes: PlaceholderWrite[] = [];
   for (const row of Array.isArray(rows) ? rows : []) {
     if (!Array.isArray(row) || typeof row[0] !== 'number') continue;
@@ -668,8 +749,9 @@ function readPlaceholderWrites(
     writes.push({ id, path, value: items });
   }
   const unknown = pathsIn(missed).map((path) => placeholderPathLabel(path));
+  const unknownOwned = pathsIn(missedOwners).map((path) => placeholderPathLabel(path));
   const readOnly = pathsIn(readOnlyRows).map((path) => placeholderPathExpression(path));
-  return { writes, unknown, readOnly };
+  return { writes, unknown, unknownOwned, readOnly };
 }
 
 /** The stats whose read-only `enabled` the run wrote, as code spelled them; `[null]` is `self` itself. */
@@ -703,12 +785,14 @@ export interface StatCodeRunOptions {
   entities?: readonly SandboxEntity[];
   /** Absent, `persona` is the empty entry. */
   persona?: SandboxEntity;
+  /** Every dictionary, in authored order. */
+  dictionaries?: readonly SandboxDictionary[];
 }
 
 const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
- *  the clock, `placeholders`, `traits`, `entities` and `persona`. A number return or a `self.value` write sets the
+ *  the clock, `placeholders`, `traits`, `entities`, `persona` and `dictionaries`. A number return or a `self.value` write sets the
  *  value, clamped; a `self.min`, `self.max` or `self.regen` write sets that bound; a `traits.<name>.enabled`
  *  write switches that trait, and an `entities.<entity>.traits.<name>.enabled` write that entity's own; a
  *  failure discards every write. Of two placeholders, traits or entities sharing a name, the later one is the
@@ -717,7 +801,7 @@ export const executeStatCode = async (
   code: string,
   stats: Stat[],
   currentStat: Stat,
-  { clock, turn, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA }: StatCodeRunOptions = {},
+  { clock, turn, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, dictionaries = [] }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -758,7 +842,9 @@ export const executeStatCode = async (
         },
       };
     };
-    const placeholderMap = flattenPlaceholderMap(placeholders);
+    const placeholderMap = flattenPlaceholderMap(placeholders, [
+      ...entities.map((entity) => entity.placeholders), persona.placeholders, ...dictionaries.map((book) => book.placeholders),
+    ]);
     const keyed = keyedEntities(entities, persona);
     const statsData = stats.map(marshal);
     // `self` is the current stat's own entry in `stats`. A stat missing from `stats`, or one that loses its
@@ -817,11 +903,12 @@ export const executeStatCode = async (
         `  previous: Object.freeze({ day: startDay, daypart: startDaypart }) });`,
         placeholdersPrelude(placeholderMap),
         trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-        entitiesPrelude(keyed, persona),
-        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${SELF_WRITES}) {`,
+        entitiesPrelude(keyed, persona, placeholderMap.indexOf),
+        dictionariesPrelude(dictionaries, placeholderMap.indexOf),
+        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${SELF_WRITES}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}) {`,
         code,
         `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
-        `  JSON.stringify([...JSON.parse(${STAT_WRITES}()), ...${SELF_WRITES}.map(() => [null])])];`,
+        `  JSON.stringify([...JSON.parse(${STAT_WRITES}()), ...${SELF_WRITES}.map(() => [null])]), ${DICTIONARY_WRITES}()];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -867,6 +954,7 @@ export const executeStatCode = async (
       const traitsDump = readDump(3 + CODE_BOUND_FIELDS.length);
       const entitiesDump = readDump(4 + CODE_BOUND_FIELDS.length);
       const statsDump = readDump(5 + CODE_BOUND_FIELDS.length);
+      const dictionariesDump = readDump(6 + CODE_BOUND_FIELDS.length);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -897,6 +985,7 @@ export const executeStatCode = async (
         ...placeholderWrites.readOnly,
         ...traitWrites.readOnly,
         ...entityWrites.readOnly,
+        ...readDictionaryWrites(dictionariesDump),
       ];
 
       const min = bounds.min ?? selfData.min;
@@ -907,6 +996,7 @@ export const executeStatCode = async (
         ...(Object.keys(bounds).length ? { bounds } : {}),
         ...(placeholderWrites.writes.length ? { placeholders: placeholderWrites.writes } : {}),
         ...(placeholderWrites.unknown.length ? { unknownPlaceholders: placeholderWrites.unknown } : {}),
+        ...(placeholderWrites.unknownOwned.length ? { unknownOwnerPlaceholders: placeholderWrites.unknownOwned } : {}),
         ...(traitWrites.writes.length ? { traits: traitWrites.writes } : {}),
         ...(traitWrites.unknown.length ? { unknownTraits: traitWrites.unknown } : {}),
         ...(traitWrites.acquired.length ? { acquiredWrites: traitWrites.acquired } : {}),

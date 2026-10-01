@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
+import type { CodeEntityNames } from '@/lib/statCodeAnalysis';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
 
@@ -95,7 +96,7 @@ describe('what each box completes and checks against', () => {
       placeholders: props.placeholders as { list: Placeholder[] },
       traits: props.traits as string[],
       personaTraits: props.personaTraits as string[],
-      entities: props.entities as { name: string; traits: string[] }[],
+      entities: props.entities as CodeEntityNames[],
     };
   };
 
@@ -107,7 +108,9 @@ describe('what each box completes and checks against', () => {
     expect(optionsOf('Before the AI').selfName).toBe('Warmth');
     expect(optionsOf('Before the AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
     expect(optionsOf('Before the AI').personaTraits).toEqual(['Scarred']);
-    expect(optionsOf('Before the AI').entities).toEqual([{ name: 'Mira', traits: ['Scarred'] }, { name: 'Ash', traits: ['Loyal'] }]);
+    expect(optionsOf('Before the AI').entities).toEqual([
+      { id: 'e1', name: 'Mira', persona: true, traits: ['Scarred'] }, { id: 'e2', name: 'Ash', persona: false, traits: ['Loyal'] },
+    ]);
   });
 
   // The acceptance case, run through the real reader and the real completion source rather than compared
@@ -304,8 +307,8 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('entities.Ash.traits.Loyal switched on'));
     expect(executeStatCode.mock.calls[0][3].entities).toEqual([
-      { name: 'Mira', traits: [{ name: 'Scarred', enabled: false, acquired: false }] },
-      { name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }] },
+      { id: 'e1', name: 'Mira', traits: [{ name: 'Scarred', enabled: false, acquired: false }] },
+      { id: 'e2', name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }] },
     ]);
   });
 

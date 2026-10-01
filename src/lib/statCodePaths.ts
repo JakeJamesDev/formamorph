@@ -46,6 +46,8 @@ export interface PlaceholderPathSource {
   list: readonly Placeholder[];
   /** Absent, nothing is scoped and the map has no owner nodes. */
   owners?: PlaceholderOwners;
+  /** Placeholder ids that take no top-level key: reached only through their owner's node. */
+  unlisted?: ReadonlySet<string>;
 }
 
 /** One claim on a top-level key, in authored order. The last claim on a key is the one that reads. */
@@ -62,14 +64,18 @@ export interface PlaceholderPathMap {
   keys: ReadonlyMap<string, PlaceholderPathNode>;
   /** Every claim, so a duplicate name can be counted. */
   claims: readonly PlaceholderKeyClaim[];
+  /** Each owner's node by owner id, whether or not it holds a top-level key. */
+  owners: ReadonlyMap<string, PlaceholderPathNode>;
 }
 
 /** A node while it is being built, before its children are in place. */
 type MutableNode = PlaceholderPathNode & { children: PlaceholderPathNode[] };
 
-const EMPTY_MAP: PlaceholderPathMap = { top: [], keys: new Map(), claims: [] };
+const EMPTY_MAP: PlaceholderPathMap = { top: [], keys: new Map(), claims: [], owners: new Map() };
 
-const cache = new WeakMap<readonly Placeholder[], { owners: PlaceholderOwners | undefined; map: PlaceholderPathMap }>();
+const cache = new WeakMap<readonly Placeholder[], {
+  owners: PlaceholderOwners | undefined; unlisted: ReadonlySet<string> | undefined; map: PlaceholderPathMap;
+}>();
 
 /**
  * The map `placeholders` is, for one world. The same list and owner map answer with the same object, so the
@@ -78,13 +84,13 @@ const cache = new WeakMap<readonly Placeholder[], { owners: PlaceholderOwners | 
 export function placeholderPathMap(source: PlaceholderPathSource): PlaceholderPathMap {
   if (!source.list.length) return EMPTY_MAP;
   const hit = cache.get(source.list);
-  if (hit && hit.owners === source.owners) return hit.map;
+  if (hit && hit.owners === source.owners && hit.unlisted === source.unlisted) return hit.map;
   const map = buildMap(source);
-  cache.set(source.list, { owners: source.owners, map });
+  cache.set(source.list, { owners: source.owners, unlisted: source.unlisted, map });
   return map;
 }
 
-function buildMap({ list, owners }: PlaceholderPathSource): PlaceholderPathMap {
+function buildMap({ list, owners, unlisted }: PlaceholderPathSource): PlaceholderPathMap {
   const byId = new Map(list.map((p) => [p.id, p]));
   const heldBy = new Map(list.map((p) => [p.id, holderOf(list, p)]));
   const childrenOf = new Map<string, Placeholder[]>();
@@ -144,26 +150,31 @@ function buildMap({ list, owners }: PlaceholderPathSource): PlaceholderPathMap {
   };
 
   const ownerNodes = new Map<string, MutableNode>();
+  const claimed = new Set<string>();
   for (const p of list) {
     const owner = owners?.get(p.id);
     const held = heldBy.get(p.id);
-    // An owner node stands where its first placeholder does, and carries the rows that owner holds directly.
+    const listed = !unlisted?.has(p.id);
+    // An owner node stands where its first listed placeholder does, and carries the rows that owner holds directly.
     if (owner && !held) {
       let node = ownerNodes.get(owner.id);
       if (!node) {
         const name = ownerKey(owner.name);
         node = { name, placeholder: null, owner, path: [name], children: [] };
         ownerNodes.set(owner.id, node);
-        claim(name, node, 'row');
+      }
+      if (listed && !claimed.has(owner.id)) {
+        claimed.add(owner.id);
+        claim(node.name, node, 'row');
       }
       node.children.push(nodeOf(p));
     }
-    claim(p.name, nodeOf(p), owner || held ? 'fallback' : 'row');
+    if (listed) claim(p.name, nodeOf(p), owner || held ? 'fallback' : 'row');
   }
 
   const keys = new Map(rows);
   for (const [key, node] of fallbacks) if (!keys.has(key)) keys.set(key, node);
-  return { top: [...keys.values()], keys, claims };
+  return { top: [...keys.values()], keys, claims, owners: ownerNodes };
 }
 
 /** How far a path walks into the map, and what it had left over: a member read, or a name nothing answers. */
@@ -175,14 +186,17 @@ export interface PlaceholderWalk {
 }
 
 /**
- * Walk `segments` into the map, stopping at the first one no node answers. On an entry, a member of its own
+ * Walk `segments` into the map from `from`, or from the top, stopping at the first one no node answers. On an
+ * entry, a member of its own
  * wins the name over a child that shares it, so the walk stops there too.
  *
  * The one walk over the map. The sandbox reads a path by building the map's objects, and every other surface
  * reads one by coming through here, so what the editor offers and checks cannot disagree with what runs.
  */
-export function walkPlaceholderPath(map: PlaceholderPathMap, segments: readonly string[]): PlaceholderWalk {
-  let node: PlaceholderPathNode | null = null;
+export function walkPlaceholderPath(
+  map: PlaceholderPathMap, segments: readonly string[], from: PlaceholderPathNode | null = null,
+): PlaceholderWalk {
+  let node: PlaceholderPathNode | null = from;
   for (let at = 0; at < segments.length; at += 1) {
     const next: PlaceholderPathNode | undefined = node
       ? node.children.find((child) => child.name === segments[at])

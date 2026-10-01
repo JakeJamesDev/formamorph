@@ -19,6 +19,7 @@ import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
 import { entityTraitNames, personaTraitNames as personaTraitCodeNames } from "@/lib/statCodeTraits";
+import { codeDictionaries } from "@/lib/statCodePlaceholders";
 import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -60,7 +61,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateStat, stats, placeholders, placeholderOwners, traits, traitGroups, entities } = useGameData();
+  const { updateStat, stats, placeholders, placeholderOwners, traits, traitGroups, entities, dictionaries } = useGameData();
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -93,8 +94,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     codeNameOf: (name) => statCodeName(name, placeholders),
   });
   const codePlaceholders = useMemo(
-    () => ({ list: placeholders, owners: placeholderOwners }),
-    [placeholders, placeholderOwners],
+    () => ({ list: placeholders, owners: placeholderOwners, dictionaries: codeDictionaries(dictionaries, placeholders) }),
+    [placeholders, placeholderOwners, dictionaries],
   );
   // Code reaches a trait by its code name too, so the completions and Test Code both offer that spelling.
   const traitNames = useMemo(

@@ -2704,8 +2704,8 @@ const GameViewer = ({
             inSceneIds: liveScene().inSceneIds,
           },
           placeholders: {
-            // The world's list only: stat code is authored with the world and never reads a persona's.
-            placeholders: worldPlaceholders, owners: placeholderOwners, rolls: sessionRolls,
+            // The world's list and books. The run joins the played library persona's pool itself.
+            placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, rolls: sessionRolls,
             pins: preTurn ? pinsFor(basePins).world : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
@@ -2753,8 +2753,8 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, sessionRolls, pinsFor,
-      traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, dictionaries, sessionRolls,
+      pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 

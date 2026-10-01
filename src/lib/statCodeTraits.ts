@@ -1,6 +1,6 @@
 import type { CascadeOffTraitIds, Entity, GameState, OwnedTraitStates, Placeholder, Trait, TraitGroup } from '@/types';
 import { canBePlayer, inCast, playsAs, resolveBearers, type BearerWorld } from './bearers';
-import type { SandboxEntity, SandboxTrait } from './statCodeExecutor';
+import type { SandboxEntity, SandboxPlaceholderNode, SandboxTrait } from './statCodeExecutor';
 import type { CodeEntityNames } from './statCodeAnalysis';
 import { statCodeName } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
@@ -168,11 +168,21 @@ export function entityTraitNames(world: BearerWorld, placeholders: readonly Plac
   return world.entities.map((entity) => {
     const named = withOwnPlaceholders(placeholders, entity);
     return {
+      id: entity.id,
+      persona: canBePlayer(entity),
       name: statCodeName(entity.name, named),
       traits: (bearers.get(entity.id)?.traits ?? []).map((trait) => statCodeName(authoredTraitName(trait, entity, world.traits), named)),
     };
   });
 }
+
+/** The entries a run with no playthrough reads: every authored entity with nothing chosen, each with its
+ *  owner node. No persona plays. */
+export const unplayedEntities = (
+  entities: readonly CodeEntityNames[], owners: ReadonlyMap<string, SandboxPlaceholderNode>,
+): SandboxEntity[] => entities.map(({ id, name, traits }) => ({
+  id, name, traits: traits.map((trait) => ({ name: trait, enabled: false, acquired: false })), placeholders: owners.get(id),
+}));
 
 /** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */
 export interface TraitHolders {

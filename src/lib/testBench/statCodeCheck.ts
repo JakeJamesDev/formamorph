@@ -11,8 +11,8 @@ import { executeStatCode, type StatCodeFailure, type StatCodeResult } from '@/li
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { statCodeNamed } from '@/lib/statCodeNames';
 import { filledCodeBoxes, TIMING_LABEL } from '@/lib/statCodeTiming';
-import { sandboxPlaceholders } from '@/lib/statCodePlaceholders';
-import { sandboxTraits } from '@/lib/statCodeTraits';
+import { codeDictionaries, sandboxDictionaries, sandboxPlaceholders } from '@/lib/statCodePlaceholders';
+import { entityTraitNames, sandboxTraits, unplayedEntities } from '@/lib/statCodeTraits';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import { finding, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, type Finding, type RuleWorld } from './rules';
 import type { Stat } from '@/types';
@@ -61,13 +61,21 @@ export async function checkStatCode(world: RuleWorld): Promise<Finding[]> {
   // Turn one has no rolls yet, so an unrolled placeholder reads as a fresh draw; the player holds no traits.
   const placeholders = coded.length
     ? sandboxPlaceholders({ placeholders: placeholderDefs, owners: placeholderOwners(world), rolls: {} })
-    : [];
+    : null;
   const traits = coded.length ? sandboxTraits({
     acquired: [], disabledTraitIds: [], appliedValues: {},
     world: { traits: world.traits, groups: world.traitGroups ?? [] },
   }, placeholderDefs) : [];
+  // No persona plays, so a write through `persona` names nothing the check can judge.
+  const owners = placeholders?.owners ?? new Map();
+  const entities = coded.length ? unplayedEntities(entityTraitNames(
+    { traits: world.traits, traitGroups: world.traitGroups ?? [], entities: world.entities ?? [] }, placeholderDefs,
+  ), owners) : [];
+  const dictionaries = sandboxDictionaries(codeDictionaries(world.dictionaries, placeholderDefs), owners);
   const results = await Promise.all(coded.map(async ({ stat, box }) => {
-    const result = await executeStatCode(box.code, stats, stat, { placeholders, traits });
+    const result = await executeStatCode(box.code, stats, stat, {
+      placeholders: placeholders?.top ?? [], traits, entities, dictionaries,
+    });
     const label = TIMING_LABEL[box.timing];
     // The row names the stat as the author sees it in the list, not as code reaches it.
     const authored = world.stats?.find((entry) => entry.id === stat.id)?.name ?? stat.name;
