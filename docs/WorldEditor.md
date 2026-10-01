@@ -43,15 +43,28 @@ The tour opens the World Editor on a new world. Your other worlds don't change.
 
 ## How to Save or Discard Your Changes
 
-- To save, select **Save** at the bottom right of the editor.
-- To discard, select the back arrow, then select **Exit Without Saving**.
+1. Select the back arrow at the top left of the editor.
+2. In the **Unsaved changes** dialog, select **Save & Exit** to keep your changes. Select **Exit Without Saving** to discard them.
+
+To save and stay in the editor, select **Save** at the bottom right.
 
 ## Editor Modes
 
 The World Editor has two modes. **Simple** is the default.
 
-- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, some panel tabs, the placeholder bar and **Optimize Images**.
+- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, the placeholder bar and **Optimize Images**.
 - **Advanced** shows every field.
+
+Simple mode also hides these panel tabs:
+
+| Panel | Hidden tabs |
+|---|---|
+| Entity | **Traits**, **Placeholders**, **Openings** |
+| Location | **Pins**, **Openings** |
+| Stat | **Descriptors**, **Code** |
+| Trait | **Pins** |
+| Dictionary entry | **Matching** |
+| Dictionary book | **Placeholders** |
 
 Each tab's page says which of its fields Simple mode hides. When a world uses a field Simple mode hides, a dot shows on **Advanced**.
 
