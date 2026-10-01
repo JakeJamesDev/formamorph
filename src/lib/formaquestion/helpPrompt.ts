@@ -37,13 +37,19 @@ export function helpSystemPrompt(language: string, prompt = HELP_SYSTEM_PROMPT):
 /** The page name as a reader says it: wiki page names join their words with hyphens. */
 const pageLabel = (page: string): string => page.replace(/-/g, ' ');
 
+/** The line that tells the model which screen the player asks from. "Here" and "this" in the question mean it. */
+export function screenLine(where: string): string {
+  return `The player asks from this screen: ${where}. The words "here" and "this" in the question mean it. The first guide section explains it.`;
+}
+
 /** The one user message of a help request: the docs sections, then the question, then the grounding line. */
-export function helpUserMessage(question: string, sections: readonly DocSection[]): string {
+export function helpUserMessage(question: string, sections: readonly DocSection[], where?: string): string {
   const guide = sections
     .map((section) => `<section page="${pageLabel(section.page)}">\n${section.markdown}\n</section>`)
     .join('\n\n');
   return [
     `<guide>\n${guide}\n</guide>`,
+    ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,
     'Answer the question from the guide sections above.',
   ].join('\n\n');
@@ -53,10 +59,11 @@ export function helpUserMessage(question: string, sections: readonly DocSection[
  * The one user message of a lookup request: the contents list, the sections the search found when it
  * found one, then the question and the grounding line.
  */
-export function helpLookupUserMessage(question: string, contents: string, sections: readonly DocSection[]): string {
+export function helpLookupUserMessage(question: string, contents: string, sections: readonly DocSection[], where?: string): string {
   return [
     `<contents>\n${contents}\n</contents>`,
     ...(sections.length > 0 ? [`<guide>\n${sections.map(sectionBlock).join('\n\n')}\n</guide>`] : []),
+    ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,
     `Read the guide sections the question needs with ${DOCS_LOOKUP.name}, then answer the question from the guide sections.`,
   ].join('\n\n');
