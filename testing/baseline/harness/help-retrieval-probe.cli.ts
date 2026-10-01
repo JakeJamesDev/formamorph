@@ -5,8 +5,8 @@
 //
 // Question sets:
 //   guide    one question per "How to…" heading, in the heading's own words ("How do I <rest>?")
-//   player   help-retrieval-cases.json: player-worded questions, at least one per docs page, written
-//            from the section headings only, never the section text
+//   player   the `cases` of help-baseline-cases.json: player-worded questions, two or more per docs page,
+//            written from the section headings only, never the section text
 //   probe    help-cases.json, the answer probe's covered questions, by their `wording`
 //
 // Checks, per question:
@@ -46,7 +46,7 @@ const guide: Question[] = Object.entries(BUNDLED_DOCS).flatMap(([page, markdown]
     if (!isHowToHeading(text) || !section) return [];
     return [{ set: 'guide', id: `${page}#${heading.anchor}`, question: `How do I ${text.slice('How to '.length)}?`, section }];
   }));
-const player: Question[] = readCases<{ id: string; question: string; section: string }>('help-retrieval-cases.json')
+const player: Question[] = readCases<{ id: string; question: string; section: string }>('help-baseline-cases.json')
   .map((c) => ({ set: 'player', ...c }));
 const probe: Question[] = readCases<{ id: string; wording: string; question: string; section?: string }>('help-cases.json')
   .flatMap((c) => (c.section ? [{ set: `probe-${c.wording}`, id: c.id, question: c.question, section: c.section }] : []));

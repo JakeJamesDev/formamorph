@@ -34,7 +34,7 @@
 // Usage: npx vite-node testing/baseline/harness/help-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--only backup-docs,regen-player]
 //          [--parallel 4] [--alt FILE] [--before REF] [--lookup] [--flag] [--show]
-//          [--cases help-retrieval-cases.json]  (a case with no `wording` counts as player wording, no `facts` as none)
+//          [--cases FILE]  (a case with no `wording` counts as player wording, no `facts` as none)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
