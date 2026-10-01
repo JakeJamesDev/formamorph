@@ -17,8 +17,9 @@ The app already has function calls: a **Tool** is a function the AI calls during
 
 ## Decision
 
+- **The lookup ships off.** Every help question uses retrieval mode, on every endpoint, and the capability check does not run. One constant, `HELP_LOOKUP_MODE` in the help session, switches lookup mode on. It is not a player setting and is in no preset or export. The code and its tests stay, so a later run can compare the modes again. Ticket 28 measured both on MeroMero v2 31B over 48 runs: retrieval answered 48 of 48 completely at 1,653 tokens in on average. Lookup answered 45 of 48 at 3,090 tokens in, and added one regression. The extra reads cost about twice the tokens and gave no better answers.
 - **The docs lookup is not a Tool.** It has no catalog entry, no handler and no preset switch. It does not show in the **Tools** tab, and the **Output → Tools** switch, the Tool call limit and the catalog overrides do not affect it.
-- **It uses the capability gate of Tools.** A help request offers the function only to an endpoint and model known to take function calls. Every other endpoint gets retrieval mode: the app runs the keyword search and puts the sections in the prompt.
+- **It uses the capability gate of Tools.** With lookup mode on, a help request offers the function only to an endpoint and model known to take function calls. Every other endpoint gets retrieval mode: the app runs the keyword search and puts the sections in the prompt.
 - **The mode is chosen before the request.** A failed request is never sent again in the other mode. This keeps the "no runtime fallback" rule of ADR-0008.
 - **It runs through the existing tool loop** with its own executor. The request layer and the loop take any offered function (`OfferedFunction`: id, name, description, parameters, call limit). A Tool is one; the docs lookup is another.
 - **The prompt holds the search hits, and no contents list.** A lookup request starts with the same docs sections as a retrieval request. The model finds other sections by search words, or reads them by the ids it has seen in the prompt and in earlier results.

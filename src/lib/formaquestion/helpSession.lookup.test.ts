@@ -49,7 +49,7 @@ const script = (...replies: (string[] | (() => Response))[]): FetchSpy => {
 };
 
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, snapshot: CAPABLE, index, fetchImpl: fetchImpl as unknown as typeof fetch, ...over });
+  askHelp({ question, snapshot: CAPABLE, index, lookup: true, fetchImpl: fetchImpl as unknown as typeof fetch, ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];
@@ -66,6 +66,18 @@ const TRAIT = 'How do I add a trait?';
 const hitIds = (question: string, over: Parameters<typeof helpSections>[2] = {}) => helpSections(index, question, over).map((section) => section.id);
 /** The ids of the guide's sections in the order the reader lists them. */
 const allIds = index.contents().flatMap((page) => page.sections.map((section) => section.id));
+
+describe('lookup mode, as shipped', () => {
+  it('offers no lookup function on a tool-capable endpoint, and sends the retrieval request', async () => {
+    const shipped = script(sseReply('Select **Add Trait**.'));
+    await collect(ask(TRAIT, shipped, { lookup: undefined }));
+    const retrieval = script(sseReply('Select **Add Trait**.'));
+    await collect(ask(TRAIT, retrieval, { lookup: false }));
+
+    expect(bodyOf(shipped).tools).toBeUndefined();
+    expect(bodyOf(shipped)).toEqual(bodyOf(retrieval));
+  });
+});
 
 describe('lookup mode, on an endpoint known to take function calls', () => {
   it('offers the lookup function with every search hit under the retrieval budget, as retrieval mode sends them', async () => {

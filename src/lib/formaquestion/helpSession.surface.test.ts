@@ -76,7 +76,7 @@ describe('the surface hint', () => {
 
   it('puts the mapped section in a lookup request as a section already fetched', async () => {
     const reasoning: ReasoningCapability = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } };
-    const { sent, sources } = await ask('What does this tab do?', { surface: SETTINGS_DISPLAY, snapshot: textSnapshot(textTarget({ reasoning })) });
+    const { sent, sources } = await ask('What does this tab do?', { surface: SETTINGS_DISPLAY, lookup: true, snapshot: textSnapshot(textTarget({ reasoning })) });
     expect(sent).toContain('<section id="Settings#display">');
     expect(sent).toContain('this screen: Settings dialog, Display tab.');
     expect(sources[0]).toBe('Settings#display');
