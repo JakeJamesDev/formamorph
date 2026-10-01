@@ -250,7 +250,7 @@ Sampling changes apply on the next turn. The other changes need **Save & Reload 
 | **Preset** | Your saved image endpoints. You can edit each one, **Default** too. |
 | **Enable Image Generation** | Shows the **Generate with AI** buttons. Off hides the rest of this tab and **Scene Images**. |
 
-The **Connection** section sets which server makes the images.
+The **Connection** section sets which server makes the images. The setup steps for each provider are in [Image Generation](Image-Generation).
 
 | Setting | What it does |
 |---|---|

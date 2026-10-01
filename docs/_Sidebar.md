@@ -6,6 +6,7 @@
 - [🔌 Connect Your Own AI](Connect-Your-Own-AI)
 - [📱 Install on Android](Install-on-Android)
 - [📚 Library](Library)
+- [🧍 Avatars](Avatars)
 - [🚪 Starting a Game](Starting-a-Game)
 - [🎮 How to Play](How-to-Play)
 - [💾 Saves and Backup](Saves-and-Backup)
@@ -16,6 +17,7 @@
 - [⚙️ Settings](Settings)
   - [📜 Prompts](Prompts)
   - [🧰 Tools](Tools)
+  - [🎨 Image Generation](Image-Generation)
 
 **Reference**
 - [✍️ Text Formatting](TextFormatting)

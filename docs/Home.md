@@ -20,6 +20,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🔌 **[Connect Your Own AI](Connect-Your-Own-AI)** | Moving from the Demo AI to a stronger model — a local server, a hosted API service, or the desktop app |
 | 📱 **[Install on Android](Install-on-Android)** | Getting the app on your phone — the download, Android's prompts, and how it updates itself |
 | 📚 **[Library](Library)** | The main menu's board — the four tabs, tile sizes, Groups, the card menu, and import and export of worlds, entities, dictionaries and avatars |
+| 🧍 **[Avatars](Avatars)** | Your 3D player model — importing a VRM file, Character Customization, the details and license, and how it differs from an entity's 3D model and your Profile Picture |
 | 🚪 **[Starting a Game](Starting-a-Game)** | Everything before page one — Enter World, Quick Start, starting traits, the starting location and Library Additions |
 | 🎮 **[How to Play](How-to-Play)** | Taking a turn — actions, choices, `[bracket]` direction, images, re-generate, edit, rewind, the side panels and the game menu |
 | 💾 **[Saves and Backup](Saves-and-Backup)** | Save, load, Autosave, save files, Backup & Restore of everything, where your data lives, and app updates |
@@ -30,6 +31,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | ⚙️ **[Settings](Settings)** | Every setting in the Display, Output, Endpoints and Data tabs, and the Simple and Advanced modes |
 | 📜 **[Prompts](Prompts)** | Prompt presets, what each prompt does in a turn, the chip editor, per-prompt endpoints and reasoning, and a world's own prompts |
 | 🧰 **[Tools](Tools)** | The functions the AI can call, the built-in Tools, how to make and try your own, and endpoints with no Tool support |
+| 🎨 **[Image Generation](Image-Generation)** | Connecting ComfyUI, InvokeAI, Automatic1111 / Forge, NovelAI or an OpenAI-compatible service, Scene Images, image presets and ComfyUI workflows |
 | 🧪 **[Test Bench](Test-Bench)** | Checking a world before you play it — the World Doctor, which dictionary entries fire, what the AI gets at a location, and turn one of a new game |
 | 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Allowed Personas** and **Starts On** controls, and the Persona and Player Name chips |
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |

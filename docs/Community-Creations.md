@@ -279,14 +279,7 @@ Each kind has a publish limit: a world 100 MB, an entity 25 MB, a dictionary 5 M
 
 ### Publishing an Avatar
 
-An avatar must carry a Permissive License in its file. The VRM 1.0 metadata must allow all of these:
-
-- Everyone may use it.
-- It may be redistributed.
-- Modified copies may be redistributed.
-- Commercial use is allowed.
-
-The app reads this from the file. You can't set it in Formamorph. Without it, a toast names what is missing. The avatar's details show **Shareable** or **Not shareable** under **Community Creations**. The default avatar can't be published.
+An avatar must carry a Permissive License in its file. Without it, a toast names what is missing. The default avatar can't be published. See [The Permissive License](Avatars#the-permissive-license).
 
 ### Publishing a Prompt Preset
 
@@ -385,7 +378,7 @@ Read the policy any time at [formamorph.ai/privacy](https://formamorph.ai/privac
 
 ### The User Profile Dialog
 
-Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile picture, **Member since** and your stats. Select your profile picture to change it.
+Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile picture, **Member since** and your stats. Select your profile picture to change it. See [How to Change Your Profile Picture](Avatars#how-to-change-your-profile-picture).
 
 The header has **Change Password**, **Logout** and **Delete Account**.
 

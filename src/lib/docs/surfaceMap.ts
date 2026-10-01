@@ -192,16 +192,16 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'worldEditorBench.aiContext': { page: 'Test-Bench', anchor: 'ai-context' },
   'worldEditorBench.opening': { page: 'Test-Bench', anchor: 'opening' },
   ...Object.fromEntries(tabsOf('worldEditorTour').map((id) => [id, { page: 'WorldEditor', anchor: 'the-authoring-tour' }])),
+
+  avatar: { page: 'Avatars', anchor: 'character-customization' },
+  modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },
 };
 
 /** A Formaquestion docs ticket that writes a missing section (`docs-internal/specs/formaquestion/issues/`). */
 export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' | '11' | '12';
 
 /** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
-export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
-  // Avatars, Image Generation
-  '11': ['avatar', 'modelDetails'],
-};
+export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {};
 
 /** Help topics with no docs heading yet, by owning ticket. */
 export const KNOWN_HELP_TOPIC_GAPS: Partial<Record<DocsTicket, readonly string[]>> = {};
