@@ -147,6 +147,79 @@ describe('runStatCodeTurn entry fields', () => {
     ]) expect(reported).toContain(path);
   });
 
+  it('reads a switched-off stat as a real entry, its writes dropped and reported', async () => {
+    const out = await runStatCodeTurn({
+      stats: [
+        stat({ id: 'a', name: 'A', value: 0, code: 'stats.B.value = 9; return (!stats.B.enabled && stats.B.value === 7 && stats.B.max === 40 && stats.B.previous.value === 7) ? 1 : 0;' }),
+        stat({ id: 'b', name: 'B', value: 7, max: 40, code: 'return 99;' }),
+      ],
+      enabled: { b: false }, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(),
+      statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    });
+    expect(valueOf(out, 'a')).toBe(1);
+    expect(valueOf(out, 'b')).toBe(7);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('stats.B.value'));
+  });
+
+  it('keys a shared name to the live stat over a switched-off one, and to the later of two alike', async () => {
+    const twin = (id: string, value: number, code = '') => stat({ id, name: 'Twin', value, code });
+    const reads = async (enabled: Record<string, boolean>) => {
+      const out = await runStatCodeTurn({
+        stats: [twin('a', 1, 'return self === stats.Twin ? stats.Twin.value * 10 : 99;'), twin('b', 2), twin('c', 3)],
+        enabled, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(),
+        statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+      });
+      return valueOf(out, 'a');
+    };
+    expect(await reads({ b: false, c: false })).toBe(10);
+    expect(await reads({})).toBe(99);
+  });
+
+  it('drops and reports every read-only stat write, and keeps self’s own writes', async () => {
+    const out = await run([[
+      "stats.S1.value = 5; stats.S1.name = 'z'; self.name = 'z'; self.previous.value = 3; self.delta.ai.value = 2;",
+      'self.delta = null; self.value = 4;',
+      "return self.value + (self.name === 'S0' && stats.S1.value === 0 && self.previous.value === 0 && self.delta.ai.value === 0 ? 10 : 0);",
+    ].join('\n'), 'return 0;']);
+    expect(valueOf(out, 's0')).toBe(14);
+    const reported = vi.mocked(console.warn).mock.calls.map(([line]) => String(line)).join('\n');
+    for (const path of ['stats.S1.value', 'stats.S1.name', 'stats.S0.name', 'stats.S0.previous.value', 'stats.S0.delta.ai.value', 'stats.S0.delta']) {
+      expect(reported).toContain(path);
+    }
+    expect(reported).not.toContain('stats.S0.value');
+  });
+
+  it('drops and reports a write to clock and clock.previous', async () => {
+    const out = await run([[
+      'clock.day = 9; clock.previous = null; clock.previous.day = 9;',
+      'return clock.day === 1 && clock.previous.day === 1 ? 1 : 0;',
+    ].join('\n'), 'return 0;']);
+    expect(valueOf(out, 's0')).toBe(1);
+    const reported = vi.mocked(console.warn).mock.calls.map(([line]) => String(line)).join('\n');
+    for (const path of ['clock.day', 'clock.previous', 'clock.previous.day']) expect(reported).toContain(path);
+  });
+
+  it('leaves an entity with an empty code name out of entities', async () => {
+    const blank: Entity = { id: 'blank', name: '', traits: [calm] };
+    const traits = { ...played(), entities: [mira, rook, pip, blank] };
+    expect(await holds("!Object.keys(entities).includes('') && entities[''].id === ''", traits)).toBe(true);
+  });
+
+  it('still switches an unnamed persona’s trait through persona', async () => {
+    const nameless: Entity = { ...mira, name: '' };
+    const entered = [...withPersonaEntry([nameless], asMira, undefined)];
+    const traits: StatCodeTraits = {
+      acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: { mira: { chosen: ['calm'] } },
+      entities: [nameless], library: [],
+      world: {
+        traits: [], groups: [], entities: entered, persona: asMira,
+        bearers: inPlayBearers({ traits: [], traitGroups: [], entities: entered }, asMira, []),
+      },
+    };
+    const out = await run(['persona.traits.Calm.enabled = false;', 'return 0;'], traits);
+    expect(out.traits?.ownedTraits.mira?.disabled).toEqual(['calm']);
+  });
+
   it('still switches a trait through enabled, the one writable field', async () => {
     const out = await run(['traits.Gifted.enabled = false;', 'return 0;']);
     expect(out.traits?.disabledTraitIds).toEqual(['gifted']);

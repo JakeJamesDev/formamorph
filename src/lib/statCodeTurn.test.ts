@@ -169,7 +169,7 @@ describe('runStatCodeTurn', () => {
     expect(out.moved).toEqual(['a']);
   });
 
-  it('keeps a disabled stat inert and hides it from every other stat', async () => {
+  it('keeps a disabled stat inert and lists it to every other stat', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
         stat({ id: 'a', name: 'A', value: 50, code: 'return Object.keys(stats).length * 10 + ("Off" in stats ? 1 : 0);' }),
@@ -177,7 +177,7 @@ describe('runStatCodeTurn', () => {
       ],
       enabled: { off: false },
     }));
-    expect(valueOf(out.stats, 'a')).toBe(10);
+    expect(valueOf(out.stats, 'a')).toBe(21);
     expect(valueOf(out.stats, 'off')).toBe(5);
     expect(out.moved).toEqual(['a']);
   });
@@ -194,7 +194,7 @@ describe('runStatCodeTurn', () => {
     expect(valueOf(out.stats, 'a')).toBe(23);
   });
 
-  it('reads a disabled stat’s name as a blank entry', async () => {
+  it('reads a disabled stat’s value as it stands', async () => {
     const out = await runStatCodeTurn(turn({
       stats: [
         stat({ id: 'a', name: 'A', value: 50, code: 'return stats.Off.value;' }),
@@ -202,7 +202,7 @@ describe('runStatCodeTurn', () => {
       ],
       enabled: { off: false },
     }));
-    expect(valueOf(out.stats, 'a')).toBe(0);
+    expect(valueOf(out.stats, 'a')).toBe(5);
     expect(valueOf(out.stats, 'off')).toBe(5);
     expect(out.moved).toEqual(['a']);
   });

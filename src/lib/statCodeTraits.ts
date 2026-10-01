@@ -107,11 +107,7 @@ function playedPersonaId(traits: StatCodeTraits): string | null {
   return (entities ?? traits.entities ?? []).find((e) => e.customPersona)?.id ?? null;
 }
 
-/**
- * One entity's entry, its traits the Bearer's own set, owned or linked, in tree order. A trait is acquired
- * when the entity has it chosen and enabled when it is also not switched off. Names are code names of the
- * authored text: an owned trait's own, a linked one's original's.
- */
+/** One entity's entry: its Bearer's own trait set, owned or linked, under the authored code names. */
 function codeEntity(
   traits: StatCodeTraits,
   placeholders: readonly Placeholder[],
@@ -139,11 +135,7 @@ function codeEntity(
   };
 }
 
-/**
- * Every entity in play and the played persona. A world entity is in play when it is the played persona, the
- * Custom Persona entity outside a world persona, or in the cast; every library entity is in play. Characters
- * the narrator invents are not listed.
- */
+/** Every entity in play, the played persona among them: the world's cast and persona, then the library's. */
 export function codeEntities(traits: StatCodeTraits, placeholders: readonly Placeholder[]): CodeEntities {
   const ref = traits.world.persona;
   const world = (traits.entities ?? []).filter((e) => playsAs(e, ref) || inCast(e, ref));
@@ -203,7 +195,7 @@ export function traitHolders(world: BearerWorld, placeholders: readonly Placehol
   });
   const playable = holding.find(({ entity }) => canBePlayer(entity));
   const oldName = playable && codeNameOf(playable.trait, playable.entity);
-  // Another playable entity holding a different trait under the old name may be the one played (Q27).
+  // Another playable entity holding a different trait under the old name may be the one played.
   const sharedName = bearers.some(({ entity, traits }) => canBePlayer(entity)
     && traits.some((trait) => trait.id !== traitId && codeNameOf(trait, entity) === oldName));
   return {
@@ -211,13 +203,4 @@ export function traitHolders(world: BearerWorld, placeholders: readonly Placehol
     persona: !!playable && !sharedName,
     entities: holding.map(({ entity }) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
   };
-}
-
-/** The code names of every trait a persona in the world can hold, owned or linked: what the editor offers
- *  after `persona.traits`. A library persona can hold others. */
-export function personaTraitNames(world: BearerWorld, placeholders: readonly Placeholder[]): string[] {
-  return resolveBearers(world, undefined).bearers
-    .filter((bearer) => bearer.entity && canBePlayer(bearer.entity))
-    .flatMap((bearer) => bearer.traits.map((trait) =>
-      statCodeName(authoredTraitName(trait, bearer.entity, world.traits), withOwnPlaceholders(placeholders, bearer.entity))));
 }

@@ -55,11 +55,8 @@ function objectValue(ph: Placeholder, reading: PlaceholderReading, set: StatCode
     .filter((text) => text !== '');
 }
 
-/**
- * `set` with the library's pools joined, as the session's Placeholder Set joins them: each library entity's
- * in order, then each library book's. Their rows are reached through their owner's entry only, never through
- * `placeholders`, and the books list after the world's. The world copy wins an id both hold.
- */
+/** `set` with the library's pools joined as the session's Placeholder Set joins them, the books after the
+ *  world's. Their rows are reached only through their owner's entry. */
 export function withLibraryPlaceholders(set: StatCodePlaceholderSet, entities: readonly Entity[]): StatCodePlaceholderSet {
   const books = set.libraryDictionaries ?? [];
   const joined = libraryPlaceholderSet([...set.placeholders], [...entities, ...books]);

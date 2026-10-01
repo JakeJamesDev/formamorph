@@ -71,9 +71,7 @@ interface CodeAreaProps {
   placeholders?: CodePlaceholders;
   /** The world's trait names, completed after `traits` and checked by name. */
   traits?: readonly string[];
-  /** The trait names a persona can hold, completed after `persona.traits` and checked by name. */
-  personaTraits?: readonly string[];
-  /** The world's entities and their trait names, completed after `entities` and checked by name. */
+  /** The world's entities and their trait names, completed after `entities` and `persona.traits` and checked by name. */
   entities?: readonly CodeEntityNames[];
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
@@ -87,7 +85,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
-}: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits' | 'personaTraits' | 'entities'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -284,7 +282,6 @@ export function CodeArea(props: CodeAreaProps) {
         selfName: latest.current.selfName,
         placeholders: latest.current.placeholders,
         traits: latest.current.traits,
-        personaTraits: latest.current.personaTraits,
         entities: latest.current.entities,
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
@@ -305,7 +302,6 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setSelfName(props.selfName); }, [session, props.selfName]);
   useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
   useEffect(() => { session?.setTraits(props.traits); }, [session, props.traits]);
-  useEffect(() => { session?.setPersonaTraits(props.personaTraits); }, [session, props.personaTraits]);
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
 
   return (

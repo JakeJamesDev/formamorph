@@ -95,7 +95,6 @@ describe('what each box completes and checks against', () => {
       selfName: props.selfName as string,
       placeholders: props.placeholders as { list: Placeholder[] },
       traits: props.traits as string[],
-      personaTraits: props.personaTraits as string[],
       entities: props.entities as CodeEntityNames[],
     };
   };
@@ -107,7 +106,6 @@ describe('what each box completes and checks against', () => {
     expect(optionsOf('Before the AI').statNames).toEqual(['Warmth', 'Damp']);
     expect(optionsOf('Before the AI').selfName).toBe('Warmth');
     expect(optionsOf('Before the AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
-    expect(optionsOf('Before the AI').personaTraits).toEqual(['Scarred']);
     expect(optionsOf('Before the AI').entities).toEqual([
       { id: 'e1', name: 'Mira', persona: true, traits: ['Scarred'] }, { id: 'e2', name: 'Ash', persona: false, traits: ['Loyal'] },
     ]);

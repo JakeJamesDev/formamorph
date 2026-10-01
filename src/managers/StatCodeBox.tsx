@@ -39,9 +39,8 @@ export interface StatCodeBoxContext {
   traitNames: string[];
   /** The world's traits, for the run's sandbox entries. */
   traits: readonly Trait[];
-  /** The trait code names a persona in the world can hold: completions and name checks after `persona.traits`. */
-  personaTraitNames: string[];
-  /** Every authored entity's code name and trait code names: completions, name checks, and the run's entries. */
+  /** Every authored entity's code name and trait code names: completions, name checks, and the run's entries.
+   *  The persona-capable ones' traits are what `persona.traits` completes. */
   entities: CodeEntityNames[];
 }
 
@@ -73,7 +72,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
   const label = TIMING_LABEL[timing];
   const {
-    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traits, personaTraitNames, entities,
+    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traits, entities,
   } = context;
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
@@ -98,7 +97,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
       // stays off the world editor's own bundle.
       const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
       setProblems(summarizeProblems(statCodeDiagnostics(value, {
-        placeholders, traits: traitNames, personaTraits: personaTraitNames, entities, statNames, selfName,
+        placeholders, traits: traitNames, entities, statNames, selfName,
       })));
     } catch {
       // What the run itself found is the point; the count is what the editor adds to it.
@@ -177,7 +176,6 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         selfName={selfName}
         placeholders={placeholders}
         traits={traitNames}
-        personaTraits={personaTraitNames}
         entities={entities}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.

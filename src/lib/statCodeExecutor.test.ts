@@ -134,8 +134,9 @@ describe('executeStatCode stats map', () => {
     await expect(run('return Object.values(stats).reduce((sum, s) => sum + s.value, 0);')).resolves.toEqual({ value: 140, error: null });
   });
 
-  it('ignores a write to another stat through the map, and still injects currentStatId', async () => {
-    await expect(run('stats.Health.value = 1; stats["Night Vision"] = 5;')).resolves.toEqual({ value: null, error: null });
+  it('drops and reports a write to another stat through the map, and still injects currentStatId', async () => {
+    await expect(run('stats.Health.value = 1; stats["Night Vision"] = 5;')).resolves
+      .toEqual({ value: null, error: null, readOnlyWrites: ['stats.Health.value', 'stats["Night Vision"]'] });
     await expect(run('return currentStatId === self.id ? 1 : 0;')).resolves.toEqual({ value: 1, error: null });
   });
 });
@@ -246,8 +247,8 @@ describe('executeStatCode self and turn inputs', () => {
     expect(await run('self.value = 12; throw new Error("late");')).toMatchObject({ value: null, kind: 'throw' });
   });
 
-  it('ignores a write to another stat entry', async () => {
-    expect(await run('stats.Health.value = 1;')).toEqual({ value: null, error: null });
+  it('drops and reports a write to another stat entry', async () => {
+    expect(await run('stats.Health.value = 1; return stats.Health.value;')).toEqual({ value: 70, error: null, readOnlyWrites: ['stats.Health.value'] });
   });
 });
 

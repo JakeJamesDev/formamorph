@@ -52,6 +52,10 @@ const resolveClock = (clock?: StatClock) => {
   };
 };
 
+/** The `clock` object over the resolved readings. */
+const clockObject = ({ day, daypart, deltaHours, elapsedHours, startDay, startDaypart }: ReturnType<typeof resolveClock>) =>
+  ({ day, daypart, deltaHours, elapsedHours, previous: { day: startDay, daypart: startDaypart } });
+
 /** How a run failed, for a caller that sorts failures rather than printing them. `bad-write` is a
  *  placeholder or trait written a value of the wrong type. */
 export type StatCodeFailure = 'timeout' | 'non-number' | 'throw' | 'bad-write';
@@ -132,9 +136,7 @@ export interface SandboxTrait {
   playerToggle?: boolean;
 }
 
-/** One entry of the sandbox's `entities`: an entity's code name and its own traits. `persona` is one too,
- *  with an empty name when no persona entity plays. A caller with no playthrough leaves the identity fields
- *  out, and they read blank. */
+/** One entry of the sandbox's `entities`, or `persona`. Identity fields left out read blank. */
 export interface SandboxEntity {
   name: string;
   traits: readonly SandboxTrait[];
@@ -236,8 +238,9 @@ const DICTIONARY_WRITES = '__formamorphDictionaryWrites';
 // The `placeholders` prelude's view of one owner node, which the owner entries' `placeholders` read.
 const OWNER_VIEW = '__formamorphOwnerPlaceholders';
 const STAT_WRITES = '__formamorphStatWrites';
-// Writes to `self.enabled` on a `self` that is no entry of `stats`.
-const SELF_WRITES = '__formamorphSelfWrites';
+// Read-only writes outside every map, as full paths: on a `self` that is no entry of `stats`, and on `clock`.
+const LOOSE_WRITES = '__formamorphLooseWrites';
+const LOOSE_NOTE = '__formamorphLooseNote';
 
 /** How one sandbox map's entries are tracked. Every `string` field is JS source the prelude inlines. */
 interface TrackedMapBase {
@@ -265,9 +268,8 @@ type TrackedMapSpec = TrackedMapKind & {
   reader?: string;
 };
 
-/** JS source of `(data) => [map, rows]`, closing over `keys`. The map sits on a null prototype, so
- *  `__proto__` is a plain name and `toString` is not one. A Proxy hands an unknown name a tracked blank
- *  entry, so a write to it is dropped rather than thrown. `rows()` lists what the run did, unstringified. */
+/** JS source of `(data) => [map, rows]`, closing over `keys`. The map has a null prototype; an unknown name
+ *  reads as a tracked blank entry. `rows()` lists what the run did. */
 const trackedMapFactory = (kind: TrackedMapKind): string => [
   `((data) => {`,
   `  const map = Object.assign(Object.create(null), data);`,
@@ -306,21 +308,40 @@ const blankOf = (entry: unknown): unknown => {
   return Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, blankOf(value)]));
 };
 
-/** The `stats` prelude: every entry keyed by name, the last authored winning a shared name. The host reads
- *  back `self`'s fields from `self` itself; the reader only lists the entries whose read-only `enabled` the
- *  run wrote, as `[name]`. An unknown name reads as `blank`. */
-const statsPrelude = (entries: readonly { name: string }[], blank: unknown): string => trackedMapPrelude({
+/** JS source of `(target, fields, prefix, note) => target`: each field becomes a getter of its value whose
+ *  setter calls `note(prefix + field)`. */
+const LOCK_FIELDS = `(target, fields, prefix, note) => {
+  for (const field of fields) {
+    const held = target[field];
+    Object.defineProperty(target, field, { enumerable: true, get: () => held, set: () => note(prefix + field) });
+  }
+  return target;
+}`;
+
+/** JS source of `(entry, isSelf, note) => void`: locks every field of a stat entry, at every depth, except
+ *  the ones `self` writes. */
+const LOCK_STAT = `(entry, isSelf, note) => {
+  const lock = ${LOCK_FIELDS};
+  const deep = (target, prefix) => Object.freeze(lock(target, Object.keys(target), prefix, note));
+  for (const source of Object.keys(entry.delta)) deep(entry.delta[source], 'delta.' + source + '.');
+  deep(entry.delta, 'delta.');
+  deep(entry.previous, 'previous.');
+  const writable = ${JSON.stringify(['value', ...CODE_BOUND_FIELDS])};
+  lock(entry, Object.keys(entry).filter((field) => !(isSelf && writable.includes(field))), '', note);
+}`;
+
+/** The `stats` prelude. Rows are `[name, writtenPaths]`, or `[name, null]` for an entry replaced whole. */
+const statsPrelude = (entries: readonly { name: string }[], blank: unknown, selfName: string | null): string => trackedMapPrelude({
   root: 'stats',
   reader: STAT_WRITES,
   data: Object.fromEntries(entries.map((entry) => [entry.name, entry])),
   track: `(name, entry, state) => {
-    const value = entry.enabled;
-    state.written = false;
-    Object.defineProperty(entry, 'enabled', { enumerable: true, get: () => value, set: () => { state.written = true; } });
+    state.written = [];
+    (${LOCK_STAT})(entry, name === ${JSON.stringify(selfName)}, (path) => { if (!state.written.includes(path)) state.written.push(path); });
   }`,
   blank: JSON.stringify(blank),
-  row: `(name, state) => state.written ? [name] : null`,
-  replaced: `() => null`,
+  row: `(name, state) => state.written.length ? [name, state.written] : null`,
+  replaced: `(name) => [name, null]`,
 });
 
 /** The `placeholders` map as the prelude and the write reader both read it: its top-level keys, and every
@@ -362,8 +383,7 @@ function flattenPlaceholderMap(
  * `[index, 'unpin']`; an entry a run replaced wholesale is a write of itself when it is a string or a list,
  * else of its own value.
  *
- * It also hands back the view of an owner node by index, which `entities`, `persona` and `dictionaries` read
- * as each entry's `placeholders`, so a node reached by two routes is one object with one pin state.
+ * It also hands back an owner node's view by index, each owner entry's `placeholders`.
  *
  * `stats` and `traits` are flat maps and share `trackedMapPrelude`. This one does not: its objects nest, one
  * node sits at two keys, and a key a run adds has to be told apart from the members its node was built with.
@@ -492,9 +512,8 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
 /** The fields on a trait entry that a write never reaches. A write to one is recorded and dropped. */
 const TRAIT_READ_ONLY_FIELDS = ['id', 'name', 'mode', 'available', 'group', 'playerToggle'] as const;
 
-/** A trait map, `traits` or an entity's. Every assignment to `enabled` is a switch; `acquired` and the
- *  identity fields are read-only and a write to one is recorded. Rows are `[name, enabled, assigned,
- *  acquiredWritten, readOnlyFields]`; a replaced entry reads as itself when it is not an object. */
+/** A trait map, `traits` or an entity's; only `enabled` takes a write. Rows are
+ *  `[name, enabled, assigned, acquiredWritten, readOnlyFields]`. */
 const TRAIT_MAP: TrackedMapKind = {
   track: `(name, entry, state) => {
     state.enabled = entry.enabled; state.acquired = entry.acquired; state.assigned = false; state.acquiredWritten = false;
@@ -518,21 +537,16 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders'] as const;
 
-/** The entities as the sandbox keys them: the later of two sharing a name wins, and the played persona
- *  holds its own name whatever comes after it. */
+/** The entities as the sandbox keys them: an unnamed one is left out, the later of two sharing a name wins,
+ *  and the played persona holds its own name whatever comes after it. */
 export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], persona: T): Map<string, T> {
-  const keyed = new Map(entities.map((entity) => [entity.name, entity]));
+  const keyed = new Map(entities.filter((entity) => entity.name).map((entity) => [entity.name, entity]));
   if (persona.name) keyed.set(persona.name, persona);
   return keyed;
 }
 
-/**
- * The `entities` and `persona` prelude. Each entry is frozen, its `traits` a trait map of its own and its
- * `placeholders` its owner node's view. An unknown name reads as a blank entry whose `traits` and
- * `placeholders` hold no names, so a switch through it is dropped and reported as an unknown entity.
- * `persona` is the played persona's entry, or a blank one of its own. Rows are
- * `[name, unknownEntity, traitRows]`, one per entry the run wrote into.
- */
+/** The `entities` and `persona` prelude: frozen entries, each with its own trait map and owner view. Rows
+ *  are `[name, unknownEntity, traitRows, writtenFields]`, one per entry the run wrote into. */
 const entitiesPrelude = (
   keyed: ReadonlyMap<string, SandboxEntity>, persona: SandboxEntity, indexOf: FlatPlaceholderMap['indexOf'],
 ): string => {
@@ -582,11 +596,8 @@ const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceho
 /** The fields on a dictionary entry. None takes a write. */
 const DICTIONARY_READ_ONLY_FIELDS = ['id', 'name', 'placeholders'] as const;
 
-/**
- * The `dictionaries` prelude. Each entry is frozen and keyed by code name, the later of two sharing one
- * winning. An unknown name reads as a blank entry whose `placeholders` holds no names. Rows are
- * `[name, writtenFields]`, one per entry the run wrote a field of.
- */
+/** The `dictionaries` prelude: frozen entries, the later of two sharing a name winning. Rows are
+ *  `[name, writtenFields]`, one per entry the run wrote a field of. */
 const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], indexOf: FlatPlaceholderMap['indexOf']): string => {
   const spec = [...new Map(dictionaries.map((book) => [book.name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders) }]))];
   return [
@@ -755,16 +766,18 @@ function readPlaceholderWrites(
   return { writes, unknown, unknownOwned, readOnly };
 }
 
-/** The stats whose read-only `enabled` the run wrote, as code spelled them; `[null]` is `self` itself. */
+/** The read-only fields the run wrote on `stats` entries, then the loose ones, as code spelled them. */
 function readStatReadOnlyWrites(dump: string): string[] {
   const parsed: unknown = JSON.parse(dump);
+  const [rows, loose] = Array.isArray(parsed) ? parsed : [];
   const paths: string[] = [];
-  for (const row of Array.isArray(parsed) ? parsed : []) {
-    if (!Array.isArray(row)) continue;
-    if (row[0] === null) paths.push('self.enabled');
-    else if (typeof row[0] === 'string') paths.push(`${memberPath('stats', row[0])}.enabled`);
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
+    const entry = memberPath('stats', row[0]);
+    if (row[1] === null) paths.push(entry);
+    else paths.push(...readOnlyPaths(entry, row[1]));
   }
-  return paths;
+  return [...paths, ...(Array.isArray(loose) ? loose : []).filter((path): path is string => typeof path === 'string')];
 }
 
 const failure = (what: string, kind: StatCodeFailure): StatCodeResult => ({
@@ -779,6 +792,8 @@ const nonNumberFailure = (what: string) => failure(what, 'non-number');
 export interface StatCodeRunOptions {
   clock?: StatClock;
   turn?: Readonly<Record<string, StatTurnInputs>>;
+  /** The live stat-enabled map. A stat set false here reads `enabled: false`. */
+  enabled?: Readonly<Record<string, boolean>>;
   /** The map's top-level keys, in authored order. Absent, the map is empty. */
   placeholders?: readonly SandboxPlaceholderNode[];
   traits?: readonly SandboxTrait[];
@@ -802,7 +817,7 @@ export const executeStatCode = async (
   code: string,
   stats: Stat[],
   currentStat: Stat,
-  { clock, turn, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, dictionaries = [] }: StatCodeRunOptions = {},
+  { clock, turn, enabled, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA, dictionaries = [] }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -833,8 +848,7 @@ export const executeStatCode = async (
         [source, fieldwise((field) => inputs?.delta?.[source]?.[field] ?? 0)])) as Record<DeltaSource, StatNumbers>;
       return {
         ...snapshot,
-        // Only stats that run are marshalled, so a stat a trait switched off reads as the blank entry.
-        enabled: true,
+        enabled: enabled?.[stat.id] !== false,
         previous,
         delta: {
           ...sources,
@@ -848,12 +862,16 @@ export const executeStatCode = async (
     ]);
     const keyed = keyedEntities(entities, persona);
     const statsData = stats.map(marshal);
+    // A live stat wins a shared name over a switched-off one; within each, the later one wins.
+    const owner = new Map([...statsData.filter((entry) => !entry.enabled), ...statsData.filter((entry) => entry.enabled)]
+      .map((entry) => [entry.name, entry]));
+    const keyedStats = statsData.filter((entry) => owner.get(entry.name) === entry);
     // `self` is the current stat's own entry in `stats`. A stat missing from `stats`, or one that loses its
-    // name to a later stat, stands alone.
+    // name, stands alone.
     const selfIndex = stats.findIndex(stat => stat.id === currentStat.id);
     const selfData = selfIndex >= 0 ? statsData[selfIndex] : marshal(currentStat);
-    const lastByName = new Map(statsData.map((entry, index) => [entry.name, index]));
-    const selfIsEntry = selfIndex >= 0 && lastByName.get(selfData.name) === selfIndex;
+    const selfIsEntry = selfIndex >= 0 && owner.get(selfData.name) === selfData;
+    const resolvedClock = resolveClock(clock);
 
     const runtime = QuickJS.newRuntime();
     runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
@@ -886,30 +904,26 @@ export const executeStatCode = async (
       // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
       // the entities' traits.
       const program = [
-        statsPrelude(statsData, { ...(blankOf(selfData) as object), enabled: false }),
-        `const ${SELF_WRITES} = [];`,
+        statsPrelude(keyedStats, { ...(blankOf(selfData) as object), enabled: false }, selfIsEntry ? selfData.name : null),
+        `const ${LOOSE_WRITES} = [];`,
+        `const ${LOOSE_NOTE} = (path) => { if (!${LOOSE_WRITES}.includes(path)) ${LOOSE_WRITES}.push(path); };`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
-        // A `self` that is no entry of `stats` reports its read-only `enabled` through the shared list.
-        ...(selfIsEntry ? [] : [`Object.defineProperty(self, 'enabled', { enumerable: true, get: () => true, set: () => { ${SELF_WRITES}.push(1); } });`]),
-        // `previous` and `delta` describe the turn, not live fields: frozen, so a write is dropped.
-        `for (const s of [...Object.values(stats), self]) {`,
-        `  Object.freeze(s.previous);`,
-        `  Object.values(s.delta).forEach(Object.freeze);`,
-        `  Object.freeze(s.delta);`,
-        `}`,
-        ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
-        // `clock` is the same readings as one object; frozen, so a write is dropped.
-        `const clock = Object.freeze({ day, daypart, deltaHours, elapsedHours,`,
-        `  previous: Object.freeze({ day: startDay, daypart: startDaypart }) });`,
+        ...(selfIsEntry ? [] : [`(${LOCK_STAT})(self, true, (path) => ${LOOSE_NOTE}('self.' + path));`]),
+        ...Object.entries(resolvedClock).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
+        `const clock = ((lock) => {`,
+        `  const clock = ${JSON.stringify(clockObject(resolvedClock))};`,
+        `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
+        `  return Object.freeze(lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE}));`,
+        `})(${LOCK_FIELDS});`,
         placeholdersPrelude(placeholderMap),
         trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
         entitiesPrelude(keyed, persona, placeholderMap.indexOf),
         dictionariesPrelude(dictionaries, placeholderMap.indexOf),
-        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${SELF_WRITES}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}) {`,
+        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}) {`,
         code,
         `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
-        `  JSON.stringify([...JSON.parse(${STAT_WRITES}()), ...${SELF_WRITES}.map(() => [null])]), ${DICTIONARY_WRITES}()];`,
+        `  JSON.stringify([JSON.parse(${STAT_WRITES}()), ${LOOSE_WRITES}]), ${DICTIONARY_WRITES}()];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
