@@ -230,9 +230,16 @@ function rewriteCode(code: string, rewrite: CodeRewrite): { code: string; refere
     }
     for (const chain of codeRenameChains(code, 'persona')) {
       if (chain[0].name !== 'placeholders') continue;
-      // The first playable entity whose own tree moves a key on this path is the one the path names.
-      const moved = owned.persona.map((start) => pathSplices(map, chain.slice(1), renames, start)).find((found) => found.length);
-      if (moved) edits.push(...moved);
+      const path = chain.slice(1).map((key) => key.name);
+      // How many steps of the path a start's own tree answers; a trailing member such as `.value` is not one.
+      const reach = (start: PlaceholderPathNode) => path.length - walkPlaceholderPath(map, path, start).rest.length;
+      const movers = owned.persona.map((start) => ({ start, found: pathSplices(map, chain.slice(1), renames, start) }));
+      const mover = movers.find(({ found }) => found.length);
+      if (!mover) continue;
+      // Another playable entity answering as deep may be the one played, so the path stays (Q27).
+      const depth = reach(mover.start);
+      if (owned.persona.filter((start) => reach(start) >= depth).length > 1) continue;
+      edits.push(...mover.found);
     }
   }
   for (const [root, moved] of rewrite.names) {

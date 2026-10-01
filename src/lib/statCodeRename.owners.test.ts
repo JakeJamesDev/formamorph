@@ -48,3 +48,24 @@ describe('a rename through owner entries', () => {
       .toBe('dictionaries.Climate.placeholders.Sky.value + placeholders.Climate.Sky.value');
   });
 });
+
+describe('a rename of a placeholder two playable entities own', () => {
+  const both: Entity[] = [{ id: 'molly', name: 'Molly', persona: true }, { id: 'rook', name: 'Rook', customPersona: true }];
+  const renameBoth = (code: string, id: string) => planCodeRename({
+    root: 'placeholders', oldName: 'Hair', newName: 'Mane', otherNames: [], subject: { kind: 'placeholder', id },
+    stats: [stat('a', code)], entities: both, dictionaries, placeholders: { list, owners },
+  })?.edits[0]?.boxes.after;
+
+  it('leaves the persona path alone and rewrites the owner’s own path', () => {
+    expect(renameBoth('persona.placeholders.Hair.value + entities.Molly.placeholders.Hair.value', 'molly-hair'))
+      .toBe('persona.placeholders.Hair.value + entities.Molly.placeholders.Mane.value');
+  });
+
+  it('rewrites the persona path once the other owner’s name differs', () => {
+    const renamedOther = list.map((entry) => (entry.id === 'rook-hair' ? { ...entry, name: 'Fur' } : entry));
+    expect(planCodeRename({
+      root: 'placeholders', oldName: 'Hair', newName: 'Mane', otherNames: [], subject: { kind: 'placeholder', id: 'molly-hair' },
+      stats: [stat('a', 'persona.placeholders.Hair.value')], entities: both, dictionaries, placeholders: { list: renamedOther, owners },
+    })?.edits[0]?.boxes.after).toBe('persona.placeholders.Mane.value');
+  });
+});

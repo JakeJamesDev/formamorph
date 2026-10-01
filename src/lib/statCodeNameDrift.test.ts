@@ -392,3 +392,61 @@ describe('a stat with code in both boxes', () => {
     expect(await pinFrom('after')).toBe('after');
   });
 });
+
+/** Two dictionaries share one code name, so a lookup reads the later one and the editor says so. */
+describe('two dictionaries sharing a code name', () => {
+  const dictionaries = [{ id: 'd1', name: 'Weather' }, { id: 'd2', name: 'Weather' }, { id: 'd3', name: 'Tides' }];
+  const check = (code: string) => statCodeDiagnostics(code, { placeholders: { list: [], dictionaries } }).map((d) => d.message);
+  const warning = '2 dictionaries are named “Weather”. This reads the last one authored.';
+
+  it('warns on the entry itself', () => {
+    expect(check("return dictionaries['Weather'].name;")).toEqual([warning]);
+  });
+
+  it('warns once on a placeholder path through the entry', () => {
+    expect(check('return dictionaries.Weather.placeholders.Sky.value;')).toContain(warning);
+  });
+
+  it('stays quiet for a name one dictionary owns', () => {
+    expect(check("return dictionaries['Tides'].name;")).toEqual([]);
+  });
+});
+
+describe('two entities sharing a code name under a placeholder path', () => {
+  it('warns on the path through the entry', () => {
+    const entities = [{ id: 'a', name: 'Mira', persona: false, traits: [] }, { id: 'b', name: 'Mira', persona: false, traits: [] }];
+    const found = statCodeDiagnostics('return entities.Mira.placeholders.Sky.value;', { entities, placeholders: { list: [] } }).map((d) => d.message);
+    expect(found).toContain('2 entities are named “Mira”. This reads the last one authored.');
+  });
+});
+
+describe.each(STAT_CODE_TIMINGS)('one dictionary code name across the sandbox, the completions and the editor (%s box)', (timing) => {
+  const books = [{ id: 'd1', name: '{{ph:ph-beast:world:p1}} Lore' }, { id: 'd2', name: '{{ph:ph-beast:world:p1}} Lore' }];
+
+  async function keysInSandbox(rolled: string): Promise<string> {
+    const reader = stat({ id: 's1', name: 'Reader', ...inBox(timing, 'placeholders.Probe.pin(Object.keys(dictionaries).join("|"));') });
+    const out = await runStatCodeTurn({
+      timing, stats: [reader], enabled: {}, previous: [reader], asks: [], regenApplied: {}, clock: {},
+      traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+      statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+      placeholders: { placeholders: [beast, probe], dictionaries: books, rolls: { world: { 'ph-beast': rolled } } },
+    });
+    return String(out.pinWrites['ph-probe']);
+  }
+
+  it('keys the sandbox on the code name whatever the playthrough rolled', async () => {
+    expect(await keysInSandbox('Wolf')).toBe(await keysInSandbox('Bear'));
+    expect(await keysInSandbox('Wolf')).toBe('Beast Lore');
+  });
+
+  it('offers that name once, and warns on the shared one', () => {
+    const named = books.map((b) => ({ id: b.id, name: statCodeName(b.name, [beast, probe]) }));
+    const code = 'dictionaries[""]';
+    const offered = statCodeCompletions(code, code.indexOf('""') + 1, { placeholders: { list: [beast, probe], dictionaries: named } })
+      ?.options.map((o) => o.label);
+    expect(offered).toEqual(['Beast Lore']);
+    const found = statCodeDiagnostics("return dictionaries['Beast Lore'].name;", { placeholders: { list: [beast, probe], dictionaries: named } })
+      .map((d) => d.message);
+    expect(found).toEqual(['2 dictionaries are named “Beast Lore”. This reads the last one authored.']);
+  });
+});
