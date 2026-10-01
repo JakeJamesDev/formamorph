@@ -1,7 +1,7 @@
 # 14: Prototype, the window above dialogs
 
 Status: ready-for-human
-Status note: Prototype built and proven on `prototype/formaquestion-window` (`d487605e`). The layering works. The user approves the layering approach, picks a window structure and a launcher, and rules on five open decisions. See Answer.
+Status note: Prototype built and proven on `prototype/formaquestion-window` (`059426ae`). The layering works. The user picked window A with the edge tab and asked for open and close motion, which is built. Still open: approval of the layering approach, the nine new patterns, and decisions D1 to D5. See Answer.
 Base: 9edac2fd
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -42,10 +42,10 @@ Recommended model rationale: the inert scope, focus trap and scroll lock of the 
 
 | | |
 |---|---|
-| 🌿 Branch | `prototype/formaquestion-window`, commit `d487605e` |
+| 🌿 Branch | `prototype/formaquestion-window`, commit `059426ae` |
 | 📁 Worktree | `.claude/worktrees/prototype-formaquestion-window` |
 | ▶️ Run | Launch entry `proto-formaquestion-window` (port 5216). From the worktree: `npx vite --port 5216 --strictPort --force` |
-| ✅ Proof | `npx playwright test -c playwright.prototype.config.ts prototype.spec` → 27 pass |
+| ✅ Proof | `npx playwright test -c playwright.prototype.config.ts prototype.spec` → 30 pass |
 | 🖼️ Frames | `npx playwright test -c playwright.prototype.config.ts frames.spec` → `.scratch/formaquestion-window/review/` in the worktree |
 | 📖 Start here | `src/prototype/formaquestion/README.md`, then `helpLayer.ts` |
 
@@ -117,7 +117,7 @@ All frames are in `.claude/worktrees/prototype-formaquestion-window/.scratch/for
 | **B** | **One Field**: one field asks and searches; matches show above it; the reader stacks on top | 400×560 | `window-B-ask`, `-matches`, `-reader`, `-contents` | Least chrome, and the no-AI state needs no second field. Enter always asks, which can surprise a player who wanted to search |
 | **C** | **Two Panes**: a rail with search and contents, a pane with the conversation or the reader | 720×520 | `window-C-ask`, `-reader`, `-search` | Best for reading the guide. It covers the most of the dialog behind it |
 
-Recommendation: **A**. Stories 7 and 8 need the dialog behind the window to stay in view, so the small window matters most.
+> ✅ **Picked by the user, 2026-10-01: A.** It is the prototype default.
 
 Other frames: `state-turn-running-dark`, `state-no-ai-dark`, `state-no-ai-B-dark`, `switcher-bar-dark`, `mobile-sheet-A-ask`, `mobile-sheet-A-reader`, `mobile-sheet-B-ask-dark`, `mobile-sheet-C-ask-dark`, `mobile-sheet-C-contents-dark`.
 
@@ -131,7 +131,19 @@ Frames: `launcher-<icon|pill|tab>-<main-menu|world-editor|game>-<dark|light>`, a
 | `pill`: labeled button, bottom right | Patreon and GitHub links (Main Menu), Edit Stats (game) | Replay Intro and More (Main Menu), the **action field**, About How to Play and **Send** (game) |
 | `tab`: tab on the right edge, at mid height | Nothing | The edge of one world card (Main Menu), the edge of one field (World Editor) |
 
-Recommendation: **`tab`**. No corner is free on all three screens. The bottom-right launchers cover Send on mobile.
+> ✅ **Picked by the user, 2026-10-01: `tab`.** It is the prototype default. No corner is free on all three screens, and the bottom-right launchers cover Send on mobile.
+
+#### Open and close motion (asked for by the user, 2026-10-01)
+
+| Form | Open | Close |
+|---|---|---|
+| Floating window | Zooms from 75% and fades in, 200ms. The fixed point of the zoom is the launcher's center, so the window grows out of the tab | The same in reverse, 150ms |
+| Mobile sheet | Slides in from the right edge, 200ms | Slides out to the right, 150ms |
+| Reduced motion | Shows at once | Hides at once |
+
+- The window stays mounted until the close animation ends. A timed backstop unmounts it when the end event does not arrive (a hidden tab).
+- ⚠️ A bare `duration-200` loses to the 150ms default of `animate-in`. The duration needs the same `data-[state=open]:` variant. The app's own dialogs have the bare form.
+- Three Playwright tests read the painted transform on every frame. Without `fill-mode-forwards` the closed window flashes at full size for a frame, and two of the tests fail.
 
 #### New visual patterns, for approval
 
