@@ -7,7 +7,9 @@ import { useBackStop } from '@/hooks/useBackStop';
 import { useDevRoute } from '@/lib/devRouter';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
+import { registerDocsOpener, type DocsTarget } from '@/lib/formaquestion/docsOpener';
 import { createGuide } from '@/lib/formaquestion/guide';
+import { wikiPageUrl } from '@/lib/helpTopics';
 import type { Edge } from '@/lib/formaquestion/tabPlace';
 import {
   clampBox, defaultBox, isWide, moveBox, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
@@ -132,6 +134,17 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setOpen(false);
   }, [aimAtTab]);
 
+  // A "Learn more" link or a notice asks for a docs heading. The window opens now and shows it once the
+  // docs have loaded. While nothing is registered, those links go to the wiki.
+  const [target, setTarget] = useState<DocsTarget | null>(null);
+  useEffect(() => {
+    if (hidden) return;
+    return registerDocsOpener((next) => {
+      if (!open) openWindow();
+      setTarget(next);
+    });
+  }, [hidden, open, openWindow]);
+
   // The Android back action closes the window before any dialog under it.
   useBackStop(open && !hidden ? closeWindow : undefined, windowRef);
 
@@ -184,6 +197,26 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     });
     return () => cancelAnimationFrame(frame);
   }, [view]);
+
+  // A failed load drops the request, so a later Try Again does not jump the view.
+  useEffect(() => {
+    if (failed) setTarget(null);
+  }, [failed]);
+  useEffect(() => {
+    if (!target || !guide) return;
+    const sectionId = guide.resolve('', target.anchor ? `${target.page}#${target.anchor}` : target.page);
+    setTarget(null);
+    // The coverage test keeps this case from shipping. The wiki is the way out if it ever does.
+    if (!sectionId) {
+      window.open(wikiPageUrl(target.page) + (target.anchor ? `#${target.anchor}` : ''), '_blank', 'noopener,noreferrer');
+      return;
+    }
+    changeViewInWindow((current) => {
+      const page = guide.section(sectionId)?.page;
+      const openPages = page === undefined || current.openPages.includes(page) ? current.openPages : [...current.openPages, page];
+      return { sectionId, tab: 'guide', reading: true, openPages };
+    });
+  }, [target, guide, changeViewInWindow]);
 
   // The docs can load after the window opens. Focus then goes from the frame to the search field.
   useEffect(() => {

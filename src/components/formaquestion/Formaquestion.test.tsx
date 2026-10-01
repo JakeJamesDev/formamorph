@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
 import { NARROW_WIDTH, WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
+import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { Formaquestion } from './Formaquestion';
 
 const PAGES = {
@@ -553,5 +554,47 @@ describe('unmount', () => {
     view.unmount();
     pressF1();
     expect(loadIndex).not.toHaveBeenCalled();
+  });
+});
+
+describe('opening a docs heading from outside', () => {
+  it('opens the closed window at the section that holds the heading, with the docs still loading', async () => {
+    render(<Formaquestion loadIndex={loadFixture} />);
+    expect(helpWindow()).toBeNull();
+    act(() => { expect(openDocs({ page: 'Stats', anchor: 'fields' })).toBe(true); });
+    expect(await screen.findByRole('article', { name: '📊 Stats: The Panel' })).toBeInTheDocument();
+    expect(helpTab()).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('moves an open window from its search to the section', async () => {
+    await openWindow();
+    act(() => { openDocs({ page: 'Traits' }); });
+    expect(await screen.findByRole('article', { name: '🧬 Traits: 🧬 Traits' })).toBeInTheDocument();
+  });
+
+  it('opens the wiki page when the heading is not in the docs', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<Formaquestion loadIndex={loadFixture} />);
+    act(() => { openDocs({ page: 'Stats', anchor: 'nope' }); });
+    await waitFor(() => expect(open).toHaveBeenCalledWith(expect.stringContaining('/wiki/Stats#nope'), '_blank', 'noopener,noreferrer'));
+  });
+
+  it('drops a pending request when the docs fail to load', async () => {
+    const loadIndex = vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementation(loadFixture);
+    render(<Formaquestion loadIndex={loadIndex} />);
+    act(() => { openDocs({ page: 'Traits' }); });
+    await userEvent.click(await screen.findByRole('button', { name: 'Try Again' }));
+    expect(await screen.findByRole('searchbox', { name: 'Search the Guide' })).toBeInTheDocument();
+    expect(screen.queryByRole('article')).toBeNull();
+  });
+
+  it('is not reachable while suspended, so the link falls back to the wiki', () => {
+    render(<Formaquestion suspended loadIndex={loadFixture} />);
+    expect(openDocs({ page: 'Stats' })).toBe(false);
+  });
+
+  it('stops answering after unmount', () => {
+    render(<Formaquestion loadIndex={loadFixture} />).unmount();
+    expect(openDocs({ page: 'Stats' })).toBe(false);
   });
 });

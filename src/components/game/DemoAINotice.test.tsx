@@ -19,6 +19,7 @@ import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
 import { DemoAIBadge, DemoAINotice, type DemoAINoticeHandle } from './DemoAINotice';
+import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { DEMO_AI_SEEN_KEY } from './demoAISeen';
 
 const UA = {
@@ -204,6 +205,19 @@ describe('DemoAINotice controls', () => {
     const link = within(screen.getByRole('dialog')).getByRole('link', { name: 'How to set up your own AI' });
     expect(link).toHaveAttribute('href', 'https://github.com/JakeJamesDev/formamorph/wiki/Connect-Your-Own-AI');
     expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('the setup link opens the reader and closes the dialog when a reader is mounted', async () => {
+    const open = vi.fn();
+    const unregister = registerDocsOpener(open);
+    try {
+      mountNotice();
+      await userEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: 'How to set up your own AI' }));
+      expect(open).toHaveBeenCalledWith({ page: 'Connect-Your-Own-AI' });
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    } finally {
+      unregister();
+    }
   });
 
   it('orders the actions negative first, so the shared footer puts Connect an AI on the right', () => {
