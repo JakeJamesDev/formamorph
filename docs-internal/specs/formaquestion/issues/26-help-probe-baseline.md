@@ -1,7 +1,7 @@
 # 26: Help probe baseline
 
 Status: ready-for-agent
-Blocked by: 13, 22, 23, 24
+Blocked by: 13, 22, 23, 24, 27
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
 
