@@ -1,13 +1,13 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import fullChangelog from '../../../docs/Changelog.md?raw';
 import { BUNDLED_DOCS, bundledDocsIndex } from './bundledDocsIndex';
-import { NON_GUIDE_PAGES } from './docsChecks';
+import { NON_GUIDE_PAGES, pageNameOf } from './docsChecks';
 import { SECTION_CHAR_LIMIT } from './docsIndex';
 import { SECTION_CUT_MARKER } from './sectionParts';
 
-const DOCS_FOLDER = Object.keys(import.meta.glob('../../../docs/*.md')).map((path) =>
-  path.slice(path.lastIndexOf('/') + 1, -'.md'.length),
-);
+const DOCS_FOLDER = Object.keys(import.meta.glob('../../../docs/*.md')).map(pageNameOf);
 
 const index = bundledDocsIndex();
 const contents = index.contents();
@@ -37,6 +37,20 @@ describe('the bundled Docs Index', () => {
 
   it('cuts no section: a block with nothing to split at needs a heading on its page', () => {
     expect(sections.filter((s) => s.markdown.includes(SECTION_CUT_MARKER)).map((s) => s.id)).toEqual([]);
+  });
+
+  it('stays out of the start chunk: only the loader names it, through a dynamic import', () => {
+    const src = resolve(__dirname, '../..');
+    const files = readdirSync(src, { recursive: true, encoding: 'utf8' })
+      .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
+      .map((file) => join(src, file));
+    const naming = files.filter((file) => /['"][^'"]*\/bundledDocsIndex['"]/.test(readFileSync(file, 'utf8')));
+    expect(naming.map((file) => file.slice(src.length + 1).replace(/\\/g, '/'))).toEqual(['lib/docs/loadDocsIndex.ts']);
+    const loader = readFileSync(naming[0], 'utf8');
+    const mentions = loader.match(/['"]\.\/bundledDocsIndex['"]/g) ?? [];
+    const dynamic = loader.match(/import\(\s*['"]\.\/bundledDocsIndex['"]\s*\)/g) ?? [];
+    expect(dynamic.length).toBeGreaterThan(0);
+    expect(mentions.length).toBe(dynamic.length);
   });
 
   it('holds only the released changelog sections of the newest minor series', () => {

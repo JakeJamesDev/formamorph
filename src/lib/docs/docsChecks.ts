@@ -10,6 +10,11 @@ export interface DocTarget {
   anchor: string;
 }
 
+/** The wiki page name of a docs file path: its file name without `.md`. */
+export function pageNameOf(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1, -'.md'.length);
+}
+
 /** The wiki's start page, which holds the page index. */
 export const HOME_PAGE = 'Home';
 /** The wiki's navigation page, which holds the second page index. */

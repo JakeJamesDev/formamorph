@@ -18,22 +18,22 @@ interface ReleaseBlock {
 
 function releaseBlocks(lines: string[]): ReleaseBlock[] {
   const blocks: ReleaseBlock[] = [];
-  let open: ReleaseBlock | null = null;
+  let current: ReleaseBlock | null = null;
   for (const line of lines) {
     const summary = SUMMARY.exec(line);
     const released = summary && RELEASED.exec(summary[1]);
     if (summary && released) {
-      open = {
+      current = {
         title: summary[1].trim(),
         series: `${released[1]}.${released[2]}`,
         tagline: summary[2].replace(/^\s*—\s*/, '').replace(CLICK_HINT, ''),
         body: [],
       };
-      blocks.push(open);
+      blocks.push(current);
     } else if (line.trim() === '</details>') {
-      open = null;
-    } else if (open) {
-      open.body.push(line);
+      current = null;
+    } else if (current) {
+      current.body.push(line);
     }
   }
   return blocks;

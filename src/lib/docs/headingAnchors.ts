@@ -18,14 +18,16 @@ export interface DocHeading {
 }
 
 const NOT_SLUG_CHAR = /[^\p{L}\p{M}\p{N}\p{Pc} -]/gu;
-const MARKDOWN_LINK = /!?\[([^\]]*)\]\([^)]*\)/g;
+/** A markdown link or image; group 1 is its text. */
+export const MARKDOWN_LINK = /!?\[([^\]]*)\]\([^)]*\)/g;
 
 /** The wiki anchor for one heading's source text, before the repeat suffix. */
 export function headingAnchor(text: string): string {
   return text.replace(MARKDOWN_LINK, '$1').toLowerCase().replace(NOT_SLUG_CHAR, '').replace(/ /g, '-');
 }
 
-const FENCE = /^\s{0,3}(```|~~~)/;
+/** A code fence line; group 1 is its marker. */
+export const FENCE = /^\s{0,3}(```|~~~)/;
 const ATX_HEADING = /^\s{0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 
 /** Calls `visit` for each line of a page that is outside a code fence, with its zero-based line number. */

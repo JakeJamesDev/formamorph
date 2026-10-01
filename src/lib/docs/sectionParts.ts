@@ -5,10 +5,11 @@
  * A block that still does not fit is cut, with a marker.
  */
 
+import { FENCE } from './headingAnchors';
+
 /** The line that ends a block cut to fit the limit. */
 export const SECTION_CUT_MARKER = '*[Cut for length. The full text is on the wiki page.]*';
 
-const FENCE = /^\s{0,3}(```|~~~)/;
 const TOP_LEVEL_ITEM = /^(?:[-*+]|\d+[.)])\s/;
 const ANY_ITEM = /^(\s*)(?:[-*+]|\d+[.)])\s/;
 const TABLE_ROW = /^\s{0,3}\|/;
@@ -33,7 +34,7 @@ function isBlank(line: string): boolean {
 /** The blocks of a section body, each with the blank lines that follow it. */
 function blocksOf(body: string[]): Block[] {
   const blocks: Block[] = [];
-  const push = (lines: string[], header: HeaderLine[] = [], isListItem = false) => blocks.push({ lines, header, isListItem });
+  const addBlock = (lines: string[], header: HeaderLine[] = [], isListItem = false) => blocks.push({ lines, header, isListItem });
   let i = 0;
   while (i < body.length) {
     const line = body[i];
@@ -45,8 +46,8 @@ function blocksOf(body: string[]): Block[] {
     const fence = FENCE.exec(line);
     let end = i + 1;
     if (fence) {
-      while (end < body.length && !body[end].trimStart().startsWith(fence[1])) end++;
-      push(body.slice(i, end + 1));
+      while (end < body.length && FENCE.exec(body[end])?.[1] !== fence[1]) end++;
+      addBlock(body.slice(i, end + 1));
       i = end + 1;
       continue;
     }
@@ -56,18 +57,18 @@ function blocksOf(body: string[]): Block[] {
       const rows = body.slice(i, end);
       const hasHeader = rows.length > 1 && TABLE_SEPARATOR.test(rows[1]);
       const header = hasHeader ? rows.slice(0, 2).map((text) => ({ text })) : [];
-      if (hasHeader && rows.length === 2) push(rows.slice(0, 2));
-      for (const row of hasHeader ? rows.slice(2) : rows) push([row], header);
+      if (hasHeader && rows.length === 2) addBlock(rows.slice(0, 2));
+      for (const row of hasHeader ? rows.slice(2) : rows) addBlock([row], header);
     } else if (TOP_LEVEL_ITEM.test(line)) {
       // An item runs on through indented lines, lazy continuation lines, and blank lines before indented ones.
       while (end < body.length && !TOP_LEVEL_ITEM.test(body[end])) {
         if (isBlank(body[end]) && !/^\s/.test(body[end + 1] ?? '')) break;
         end++;
       }
-      push(body.slice(i, end), [], true);
+      addBlock(body.slice(i, end), [], true);
     } else {
       while (end < body.length && !isBlank(body[end])) end++;
-      push(body.slice(i, end));
+      addBlock(body.slice(i, end));
     }
     i = end;
   }
@@ -93,13 +94,24 @@ function expandItem(block: Block, limit: number): Block[] {
   );
 }
 
+/** The marker of the code fence still open at the end of `lines`, or null. */
+function openFence(lines: string[]): string | null {
+  let fence: string | null = null;
+  for (const line of lines) {
+    const marker = FENCE.exec(line)?.[1] ?? null;
+    if (marker !== null && fence === null) fence = marker;
+    else if (marker !== null && marker === fence) fence = null;
+  }
+  return fence;
+}
+
 /** Cuts `text` at a line break inside the limit and adds the marker; a cut code fence is closed first. */
 function cutToLimit(text: string, limit: number): string {
   const room = limit - SECTION_CUT_MARKER.length - '\n```\n\n'.length;
   const breakAt = text.lastIndexOf('\n', room);
   const kept = text.slice(0, breakAt > 0 ? breakAt : room).trimEnd();
-  const fenceOpen = (kept.match(/^\s{0,3}(```|~~~)/gm)?.length ?? 0) % 2 === 1;
-  return `${kept}${fenceOpen ? '\n```' : ''}\n\n${SECTION_CUT_MARKER}`;
+  const fence = openFence(kept.split('\n'));
+  return `${kept}${fence ? `\n${fence}` : ''}\n\n${SECTION_CUT_MARKER}`;
 }
 
 /**

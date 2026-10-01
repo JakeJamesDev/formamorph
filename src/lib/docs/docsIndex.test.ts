@@ -186,6 +186,24 @@ describe('Docs Index section size', () => {
     expect(parts.at(-1)?.markdown.endsWith('- **Developer tooling**\n  - Small.')).toBe(true);
   });
 
+  it('splits between code fences, never inside one', () => {
+    const fence = (n: number) => ['```md', `- not an item ${n}`, '', filler(70), '```'].join('\n');
+    const page = ['# Code', '', '## Samples', '', ...Array.from({ length: 12 }, (_, n) => `${fence(n)}\n`)].join('\n');
+    const parts = createDocsIndex({ pages: { Code: page } }).get(['Code#samples']);
+    expect(parts.length).toBeGreaterThan(1);
+    for (const part of parts) {
+      expect(part.markdown.match(/^```md$/gm)?.length).toBe(part.markdown.match(/^```$/gm)?.length);
+    }
+    expect(parts.flatMap((p) => p.markdown.match(/not an item \d+/g) ?? [])).toHaveLength(12);
+  });
+
+  it('closes a cut code fence with its own marker', () => {
+    const page = ['# Code', '', '## Wall', '', '~~~', ...Array.from({ length: 200 }, (_, n) => `line ${n} ${filler(6)}`), '~~~'].join('\n');
+    const [wall] = createDocsIndex({ pages: { Code: page } }).get(['Code#wall']);
+    expect(wall.markdown.length).toBeLessThanOrEqual(SECTION_CHAR_LIMIT);
+    expect(wall.markdown.endsWith(`\n~~~\n\n${SECTION_CUT_MARKER}`)).toBe(true);
+  });
+
   it('cuts a single block over the limit, with a marker', () => {
     const page = ['# Big', '', '## Wall', '', filler(1500)].join('\n');
     const [wall] = createDocsIndex({ pages: { Big: page } }).get(['Big#wall']);
