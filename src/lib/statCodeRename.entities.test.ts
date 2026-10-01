@@ -107,4 +107,15 @@ describe('a trait rename when two playable entities own the old name', () => {
     });
     expect(plan?.edits[0].boxes.after).toBe('persona.traits.Marked.enabled');
   });
+
+  it('rewrites the persona path for one trait two playable entities both hold', () => {
+    const linker: Entity = { ...kira, traits: [], traitLinks: [link] };
+    const mirrorMira: Entity = { ...mira, traits: [], traitLinks: [link] };
+    const linked = { traits: [brave], traitGroups: [], entities: [mirrorMira, linker] };
+    const plan = planCodeRename({
+      root: 'traits', oldName: 'Brave', newName: 'Bold', otherNames: [], stats: [stat('a', 'persona.traits.Brave.enabled')],
+      traitHolders: traitHolders(linked, [], 'brave'),
+    });
+    expect(plan?.edits[0].boxes.after).toBe('persona.traits.Bold.enabled');
+  });
 });

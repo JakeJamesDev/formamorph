@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Dictionary, Entity, Placeholder, Stat } from '@/types';
+import { phValues } from '@/test/placeholderValues';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { planCodeRename, type CodeRenameSubject } from './statCodeRename';
 
@@ -67,5 +68,16 @@ describe('a rename of a placeholder two playable entities own', () => {
       root: 'placeholders', oldName: 'Hair', newName: 'Mane', otherNames: [], subject: { kind: 'placeholder', id: 'molly-hair' },
       stats: [stat('a', 'persona.placeholders.Hair.value')], entities: both, dictionaries, placeholders: { list: renamedOther, owners },
     })?.edits[0]?.boxes.after).toBe('persona.placeholders.Mane.value');
+  });
+
+  it('rewrites a deeper persona path the other owner does not answer', () => {
+    const child = { ...ph('molly-shade', 'Shade'), ownerId: 'molly-hair' };
+    const parent = { ...ph('molly-hair', 'Hair'), values: phValues(['{{ph:molly-shade:world:p1}}']) };
+    const deeper = [...list.map((entry) => (entry.id === 'molly-hair' ? parent : entry)), child];
+    const nested: PlaceholderOwners = new Map([...owners, ['molly-shade', { kind: 'entity', id: 'molly', name: 'Molly' }]]);
+    expect(planCodeRename({
+      root: 'placeholders', oldName: 'Shade', newName: 'Tint', otherNames: [], subject: { kind: 'placeholder', id: 'molly-shade' },
+      stats: [stat('a', 'persona.placeholders.Hair.Shade.value')], entities: both, dictionaries, placeholders: { list: deeper, owners: nested },
+    })?.edits[0]?.boxes.after).toBe('persona.placeholders.Hair.Tint.value');
   });
 });
