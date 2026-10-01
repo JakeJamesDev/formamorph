@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 /** The parts of the Formaquestion window, in tab order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_TABS = [
+  { value: 'ask', label: 'Ask' },
   { value: 'search', label: 'Search' },
   { value: 'guide', label: 'Guide' },
 ] as const;
@@ -10,8 +11,11 @@ export type FormaquestionTab = (typeof FORMAQUESTION_TABS)[number]['value'];
 
 /** What the window shows. It outlives a close, a tab change and a change of layout. */
 export interface GuideView {
+  /** The narrow layout's tab. In the wide layout, `ask` shows the conversation in place of the reader. */
   tab: FormaquestionTab;
   query: string;
+  /** The question the player is typing. */
+  draft: string;
   sectionId: string | null;
   /** The narrow Guide tab shows the open section. False shows the contents, with that section marked. */
   reading: boolean;
@@ -19,7 +23,7 @@ export interface GuideView {
   openPages: readonly string[];
 }
 
-export const INITIAL_GUIDE_VIEW: GuideView = { tab: 'search', query: '', sectionId: null, reading: false, openPages: [] };
+export const INITIAL_GUIDE_VIEW: GuideView = { tab: 'ask', query: '', draft: '', sectionId: null, reading: false, openPages: [] };
 
 /** The fields to change, or a function that reads the view and returns them. */
 export type GuideViewChange = Partial<GuideView> | ((current: GuideView) => Partial<GuideView>);

@@ -1,0 +1,185 @@
+import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
+import { ChevronRight, SendHorizontal, Square } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { Tip } from '@/components/ui/tooltip';
+import { Hint, Meta } from '@/components/ui/typography';
+import type { DocSection } from '@/lib/docs/docsIndex';
+import { withReaderLinks } from '@/lib/docs/docsReader';
+import type { Guide } from '@/lib/formaquestion/guide';
+import { cn } from '@/lib/utils';
+import { SectionRows } from './GuideParts';
+import { FOCUS_RING, readerComponents } from './readerLinks';
+import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
+
+/** The most docs sections shown in place of an answer. */
+const FALLBACK_RESULT_LIMIT = 5;
+
+/** How near the end, in pixels, the conversation must be for new text to keep it at the end. */
+const FOLLOW_SLACK = 48;
+
+/** The line above the docs search that takes the place of an answer, or of the rest of one. */
+function fallbackLine(status: Extract<HelpStatus, 'no-ai' | 'failed'>, partial: boolean, matched: boolean): string {
+  const cause = status === 'no-ai' ? 'No AI is connected' : partial ? 'The answer did not finish' : 'The AI did not answer';
+  return matched ? `${cause}. These guide sections match your question.` : `${cause}, and no guide section matches your question`;
+}
+
+/** A source under an answer: the page, then the section. It opens the section in the reader. */
+function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSection; onOpen: (id: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(section.id)}
+      className={cn('inline-flex max-w-full items-center gap-1 rounded border bg-muted/40 px-1.5 py-0.5 text-meta text-muted-foreground hover:bg-accent hover:text-accent-foreground', FOCUS_RING)}
+    >
+      <span className="truncate">{guide.titleOf(section.page)}</span>
+      <ChevronRight aria-hidden className="h-3 w-3 shrink-0" />
+      <span className="truncate text-foreground">{section.label}</span>
+    </button>
+  );
+}
+
+function Answer({ guide, exchange, onOpen }: { guide: Guide; exchange: HelpExchange; onOpen: (id: string) => void }) {
+  const { answer, status, sources, question } = exchange;
+  const components = useMemo(() => readerComponents(onOpen), [onOpen]);
+  // A docs link that the model copies from a section opens that section here.
+  const text = useMemo(() => withReaderLinks(answer, '', guide.resolve), [answer, guide]);
+  const searched = status === 'no-ai' || status === 'failed';
+  const matches = useMemo(
+    () => (searched ? guide.index.search(question, FALLBACK_RESULT_LIMIT) : []),
+    [searched, guide, question],
+  );
+  return (
+    <div className="flex flex-col gap-2 text-label">
+      {answer && (
+        <div className="[&_:first-child]:mt-0">
+          <MarkdownRenderer text={text} animate={status === 'writing'} components={components} />
+        </div>
+      )}
+      {/* The conversation is a log, which announces its own new text. */}
+      {status === 'writing' && !answer && <Hint>Writing an answer…</Hint>}
+      {status === 'stopped' && <Meta>Stopped</Meta>}
+      {(status === 'no-ai' || status === 'failed') && (
+        <div className="flex flex-col gap-1">
+          <Hint>{fallbackLine(status, answer !== '', matches.length > 0)}</Hint>
+          {matches.length > 0 && <SectionRows guide={guide} sections={matches} onOpen={onOpen} />}
+        </div>
+      )}
+      {sources.length > 0 && (
+        <div role="group" aria-label="Sources" className="flex flex-col gap-1">
+          <Meta>Sources</Meta>
+          <div className="flex flex-wrap gap-1">
+            {sources.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Conversation({ guide, exchanges, busy, onOpen }: {
+  guide: Guide;
+  exchanges: readonly HelpExchange[];
+  busy: boolean;
+  onOpen: (id: string) => void;
+}) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
+  const last = exchanges.at(-1);
+  // A new question goes to the end. A growing answer stays at the end unless the player scrolled up.
+  useEffect(() => { following.current = true; }, [exchanges.length]);
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (viewport && following.current) viewport.scrollTop = viewport.scrollHeight;
+  }, [exchanges.length, last?.answer, last?.status]);
+  return (
+    <ScrollArea
+      className="min-h-0 flex-1"
+      viewportRef={viewportRef}
+      viewportProps={{
+        'data-fq-scroll': 'conversation',
+        onScroll: (event) => {
+          const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
+          following.current = scrollHeight - scrollTop - clientHeight <= FOLLOW_SLACK;
+        },
+      }}
+    >
+      <div role="log" aria-label="Conversation" aria-busy={busy} className="flex flex-col gap-3 p-3">
+        {exchanges.length === 0 && <Hint className="py-6 text-center">Ask how to do something in Formamorph</Hint>}
+        {exchanges.map((exchange) => (
+          <div key={exchange.id} className="flex flex-col gap-3">
+            <p className="ml-8 self-end whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-label [overflow-wrap:anywhere]">{exchange.question}</p>
+            <Answer guide={guide} exchange={exchange} onOpen={onOpen} />
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
+
+function AskField({ draft, onDraftChange, busy, onSend, onStop }: {
+  draft: string;
+  onDraftChange: (text: string) => void;
+  busy: boolean;
+  onSend: (question: string) => void;
+  onStop: () => void;
+}) {
+  const question = draft.trim();
+  const canSend = !busy && question.length > 0;
+  const send = () => {
+    if (!canSend) return;
+    onSend(question);
+    onDraftChange('');
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends. Shift+Enter, and Enter that confirms composed text, add to the question.
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    send();
+  };
+  return (
+    <div className="flex shrink-0 items-end gap-2 border-t p-3">
+      <Textarea
+        data-fq-autofocus=""
+        aria-label="Ask a Question"
+        placeholder="Ask a Question"
+        value={draft}
+        rows={2}
+        onChange={(event) => onDraftChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        className="min-h-[44px] resize-none"
+      />
+      {busy ? (
+        <Tip tip="Stop">
+          <Button variant="outline" size="icon" className="shrink-0" onClick={onStop}>
+            <Square aria-hidden className="h-4 w-4" />
+          </Button>
+        </Tip>
+      ) : (
+        <Tip tip="Send">
+          <Button size="icon" className="shrink-0" disabled={!canSend} onClick={send}>
+            <SendHorizontal aria-hidden className="h-4 w-4" />
+          </Button>
+        </Tip>
+      )}
+    </div>
+  );
+}
+
+/** The Ask part of the window: the conversation, and the field that adds a question to it. */
+export function AskPanel({ guide, chat, draft, onDraftChange, onOpen }: {
+  guide: Guide;
+  chat: HelpChat;
+  draft: string;
+  onDraftChange: (text: string) => void;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <>
+      <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} onOpen={onOpen} />
+      <AskField draft={draft} onDraftChange={onDraftChange} busy={chat.busy} onSend={chat.ask} onStop={chat.stop} />
+    </>
+  );
+}

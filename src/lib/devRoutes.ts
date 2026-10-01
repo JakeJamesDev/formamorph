@@ -211,7 +211,7 @@ export const DEV_MODAL_TABS = {
   gameViewerAttach: [DEV_ATTACH_SAMPLE],
   // The Formaquestion window's parts (`#dev?modal=formaquestion&tab=guide`). `subtab=…` takes a docs
   // section id and opens it in the reader. `mode=wide` or `mode=narrow` picks the layout.
-  formaquestion: ['search', 'guide'],
+  formaquestion: ['ask', 'search', 'guide'],
 } as const;
 
 // Admin Panel → Policies uses the `subtab=…` slot, and its two are fixed, so they are guarded above.

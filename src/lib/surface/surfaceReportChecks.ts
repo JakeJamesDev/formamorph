@@ -10,6 +10,7 @@ const NARRATION_LAYOUT = 'A display setting, not a place the player is in. The g
 /** Player-facing surfaces that no component reports, each with the reason. */
 export const UNREPORTED_SURFACES: Partial<Record<SurfaceId, string>> = {
   formaquestion: HELP_WINDOW,
+  'formaquestion.ask': HELP_WINDOW,
   'formaquestion.search': HELP_WINDOW,
   'formaquestion.guide': HELP_WINDOW,
   'gameViewerLayout.pages': NARRATION_LAYOUT,

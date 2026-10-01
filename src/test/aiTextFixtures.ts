@@ -53,6 +53,20 @@ export function sseResponse(chunks: string[]): Response {
   }), { headers: { 'Content-Type': 'text/event-stream' } });
 }
 
+/**
+ * A streamed reply that sends its frames and then stays open, as a model that is still writing. `cancel`
+ * records that the reader closed the request.
+ */
+export function openSseReply(frames: string[]) {
+  const cancel = vi.fn();
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) { for (const frame of frames) controller.enqueue(encoder.encode(frame)); },
+    cancel,
+  });
+  return { cancel, respond: () => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }) };
+}
+
 /** Stubs the global fetch with one streamed reply and returns the spy, so a test can read the body it got. */
 export function stubStream(chunks: string[] | (() => Response)) {
   const spy = vi.fn((_url: string, _init: RequestInit) => (typeof chunks === 'function' ? chunks() : sseResponse(chunks)));

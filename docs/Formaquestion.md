@@ -1,6 +1,6 @@
 # ❓ Formaquestion
 
-Formaquestion is the help window. It holds this guide and a search of it. The guide is part of the app, so the window works with no network and no AI.
+Formaquestion is the help window. You can ask it a question, search this guide and read each guide page. The guide is part of the app, so the search and the pages work with no network and no AI.
 
 > 📱 On a mobile-size screen, Formaquestion opens as a full-screen sheet. See [On Mobile](#on-mobile).
 
@@ -10,6 +10,16 @@ Formaquestion is the help window. It holds this guide and a search of it. The gu
 2. To close the window, select **Close** at its top right. On Android, you can also use the back action.
 
 The window stays open when you go to a different screen or open a dialog. You can use the dialog and the window together. Escape closes the dialog and leaves the window open.
+
+## How to Ask a Question
+
+1. Open Formaquestion.
+2. Select the **Ask** tab. In the wide layout, the conversation is on the right.
+3. Type your question in **Ask a Question**.
+4. Select **Send**, or press Enter.
+5. To read where the answer came from, select a section under **Sources**.
+
+Your AI writes the answer from the guide sections that match your question. To end an answer early, select **Stop**. The text so far stays. See [Ask](#ask).
 
 ## How to Search the Guide
 
@@ -55,7 +65,7 @@ With the keyboard, press Tab until the **Help** tab has focus. Then press the ar
 
 ## The Window
 
-Formaquestion is one window for the whole app. It shows above every dialog, and it keeps its search text and its open section while the app is open.
+Formaquestion is one window for the whole app. It shows above every dialog, and it keeps its conversation, its search text and its open section while the app is open.
 
 | Control | What it does |
 |---|---|
@@ -74,8 +84,24 @@ F1 does one of three things:
 
 - The window stays whole on the screen. When the browser window gets smaller, Formaquestion moves back inside it.
 - This device keeps the place and the size of the window. They are not in a backup or an export.
-- The narrow layout shows one tab at a time. The wide layout shows the search field and the contents on the left, and the section on the right. The layout changes at a width of 560 pixels, so the corner changes it too.
+- The narrow layout shows one tab at a time. The wide layout shows the search field and the contents on the left, and the conversation or a section on the right. **Back to Conversation**, above a section, shows the conversation again. The layout changes at a width of 560 pixels, so the corner changes it too.
 - While the welcome animation plays, the **Help** tab does not show and F1 does nothing.
+
+## Ask
+
+The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
+
+- **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
+- The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
+- Each question stands alone. The AI does not get your earlier questions.
+- Enter sends the question. Shift+Enter starts a new line.
+- **Stop** ends an answer and keeps its text.
+- With no AI connected, **Send** shows the guide sections that match your question. The Demo AI always counts as connected.
+- When the AI does not answer, an error message shows, and the guide sections that match your question show in place of the answer. Text that came before the failure stays.
+- The conversation stays while the app is open. The app does not store it.
+- The answer comes from your active text endpoint, with reasoning off. See [Connect Your Own AI](Connect-Your-Own-AI).
+
+An answer can be wrong. Use **Sources** to check it against the guide.
 
 ## Search
 
@@ -103,7 +129,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 
 ## On Mobile
 
-On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the **Search** and **Guide** tabs of the narrow layout.
+On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the **Ask**, **Search** and **Guide** tabs of the narrow layout.
 
 - The sheet slides in from the edge that holds the **Help** tab. The tab hides while the sheet is open.
 - The sheet opens above an open dialog. When you close the sheet, the dialog is as you left it.

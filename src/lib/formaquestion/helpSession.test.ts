@@ -1,0 +1,215 @@
+import { describe, expect, it, vi } from 'vitest';
+import { createDocsIndex } from '@/lib/docs/docsIndex';
+import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
+import { reasoningCapabilityFromLevels } from '@/lib/reasoningEffort';
+import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { AiStreamError } from '@/lib/aiRequest/aiStream';
+import type { AIRequestType } from '@/types';
+import { askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, type HelpEvent, type HelpQuestion } from './helpSession';
+
+const PAGES = {
+  Stats: '# 📊 Stats\n\nStats are numbers.\n\n## How to Add a Stat\n\n1. Open the **Stats** tab.\n2. Select **Add Stat**.\n',
+  Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.\n',
+  Library: '# 📚 Library\n\nThe library holds worlds.\n\n## How to Import a World\n\n1. Select **Import**.\n',
+};
+const index = createDocsIndex({ pages: PAGES, sidebar: '- [Stats](Stats)\n- [Traits](Traits)\n- [Library](Library)\n' });
+
+type FetchSpy = ReturnType<typeof vi.fn<(url: string, init: RequestInit) => Promise<Response>>>;
+
+/** A fetch that answers every request with one streamed reply. */
+const replyWith = (chunks: string[]): FetchSpy => vi.fn(async () => sseResponse(chunks));
+
+const bodyOf = (spy: FetchSpy, call = 0) => JSON.parse(spy.mock.calls[call][1].body as string) as {
+  messages: { role: string; content: string }[];
+} & Record<string, unknown>;
+
+/** One help question against the fixture docs, sent through the fake fetch. */
+const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
+  askHelp({ question, snapshot: textSnapshot(), index, fetchImpl: fetchImpl as unknown as typeof fetch, ...over });
+
+async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
+  const all: HelpEvent[] = [];
+  for await (const event of events) all.push(event);
+  return all;
+}
+
+describe('a help question', () => {
+  it('sends one request that holds the matching docs sections, and yields the streamed answer and its sources', async () => {
+    const fetchImpl = replyWith([sseFrame({ content: 'Open the **Traits** tab' }), ...sseReply(', then select **Add Trait**.')]);
+    const events = await collect(ask('How do I add a trait?', fetchImpl));
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const { messages } = bodyOf(fetchImpl);
+    const user = messages.filter((message) => message.role === 'user');
+    expect(user).toHaveLength(1);
+    expect(user[0].content).toContain('## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.');
+    expect(user[0].content).toContain('How do I add a trait?');
+
+    expect(events.filter((event) => event.type === 'answer').map((event) => event.text)).toEqual([
+      'Open the **Traits** tab',
+      'Open the **Traits** tab, then select **Add Trait**.',
+    ]);
+    const done = events.at(-1);
+    expect(done).toMatchObject({ type: 'done', text: 'Open the **Traits** tab, then select **Add Trait**.', stopped: false });
+    expect(done?.type === 'done' && done.sources[0].id).toBe('Traits#how-to-add-a-trait');
+  });
+
+  it('sends as the help kind: the endpoint that kind resolves to, reasoning off, its own samplers', async () => {
+    const fetchImpl = replyWith(sseReply('Select **Add Stat**.'));
+    // A model that reasons by default, on an endpoint whose own sampler switches are on.
+    const overrides = defaultEndpointSamplerOverrides();
+    const target = textTarget({
+      url: 'https://help.example.com/v1/chat/completions',
+      reasoning: { ...reasoningCapabilityFromLevels([], 'probe'), reasons: true, dialect: 'novita' },
+      samplerOverrides: {
+        ...overrides,
+        temperature: { enabled: true, value: 1.3 },
+        repetitionPenalty: { enabled: true, value: 1.25 },
+      },
+    });
+    const resolveTarget = vi.fn((_kind: AIRequestType) => target);
+    const snapshot = textSnapshot(target, { resolveTarget, reasoningEngaged: true, reasoningEffort: 'high', promptReasoning: { help: 'high' } });
+    await collect(ask('How do I add a stat?', fetchImpl, { snapshot }));
+
+    expect(new Set(resolveTarget.mock.calls.map(([kind]) => kind))).toEqual(new Set(['help']));
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://help.example.com/v1/chat/completions');
+    const body = bodyOf(fetchImpl);
+    expect(body.enable_thinking).toBe(false);
+    expect(body).toMatchObject({ temperature: 0.2, repetition_penalty: 1, repeat_penalty: 1 });
+  });
+
+  it('carries the fixed prompt, the docs sections and the question, and nothing else', async () => {
+    /** One request, and what is left of its user message without the sections and the question. */
+    const sent = async (question: string) => {
+      const fetchImpl = replyWith(sseReply('Done.'));
+      const events = await collect(ask(question, fetchImpl));
+      const done = events.at(-1);
+      const sources = done?.type === 'done' ? done.sources : [];
+      const body = bodyOf(fetchImpl);
+      const frame = sources
+        .reduce((text, section) => text.replace(section.markdown, ''), body.messages[1].content)
+        .replace(question, '')
+        .replace(/<section page="[^"]*">\n\n<\/section>\n*/g, '');
+      return { body, sources, frame };
+    };
+    const traits = await sent('How do I add a trait?');
+    const library = await sent('How do I import a world?');
+
+    expect(Object.keys(traits.body).sort()).toEqual(
+      ['max_tokens', 'messages', 'model', 'repeat_penalty', 'repetition_penalty', 'stream', 'temperature'],
+    );
+    expect(traits.body.messages.map((message) => message.role)).toEqual(['system', 'user']);
+    // The system prompt is fixed text, and so is the user message around its sections and question.
+    expect(library.body.messages[0]).toEqual(traits.body.messages[0]);
+    expect(traits.sources.length).toBeGreaterThan(0);
+    expect(library.sources[0].id).toBe('Library#how-to-import-a-world');
+    expect(library.frame).toBe(traits.frame);
+    expect(traits.frame).not.toMatch(/Trait|Stat|Import|##/);
+  });
+
+  it('keeps an inline reasoning block out of the answer', async () => {
+    const fetchImpl = replyWith([
+      sseFrame({ content: '<think>The player wants' }),
+      sseFrame({ content: ' steps.</think>\n\n1. Select' }),
+      ...sseReply(' **Add Trait**.'),
+    ]);
+    const events = await collect(ask('add a trait', fetchImpl));
+    expect(events.map((event) => event.text)).toEqual(['1. Select', '1. Select **Add Trait**.', '1. Select **Add Trait**.']);
+  });
+});
+
+describe('the docs sections of a request', () => {
+  /** An index whose pages each hold one section about zebras, `size` characters long. */
+  const zebraIndex = (pages: number, size: number) => createDocsIndex({
+    pages: Object.fromEntries(Array.from({ length: pages }, (_, n) => [
+      `Page${n}`, `## Zebra ${n}\n\n${'A zebra has stripes. '.repeat(Math.ceil(size / 20)).slice(0, size)}`,
+    ])),
+  });
+
+  it('holds at most five sections', () => {
+    expect(helpSections(zebraIndex(8, 200), 'zebra')).toHaveLength(5);
+  });
+
+  it('stops before the section that takes the docs text over the budget', () => {
+    // Each section is about 5,000 characters: two fit in 12,000 and a third does not.
+    const sections = helpSections(zebraIndex(8, 5000), 'zebra');
+    expect(sections).toHaveLength(2);
+    expect(sections.reduce((sum, section) => sum + section.markdown.length, 0)).toBeLessThanOrEqual(HELP_DOCS_CHAR_BUDGET);
+  });
+
+  it('always holds the best match, even when it is over the budget alone', () => {
+    const big = zebraIndex(3, 5000);
+    expect(helpSections(big, 'zebra', 1000).map((section) => section.id)).toEqual([big.search('zebra')[0].id]);
+  });
+
+  it('holds no section when no word of the question is in the docs, and still asks once', async () => {
+    const fetchImpl = replyWith(sseReply('The guide does not cover this.'));
+    const events = await collect(ask('quasar', fetchImpl));
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(events.at(-1)).toMatchObject({ type: 'done', sources: [] });
+  });
+
+  it('reports the sections it sent as the sources', async () => {
+    const fetchImpl = replyWith(sseReply('Done.'));
+    const zebras = zebraIndex(8, 5000);
+    const events = await collect(ask('zebra', fetchImpl, { index: zebras }));
+    const done = events.at(-1);
+    const sent = bodyOf(fetchImpl).messages[1].content;
+    const sources = done?.type === 'done' ? done.sources : [];
+    // Two sections of about 5,000 characters fit the budget.
+    expect(sources).toHaveLength(2);
+    expect(zebras.search('zebra', 8).filter((section) => sent.includes(section.markdown)).map((section) => section.id))
+      .toEqual(sources.map((section) => section.id));
+  });
+});
+
+describe('stop', () => {
+  it('ends the stream, keeps the answer so far and closes the request', async () => {
+    const reply = openSseReply([sseFrame({ content: '1. Open the **Traits** tab.' })]);
+    const fetchImpl: FetchSpy = vi.fn(async () => reply.respond());
+    const stop = new AbortController();
+    const events: HelpEvent[] = [];
+    for await (const event of ask('add a trait', fetchImpl, { signal: stop.signal })) {
+      events.push(event);
+      if (event.type === 'answer') stop.abort();
+    }
+
+    expect(events.at(-1)).toMatchObject({ type: 'done', text: '1. Open the **Traits** tab.', stopped: true });
+    expect(events.at(-1)?.type === 'done' && events.at(-1)).toHaveProperty('sources.0.id', 'Traits#how-to-add-a-trait');
+    expect(reply.cancel).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][1].signal?.aborted).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('ends with an empty answer and no error when it comes before the first word', async () => {
+    const stop = new AbortController();
+    const fetchImpl: FetchSpy = vi.fn((_url, init) => new Promise<Response>((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+      stop.abort();
+    }));
+    const events = await collect(ask('add a trait', fetchImpl, { signal: stop.signal }));
+    expect(events).toEqual([expect.objectContaining({ type: 'done', text: '', stopped: true })]);
+  });
+});
+
+describe('a request that fails', () => {
+  it('throws the HTTP failure with its details, after one request', async () => {
+    const fetchImpl: FetchSpy = vi.fn(async () => new Response('{"error":{"message":"model overloaded"}}', { status: 503 }));
+    const failure = await collect(ask('add a trait', fetchImpl)).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(AiStreamError);
+    expect((failure as AiStreamError).details).toContain('model overloaded');
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws when the model sends an empty answer', async () => {
+    const fetchImpl = replyWith(sseReply('  \n'));
+    await expect(collect(ask('add a trait', fetchImpl)))
+      .rejects.toThrow('empty answer (finish reason: stop)');
+  });
+
+  it('throws when the server is not there', async () => {
+    const fetchImpl: FetchSpy = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
+    await expect(collect(ask('add a trait', fetchImpl)))
+      .rejects.toThrow('Failed to fetch');
+  });
+});
