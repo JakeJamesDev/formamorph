@@ -70,6 +70,18 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   editText: { page: 'How-to-Play', anchor: 'how-to-edit-narration' },
   entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },
   enterWorld: { page: 'Starting-a-Game', anchor: 'the-enter-world-dialog' },
+  backup: { page: 'Saves-and-Backup', anchor: 'the-backup--restore-dialog' },
+  changelog: { page: 'Saves-and-Backup', anchor: 'whats-new' },
+  menu: { page: 'Saves-and-Backup', anchor: 'the-load-game-dialog' },
+  updateRequired: { page: 'Saves-and-Backup', anchor: 'the-update-required-dialog' },
+  mainMenu: { page: 'Library', anchor: '-library' },
+  'mainMenu.worlds': { page: 'Library', anchor: 'the-library-tabs' },
+  'mainMenu.entities': { page: 'Library', anchor: 'the-library-tabs' },
+  'mainMenu.dictionaries': { page: 'Library', anchor: 'the-library-tabs' },
+  'mainMenu.models': { page: 'Library', anchor: 'the-library-tabs' },
+  // The group picker ledger opens the library's production Groups dialogs.
+  'designSystemGroupPicker.picker': { page: 'Library', anchor: 'the-group-dialogs' },
+  'designSystemGroupPicker.create': { page: 'Library', anchor: 'the-group-dialogs' },
   errorDetails: { page: 'How-to-Play', anchor: 'error-details' },
   export: { page: 'How-to-Play', anchor: 'how-to-export-the-story' },
   gameViewer: { page: 'How-to-Play', anchor: 'the-game-screen' },
@@ -154,11 +166,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 
 /** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
-  // Saves and Backup, Library. The group picker ledger opens the library's production Groups dialogs.
-  '09': [
-    'mainMenu', 'menu', 'backup', 'updateRequired', 'changelog', ...tabsOf('mainMenu'),
-    ...tabsOf('designSystemGroupPicker'),
-  ],
   // Community Creations
   '10': [
     'community', 'profile', 'auth', 'feedbackHub', 'eventAck', 'publish', 'ageGate',

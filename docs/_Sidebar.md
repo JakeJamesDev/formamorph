@@ -5,8 +5,10 @@
 **Playing**
 - [🔌 Connect Your Own AI](Connect-Your-Own-AI)
 - [📱 Install on Android](Install-on-Android)
+- [📚 Library](Library)
 - [🚪 Starting a Game](Starting-a-Game)
 - [🎮 How to Play](How-to-Play)
+- [💾 Saves and Backup](Saves-and-Backup)
 - [🧠 Story Memory](Memory)
 - [🎭 Entities in Play](Entities)
 - [🪪 Personas](Personas)
