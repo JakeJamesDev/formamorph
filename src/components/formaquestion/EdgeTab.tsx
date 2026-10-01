@@ -79,15 +79,27 @@ export function EdgeTab({ open, concealed = false, controls, onToggle }: {
       : { left: 0, top: 0, viewport: viewportOf(window) };
   };
 
-  // The tab stays whole on the screen when it first shows and when the browser window changes size.
+  // The tab stays whole on the screen when it first shows, when the browser window changes size, and
+  // when the on-screen keyboard changes the visible area.
   useLayoutEffect(() => {
     const fit = () => setPlace((current) => {
       const next = wholeOnScreen(current, tabLength(), area().viewport);
       return Math.abs(next.at - current.at) > 0.0005 ? next : current;
     });
+    // The app measures the visible area on the same event, so the tab reads it a frame later.
+    let frame = 0;
+    const fitNextFrame = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
     fit();
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    window.visualViewport?.addEventListener('resize', fitNextFrame);
+    return () => {
+      window.removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('resize', fitNextFrame);
+      cancelAnimationFrame(frame);
+    };
   }, []);
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {

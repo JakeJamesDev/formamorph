@@ -598,12 +598,39 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await openSheet(page);
     // An on-screen keyboard shrinks the visual viewport, and the app reports it in --app-h.
     await page.evaluate(() => document.documentElement.style.setProperty('--app-h', '450px'));
-    await searchField(page).focus();
+    await searchField(page).fill('blueprint');
 
     const sheet = (await helpWindow(page).boundingBox())!;
     expect(sheet.y + sheet.height).toBe(450);
+    await expect(searchField(page)).toBeFocused();
     const field = (await searchField(page).boundingBox())!;
     expect(field.y + field.height).toBeLessThanOrEqual(450);
+
+    // The last result scrolls into the space above the keyboard.
+    await helpWindow(page).locator('[data-fq-scroll="results"]').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    const last = (await results(page).getByRole('listitem').last().boundingBox())!;
+    expect(last.y + last.height).toBeLessThanOrEqual(450);
+  });
+
+  test('a touch drag moves the Help tab to another edge and does not scroll the page', async ({ page }) => {
+    await openApp(page);
+    const tab = helpTab(page);
+    expect(await tab.evaluate((el) => getComputedStyle(el).touchAction)).toBe('none');
+    const start = (await tab.boundingBox())!;
+    const from = { x: start.x + start.width / 2, y: start.y + start.height / 2 };
+    const scrollBefore = await page.evaluate(() => [window.scrollX, window.scrollY]);
+
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x: number, y: number) => cdp.send('Input.dispatchTouchEvent', {
+      type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
+    });
+    await touch('touchStart', from.x, from.y);
+    for (let i = 1; i <= 8; i++) await touch('touchMove', from.x - i * 20, from.y + i * 40);
+    await touch('touchEnd', 0, 0);
+
+    await expect(tab).toHaveAttribute('data-fq-edge', 'bottom');
+    expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual(scrollBefore);
+    await expect(helpWindow(page)).toHaveCount(0);
   });
 
   test('the sheet slides in from the edge that holds the Help tab', async ({ page }) => {

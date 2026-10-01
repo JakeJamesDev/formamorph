@@ -18,6 +18,8 @@ const CORNER_GAP = 8;
 /** How far one arrow key press moves the tab along its edge. */
 const KEY_STEP = 0.05;
 
+export const isEdge = (value: unknown): value is Edge => EDGES.includes(value as Edge);
+
 export const isSideEdge = (edge: Edge): boolean => edge === 'left' || edge === 'right';
 
 const edgeLength = (edge: Edge, viewport: Viewport) => (isSideEdge(edge) ? viewport.height : viewport.width);
@@ -69,8 +71,8 @@ export function moveByKey(place: TabPlace, key: ArrowKey, length: number, viewpo
 export function readTabPlace(): TabPlace {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Partial<TabPlace> | null;
-    if (stored && EDGES.includes(stored.edge as Edge) && typeof stored.at === 'number' && Number.isFinite(stored.at)) {
-      return { edge: stored.edge as Edge, at: Math.min(Math.max(stored.at, 0), 1) };
+    if (stored && isEdge(stored.edge) && typeof stored.at === 'number' && Number.isFinite(stored.at)) {
+      return { edge: stored.edge, at: Math.min(Math.max(stored.at, 0), 1) };
     }
   } catch { /* blocked storage or a damaged value */ }
   return DEFAULT_TAB_PLACE;

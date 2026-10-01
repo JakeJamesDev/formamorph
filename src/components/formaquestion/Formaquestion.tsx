@@ -10,7 +10,7 @@ import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
 import { registerDocsOpener, type DocsTarget } from '@/lib/formaquestion/docsOpener';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { wikiPageUrl } from '@/lib/helpTopics';
-import type { Edge } from '@/lib/formaquestion/tabPlace';
+import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
   clampBox, defaultBox, isWide, moveBox, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
   NARROW_WIDTH, WIDE_WIDTH, type WindowBox,
@@ -98,8 +98,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [open, index, failed, load]);
   const guide = useMemo(() => (index ? createGuide(index) : null), [index]);
 
-  // The window stays inside the screen after a browser resize. At a mobile width it does not show, so
-  // it keeps its place and size for when the screen is wide again.
+  // The window stays inside the screen after a browser resize. At a mobile width the sheet shows, and
+  // the window keeps its place and size for when the screen is wide again.
   useEffect(() => {
     const onResize = () => {
       if (window.innerWidth >= MOBILE_BREAKPOINT) setBox((current) => clampBox(current, viewportOf(window)));
@@ -119,7 +119,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const aimAtTab = useCallback(() => {
     const tab = layer.querySelector<HTMLElement>('[data-fq-launcher]');
     const rect = tab?.getBoundingClientRect();
-    const edge = (tab?.dataset.fqEdge ?? 'right') as Edge;
+    const edge = isEdge(tab?.dataset.fqEdge) ? tab.dataset.fqEdge : 'right';
     setOrigin(rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, edge } : null);
   }, [layer]);
 
@@ -167,9 +167,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const shown = (open || present) && !hidden;
 
-  // Focus moves into the window when it opens, and back where it was when it closes. A window that shows
-  // again after it was hidden leaves focus where the player has it. The return waits for the commit,
-  // because the Help tab under the sheet shows again only then.
+  // Focus moves in on open and back on close, after the commit that shows the Help tab again.
   const wasOpen = useRef(false);
   useLayoutEffect(() => {
     if (open && !wasOpen.current && !hidden) focusWindow();
@@ -218,7 +216,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     });
   }, [target, guide, changeViewInWindow]);
 
-  // The docs can load after the window opens. Focus then goes from the frame to the search field.
+  // The docs can load after the window opens. Focus then goes from the frame to the search field, except on the sheet.
   useEffect(() => {
     if (guide && document.activeElement === windowRef.current) focusWindow();
   }, [guide, focusWindow]);
@@ -297,13 +295,13 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           data-state={open ? 'open' : 'closed'}
           data-fq-sheet={sheet ? '' : undefined}
           onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
-          wide={wide}
-          onSwapWidth={swap}
           sheet={sheet}
           onClose={closeWindow}
           {...(sheet ? {
             className: `app-viewport pointer-events-auto ${SHEET_MOTION[origin?.edge ?? 'right']}`,
           } : {
+            wide,
+            onSwapWidth: swap,
             move: dragHandlers('move'),
             resize: dragHandlers('resize'),
             className: `pointer-events-auto fixed ${WINDOW_MOTION}`,
