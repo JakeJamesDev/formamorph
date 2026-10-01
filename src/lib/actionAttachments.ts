@@ -23,10 +23,11 @@ export type AttachRefusal = 'notImage' | 'limit' | 'unreadable';
 export const ATTACH_REFUSAL_COPY: Record<AttachRefusal, string> = {
   notImage: 'You can attach only image files.',
   limit: `You can attach up to ${MAX_ATTACHMENTS} images to an action.`,
-  unreadable: "That image couldn't be read. Try a PNG, JPEG, or WebP file.",
+  unreadable: "Formamorph can't read that image. Try a PNG, JPEG, or WebP file.",
 };
 
-const EMPTY: ImageAttachment[] = [];
+/** The shared empty list, so an action with no attachments keeps a stable reference. */
+export const NO_ATTACHMENTS: ImageAttachment[] = [];
 
 /** The images on the clipboard of a paste. Empty when the paste carries text, so a copy from a spreadsheet
  *  or a page still inserts its text. */
@@ -43,8 +44,8 @@ async function encodeAttachment(file: File): Promise<ImageAttachment | null> {
   return dataUrl === source ? null : { id: crypto.randomUUID(), mime: dataUrlMime(dataUrl), dataUrl };
 }
 
-/** Add image files to the pending set, in order. Files past the cap, non-images and unreadable images are
- *  left out and named once each in `refused`. */
+/** Encode image files for the pending set, in order. Files past the cap, non-images and unreadable images
+ *  are left out and named once each in `refused`. */
 export async function addToPending(
   pending: ImageAttachment[],
   files: File[],
@@ -61,20 +62,22 @@ export async function addToPending(
   return { pending: [...pending, ...added], refused: [...refused] };
 }
 
-/** The pending set without one image. */
-export const removePending = (pending: ImageAttachment[], id: string): ImageAttachment[] =>
-  pending.filter((attachment) => attachment.id !== id);
-
-/** Store a turn's images. A turn with none leaves no entry. */
-export function attachToTurn(map: AttachmentMap, turnId: string, attachments: ImageAttachment[]): AttachmentMap {
-  return attachments.length ? { ...map, [turnId]: attachments } : map;
+/** Append newly encoded attachments to the pending set as it is now, up to the cap. `overflow` is true when
+ *  some did not fit, as when another intake filled the set while these encoded. */
+export function joinPending(pending: ImageAttachment[], added: ImageAttachment[]): { pending: ImageAttachment[]; overflow: boolean } {
+  const room = Math.max(0, MAX_ATTACHMENTS - pending.length);
+  return { pending: [...pending, ...added.slice(0, room)], overflow: added.length > room };
 }
+
+/** The list without one attachment. */
+export const withoutAttachment = (attachments: ImageAttachment[], id: string): ImageAttachment[] =>
+  attachments.filter((attachment) => attachment.id !== id);
 
 /** A turn's images, in attach order. */
 export const turnAttachments = (map: AttachmentMap, turnId: string | undefined): ImageAttachment[] =>
-  (turnId && map[turnId]) || EMPTY;
+  (turnId && map[turnId]) || NO_ATTACHMENTS;
 
-/** Replace a turn's images. None left drops the entry. */
+/** Store or replace a turn's images. None leaves no entry. */
 export function setTurnAttachments(map: AttachmentMap, turnId: string, attachments: ImageAttachment[]): AttachmentMap {
   if (attachments.length) return { ...map, [turnId]: attachments };
   if (!(turnId in map)) return map;

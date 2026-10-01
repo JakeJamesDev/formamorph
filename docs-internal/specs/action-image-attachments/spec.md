@@ -113,6 +113,9 @@ If the bundled local engine runs a pass that has images, the pass drops them and
 - The attach button, paste handling, and drop handling all feed one pending set on the action box. Pending images show as removable thumbnails above or beside the input.
 - Past actions show thumbnails under the action line. A click opens the existing image viewer.
 - A non-image file or a fifth image is refused with a toast.
+- A paste that carries text inserts only the text, even when the clipboard also holds an image (Q21). A copy from a spreadsheet carries a rendered image of its cells, and attaching it is never wanted.
+- Every send clears the pending attachments, also with the setting off (Q22). A regenerate leaves the box alone.
+- On preset import, the Include Attachments flags arrive with the preset's tuning, under the same checkbox (Q23).
 - The Include Attachments toggle sits on each prompt in the Prompts tab.
 
 ## Testing Decisions

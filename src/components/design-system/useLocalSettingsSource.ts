@@ -2,7 +2,7 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import type { SettingsSource } from '@/components/modals/settingsSource';
 import { SETTINGS_OPTIONS } from '@/components/modals/settingsCopy';
 import {
-  DEFAULT_CONTINUE_CHOICE, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_LAYOUT,
+  DEFAULT_CONTINUE_CHOICE, DEFAULT_IMAGE_ATTACHMENTS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_LAYOUT,
   DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_NARRATION_SCALE, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_COLOR_DARK,
   DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_ITALIC, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_THEME_COLOR,
 } from '@/contexts/settingsDefaults';
@@ -91,7 +91,7 @@ export const LOCAL_SETTINGS_DEFAULTS: LocalSettingsValues = {
   semanticDiaries: HIDDEN_SETTING_DEFAULTS.semanticDiaries,
   continueChoiceMode: DEFAULT_CONTINUE_CHOICE,
   concurrentTurnRequests: HIDDEN_SETTING_DEFAULTS.concurrentTurnRequests,
-  imageAttachments: false,
+  imageAttachments: DEFAULT_IMAGE_ATTACHMENTS,
 };
 
 const systemTheme = (): 'light' | 'dark' =>

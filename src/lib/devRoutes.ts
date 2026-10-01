@@ -85,6 +85,9 @@ export type DevView = (typeof DEV_VIEWS)[number];
 export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
+/** The `attach=…` value that stages sample attachments on the game view. */
+export const DEV_ATTACH_SAMPLE = 'sample';
+
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
  *  with each surface's own exported tab list by `devRouter.test.ts`. Add a surface's tabs here when wired. */
 export const DEV_MODAL_TABS = {
@@ -194,7 +197,7 @@ export const DEV_MODAL_TABS = {
   // Attached images on the game view, reached with `attach=…` (`#dev?view=gameViewer&fixture=whiteRoom&attach=sample`).
   // `sample` turns Image Attachments on, then runs sample images through the attach path: two wait in the
   // action box and two ride the latest turn's action.
-  gameViewerAttach: ['sample'],
+  gameViewerAttach: [DEV_ATTACH_SAMPLE],
 } as const;
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those

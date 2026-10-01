@@ -45,7 +45,7 @@ describe('EditTextModal', () => {
 
   it("saves an action's images without the ones the player removed", () => {
     const onSave = vi.fn();
-    render(<EditTextModal isOpen text="I show the map." images={[image('a'), image('b')]} onOpenChange={() => {}} onSave={onSave} />);
+    render(<EditTextModal isOpen text="I show the map." attachments={[image('a'), image('b')]} onOpenChange={() => {}} onSave={onSave} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove attached image 1' }));
     expect(screen.getAllByRole('button', { name: /^View attached image/ })).toHaveLength(1);
@@ -56,10 +56,10 @@ describe('EditTextModal', () => {
 
   it('brings a removed image back when the edit is canceled and reopened', () => {
     const images = [image('a'), image('b')];
-    const { rerender } = render(<EditTextModal isOpen text="a" images={images} onOpenChange={() => {}} onSave={() => {}} />);
+    const { rerender } = render(<EditTextModal isOpen text="a" attachments={images} onOpenChange={() => {}} onSave={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'Remove attached image 2' }));
-    rerender(<EditTextModal isOpen={false} text="a" images={images} onOpenChange={() => {}} onSave={() => {}} />);
-    rerender(<EditTextModal isOpen text="a" images={images} onOpenChange={() => {}} onSave={() => {}} />);
+    rerender(<EditTextModal isOpen={false} text="a" attachments={images} onOpenChange={() => {}} onSave={() => {}} />);
+    rerender(<EditTextModal isOpen text="a" attachments={images} onOpenChange={() => {}} onSave={() => {}} />);
     expect(screen.getAllByRole('button', { name: /^View attached image/ })).toHaveLength(2);
   });
 

@@ -97,6 +97,7 @@ export const CONTINUE_CHOICE_MODES: { value: ContinueChoiceMode; label: string }
   { value: 'always', label: 'Always' },
 ];
 export const DEFAULT_CONTINUE_CHOICE: ContinueChoiceMode = 'on';
+export const DEFAULT_IMAGE_ATTACHMENTS = false;
 
 // How the narration panel shows the story: one turn per page, or one scrolling list of turns. A per-player
 // display preference, never part of a world or save. No VITE_DEFAULT_* override.

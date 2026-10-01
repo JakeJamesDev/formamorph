@@ -35,11 +35,9 @@ import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, ImagePlus, type LucideIcon } from "lucide-react";
-import { toast } from 'react-toastify';
-import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS, addToPending, pastedImageFiles, pageTurnId, removePending, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
-import { useImageDropTarget } from '@/lib/useImageDropTarget';
+import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
+import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { useImageAttachments } from '@/lib/useImageAttachments';
-import { useMountedRef } from '@/lib/useMountedRef';
 import { AttachmentThumbs } from './AttachmentThumbs';
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -597,56 +595,13 @@ export const MiddlePanel = ({
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const imageAttachments = useImageAttachments();
 
-  // The picker, paste and drop all attach here. The cap counts what is pending when each intake finishes.
   const attachInput = useRef<HTMLInputElement>(null);
-  const [attaching, setAttaching] = useState(false);
-  const mounted = useMountedRef();
-  const pendingNow = useRef(pendingAttachments);
-  pendingNow.current = pendingAttachments;
-  const attachFiles = async (files: File[]) => {
-    if (files.length === 0) return;
-    setAttaching(true);
-    try {
-      const base = pendingNow.current;
-      const { pending, refused } = await addToPending(base, files);
-      if (!mounted.current) return;
-      // Only the new images join: a send while they encoded has already taken the old ones.
-      const added = pending.slice(base.length);
-      const kept = added.slice(0, Math.max(0, MAX_ATTACHMENTS - pendingNow.current.length));
-      if (kept.length < added.length && !refused.includes('limit')) refused.push('limit');
-      setPendingAttachments((prev) => [...prev, ...kept].slice(0, MAX_ATTACHMENTS));
-      for (const reason of refused) toast.warn(ATTACH_REFUSAL_COPY[reason]);
-    } finally {
-      if (mounted.current) setAttaching(false);
-    }
-  };
-  // Paste and drop feed the same pending set as the picker. They wait for the game to start, like the button.
-  const intakeOn = imageAttachments && isGameStarted && !disabled;
-  const attachDrop = useImageDropTarget({
-    enabled: intakeOn,
-    onUrl: () => {},
-    onFiles: (files) => void attachFiles(files),
+  // Paste and drop wait for the game to start, like the button.
+  const { attaching, dragOver: attachDragOver, attachFiles, intakeProps } = useAttachmentIntake({
+    enabled: imageAttachments && isGameStarted && !disabled,
+    pending: pendingAttachments,
+    setPending: setPendingAttachments,
   });
-  const intakeProps = intakeOn ? {
-    onDragOver: (e: React.DragEvent<HTMLElement>) => { if (e.dataTransfer.types.includes('Files')) attachDrop.dropProps.onDragOver(e); },
-    onDragLeave: attachDrop.dropProps.onDragLeave,
-    onDrop: (e: React.DragEvent<HTMLElement>) => {
-      // A dropped link or text keeps its default: it lands in the box as text.
-      if (e.dataTransfer.files.length === 0) return attachDrop.dropProps.onDragLeave();
-      attachDrop.dropProps.onDrop(e);
-      // The drop helper keeps the images of a mixed drop. The other files are refused, never opened by the browser.
-      if (Array.from(e.dataTransfer.files).some((f) => !f.type.startsWith('image/'))) {
-        e.preventDefault();
-        toast.warn(ATTACH_REFUSAL_COPY.notImage);
-      }
-    },
-    onPaste: (e: React.ClipboardEvent<HTMLElement>) => {
-      const files = pastedImageFiles(e.clipboardData);
-      if (files.length === 0) return;
-      e.preventDefault();
-      void attachFiles(files);
-    },
-  } : {};
   const chatLayout = useNarrationLayout() === 'chat';
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
@@ -916,7 +871,7 @@ export const MiddlePanel = ({
                   />
                 )}
                 {actionLine !== undefined && (
-                  <ActionLine text={actionLine} actions={actionLineActions} images={turnAttachments(actionAttachments, sceneTurnId)} />
+                  <ActionLine text={actionLine} actions={actionLineActions} attachments={turnAttachments(actionAttachments, sceneTurnId)} />
                 )}
                 {showReasoning && pageReasoning?.text && (
                   <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />
@@ -975,7 +930,7 @@ export const MiddlePanel = ({
             onOpenChange={(open) => { setIsEditMode(open); if (!open) setEditTarget(null); }}
             text={editTarget?.text ?? currentPageText}
             // Removal shows with the setting off too: it sends nothing, and it lets the player take an image back.
-            images={editTarget?.kind === 'action' ? turnAttachments(actionAttachments, editTarget.turnId) : undefined}
+            attachments={editTarget?.kind === 'action' ? turnAttachments(actionAttachments, editTarget.turnId) : undefined}
             onSave={(text, images) => {
               const page = editTarget?.page ?? currentPage;
               if (editTarget?.kind === 'action') {
@@ -1073,11 +1028,11 @@ export const MiddlePanel = ({
             {!chatLayout && <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-center" />}
           </div>
           {progressBar}
-          <div className={cn('flex flex-col gap-2', attachDrop.dragOver && 'rounded-md ring-2 ring-inset ring-ring')} {...intakeProps}>
+          <div className={cn('flex flex-col gap-2', attachDragOver && 'rounded-md ring-2 ring-inset ring-ring')} {...intakeProps}>
             {imageAttachments && (
               <AttachmentThumbs
-                images={pendingAttachments}
-                onRemove={(id) => setPendingAttachments((prev) => removePending(prev, id))}
+                attachments={pendingAttachments}
+                onRemove={(id) => setPendingAttachments((prev) => withoutAttachment(prev, id))}
                 className="pt-1.5"
               />
             )}

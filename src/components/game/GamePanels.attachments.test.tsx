@@ -63,7 +63,7 @@ describe('the action box with Image Attachments on', () => {
   });
 
   it('refuses a file that is not an image with a toast', async () => {
-    const warn = vi.spyOn(toast, 'warn');
+    const warn = vi.spyOn(toast, 'warning');
     const view = renderMiddlePanel({}, { turns: TURNS, settings: attachOn, seed: started });
     await pick(new File(['hello'], 'notes.txt', { type: 'text/plain' }));
     await waitFor(() => expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.notImage));
@@ -87,7 +87,7 @@ describe('the action box with Image Attachments on', () => {
   });
 
   it('refuses a fifth image with a toast', async () => {
-    const warn = vi.spyOn(toast, 'warn');
+    const warn = vi.spyOn(toast, 'warning');
     const view = renderMiddlePanel({}, { turns: TURNS, settings: attachOn, seed: started });
     await pick(fakeImageFile('1x1'), fakeImageFile('2x2'), fakeImageFile('3x3'), fakeImageFile('4x4'), fakeImageFile('5x5'));
     await waitFor(() => expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.limit));
@@ -135,17 +135,17 @@ describe('paste and drop with Image Attachments on', () => {
   });
 
   it('refuses a dropped file that is not an image, and keeps the browser from opening it', async () => {
-    const warn = vi.spyOn(toast, 'warn');
+    const warn = vi.spyOn(toast, 'warning');
     const view = setup();
     const box = await zone();
     const notPrevented = fireEvent.drop(box, { dataTransfer: dragOf([new File(['x'], 'a.txt', { type: 'text/plain' })]) });
     expect(notPrevented).toBe(false);
-    expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.notImage);
+    await waitFor(() => expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.notImage));
     expect(view.gameplay().pendingAttachments).toEqual([]);
   });
 
   it('keeps the images and refuses the rest when a drop mixes images and other files', async () => {
-    const warn = vi.spyOn(toast, 'warn');
+    const warn = vi.spyOn(toast, 'warning');
     const view = setup();
     const box = await zone();
     await act(async () => {
@@ -166,7 +166,7 @@ describe('paste and drop with Image Attachments on', () => {
   });
 
   it('caps pending images at four across a picked set, a paste and a drop', async () => {
-    const warn = vi.spyOn(toast, 'warn');
+    const warn = vi.spyOn(toast, 'warning');
     const view = setup();
     const box = await zone();
     await pick(fakeImageFile('1x1'), fakeImageFile('2x2'), fakeImageFile('3x3'));

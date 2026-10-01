@@ -8,28 +8,28 @@ import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { useMorphResize } from "@/lib/useMorphFullscreen";
 import { AttachmentThumbs } from "@/components/game/AttachmentThumbs";
 import type { ImageAttachment } from "@/types";
+import { NO_ATTACHMENTS, withoutAttachment } from "@/lib/actionAttachments";
 
 // Narration is prose, not a template: `plainVocabulary` chips nothing, so a brace the AI happened to write
 // stays the text it is.
 const VOCABULARY = plainVocabulary();
-const NO_IMAGES: ImageAttachment[] = [];
 
 export const EditTextModal = ({
   isOpen,
   onOpenChange,
   text,
-  images = NO_IMAGES,
+  attachments = NO_ATTACHMENTS,
   onSave
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   text: string;
-  /** An action's attached images. The player can remove them; the removal lands on Save. */
-  images?: ImageAttachment[];
-  onSave: (text: string, images: ImageAttachment[]) => void;
+  /** An action's attachments. The player can remove them; the removal lands on Save. */
+  attachments?: ImageAttachment[];
+  onSave: (text: string, attachments: ImageAttachment[]) => void;
 }) => {
   const [editedText, setEditedText] = useState(text);
-  const [keptImages, setKeptImages] = useState(images);
+  const [keptAttachments, setKeptAttachments] = useState(attachments);
   const [fullscreen, setFullscreen] = useState(false);
   // This window grows in place rather than raising a second one over itself, so the trip is the dialog
   // travelling between its own two sizes — the same animation, measured on one element.
@@ -38,10 +38,10 @@ export const EditTextModal = ({
   // Reseed from `text` on each open, not on `text` changing — otherwise cancelling and reopening the same
   // page (unchanged `text`) would leave the discarded edits sitting in the editor. Fullscreen resets with
   // it, so a dialog never reopens filling the screen for a small edit.
-  useResetOnOpen(isOpen, () => { setEditedText(text); setKeptImages(images); setFullscreen(false); });
+  useResetOnOpen(isOpen, () => { setEditedText(text); setKeptAttachments(attachments); setFullscreen(false); });
 
   const handleSave = () => {
-    onSave(editedText, keptImages);
+    onSave(editedText, keptAttachments);
     onOpenChange(false);
   };
 
@@ -87,8 +87,8 @@ export const EditTextModal = ({
           />
         </div>
         <AttachmentThumbs
-          images={keptImages}
-          onRemove={(id) => setKeptImages((prev) => prev.filter((image) => image.id !== id))}
+          attachments={keptAttachments}
+          onRemove={(id) => setKeptAttachments((prev) => withoutAttachment(prev, id))}
           className="pt-1.5"
         />
         {/* A row at every width: two short buttons never need the stacked form. */}
