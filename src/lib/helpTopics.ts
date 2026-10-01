@@ -221,6 +221,7 @@ Give an entity the one or two names the story will actually use. Each alias is a
   'worldEditor.traits': {
     title: 'Traits',
     wikiPage: 'World-Editor-Traits',
+    wikiAnchor: '-world-editor-traits',
     tabs: [
       {
         label: 'Basics',
@@ -236,11 +237,18 @@ A trait is a durable fact about the character. Stats move constantly and the sto
 - The **Player-Facing Description** field is what the player reads while choosing. It's never sent to the AI.
 - **Stat Changes are invisible to the AI.** It's told you're *Sickly*. It's never told that cost you 20 Vigor. The number does its work through the stat itself.
 
-**Enabled by Default** pre-checks the trait on the selection screen. The player can still untick it.
+**The Availability tab** holds **Mode**, two checkboxes and **Requires**.
+
+- **Mode** sets who controls the trait. **Optional** lets the player choose it. **Always On** turns it on whenever its requirements hold, and the player can't switch it. **Hidden** works like Always On, and the player never sees it.
+- **Enabled by Default** pre-checks an Optional trait on the selection screen. The player can still untick it.
+- **Player Can Toggle In-Game** lets the player turn an Optional trait on or off during play.
+- **Requires** makes the trait available only while one of its targets holds. The **Links & Blueprints** tab explains whose trait counts.
 
 **Stat Changes** adjust a stat when the trait is taken. The section's own **?** explains each property and how the numbers stack.
 
 **Groups** organize the list, and they also speak to the AI: give a group an AI-Facing Description and it becomes a header above its chosen traits, so you can frame a whole set at once (*"Origin: where this life began"*). A group with nothing chosen inside it is skipped entirely.
+
+**Pick Count** on a group sets how many of its traits the player must and can pick: **Any**, **Exactly One**, **Up to One**, or **Custom** with **At Least** and **At Most**. **Start game** waits until every group has its minimum.
 
 **Simple mode hides** Stat Availability and Placeholder Pins, and adds traits without groups. Switch the editor to Advanced to use them.
 
@@ -250,11 +258,11 @@ Write the AI-Facing Description as a fact about the character the narrator can a
         label: 'Links & Blueprints',
         body: `Links, Blueprints and Custom Persona need Advanced mode to create.
 
-**Requires** makes a trait available only while one of its targets holds: a trait, any trait in a group, or a persona the player plays. It checks whoever has the trait, unless you pick another bearer. *Smite* requires *Paladin* means Paladin on the same character.
+**Requires** on the **Availability** tab makes a trait available only while one of its targets holds: a trait, any trait in a group, or a persona the player plays. It checks whoever has the trait, unless you pick another bearer. *Smite* requires *Paladin* means Paladin on the same character.
 
 **Entities can have traits.** Each entity with traits shows as a node below the world's traits. Its active traits describe it to the AI, and they become the player's when the player plays that entity. Type \`{{char}}\` in a trait's text to name whoever has it.
 
-**Links share one trait.** Drag a Blueprints trait or group onto an entity node, or select it and use **Link To…**. The entity gets that trait, its **original**, without a copy. Drag a top-level trait onto an entity node, and it moves to that entity instead. A link reads the original live until you change a field on it. Each field you change is an override for that link only: Enabled by Default, Requires, Placeholder Pins, Player Can Toggle In-Game and Stat Changes.
+**Links share one trait.** Drag a Blueprints trait or group onto an entity node, or select it and use **Link To…** in the footer. The entity gets that trait, its **original**, without a copy. Drag a top-level trait onto an entity node, and it moves to that entity instead. A link reads the original live until you change a field on it. Each field you change is an override for that link only: Mode, Enabled by Default, Requires, Placeholder Pins, Player Can Toggle In-Game and Stat Changes.
 
 - **Reset** returns one field to the original. **Reset to Blueprint** returns them all.
 - **Edit Blueprint** jumps to the original, so the change reaches every link.
@@ -270,6 +278,8 @@ Write the AI-Facing Description as a fact about the character the narrator can a
   },
   'worldEditor.statChanges': {
     title: 'Stat Changes',
+    wikiPage: 'World-Editor-Traits',
+    wikiAnchor: 'stat-changes',
     body: `Adjusts a stat when this trait is taken. Each row is a stat, a number, and which of the stat's properties to change.
 
 **They're all adjustments, not settings.** \`+20\` on a stat that starts at 50 gives you 70, not 20.
@@ -283,6 +293,8 @@ Write the AI-Facing Description as a fact about the character the narrator can a
   },
   'worldEditor.statAvailability': {
     title: 'Stat Availability',
+    wikiPage: 'World-Editor-Traits',
+    wikiAnchor: 'stat-availability',
     body: `Switches a stat on or off while this trait is active, overriding the stat's own default. Each row names a stat and whether taking the trait enables or disables it.
 
 A stat that is off is gone, not just hidden: the player doesn't see it, the AI isn't told about it, and its regen and stat code pause until something turns it back on. The stat's own **Enabled** checkbox sets the default. A trait's switch overrides it only while the trait is active.
@@ -291,6 +303,8 @@ When two active traits switch the same stat, the one lower in the trait list win
   },
   'worldEditor.placeholderPins': {
     title: 'Placeholder Pins',
+    wikiPage: 'World-Editor-Traits',
+    wikiAnchor: 'placeholder-pins',
     body: `Holds a placeholder at a fixed value while this trait is active, like a *Redhead* trait pinning Hair Color to *copper*. The playthrough's own roll is kept underneath and returns if the trait is switched off.
 
 The pinned value doesn't have to come from the placeholder's own list. The box suggests the authored values, but anything you type is used as written, so a trait can force a value nobody else rolls.
@@ -311,6 +325,8 @@ A stat band's pin outranks a location's. A location's outranks a trait's and a p
   },
   'worldEditor.pinsOnPlaceholder': {
     title: 'Placeholder Pins',
+    wikiPage: 'World-Editor-Placeholders',
+    wikiAnchor: 'pins',
     body: `Every pin aimed at this placeholder, from any source: a trait, a location, a stat band, or another placeholder's value. The pins live on those sources, and this list only gathers them, so a change here is a change on that trait, location, stat or placeholder, and shows there too.
 
 Rows are in the order the game settles them: a stat band outranks a location, a location a trait, and a trait a placeholder value. Within one kind the lower in its own list wins, and each row says who else claims the placeholder and which one the rules pick.
@@ -320,6 +336,7 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
   'worldEditor.placeholders': {
     title: 'Placeholders',
     wikiPage: 'World-Editor-Placeholders',
+    wikiAnchor: '-world-editor-placeholders',
     tabs: [
       {
         label: 'Basics',
@@ -345,6 +362,8 @@ New placeholders start as Wildcards, and one you have never touched reads as the
 **The roll is frozen for the playthrough.** A Wildcard is rolled once, when a game begins, and stored in that save. The stranger who had gray eyes on turn one still has them on turn ninety, and reloading the save changes nothing. A new game rolls fresh.
 
 **Where chips work.** Anywhere with the chip picker: entity, location and dictionary descriptions, the readme, the world's AI-Facing Description. They resolve both in what the AI reads and in what the player sees. The world's **Player-Facing Description is the exception.** It's read in the library before any game exists, so there are no rolls yet, and it takes no chips.
+
+**Built-in chips.** The \`{\` menu also offers **Player Name** and, in an entity's own fields, **Character Name**. They need no placeholder of their own.
 
 **Placeholders are Advanced-only.** The editor's mode switch has to be on Advanced for this tab and the chip palette to appear.
 
