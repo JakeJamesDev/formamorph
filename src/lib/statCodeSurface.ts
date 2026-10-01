@@ -73,6 +73,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The stat’s code name: the authored name, with each placeholder chip read as that placeholder’s own name.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given.' },
   { name: 'description', detail: 'string', info: 'The stat’s description text.' },
+  { name: 'enabled', detail: 'boolean', info: 'False when a trait switched the stat off, which an unknown name reads as too. Read-only.' },
   { name: 'min', detail: 'number', info: 'Lower bound. Results are clamped to it. Write self.min to set it.' },
   { name: 'max', detail: 'number', info: 'Upper bound. Results are clamped to it. Write self.max to set it.' },
   { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied. Write self.value to set it.' },
@@ -106,6 +107,8 @@ export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
 export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly SurfaceEntry[] {
   const list = kind === 'Object';
   return [
+    { name: 'id', detail: 'string', info: 'The placeholder’s unique id. Read-only.' },
+    { name: 'name', detail: 'string', info: 'The placeholder’s code name. Read-only.' },
     list
       ? { name: 'value', detail: 'string[]', info: 'The current values as a list. Pins are applied.' }
       : { name: 'value', detail: 'string', info: 'The text the placeholder reads as now, with pins applied.' },
@@ -123,6 +126,12 @@ export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly Surf
 export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'enabled', detail: 'boolean', info: 'Whether the trait is held and on. Write it to switch the trait on or off, after this run.' },
   { name: 'acquired', detail: 'boolean', info: 'True when the trait is held, on or off. Read-only.' },
+  { name: 'id', detail: 'string', info: 'The trait’s unique id. Read-only.' },
+  { name: 'name', detail: 'string', info: 'The trait’s code name. Read-only.' },
+  { name: 'mode', detail: 'string', info: '"optional", "alwaysOn" or "hidden". Read-only.' },
+  { name: 'available', detail: 'boolean', info: 'Whether the trait’s requirements hold for its owner now. Read-only.' },
+  { name: 'group', detail: 'string', info: 'The code name of the trait’s group. Empty when it has none. Read-only.' },
+  { name: 'playerToggle', detail: 'boolean', info: 'Whether the player can switch the trait during play. Read-only.' },
 ];
 
 /** The one field on a trait entry that a write reaches. */
@@ -130,13 +139,21 @@ export const TRAIT_WRITABLE_FIELD = 'enabled';
 
 /** The members of `persona`. None takes a write; a trait switches through its own `enabled`. */
 export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'id', detail: 'string', info: 'The persona entity’s unique id. Empty when the player plays no entity. Read-only.' },
   { name: 'name', detail: 'string', info: 'The persona’s code name. Empty when the player plays no entity. Read-only.' },
+  { name: 'type', detail: 'string', info: 'The persona’s type text. Empty when it has none. Read-only.' },
+  { name: 'pronouns', detail: 'string', info: 'The persona’s pronouns text. Empty when it has none. Read-only.' },
+  { name: 'inScene', detail: 'boolean', info: 'True while the persona plays. False when the player plays no entity. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
 ];
 
 /** The members of one entry in `entities`. None takes a write; a trait switches through its own `enabled`. */
 export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'id', detail: 'string', info: 'The entity’s unique id. Read-only.' },
   { name: 'name', detail: 'string', info: 'The entity’s code name. Read-only.' },
+  { name: 'type', detail: 'string', info: 'The entity’s type text. Empty when it has none. Read-only.' },
+  { name: 'pronouns', detail: 'string', info: 'The entity’s pronouns text. Empty when it has none. Read-only.' },
+  { name: 'inScene', detail: 'boolean', info: 'Whether the entity is in this turn’s scene. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
 ];
 

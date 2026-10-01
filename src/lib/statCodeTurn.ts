@@ -7,7 +7,7 @@ import { statCodeName, statCodeNamed } from './statCodeNames';
 import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import {
-  codeEntities, sandboxEntity, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeTraits,
+  codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeTraits,
 } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
@@ -146,13 +146,12 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
   const inPlay = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
-  const sandboxInPlay = inPlay && { entities: inPlay.entities.map(sandboxEntity), persona: sandboxEntity(inPlay.persona) };
   const writes = new Map<string, { value: number | null; bounds: CodeBounds | null }>();
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   const traitWritesByStat = new Map<string, StatTraitWrites>();
   await Promise.all(coded.map(async (stat) => {
     const result = await executeStatCode(boxCode(stat, timing), named, stat, {
-      clock: turn.clock, turn: inputs, placeholders, traits, ...sandboxInPlay,
+      clock: turn.clock, turn: inputs, placeholders, traits, ...inPlay,
     });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
@@ -173,6 +172,9 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     }
     if (result.acquiredWrites) {
       console.warn(`Stat ${stat.name} wrote acquired on: ${result.acquiredWrites.join(', ')}`);
+    }
+    if (result.readOnlyWrites) {
+      console.warn(`Stat ${stat.name} wrote read-only fields: ${result.readOnlyWrites.join(', ')}`);
     }
     if (result.unknownEntities) {
       console.warn(`Stat ${stat.name} switched traits of entities not in play: ${result.unknownEntities.join(', ')}`);

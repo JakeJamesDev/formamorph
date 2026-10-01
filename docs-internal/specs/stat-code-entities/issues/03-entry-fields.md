@@ -1,6 +1,7 @@
 # 03: Entry fields
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 77ff1ca6
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

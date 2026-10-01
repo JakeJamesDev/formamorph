@@ -20,7 +20,7 @@ import { statCodeName } from './statCodeNames';
  * The members every entry of the map carries. A child named like one of them loses to the member, so the
  * member is what the path reaches and the child is unreachable under its holder.
  */
-export const PLACEHOLDER_ENTRY_MEMBERS: readonly string[] = ['value', 'values', 'text', 'roll', 'pin', 'unpin'];
+export const PLACEHOLDER_ENTRY_MEMBERS: readonly string[] = ['id', 'name', 'value', 'values', 'text', 'roll', 'pin', 'unpin'];
 
 const MEMBERS: ReadonlySet<string> = new Set(PLACEHOLDER_ENTRY_MEMBERS);
 
