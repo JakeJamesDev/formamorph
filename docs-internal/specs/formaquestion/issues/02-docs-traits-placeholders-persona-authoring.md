@@ -1,6 +1,7 @@
 # 02: Docs for Traits, Placeholders and Persona Authoring
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 6f6228d7
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -31,10 +32,10 @@ Recommended model rationale: Traits is the largest and most drifted page, and ea
 
 ## Acceptance criteria
 
-- [ ] Every row above is fixed or recorded as correct, with the code location that proves it in the commit body
-- [ ] Each page has "How to…" sections with numbered steps; reference text stays
-- [ ] Control names in the steps match the UI labels exactly
-- [ ] The help topics for these areas agree with the pages and link a docs heading
-- [ ] The known-gaps entries for these surfaces and topics are removed, and the coverage test passes
-- [ ] Pages follow the writing guide
-- [ ] Four gates green
+- [x] Every row above is fixed or recorded as correct, with the code location that proves it in the commit body
+- [x] Each page has "How to…" sections with numbered steps; reference text stays
+- [x] Control names in the steps match the UI labels exactly
+- [x] The help topics for these areas agree with the pages and link a docs heading
+- [x] The known-gaps entries for these surfaces and topics are removed, and the coverage test passes
+- [x] Pages follow the writing guide
+- [x] Four gates green
