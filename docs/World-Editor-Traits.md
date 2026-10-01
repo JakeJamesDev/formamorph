@@ -35,7 +35,7 @@ To remove a target, select the **×** on its chip.
 
 ## How to Set a Pick Count
 
-1. Select a trait group.
+1. Select a trait group. To add one, switch to Advanced mode, select **+**, then **Add Group**.
 2. Open the **Pick Count** list and pick **Any**, **Exactly One**, **Up to One** or **Custom**.
 3. For **Custom**, type **At Least** and **At Most**. Leave **At Most** empty for no limit.
 4. For **Exactly One**, select a trait in the group, open its **Availability** tab, and check **Enabled by Default**. A new game then starts with a valid pick.
@@ -48,7 +48,7 @@ To remove a target, select the **×** on its chip.
 2. Add a trait or a group with **+**. It appears at the top level.
 3. Drag it into **Blueprints**.
 
-The item is now a blueprint. The player never picks it directly. It reaches play only through [links](#links).
+The item is now a blueprint. The player never picks it directly. Entities get it only through [links](#links).
 
 ## How to Link to a Blueprint
 
@@ -82,7 +82,7 @@ A blank **AI-Facing Description** is fine for a name that explains itself, such 
 
 > 💡 **The AI doesn't see Stat Changes.** It reads that the player is *Sickly*. It doesn't read that the trait cost 20 Vigor. The stat carries the number. So write the description as a fact the narrator can use: *"Flinches at open water"*, not *"-20 swimming"*.
 
-## The panel
+## The Panel
 
 Select a trait to open its panel.
 
@@ -182,7 +182,7 @@ Groups organize the list. A trait group also has text of its own:
 
 Only traits placed directly in the group count. A subgroup sets its own count. An **Always On** trait counts toward its group's minimum and maximum.
 
-A group with a maximum of one shows radio buttons. In **Up to One**, pick another trait, and the first one clears. Click the picked trait to clear it, so "none of these" is always possible. In play, a trait the player can toggle works the same way: turn one on, and the others in its group turn off. An **Always On** sibling can't clear, so the switch is refused.
+A group with a maximum of one shows radio buttons. In **Up to One**, pick another trait, and the first one clears. Select the picked trait to clear it, so "none of these" is always possible. In play, a trait the player can toggle works the same way: turn one on, and the others in its group turn off. An **Always On** sibling can't clear, so the switch is refused.
 
 On the setup screen:
 

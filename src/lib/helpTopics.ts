@@ -254,7 +254,7 @@ Give an entity the one or two names the story will actually use. Each alias is a
         label: 'Basics',
         body: `The choices that make one playthrough different from the next: *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks their traits before the story starts, and the ones they take are described to the AI on every turn.
 
-A trait is a durable fact about the character. Stats move constantly and the story moves with them. A trait stays fixed, so the narrator is handed the same fact on turn one and turn ninety. A stat says *how much*, a trait says *who you are*.
+A trait is a durable fact about the player. Stats move constantly and the story moves with them. A trait stays fixed, so the narrator is handed the same fact on turn one and turn ninety. A stat says *how much*, a trait says *who you are*.
 
 **Only chosen traits count.** A trait the player didn't take isn't sent to the AI and changes nothing. Everything below applies to the ones they picked.
 
@@ -266,8 +266,8 @@ A trait is a durable fact about the character. Stats move constantly and the sto
 
 **The Availability tab** holds **Mode**, two checkboxes and **Requires**.
 
-- **Mode** sets who controls the trait. **Optional** lets the player choose it. **Always On** turns it on whenever its requirements hold, and the player can't switch it. **Hidden** works like Always On, and the player never sees it.
-- **Enabled by Default** pre-checks an Optional trait on the selection screen. The player can still untick it.
+- **Mode** sets who controls the trait. **Optional** lets the player choose it. **Always On** turns it on whenever its requirements hold, and the player can't switch it. **Hidden** works like **Always On**, and the player never sees it.
+- **Enabled by Default** pre-checks an Optional trait on the selection screen. The player can still uncheck it.
 - **Player Can Toggle In-Game** lets the player turn an Optional trait on or off during play.
 - **Requires** makes the trait available only while one of its targets holds. The **Links & Blueprints** tab explains whose trait counts.
 
@@ -279,13 +279,13 @@ A trait is a durable fact about the character. Stats move constantly and the sto
 
 **Simple mode hides** Stat Availability and Placeholder Pins, and adds traits without groups. Switch the editor to Advanced to use them.
 
-Write the AI-Facing Description as a fact about the character the narrator can act on, not a stat note. *"Flinches at open water"* beats *"-20 swimming"*.`,
+Write the AI-Facing Description as a fact about the person the narrator can act on, not a stat note. *"Flinches at open water"* beats *"-20 swimming"*.`,
       },
       {
         label: 'Links & Blueprints',
         body: `Links, Blueprints and Custom Persona need Advanced mode to create.
 
-**Requires** on the **Availability** tab makes a trait available only while one of its targets holds: a trait, any trait in a group, or a persona the player plays. It checks whoever has the trait, unless you pick another bearer. *Smite* requires *Paladin* means Paladin on the same character.
+**Requires** on the **Availability** tab makes a trait available only while one of its targets holds: a trait, any trait in a group, or a persona the player plays. It checks whoever has the trait, unless you pick another bearer. *Smite* requires *Paladin* means Paladin on the same bearer.
 
 **Entities can have traits.** Each entity with traits shows as a node below the world's traits. Its active traits describe it to the AI, and they become the player's when the player plays that entity. Type \`{{char}}\` in a trait's text to name whoever has it.
 
@@ -295,9 +295,9 @@ Write the AI-Facing Description as a fact about the character the narrator can a
 - **Edit Blueprint** jumps to the original, so the change reaches every link.
 - **Detach** turns the link into the entity's own trait, which no longer follows the original.
 
-**Blueprints** holds originals that only some characters get, like classes and races. Add it from **+**. Traits under it are never offered to the player directly. They reach play only through links.
+**Blueprints** holds originals that only some entities get, like classes and races. Add it from **+**. Traits under it are never offered to the player directly. They reach play only through links.
 
-**Custom Persona** is a mark on one entity, set on its **Profile** tab. It takes None's place at Enter World. Its traits are the player's when they play with no world persona, or with a persona from their library. Use it to give a race and a class to a player who brings their own character.
+**Custom Persona** is a mark on one entity, set on its **Profile** tab. It takes None's place at Enter World. Its traits are the player's when they play with no world persona, or with a persona from their library. Use it to give a race and a class to a player who brings their own persona.
 
 **Pins by blueprint.** A trait can pin a blueprint placeholder. On each bearer the pin lands on that bearer's own copy, so Albus's class never changes your description. The Placeholders tab's **?** explains copies.`,
       },
@@ -404,7 +404,7 @@ Define a placeholder here, then place its chip from any field that offers them. 
 
 **Copies appear by themselves.** When a trait on an entity pins or places a blueprint, that entity gets a copy, named like *Albus.Class Garb*. A top-level trait makes one for every Persona entity and for the Custom Persona entity. An untouched copy goes away with its last use. One you edited stays.
 
-**A copy follows its blueprint until you edit it.** You can reword a value, change its weight, add a value only this character has, or remove one. Values the blueprint gains later reach every copy. **Reset** returns one value, and **Reset to Blueprint** returns them all.
+**A copy follows its blueprint until you edit it.** You can reword a value, change its weight, add a value only this entity has, or remove one. Values the blueprint gains later reach every copy. **Reset** returns one value, and **Reset to Blueprint** returns them all.
 
 **Blueprint chips** read the bearer's own copy, and they show a link glyph. Write one *Paladin* description with a *Class Garb* chip, and each Paladin reads their own garb. They work only in an original trait's text and in blueprint and copy values, because the chip needs a bearer to read.
 
