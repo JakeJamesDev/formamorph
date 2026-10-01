@@ -7,10 +7,12 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 
 /** Where reports go. The surface registry is one. */
 export interface SurfaceReporter {
-  /** A new place in the stack, above every place taken before it. */
-  nextOrder(): number;
-  report(order: number, id: string | null, layer: number | null): void;
-  clear(order: number): void;
+  /**
+   * Sets what the entry at this place shows. A greater place is above a smaller one. A screen or dialog
+   * has no layer. A tab names the place of the screen or dialog it is in.
+   */
+  report(place: number, id: string | null, layer: number | null): void;
+  clear(place: number): void;
 }
 
 /**
@@ -27,25 +29,28 @@ export const SurfaceReporterContext = createContext<SurfaceReporter | null>(null
 /** The place of the screen or dialog a tab is in. */
 const LayerContext = createContext<number | null>(null);
 
+let lastPlace = 0;
+
 /**
  * Reports an entry while the caller is mounted. The place is taken during the first render, where a
  * parent runs before its children, so an outer tab stays under the tab inside it.
  */
 function useReport(id: string | null, layer: number | null): number {
   const reporter = useContext(SurfaceReporterContext);
-  const [order] = useState(() => reporter?.nextOrder() ?? 0);
-  useEffect(() => reporter?.report(order, id, layer), [reporter, order, id, layer]);
-  useEffect(() => () => reporter?.clear(order), [reporter, order]);
-  return order;
+  const [place] = useState(() => ++lastPlace);
+  useEffect(() => reporter?.report(place, id, layer), [reporter, place, id, layer]);
+  useEffect(() => () => reporter?.clear(place), [reporter, place]);
+  return place;
 }
 
 /**
  * Reports a screen or dialog as open while it is mounted. Mount it when the surface opens, not before:
- * the one that mounts last is on top. Tabs inside it report as its tabs.
+ * the one that mounts last is on top. Tabs inside it report as its tabs. With no id it reports nothing,
+ * and the tabs inside it stay out of the screen under it.
  */
-export function SurfaceLayer({ id, children }: { id: SurfaceIdName; children?: ReactNode }) {
-  const order = useReport(id, null);
-  return <LayerContext.Provider value={order}>{children}</LayerContext.Provider>;
+export function SurfaceLayer({ id, children }: { id?: SurfaceIdName; children?: ReactNode }) {
+  const place = useReport(id ?? null, null);
+  return <LayerContext.Provider value={place}>{children}</LayerContext.Provider>;
 }
 
 /** Reports the active tab of a tabbed surface. No tab, or a tab the ledger does not list, reports nothing. */

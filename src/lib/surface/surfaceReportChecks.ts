@@ -14,7 +14,7 @@ export const UNREPORTED_SURFACES: Partial<Record<SurfaceId, string>> = {
   'formaquestion.guide': HELP_WINDOW,
   'gameViewerLayout.pages': NARRATION_LAYOUT,
   'gameViewerLayout.chat': NARRATION_LAYOUT,
-  likePrompt: 'A card inside the game screen. A report would replace the game screen in the Surface while the card shows.',
+  likePrompt: 'A card inside the game screen. A report would put it on top as a dialog and hide the game screen tab while the card shows.',
 };
 
 /** A prop or call that names a surface: a quoted literal, or an expression in braces. */
@@ -23,7 +23,7 @@ const ID_SITES = [new RegExp(String.raw`\bsurface=${VALUE}`, 'g'), new RegExp(St
 const LEDGER_SITES = [
   new RegExp(String.raw`\bsurfaceTabs=${VALUE}`, 'g'),
   new RegExp(String.raw`<SurfaceTab\s+ledger=${VALUE}`, 'g'),
-  /\buseSurfaceTab\(\s*()('[^']+')/g,
+  /\buseSurfaceTab\(\s*'([^']+)'/g,
 ];
 
 /** The names at each match: the literal, or every quoted string in the expression. */

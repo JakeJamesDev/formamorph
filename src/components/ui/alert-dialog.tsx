@@ -45,7 +45,7 @@ const AlertDialogContent = React.forwardRef<
       // A closing alert does not take focus from the shielded layer. An alert never closes on an outside
       // press, so it needs no press guard.
       onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}>
-      {surface ? <SurfaceLayer id={surface}>{children}</SurfaceLayer> : children}
+      <SurfaceLayer id={surface}>{children}</SurfaceLayer>
     </AlertDialogPrimitive.Content>
   </AlertDialogPortal>
 ))

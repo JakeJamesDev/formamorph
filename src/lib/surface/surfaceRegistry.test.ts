@@ -2,18 +2,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { SURFACE_IDS } from '@/lib/docs/surfaceMap';
 import { createSurfaceRegistry } from './surfaceRegistry';
 
-/** Reports a screen or dialog and returns its place in the stack. */
+let lastPlace = 0;
+
+/** Reports a screen or dialog at a new place, above every place before it, and returns the place. */
 function open(registry: ReturnType<typeof createSurfaceRegistry>, id: string): number {
-  const order = registry.nextOrder();
-  registry.report(order, id);
-  return order;
+  const place = ++lastPlace;
+  registry.report(place, id, null);
+  return place;
 }
 
 /** Reports a tab under a screen or dialog and returns its place. */
 function openTab(registry: ReturnType<typeof createSurfaceRegistry>, layer: number, id: string): number {
-  const order = registry.nextOrder();
-  registry.report(order, id, layer);
-  return order;
+  const place = ++lastPlace;
+  registry.report(place, id, layer);
+  return place;
 }
 
 describe('the Surface', () => {
@@ -82,6 +84,16 @@ describe('the Surface', () => {
     expect(registry.get().dialog).toBe('profile');
   });
 
+  it('keeps a dialog that was open before the screen changed on top of the new screen', () => {
+    const registry = createSurfaceRegistry();
+    const menu = open(registry, 'mainMenu');
+    open(registry, 'privacyPolicy');
+    registry.clear(menu);
+    const game = open(registry, 'gameViewer');
+    openTab(registry, game, 'gameViewer.notes');
+    expect(registry.get()).toEqual({ screen: 'gameViewer', dialog: 'privacyPolicy', tabs: [] });
+  });
+
   it('clears an entry that reports no id', () => {
     const registry = createSurfaceRegistry();
     const game = open(registry, 'gameViewer');
@@ -136,7 +148,7 @@ describe('subscribers', () => {
     expect(registry.get()).not.toBe(before);
 
     // The same report again is not a change.
-    registry.report(menu, 'mainMenu');
+    registry.report(menu, 'mainMenu', null);
     expect(listener).toHaveBeenCalledTimes(1);
 
     stop();

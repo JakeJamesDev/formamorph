@@ -76,7 +76,7 @@ const DialogContent = React.forwardRef<
       onPointerDownOutside={ignoreLayerPress(props.onPointerDownOutside)}
       onInteractOutside={ignoreLayerPress(props.onInteractOutside)}
       onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}>
-      {surface ? <SurfaceLayer id={surface}>{children}</SurfaceLayer> : children}
+      <SurfaceLayer id={surface}>{children}</SurfaceLayer>
       {!hideClose && (
         <DialogPrimitive.Close
           className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">

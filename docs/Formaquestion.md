@@ -35,7 +35,7 @@ To go back to the list of pages, select **Contents** above the section.
 2. Open Formaquestion.
 3. Select the row under **Help for This Screen**.
 
-The row is the first item on the **Search** tab and on the **Guide** tab. It names the guide section for the screen, the dialog and the tab that you have open. It changes when you open a different one. A screen with no guide section shows no row, and the row gives its place to the results while you search.
+The row is the first item on the **Search** tab and on the **Guide** tab. It names the guide section for the screen, the dialog and the tab that you have open. It changes when you open a different one. A screen with no guide section shows no row. The row does not show while you search.
 
 ## How to Move and Resize the Window
 

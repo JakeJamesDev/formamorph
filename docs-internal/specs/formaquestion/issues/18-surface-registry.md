@@ -1,6 +1,6 @@
 # 18: Surface registry, help for this screen
 
-Status: in-progress
+Status: ready-for-human
 Base: 3b5d9139
 Blocked by: 01, 16
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
