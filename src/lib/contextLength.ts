@@ -1,36 +1,63 @@
 // Best-effort detection of a model's context length (in tokens) from an OpenAI-compatible endpoint.
 // The OpenAI spec doesn't include it, but several servers do: LM Studio (`/api/v0/models` →
-// loaded_context_length), OpenRouter (`context_length`), etc. We probe and fall back to manual entry.
+// loaded_context_length), OpenRouter (`context_length`), llama.cpp (`meta.n_ctx`, `/props`), etc.
+// We probe and fall back to manual entry.
 
 import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
+import type { Codec } from '@/lib/usePersistentState';
 
-/** Derive the model-list URLs from a configured chat-completions endpoint. */
-export function deriveModelsUrls(endpointUrl: string): { openai: string; lmstudio: string } | null {
+/** A detected context length and the `endpoint|model` signature it was read from. */
+export interface DetectedContextEntry { sig: string; tokens: number }
+
+/** Stores a detected entry as JSON; any other stored form reads as nothing detected. */
+export const detectedContextCodec: Codec<DetectedContextEntry | null> = {
+  parse: (raw) => {
+    if (raw === '') return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== 'object') throw new Error('not a detected entry');
+    const { sig, tokens } = value as Record<string, unknown>;
+    if (typeof sig !== 'string' || positive(tokens) === null) throw new Error('not a detected entry');
+    return { sig, tokens: tokens as number };
+  },
+  serialize: (value) => (value === null ? '' : JSON.stringify(value)),
+};
+
+interface ProbeUrls { openai: string; lmstudio: string; props: string }
+
+/** Derive the model-list and llama.cpp `/props` URLs from a configured chat-completions endpoint. */
+export function deriveModelsUrls(endpointUrl: string): ProbeUrls | null {
   try {
     const url = new URL(endpointUrl);
     const openai = endpointUrl.includes('/chat/completions')
       ? endpointUrl.slice(0, endpointUrl.indexOf('/chat/completions')) + '/models'
       : `${url.origin}/v1/models`;
-    return { openai, lmstudio: `${url.origin}/api/v0/models` };
+    return { openai, lmstudio: `${url.origin}/api/v0/models`, props: `${url.origin}/props` };
   } catch {
     return null;
   }
 }
 
 // Prefer the currently-loaded/effective length (LM Studio's loaded length, vLLM/Aphrodite's
-// configured `max_model_len`); the model's theoretical max (`max_context_length`) is the last resort,
-// since servers truncate at the effective length and the max would over-state the budget.
-const CONTEXT_KEYS = ['loaded_context_length', 'context_length', 'context_window', 'max_model_len', 'max_context_length'] as const;
+// configured `max_model_len`, llama.cpp's per-slot `meta.n_ctx`); the model's theoretical max
+// (`max_context_length`) is the last resort, since servers truncate at the effective length.
+// llama.cpp's `meta.n_ctx_train` is a training max and is never read.
+const EFFECTIVE_KEYS = ['loaded_context_length', 'context_length', 'context_window', 'max_model_len'] as const;
+
+function positive(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null;
+}
 
 /** Pull a positive context-length number off a single model record, preferring the loaded length. */
 function readContextLength(model: unknown): number | null {
   if (!model || typeof model !== 'object') return null;
   const record = model as Record<string, unknown>;
-  for (const key of CONTEXT_KEYS) {
-    const value = record[key];
-    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+  for (const key of EFFECTIVE_KEYS) {
+    const value = positive(record[key]);
+    if (value !== null) return value;
   }
-  return null;
+  const meta = record.meta;
+  const slot = meta && typeof meta === 'object' ? positive((meta as Record<string, unknown>).n_ctx) : null;
+  return slot ?? positive(record.max_context_length);
 }
 
 /**
@@ -52,9 +79,16 @@ export function parseContextLength(json: unknown, modelName: string): number | n
   return null;
 }
 
+/** Extract the per-slot context length from a llama.cpp `/props` response. */
+export function parsePropsContextLength(json: unknown): number | null {
+  const settings = (json as { default_generation_settings?: unknown })?.default_generation_settings;
+  return settings && typeof settings === 'object' ? positive((settings as Record<string, unknown>).n_ctx) : null;
+}
+
 /**
  * Query the endpoint for the model's context length (tokens), or null if it can't be determined.
- * Tries the OpenAI-compatible model list first, then LM Studio's native REST API. Never throws.
+ * Tries LM Studio's native REST API, then the OpenAI-compatible model list, then llama.cpp's
+ * `/props`. Never throws.
  */
 export async function fetchContextLength(
   endpointUrl: string,
@@ -66,15 +100,24 @@ export async function fetchContextLength(
   const headers: Record<string, string> = apiToken ? { Authorization: `Bearer ${apiToken}` } : {};
 
   // LM Studio's native endpoint first — it reports the loaded (currently-set) length; the OpenAI
-  // list usually only carries the model's max. Non-LM-Studio servers 404 the native path and fall
-  // through — remembered per session (probeMemo) so the 404 isn't repeated on every lookup.
-  for (const url of [urls.lmstudio, urls.openai]) {
+  // list usually only carries the model's max. `/props` covers llama.cpp builds whose model list
+  // has no `meta.n_ctx`. Servers that 404 a path are remembered per session (probeMemo).
+  const probes: Array<[string, (json: unknown) => number | null]> = [
+    [urls.lmstudio, (json) => parseContextLength(json, modelName)],
+    [urls.openai, (json) => parseContextLength(json, modelName)],
+    [urls.props, parsePropsContextLength],
+  ];
+  for (const [url, parse] of probes) {
     if (probeKnownAbsent(url)) continue;
     try {
       const res = await fetch(url, { headers });
-      recordProbeStatus(url, res.status);
-      if (!res.ok) continue;
-      const value = parseContextLength(await res.json(), modelName);
+      if (!res.ok) {
+        recordProbeStatus(url, res.status);
+        continue;
+      }
+      const body: unknown = await res.json();
+      recordProbeStatus(url, res.status, body);
+      const value = parse(body);
       if (value !== null) return value;
     } catch {
       // try the next URL
