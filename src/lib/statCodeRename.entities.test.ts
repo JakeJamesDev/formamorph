@@ -84,3 +84,27 @@ describe('an entity rename in entities', () => {
     expect(plan?.edits[0].boxes.after).toBe(`entities['Hound Rider'].name`);
   });
 });
+
+describe('a trait rename when two playable entities own the old name', () => {
+  const kit: Trait = { id: 'k-scarred', name: 'Scarred', statChanges: [] };
+  const kira: Entity = { id: 'kira', name: 'Kira', customPersona: true, traits: [kit] };
+  const both = { traits: [brave], traitGroups: [], entities: [mira, kira] };
+  const rename = (traitId: string) => planCodeRename({
+    root: 'traits', oldName: 'Scarred', newName: 'Marked', otherNames: [],
+    stats: [stat('a', 'persona.traits.Scarred.enabled + entities.Mira.traits.Scarred.enabled + entities.Kira.traits.Scarred.enabled')],
+    traitHolders: traitHolders(both, [], traitId),
+  })?.edits[0].boxes.after;
+
+  it('leaves the persona path and rewrites the owner’s own', () => {
+    expect(rename('m-scarred')).toBe('persona.traits.Scarred.enabled + entities.Mira.traits.Marked.enabled + entities.Kira.traits.Scarred.enabled');
+  });
+
+  it('rewrites the persona path when no other playable entity owns the name', () => {
+    const solo = { ...both, entities: [mira, { ...kira, traits: [{ ...kit, name: 'Hurt' }] }] };
+    const plan = planCodeRename({
+      root: 'traits', oldName: 'Scarred', newName: 'Marked', otherNames: [], stats: [stat('a', 'persona.traits.Scarred.enabled')],
+      traitHolders: traitHolders(solo, [], 'm-scarred'),
+    });
+    expect(plan?.edits[0].boxes.after).toBe('persona.traits.Marked.enabled');
+  });
+});
