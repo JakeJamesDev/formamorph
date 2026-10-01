@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **In a chip's pop-out, the Label, Header, Prepend and Append fields keep the cursor where you type and keep every key you press.** Before, each key moved the cursor to the end of the field. On a slow machine, fast typing could also close the pop-out and lose the rest of what you typed.
+  - **The wiki's World Format page lists every field of a world file, with numbered steps to add a stat, a trait or an entity by hand.** Before, it listed a `list` stat type that was removed, named a **Begin** button that doesn't exist, and left out placeholders, Blueprints, links, persona marks and openings on locations. It also shows the chip form for hand-written text and which older fields still load.
 
 ---
 
