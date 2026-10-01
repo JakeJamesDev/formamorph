@@ -57,6 +57,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   const ask = useCallback((question: string) => {
     if (!index || running.current || turnActivity.get()) return;
     const history = exchangesRef.current;
+    // The Surface at send time, before any wait.
+    const surface = surfaceRegistry.get();
     const controller = new AbortController();
     running.current = controller;
     const id = crypto.randomUUID();
@@ -80,7 +82,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
           }
         }
         const { snapshot, language } = aiRef.current;
-        for await (const event of askHelp({ question, history, language, snapshot, index, surface: surfaceRegistry.get(), signal: controller.signal })) {
+        for await (const event of askHelp({ question, history, language, snapshot, index, surface, signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text });
           else change({ answer: event.text, sources: event.sources, status: event.stopped ? 'stopped' : 'answered' });
         }

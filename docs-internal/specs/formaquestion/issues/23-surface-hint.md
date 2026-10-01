@@ -1,6 +1,8 @@
 # 23: Surface hint in the request
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in f75f1263 plus a review fold-in. Labels are derived from ids, not read from the UI; see Handover.
+Base: 8fa13c68
 Blocked by: 18, 20
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -28,3 +30,20 @@ Recommended model rationale: a small addition to the request over two finished s
 - [ ] The mapped section shows in the answer's sources
 - [ ] Probe numbers with and without the hint are in the handover
 - [ ] Four gates green
+
+## Handover
+
+Built: `surfaceHint.ts` names the open dialog or screen and its tabs, and holds the mapped section. Retrieval puts it ahead of the hits. Lookup holds it as a fetched section. `useHelpChat` reads the Surface before any wait, at send time.
+
+Probe (`help-surface-probe.cli.ts`, cloud default endpoint, retrieval mode, 5 "here" questions x 8 runs per arm, one batch):
+
+| Arm | n | facts | complete | mapped section in sources | prompt tokens |
+|---|---|---|---|---|---|
+| hint | 40 | 65% | 58% | 100% | 2082 |
+| no-hint | 40 | 7% | 0% | 0% | 1232 |
+
+Per case, hint vs no-hint complete: Display tab 100/0, Endpoints tab 88/0, Prompt surfaces 100/0, Library 0/0, Test Bench Triggers 0/0. The last two answers were correct and grounded; their keyed names were too broad for the tab the question named.
+
+Gates (before the fold-in): typecheck, lint (0 errors), test (16032 passed), build green. After the fold-in: typecheck and the Formaquestion tests green.
+
+Open: the spec asks for UI labels. `surfaceHint.ts` derives labels from camelCase ids with a small acronym set, so an id that differs from its UI label reads wrong. A per-id label table would fix it. That is a larger change, so it needs a ruling.

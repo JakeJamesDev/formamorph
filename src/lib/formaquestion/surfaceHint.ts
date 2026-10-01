@@ -19,6 +19,7 @@ function label(id: string): string {
   return name
     .replace(/([a-z\d])([A-Z])/g, '$1 $2')
     .split(' ')
+    .filter(Boolean)
     .map((word) => (ACRONYMS.has(word.toLowerCase()) ? word.toUpperCase() : word[0].toUpperCase() + word.slice(1)))
     .join(' ');
 }
@@ -29,11 +30,7 @@ function surfaceWords(surface: Surface): string {
   return [first, ...surface.tabs.map((tab) => `${label(tab)} tab`)].filter(Boolean).join(', ');
 }
 
-/**
- * The hint for the Surface open now: its labels and its mapped docs section. Null when a surface players
- * never see is open, or no section in the index explains the Surface. It holds ids' labels only, so no
- * text from a world, a save or a field reaches a request.
- */
+/** The hint for the Surface open now. Null when a surface players never see is open, or no section explains it. */
 export function surfaceHint(surface: Surface | undefined, index: DocsIndex): SurfaceHint | null {
   const target = surface && surfaceHelpTarget(surface);
   if (!surface || !target) return null;
