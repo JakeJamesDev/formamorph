@@ -857,6 +857,89 @@ The link state is never saved. The pair opens linked when both hints are equal, 
 
 Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-way samples in local state. The **Locations** tab's quay-to-garden pair has different hints, so its arrow labels sit on their outer sides.
 
+## Pattern: Formaquestion Window
+
+**Purpose:** Keep help in view while the player works. The window is not a dialog: it does not dim the app, it does not take the keyboard, and it stays usable above every dialog.
+
+> 📝 **Proposal.** The user approved these patterns on the ticket 14 prototype (2026-10-01). The table at the end shows which ones production has today.
+
+**Density:** Compact. The title bar is 40px tall. Lists use the Compact Selection Lists rows.
+
+### Composition
+
+- 🏷️ **Help tab.** A launcher that stays flat against one of the four screen edges and is round on its inner side. Its label reads top to bottom on the right edge, bottom to top on the left edge, and left to right on the top and the bottom. It is never upside down. A press opens or closes the window. A drag, or an arrow key while the tab has focus, moves it. The tab shows the accent fill while the window is open.
+- 🪟 **Floating window.** A title bar with the name, **Wide View** and **Close**. The title bar moves the window. A grip at the bottom right corner resizes it. The window stays whole on the screen. Only the tab snaps to an edge.
+- ↔️ **Two widths.** Narrow (400px) shows one part at a time behind tabs. Wide (720px) shows a rail with search and contents beside the reader. **Wide View** swaps them, and the grip crosses the same line at 560px. The search text and the open section carry over.
+- 🔎 **Search result row.** The section name at label weight, the page as `Meta`, and a two-line excerpt in the helper role. The wide rail leaves out the excerpt.
+- 📖 **Reader.** The page as `Meta`, the section name, the body, then an **On This Page** list. In the narrow layout a **Contents** row above it goes back to the list.
+- 📚 **Contents.** One collapsible row per page, with its sections as Compact Selection Lists rows.
+
+### Layering
+
+The tab and the window render in the shielded layer, one host on `<body>` at z-65. That is above dialogs, popovers and selects (z-50), and under the chip typeahead (z-70) and tooltips (z-80).
+
+- A dialog, an alert dialog and a drawer treat a press or focus in the layer as inside them. They do not close and do not take focus back.
+- An overlay that the window opens must render inside the layer: use `portal={false}`. An overlay portaled to `<body>` lands under the window.
+- Escape belongs to the dialog behind the window. It never closes the window.
+
+### Motion
+
+The window zooms from 75% and fades in over 200ms, and goes back over 150ms. The fixed point of the zoom is the center of the Help tab. Reduced motion shows and hides it at once. Put `transition-none` beside the duration classes: a `duration-*` class also sets the transition duration, and a drag would then ease each step.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The layer, and the guards the dialog wrappers use | [`shielded-layer.ts`](../src/components/ui/shielded-layer.ts) |
+| Help tab look per edge, and the placed tab | `EdgeTabButton` and `EdgeTab` in [`EdgeTab.tsx`](../src/components/formaquestion/EdgeTab.tsx) |
+| Tab place, drag and arrow-key moves | [`tabPlace.ts`](../src/lib/formaquestion/tabPlace.ts) |
+| Window frame | [`FormaquestionFrame.tsx`](../src/components/formaquestion/FormaquestionFrame.tsx) |
+| Window place, size and the two widths | [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
+| Narrow and wide layouts | [`GuideBody.tsx`](../src/components/formaquestion/GuideBody.tsx) |
+| Search field, result rows, contents, reader | [`GuideParts.tsx`](../src/components/formaquestion/GuideParts.tsx) |
+| The one instance, F1, focus and motion | [`Formaquestion.tsx`](../src/components/formaquestion/Formaquestion.tsx) |
+| Isolated reference | [`FormaquestionReference.tsx`](../src/components/design-system/FormaquestionReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge and a sample window in local state. Open `#dev?modal=formaquestion` on any screen for the real one.
+
+### Responsive behavior
+
+Below the `md` breakpoint the tab and the window do not show, and F1 does nothing. The mobile form is a full-screen sheet in the narrow layout, and it is not built.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Closed | The tab only. `aria-expanded` is false. |
+| Open | The tab has the accent fill. Focus goes to the search field. |
+| Loading | A status line in place of the content while the docs load. |
+| Load failed | A line that says so, and **Try Again**. |
+| Too few letters | A hint in place of the results. |
+| No match | A status line that quotes the search text. |
+| Wide, no section | A centered hint in the reader's place. |
+| Focus | The shared inset ring on every control, the tab included. |
+
+### Approved patterns
+
+| # | Pattern | In production |
+| --- | --- | --- |
+| 1 | Fixed launcher above every layer | ✅ |
+| 2 | Floating window with two widths | ✅ |
+| 3 | Full-screen sheet for a non-modal surface, on mobile | Not built |
+| 4 | Source link: a "Page › Heading" chip under an answer | Not built |
+| 5 | Not-from-the-guide notice above an answer | Not built |
+| 6 | Question bubble: the player's question, right-aligned on `muted` | Not built |
+| 7 | Search result row | ✅ |
+| 8 | Reader with an On This Page list and a Back row | ✅ |
+| 9 | Send reason: a help line under the field when Send is unavailable | Not built |
+| 10 | Movable edge tab | ✅ |
+
+A pattern that is not built gets its composition and its reference here when its production component lands.
+
+### Writing review
+
+**Help**, **Formaquestion**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **On This Page**, **Introduction** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

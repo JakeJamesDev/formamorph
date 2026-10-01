@@ -1,4 +1,4 @@
-import { memo, type ComponentProps } from 'react';
+import { memo, useMemo, type ComponentProps } from 'react';
 import { Streamdown, defaultRehypePlugins } from 'streamdown';
 import { createCodePlugin } from '@streamdown/code';
 import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
@@ -73,7 +73,10 @@ function rehypePluginsFor(tinted: boolean, dialogue: boolean): ComponentProps<ty
   return dialogue ? QUOTE_REHYPE_PLUGINS : REHYPE_PLUGINS;
 }
 
-const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
+/** Renderers for markdown elements, by tag name. */
+export type MarkdownComponents = NonNullable<ComponentProps<typeof Streamdown>['components']>;
+
+const COMPONENTS: MarkdownComponents = {
   table: ({ node: _node, className, children, ...props }) => (
     <div
       className="my-4 overflow-x-auto rounded-md bg-background [&_tr]:divide-x [&_tr]:divide-border [&_td]:[overflow-wrap:break-word] [&_th]:[overflow-wrap:break-word]"
@@ -103,10 +106,14 @@ const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
  * `dialogue` wraps quoted speech in a span the stylesheet colors. On for story text — narration and the
  * player's own echoed lines — and off for the reasoning aside, the command preview, and every pane outside
  * the game view.
+ *
+ * `components` replaces the renderer of the tags it names, such as the reader's links. Pass a stable
+ * object: Streamdown memoizes each block on its identity.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, tinted = false, dialogue = false }: { text: string; animate?: boolean; animation?: string; easing?: string; tinted?: boolean; dialogue?: boolean },
+  { text, animate = false, animation = 'fadeIn', easing, tinted = false, dialogue = false, components }: { text: string; animate?: boolean; animation?: string; easing?: string; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents },
 ) {
+  const allComponents = useMemo(() => (components ? { ...COMPONENTS, ...components } : COMPONENTS), [components]);
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
   // so the words just added animate at the model's current smoothed rate.
   return (
@@ -114,7 +121,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
         rehypePlugins={rehypePluginsFor(tinted, dialogue)}
-        components={COMPONENTS}
+        components={allComponents}
         plugins={PLUGINS}
         controls={false}
         // Committed text renders straight from the parsed blocks. Streamdown's `streaming` mode routes

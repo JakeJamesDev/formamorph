@@ -81,8 +81,10 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  once-only like card on a canned listing, because a dev world was never downloaded from one and the card's
  *  answer comes from the server. Its Like press reaches the real route and fails there, which is the point
  *  at which a live listing is needed. `errorDetails` raises a canned ComfyUI rejection toast
- *  (`devErrorDetailsSample.ts`) from any view with toasts; its View Details link opens the dialog. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails'] as const;
+ *  (`devErrorDetailsSample.ts`) from any view with toasts; its View Details link opens the dialog.
+ *  `formaquestion` opens the help window over whatever is on screen. It is not a dialog, so it does not
+ *  close one: open the dialog first, then the window, to see both. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** The `attach=…` value that stages sample attachments on the game view. */
@@ -207,6 +209,9 @@ export const DEV_MODAL_TABS = {
   // `sample` turns Image Attachments on, then runs sample images through the attach path: two wait in the
   // action box and two ride the latest turn's action.
   gameViewerAttach: [DEV_ATTACH_SAMPLE],
+  // The Formaquestion window's parts (`#dev?modal=formaquestion&tab=guide`). `subtab=…` takes a docs
+  // section id and opens it in the reader. `mode=wide` or `mode=narrow` picks the layout.
+  formaquestion: ['search', 'guide'],
 } as const;
 
 // Admin Panel → Policies uses the `subtab=…` slot, and its two are fixed, so they are guarded above.

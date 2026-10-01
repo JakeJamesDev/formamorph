@@ -146,7 +146,13 @@ describe('the site entry stays out of the game bundle', () => {
     // The list above is a denylist, so it only catches the ways in that somebody has already thought
     // of. This is the backstop: a leaf that starts dragging a subsystem along shows up as a jump here
     // even when nothing it pulls is named. Raise the ceiling deliberately, having looked at what moved.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(49);
+    expect(reachableFromSite().size).toBeLessThanOrEqual(50);
+  });
+
+  it('reaches the shielded layer helper through the dialog wrappers, and nothing behind it', () => {
+    // The dialog, alert dialog and drawer wrappers read this leaf, so the site bundles it. It must stay a leaf.
+    expect(reachableFromSite().has('@/components/ui/shielded-layer')).toBe(true);
+    expect(appImports(readFileSync(resolveApp('@/components/ui/shielded-layer')!, 'utf-8'))).toEqual([]);
   });
 
   it('really does walk past the first hop', () => {

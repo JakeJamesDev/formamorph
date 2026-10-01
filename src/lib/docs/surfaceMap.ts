@@ -193,6 +193,10 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'worldEditorBench.opening': { page: 'Test-Bench', anchor: 'opening' },
   ...Object.fromEntries(tabsOf('worldEditorTour').map((id) => [id, { page: 'WorldEditor', anchor: 'the-authoring-tour' }])),
 
+  formaquestion: { page: 'Formaquestion', anchor: 'the-window' },
+  'formaquestion.search': { page: 'Formaquestion', anchor: 'search' },
+  'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
+
   avatar: { page: 'Avatars', anchor: 'character-customization' },
   modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },
 };

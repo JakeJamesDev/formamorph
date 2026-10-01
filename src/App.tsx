@@ -23,6 +23,7 @@ import { SignInHost } from './components/SignInHost';
 import { EXIT_TO_MENU_PROMPT } from './lib/leavePrompts';
 import { LocalEngineManager } from './components/LocalEngineManager';
 import { IntroSequence } from './components/IntroSequence';
+import { Formaquestion } from './components/formaquestion/Formaquestion';
 import { TooltipProvider } from './components/ui/tooltip';
 import GameViewer from './views/GameViewer';
 import MainMenu from './views/MainMenu';
@@ -169,6 +170,9 @@ function AppViews() {
         />
       )}
       {import.meta.env.DEV && devRoute?.probe === 'viewport' && <ViewportReadout />}
+      {/* One help window for every view, so it stays open with its state across a view swap. The welcome
+          animation covers the screen and takes no input, so help stands down while it plays. */}
+      <Formaquestion suspended={currentView === 'mainMenu' && introPace !== null} />
       {currentView === 'mainMenu' && (
             <MainMenu
               onStartGame={handleStartGame}

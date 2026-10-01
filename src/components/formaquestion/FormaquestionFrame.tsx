@@ -1,0 +1,66 @@
+import { forwardRef, type ComponentPropsWithoutRef, type HTMLAttributes, type ReactNode } from 'react';
+import { CircleHelp, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tip } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+type DragHandlers = Pick<HTMLAttributes<HTMLElement>, 'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel'>;
+
+/**
+ * The Formaquestion window's frame: a title bar that moves it, the Wide View and Close controls, the
+ * content, and a corner grip that resizes it. The caller places it and owns the moves.
+ */
+export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutRef<'section'> & {
+  wide: boolean;
+  onSwapWidth: () => void;
+  onClose: () => void;
+  /** Pointer handlers for the title bar. */
+  move?: DragHandlers;
+  /** Pointer handlers for the corner grip. */
+  resize?: DragHandlers;
+  children: ReactNode;
+}>(({ wide, onSwapWidth, onClose, move, resize, className, children, ...props }, ref) => (
+  <section
+    ref={ref}
+    role="dialog"
+    aria-modal="false"
+    aria-label="Formaquestion"
+    tabIndex={-1}
+    className={cn('flex flex-col overflow-hidden rounded-lg border bg-background text-foreground shadow-lg outline-none', className)}
+    {...props}
+  >
+    <header
+      data-fq-drag=""
+      {...move}
+      className={cn('flex h-10 shrink-0 select-none items-center gap-2 border-b pl-3 pr-1', move && 'cursor-move touch-none')}
+    >
+      <CircleHelp aria-hidden className="h-4 w-4 text-muted-foreground" />
+      <h2 className="text-label font-semibold">Formaquestion</h2>
+      <div className="ml-auto flex items-center gap-1">
+        <Tip tip="Wide View">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-pressed={wide}
+            onClick={onSwapWidth}
+            className={cn('h-8 w-8', wide && 'bg-accent text-accent-foreground')}
+          >
+            {wide ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </Button>
+        </Tip>
+        <Tip tip="Close (F1)">
+          <Button variant="ghost" size="icon" aria-label="Close Formaquestion" onClick={onClose} className="h-8 w-8">
+            <X className="h-4 w-4" />
+          </Button>
+        </Tip>
+      </div>
+    </header>
+    <div className="min-h-0 flex-1">{children}</div>
+    {resize && (
+      <div data-fq-resize="" aria-hidden {...resize} className="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize touch-none">
+        <span className="absolute bottom-1 right-1 h-2 w-2 border-b-2 border-r-2 border-muted-foreground/60" />
+      </div>
+    )}
+  </section>
+));
+FormaquestionFrame.displayName = 'FormaquestionFrame';
