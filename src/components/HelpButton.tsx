@@ -3,6 +3,7 @@ import { HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MarkdownModal } from '@/components/MarkdownModal';
 import { HELP_TOPICS, helpWikiUrl } from '@/lib/helpTopics';
+import { openDocsFromClick } from '@/lib/formaquestion/docsOpener';
 import { isHelpSeen, markHelpSeen } from '@/lib/helpSeenStore';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,10 @@ export function HelpTopicModal({ topicId, open, onOpenChange, tabExtras, initial
           href={wikiUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(event) => {
+            // The reader opens in the app. With no reader mounted, the link goes to the wiki.
+            if (topic.wikiPage && openDocsFromClick(event, { page: topic.wikiPage, anchor: topic.wikiAnchor })) onOpenChange(false);
+          }}
           className="text-meta text-muted-foreground hover:text-foreground hover:underline"
         >
           Learn more →

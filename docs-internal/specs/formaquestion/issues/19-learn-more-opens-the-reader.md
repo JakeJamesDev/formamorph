@@ -1,6 +1,7 @@
 # 19: "Learn more" opens the reader
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 36faa068
 Blocked by: 16
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
