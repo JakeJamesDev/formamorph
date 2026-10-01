@@ -121,3 +121,10 @@ export function finalizeSelection(
   }
   return result;
 }
+
+/** The library books a playthrough's dictionary set holds: every book that is not an authored one. A picked
+ *  library book takes a fresh id at entry, so no authored id matches it. */
+export function libraryBooksInPlay(runtime: readonly Dictionary[], worldBooks: readonly Dictionary[]): Dictionary[] {
+  const authored = new Set(worldBooks.map((book) => book.id));
+  return runtime.filter((book) => !authored.has(book.id));
+}

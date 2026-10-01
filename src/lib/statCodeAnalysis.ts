@@ -770,8 +770,8 @@ const shadowedChild = (ref: EntryRef, holder: PlaceholderPathNode): CodeDiagnost
 
 /**
  * What is wrong with a path through an owner entry's `placeholders`: a key no placeholder answers, or a child
- * that loses to a member. A miss is only a warning where a library owner can carry the name: an entity, and
- * the persona. An owner the world has no entry for is the owner check's to name.
+ * that loses to a member. A miss is only a warning, because a library owner of the same name can carry it.
+ * An owner the world has no entry for is the owner check's to name.
  */
 function checkOwnedPlaceholderPath(
   chain: PlaceholderChain, placeholders: CodePlaceholders, options: AnalysisOptions, rules: StatRules,
@@ -789,7 +789,7 @@ function checkOwnedPlaceholderPath(
       : `“${route.owner}” has no placeholder named “${ref.name}”.`;
   const suggestion = nearestName(ref.name, node.children.map((child) => child.name));
   return {
-    from: ref.from, to: ref.to, severity: chain.kind === 'dictionary' ? 'error' : 'warning',
+    from: ref.from, to: ref.to, severity: 'warning',
     message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead,
   };
 }
@@ -884,15 +884,17 @@ function checkEntityWrite(target: SyntaxNode, code: string, assignment: boolean)
   return checkTraitWrite(target, code, assignment, entityTraitRef);
 }
 
-/** What is wrong with an entity name: several entities share it, or no authored entity has it. A library
- *  entity can still have it, so the miss is only a warning. */
-function checkEntityName(ref: EntryRef, entities: readonly CodeEntityNames[]): CodeDiagnostic | null {
-  const names = entities.map((entity) => entity.name);
-  if (names.includes(ref.name)) return checkEntryName(ref, names, 'entity');
-  const lead = `Unknown entity name “${ref.name}”. A library entity can have it.`;
+/** What is wrong with an entity or dictionary name: several share it, or nothing authored has it. A library
+ *  item can still have it, so the miss is only a warning. */
+function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' | 'dictionary'): CodeDiagnostic | null {
+  if (names.includes(ref.name)) return checkEntryName(ref, names, noun);
+  const lead = `Unknown ${noun} name “${ref.name}”. A library ${noun} can have it.`;
   const suggestion = nearestName(ref.name, [...new Set(names)]);
   return { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
 }
+
+const checkEntityName = (ref: EntryRef, entities: readonly CodeEntityNames[]) =>
+  checkOwnerName(ref, entities.map((entity) => entity.name), 'entity');
 
 /** What is wrong with a trait name on a known entity: its set has no trait called that. A later library
  *  entity can take the name with another set, so this is only a warning. */
@@ -1154,7 +1156,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (cursor.type.name === 'MemberExpression' && options.placeholders?.dictionaries && dictionariesInScope) {
       const ref = entryRef(cursor.node, code, 'dictionaries');
       const names = options.placeholders.dictionaries.map((book) => book.name);
-      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, names, 'dictionary') : null;
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkOwnerName(ref, names, 'dictionary') : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && options.traits && traitsInScope) {

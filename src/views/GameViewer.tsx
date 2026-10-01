@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { bearerPins, inPlayBearers, inPlayLibrary } from '@/lib/ownedTraitsInPlay';
+import { libraryBooksInPlay } from '@/lib/dictionarySelection';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -628,6 +629,7 @@ const GameViewer = ({
     setDiscoveredEntities,
     suppressedCharacterNames,
     setRuntimeDictionaries,
+    libraryDictionaries,
     memoryPins,
     setMemoryPins,
     setEntityVisualPreference,
@@ -660,8 +662,10 @@ const GameViewer = ({
     resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
   } = useResolvedWorld();
   usePersonaNotice();
-  // The session's rolls for the init effect's pins, and its Placeholder Set with the library persona's list.
-  const { rolls: sessionRolls, placeholders, setPersona: setSessionPersona } = usePlaceholderSession();
+  // The session's rolls for the init effect's pins, and its Placeholder Set with the library's lists.
+  const {
+    rolls: sessionRolls, placeholders, setPersona: setSessionPersona, setLibraryAdditions: setSessionLibraryAdditions,
+  } = usePlaceholderSession();
 
   // --- Active traits and what they switch on ------------------------------------------------------------
   // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
@@ -2704,8 +2708,8 @@ const GameViewer = ({
             inSceneIds: liveScene().inSceneIds,
           },
           placeholders: {
-            // The world's list and books. The run joins the played library persona's pool itself.
-            placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, rolls: sessionRolls,
+            // The world's list and books. The run joins the library entities' and library books' pools itself.
+            placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, libraryDictionaries, rolls: sessionRolls,
             pins: preTurn ? pinsFor(basePins).world : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
@@ -2754,7 +2758,7 @@ const GameViewer = ({
       }
     },
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, dictionaries, sessionRolls,
-      pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+      libraryDictionaries, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
@@ -4089,7 +4093,8 @@ const GameViewer = ({
 
       // Seed the per-playthrough dictionary set: the entry-step selection, or the world's authored books
       // when the step was skipped. A loaded save overrides this later via loadGame.
-      setRuntimeDictionaries(initialDictionaries ?? dictionaries);
+      const runBooks = initialDictionaries ?? dictionaries;
+      setRuntimeDictionaries(runBooks);
 
       // Fresh playthrough: no memory pins, Code Pins, selection or player overrides yet. loadGame overrides.
       setMemoryPins({});
@@ -4099,7 +4104,7 @@ const GameViewer = ({
       const personaPick: PersonaPick = initialPersona ?? { ref: { source: 'none' } };
       setPersonaRef(personaPick.ref);
       // Drawn now, so page one reads the Wildcard values every later turn reads.
-      const personaRolls = setSessionPersona(personaPick.libraryEntity ?? null);
+      setSessionPersona(personaPick.libraryEntity ?? null);
       setEntityImageIndex({});
       setMilestoneSelection(null);
       setMemoryEdits({});
@@ -4115,6 +4120,9 @@ const GameViewer = ({
           picked.map((entity) => ({ entity, locationId: location.id, sourceTurnId: INITIAL_SOURCE_TURN_ID })),
         );
       }
+      // Their placeholders and the library books' are drawn now too, for the same reason as the persona's.
+      const libraryBooks = libraryBooksInPlay(runBooks, dictionaries);
+      const openingRolls = setSessionLibraryAdditions(picked, libraryBooks);
 
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
@@ -4129,7 +4137,7 @@ const GameViewer = ({
         startLocationId: location?.id ?? null,
       };
       const openingText = resolveOpening(drawn.opening.text, {
-        extraPins: openingPins, persona: drawnPersona, rolls: personaRolls, owner: drawnOwner,
+        extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: [...picked, ...libraryBooks], owner: drawnOwner,
       });
       if (drawn.opening.kind === "narration") {
         pendingTurnRef.current = { action: "START GAME", writtenNarration: openingText };
@@ -4171,6 +4179,7 @@ const GameViewer = ({
     setRuntimeDictionaries,
     setPersonaRef,
     setSessionPersona,
+    setSessionLibraryAdditions,
     setDiscoveredEntities,
     setPlayerInput,
     setMemoryPins,
