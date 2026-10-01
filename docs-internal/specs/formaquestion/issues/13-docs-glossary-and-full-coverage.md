@@ -9,7 +9,7 @@ Reasoning effort: high
 
 The docs are complete, and the coverage test holds them there with no exceptions (Q17).
 
-1. **Glossary page** (Q19). A new docs page defines the terms a player meets: Entity, Persona, Opening, Starting Location, Placeholder, Chip, Pin, Blueprint, Copy, Override, Bearer, Trait modes, Pick Count, Tool, Avatar, Like, Install, Test Bench and the rest. Write it for players from the internal glossary. Leave out developer terms such as Turn Pipeline and AI Request Spec. Each term links the page that explains it.
+1. **Glossary page** (Q19). A new docs page defines the terms a player meets: Entity, Persona, Opening, Starting Location, Placeholder, Chip, Pin, Blueprint, Copy, Override, Bearer, Trait modes, Pick Count, Tool, Avatar, Like, Install (one copy of the app, never the verb for getting a listing; that verb is download), Test Bench and the rest. Write it for players from the internal glossary. Leave out developer terms such as Turn Pipeline and AI Request Spec. Each term links the page that explains it.
 2. **Cross-page pass.** Read every page once for contradictions between pages and for one term per concept. Fix what you find against the code.
 3. **Deferred links.** Docs tickets that ran in parallel left out links to pages that did not exist yet. Add them. At least: the Settings page's Data section links Backup & Restore on the Saves and Backup page.
 4. **Index pages.** The home page index and the wiki sidebar list every page, in a sensible order.
