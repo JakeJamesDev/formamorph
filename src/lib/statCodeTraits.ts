@@ -194,22 +194,22 @@ export interface TraitHolders {
 /** Whose trait maps hold a trait, as the editor reads the world: the world's own `traits` when it is a world
  *  trait, each entity whose set holds it owned or linked, and `persona` when one of those can be played. */
 export function traitHolders(world: BearerWorld, placeholders: readonly Placeholder[], traitId: string): TraitHolders {
-  const bearers = resolveBearers(world, undefined).bearers;
-  const holding = bearers.flatMap((bearer) =>
-    (bearer.entity && bearer.traits.some((trait) => trait.id === traitId) ? [bearer.entity] : []));
-  const heldBy = holding.find(canBePlayer);
-  const oldName = heldBy && statCodeName(
-    authoredTraitName(bearers.find((b) => b.entity === heldBy)!.traits.find((t) => t.id === traitId)!, heldBy, world.traits),
-    withOwnPlaceholders(placeholders, heldBy),
-  );
+  const codeNameOf = (trait: Trait, entity: Entity) =>
+    statCodeName(authoredTraitName(trait, entity, world.traits), withOwnPlaceholders(placeholders, entity));
+  const bearers = resolveBearers(world, undefined).bearers.flatMap((bearer) => (bearer.entity ? [{ entity: bearer.entity, traits: bearer.traits }] : []));
+  const holding = bearers.flatMap(({ entity, traits }) => {
+    const trait = traits.find((t) => t.id === traitId);
+    return trait ? [{ entity, trait }] : [];
+  });
+  const playable = holding.find(({ entity }) => canBePlayer(entity));
+  const oldName = playable && codeNameOf(playable.trait, playable.entity);
   // Another playable entity holding a different trait under the old name may be the one played (Q27).
-  const sharedName = !!heldBy && bearers.some((bearer) => bearer.entity && canBePlayer(bearer.entity)
-    && bearer.traits.some((trait) => trait.id !== traitId
-      && statCodeName(authoredTraitName(trait, bearer.entity, world.traits), withOwnPlaceholders(placeholders, bearer.entity)) === oldName));
+  const sharedName = bearers.some(({ entity, traits }) => canBePlayer(entity)
+    && traits.some((trait) => trait.id !== traitId && codeNameOf(trait, entity) === oldName));
   return {
     world: world.traits.some((trait) => trait.id === traitId),
-    persona: !!heldBy && !sharedName,
-    entities: holding.map((entity) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
+    persona: !!playable && !sharedName,
+    entities: holding.map(({ entity }) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
   };
 }
 

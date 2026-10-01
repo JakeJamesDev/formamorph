@@ -1,6 +1,6 @@
 # 08: Persona rename on shared names, and dictionary name-drift
 
-Status: in-progress
+Status: ready-for-human
 Base: 2242003f
 Blocked by: 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
