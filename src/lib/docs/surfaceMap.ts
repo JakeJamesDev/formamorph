@@ -63,8 +63,24 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   worldEditor: { page: 'WorldEditor', anchor: '\u{FE0F}-world-editor' },
   worldUpdate: { page: 'LinkedContent', anchor: 'update-this-world' },
 
+  aiContext: { page: 'How-to-Play', anchor: 'the-ai-context-inspector' },
+  demoAI: { page: 'How-to-Play', anchor: 'the-demo-ai-notice' },
+  editText: { page: 'How-to-Play', anchor: 'how-to-edit-narration' },
+  entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },
+  enterWorld: { page: 'Starting-a-Game', anchor: 'the-enter-world-dialog' },
+  errorDetails: { page: 'How-to-Play', anchor: 'error-details' },
+  export: { page: 'How-to-Play', anchor: 'how-to-export-the-story' },
+  gameViewer: { page: 'How-to-Play', anchor: 'the-game-screen' },
+  intro: { page: 'Starting-a-Game', anchor: 'the-welcome-animation' },
+  likePrompt: { page: 'How-to-Play', anchor: 'the-like-prompt' },
+  location: { page: 'How-to-Play', anchor: 'the-change-location-dialog' },
+
   'gameViewer.entities': { page: 'Entities', anchor: '-entities-in-play' },
+  'gameViewer.notes': { page: 'How-to-Play', anchor: 'notes' },
   'gameViewer.memory': { page: 'Memory', anchor: 'the-memory-tab' },
+  'gameViewer.logs': { page: 'How-to-Play', anchor: 'logs' },
+  'gameViewerLayout.pages': { page: 'How-to-Play', anchor: 'narration-layout' },
+  'gameViewerLayout.chat': { page: 'How-to-Play', anchor: 'narration-layout' },
 
   'settings.display': { page: 'Settings', anchor: 'display' },
   'settings.output': { page: 'Settings', anchor: 'output' },
@@ -122,11 +138,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 
 /** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
-  // How to Play, Starting a Game
-  '06': [
-    'gameViewer', 'entity', 'export', 'intro', 'editText', 'location', 'aiContext', 'enterWorld', 'demoAI',
-    'likePrompt', 'errorDetails', 'gameViewer.notes', 'gameViewer.logs', ...tabsOf('gameViewerLayout'),
-  ],
   // Prompts and Tools
   '08': [
     'settings.prompts', 'settings.tools', ...tabsOf('settingsToolEdit'), ...tabsOf('settingsPromptSurfaces'),
@@ -150,6 +161,4 @@ export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]
 };
 
 /** Help topics with no docs heading yet, by owning ticket. */
-export const KNOWN_HELP_TOPIC_GAPS: Partial<Record<DocsTicket, readonly string[]>> = {
-  '06': ['game.howToPlay'],
-};
+export const KNOWN_HELP_TOPIC_GAPS: Partial<Record<DocsTicket, readonly string[]>> = {};

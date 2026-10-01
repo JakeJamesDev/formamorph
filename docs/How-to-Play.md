@@ -1,0 +1,332 @@
+# 🎮 How to Play
+
+You play by writing what your character does. The AI narrator writes what happens next, and the story moves one turn at a time.
+
+> New to a world? [Starting a Game](Starting-a-Game) covers everything before page one.
+
+## How to Take an Action
+
+1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
+2. Write what your character does, in the first person: *I ask her where the road leads.*
+3. Press **Enter**, or select the **Send** button. **Shift+Enter** starts a new line.
+
+While the AI writes, the **Send** button turns red and becomes **Stop generating**. Select it to stop the turn.
+
+> 💡 Success isn't guaranteed. The narrator decides how your attempt goes, and your stats shape it.
+
+## How to Use a Choice
+
+1. Read the choices under the story. Each one is a ready-made action.
+2. Select a choice. Its text replaces what is in the action box.
+3. Edit the text if you like, then send it.
+
+To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on Mac). On a touch screen, press and hold it. The choice joins the box as a new sentence, so you can stack two choices.
+
+## How to Continue the Story
+
+1. Select **[Continue the Story]** under the choices. It shows after the first page, once the AI is done.
+2. Send the action.
+
+The text is in brackets, so the narrator reads it as a nudge to keep going, not as something your character does. See [Continue the Story](#continue-the-story) below to change when it shows.
+
+## How to Turn Choices Off
+
+1. Select the **?** button beside the action box. The **How to Play** dialog opens.
+2. Open the **Choices** tab.
+3. Clear the **Choices** checkbox.
+
+The same checkbox is in **Settings** → **Output** → **Turn Extras**. With choices off, you write every action yourself.
+
+## How to Direct the Story
+
+1. In the action box, write your character's action as usual.
+2. Add what should happen in square brackets: *I climb on behind her. [She agrees, and they ride off.]*
+3. Send the action.
+
+Text in brackets speaks to the AI as the author, not as your character. Use it to steer an outcome, skip ahead, or hold a tone. The brackets never enter the story: the prose doesn't quote them, and the story's memory leaves them out.
+
+> 💡 Brackets direct one turn. For a fact the AI should keep in mind every turn, use the [Notes](#notes) tab.
+
+## How to Attach Images to an Action
+
+1. Open **Settings** → **Output**.
+2. In the **Attachments** section, select the **Image Attachments** checkbox.
+3. In the game, select the **Attach images** button beside the action box. You can also paste an image, or drop image files on the action box.
+4. Write your action and send it.
+
+Each action takes up to 4 images. They go with that turn only. Select a thumbnail to view it, or its **Remove image** button to take it off.
+
+> ⚠️ Your model must read images. A text-only model returns an error. An image over 1568 px on its long side is shrunk before it is sent.
+
+The attach button shows after the game starts, not on the opening turn.
+
+## How to Re-generate a Turn
+
+1. Find the latest turn's action row, under its narration.
+2. Select **Re-generate Narration**.
+
+The game goes back to the state before the turn and sends the same action again, with the same images. On page one, it draws another opening. See [Regenerating Page One](Entities#regenerating-page-one).
+
+To re-roll only the choices, select **Re-generate Choices** beside them.
+
+## How to Edit Narration
+
+1. On a turn's action row, select **Edit**.
+2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
+3. Select **Save**.
+
+Saving rewrites the turn's narration. The game reads the edited text for entities again. It also clears that turn's memory and diary entries, and your own edit to that memory, so the story writes them again from your version.
+
+## How to Edit Your Action
+
+1. Right-click your action line, or press and hold it on a touch screen.
+2. Select **Edit**.
+3. Change the text, or remove an attached image.
+4. Select **Save**.
+
+Only the action text and its images change. The narration stays as it is.
+
+## How to Rewind to an Earlier Turn
+
+1. Go back to the turn you want to keep. In Pages, use the page buttons. In Chat, scroll up.
+2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
+3. Select **Confirm** in the **Confirm Rollback** dialog.
+
+> ⚠️ Rewind can't be undone. Every later turn goes, with its stats, its location, the entities the story invented in it, and its scene images. Your notes go back to that turn's notes.
+
+## How to Read Earlier Turns
+
+1. In Pages, select **Previous**, or a page number under the story.
+2. To jump far back, select the current page number, type a page in the box, and select **Go**.
+3. Select **Next** or the last page to come back to the live turn.
+
+An earlier page is read-only. The side panel shows a banner, *Viewing turn n of total*, and the turn's notes, stats and location. In Chat, scroll up. **Jump to Latest** takes you back down.
+
+## How to Change Location
+
+1. In the right panel, open the **Location** tab.
+2. Select **Current Location**. The **Change Location** dialog opens.
+3. Select a place on the **List** tab, or a box on the **Map** tab.
+
+You move at once. Travel costs no turn and writes no narration. The narrator can also suggest a move: select **Go** in the *Move to …?* bar, or **Dismiss**.
+
+## How to Export the Story
+
+1. Select the **More narration options** button at the top right of the story.
+2. Select **Export Story**.
+3. Select **Plain text (.txt)** or **Markdown (.md)**.
+
+The file holds every turn's narration. Markdown keeps the formatting; plain text doesn't. To keep your progress, use **Save Game** in the game menu instead.
+
+## How to See What the AI Read
+
+1. Select the **Show the full AI context sent each turn** button at the top left. On mobile, open the **Menu** and select **AI Context**.
+2. Use the turn pager to pick a turn.
+3. Open a request to read its **Raw Input** and **Raw Output**.
+
+See [The AI Context Inspector](#the-ai-context-inspector) for the search and the highlights.
+
+## How to Switch Between Pages and Chat
+
+1. Open **Settings** → **Display**.
+2. In the **Narration** section, set **Narration Layout** to **Pages** or **Chat**.
+
+## How to Color Quoted Speech
+
+1. Open **Settings** → **Display**.
+2. In the **Accessibility** section, select the **Quote Color** checkbox.
+3. To pick your own color, use **Light Mode Color** or **Dark Mode Color**. **Reset to Theme** brings back the theme's color.
+
+Only double quotes count, so contractions keep the body color. **Quote Italic** sets quoted speech in italic.
+
+## How to Change the Narration Font
+
+1. Open **Settings** → **Display**.
+2. In the **Accessibility** section, pick a **Narration Font**. It includes typefaces tuned for dyslexia and low vision.
+3. Adjust **Narration Text Size** and **Line Spacing** if you like.
+
+These change the story text only, not the rest of the app.
+
+## How to Report an Error
+
+1. On an error message, select **View Details →**. The **Error Details** dialog opens.
+2. Select **Copy** to copy the full details, or **Report Bug** to send them.
+3. If you aren't signed in, sign in first.
+4. Check the pre-filled **Send Feedback** form, then select **Send Report**.
+
+**Report Bug** shows only when community features are on.
+
+---
+
+## The Game Screen
+
+| Area | What it holds |
+|---|---|
+| The story | The narration, the choices and the action box. A status line above the box names the request that is running, such as *Generating Narration…* |
+| The left panel | The **Entities**, **Notes**, **Memory** and **Logs** tabs. In a world with a 3D model, an **Avatar** / **Entities** switch sits above it. |
+| The right panel | Your persona, the in-game date and time, and the **Stats**, **Traits** and **Location** tabs |
+| Top left | The music button and the AI Context button |
+| Top right | **Edit World** and the **Menu** |
+| Bottom left | **Hide UI**, which hides the panels so only the story shows |
+
+On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). **Edit World** and **AI Context** move into the **Menu**.
+
+## Turn Actions
+
+Each turn has an action row under its narration. Some actions sit under its **More** button. Right-click the turn, or press and hold it on a touch screen, for the full list.
+
+| Action | Shows on |
+|---|---|
+| **Re-generate Narration** | The latest turn |
+| **Re-generate Stats** | The latest turn, under **More**, when stat updates are on |
+| **Generate Scene Image** | Under **More**, when image generation is on and the turn has no image |
+| **Write Scene Tags** | Under **More**, when image generation is on |
+| **Edit** | Every turn |
+| **Text to Speech** | The latest turn |
+| **Copy Text** | Every turn |
+| **Regenerate Audio** | Under **More**, after you load the **Text to Speech** model |
+| **Rewind to Here** | Earlier turns only |
+
+No actions show while a turn is still writing.
+
+## Continue the Story
+
+**Settings** → **Output** → **Choices** → **Continue the Story** sets when the button shows:
+
+| Option | The button |
+|---|---|
+| **Off** | Never shows |
+| **On** *(default)* | Shows under the choices while the **Choices** request is on |
+| **Always** | Shows even with the **Choices** request off, alone in place of the choices |
+
+## The Side Panel Tabs
+
+| Tab | What it is |
+|---|---|
+| **Entities** | Who the story counts as present. See [Entities in Play](Entities). |
+| **Notes** | Your standing notes for the AI. See [Notes](#notes). |
+| **Memory** | What the story remembers. See [Story Memory](Memory#the-memory-tab). |
+| **Logs** | A record of what changed. See [Logs](#logs). |
+
+On narrow desktop windows the tabs show icons only. Hover an icon to read its name.
+
+### Notes
+
+The **Notes** tab is one free-text box. Its text goes to the AI with every action, so standing facts belong here: who you pretend to be, what you carry, the goal you work toward.
+
+Notes are part of your save, and each turn keeps its own copy. An earlier page shows that turn's notes, and **Rewind to Here** restores them.
+
+> [!NOTE]
+> The narration prompt reads your notes through a placeholder. If a custom prompt leaves it out, the tab warns that the prompt doesn't include it.
+
+### Logs
+
+The **Logs** tab lists what the game changed: your starting traits and location, traits that switched on or off, moves, rewinds and saves. The tab label counts the entries, such as **Logs (12)**.
+
+- A story event starts with the in-game time, such as *[Day 1, 08:00]*.
+- An app event, such as a save or a failed load, shows in italic with no time.
+- A repeated entry shows its count, such as *(3)*.
+
+### The Right Panel
+
+| Part | What it does |
+|---|---|
+| Language box | Sets the language or style the AI writes in, the same as **AI Language** in **Settings** |
+| Persona row | Shows who you play. **Change** opens **Change Persona**. See [Change It in Game](Personas#change-it-in-game). |
+| **Stats** | Your stats. **Edit Stats** lets you drag them; **Re-generate Stats** asks the AI again. Shows only when the world has stats you can see. |
+| **Traits** | Your active traits. Filter them, or switch one on or off. |
+| **Location** | Where you are, its description and the places it connects to |
+
+## The Entity Dialog
+
+Select a name in the **Entities** tab to open it. On desktop with the avatar showing, the first select shows that entity's picture in the panel.
+
+The dialog shows the entity's image or 3D model, its player-facing description, and its sound. An entity the story invented also has **Edit** and **Regenerate** for its description. **Regenerate** shows a **New Description** to **Keep** or **Discard**.
+
+An entity the story hasn't revealed yet shows as its alias or *Unknown*, and doesn't open.
+
+## The Change Location Dialog
+
+| Tab | What it shows |
+|---|---|
+| **List** | Every location as a tree, with sublocations indented. Expand or collapse a parent. Your location is highlighted. |
+| **Map** | The author's map, read-only. A pin marks your location. Drag to pan, and pinch to zoom. |
+
+The dialog opens on the tab you used last.
+
+## The Game Menu
+
+Select the **Menu** button at the top right.
+
+| Item | What it does |
+|---|---|
+| **Save Game** | Saves your progress under a name |
+| **Load Game** | Opens a saved game |
+| **Edit World** | Opens the World Editor on this world. Mobile only; desktop has its own button. |
+| **AI Context** | Opens the AI Context inspector. Mobile only. |
+| **Settings** | Opens **Settings** |
+| **Send Feedback** | Sends a bug report or a suggestion. Shows when you are signed in to community features. |
+| **Exit to Main Menu** | Leaves the game. Unsaved progress is lost. |
+
+## Narration Layout
+
+| Layout | How the story reads |
+|---|---|
+| **Pages** *(default)* | One turn per page. Your action shows above its narration. The page buttons read back. |
+| **Chat** | Every turn in one list that you scroll. Your actions show on the right, and the choices show as dashed bubbles. **Jump to Latest** takes you to the newest turn. |
+
+Both layouts have the same turn actions and the same choices.
+
+## The AI Context Inspector
+
+The inspector shows exactly what the game sent to the AI each turn, and what came back. Use it to learn why the story did something.
+
+| Control | What it does |
+|---|---|
+| Search box | Finds terms in the turn. **Enter** goes to the next match, **Shift+Enter** to the previous one. |
+| **Dictionary** | Highlights the dictionary entries in the text. Select a legend chip to hide its highlights. |
+| **Current context only** | Hides turns that were re-generated, rewound or stopped. On by default. |
+| **Collapse all** / **Expand all** | Folds every section |
+| **Export** | Downloads the full turn history as a `.json` file |
+
+Each request lists its **Raw Input**, **Tool Rounds**, **Raw Reasoning** and **Raw Output** where it has them. Before your first action it has nothing to show.
+
+## Error Details
+
+Every error message has a **View Details →** link. The **Error Details** dialog shows the error and the full diagnostics behind it.
+
+| Button | What it does |
+|---|---|
+| **Copy** | Copies the details, so you can paste them in a bug report or a chat |
+| **Report Bug** | Opens **Send Feedback** with the error as its title and the details as its text |
+
+## The Demo AI Notice
+
+A new install plays on the **Demo AI**, a small free model that needs no setup. The first time you start a game on it, **You're Playing on the Demo AI** opens. A **Demo AI** badge at the top right of the story opens it again.
+
+| Button | What it does |
+|---|---|
+| **Keep Playing** | Closes the notice |
+| **Get the Desktop App** | Opens the desktop app's download page. Shows on devices that can run it. |
+| **Connect an AI** | Opens **Settings** → **Endpoints** |
+
+A stronger model writes sharper narration and keeps characters in character. See [Connect Your Own AI](Connect-Your-Own-AI).
+
+## The Like Prompt
+
+After 15 turns in a world you downloaded from Community Creations, a card above the page buttons asks *Enjoying …?*
+
+| Button | What it does |
+|---|---|
+| **♥ Like** | Likes the world's listing, so its author knows |
+| **Not Now** | Closes the card |
+
+Either button closes it for good on this device. It doesn't show for your own worlds, the bundled worlds, or a world you already liked. If the like fails to send, the card asks again on a later turn.
+
+## Related
+
+- [🚪 Starting a Game](Starting-a-Game): everything before page one
+- [🎭 Entities in Play](Entities): the cast, and how a game opens
+- [🧠 Story Memory](Memory): what the story remembers
+- [🪪 Personas](Personas): who you are in the story
+- [🔌 Connect Your Own AI](Connect-Your-Own-AI): moving past the Demo AI

@@ -19,6 +19,8 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 |---|---|
 | 🔌 **[Connect Your Own AI](Connect-Your-Own-AI)** | Moving from the Demo AI to a stronger model — a local server, a hosted API service, or the desktop app |
 | 📱 **[Install on Android](Install-on-Android)** | Getting the app on your phone — the download, Android's prompts, and how it updates itself |
+| 🚪 **[Starting a Game](Starting-a-Game)** | Everything before page one — Enter World, Quick Start, starting traits, the starting location and Library Additions |
+| 🎮 **[How to Play](How-to-Play)** | Taking a turn — actions, choices, `[bracket]` direction, images, re-generate, edit, rewind, the side panels and the game menu |
 | 🧠 **[Story Memory](Memory)** | How a long story is remembered, and how to pin, edit or write its memories yourself |
 | 🎭 **[Entities in Play](Entities)** | Who the story tracks as present — including the characters it invents mid-scene, and how to remove one it got wrong |
 | 🪪 **[Personas](Personas)** | Who you are in the story — making a persona, picking one at Enter World, changing it in game, and the SillyTavern import |

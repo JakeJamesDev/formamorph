@@ -42,6 +42,8 @@ export function helpWikiUrl(topic: HelpTopic): string | null {
 export const HELP_TOPICS: Record<string, HelpTopic> = {
   'game.howToPlay': {
     title: 'How to Play',
+    wikiPage: 'How-to-Play',
+    wikiAnchor: 'how-to-take-an-action',
     tabs: [
       {
         label: 'Actions',
