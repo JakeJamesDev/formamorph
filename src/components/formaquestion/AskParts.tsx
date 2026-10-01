@@ -155,7 +155,6 @@ function AskField({ draft, onDraftChange, busy, held, onSend, onStop }: {
   };
   return (
     <div className="flex shrink-0 flex-col gap-2 border-t p-3">
-      {held && !busy && <Hint>Wait for the game turn to finish to send a question</Hint>}
       <div className="flex items-end gap-2">
         <Textarea
           data-fq-autofocus=""
@@ -181,6 +180,8 @@ function AskField({ draft, onDraftChange, busy, held, onSend, onStop }: {
           </Tip>
         )}
       </div>
+      {/* Pattern 9: the reason sits under the field. */}
+      {held && !busy && <Hint>Wait for the game turn to finish to send a question</Hint>}
     </div>
   );
 }

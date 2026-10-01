@@ -22,11 +22,10 @@ export const isEnglishLanguage = (language: string): boolean => {
 export type LanguageSurface = 'narration' | 'choices' | 'answers';
 
 /**
- * What one surface's `<LANGUAGE>` chip renders to — the imperative directive, or nothing at all when the
- * value counts as English.
+ * The directive for one surface — the imperative line, or nothing at all when the value counts as English.
+ * The narration and choices prompts send it through their `<LANGUAGE>` chip; the help prompt appends it.
  *
- * The single definition of the wording: the default templates deliver it through the chip like any other,
- * so there is no second copy in a builder that could drift from what an author's own placement sends.
+ * The single definition of the wording, so no prompt carries a second copy that could drift.
  */
 export const languageDirective = (surface: LanguageSurface, language: string): string =>
   isEnglishLanguage(language) ? '' : `Write all ${surface} in ${language.trim()}.`;

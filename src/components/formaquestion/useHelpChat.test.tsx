@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
+import { HELP_HISTORY_EXCHANGES } from '@/lib/formaquestion/helpSession';
 import { languageDirective } from '@/lib/languages';
 import { turnActivity } from '@/lib/turnActivity';
 import type { HelpAi } from './useHelpAi';
@@ -81,6 +82,22 @@ describe('useHelpChat', () => {
     ]);
   });
 
+  it(`keeps every exchange in view while a request carries only the last ${HELP_HISTORY_EXCHANGES}`, async () => {
+    const fetchSpy = stubStream(sseReply('Done.'));
+    const { result } = renderHook(() => useHelpChat(index, ai));
+    const total = HELP_HISTORY_EXCHANGES + 2;
+    for (let n = 0; n < total; n++) {
+      act(() => { result.current.ask(`question ${n}`); });
+      await waitFor(() => expect(result.current.busy).toBe(false));
+    }
+
+    expect(result.current.exchanges.map((exchange) => exchange.question)).toEqual(Array.from({ length: total }, (_, n) => `question ${n}`));
+    const earlier = sentMessages(fetchSpy, total - 1).slice(1, -1).filter((message) => message.role === 'user');
+    expect(earlier.map((message) => message.content)).toEqual(
+      Array.from({ length: HELP_HISTORY_EXCHANGES }, (_, n) => `question ${total - 1 - HELP_HISTORY_EXCHANGES + n}`),
+    );
+  });
+
   it('writes the answer in the AI Language', async () => {
     const fetchSpy = stubStream(sseReply('Selecciona **Add Trait**.'));
     const { result } = renderHook(() => useHelpChat(index, { ...ai, language: 'Spanish' }));
@@ -91,7 +108,7 @@ describe('useHelpChat', () => {
 
   it('clears the conversation and ends the answer that is coming in', async () => {
     const reply = openSseReply([sseFrame({ content: '1. Select' })]);
-    const fetchSpy = vi.fn(async () => reply.respond());
+    const fetchSpy = vi.fn(async (_url: string, _init: RequestInit) => reply.respond());
     vi.stubGlobal('fetch', fetchSpy);
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => { result.current.ask('How do I add a trait?'); });
@@ -106,7 +123,7 @@ describe('useHelpChat', () => {
     act(() => { result.current.ask('How do I add a stat?'); });
     expect(result.current.exchanges.map((exchange) => exchange.question)).toEqual(['How do I add a stat?']);
     await waitFor(() => expect(reply.cancel).toHaveBeenCalled());
-    expect((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1].signal?.aborted).toBe(true);
+    expect(fetchSpy.mock.calls[0][1].signal?.aborted).toBe(true);
     await waitFor(() => expect(result.current.busy).toBe(false));
     expect(result.current.exchanges.map((exchange) => exchange.answer)).toEqual(['Done.']);
     expect(next).toHaveBeenCalledTimes(1);
