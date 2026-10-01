@@ -58,7 +58,7 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `systemPrompt` | String | The **AI-Facing Description**: the world's description for the AI, never shown to players |
 | `use3DModel` | Boolean | Whether the world uses a 3D VRM avatar |
 | `tags` | String[] | Tags shown/searchable in the world browser |
-| `customPlayerVRM` | [MediaAsset](#-media-fields) \| null | Optional per-world custom player `.vrm` |
+| `customPlayerVRM` | [MediaAsset](#%EF%B8%8F-media-fields) \| null | Optional per-world custom player `.vrm` |
 | `readme` | String | Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle) |
 | `openings` | [Opening](#-openings)[] | The world's own openings, in authored order. One is drawn by weight at Start Game |
 | `openingWeights` | Object | Draw weight per opening `id`. A missing entry weighs 1; `0` keeps the opening without drawing it |
@@ -176,7 +176,7 @@ Optional folders that organize traits in the editor and the trait-selection scre
 | `description` | String | Legacy fallback when `playerDescription` is absent |
 | `backgroundImage` | String | Data-URL background image |
 | `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
-| `ambientSound` | [MediaAsset](#-media-fields) | Looping ambient audio |
+| `ambientSound` | [MediaAsset](#%EF%B8%8F-media-fields) | Looping ambient audio |
 | `isStarting` | Boolean | A candidate start location. One flagged = every game starts there; several = the player picks between them; none = a random location of any kind |
 | `parentId` | String \| null | Parent location `id` for sub-location nesting; null/absent = top-level (editor-only, not sent to the AI) |
 
@@ -220,8 +220,8 @@ People, creatures and objects in the world.
 | `images` | String[] | Data-URL portraits. A legacy singular `image` is still read as a one-item fallback |
 | `imageTags` | String | Booru tags for AI image generation (editor-only; not sent to the narrative AI) |
 | `locations` | String[] | `id`s of the locations this entity belongs to. It is present at **all** of them at once |
-| `sound` | [MediaAsset](#-media-fields) | Associated sound |
-| `model` | [MediaAsset](#-media-fields) | Associated 3D model |
+| `sound` | [MediaAsset](#%EF%B8%8F-media-fields) | Associated sound |
+| `model` | [MediaAsset](#%EF%B8%8F-media-fields) | Associated 3D model |
 | `groupId` | String \| null | Parent entity-group `id`; null/absent = ungrouped (editor-only, not sent to the AI) |
 | `order` | Number | Sibling order within its group (editor-only) |
 | `openings` | [Opening](#-openings)[] | The entity's own openings. Its Others openings join the draw when the entity is at the player's starting location. Its Self openings draw when the player plays it |

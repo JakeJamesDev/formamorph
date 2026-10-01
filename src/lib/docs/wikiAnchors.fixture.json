@@ -1,0 +1,780 @@
+{
+ "WorldFormat": [
+  [
+   "📐 World Data Format",
+   "-world-data-format"
+  ],
+  [
+   "🗂️ How worlds are stored",
+   "️-how-worlds-are-stored"
+  ],
+  [
+   "🔖 Versioning",
+   "-versioning"
+  ],
+  [
+   "🧱 Top-level structure",
+   "-top-level-structure"
+  ],
+  [
+   "🌍 `worldOverview`",
+   "-worldoverview"
+  ],
+  [
+   "📊 `stats`",
+   "-stats"
+  ],
+  [
+   "Stat descriptors",
+   "stat-descriptors"
+  ],
+  [
+   "Stat list items",
+   "stat-list-items"
+  ],
+  [
+   "🎭 `traits`",
+   "-traits"
+  ],
+  [
+   "Trait groups",
+   "trait-groups"
+  ],
+  [
+   "Stat changes",
+   "stat-changes"
+  ],
+  [
+   "🗂️ `traitGroups`",
+   "️-traitgroups"
+  ],
+  [
+   "🗺️ `locations`",
+   "️-locations"
+  ],
+  [
+   "🔗 `connections`",
+   "-connections"
+  ],
+  [
+   "👥 `entities`",
+   "-entities"
+  ],
+  [
+   "🎬 Openings",
+   "-openings"
+  ],
+  [
+   "🔄 `statUpdates`",
+   "-statupdates"
+  ],
+  [
+   "📖 `dictionaries`",
+   "-dictionaries"
+  ],
+  [
+   "Dictionary entries",
+   "dictionary-entries"
+  ],
+  [
+   "🎞️ Media fields",
+   "️-media-fields"
+  ],
+  [
+   "🧪 Example world",
+   "-example-world"
+  ]
+ ],
+ "StatCodeGuide": [
+  [
+   "🧮 Stat Code Guide",
+   "-stat-code-guide"
+  ],
+  [
+   "Overview",
+   "overview"
+  ],
+  [
+   "How It Works",
+   "how-it-works"
+  ],
+  [
+   "The Two Boxes",
+   "the-two-boxes"
+  ],
+  [
+   "When Your Code Runs",
+   "when-your-code-runs"
+  ],
+  [
+   "Writing Stat Code",
+   "writing-stat-code"
+  ],
+  [
+   "Basic Syntax",
+   "basic-syntax"
+  ],
+  [
+   "Accessing Other Stats",
+   "accessing-other-stats"
+  ],
+  [
+   "Stat Properties",
+   "stat-properties"
+  ],
+  [
+   "Writing to `self`",
+   "writing-to-self"
+  ],
+  [
+   "Reading This Turn",
+   "reading-this-turn"
+  ],
+  [
+   "Refunding What a Cap Ate",
+   "refunding-what-a-cap-ate"
+  ],
+  [
+   "Placeholders",
+   "placeholders"
+  ],
+  [
+   "Paths",
+   "paths"
+  ],
+  [
+   "The three words",
+   "the-three-words"
+  ],
+  [
+   "Pinning",
+   "pinning"
+  ],
+  [
+   "Traits",
+   "traits"
+  ],
+  [
+   "Order of Effects",
+   "order-of-effects"
+  ],
+  [
+   "The Story Clock",
+   "the-story-clock"
+  ],
+  [
+   "Examples",
+   "examples"
+  ],
+  [
+   "Percentage-Based Stat",
+   "percentage-based-stat"
+  ],
+  [
+   "Average of All Stats",
+   "average-of-all-stats"
+  ],
+  [
+   "Conditional Calculation",
+   "conditional-calculation"
+  ],
+  [
+   "Complex Formula",
+   "complex-formula"
+  ],
+  [
+   "Diminishing Returns",
+   "diminishing-returns"
+  ],
+  [
+   "Drain Per Hour",
+   "drain-per-hour"
+  ],
+  [
+   "Time of Day",
+   "time-of-day"
+  ],
+  [
+   "Resource Consumption",
+   "resource-consumption"
+  ],
+  [
+   "Best Practices",
+   "best-practices"
+  ],
+  [
+   "Limitations",
+   "limitations"
+  ],
+  [
+   "A Note on Accumulating Stats",
+   "a-note-on-accumulating-stats"
+  ],
+  [
+   "Troubleshooting",
+   "troubleshooting"
+  ],
+  [
+   "Advanced Examples",
+   "advanced-examples"
+  ],
+  [
+   "Stat Scaling with Level",
+   "stat-scaling-with-level"
+  ],
+  [
+   "Fatigue System",
+   "fatigue-system"
+  ],
+  [
+   "Carrying Capacity",
+   "carrying-capacity"
+  ],
+  [
+   "Magical Power",
+   "magical-power"
+  ]
+ ],
+ "Personas": [
+  [
+   "🪪 Personas",
+   "-personas"
+  ],
+  [
+   "Make a Persona",
+   "make-a-persona"
+  ],
+  [
+   "The Default Persona",
+   "the-default-persona"
+  ],
+  [
+   "Pick at Enter World",
+   "pick-at-enter-world"
+  ],
+  [
+   "Play a World's Own Entity",
+   "play-a-worlds-own-entity"
+  ],
+  [
+   "Create Your Own",
+   "create-your-own"
+  ],
+  [
+   "Change It in Game",
+   "change-it-in-game"
+  ],
+  [
+   "Persona Placeholders",
+   "persona-placeholders"
+  ],
+  [
+   "Import from SillyTavern",
+   "import-from-sillytavern"
+  ],
+  [
+   "1. Get the files",
+   "1-get-the-files"
+  ],
+  [
+   "2. Import",
+   "2-import"
+  ],
+  [
+   "Related",
+   "related"
+  ]
+ ],
+ "Persona-Authoring": [
+  [
+   "🪪 Personas for Authors",
+   "-personas-for-authors"
+  ],
+  [
+   "The Short Version",
+   "the-short-version"
+  ],
+  [
+   "Make an Entity Playable",
+   "make-an-entity-playable"
+  ],
+  [
+   "Persona-Only Entities",
+   "persona-only-entities"
+  ],
+  [
+   "Custom Persona",
+   "custom-persona"
+  ],
+  [
+   "Persona Rules",
+   "persona-rules"
+  ],
+  [
+   "The Persona Chip",
+   "the-persona-chip"
+  ],
+  [
+   "The Player Name Chip",
+   "the-player-name-chip"
+  ],
+  [
+   "Related",
+   "related"
+  ]
+ ],
+ "World-Editor-Traits": [
+  [
+   "🧬 World Editor: Traits",
+   "-world-editor-traits"
+  ],
+  [
+   "Why it exists",
+   "why-it-exists"
+  ],
+  [
+   "What the AI sees",
+   "what-the-ai-sees"
+  ],
+  [
+   "The panel",
+   "the-panel"
+  ],
+  [
+   "Mode",
+   "mode"
+  ],
+  [
+   "Curses",
+   "curses"
+  ],
+  [
+   "Hidden traits",
+   "hidden-traits"
+  ],
+  [
+   "Stat Changes",
+   "stat-changes"
+  ],
+  [
+   "Stat Availability",
+   "stat-availability"
+  ],
+  [
+   "Placeholder Pins",
+   "placeholder-pins"
+  ],
+  [
+   "When two traits conflict",
+   "when-two-traits-conflict"
+  ],
+  [
+   "Groups",
+   "groups"
+  ],
+  [
+   "Pick Count",
+   "pick-count"
+  ],
+  [
+   "Requirements",
+   "requirements"
+  ],
+  [
+   "Whose trait counts",
+   "whose-trait-counts"
+  ],
+  [
+   "Entity Traits",
+   "entity-traits"
+  ],
+  [
+   "Links",
+   "links"
+  ],
+  [
+   "Overrides",
+   "overrides"
+  ],
+  [
+   "Detach",
+   "detach"
+  ],
+  [
+   "Links in the Library",
+   "links-in-the-library"
+  ],
+  [
+   "Blueprints",
+   "blueprints"
+  ],
+  [
+   "Custom Persona",
+   "custom-persona"
+  ],
+  [
+   "Pins by Blueprint",
+   "pins-by-blueprint"
+  ],
+  [
+   "Whose pins apply where",
+   "whose-pins-apply-where"
+  ],
+  [
+   "Test Bench Checks",
+   "test-bench-checks"
+  ],
+  [
+   "Example: RPG Classes",
+   "example-rpg-classes"
+  ],
+  [
+   "Getting started",
+   "getting-started"
+  ]
+ ],
+ "World-Editor-Placeholders": [
+  [
+   "🧩 World Editor: Placeholders",
+   "-world-editor-placeholders"
+  ],
+  [
+   "Why it exists",
+   "why-it-exists"
+  ],
+  [
+   "Kind",
+   "kind"
+  ],
+  [
+   "Draw Weight",
+   "draw-weight"
+  ],
+  [
+   "Parts",
+   "parts"
+  ],
+  [
+   "World or Unique",
+   "world-or-unique"
+  ],
+  [
+   "How a chip reads in the editor",
+   "how-a-chip-reads-in-the-editor"
+  ],
+  [
+   "The roll stays for the playthrough",
+   "the-roll-stays-for-the-playthrough"
+  ],
+  [
+   "Pins",
+   "pins"
+  ],
+  [
+   "Where chips work",
+   "where-chips-work"
+  ],
+  [
+   "Placeholders that belong to an entity or a dictionary",
+   "placeholders-that-belong-to-an-entity-or-a-dictionary"
+  ],
+  [
+   "Groups",
+   "groups"
+  ],
+  [
+   "Blueprints",
+   "blueprints"
+  ],
+  [
+   "Copies",
+   "copies"
+  ],
+  [
+   "Copies in Other Worlds",
+   "copies-in-other-worlds"
+  ],
+  [
+   "Blueprint Chips",
+   "blueprint-chips"
+  ],
+  [
+   "Getting started",
+   "getting-started"
+  ]
+ ],
+ "World-Editor-Stats": [
+  [
+   "📊 World Editor: Stats",
+   "-world-editor-stats"
+  ],
+  [
+   "Why it exists",
+   "why-it-exists"
+  ],
+  [
+   "What the AI sees",
+   "what-the-ai-sees"
+  ],
+  [
+   "The panel",
+   "the-panel"
+  ],
+  [
+   "The fields",
+   "the-fields"
+  ],
+  [
+   "Availability",
+   "availability"
+  ],
+  [
+   "Prevent AI Changes",
+   "prevent-ai-changes"
+  ],
+  [
+   "Stat Descriptors",
+   "stat-descriptors"
+  ],
+  [
+   "Thresholds in: Raw or % of Max",
+   "thresholds-in-raw-or--of-max"
+  ],
+  [
+   "Pins on a descriptor",
+   "pins-on-a-descriptor"
+  ],
+  [
+   "Dynamic Value Calculation",
+   "dynamic-value-calculation"
+  ],
+  [
+   "Getting started",
+   "getting-started"
+  ]
+ ],
+ "Memory": [
+  [
+   "🧠 Story Memory",
+   "-story-memory"
+  ],
+  [
+   "Why Memory Exists",
+   "why-memory-exists"
+  ],
+  [
+   "The Memory Tab",
+   "the-memory-tab"
+  ],
+  [
+   "The Memory Manager",
+   "the-memory-manager"
+  ],
+  [
+   "Kept vs Sent",
+   "kept-vs-sent"
+  ],
+  [
+   "When Each Memory Happened",
+   "when-each-memory-happened"
+  ],
+  [
+   "Where the clock starts",
+   "where-the-clock-starts"
+  ],
+  [
+   "Memories vs Notes",
+   "memories-vs-notes"
+  ],
+  [
+   "Turning Memory Off",
+   "turning-memory-off"
+  ]
+ ],
+ "Changelog": [
+  [
+   "📝 Changelog",
+   "-changelog"
+  ],
+  [
+   "🚧 In Progress",
+   "-in-progress"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes"
+  ],
+  [
+   "➕ Added",
+   "-added"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-1"
+  ],
+  [
+   "➕ Added",
+   "-added-1"
+  ],
+  [
+   "➖ Removed",
+   "-removed"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-1"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-2"
+  ],
+  [
+   "➕ Added",
+   "-added-2"
+  ],
+  [
+   "➖ Removed",
+   "-removed-1"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-2"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-3"
+  ],
+  [
+   "➕ Added",
+   "-added-3"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-3"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-4"
+  ],
+  [
+   "➕ Added",
+   "-added-4"
+  ],
+  [
+   "➖ Removed",
+   "-removed-2"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-4"
+  ],
+  [
+   "Major Changes",
+   "major-changes"
+  ],
+  [
+   "➕ Added",
+   "-added-5"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-5"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-5"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-6"
+  ],
+  [
+   "➕ Added",
+   "-added-6"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-6"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-7"
+  ],
+  [
+   "➕ Added",
+   "-added-7"
+  ],
+  [
+   "🐛 Fixed",
+   "-fixed-7"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-8"
+  ],
+  [
+   "➕ Added",
+   "-added-8"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-8"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-9"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-9"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-10"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-10"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-11"
+  ],
+  [
+   "➕ Added",
+   "-added-9"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-11"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-12"
+  ],
+  [
+   "➕ Added",
+   "-added-10"
+  ],
+  [
+   "🔧 Fixed",
+   "-fixed-12"
+  ],
+  [
+   "Minor Changes",
+   "minor-changes-13"
+  ],
+  [
+   "➕ Added",
+   "-added-11"
+  ],
+  [
+   "🐛 Fixed",
+   "-fixed-13"
+  ]
+ ]
+}
