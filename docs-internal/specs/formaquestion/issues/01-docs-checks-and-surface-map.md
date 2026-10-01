@@ -1,6 +1,6 @@
 # 01: Docs checks and surface map
 
-Status: in-progress
+Status: ready-for-human
 Base: 7bb7de14
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -24,12 +24,34 @@ Recommended model rationale: the map's id vocabulary and the "list can only shri
 
 ## Acceptance criteria
 
-- [ ] The test fails for a surface id with no map entry and no known-gaps entry
-- [ ] The test fails for a map entry whose heading does not exist
-- [ ] The test fails for a known-gaps entry that has a valid map entry
-- [ ] The test fails for a help topic whose docs heading does not exist
-- [ ] The test fails for a broken link or anchor between docs pages
-- [ ] Each guard is proven to bite: reinstate the fault in a scratch run and quote the failure
-- [ ] The exclusion list names each staff or dev surface with a one-word reason
-- [ ] The map and the lists live in production code with no dev-only guard, so ticket 18 can read them
-- [ ] Four gates green
+- [x] The test fails for a surface id with no map entry and no known-gaps entry
+- [x] The test fails for a map entry whose heading does not exist
+- [x] The test fails for a known-gaps entry that has a valid map entry
+- [x] The test fails for a help topic whose docs heading does not exist
+- [x] The test fails for a broken link or anchor between docs pages
+- [x] Each guard is proven to bite: reinstate the fault in a scratch run and quote the failure
+- [x] The exclusion list names each staff or dev surface with a one-word reason
+- [x] The map and the lists live in production code with no dev-only guard, so ticket 18 can read them
+- [x] Four gates green
+
+## Comments
+
+**Built.** Code is in `src/lib/docs/`: `headingAnchors.ts` (the shared anchor rule), `docsChecks.ts` (the three checks), `surfaceMap.ts` (ids, map, exclusions, known gaps by ticket), `docsCoverage.test.ts`. The anchor rule passes 190 anchors captured from the live wiki (`wikiAnchors.fixture.json`).
+
+**Guards bite.** Each fault was reinstated against the real docs in a scratch run, then restored:
+
+| Fault | Failure |
+|---|---|
+| Drop the `memoryManager` map entry | `memoryManager has no docs section: add it to the surface map` |
+| Rename Memory's "The Memory Manager" heading | `memoryManager maps to Memory#the-memory-manager, but heading #the-memory-manager is not on Memory` |
+| Add `memoryManager` to a known-gaps group | `memoryManager maps to Memory#the-memory-manager, so remove it from the known gaps` |
+| Rename "When Each Memory Happened" | `help topic game.memoryManager links Memory#when-each-memory-happened, but heading #when-each-memory-happened is not on Memory` |
+| Restore `#-media-fields` in WorldFormat | `WorldFormat:61 links #-media-fields, but heading #-media-fields is not on WorldFormat` |
+| Drop `\p{M}` from the anchor rule | 4 tests fail, including the WorldFormat wiki parity case |
+
+**Links fixed.** 4 × `#-media-fields` (the wiki keeps the emoji's variation selector, so the anchor is `#%EF%B8%8F-media-fields`). 8 × `Page.md` links, which the wiki redirects to raw markdown.
+
+**Limits, for later tickets.**
+- Only ids in the dev-router ledger are checked. Settings → Prompts per-prompt tabs and Endpoints sub-tabs have no id, so ticket 08's "every Prompts tab" is not enforced by this gate.
+- Nothing blocks adding a new id to the known gaps. The list shrinks because a mapped id fails while it is still a gap.
+- `headingAnchor` keeps `_` from `_emphasis_` markup. No heading uses it today.

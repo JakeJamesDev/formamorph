@@ -9,8 +9,8 @@ const DOCS: DocsPages = Object.fromEntries(
   ),
 );
 
-const surfaceGaps = Object.values(KNOWN_SURFACE_GAPS).flat();
-const topicGaps = Object.values(KNOWN_HELP_TOPIC_GAPS).flat();
+const surfaceGaps = Object.values(KNOWN_SURFACE_GAPS).flatMap((ids) => ids ?? []);
+const topicGaps = Object.values(KNOWN_HELP_TOPIC_GAPS).flatMap((ids) => ids ?? []);
 
 describe('docs coverage of the app', () => {
   it('reads the docs folder', () => {
@@ -121,9 +121,12 @@ describe('helpTopicProblems', () => {
     ]);
   });
 
-  it('fails a topic whose page does not exist, even as a known gap', () => {
+  it('fails a topic whose page is missing or outside the guide, even as a known gap', () => {
     expect(helpTopicProblems({ stats: { wikiPage: 'Stat' } }, ['stats'], PAGES)).toEqual([
-      'help topic stats links page Stat, which does not exist',
+      'help topic stats links Stat, but page Stat does not exist',
+    ]);
+    expect(helpTopicProblems({ stats: { wikiPage: 'Design-System' } }, ['stats'], PAGES)).toEqual([
+      'help topic stats links Design-System, but page Design-System is not a guide page',
     ]);
   });
 
@@ -152,7 +155,7 @@ describe('docsLinkProblems', () => {
 
   it('fails a link with a .md suffix, which the wiki serves as raw text', () => {
     expect(docsLinkProblems({ ...PAGES, Home: '# Home\n\n[Stats](Stats.md#the-panel)\n' })).toEqual([
-      'Home:3 links Stats.md#the-panel, but the wiki serves Page.md as raw text: write Stats',
+      'Home:3 links Stats.md#the-panel: write Stats, the wiki page name',
     ]);
   });
 
