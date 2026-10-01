@@ -30,6 +30,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | ⚙️ **[Settings](Settings)** | Every setting in the Display, Output, Endpoints and Data tabs, and the Simple and Advanced modes |
 | 📜 **[Prompts](Prompts)** | Prompt presets, what each prompt does in a turn, the chip editor, per-prompt endpoints and reasoning, and a world's own prompts |
 | 🧰 **[Tools](Tools)** | The functions the AI can call, the built-in Tools, how to make and try your own, and endpoints with no Tool support |
+| 🧪 **[Test Bench](Test-Bench)** | Checking a world before you play it — the World Doctor, which dictionary entries fire, what the AI gets at a location, and turn one of a new game |
 | 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Allowed Personas** and **Starts On** controls, and the Persona and Player Name chips |
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |
 | 📐 **[World Format](WorldFormat)** | Every field of a world `.json` file, and how to add a stat, a trait or an entity by hand |

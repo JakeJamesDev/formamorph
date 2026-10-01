@@ -28,6 +28,7 @@
   - [🧬 Traits](World-Editor-Traits)
   - [📖 Dictionary](World-Editor-Dictionary)
   - [🧩 Placeholders](World-Editor-Placeholders)
+- [🧪 Test Bench](Test-Bench)
 - [🪪 Personas for Authors](Persona-Authoring)
 - [📐 World Format](WorldFormat)
 - [🧮 Stat Code Guide](StatCodeGuide)

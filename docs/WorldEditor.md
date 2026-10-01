@@ -17,6 +17,89 @@ Each tab has its own page. A tab missing below isn't documented yet.
 | [📖 Dictionary](World-Editor-Dictionary) | Lore that reaches the AI only when a keyword brings it up |
 | [🧩 Placeholders](World-Editor-Placeholders) | Reusable text that can change with each playthrough |
 
+To check a world before you play it, see [🧪 Test Bench](Test-Bench).
+
+## How to Switch Editor Mode
+
+1. Open a world in the World Editor.
+2. In the header, select **Simple** or **Advanced**.
+
+The app remembers your pick for every world. You can't switch while the Authoring Tour runs.
+
+## How to Find and Replace Text
+
+1. Select the magnifier button in the header, or press **Ctrl+F**. Press **Ctrl+H** to open it with the replace row.
+2. Type in the **Find** box. Select **Match case** or **Match whole word** to narrow the search.
+3. Select **Next match** or **Previous match** to go through the results. The editor opens each one on its tab.
+4. To replace, open the replace row and type in the **Replace** box.
+5. Select **Replace** for this match, or **Replace all** for every match.
+
+## How to Restart the Authoring Tour
+
+1. Open **Settings**, then select the **Data** tab.
+2. Under **Authoring**, select **Start Authoring Tour**.
+
+The tour opens the World Editor on a new world. Your other worlds don't change.
+
+## How to Save or Discard Your Changes
+
+- To save, select **Save** at the bottom right of the editor.
+- To discard, select the back arrow, then select **Exit Without Saving**.
+
+## Editor Modes
+
+The World Editor has two modes. **Simple** is the default.
+
+- **Simple** shows the fields a new world needs. It hides the **Placeholders** tab, some panel tabs, the placeholder bar and **Optimize Images**.
+- **Advanced** shows every field.
+
+Each tab's page says which of its fields Simple mode hides. When a world uses a field Simple mode hides, a dot shows on **Advanced**.
+
+Switching to Simple mode doesn't remove anything. The hidden fields keep their values, and the AI still reads them.
+
+## Find and Replace
+
+The find bar searches the whole world, on every tab the current mode shows. It matches chips by their label, name or values.
+
+- **Enter** goes to the next match. **Shift+Enter** goes to the previous one. **Esc** closes the bar.
+- **Replace all** asks first, and says how many matches and fields it changes.
+- A chip can't be replaced as text. Change it from its pop-out.
+- A field that can't hold a chip is skipped when you replace text with a placeholder.
+
+In Advanced mode, the replace row can put a placeholder chip in place of text. Select the swap button, then pick a placeholder in **Choose Placeholder**.
+
+To undo a replace, exit without saving. That also drops your other changes since the last save.
+
+## The Authoring Tour
+
+The Authoring Tour builds a new world with you, one field at a time. It runs in Simple mode.
+
+The tour first shows as an offer: **Take the Authoring Tour?** Select **Start Tour** or **No Thanks**.
+
+Each step points at one field. Fill it, or select **Use Example**, then select **Next**. **Next** waits until the field has a value. On desktop, the **In Play** pane shows where the field appears in play and what each prompt reads from it.
+
+The tour goes through the tabs in order: **Overview**, **Locations**, **Entities**, **Stats**, **Traits** and **Dictionary**. Its last steps show the **Advanced** switch and the Test Bench. Then select **Finish**, or **Play** to enter your world.
+
+- Each **Next** saves the world.
+- **End Tour** in the tour bar stops the tour. **Back to Tour** returns you to the current step.
+- If you delete an item the tour made, the tour goes back to the step that made it.
+
+## Saving and Discarding
+
+Your edits stay in the editor until you select **Save**. Nothing saves by itself, except the Authoring Tour's steps. A new world isn't stored until its first save.
+
+When you leave with unsaved changes, the **Unsaved changes** dialog asks what to do:
+
+- **Save & Exit** saves, then closes the editor.
+- **Exit Without Saving** discards every change since the last save.
+- **Cancel** keeps you in the editor.
+
+## Help Buttons
+
+Every tab has a **?** button at the right end of its toolbar. It opens a short help window for that tab. **Learn more** opens the tab's page in this guide.
+
+A **?** you haven't opened yet shows in the accent color.
+
 ---
 
 ## Overview
