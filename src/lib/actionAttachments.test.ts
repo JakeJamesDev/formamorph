@@ -35,12 +35,12 @@ describe('addToPending', () => {
     expect(decoded(pending[0]).size).toBe('800x600');
   });
 
-  it('re-encodes every image as WebP, even when that is not smaller', async () => {
-    const { pending } = await addToPending([], [photo('800x600'), photo('20x20', 'image/jpeg', 'tiny.jpg')]);
+  it('re-encodes every image as JPEG, even when that is not smaller', async () => {
+    const { pending } = await addToPending([], [photo('800x600'), photo('20x20', 'image/webp', 'tiny.webp')]);
     expect(pending).toHaveLength(2);
     for (const attachment of pending) {
-      expect(decoded(attachment).format).toBe('image/webp');
-      expect(attachment.mime).toBe('image/webp');
+      expect(decoded(attachment).format).toBe('image/jpeg');
+      expect(attachment.mime).toBe('image/jpeg');
     }
   });
 

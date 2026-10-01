@@ -33,7 +33,7 @@ export function decodedFake(dataUrl: string): { format: string; size: string } {
 class FakeCanvas {
   constructor(public width: number, public height: number) {}
   getContext() {
-    return { drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(0) }), clearRect: () => {} };
+    return { drawImage: () => {}, getImageData: () => ({ data: new Uint8ClampedArray(0) }), clearRect: () => {}, fillRect: () => {}, fillStyle: '' };
   }
   // jsdom's Blob has no `arrayBuffer`, so the canvas hands back the part of a Blob the encoder reads.
   async convertToBlob({ type }: { type: string }) {
