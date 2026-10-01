@@ -226,6 +226,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - Docs follow the writing guide. One ticket per page.
 - A task has one how-to section. A feature page owns the how-tos for its feature, even when the control sits in Settings or another screen. A screen page holds a how-to only when no feature page owns that task. Other pages name the place in one line and link it. A link to a page that does not exist yet is left out; ticket 13 adds it.
 - Docs use the UI's verb **download** for getting a listing. **Install** is only the glossary noun: one copy of the app's local storage, the actor behind an Anonymous Like.
+- The term is **Profile Image**, matching the UI; the internal glossary renames its "Profile Picture" entry (ticket 13 ruling).
 - Many surfaces may map to one heading when it explains each of them, for example a table with one row per prompt that says what the prompt does. A row with only a name does not count.
 
 ### Shape and settings
