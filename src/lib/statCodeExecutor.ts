@@ -28,7 +28,7 @@ export interface StatClock {
   calendar?: WorldCalendar;
 }
 
-/** The clock variable names stat code may read. Exported so the editor's completion surface reads from
+/** The flat clock variable names, injected for released code. Exported so the editor's surface reads from
  *  this list rather than restating it. */
 export const STAT_CLOCK_VARS = [
   'deltaHours', 'elapsedHours', 'day', 'daypart', 'startDay', 'startDaypart',
@@ -609,6 +609,9 @@ export const executeStatCode = async (
         `  Object.freeze(s.delta);`,
         `}`,
         ...Object.entries(resolveClock(clock)).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
+        // `clock` is the same readings as one object; frozen, so a write is dropped.
+        `const clock = Object.freeze({ day, daypart, deltaHours, elapsedHours,`,
+        `  previous: Object.freeze({ day: startDay, daypart: startDaypart }) });`,
         placeholdersPrelude(placeholderMap),
         traitsPrelude(traits),
         `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}) {`,

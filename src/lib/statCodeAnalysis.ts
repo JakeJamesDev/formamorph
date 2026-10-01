@@ -16,7 +16,7 @@ import {
   nearestName, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
 } from '@/lib/codeSurface';
 import {
-  DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
+  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
   TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
@@ -353,6 +353,8 @@ function membersAfterDot(
   if (segments !== null) {
     return options.placeholders ? placeholderMembersAt(options.placeholders, segments) : null;
   }
+  if (rules.stats && expression === 'clock') return CLOCK_MEMBERS;
+  if (rules.stats && expression === 'clock.previous') return CLOCK_PREVIOUS_FIELDS;
   if (rules.traits && expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
   if (rules.traits && TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   const listed = options.surface.members.get(expression);
