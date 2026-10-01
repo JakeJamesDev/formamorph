@@ -71,7 +71,14 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q32 | The Formaquestion tickets run beside the docs tickets. Only the probe baseline waits for complete docs |
 | Q33 | Window structure A: three tabs (Ask, Search, Guide), one part at a time. Refines Q13 (ticket 14) |
 | Q34 | The launcher is a tab on the right screen edge at mid height, in the window's top layer. Refines Q22. The bottom-right corner covers Send on mobile (ticket 14) |
-| Q35 | The window opens and closes with motion: it zooms out of the launcher and back, and the mobile sheet slides from the right edge. Reduced motion shows and hides at once. Durations are the prototype's (200ms open, 150ms close) until the patterns are approved (ticket 14) |
+| Q35 | The window opens and closes with motion: it zooms out of the launcher and back, and the mobile sheet slides from the right edge. Reduced motion shows and hides at once. Durations are 200ms open and 150ms close (ticket 14) |
+| Q36 | With the window open and focus elsewhere, F1 moves focus into the window; a second F1 closes it |
+| Q37 | Escape does nothing to the window. Only F1 and the Close control close it |
+| Q38 | The launcher says **Help**. The window title says Formaquestion |
+| Q39 | The launcher stays above open dialogs, in the window's layer |
+| Q40 | The chip typeahead keeps painting above the window |
+| Q41 | The layering approach is approved: one shielded host on `<body>` at z-65, and the dialog, alert dialog and drawer wrappers ignore presses and focus inside it. Ticket 14's Answer is the build reference |
+| Q42 | The nine new visual patterns from ticket 14 are approved and go to the Design System as a proposal |
 
 ## User Stories
 

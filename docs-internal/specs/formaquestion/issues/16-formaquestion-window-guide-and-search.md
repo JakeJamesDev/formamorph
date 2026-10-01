@@ -19,6 +19,8 @@ A player can open **Formaquestion** on every screen, browse the full guide and s
 - A new docs page describes Formaquestion itself, so the window's own surface passes the coverage test.
 - The window gets a dev-router entry. The button and the window get design-system entries for the patterns the user approved.
 
+Rulings Q33–Q42 in the spec settle the structure (three tabs), the edge-tab launcher labeled **Help**, the motion, F1 and Escape, and the layering. Build from ticket 14's "The layering approach, for ticket 16" list, not from the prototype code. Add the nine approved patterns to the Design System as a proposal.
+
 This ticket does not build the ask field, the mobile sheet or the "help for this screen" jump. On mobile sizes the button is hidden until ticket 17.
 
 Recommended model rationale: the layering against the dialog library and the shared root placement touch every screen; a mistake here breaks dialogs app-wide.
