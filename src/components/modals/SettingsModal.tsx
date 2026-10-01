@@ -62,7 +62,7 @@ import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, 
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { useEndpointReachable } from '@/lib/useEndpointReachable';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
-import { includesAttachments } from '@/lib/promptAttachments';
+import { ATTACHMENT_PROMPTS, includesAttachments } from '@/lib/promptAttachments';
 import { useImageAttachments } from '@/lib/useImageAttachments';
 import { isMaxOutputKind, shippedMaxOutput, MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -1264,8 +1264,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       enabled: promptTarget.presetId !== null,
     },
   };
-  // Hidden while Image Attachments is off; the stored flags stay.
-  const attachmentsControl = imageAttachmentsOn
+  // Hidden while Image Attachments is off, and on prompts that never send the action; the stored flags stay.
+  const attachmentsControl = imageAttachmentsOn && ATTACHMENT_PROMPTS.has(activeKind)
     ? { checked: includesAttachments(promptAttachments, activeKind), onChange: (include: boolean) => setPromptAttachments(activeKind, include) }
     : null;
   // The cap this prompt sends, which the Max Output row reads.

@@ -9,6 +9,13 @@ describe('includesAttachments', () => {
     }
   });
 
+  it('never sends images to a prompt whose pass lacks the player action', () => {
+    for (const kind of ['diary', 'discoverEntity', 'openingTime', 'sceneTags', 'milestoneSelect'] as const) {
+      expect(includesAttachments({ [kind]: true }, kind), kind).toBe(false);
+      expect(sanitizePromptAttachments({ [kind]: true }), kind).toBeUndefined();
+    }
+  });
+
   it('lets a stored flag override the default either way', () => {
     expect(includesAttachments({ narration: false }, 'narration')).toBe(false);
     expect(includesAttachments({ director: true }, 'director')).toBe(true);
