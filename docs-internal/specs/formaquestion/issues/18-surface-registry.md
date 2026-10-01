@@ -1,6 +1,7 @@
 # 18: Surface registry, help for this screen
 
-Status: ready-for-agent
+Status: in-progress
+Base: 3b5d9139
 Blocked by: 01, 16
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -25,11 +26,11 @@ Recommended model rationale: the registry touches every screen and dialog, and a
 
 ## Acceptance criteria
 
-- [ ] The Surface is correct on the Main Menu, in the World Editor on each tab, in the game view, and in Settings on each tab
-- [ ] Opening a dialog over a dialog, then closing it, returns the Surface to the first dialog
-- [ ] A test fails when a player-facing surface id in the map is never reported by any component, or the gap is listed with a reason
-- [ ] "Help for this screen" shows the mapped section and opens it in the reader
-- [ ] A test proves the registry stores ids only
-- [ ] Unmount of a reporting component clears its entry; the guard is proven to bite
-- [ ] Changelog: folded into the Formaquestion In Progress entry
-- [ ] Four gates green
+- [x] The Surface is correct on the Main Menu, in the World Editor on each tab, in the game view, and in Settings on each tab
+- [x] Opening a dialog over a dialog, then closing it, returns the Surface to the first dialog
+- [x] A test fails when a player-facing surface id in the map is never reported by any component, or the gap is listed with a reason
+- [x] "Help for this screen" shows the mapped section and opens it in the reader
+- [x] A test proves the registry stores ids only
+- [x] Unmount of a reporting component clears its entry; the guard is proven to bite
+- [x] Changelog: folded into the Formaquestion In Progress entry
+- [x] Four gates green

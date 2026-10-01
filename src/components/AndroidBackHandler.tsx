@@ -5,12 +5,15 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { useHardwareBack } from '@/hooks/useHardwareBack';
 import { useDevRoute } from '@/lib/devRouter';
 import { CLOSE_APP_PROMPT } from '@/lib/leavePrompts';
+import { SurfaceLayer } from '@/components/ui/surface';
 
 /** Text for a prompt the back button raises, plus what saying yes does. */
 interface BackPrompt {
   title: string;
   description: string;
   confirm: () => void;
+  /** True for the prompt that closes the app. */
+  exits?: boolean;
 }
 
 /**
@@ -35,25 +38,29 @@ export function AndroidBackHandler({
     viewHistory,
     // A sub-screen with its own guard answers back before this does, so only a whole view reaches here.
     onGoBack: () => (confirmGoBack ? setPrompt({ ...confirmGoBack, confirm: onGoBack }) : onGoBack()),
-    onConfirmExit: () => setPrompt({ ...CLOSE_APP_PROMPT, confirm: () => void App.exitApp() }),
+    onConfirmExit: () => setPrompt({ ...CLOSE_APP_PROMPT, exits: true, confirm: () => void App.exitApp() }),
   });
 
   // DEV: `#dev?modal=exitApp` raises the prompt, which otherwise only a hardware back press can reach.
   const devRoute = useDevRoute();
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.modal === 'exitApp') {
-      setPrompt({ ...CLOSE_APP_PROMPT, confirm: () => void App.exitApp() });
+      setPrompt({ ...CLOSE_APP_PROMPT, exits: true, confirm: () => void App.exitApp() });
     }
   }, [devRoute?.modal]);
 
   return (
-    <ConfirmDialog
-      open={prompt !== null}
-      onOpenChange={(open) => { if (!open) setPrompt(null); }}
-      title={prompt?.title}
-      icon={<DoorOpen className="h-4 w-4" />}
-      description={prompt?.description}
-      onConfirm={() => prompt?.confirm()}
-    />
+    <>
+      {/* The prompt box is shared with the leave-the-game prompt, so the exit prompt reports by hand. */}
+      {prompt?.exits && <SurfaceLayer id="exitApp" />}
+      <ConfirmDialog
+        open={prompt !== null}
+        onOpenChange={(open) => { if (!open) setPrompt(null); }}
+        title={prompt?.title}
+        icon={<DoorOpen className="h-4 w-4" />}
+        description={prompt?.description}
+        onConfirm={() => prompt?.confirm()}
+      />
+    </>
   );
 }

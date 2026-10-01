@@ -90,7 +90,7 @@ const EntityManager = ({
   const tabs = entityPanelTabsFor(advanced);
 
   return (
-    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entity Fields">
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entity Fields" surfaceTabs="worldEditorEntity">
 
         <PanelTabContent value="profile">
           <EntityProfileFields

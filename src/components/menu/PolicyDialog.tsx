@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import type { SurfaceIdName } from "@/components/ui/surface";
 
 interface PolicyDialogProps {
   open: boolean;
@@ -23,6 +24,8 @@ interface PolicyDialogProps {
   onExtra?: () => void;
   /** Disables every button while the acceptance is being recorded. */
   busy?: boolean;
+  /** The surface id this prompt reports, for a prompt that has one. */
+  surface?: SurfaceIdName;
 }
 
 /**
@@ -32,11 +35,12 @@ interface PolicyDialogProps {
  * stray click should not read as either one.
  */
 export function PolicyDialog({
-  open, title, body, confirmLabel, cancelLabel, onConfirm, onCancel, extraLabel, onExtra, busy = false,
+  open, title, body, confirmLabel, cancelLabel, onConfirm, onCancel, extraLabel, onExtra, busy = false, surface,
 }: PolicyDialogProps) {
   return (
     <Dialog open={open}>
       <DialogContent aria-describedby={undefined}
+        surface={surface}
         className="sm:max-w-[560px] max-h-[85dvh] overflow-y-auto"
         hideClose
         onEscapeKeyDown={(e) => e.preventDefault()}

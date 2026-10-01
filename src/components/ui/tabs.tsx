@@ -2,8 +2,31 @@ import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
 import { cn } from "@/lib/utils"
+import { useSurfaceTab, type SurfaceLedgerName } from "@/components/ui/surface"
 
-const Tabs = TabsPrimitive.Root
+const Tabs = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root> & {
+    /** The tab ledger this strip reports its active tab under. */
+    surfaceTabs?: SurfaceLedgerName;
+  }
+>(({ surfaceTabs, value, defaultValue, onValueChange, ...props }, ref) => {
+  // A strip with no `value` keeps its own, so it is tracked here to report it.
+  const [own, setOwn] = React.useState(defaultValue)
+  useSurfaceTab(surfaceTabs, value ?? own)
+  return (
+    <TabsPrimitive.Root
+      ref={ref}
+      value={value}
+      defaultValue={defaultValue}
+      onValueChange={(next) => {
+        setOwn(next)
+        onValueChange?.(next)
+      }}
+      {...props} />
+  )
+})
+Tabs.displayName = TabsPrimitive.Root.displayName
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,

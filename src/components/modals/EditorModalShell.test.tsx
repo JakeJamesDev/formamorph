@@ -5,6 +5,8 @@ import EditorModalShell from './EditorModalShell';
 const TABS = [{ value: 'a', label: 'Alpha' }, { value: 'b', label: 'Beta' }];
 
 const baseProps = {
+  surface: 'entityEditor' as const,
+  surfaceTabs: 'entityEditor' as const,
   open: true,
   title: 'My Record',
   contentClassName: 'x',

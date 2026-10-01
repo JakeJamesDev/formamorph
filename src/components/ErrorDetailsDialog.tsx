@@ -42,7 +42,7 @@ export function ErrorDetailsHost() {
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) closeErrorDetails(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent surface="errorDetails" className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Error Details</DialogTitle>
           <DialogDescription>{entry?.message}</DialogDescription>

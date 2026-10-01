@@ -217,7 +217,7 @@ export function SignInDialog({ open, onOpenChange, onAuthenticated }: SignInDial
           onOpenChange(next);
         }}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent surface="auth" className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>
             <DialogDescription>

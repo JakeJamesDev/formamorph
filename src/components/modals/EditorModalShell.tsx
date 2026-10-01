@@ -5,9 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Save, type LucideIcon } from 'lucide-react';
 import { ActionIcon } from '@/lib/actionIcons';
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
+import type { SurfaceIdName, SurfaceLedgerName } from '@/components/ui/surface';
 
 interface EditorModalShellProps {
   open: boolean;
+  /** The surface id the editor reports while it is open. */
+  surface: SurfaceIdName;
+  /** The tab ledger the editor reports its active tab under. */
+  surfaceTabs: SurfaceLedgerName;
   /** Header title — the record's name, or a fallback while unnamed. */
   title: string;
   /** Width/height overrides for the dialog surface (the two editors differ in width). */
@@ -36,7 +41,7 @@ interface EditorModalShellProps {
  * specific stays in the caller.
  */
 const EditorModalShell = ({
-  open, title, contentClassName, loading, tabs, tab, onTabChange,
+  open, surface, surfaceTabs, title, contentClassName, loading, tabs, tab, onTabChange,
   hasUnsavedChanges, onSave, onClose, onExport, onPublish, children,
 }: EditorModalShellProps) => {
   const [showUnsaved, setShowUnsaved] = useState(false);
@@ -45,10 +50,10 @@ const EditorModalShell = ({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) attemptClose(); }}>
-        <DialogContent aria-describedby={undefined} className={contentClassName}>
+        <DialogContent surface={surface} aria-describedby={undefined} className={contentClassName}>
           {/* The switcher sits in the header and the body below it, so one root spans both. `contents` on the
               root and each panel keeps the body a direct flex child of the dialog, as it was unwrapped. */}
-          <Tabs value={tab} onValueChange={onTabChange} className="contents">
+          <Tabs value={tab} onValueChange={onTabChange} surfaceTabs={surfaceTabs} className="contents">
             {/* Below `sm` the title and the strip each take a full row, since four tabs fill a phone's width. */}
             <DialogHeader className="px-4 py-3 border-b shrink-0 flex-row flex-wrap items-center gap-3 space-y-0">
               {/* `leading-normal` replaces DialogTitle's `leading-none`, whose one-em line box crops

@@ -28,6 +28,7 @@ import { CONTEST_ALREADY_ENTERED, CONTEST_NOT_ACTIVE } from "@/services/WorldSto
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDevEventSample } from "@/lib/useDevEventSample";
 import { useDevRoute } from "@/lib/devRouter";
+import { SurfaceTab } from "@/components/ui/surface";
 import { ChangelogEntryDialog } from "@/components/community/ChangelogEntryDialog";
 import { type ChangelogDraft } from "@/lib/listingChangelog";
 import { LinkedContentSection } from "@/components/menu/LinkedContentSection";
@@ -403,7 +404,8 @@ export function PublishModal({
       {/* Bounded height + a scrolling middle: the list grows with every world the author has published,
           and an unbounded dialog would grow out of the viewport (it's centered) taking the Publish button
           with it, unreachable. Header and footer stay put; only the options scroll. */}
-      <DialogContent className="sm:max-w-[500px] max-h-[85dvh] flex flex-col">
+      <DialogContent surface="publish" className="sm:max-w-[500px] max-h-[85dvh] flex flex-col">
+        <SurfaceTab ledger="publish" tab={kind} />
         <DialogHeader>
           <DialogTitle>Publish {KIND_LABELS[kind].one}</DialogTitle>
           <DialogDescription>

@@ -276,7 +276,7 @@ export function UpdateAvailableDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next && !applying) onClose(); }}>
-      <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
+      <DialogContent surface="componentUpdates" className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             Update Available

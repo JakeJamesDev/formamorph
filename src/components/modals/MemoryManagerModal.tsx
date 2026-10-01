@@ -180,7 +180,7 @@ export const MemoryManagerModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] h-[85dvh] max-h-[85dvh] flex flex-col gap-3">
+      <DialogContent surface="memoryManager" className="sm:max-w-[720px] h-[85dvh] max-h-[85dvh] flex flex-col gap-3">
         <DialogHeader className="space-y-1">
           <DialogTitle className="flex items-center gap-2">
             Memories

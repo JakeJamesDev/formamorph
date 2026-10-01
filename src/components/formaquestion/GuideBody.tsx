@@ -9,6 +9,7 @@ import {
   FORMAQUESTION_TABS, isSearchable, type FormaquestionTab, type GuideView, type GuideViewChange,
 } from './formaquestionTabs';
 import { BackRow, ContentsList, Reader, SearchField, SearchResults } from './GuideParts';
+import { SurfaceHelpRow } from './SurfaceHelpRow';
 
 const TAB_ICONS: Record<FormaquestionTab, typeof Search> = { search: Search, guide: BookOpen };
 const TAB_PANEL = 'mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex';
@@ -37,6 +38,10 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
   const setPageOpen = (page: string, open: boolean) => onViewChange((current) => ({
     openPages: open ? [...current.openPages, page] : current.openPages.filter((name) => name !== page),
   }));
+  // Search results take the place of the lists the row leads.
+  const helpRow = guide && !isSearchable(view.query) && (
+    <SurfaceHelpRow guide={guide} current={view.sectionId} onOpen={openSection} />
+  );
 
   if (!guide) {
     return failed ? (
@@ -54,6 +59,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
       <div className="flex h-full min-h-0" data-fq-layout="wide">
         <div className="flex min-h-0 w-56 shrink-0 flex-col border-r">
           <SearchField value={view.query} onChange={setQuery} className="m-2 shrink-0" />
+          {helpRow}
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'rail' }}>
             {isSearchable(view.query)
               ? <SearchResults guide={guide} query={view.query} onOpen={openSection} compact />
@@ -91,6 +97,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
       </div>
       <TabsContent value="search" className={TAB_PANEL}>
         <SearchField value={view.query} onChange={setQuery} className="m-3 mb-1 shrink-0" />
+        {helpRow}
         <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'results' }}>
           <SearchResults guide={guide} query={view.query} onOpen={openSection} />
         </ScrollArea>
@@ -102,9 +109,12 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
             <Reader guide={guide} sectionId={view.sectionId} onOpen={openSection} />
           </>
         ) : (
-          <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'contents' }}>
-            <ContentsList guide={guide} current={view.sectionId} openPages={view.openPages} onPageOpenChange={setPageOpen} onOpen={openSection} />
-          </ScrollArea>
+          <>
+            <SurfaceHelpRow guide={guide} current={view.sectionId} onOpen={openSection} />
+            <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'contents' }}>
+              <ContentsList guide={guide} current={view.sectionId} openPages={view.openPages} onPageOpenChange={setPageOpen} onOpen={openSection} />
+            </ScrollArea>
+          </>
         )}
       </TabsContent>
     </Tabs>

@@ -4,6 +4,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { keepLayerFocus } from "@/components/ui/shielded-layer"
+import { SurfaceLayer, type SurfaceIdName } from "@/components/ui/surface"
 
 const AlertDialog = AlertDialogPrimitive.Root
 
@@ -27,8 +28,11 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content> & {
+    /** The surface id this alert reports while it is open. */
+    surface?: SurfaceIdName;
+  }
+>(({ className, surface, children, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
@@ -40,7 +44,9 @@ const AlertDialogContent = React.forwardRef<
       {...props}
       // A closing alert does not take focus from the shielded layer. An alert never closes on an outside
       // press, so it needs no press guard.
-      onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)} />
+      onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}>
+      {surface ? <SurfaceLayer id={surface}>{children}</SurfaceLayer> : children}
+    </AlertDialogPrimitive.Content>
   </AlertDialogPortal>
 ))
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName

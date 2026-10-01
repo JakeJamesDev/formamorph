@@ -147,6 +147,7 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
       {children}
       {COMMUNITY_ENABLED && policy && (
         <PolicyDialog
+          surface="privacyPolicy"
           open
           title={policy.title}
           body={policy.body}

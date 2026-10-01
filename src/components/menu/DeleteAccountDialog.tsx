@@ -87,7 +87,7 @@ export function DeleteAccountDialog({ open, onClose, suspended, onOpenFeedback }
     <Dialog open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
       {/* No corner cross: every step ends on a button that says what it does, and the last one has
           already sent the request. */}
-      <DialogContent className="sm:max-w-[480px]" hideClose>
+      <DialogContent surface="deleteAccount" className="sm:max-w-[480px]" hideClose>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive" /> Delete Account

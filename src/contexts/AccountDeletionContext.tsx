@@ -87,7 +87,7 @@ export function AccountDeletionProvider({ children }: { children: ReactNode }) {
       />
 
       <Dialog open={cancelledOpen} onOpenChange={setCancelledOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent surface="deletionCancelled" className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Deletion Cancelled</DialogTitle>
             <DialogDescription>Your account deletion was cancelled.</DialogDescription>

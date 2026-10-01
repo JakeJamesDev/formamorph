@@ -89,7 +89,7 @@ const ConnectReferencesModal = ({ rows, choices, confirmLabel, onChoose, onBack,
   if (!rows?.length) return null;
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onCancel(); }}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent surface="connectReferences" className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Connect World References</DialogTitle>
           <DialogDescription>

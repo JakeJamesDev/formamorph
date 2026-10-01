@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ListDetailBack, ListDetailBackProvider } from '@/components/ui/list-detail';
 import { useListDetailBack } from '@/components/ui/listDetailBack';
+import type { SurfaceLedgerName } from '@/components/ui/surface';
 import { cn } from '@/lib/utils';
 
 /** Set by a host to its side and bottom padding, so a tab body scrolls to the panel's edges. */
@@ -53,18 +54,20 @@ export function PanelTabsList({ tabs, stripLabel, labelClassName = 'hidden sm:in
  * below it. The panel takes the height its host gives it. One tab is no choice, so it gets no strip, and a
  * chosen tab the current mode hides shows the first tab. A pushed detail's back arrow leads the strip.
  */
-export function PanelTabs<T extends string>({ tabs, value, onValueChange, stripLabel, labelClassName, children }: {
+export function PanelTabs<T extends string>({ tabs, value, onValueChange, stripLabel, labelClassName, surfaceTabs, children }: {
   tabs: readonly (PanelTab & { value: T })[];
   value: T;
   onValueChange: (value: T) => void;
   stripLabel: string;
   labelClassName?: string;
+  /** The tab ledger the panel reports its shown tab under. */
+  surfaceTabs?: SurfaceLedgerName;
   children: ReactNode;
 }) {
   const shown = tabs.some((t) => t.value === value) ? value : tabs[0].value;
   const back = useListDetailBack();
   return (
-    <Tabs value={shown} onValueChange={(v) => onValueChange(v as T)} className="flex min-h-0 flex-1 flex-col gap-4">
+    <Tabs value={shown} onValueChange={(v) => onValueChange(v as T)} surfaceTabs={surfaceTabs} className="flex min-h-0 flex-1 flex-col gap-4">
       {tabs.length > 1
         ? <PanelTabsList tabs={tabs} stripLabel={stripLabel} labelClassName={labelClassName} leading={back ? <ListDetailBack onStrip /> : undefined} />
         : back && <div className="flex"><ListDetailBack /></div>}

@@ -103,7 +103,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-[800px] h-[90dvh] flex flex-col">
+      <DialogContent surface="entity" aria-describedby={undefined} className="sm:max-w-[800px] h-[90dvh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{entity.name}</DialogTitle>
         </DialogHeader>

@@ -237,6 +237,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
     {/* Around the whole body, so no field reads the world's placeholder store. */}
     <PlaceholderStoreProvider value={phStore}>
       <EditorModalShell
+        surface="dictionaryEditor"
+        surfaceTabs="dictionaryEditor"
         open={isOpen}
         // A library book has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.

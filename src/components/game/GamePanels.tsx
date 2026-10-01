@@ -288,7 +288,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
         </div>
       )}
 
-      <Tabs value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
+      <Tabs surfaceTabs="gameViewer" value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="grid w-full flex-shrink-0 auto-cols-fr grid-flow-col">
           {isMobile && <PanelTab value="model" icon={User} label="Avatar" />}
           <PanelTab value="entities" icon={Users} label="Entities" />

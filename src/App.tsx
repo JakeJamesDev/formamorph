@@ -8,6 +8,8 @@ import { COMMUNITY_ENABLED } from './lib/featureFlags';
 import { useDevRoute, installDevRouter, registerDevHook } from './lib/devRouter';
 import { installViewportHeightVar, APP_HEIGHT_VAR } from './lib/viewportHeight';
 import { type DevView } from './lib/devRoutes';
+import { surfaceRegistry } from './lib/surface/surfaceRegistry';
+import { SurfaceLayer, SurfaceReporterContext } from './components/ui/surface';
 import { DevFixtureLoader } from './components/DevFixtureLoader';
 import { ViewportReadout } from './components/ViewportReadout';
 import { GameDataProvider } from './contexts/GameDataContext';
@@ -97,6 +99,8 @@ function AppViews() {
   useEffect(() => {
     if (import.meta.env.DEV && devRoute?.view) setCurrentView(devRoute.view as DevView);
   }, [devRoute?.view]);
+  // DEV: `window.__fmDev.surface()` reads what the surface registry holds.
+  useEffect(() => registerDevHook('surface', surfaceRegistry.get), []);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
   const [initialOwnedTraits, setInitialOwnedTraits] = useState<OwnedTraitPicks>({});
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
@@ -173,31 +177,38 @@ function AppViews() {
       {/* One help window for every view, so it stays open with its state across a view swap. The welcome
           animation covers the screen and takes no input, so help stands down while it plays. */}
       <Formaquestion suspended={currentView === 'mainMenu' && introPace !== null} />
+      {/* Each view reports itself as the open screen. Its tabs and dialogs report from inside it. */}
       {currentView === 'mainMenu' && (
-            <MainMenu
-              onStartGame={handleStartGame}
-              onLoadSaveGame={handleLoadSaveGame}
-              onReplayIntro={() => setIntroPace('snap')}
-              introActive={introPace !== null}
+        <SurfaceLayer id="mainMenu">
+          <MainMenu
+            onStartGame={handleStartGame}
+            onLoadSaveGame={handleLoadSaveGame}
+            onReplayIntro={() => setIntroPace('snap')}
+            introActive={introPace !== null}
+          />
+        </SurfaceLayer>
+      )}
+      {currentView === 'mainMenu' && introPace && (
+        <SurfaceLayer id="intro">
+          <IntroSequence pace={introPace} onComplete={handleIntroDone} />
+        </SurfaceLayer>
+      )}
+      {currentView === 'gameViewer' && (
+        <SurfaceLayer id="gameViewer">
+          <GameplayProvider>
+            <GameViewer
+              initialTraits={selectedTraits}
+              initialOwnedTraits={initialOwnedTraits}
+              initialCharacterData={initialCharacterData}
+              initialLocationId={initialLocationId}
+              initialDictionaries={initialDictionaries}
+              initialCharacters={initialCharacters}
+              initialPersona={initialPersona}
+              initialSaveId={initialSaveId}
+              onExitToMenu={handleExitToMenu}
             />
-          )}
-          {currentView === 'mainMenu' && introPace && (
-            <IntroSequence pace={introPace} onComplete={handleIntroDone} />
-          )}
-          {currentView === 'gameViewer' && (
-            <GameplayProvider>
-              <GameViewer
-                initialTraits={selectedTraits}
-                initialOwnedTraits={initialOwnedTraits}
-                initialCharacterData={initialCharacterData}
-                initialLocationId={initialLocationId}
-                initialDictionaries={initialDictionaries}
-                initialCharacters={initialCharacters}
-                initialPersona={initialPersona}
-                initialSaveId={initialSaveId}
-                onExitToMenu={handleExitToMenu}
-              />
-        </GameplayProvider>
+          </GameplayProvider>
+        </SurfaceLayer>
       )}
     </>
   );
@@ -222,6 +233,9 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      {/* Above everything that opens a dialog: screens, dialogs and tabs report what is open to the
+          surface registry. */}
+      <SurfaceReporterContext.Provider value={surfaceRegistry}>
       {/* One tooltip provider for the app: it owns the popup every tip shares, and the open delay and
           instant-open window, so no screen can time its own differently. */}
       <TooltipProvider>
@@ -259,6 +273,7 @@ function App() {
           </GameDataProvider>
         </SettingsProvider>
       </TooltipProvider>
+      </SurfaceReporterContext.Provider>
     </ThemeProvider>
   );
 }

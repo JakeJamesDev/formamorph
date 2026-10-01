@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
+import { useSurfaceTab } from '@/components/ui/surface';
 import { editorTabsFor } from './worldEditorTabs';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
@@ -568,6 +569,10 @@ const WorldEditorInner = ({
   const tour = useAuthoringTour({
     worldId, world: tourWorld, api: tourApi, save: saveWorldQuietly, showStep: showTourStep, onPlay: playWorld,
   });
+  // The editor's part of the Surface. Each detail panel and the Bench report their own tabs after these.
+  useSurfaceTab('worldEditor', activeTab);
+  useSurfaceTab('worldEditorLocations', activeTab === 'locations' ? locationView : null);
+  useSurfaceTab('worldEditorTour', tour.running ? tour.step?.id : null);
   // In Play joins the list and detail panels while the tour runs, and the three split the width evenly.
   const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
   const tourPanelOpen = !!tour.step && !!worldId && !isMobile;

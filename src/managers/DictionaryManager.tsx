@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
+import type { SurfaceLedgerName } from "@/components/ui/surface";
 import { KeywordChips } from "@/components/KeywordChips";
 import { Hint } from "@/components/ui/typography";
 import { HintInfo } from "@/components/SettingsRows";
@@ -51,7 +52,9 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
  * field to mark, so the panel opens the owning tab; the same hint the other four panels take. The library
  * editor has no Find and passes none.
  */
-const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange, focusField }: {
+const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange, focusField, surfaceTabs }: {
+  /** The tab ledger this panel reports under, for a host that has one. */
+  surfaceTabs?: SurfaceLedgerName;
   entry: DictionaryEntry;
   placeholders?: Placeholder[];
   /** The book this entry belongs to, as the owner of its fields — see `ownerId` on `PlaceholderField`.
@@ -180,7 +183,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
 
 
   return (
-    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entry Fields">
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entry Fields" surfaceTabs={surfaceTabs}>
       {tabs.map((t) => (
         <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
       ))}

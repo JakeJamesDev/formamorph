@@ -274,6 +274,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   return (
     <Dialog open={props.open ?? true} onOpenChange={(open) => { if (!open) props.onCancel(); }}>
       <DialogContent
+        surface="enterWorld"
         ref={containerRef}
         data-enter-world-container="dialog"
         hideClose

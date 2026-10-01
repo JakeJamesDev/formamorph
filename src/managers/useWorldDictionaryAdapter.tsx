@@ -64,6 +64,7 @@ export function useWorldDictionaryAdapter({
     }
     return entry && (
       <DictionaryManager
+        surfaceTabs="worldEditorEntry"
         key={entry.id}
         entry={entry}
         placeholders={placeholders}

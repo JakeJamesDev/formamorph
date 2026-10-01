@@ -480,7 +480,7 @@ export function LikersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent surface="likers" className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="truncate">
             Who liked {listingName ? `“${listingName}”` : 'this'}

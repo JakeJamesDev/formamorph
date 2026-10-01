@@ -21,7 +21,7 @@ export function MyFeedbackSection({ active, initialTab = 'bugs', onChanged }: My
 
   return (
     <div className="min-w-0">
-      <Tabs value={tab} onValueChange={(value) => setTab(value as MyFeedbackTabKey)} className="w-full min-w-0">
+      <Tabs surfaceTabs="feedbackHub" value={tab} onValueChange={(value) => setTab(value as MyFeedbackTabKey)} className="w-full min-w-0">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="bugs">Bugs</TabsTrigger>
           <TabsTrigger value="suggestions">Suggestions</TabsTrigger>

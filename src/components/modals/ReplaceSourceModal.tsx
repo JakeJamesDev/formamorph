@@ -27,6 +27,7 @@ const ReplaceSourceModal = ({ open, onOpenChange, kind, name, onReplace }: {
   onReplace: (pick: LibraryPick) => void;
 }) => (
   <AddFromLibraryModal
+    surface="replaceSource"
     open={open}
     onOpenChange={onOpenChange}
     kind={kind}
