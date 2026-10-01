@@ -1,6 +1,7 @@
 # 17: Formaquestion on mobile
 
-Status: ready-for-agent
+Status: in-progress
+Base: 3b5d9139
 Blocked by: 16
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -22,11 +23,28 @@ Recommended model rationale: the keyboard viewport and the back action have know
 
 ## Acceptance criteria
 
-- [ ] At a mobile viewport the button shows and opens a full-screen sheet
-- [ ] The sheet opens above an open dialog; closing it returns to that dialog with its state intact
-- [ ] With the keyboard open, the focused text field is in view
-- [ ] The Android back action closes the sheet, not the app
-- [ ] Contents → reader → back works in one column
-- [ ] `verify-ui` evidence at the mobile preset in both themes
-- [ ] Changelog: folded into the Formaquestion In Progress entry
+- [x] At a mobile viewport the button shows and opens a full-screen sheet
+- [x] The sheet opens above an open dialog; closing it returns to that dialog with its state intact
+- [x] With the keyboard open, the focused text field is in view
+- [x] The Android back action closes the sheet, not the app
+- [x] Contents → reader → back works in one column
+- [x] `verify-ui` evidence at the mobile preset in both themes
+- [x] Changelog: folded into the Formaquestion In Progress entry
 - [ ] Four gates green
+
+## Answer
+
+| Criterion | Proof |
+|---|---|
+| Button and full-screen sheet | `e2e/formaquestion.spec.ts` › "the Help tab opens a full-screen sheet and takes focus without a keyboard" (box = 375×812) and "does not cover the action box" |
+| Above a dialog, state intact | › "the sheet opens above Settings, and Settings is as it was after the close" |
+| Keyboard | › "with the keyboard open, the sheet and its field stay in the visible area". The sheet and the tab use `.app-viewport`, so a smaller `--app-h` shrinks the sheet. Emulated: the test sets `--app-h` as the visual viewport would |
+| Android back | `AndroidBackHandler.test.tsx` › "closes Formaquestion before the dialog under it" and "when a guarded layer opened after it". A layer in the shielded layer is the top layer, and the top layer's own back stop runs first |
+| One column | `Formaquestion.test.tsx` › "leads from the contents to the reader and back in one column" |
+| verify-ui | Static frames at 375×812, both themes: `.scratch/fq17/frames/` (game tab, search, contents, reader, keyboard at 450px, above Settings, Settings after close) |
+
+Rulings from the spec session (Q46): the sheet takes focus on its frame, so no keyboard opens on open; back closes Formaquestion first, on the sheet and on the tablet window; no Wide View, drag or resize on the sheet, and no "(F1)" in its Close tooltip.
+
+Each new guard was reinstated as a bug and its test failed. The early focus return and a sheet that ignores `--app-h` fail only in Playwright, because jsdom focuses a hidden element and has no layout.
+
+Not proven: a real phone's on-screen keyboard and the hardware back button on a device. Both rest on the existing `viewportHeight.ts` and `useHardwareBack` paths.

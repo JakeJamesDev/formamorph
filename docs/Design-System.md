@@ -886,6 +886,8 @@ The tab and the window render in the shielded layer, one host on `<body>` at z-6
 
 The window zooms from 75% and fades in over 200ms, and goes back over 150ms. The fixed point of the zoom is the center of the Help tab. Reduced motion shows and hides it at once. Put `transition-none` beside the duration classes: a `duration-*` class also sets the transition duration, and a drag would then ease each step.
 
+The mobile sheet slides in from the edge that holds the Help tab, with the same durations.
+
 ### Production mapping
 
 | Need | Component |
@@ -900,18 +902,25 @@ The window zooms from 75% and fades in over 200ms, and goes back over 150ms. The
 | The one instance, F1, focus and motion | [`Formaquestion.tsx`](../src/components/formaquestion/Formaquestion.tsx) |
 | Isolated reference | [`FormaquestionReference.tsx`](../src/components/design-system/FormaquestionReference.tsx) |
 
-Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge and a sample window in local state. Open `#dev?modal=formaquestion` on any screen for the real one.
+Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge, a sample window and a sample mobile sheet in local state. Open `#dev?modal=formaquestion` on any screen for the real one.
 
 ### Responsive behavior
 
-Below the `md` breakpoint the tab and the window do not show, and F1 does nothing. The mobile form is a full-screen sheet in the narrow layout, and it is not built.
+Below the `md` breakpoint the window is a full-screen sheet in the narrow layout.
+
+- The sheet and the tab fill the visible area (`.app-viewport`), so the on-screen keyboard shrinks the sheet and moves the tab up with the app.
+- The sheet has no frame lines, no Wide View, no drag and no resize, and stores no place. Its title bar is 48px, and Close is 40px for a thumb.
+- The sheet pads for the system bars with the safe-area insets.
+- Focus goes to the sheet, not to the search field, so no keyboard opens until the player selects a field.
+- The tab hides while the sheet is open, and focus returns to it on close.
+- The Android back action closes the sheet or the window before any dialog under it. Escape still never closes it.
 
 ### State reference
 
 | State | Treatment |
 | --- | --- |
 | Closed | The tab only. `aria-expanded` is false. |
-| Open | The tab has the accent fill. Focus goes to the search field. |
+| Open | The tab has the accent fill. Focus goes to the search field, or to the sheet on mobile. |
 | Loading | A status line in place of the content while the docs load. |
 | Load failed | A line that says so, and **Try Again**. |
 | Too few letters | A hint in place of the results. |
@@ -925,7 +934,7 @@ Below the `md` breakpoint the tab and the window do not show, and F1 does nothin
 | --- | --- | --- |
 | 1 | Fixed launcher above every layer | ✅ |
 | 2 | Floating window with two widths | ✅ |
-| 3 | Full-screen sheet for a non-modal surface, on mobile | Not built |
+| 3 | Full-screen sheet for a non-modal surface, on mobile | ✅ |
 | 4 | Source link: a "Page › Heading" chip under an answer | Not built |
 | 5 | Not-from-the-guide notice above an answer | Not built |
 | 6 | Question bubble: the player's question, right-aligned on `muted` | Not built |

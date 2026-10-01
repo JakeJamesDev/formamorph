@@ -35,6 +35,8 @@ vi.mock('@capacitor/app', () => ({
 }));
 
 import { AndroidBackHandler } from './AndroidBackHandler';
+import { Formaquestion } from './formaquestion/Formaquestion';
+import { createDocsIndex } from '@/lib/docs/docsIndex';
 
 /** A screen that fills its view without being a modal — the avatar editor, the first-run intro. */
 function SubScreen({ onBack }: { onBack?: () => void }) {
@@ -308,5 +310,68 @@ describe('AndroidBackHandler', () => {
     expect(screen.queryByText('Edit Entity')).not.toBeInTheDocument();
     expect(leaveEditor).not.toHaveBeenCalled();
     expect(screen.getByText('World Editor')).toBeInTheDocument();
+  });
+});
+
+describe('AndroidBackHandler with Formaquestion open', () => {
+  const loadIndex = () => Promise.resolve(createDocsIndex({ pages: { Home: '# Home\n\nWelcome.\n' } }));
+  const helpWindow = () => screen.queryByRole('dialog', { name: 'Formaquestion' });
+
+  async function openHelp() {
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+    await screen.findByRole('searchbox', { name: 'Search the Guide' });
+  }
+
+  it('closes Formaquestion before the dialog under it, and leaves the dialog as it was', async () => {
+    render(
+      <>
+        <Dialog defaultOpen>
+          <DialogContent>
+            <DialogTitle>Settings</DialogTitle>
+            <DialogDescription>A dialog under the help window.</DialogDescription>
+            <input aria-label="Endpoint" defaultValue="http://localhost:1234" />
+          </DialogContent>
+        </Dialog>
+        <Formaquestion loadIndex={loadIndex} />
+        <AndroidBackHandler viewHistory={['mainMenu']} onGoBack={vi.fn()} />
+      </>,
+    );
+    await vi.waitFor(() => expect(bridge.listeners).toHaveLength(1));
+    await openHelp();
+
+    pressBack();
+
+    expect(screen.getByRole('button', { name: 'Help' })).toHaveAttribute('aria-expanded', 'false');
+    await vi.waitFor(() => expect(helpWindow()).toBeNull());
+    expect(screen.getByRole('textbox', { name: 'Endpoint' })).toHaveValue('http://localhost:1234');
+
+    pressBack();
+
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+    expect(screen.queryByText('Close Formamorph')).not.toBeInTheDocument();
+  });
+
+  it('closes Formaquestion when a guarded layer opened after it', async () => {
+    const leaveEditor = vi.fn();
+    const { rerender } = render(
+      <>
+        <Formaquestion loadIndex={loadIndex} />
+        <AndroidBackHandler viewHistory={['mainMenu']} onGoBack={vi.fn()} />
+      </>,
+    );
+    await vi.waitFor(() => expect(bridge.listeners).toHaveLength(1));
+    await openHelp();
+    rerender(
+      <>
+        <Formaquestion loadIndex={loadIndex} />
+        <GuardedDialog onBack={leaveEditor} />
+        <AndroidBackHandler viewHistory={['mainMenu']} onGoBack={vi.fn()} />
+      </>,
+    );
+
+    pressBack();
+
+    expect(screen.getByRole('button', { name: 'Help' })).toHaveAttribute('aria-expanded', 'false');
+    expect(leaveEditor).not.toHaveBeenCalled();
   });
 });

@@ -14,14 +14,14 @@ describe('Formaquestion reference', () => {
 
   it('shows the production window with every tab the app has', () => {
     render(<FormaquestionReference />);
-    const frame = screen.getByRole('dialog', { name: 'Formaquestion' });
+    const frame = within(screen.getByRole('region', { name: 'Window' })).getByRole('dialog', { name: 'Formaquestion' });
     expect(within(frame).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(FORMAQUESTION_TABS.map((tab) => tab.label));
     expect(frame.style.width).toBe(`${NARROW_WIDTH}px`);
   });
 
   it('searches its sample guide and changes to the wide layout', async () => {
     render(<FormaquestionReference />);
-    const frame = screen.getByRole('dialog', { name: 'Formaquestion' });
+    const frame = within(screen.getByRole('region', { name: 'Window' })).getByRole('dialog', { name: 'Formaquestion' });
     fireEvent.change(within(frame).getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'light a lantern' } });
     expect(within(frame).getAllByRole('button', { name: /How to Light a Lantern/ })).toHaveLength(1);
 
@@ -29,5 +29,12 @@ describe('Formaquestion reference', () => {
     expect(frame.style.width).toBe(`${WIDE_WIDTH}px`);
     expect(within(frame).queryByRole('tab')).toBeNull();
     expect(within(frame).getByText('Select a section to read it here')).toBeInTheDocument();
+  });
+
+  it('shows the mobile sheet in the narrow layout, with no Wide View', () => {
+    render(<FormaquestionReference />);
+    const sheet = within(screen.getByRole('region', { name: 'Mobile Sheet' })).getByRole('dialog', { name: 'Formaquestion' });
+    expect(within(sheet).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(FORMAQUESTION_TABS.map((tab) => tab.label));
+    expect(within(sheet).queryByRole('button', { name: 'Wide View' })).toBeNull();
   });
 });

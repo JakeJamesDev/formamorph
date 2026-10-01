@@ -3,10 +3,12 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { ensureShieldedLayer } from '@/components/ui/shielded-layer';
+import { useBackStop } from '@/hooks/useBackStop';
 import { useDevRoute } from '@/lib/devRouter';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
 import { createGuide } from '@/lib/formaquestion/guide';
+import type { Edge } from '@/lib/formaquestion/tabPlace';
 import {
   clampBox, defaultBox, isWide, moveBox, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
   NARROW_WIDTH, WIDE_WIDTH, type WindowBox,
@@ -24,15 +26,25 @@ const WINDOW_ID = 'formaquestion-window';
 const CLOSE_MS = 150;
 
 /**
- * The window zooms out of the Help tab and fades in, and goes back the same way. The closed state keeps
- * its last frame until React unmounts it, and takes no presses on the way out. Reduced motion shows and
- * hides at once.
+ * Open and close timing for the window and the sheet. The closed state keeps its last frame until React
+ * unmounts it, and takes no presses on the way out. Reduced motion shows and hides at once.
  *
  * `transition-none` is load-bearing: `duration-*` also sets the transition duration, and with no property
  * named a transition covers `left` and `top`, so every drag step would ease and the window would trail
  * the pointer.
  */
-const WINDOW_MOTION = 'transition-none ease-out data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-75 data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-75 data-[state=closed]:fill-mode-forwards data-[state=closed]:pointer-events-none motion-reduce:!animate-none';
+const MOTION = 'transition-none ease-out data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-in data-[state=closed]:fill-mode-forwards data-[state=closed]:pointer-events-none motion-reduce:!animate-none';
+
+/** The window zooms out of the Help tab and fades in, and goes back the same way. */
+const WINDOW_MOTION = `${MOTION} data-[state=open]:fade-in-0 data-[state=open]:zoom-in-75 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-75`;
+
+/** The sheet slides in from the edge that holds the Help tab, and goes back to it. */
+const SHEET_MOTION: Record<Edge, string> = {
+  right: `${MOTION} data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right`,
+  left: `${MOTION} data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left`,
+  top: `${MOTION} data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top`,
+  bottom: `${MOTION} data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom`,
+};
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -44,7 +56,8 @@ function focusedElement(): HTMLElement | null {
 
 /**
  * Formaquestion: the Help tab and the help window, mounted once for the whole app in the shielded layer,
- * so both stay usable above every dialog. The window holds the guide and a search of it.
+ * so both stay usable above every dialog. The window holds the guide and a search of it. On a mobile-size
+ * screen the window is a full-screen sheet in the narrow layout.
  */
 export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: {
   /** Hides the tab and the window and turns F1 off, while something covers the whole screen. */
@@ -52,8 +65,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   loadIndex?: () => Promise<DocsIndex>;
 }) {
   const [layer] = useState(ensureShieldedLayer);
-  const mobile = useIsMobile();
-  const hidden = suspended || mobile;
+  const sheet = useIsMobile();
+  const hidden = suspended;
   const mountedRef = useMountedRef();
   const windowRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -93,16 +106,19 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // On the sheet, focus stops at the sheet: a text field would open the on-screen keyboard.
   const focusWindow = useCallback(() => {
     const root = windowRef.current;
-    (root?.querySelector<HTMLElement>('[data-fq-autofocus]') ?? root)?.focus();
-  }, []);
+    ((sheet ? null : root?.querySelector<HTMLElement>('[data-fq-autofocus]')) ?? root)?.focus();
+  }, [sheet]);
 
-  // The window grows out of the Help tab and shrinks back into it.
-  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  // The window grows out of the Help tab and shrinks back into it. The sheet slides from the tab's edge.
+  const [origin, setOrigin] = useState<{ x: number; y: number; edge: Edge } | null>(null);
   const aimAtTab = useCallback(() => {
-    const rect = layer.querySelector('[data-fq-launcher]')?.getBoundingClientRect();
-    setOrigin(rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null);
+    const tab = layer.querySelector<HTMLElement>('[data-fq-launcher]');
+    const rect = tab?.getBoundingClientRect();
+    const edge = (tab?.dataset.fqEdge ?? 'right') as Edge;
+    setOrigin(rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, edge } : null);
   }, [layer]);
 
   const openWindow = useCallback(() => {
@@ -114,10 +130,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const closeWindow = useCallback(() => {
     aimAtTab();
     setOpen(false);
-    const back = returnFocusRef.current;
-    returnFocusRef.current = null;
-    if (back?.isConnected) back.focus();
   }, [aimAtTab]);
+
+  // The Android back action closes the window before any dialog under it.
+  useBackStop(open && !hidden ? closeWindow : undefined, windowRef);
 
   // The window stays mounted while its close animation runs. `present` drops when the animation ends.
   const [present, setPresent] = useState(false);
@@ -138,11 +154,17 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const shown = (open || present) && !hidden;
 
-  // Focus moves into the window when it opens. A window that shows again after it was hidden leaves
-  // focus where the player has it.
+  // Focus moves into the window when it opens, and back where it was when it closes. A window that shows
+  // again after it was hidden leaves focus where the player has it. The return waits for the commit,
+  // because the Help tab under the sheet shows again only then.
   const wasOpen = useRef(false);
   useLayoutEffect(() => {
     if (open && !wasOpen.current && !hidden) focusWindow();
+    if (!open && wasOpen.current) {
+      const back = returnFocusRef.current;
+      returnFocusRef.current = null;
+      if (back?.isConnected) back.focus();
+    }
     wasOpen.current = open;
   }, [open, hidden, focusWindow]);
 
@@ -223,6 +245,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     onPointerUp: endDrag,
     onPointerCancel: endDrag,
   });
+  const wide = !sheet && isWide(box);
   const swap = () => {
     const next = swapWidth(box, viewportOf(window));
     setBox(next);
@@ -231,28 +254,36 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   return createPortal(
     <>
-      {!hidden && <EdgeTab open={open} controls={WINDOW_ID} onToggle={() => (open ? closeWindow() : openWindow())} />}
+      {!hidden && (
+        <EdgeTab open={open} concealed={sheet && open} controls={WINDOW_ID} onToggle={() => (open ? closeWindow() : openWindow())} />
+      )}
       {shown && (
         <FormaquestionFrame
           ref={windowRef}
           id={WINDOW_ID}
           data-state={open ? 'open' : 'closed'}
+          data-fq-sheet={sheet ? '' : undefined}
           onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
-          wide={isWide(box)}
+          wide={wide}
           onSwapWidth={swap}
+          sheet={sheet}
           onClose={closeWindow}
-          move={dragHandlers('move')}
-          resize={dragHandlers('resize')}
-          className={`pointer-events-auto fixed ${WINDOW_MOTION}`}
-          style={{
-            left: box.x,
-            top: box.y,
-            width: box.w,
-            height: box.h,
-            transformOrigin: origin ? `${origin.x - box.x}px ${origin.y - box.y}px` : undefined,
-          }}
+          {...(sheet ? {
+            className: `app-viewport pointer-events-auto ${SHEET_MOTION[origin?.edge ?? 'right']}`,
+          } : {
+            move: dragHandlers('move'),
+            resize: dragHandlers('resize'),
+            className: `pointer-events-auto fixed ${WINDOW_MOTION}`,
+            style: {
+              left: box.x,
+              top: box.y,
+              width: box.w,
+              height: box.h,
+              transformOrigin: origin ? `${origin.x - box.x}px ${origin.y - box.y}px` : undefined,
+            },
+          })}
         >
-          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={isWide(box)} />
+          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} />
         </FormaquestionFrame>
       )}
     </>,

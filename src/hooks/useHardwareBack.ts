@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { App } from '@capacitor/app';
+import { inShieldedLayer } from '@/components/ui/shielded-layer';
 import { resolveBackAction } from '@/lib/backAction';
-import { backStops } from './useBackStop';
+import { backStops, type BackStop } from './useBackStop';
 
 /**
  * Radix's dismissable layers as they reach the DOM. Dialogs and alerts carry their own role; menus,
@@ -16,6 +17,25 @@ const OPEN_LAYER_SELECTOR =
  */
 function closeTopLayer(): void {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+}
+
+/**
+ * The topmost open layer. Portals append in opening order, so the last one in the document is on top,
+ * except in the shielded layer: it paints above every dialog although its host comes first.
+ */
+function findTopLayer(): Element | undefined {
+  const layers = Array.from(document.querySelectorAll(OPEN_LAYER_SELECTOR));
+  const shielded = layers.filter((layer) => inShieldedLayer(layer));
+  return shielded[shielded.length - 1] ?? layers[layers.length - 1];
+}
+
+/** The innermost back step whose screen lives inside `layer`. */
+function innermostStopIn(stops: readonly BackStop[], layer: Element): BackStop | undefined {
+  for (let i = stops.length - 1; i >= 0; i--) {
+    const element = stops[i].within?.current;
+    if (element && layer.contains(element)) return stops[i];
+  }
+  return undefined;
 }
 
 export interface HardwareBackOptions {
@@ -41,20 +61,18 @@ export function useHardwareBack(options: HardwareBackOptions): void {
   useEffect(() => {
     const pending = App.addListener('backButton', () => {
       const { viewHistory, onGoBack, onConfirmExit } = latest.current;
-      // Portals append in opening order, so the last open layer in the document is the topmost.
-      const layers = document.querySelectorAll(OPEN_LAYER_SELECTOR);
-      const topLayer = layers[layers.length - 1];
+      const topLayer = findTopLayer();
       const stops = backStops();
       const innermost = stops[stops.length - 1];
-      const stopElement = innermost?.within?.current;
-      const stopInsideLayer = topLayer !== undefined && stopElement != null && topLayer.contains(stopElement);
-      switch (resolveBackAction({ modalOpen: topLayer !== undefined, subScreens: stops.length, stopInsideLayer, viewHistory })) {
+      const layerStop = topLayer ? innermostStopIn(stops, topLayer) : undefined;
+      switch (resolveBackAction({ modalOpen: topLayer !== undefined, subScreens: stops.length, stopInsideLayer: layerStop !== undefined, viewHistory })) {
         case 'close-modal':
           closeTopLayer();
           break;
         case 'go-back':
-          // The innermost sub-screen answers first; the view itself only once none is left.
-          if (innermost) innermost.run();
+          // The top layer's own step answers first, then the innermost sub-screen, then the view.
+          if (layerStop) layerStop.run();
+          else if (innermost) innermost.run();
           else onGoBack();
           break;
         case 'confirm-exit':
