@@ -58,6 +58,9 @@ Each entity's `traits` map works like `traits`. `enabled` is writable and switch
 - **Q30. A switched-off stat reads as a real entry.** Its name, value and bounds read as usual, with `enabled: false`. A write to it is dropped and reported, because the stat is off. This refines Q17.
 - **Q31. An entity with an empty code name is never listed in `entities`.** The editor warns the author to name it. The empty key belongs only to the empty `persona`.
 - **Q32. Every read-only write is reported, `clock` included.** A write to `clock` or `clock.previous` is dropped and reported like any other read-only field (story 33).
+- **Q33. A live stat wins its code name over a switched-off one.** Among stats in the same state, the later one wins (Q7). Listing a switched-off stat never changes which live stat code reaches. Its `previous` and `delta` read as usual.
+- **Q34. The empty-name warning is a Test Bench finding**, beside name-drift. It fires only when the world has stat code.
+- **Q35. Q32 covers every read-only path.** A write to another stat's fields, to `self.previous.*` or to `self.delta.*` is reported by its path, like a `clock` write. A write to `clock.previous` itself reports `clock.previous`.
 - **Q15. The story clock is one `clock` object.** `clock.day`, `clock.daypart`, `clock.deltaHours` and `clock.elapsedHours` read the end of the turn. `clock.previous.day` and `clock.previous.daypart` read its start, as `self.previous` does for a stat. The six flat clock globals are removed. All fields are read-only.
 - **Q16. `currentStatId` is removed.** `self.id` is the one route to the stat's id.
 - **Q17. Identity and state fields match across entries.** A placeholder entry gains `id` and `name`, read-only. A stat entry gains `enabled`, read-only: false while a trait's stat toggle switches the stat off.
