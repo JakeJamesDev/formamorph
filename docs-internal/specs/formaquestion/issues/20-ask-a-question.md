@@ -19,6 +19,7 @@ A player types a question in Formaquestion and the connected AI answers from the
 
 **In the window:**
 
+- Ticket 16 shipped the Search and Guide tabs only. Add **Ask** as the first tab in the narrow layout, and the conversation in the wide layout's pane (Q33).
 - An ask field and Send. The answer streams as formatted markdown through the existing streaming renderer, used directly.
 - A stop control ends the stream and keeps the text so far.
 - Under the answer, the sections that were sent to the model are listed as sources. A click opens one in the reader (Q8).
