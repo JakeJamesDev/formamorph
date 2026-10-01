@@ -1,7 +1,7 @@
 # 14: Prototype, the window above dialogs
 
 Status: ready-for-human
-Status note: Prototype built and proven on `prototype/formaquestion-window` (`f11cfe43`). The layering works. The user picked window A with the edge tab, joined A and C into one design at two widths, and likes variant D for the chat. Motion, the movable tab with a stored place, and D are built. Still open: how A and D fit together, approval of the layering approach, the eleven new patterns, and decisions D1 to D5. See Answer.
+Status note: Prototype built and proven on `prototype/formaquestion-window` (`f11cfe43`). The layering works. ✅ Approved by the user on 2026-10-01: window A at two widths, the movable edge tab with a stored place, the motion, and the layering approach. Variant D is out of scope for this spec; the user has later plans for it. See Approval at the end of Answer.
 Base: 9edac2fd
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -107,9 +107,9 @@ Seven controls remove one shield part each and show the failure that part preven
 
 ### Question 2: the look
 
-All frames are in `.claude/worktrees/prototype-formaquestion-window/.scratch/formaquestion-window/review/`. Desktop frames are 1600×900. Mobile frames are 375×812. Switch live with the bar at the bottom of the prototype, or with `?fq=A|B|C&fqButton=icon|pill|tab&fqState=ready|busy|noai`.
+All frames are in `.claude/worktrees/prototype-formaquestion-window/.scratch/formaquestion-window/review/`. Desktop frames are 1600×900. Mobile frames are 375×812. Switch live with the bar at the bottom of the prototype, or with `?fq=A|B|D&fqWide=1&fqButton=icon|pill|tab&fqState=ready|busy|noai`.
 
-#### Window structure (pick one)
+#### Window structure (A is approved)
 
 | | Structure | Default size | Frames (`-dark` and `-light`) | Trade-off |
 |---|---|---|---|---|
@@ -122,6 +122,8 @@ All frames are in `.claude/worktrees/prototype-formaquestion-window/.scratch/for
 > ✅ **Ruled by the user, 2026-10-01: A and C are one design at two widths**, not two designs. A small button swaps them.
 >
 > ✅ **The user, 2026-10-01: "the D variant looks great"** for the chat itself. See Variant D below.
+>
+> ✅ **Final ruling by the user, 2026-10-01: "use A for this spec."** D is out of scope here.
 
 **How narrow and wide work in the prototype**
 
@@ -181,6 +183,8 @@ The player drags the tab. It stays flat on the nearest screen edge and follows t
 
 #### Variant D: Minimal (asked for by the user, 2026-10-01)
 
+> ⏸️ **Out of scope for this spec (ruled by the user, 2026-10-01).** The user has later plans for D. No Formaquestion ticket builds it. The prototype branch keeps it as the reference for that later effort.
+
 The least chrome that still reads as a chat. It shows as an overlay on the app, not as a separate window. Ask only: no Search and no Guide for now. Switch to it with `?fq=D`.
 
 | Part | Variant D |
@@ -199,32 +203,50 @@ The least chrome that still reads as a chat. It shows as an overlay on the app, 
 - Frames: `window-D-ask`, `window-D-above-settings`, `window-D-over-game` (each `-dark` and `-light`), `mobile-sheet-D-ask-dark`, `mobile-sheet-D-ask-light`.
 - ⚠️ Over a busy screen, the faded top bubble lets app text show through it. `window-D-over-game-dark` shows this over the Stats panel.
 
-#### New visual patterns, for approval
+#### New visual patterns
 
-| # | Pattern | Where |
-|---|---|---|
-| 1 | **Fixed launcher** above every layer | All screens |
-| 2 | **Floating window**: title bar that drags, corner grip that resizes, non-modal, above dialogs | Desktop |
-| 3 | **Full-screen sheet** for a non-modal surface | Mobile |
-| 4 | **Source link**: a "Page › Heading" chip under an answer | Conversation |
-| 5 | **Not-from-the-guide notice**: a warning-tinted line above an answer | Conversation |
-| 6 | **Question bubble**: the player's question, right-aligned on `muted` | Conversation |
-| 7 | **Search result row**: heading, page, two-line excerpt | Search |
-| 8 | **Reader**: page name, heading, body, an On This Page list, a Back row | Guide |
-| 9 | **Send reason**: a help line under the field when Send is unavailable | Ask field |
-| 10 | **Movable edge tab**: a launcher that drags along the screen edge, with a label that turns per edge | All screens |
-| 11 | **Frameless chat overlay** (variant D): floating bubbles, a rounded field, one control pill, a faded top edge, no scroll bar | Desktop and mobile |
+| # | Pattern | Where | State |
+|---|---|---|---|
+| 1 | **Fixed launcher** above every layer | All screens | ✅ Approved |
+| 2 | **Floating window**: title bar that drags, corner grip that resizes, non-modal, above dialogs. Two widths, swapped by a title bar button | Desktop | ✅ Approved |
+| 3 | **Full-screen sheet** for a non-modal surface | Mobile | ✅ Approved |
+| 4 | **Source link**: a "Page › Heading" chip under an answer | Conversation | ✅ Approved |
+| 5 | **Not-from-the-guide notice**: a warning-tinted line above an answer | Conversation | ✅ Approved |
+| 6 | **Question bubble**: the player's question, right-aligned on `muted` | Conversation | ✅ Approved |
+| 7 | **Search result row**: heading, page, two-line excerpt | Search | ✅ Approved |
+| 8 | **Reader**: page name, heading, body, an On This Page list, a Back row | Guide | ✅ Approved |
+| 9 | **Send reason**: a help line under the field when Send is unavailable | Ask field | ✅ Approved |
+| 10 | **Movable edge tab**: a launcher that drags along the screen edge, with a label that turns per edge | All screens | ✅ Approved |
+| 11 | **Frameless chat overlay** (variant D): floating bubbles, a rounded field, one control pill, a faded top edge, no scroll bar | Desktop and mobile | ⏸️ Not in this spec |
 
 Existing patterns and components in use: `Button`, `Input`, `Textarea`, `Tabs`, `ScrollArea` (Standard: Scrollbars), `Tip`, `CompactSelectionRow` (Compact Selection Lists) for the contents lists, the typography roles, `MarkdownRenderer`, the semantic `warning` token, the shared focus ring.
 
-### Open decisions for the user
+### Decisions, settled by the user
 
-| # | Decision | The prototype does |
-|---|---|---|
-| D1 | **F1 with the window open and focus elsewhere.** The spec says F1 toggles | Moves focus into the window. A second F1 closes it. With a dialog open, F1 is the only keyboard way in |
-| D2 | **Escape with no dialog open and focus in the window** | Nothing. Only F1 and Close close the window |
-| D3 | **Launcher label.** Q27 names the feature Formaquestion; a new player looks for Help | Shows "Formaquestion" on the pill and the tab |
-| D4 | **The launcher above dialogs.** It then also sits over dialog content | In the layer, above dialogs |
-| D5 | **The chip typeahead (z-70) paints above the window** when the two overlap | Left as is |
+| # | Decision | The prototype does | Ruling |
+|---|---|---|---|
+| D1 | **F1 with the window open and focus elsewhere.** The spec said F1 toggles | Moves focus into the window. A second F1 closes it. With a dialog open, F1 is the only keyboard way in | Q36: as built |
+| D2 | **Escape with no dialog open and focus in the window** | Nothing. Only F1 and Close close the window | Q37: as built |
+| D3 | **Launcher label.** Q27 names the feature Formaquestion; a new player looks for Help | Shows "Formaquestion" on the pill and the tab | Q38: the launcher says **Help**. The window title says Formaquestion |
+| D4 | **The launcher above dialogs.** It then also sits over dialog content | In the layer, above dialogs | Q39: as built |
+| D5 | **The chip typeahead (z-70) paints above the window** when the two overlap | Left as is | Q40: as built |
 
-After approval, the rulings go into the spec and the approved patterns go to the Design System as a proposal.
+### Approval
+
+> ✅ **The user, 2026-10-01: "everything looks great and is approved now."**
+
+| Approved | Where it goes |
+|---|---|
+| The layering approach | Spec ruling Q41. Ticket 16 builds from the list above |
+| Window A at two widths, with the Wide View button | Spec ruling (refines Q33). Ticket 16 |
+| The movable edge tab, with a place stored per device | Spec ruling (refines Q34). Ticket 16 |
+| The motion, from the tab's place and edge | Spec ruling (refines Q35). Ticket 16 |
+| The window moves freely and stays whole on the screen | Ticket 16. Only the tab snaps |
+| Patterns 1 to 10 | The Design System, as a proposal with ticket 16's production components |
+| Variant D and pattern 11 | ⏸️ Out of scope. Kept on the prototype branch for the user's later plans |
+
+Three differences between the prototype and the rulings, for ticket 16:
+
+- The prototype tab says "Formaquestion". Q38 rules **Help**.
+- The prototype does not store the window's place and size. The spec asks for it (user story 5).
+- The prototype tab moves only by pointer. It needs a keyboard way.
