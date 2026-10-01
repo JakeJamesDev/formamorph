@@ -1,10 +1,11 @@
-import type { CascadeOffTraitIds, Entity, GameState, OwnedTraitStates, Placeholder, Trait } from '@/types';
+import type { CascadeOffTraitIds, Entity, GameState, OwnedTraitStates, Placeholder, Trait, TraitGroup } from '@/types';
 import { canBePlayer, inCast, playsAs, resolveBearers, type BearerWorld } from './bearers';
 import type { SandboxEntity, SandboxTrait } from './statCodeExecutor';
 import type { CodeEntityNames } from './statCodeAnalysis';
 import { statCodeName } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
-import type { AppliedTraitValues, TraitWorld } from './traitRuntime';
+import { traitGates, traitUnlocked, type AppliedTraitValues, type TraitWorld } from './traitRuntime';
+import { WORLD_OWNER, type GateStates } from './traitGates';
 
 /** The player's traits as the trait runtime holds them, and the authored world code switches them against. */
 export interface StatCodeTraits {
@@ -23,6 +24,8 @@ export interface StatCodeTraits {
   entities?: readonly Entity[];
   /** The library entities in the playthrough as authored: the library persona, then the added characters. */
   library?: readonly Entity[];
+  /** Ids of the entities in the turn's scene. Absent ⇒ none; the played persona is always in it. */
+  inSceneIds?: readonly string[];
 }
 
 /** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
@@ -44,17 +47,44 @@ export function savedTraits(
 export function sandboxTraits(traits: StatCodeTraits, placeholders: readonly Placeholder[]): SandboxTrait[] {
   const acquired = new Set(traits.acquired.map((t) => t.id));
   const off = new Set(traits.disabledTraitIds);
+  const gates = gatesOf(traits);
   return traits.world.traits.map((trait) => ({
-    name: statCodeName(trait.name, placeholders),
+    ...traitIdentity(trait, WORLD_OWNER, traits.world.groups, gates, placeholders),
     acquired: acquired.has(trait.id),
     enabled: acquired.has(trait.id) && !off.has(trait.id),
   }));
 }
 
-/** One entity as code reads it: its bearer id, and each trait in its set by id. */
+/** Every bearer's gate on its traits, against the state the run reads. */
+const gatesOf = (traits: StatCodeTraits): GateStates =>
+  traitGates({ traits: [...traits.acquired], disabledTraitIds: [...traits.disabledTraitIds], ownedTraits: traits.ownedTraits }, traits.world);
+
+/** The read-only fields of a trait entry: who it is, how it switches, and whether its Bearer's gate holds. */
+function traitIdentity(
+  trait: Trait,
+  ownerId: string,
+  groups: readonly TraitGroup[],
+  gates: GateStates,
+  placeholders: readonly Placeholder[],
+): Required<Pick<SandboxTrait, 'id' | 'name' | 'mode' | 'available' | 'group' | 'playerToggle'>> {
+  const group = trait.groupId ? groups.find((g) => g.id === trait.groupId) : undefined;
+  return {
+    id: trait.id,
+    name: statCodeName(trait.name, placeholders),
+    mode: trait.mode ?? 'optional',
+    available: traitUnlocked(gates, ownerId, trait.id),
+    group: group ? statCodeName(group.name, placeholders) : '',
+    playerToggle: trait.playerToggle === true,
+  };
+}
+
+/** One entity as code reads it: its identity, and each trait in its set by id. */
 export interface CodeEntity extends SandboxEntity {
-  /** Null for the empty persona. */
-  id: string | null;
+  /** Empty for the empty persona. */
+  id: string;
+  type: string;
+  pronouns: string;
+  inScene: boolean;
   traits: (SandboxTrait & { id: string })[];
 }
 
@@ -66,7 +96,7 @@ export interface CodeEntities {
   persona: CodeEntity;
 }
 
-const NO_PERSONA: CodeEntity = { id: null, name: '', traits: [] };
+const NO_PERSONA: CodeEntity = { id: '', name: '', type: '', pronouns: '', inScene: false, traits: [] };
 
 /** The entity the player plays: the picked world or library persona, else the Custom Persona entity under
  *  None. Null when none plays. */
@@ -82,7 +112,13 @@ function playedPersonaId(traits: StatCodeTraits): string | null {
  * when the entity has it chosen and enabled when it is also not switched off. Names are code names of the
  * authored text: an owned trait's own, a linked one's original's.
  */
-function codeEntity(traits: StatCodeTraits, placeholders: readonly Placeholder[], authored: Entity): CodeEntity {
+function codeEntity(
+  traits: StatCodeTraits,
+  placeholders: readonly Placeholder[],
+  authored: Entity,
+  gates: GateStates,
+  played: string | null,
+): CodeEntity {
   const bearer = traits.world.bearers?.find((o) => o.id === authored.id);
   const state = traits.ownedTraits?.[authored.id];
   const chosen = new Set(state?.chosen ?? []);
@@ -91,9 +127,12 @@ function codeEntity(traits: StatCodeTraits, placeholders: readonly Placeholder[]
   return {
     id: authored.id,
     name: statCodeName(authored.name, named),
+    type: statCodeName(authored.type, named),
+    pronouns: statCodeName(authored.pronouns, named),
+    inScene: authored.id === played || !!traits.inSceneIds?.includes(authored.id),
     traits: (bearer?.traits ?? []).map((trait) => ({
-      id: trait.id,
-      name: statCodeName(authoredTraitName(trait, authored, traits.world.traits), named),
+      ...traitIdentity({ ...trait, name: authoredTraitName(trait, authored, traits.world.traits) }, authored.id,
+        [...(bearer?.groups ?? []), ...traits.world.groups], gates, named),
       acquired: chosen.has(trait.id),
       enabled: chosen.has(trait.id) && !off.has(trait.id),
     })),
@@ -108,8 +147,9 @@ function codeEntity(traits: StatCodeTraits, placeholders: readonly Placeholder[]
 export function codeEntities(traits: StatCodeTraits, placeholders: readonly Placeholder[]): CodeEntities {
   const ref = traits.world.persona;
   const world = (traits.entities ?? []).filter((e) => playsAs(e, ref) || inCast(e, ref));
-  const entities = [...world, ...traits.library ?? []].map((e) => codeEntity(traits, placeholders, e));
   const id = playedPersonaId(traits);
+  const gates = gatesOf(traits);
+  const entities = [...world, ...traits.library ?? []].map((e) => codeEntity(traits, placeholders, e, gates, id));
   return { entities, persona: entities.find((e) => e.id === id) ?? NO_PERSONA };
 }
 
@@ -161,7 +201,3 @@ export function personaTraitNames(world: BearerWorld, placeholders: readonly Pla
     .flatMap((bearer) => bearer.traits.map((trait) =>
       statCodeName(authoredTraitName(trait, bearer.entity, world.traits), withOwnPlaceholders(placeholders, bearer.entity))));
 }
-
-/** The sandbox's entry for an entity: its name and trait entries, without the ids. */
-export const sandboxEntity = ({ name, traits }: CodeEntity): SandboxEntity =>
-  ({ name, traits: traits.map(({ name: traitName, acquired, enabled }) => ({ name: traitName, acquired, enabled })) });

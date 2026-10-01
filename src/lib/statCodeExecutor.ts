@@ -84,6 +84,8 @@ export interface StatCodeResult {
   entities?: EntityTraitWrites[];
   /** Entity names the code switched a trait through that no entity in play has; each switch was dropped. */
   unknownEntities?: string[];
+  /** Read-only fields the code wrote, as code spelled them, such as `traits.Brave.mode`; each write was dropped. */
+  readOnlyWrites?: string[];
 }
 
 /** What one run did to one entity's traits. */
@@ -110,20 +112,33 @@ export interface TraitWrite {
   enabled: boolean;
 }
 
-/** One entry of the sandbox's `traits` map. */
+/** One entry of the sandbox's `traits` map. A caller with no playthrough leaves the identity fields out, and
+ *  they read as an optional trait with no group, closed to the player. */
 export interface SandboxTrait {
   name: string;
   /** Acquired and not switched off. */
   enabled: boolean;
   /** In the player's list, on or off. */
   acquired: boolean;
+  id?: string;
+  mode?: 'optional' | 'alwaysOn' | 'hidden';
+  /** Whether the trait's requirements hold for its Bearer now. */
+  available?: boolean;
+  /** The group's code name; empty when ungrouped. */
+  group?: string;
+  playerToggle?: boolean;
 }
 
 /** One entry of the sandbox's `entities`: an entity's code name and its own traits. `persona` is one too,
- *  with an empty name when no persona entity plays. */
+ *  with an empty name when no persona entity plays. A caller with no playthrough leaves the identity fields
+ *  out, and they read blank. */
 export interface SandboxEntity {
   name: string;
   traits: readonly SandboxTrait[];
+  id?: string;
+  type?: string;
+  pronouns?: string;
+  inScene?: boolean;
 }
 
 /** A stat's value and max, as one turn input carries them. */
@@ -204,6 +219,9 @@ const ROLL_HOOK = '__formamorphRollPlaceholder';
 const PLACEHOLDER_WRITES = '__formamorphPlaceholderWrites';
 const TRAIT_WRITES = '__formamorphTraitWrites';
 const ENTITY_WRITES = '__formamorphEntityWrites';
+const STAT_WRITES = '__formamorphStatWrites';
+// Writes to `self.enabled` on a `self` that is no entry of `stats`.
+const SELF_WRITES = '__formamorphSelfWrites';
 
 /** How one sandbox map's entries are tracked. Every `string` field is JS source the prelude inlines. */
 interface TrackedMapBase {
@@ -273,12 +291,20 @@ const blankOf = (entry: unknown): unknown => {
 };
 
 /** The `stats` prelude: every entry keyed by name, the last authored winning a shared name. The host reads
- *  back only `self`'s fields, so the map has no reader. An unknown name reads as `blank`. */
+ *  back `self`'s fields from `self` itself; the reader only lists the entries whose read-only `enabled` the
+ *  run wrote, as `[name]`. An unknown name reads as `blank`. */
 const statsPrelude = (entries: readonly { name: string }[], blank: unknown): string => trackedMapPrelude({
   root: 'stats',
+  reader: STAT_WRITES,
   data: Object.fromEntries(entries.map((entry) => [entry.name, entry])),
-  track: '() => {}',
+  track: `(name, entry, state) => {
+    const value = entry.enabled;
+    state.written = false;
+    Object.defineProperty(entry, 'enabled', { enumerable: true, get: () => value, set: () => { state.written = true; } });
+  }`,
   blank: JSON.stringify(blank),
+  row: `(name, state) => state.written ? [name] : null`,
+  replaced: `() => null`,
 });
 
 /** The `placeholders` map as the prelude and the write reader both read it: its top-level keys, and every
@@ -327,7 +353,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
   const spec = {
     nodes: nodes.map((node) => ({
       p: node.path,
-      ...(node.entry ? { e: { value: node.entry.value, values: node.entry.values, text: node.entry.text } } : {}),
+      ...(node.entry ? { e: { id: node.entry.id, name: node.name, value: node.entry.value, values: node.entry.values, text: node.entry.text } } : {}),
       ...(node.children?.length ? { c: keyed(node.children) } : {}),
     })),
     top: keyed(top),
@@ -337,7 +363,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
     `  const states = [];`,
     `  const strays = Object.create(null);`,
-    `  const track = (target, state) => {`,
+    `  const track = (target, state, id, name) => {`,
     `    const set = (v) => {`,
     `      state.value = v;`,
     `      state.text = isArray(v) ? v.join(${JSON.stringify(VALUE_JOIN)}) : String(v);`,
@@ -347,14 +373,17 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `    define(target, 'text', { enumerable: true, get: () => state.text });`,
     `    target.pin = set;`,
     `    target.unpin = () => { state.unpinned = true; };`,
+    `    for (const [field, held] of [['id', id], ['name', name]]) {`,
+    `      define(target, field, { enumerable: true, get: () => held, set: () => { if (!state.readOnly.includes(field)) state.readOnly.push(field); } });`,
+    `    }`,
     `  };`,
     `  const strayAt = (path, key) => {`,
     `    const at = stringify([...path, key]);`,
     `    if (strays[at]) return strays[at].entry;`,
-    `    const state = { value: '', text: '', assigned: false, unpinned: false, path: [...path, key] };`,
+    `    const state = { value: '', text: '', assigned: false, unpinned: false, readOnly: [], path: [...path, key] };`,
     `    const entry = Object.create(null);`,
     `    entry.values = []; entry.roll = () => '';`,
-    `    track(entry, state);`,
+    `    track(entry, state, '', '');`,
     `    strays[at] = { entry, state };`,
     `    return entry;`,
     `  };`,
@@ -367,10 +396,10 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `  spec.nodes.forEach((n, i) => members(targets[i], n.c || []));`,
     `  spec.nodes.forEach((n, i) => {`,
     `    if (!n.e) return;`,
-    `    states[i] = { value: n.e.value, text: n.e.text, assigned: false, unpinned: false };`,
+    `    states[i] = { value: n.e.value, text: n.e.text, assigned: false, unpinned: false, readOnly: [] };`,
     `    targets[i].values = n.e.values;`,
     `    targets[i].roll = () => roll(i);`,
-    `    track(targets[i], states[i]);`,
+    `    track(targets[i], states[i], n.e.id, n.e.name);`,
     `  });`,
     `  const root = Object.create(null);`,
     `  members(root, spec.top);`,
@@ -418,7 +447,10 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `      const state = strays[at].state;`,
     `      if (state.assigned || state.unpinned) miss(state.path);`,
     `    }`,
-    `    return stringify([rows, missed]);`,
+    `    const readOnly = [];`,
+    `    spec.nodes.forEach((n, i) => { if (n.e) for (const field of states[i].readOnly) readOnly.push([...n.p, field]); });`,
+    `    for (const at of keys(strays)) for (const field of strays[at].state.readOnly) readOnly.push([...strays[at].state.path, field]);`,
+    `    return stringify([rows, missed, readOnly]);`,
     `  };`,
     `  return [view(root, []), readWrites];`,
     `})(JSON.stringify, Object.keys, Array.isArray, Object.defineProperty, globalThis.${ROLL_HOOK});`,
@@ -426,22 +458,34 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
   ].join('\n');
 };
 
-/** A trait map, `traits` or an entity's. Every assignment to `enabled` is a switch; `acquired` is read-only
- *  and a write to it is recorded. Rows are `[name, enabled, assigned, acquiredWritten]`; a replaced entry
- *  reads as itself when it is not an object. */
+/** The fields on a trait entry that a write never reaches. A write to one is recorded and dropped. */
+const TRAIT_READ_ONLY_FIELDS = ['id', 'name', 'mode', 'available', 'group', 'playerToggle'] as const;
+
+/** A trait map, `traits` or an entity's. Every assignment to `enabled` is a switch; `acquired` and the
+ *  identity fields are read-only and a write to one is recorded. Rows are `[name, enabled, assigned,
+ *  acquiredWritten, readOnlyFields]`; a replaced entry reads as itself when it is not an object. */
 const TRAIT_MAP: TrackedMapKind = {
   track: `(name, entry, state) => {
     state.enabled = entry.enabled; state.acquired = entry.acquired; state.assigned = false; state.acquiredWritten = false;
+    state.readOnly = [];
     Object.defineProperty(entry, 'enabled', { enumerable: true, get: () => state.enabled, set: (v) => { state.enabled = v; state.assigned = true; } });
     Object.defineProperty(entry, 'acquired', { enumerable: true, get: () => state.acquired, set: () => { state.acquiredWritten = true; } });
+    for (const field of ${JSON.stringify(TRAIT_READ_ONLY_FIELDS)}) {
+      const value = entry[field];
+      Object.defineProperty(entry, field, { enumerable: true, get: () => value, set: () => { if (!state.readOnly.includes(field)) state.readOnly.push(field); } });
+    }
   }`,
-  blank: `{ enabled: false, acquired: false }`,
-  row: `(name, state) => state.assigned || state.acquiredWritten ? [name, state.enabled, state.assigned, state.acquiredWritten] : null`,
-  replaced: `(name, entry) => [name, typeof entry === 'object' && entry !== null ? entry.enabled : entry, true, false]`,
+  blank: `{ enabled: false, acquired: false, id: '', name: '', mode: '', available: false, group: '', playerToggle: false }`,
+  row: `(name, state) => state.assigned || state.acquiredWritten || state.readOnly.length ? [name, state.enabled, state.assigned, state.acquiredWritten, state.readOnly] : null`,
+  replaced: `(name, entry) => [name, typeof entry === 'object' && entry !== null ? entry.enabled : entry, true, false, []]`,
 };
 
 const traitData = (entries: readonly SandboxTrait[]) =>
-  Object.fromEntries(entries.map(({ name, enabled, acquired }) => [name, { enabled, acquired }]));
+  Object.fromEntries(entries.map(({ name, enabled, acquired, id = '', mode = 'optional', available = true, group = '', playerToggle = false }) =>
+    [name, { enabled, acquired, id, name, mode, available, group, playerToggle }]));
+
+/** The fields on an entity entry that a write never reaches. */
+const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits'] as const;
 
 /** The entities as the sandbox keys them: the later of two sharing a name wins, and the played persona
  *  holds its own name whatever comes after it. */
@@ -458,19 +502,27 @@ export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], p
  * `[name, unknownEntity, traitRows]`, one per entry the run wrote into.
  */
 const entitiesPrelude = (keyed: ReadonlyMap<string, SandboxEntity>, persona: SandboxEntity): string => {
+  const data = ({ id = '', type = '', pronouns = '', inScene = false, traits }: SandboxEntity) =>
+    ({ id, type, pronouns, inScene, traits: traitData(traits) });
   const spec = {
-    entities: [...keyed].map(([name, entity]) => [name, traitData(entity.traits)]),
-    persona: persona.name ? null : traitData(persona.traits),
+    entities: [...keyed].map(([name, entity]) => [name, data(entity)]),
+    persona: persona.name ? null : data(persona),
   };
   return [
-    `const [entities, persona, ${ENTITY_WRITES}] = ((stringify, keys, freeze) => {`,
+    `const [entities, persona, ${ENTITY_WRITES}] = ((stringify, keys, freeze, define) => {`,
     `  const traitMap = ${trackedMapFactory(TRAIT_MAP)};`,
     `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
     `  const readers = [];`,
     `  const entry = (key, data, unknown) => {`,
-    `    const [traits, rows] = traitMap(data);`,
-    `    readers.push([key, unknown, rows]);`,
-    `    return freeze({ name: unknown ? '' : key, traits });`,
+    `    const [traits, rows] = traitMap(data.traits || {});`,
+    `    const written = [];`,
+    `    readers.push([key, unknown, rows, written]);`,
+    `    const values = { id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits };`,
+    `    const out = {};`,
+    `    for (const field of ${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}) {`,
+    `      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });`,
+    `    }`,
+    `    return freeze(out);`,
     `  };`,
     `  const map = Object.create(null);`,
     `  for (const [name, data] of spec.entities) map[name] = entry(name, data, false);`,
@@ -480,9 +532,11 @@ const entitiesPrelude = (keyed: ReadonlyMap<string, SandboxEntity>, persona: San
     `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
     `      : strays[key] || (strays[key] = entry(key, {}, true)),`,
     `  });`,
-    `  const readWrites = () => stringify(readers.map(([key, unknown, rows]) => [key, unknown, rows()]).filter((row) => row[2].length));`,
+    `  const readWrites = () => stringify(readers`,
+    `    .map(([key, unknown, rows, written]) => [key, unknown, rows(), written])`,
+    `    .filter((row) => row[2].length || row[3].length));`,
     `  return [entities, persona, readWrites];`,
-    `})(JSON.stringify, Object.keys, Object.freeze);`,
+    `})(JSON.stringify, Object.keys, Object.freeze, Object.defineProperty);`,
   ].join('\n');
 };
 
@@ -490,8 +544,15 @@ const entitiesPrelude = (keyed: ReadonlyMap<string, SandboxEntity>, persona: San
 const memberPath = (root: string, name: string) =>
   /^[A-Za-z_$][\w$]*$/.test(name) ? `${root}.${name}` : `${root}[${JSON.stringify(name)}]`;
 
-/** How code names an entity's trait map: through `entities`, or through `persona` for the empty persona. */
-export const entityTraitsPath = (entity: string) => (entity ? `${memberPath('entities', entity)}.traits` : 'persona.traits');
+/** How code names an entity: through `entities`, or through `persona` for the empty persona. */
+const entityPath = (entity: string) => (entity ? memberPath('entities', entity) : 'persona');
+
+/** How code names an entity's trait map. */
+export const entityTraitsPath = (entity: string) => `${entityPath(entity)}.traits`;
+
+/** The names in a reader's list of written read-only fields, each as the path code spelled it. */
+const readOnlyPaths = (path: string, fields: unknown): string[] =>
+  (Array.isArray(fields) ? fields : []).filter((field): field is string => typeof field === 'string').map((field) => `${path}.${field}`);
 
 /** A reader's rows, split into those naming an entry and the names no entry has. */
 function splitWriteRows(rows: unknown, entries: readonly { name: string }[]): { known: [string, ...unknown[]][]; unknown: string[] } {
@@ -513,17 +574,19 @@ function readTraitWrites(
   entries: readonly SandboxTrait[],
   /** How code names the map, for the error. */
   root: string,
-): { writes: TraitWrite[]; unknown: string[]; acquired: string[] } | { error: string } {
+): { writes: TraitWrite[]; unknown: string[]; acquired: string[]; readOnly: string[] } | { error: string } {
   const { known, unknown } = splitWriteRows(rows, entries);
   const writes: TraitWrite[] = [];
   const acquired: string[] = [];
-  for (const [name, enabled, assigned, acquiredWritten] of known) {
+  const readOnly: string[] = [];
+  for (const [name, enabled, assigned, acquiredWritten, fields] of known) {
     if (acquiredWritten === true) acquired.push(name);
+    readOnly.push(...readOnlyPaths(memberPath(root, name), fields));
     if (assigned !== true) continue;
     if (typeof enabled !== 'boolean') return { error: `${memberPath(root, name)}.enabled must be true or false` };
     writes.push({ name, enabled });
   }
-  return { writes, unknown, acquired };
+  return { writes, unknown, acquired, readOnly };
 }
 
 /** What the run did to each entity's traits, from the `entities` reader's dump. A row through an unknown
@@ -532,18 +595,26 @@ function readEntityWrites(
   dump: string,
   keyed: ReadonlyMap<string, SandboxEntity>,
   persona: SandboxEntity,
-): { writes: EntityTraitWrites[]; unknown: string[] } | { error: string } {
+): { writes: EntityTraitWrites[]; unknown: string[]; readOnly: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
   const writes: EntityTraitWrites[] = [];
   const unknown: string[] = [];
+  const readOnly: string[] = [];
   for (const row of Array.isArray(parsed) ? parsed : []) {
     if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
-    const [name, isUnknown, rows] = row as [string, unknown, unknown];
-    if (isUnknown === true) { unknown.push(name); continue; }
+    const [name, isUnknown, rows, fields] = row as [string, unknown, unknown, unknown];
+    readOnly.push(...readOnlyPaths(entityPath(name), fields));
+    // A blank entry has no traits, so any trait row through it is a switch on an entity that is not there.
+    if (isUnknown === true) {
+      if (Array.isArray(rows) && rows.length) unknown.push(name);
+      continue;
+    }
     const entity = name ? keyed.get(name) : persona;
     if (!entity) continue;
     const read = readTraitWrites(rows, entity.traits, entityTraitsPath(name));
     if ('error' in read) return read;
+    readOnly.push(...read.readOnly);
+    if (!read.writes.length && !read.unknown.length && !read.acquired.length) continue;
     writes.push({
       entity: name,
       ...(read.writes.length ? { traits: read.writes } : {}),
@@ -551,8 +622,12 @@ function readEntityWrites(
       ...(read.acquired.length ? { acquiredWrites: read.acquired } : {}),
     });
   }
-  return { writes, unknown };
+  return { writes, unknown, readOnly };
 }
+
+/** The paths in a reader's list: each a list of names; anything else is skipped. */
+const pathsIn = (rows: unknown): string[][] =>
+  (Array.isArray(rows) ? rows : []).filter((path): path is string[] => Array.isArray(path) && path.every((step) => typeof step === 'string'));
 
 /** One written item as text: a string, or a finite number spelled out. Anything else is not text. */
 const writtenText = (value: unknown): string | null => (typeof value === 'string' ? value
@@ -567,9 +642,9 @@ const writtenText = (value: unknown): string | null => (typeof value === 'string
 function readPlaceholderWrites(
   dump: string,
   nodes: readonly SandboxPlaceholderNode[],
-): { writes: PlaceholderWrite[]; unknown: string[] } | { error: string } {
+): { writes: PlaceholderWrite[]; unknown: string[]; readOnly: string[] } | { error: string } {
   const parsed: unknown = JSON.parse(dump);
-  const [rows, missed] = Array.isArray(parsed) ? parsed : [];
+  const [rows, missed, readOnlyRows] = Array.isArray(parsed) ? parsed : [];
   const writes: PlaceholderWrite[] = [];
   for (const row of Array.isArray(rows) ? rows : []) {
     if (!Array.isArray(row) || typeof row[0] !== 'number') continue;
@@ -592,10 +667,21 @@ function readPlaceholderWrites(
     }
     writes.push({ id, path, value: items });
   }
-  const unknown = (Array.isArray(missed) ? missed : [])
-    .filter((path): path is string[] => Array.isArray(path) && path.every((step) => typeof step === 'string'))
-    .map((path) => placeholderPathLabel(path));
-  return { writes, unknown };
+  const unknown = pathsIn(missed).map((path) => placeholderPathLabel(path));
+  const readOnly = pathsIn(readOnlyRows).map((path) => placeholderPathExpression(path));
+  return { writes, unknown, readOnly };
+}
+
+/** The stats whose read-only `enabled` the run wrote, as code spelled them; `[null]` is `self` itself. */
+function readStatReadOnlyWrites(dump: string): string[] {
+  const parsed: unknown = JSON.parse(dump);
+  const paths: string[] = [];
+  for (const row of Array.isArray(parsed) ? parsed : []) {
+    if (!Array.isArray(row)) continue;
+    if (row[0] === null) paths.push('self.enabled');
+    else if (typeof row[0] === 'string') paths.push(`${memberPath('stats', row[0])}.enabled`);
+  }
+  return paths;
 }
 
 const failure = (what: string, kind: StatCodeFailure): StatCodeResult => ({
@@ -662,6 +748,8 @@ export const executeStatCode = async (
         [source, fieldwise((field) => inputs?.delta?.[source]?.[field] ?? 0)])) as Record<DeltaSource, StatNumbers>;
       return {
         ...snapshot,
+        // Only stats that run are marshalled, so a stat a trait switched off reads as the blank entry.
+        enabled: true,
         previous,
         delta: {
           ...sources,
@@ -711,9 +799,12 @@ export const executeStatCode = async (
       // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
       // the entities' traits.
       const program = [
-        statsPrelude(statsData, blankOf(selfData)),
+        statsPrelude(statsData, { ...(blankOf(selfData) as object), enabled: false }),
+        `const ${SELF_WRITES} = [];`,
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
+        // A `self` that is no entry of `stats` reports its read-only `enabled` through the shared list.
+        ...(selfIsEntry ? [] : [`Object.defineProperty(self, 'enabled', { enumerable: true, get: () => true, set: () => { ${SELF_WRITES}.push(1); } });`]),
         // `previous` and `delta` describe the turn, not live fields: frozen, so a write is dropped.
         `for (const s of [...Object.values(stats), self]) {`,
         `  Object.freeze(s.previous);`,
@@ -727,9 +818,10 @@ export const executeStatCode = async (
         placeholdersPrelude(placeholderMap),
         trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
         entitiesPrelude(keyed, persona),
-        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}) {`,
+        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${SELF_WRITES}) {`,
         code,
-        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}()];`,
+        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
+        `  JSON.stringify([...JSON.parse(${STAT_WRITES}()), ...${SELF_WRITES}.map(() => [null])])];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -774,6 +866,7 @@ export const executeStatCode = async (
       const writesDump = readDump(2 + CODE_BOUND_FIELDS.length);
       const traitsDump = readDump(3 + CODE_BOUND_FIELDS.length);
       const entitiesDump = readDump(4 + CODE_BOUND_FIELDS.length);
+      const statsDump = readDump(5 + CODE_BOUND_FIELDS.length);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -799,6 +892,12 @@ export const executeStatCode = async (
       if ('error' in traitWrites) return failure(traitWrites.error, 'bad-write');
       const entityWrites = readEntityWrites(entitiesDump, keyed, persona);
       if ('error' in entityWrites) return failure(entityWrites.error, 'bad-write');
+      const readOnlyWrites = [
+        ...readStatReadOnlyWrites(statsDump),
+        ...placeholderWrites.readOnly,
+        ...traitWrites.readOnly,
+        ...entityWrites.readOnly,
+      ];
 
       const min = bounds.min ?? selfData.min;
       const max = Math.max(min, bounds.max ?? selfData.max);
@@ -813,6 +912,7 @@ export const executeStatCode = async (
         ...(traitWrites.acquired.length ? { acquiredWrites: traitWrites.acquired } : {}),
         ...(entityWrites.writes.length ? { entities: entityWrites.writes } : {}),
         ...(entityWrites.unknown.length ? { unknownEntities: entityWrites.unknown } : {}),
+        ...(readOnlyWrites.length ? { readOnlyWrites } : {}),
       });
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);

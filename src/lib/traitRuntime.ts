@@ -20,7 +20,7 @@ import { activeOwnedTraitIds } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder, isAlwaysOn, isHidden } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits } from './traitTree';
 import {
-  gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
+  gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateStates, type GateTraitRef,
 } from './traitGates';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey`
@@ -483,8 +483,17 @@ export const traitGateInput = (
   originals: { traits: world.traits, groups: world.groups },
 });
 
+/** Every bearer's gate on each of its traits, for one read of the state. */
+export const traitGates = (
+  state: Pick<TraitRuntimeState, 'traits' | 'disabledTraitIds' | 'ownedTraits'>, world: TraitWorld,
+): GateStates => gateStates(traitGateInput(state, world));
+
+/** Whether the bearer's requirements on a trait hold in `gates`. A trait with no gate state is open. */
+export const traitUnlocked = (gates: GateStates, ownerId: string, traitId: string): boolean =>
+  gateOf(gates, ownerId, traitId)?.unlocked !== false;
+
 const isLocked = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
-  gateOf(gateStates(traitGateInput(state, world)), ownerId, traitId)?.unlocked === false;
+  !traitUnlocked(traitGates(state, world), ownerId, traitId);
 
 /** Whether the gate module refuses the player's switch-on: the trait is locked, its group is full, or the
  *  mode refuses it. */

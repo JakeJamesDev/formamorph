@@ -256,10 +256,11 @@ describe('what Test Code reports', () => {
     await testCode(user, 'traits.Brave.enabled = true; return 5;');
 
     await waitFor(() => expect(row()).toHaveTextContent('Result: 5 · Brave switched on'));
+    const closed = { enabled: false, acquired: false, mode: 'optional', available: true, group: '', playerToggle: false };
     expect(executeStatCode.mock.calls[0][3].traits).toEqual([
-      { name: 'Brave', enabled: false, acquired: false },
-      { name: 'Night Owl', enabled: false, acquired: false },
-      { name: 'Beast Fury', enabled: false, acquired: false },
+      { id: 't1', name: 'Brave', ...closed },
+      { id: 't2', name: 'Night Owl', ...closed },
+      { id: 't3', name: 'Beast Fury', ...closed },
     ]);
     // The world keeps its authored names, chip token and all: only the sandbox entries read the code name.
     expect(traits).toEqual([

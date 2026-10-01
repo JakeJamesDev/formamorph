@@ -40,8 +40,8 @@ describe('sandboxTraits under gates', () => {
     const { state } = applyCodeTraitSwitches(start, [{ traitId: 'plate', enabled: true, by: 'Vigor' }], world);
     expect(sandboxTraits({ acquired: state.traits, disabledTraitIds: state.disabledTraitIds, appliedValues: {}, world }, []))
       .toEqual([
-        { name: 'Paladin', acquired: false, enabled: false },
-        { name: 'Plate Armor', acquired: true, enabled: false },
+        { id: 'paladin', name: 'Paladin', mode: 'optional', available: true, group: '', playerToggle: false, acquired: false, enabled: false },
+        { id: 'plate', name: 'Plate Armor', mode: 'optional', available: false, group: '', playerToggle: false, acquired: true, enabled: false },
       ]);
   });
 });

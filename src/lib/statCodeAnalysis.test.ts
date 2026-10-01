@@ -215,7 +215,7 @@ describe('statCodeCompletions', () => {
   it('offers the stat fields after a dot', () => {
     const offered = labels('const me = stats[self.name];\nreturn me.|');
     expect(offered).toEqual([
-      'id', 'name', 'type', 'description', 'min', 'max', 'value', 'regen', 'previous', 'delta',
+      'id', 'name', 'type', 'description', 'enabled', 'min', 'max', 'value', 'regen', 'previous', 'delta',
     ]);
   });
 
