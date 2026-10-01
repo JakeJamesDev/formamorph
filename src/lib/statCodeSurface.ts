@@ -8,7 +8,7 @@
  * caught by the drift guard beside this file.
  */
 
-import { CODE_BOUND_FIELDS, DELTA_SOURCES, STAT_CLOCK_VARS, type DeltaSource } from '@/lib/statCodeExecutor';
+import { DELTA_SOURCES, STAT_CLOCK_VARS, type DeltaSource } from '@/lib/statCodeExecutor';
 import { STAT_CODE_SNIPPETS } from '@/lib/codeSnippets';
 import { nearestName, surfaceKnownNames, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
@@ -83,9 +83,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source. Read-only.' },
 ];
 
-/** The fields on `self` that a write reaches. A write to any other field, or to another stat's entry, is
- *  dropped and reported. A bound write holds until the code next runs. */
-export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
+export { SELF_WRITABLE_FIELDS } from '@/lib/statCodeExecutor';
 
 /** The fields on a stat's `previous`: the whole stat as it stood at the start of this turn. Read-only. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
