@@ -14,7 +14,7 @@ A refactor with no behavior change, from the effort review's standards findings 
 - **One surface-to-section path.** The surface hint re-implements the surface help lookup. The hint calls the shared lookup.
 - **One open-section update.** The Guide body and the window build the same "open this section" state change. Move it next to the tab state and call it from both.
 - **One drag hook.** The window and the edge tab repeat the same pointer-capture, track, save-on-release code. Extract a hook both use.
-- **Shared probe helpers.** The four help probe harnesses copy the same snapshot literal and the same percent, mean and fact-share helpers. Move them to one harness module.
+- **Shared probe helpers.** The five help probe harnesses (ticket 26's `help-baseline.cli.ts` is the fifth) copy the same snapshot literal and the same percent, mean and fact-share helpers. Move them to one harness module.
 - **Names.** Rename `askHelpTicket22` after what it does. Remove the `hidden = suspended` alias and the redundant `guide &&` check after the early return.
 - **Copy.** The e2e skip message says "phone"; it says "mobile".
 - **Comments.** Trim the multi-line comments on the window motion, window box and edge tab to one line each.

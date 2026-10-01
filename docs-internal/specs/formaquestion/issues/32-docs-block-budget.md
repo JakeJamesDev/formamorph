@@ -19,7 +19,7 @@ The fix:
 - The surface section still goes first.
 - Drop the `?? id` fallback in the surface label lookup. The coverage test already fails for an unlabeled id, so the fallback is dead code that ticket 29 asked to remove.
 
-**Probe.** This changes which sections reach the model, so rerun ticket 26's "here" cases on the default cloud model, same harness, with an in-batch control on the old build. Report sections sent and grounded-correct rate per arm.
+**Probe.** This changes which sections reach the model, so rerun ticket 26's "here" cases on the default cloud model, same harness (`npm run probe:help -- --kinds here`), with an in-batch control on the old build. Report sections sent and grounded-correct rate per arm.
 
 Recommended model rationale: a small selection fix with a focused probe.
 
