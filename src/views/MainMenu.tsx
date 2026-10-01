@@ -11,6 +11,7 @@ import { bearerPins, inPlayBearers, playedEntityId } from '@/lib/ownedTraitsInPl
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
+import { useSurfaceTab } from '@/components/ui/surface';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
@@ -351,6 +352,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   );
   // Which content library the menu shows. Only "worlds" is populated for now; the rest swap to an empty view.
   const [cardType, setCardType] = useState<MainMenuCardTab>('worlds');
+  useSurfaceTab('mainMenu', cardType);
   // The toggle drives whichever library is on screen; the other three keep theirs.
   const layoutMode = cardType === 'entities' ? entitiesLayout
     : cardType === 'dictionaries' ? dictionariesLayout
@@ -3151,7 +3153,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           which parts are this world's doing. Chips are shown as their raw tokens: this is the text as
           authored, not a per-turn render, and the AI-context viewer already shows the filled one. */}
       <Dialog open={showWorldPrompts} onOpenChange={setShowWorldPrompts}>
-        <DialogContent className="sm:max-w-[700px] h-[85dvh] flex flex-col">
+        <DialogContent surface="worldPrompts" className="sm:max-w-[700px] h-[85dvh] flex flex-col">
           <DialogHeader className="shrink-0">
             {/* The mode switch shares the title row (pr-6 clears the dialog's X), and the description
                 doubles as the legend — its "added"/"removed" carry the diff's actual colors — so the
@@ -3338,7 +3340,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           arrow means the editor's guarded back arrow is the sole exit; Esc/overlay are blocked so they can't
           bypass the dirty prompt. */}
       <Dialog open={showWorldEditor} onOpenChange={(open) => { if (open) setShowWorldEditor(true); }}>
-        <DialogContent aria-describedby={undefined}
+        <DialogContent surface="worldEditor" aria-describedby={undefined}
           hideClose
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}

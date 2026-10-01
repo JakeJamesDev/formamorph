@@ -49,7 +49,7 @@ const DictionaryBookManager = ({
   );
 
   return (
-    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Dictionary Fields">
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Dictionary Fields" surfaceTabs="worldEditorBook">
       <PanelTabContent value="details">{detailsPanel}</PanelTabContent>
       <PanelTabContent value="placeholders" fill>
         <ScopedPlaceholdersSection

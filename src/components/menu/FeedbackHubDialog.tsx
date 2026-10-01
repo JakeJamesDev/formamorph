@@ -27,7 +27,7 @@ export function FeedbackHubDialog({ open, onOpenChange, initialTab, onChanged }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* No description: the tab labels say what each list is. `aria-describedby={undefined}` is Radix's
           opt-out, otherwise it warns about the missing one. */}
-      <DialogContent aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
+      <DialogContent surface="feedbackHub" aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <MessageSquarePlus className="h-4 w-4" /> Feedback

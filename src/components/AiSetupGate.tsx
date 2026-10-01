@@ -348,7 +348,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) dismiss(); }}>
-      <DialogContent className={cn('w-[min(96vw,560px)] max-w-none', expanded && 'flex h-[680px] max-h-[92dvh] flex-col')}>
+      <DialogContent surface="aiSetup" className={cn('w-[min(96vw,560px)] max-w-none', expanded && 'flex h-[680px] max-h-[92dvh] flex-col')}>
         <DialogHeader className={cn(expanded && 'shrink-0')}>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

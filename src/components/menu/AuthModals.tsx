@@ -166,7 +166,7 @@ export function AuthModals({
     <>
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
+        <DialogContent surface="profile" aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>User Profile</DialogTitle>
           </DialogHeader>
@@ -221,6 +221,7 @@ export function AuthModals({
               the dialog's max width — a long message subject widened the whole dialog and added a
               horizontal scrollbar instead of ellipsing. */}
           <Tabs
+            surfaceTabs="profile"
             value={profileTab}
             onValueChange={(value) => setProfileTab(value as ProfileTab)}
             className="w-full min-w-0 flex flex-col flex-1 min-h-0"

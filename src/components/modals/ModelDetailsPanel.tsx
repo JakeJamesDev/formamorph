@@ -11,6 +11,7 @@ import { useAvatarDetailsOpen } from '@/lib/useAvatarDetailsOpen';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { VrmFileDetails, Row } from '@/components/VrmFileDetails';
 import type { VrmLicense } from '@/types';
+import { SurfaceLayer } from '@/components/ui/surface';
 import { gateAvatarLicense, type AvatarLicenseRequirement } from '@/lib/avatarLicenseGate';
 
 /** Player-facing name for each Permissive License requirement, named only when it fails — a passing
@@ -97,6 +98,7 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
     if (!open) return null;
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col">
+        <SurfaceLayer id="modelDetails" />
         <div className="flex items-center justify-between border-b px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <h2 className="truncate text-title font-semibold">{name}</h2>
           <Button variant="ghost" size="icon" aria-label="Close" onClick={onClose}>
@@ -115,7 +117,7 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent aria-describedby={undefined} className="max-w-[900px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent surface="modelDetails" aria-describedby={undefined} className="max-w-[900px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="px-4 py-3 border-b">
           {/* `leading-normal` replaces DialogTitle's `leading-none`, whose one-em line box crops
               descenders under `truncate`'s overflow clip. */}

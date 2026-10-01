@@ -38,6 +38,7 @@ export function AgeGateDialog({
   return (
     <Dialog open={open}>
       <DialogContent
+        surface="ageGate"
         className="sm:max-w-[480px] max-h-[85dvh] overflow-y-auto"
         hideClose
         onEscapeKeyDown={(e) => e.preventDefault()}

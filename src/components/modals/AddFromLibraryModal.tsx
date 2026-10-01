@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Meta } from '@/components/ui/typography';
 import { libraryItemData, libraryItems, LINK_EXPLANATIONS, type LibraryItemSummary, type LibraryKind } from '@/lib/librarySources';
 import type { LinkableContent } from '@/lib/linkedContent';
+import type { SurfaceIdName } from '@/components/ui/surface';
 
 /** One picked library item with the content behind it. */
 export interface LibraryPick {
@@ -15,6 +16,8 @@ export interface LibraryPick {
 }
 
 interface AddFromLibraryModalProps {
+  /** The surface id this picker reports, for a use of it that has one. */
+  surface?: SurfaceIdName;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   kind: LibraryKind;
@@ -45,7 +48,7 @@ interface AddFromLibraryModalProps {
  */
 function AddFromLibraryModal({
   open, onOpenChange, kind, title, description, emptyMessage, confirmLabel,
-  single, alwaysLink, resume, renderRow, onConfirm,
+  single, alwaysLink, resume, renderRow, onConfirm, surface,
 }: AddFromLibraryModalProps) {
   const [list, setList] = useState<LibraryItemSummary[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -106,7 +109,7 @@ function AddFromLibraryModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent surface={surface} className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

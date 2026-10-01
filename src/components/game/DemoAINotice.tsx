@@ -67,6 +67,7 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle, DemoAINoticeProps>(fu
     <Dialog open={open} onOpenChange={(v) => { if (!v) close(); }}>
       {/* Capped to the keyboard-aware viewport: the body scrolls and the footer stays on screen. */}
       <DialogContent
+        surface="demoAI"
         className="flex max-h-[calc(var(--app-h,100dvh)-1rem)] w-[min(96vw,520px)] max-w-none flex-col"
         onOpenAutoFocus={(event) => { event.preventDefault(); connectRef.current?.focus(); }}
       >

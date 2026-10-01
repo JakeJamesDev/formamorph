@@ -74,6 +74,7 @@ export const LocationModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
+        surface="location"
         aria-describedby={undefined}
         className="flex h-[85dvh] w-[95vw] max-w-[900px] flex-col gap-0 overflow-hidden p-0"
       >

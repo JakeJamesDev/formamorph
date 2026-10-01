@@ -317,7 +317,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent surface="backup" className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Archive className="h-4 w-4" /> Backup &amp; Restore</DialogTitle>
           <DialogDescription>

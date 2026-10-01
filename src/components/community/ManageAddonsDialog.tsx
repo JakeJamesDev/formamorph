@@ -201,7 +201,7 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
 
   return (
     <Dialog open={open} onOpenChange={requestClose}>
-      <DialogContent className="flex h-[85dvh] flex-col sm:max-w-[640px]">
+      <DialogContent surface="manageAddons" className="flex h-[85dvh] flex-col sm:max-w-[640px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>Manage Add-ons</DialogTitle>
           <DialogDescription>

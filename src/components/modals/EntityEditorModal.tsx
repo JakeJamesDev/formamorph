@@ -189,6 +189,8 @@ const EntityEditorModal = ({
     {/* Around the whole body, so no field reads the world's placeholder store. */}
     <PlaceholderStoreProvider value={phStore}>
       <EditorModalShell
+        surface="entityEditor"
+        surfaceTabs="entityEditor"
         open={isOpen}
         // A library character has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
@@ -217,6 +219,7 @@ const EntityEditorModal = ({
             <FieldColumn fill>
               {/* The right column is narrow until `lg`, so labels wait for it. */}
               <PanelTabs
+                surfaceTabs="entityEditorEntity"
                 tabs={ENTITY_EDITOR_SUBTABS}
                 value={subTab}
                 onValueChange={setSubTab}

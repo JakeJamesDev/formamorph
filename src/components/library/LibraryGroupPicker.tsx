@@ -33,6 +33,7 @@ export function LibraryGroupPicker({ name, groups, currentGroupId, initialPanel 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
+        surface={panel === 'create' ? 'designSystemGroupPicker.create' : 'designSystemGroupPicker.picker'}
         className="block max-h-[calc(var(--app-h,100dvh)-1rem)] w-[calc(100%-1rem)] max-w-lg overflow-hidden rounded-lg p-0"
         onOpenAutoFocus={(event) => { event.preventDefault(); input.current?.focus(); }}
         onCloseAutoFocus={(event) => { event.preventDefault(); restoreFocus(); }}

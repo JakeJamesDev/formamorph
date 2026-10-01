@@ -9,6 +9,7 @@ import { eventPhase, firstPlaceOf, isContestEvent, phaseMessageId, resultsAnnoun
 import { tiedForFirstTitle } from '@/lib/placeLabels';
 import { isEventAcknowledged, markEventAcknowledged } from '@/lib/eventSeenStore';
 import { useEventProse } from '@/lib/useEventProse';
+import { SurfaceTab } from '@/components/ui/surface';
 import type { ServerEvent } from '@/types';
 
 interface EventAckModalProps {
@@ -92,6 +93,7 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
   return (
     <Dialog open onOpenChange={() => { /* acknowledge-only: see the component doc */ }}>
       <DialogContent
+        surface="eventAck"
         hideClose
         aria-describedby={undefined}
         className="max-w-md max-h-[90dvh] p-0 gap-0 overflow-hidden flex flex-col"
@@ -99,6 +101,7 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
+        <SurfaceTab ledger="eventAck" tab={phase} />
         <EventPosterBand
           event={event}
           icon={Icon}

@@ -55,7 +55,7 @@ export function WebVersionChangelog() {
       </Tip>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent aria-describedby={undefined} hideClose className="max-w-3xl">
+        <DialogContent surface="changelog" aria-describedby={undefined} hideClose className="max-w-3xl">
           <DialogHeader><DialogTitle>What’s new</DialogTitle></DialogHeader>
           <ChangelogBody
             text={loading ? undefined : (changelog ?? undefined)}

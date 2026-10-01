@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, User } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
+import type { SurfaceLedgerName } from "@/components/ui/surface";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
@@ -102,8 +103,10 @@ export function BearerStatNote({ bearer }: { bearer: Entity }) {
  */
 const TraitManager = ({
   trait, owner, link, ownerLine = true, detailsHeader, availabilityFooter, onOpenTrait, onOpenEntity, requirementOpens, tab, onTabChange,
-  focusField,
+  focusField, surfaceTabs,
 }: {
+  /** The tab ledger this panel reports under, for a host that has one. */
+  surfaceTabs?: SurfaceLedgerName;
   trait: Trait;
   owner?: Entity;
   link?: TraitLinkEdit;
@@ -441,7 +444,7 @@ const TraitManager = ({
   };
 
   return (
-    <PanelTabs tabs={tabs} value={shownTab} onValueChange={onTabChange} stripLabel="Trait Fields">
+    <PanelTabs tabs={tabs} value={shownTab} onValueChange={onTabChange} stripLabel="Trait Fields" surfaceTabs={surfaceTabs}>
       {tabs.map((t) => (
         <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
       ))}

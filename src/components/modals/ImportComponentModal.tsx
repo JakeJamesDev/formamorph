@@ -49,7 +49,7 @@ export function ImportComponentModal({
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onCancel(); }}>
-      <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[480px]">
+      <DialogContent surface="importComponent" className="flex max-h-[85dvh] flex-col sm:max-w-[480px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>{COPY[kind].title}</DialogTitle>
           <DialogDescription>{name}</DialogDescription>

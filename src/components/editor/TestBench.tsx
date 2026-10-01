@@ -63,6 +63,7 @@ export function TestBench({
         </Button>
       </div>
       <Tabs
+        surfaceTabs="worldEditorBench"
         value={tab}
         onValueChange={(v) => onTabChange(v as BenchTab)}
         className="flex min-h-0 flex-grow flex-col gap-2"

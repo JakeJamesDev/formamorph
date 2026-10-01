@@ -4,6 +4,7 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { ignoreLayerPress, keepLayerFocus } from "@/components/ui/shielded-layer"
+import { SurfaceLayer, type SurfaceIdName } from "@/components/ui/surface"
 
 const Dialog = DialogPrimitive.Root
 
@@ -56,8 +57,10 @@ const DialogContent = React.forwardRef<
     unanimated?: boolean;
     /** Extra classes for the dim sheet behind the box, for callers that pace its fade themselves. */
     overlayClassName?: string;
+    /** The surface id this dialog reports while it is open. */
+    surface?: SurfaceIdName;
   }
->(({ className, children, hideClose = false, unanimated = false, overlayClassName, ...props }, ref) => (
+>(({ className, children, hideClose = false, unanimated = false, overlayClassName, surface, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
@@ -73,7 +76,7 @@ const DialogContent = React.forwardRef<
       onPointerDownOutside={ignoreLayerPress(props.onPointerDownOutside)}
       onInteractOutside={ignoreLayerPress(props.onInteractOutside)}
       onCloseAutoFocus={keepLayerFocus(props.onCloseAutoFocus)}>
-      {children}
+      {surface ? <SurfaceLayer id={surface}>{children}</SurfaceLayer> : children}
       {!hideClose && (
         <DialogPrimitive.Close
           className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">

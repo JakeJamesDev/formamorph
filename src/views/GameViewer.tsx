@@ -4709,7 +4709,7 @@ const GameViewer = ({
           else setIsEditingWorld(false);
         }}
       >
-        <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
+        <DialogContent surface="worldEditor" aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
           <DialogTitle className="sr-only">World Editor</DialogTitle>
           <WorldEditor embedded inGame onClose={() => setIsEditingWorld(false)} />
         </DialogContent>
@@ -4723,7 +4723,7 @@ const GameViewer = ({
 
       {/* Full AI context sent each turn, paginated by turn */}
       <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
-        <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] flex flex-col overflow-hidden">
+        <DialogContent surface="aiContext" aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] flex flex-col overflow-hidden">
           {(() => {
             const palette = HIGHLIGHT_PALETTE;
             // Stable per-entry color + name lookups (by the live dictionary's order), shared by the legend,
@@ -5472,7 +5472,7 @@ const GameViewer = ({
       />
 
       <AlertDialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent surface="export">
           <AlertDialogHeader>
             <AlertDialogTitle>Export story</AlertDialogTitle>
             <AlertDialogDescription>

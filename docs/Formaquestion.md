@@ -29,6 +29,14 @@ The best matches are first. Each result shows the section, its page and the star
 
 To go back to the list of pages, select **Contents** above the section.
 
+## How to Get Help for the Screen You Have Open
+
+1. Open the screen, dialog or tab that you need help with.
+2. Open Formaquestion.
+3. Select the row under **Help for This Screen**.
+
+The row is the first item on the **Search** tab and on the **Guide** tab. It names the guide section for the screen, the dialog and the tab that you have open. It changes when you open a different one. A screen with no guide section shows no row, and the row gives its place to the results while you search.
+
 ## How to Move and Resize the Window
 
 1. Drag the title bar to move the window.

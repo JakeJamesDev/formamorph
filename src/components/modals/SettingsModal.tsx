@@ -6,6 +6,7 @@ import { useTheme } from '../theme-provider';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
+import { SurfaceTab } from '@/components/ui/surface';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
 import { blankTool } from '@/lib/tools/toolDraft';
@@ -1399,6 +1400,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           rather than a list of controls, and the extra width is what lets the editor show edit and
           preview side by side instead of one at a time. */}
       <DialogContent
+        surface="settings"
         aria-describedby={undefined}
         // One width for every tab, matching the Feedback hub — Prompts wanted a wider window only to fit
         // the side-by-side panes, and those now belong to full screen.
@@ -1424,7 +1426,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
             </TutorialPopover>
           </div>
         </DialogHeader>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
+        <Tabs surfaceTabs="settings" value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0">
           {/* The tab labels don't fit narrow mobile, so below sm the tab strip becomes a dropdown of the
               active tab; sm+ keeps the full row. Both drive the same activeTab state. */}
           <Select value={activeTab} onValueChange={setActiveTab}>
@@ -1459,6 +1461,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
 
           <TabsContent value="endpoints" className="py-4 px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <Tabs value={activeEndpointTab} onValueChange={setEndpointTab} className="flex flex-col flex-1 min-h-0">
+              <SurfaceTab ledger="settingsEndpoints" tab={visibleEndpointTabs.find((t) => t.value === activeEndpointTab)?.route} />
               <TabsList className={`grid w-full flex-shrink-0 ${visibleEndpointTabs.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {visibleEndpointTabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
               </TabsList>
@@ -2007,6 +2010,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 System/User/Messages/Options row: two rows of chrome the editor gets back, and a list that
                 says what each prompt is for. `Tabs` still owns the panel switching — only its list is gone. */}
             <Tabs value={activePromptTab} onValueChange={selectPromptTab} className="w-full flex flex-1 min-h-0 gap-4 flex-col md:flex-row">
+              {/* The rail has no tab strip, so the open prompt and its surface report by hand. */}
+              {showingOverview ? <SurfaceTab ledger="settingsPromptPreset" tab={OVERVIEW_ROUTE} /> : (
+                <>
+                  <SurfaceTab ledger="settingsPrompts" tab={activePromptTab} />
+                  <SurfaceTab ledger="settingsPromptSurfaces" tab={showingHub ? HUB_ROUTE : promptView} />
+                </>
+              )}
               {/* Narrow: one dropdown carrying prompt + surface, since a rail and an editor can't share
                   mobile width. Same collapse the top-level Settings tabs already do. */}
               <div className="md:hidden flex-shrink-0">

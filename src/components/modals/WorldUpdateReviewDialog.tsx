@@ -105,7 +105,7 @@ export function WorldUpdateReviewDialog({ open, review, onApply, onCancel }: Wor
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onCancel(); }}>
-      <DialogContent className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
+      <DialogContent surface="worldUpdate" className="flex max-h-[85dvh] flex-col sm:max-w-[640px]">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             Update This World

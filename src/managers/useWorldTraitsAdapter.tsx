@@ -165,6 +165,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
       )}
       {!group && trait && (
         <TraitManager
+          surfaceTabs="worldEditorTrait"
           key={trait.id}
           trait={trait}
           owner={owned?.entity}

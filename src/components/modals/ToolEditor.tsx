@@ -414,6 +414,7 @@ export function ToolEditor({
         )}
       >
         <Tabs
+          surfaceTabs="settingsToolEdit"
           value={editTab} onValueChange={(t) => onEditTabChange(t as ToolEditTab)}
           className="flex flex-col min-h-0 gap-3"
         >

@@ -18,6 +18,7 @@ import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { toastError } from '@/lib/linkToast';
+import { SurfaceLayer } from '@/components/ui/surface';
 
 const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   onCharacterCustomized: (data: CharacterData) => void;
@@ -151,6 +152,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   if (isMobile) {
     return (
       <div className="relative flex app-viewport flex-col pt-[env(safe-area-inset-top)]">
+        <SurfaceLayer id="avatar" />
         {viewer}
         <MobileControlsDrawer title="Character Customization">{panel}</MobileControlsDrawer>
       </div>
@@ -159,6 +161,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
 
   return (
     <div className="flex app-viewport pt-[env(safe-area-inset-top)]">
+      <SurfaceLayer id="avatar" />
       {viewer}
       <Card className="w-1/3 m-4 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 min-h-0">

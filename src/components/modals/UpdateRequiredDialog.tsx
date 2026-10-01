@@ -48,7 +48,7 @@ export function UpdateRequiredDialog({ required, phase, onUpdate, onDismiss }: U
 
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onDismiss(); }}>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-[460px]">
+      <DialogContent surface="updateRequired" aria-describedby={undefined} className="sm:max-w-[460px]">
         <DialogHeader>
           <DialogTitle>Update Formamorph</DialogTitle>
         </DialogHeader>
