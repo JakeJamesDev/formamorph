@@ -28,8 +28,6 @@ export interface CodeSurface {
   label: string;
   /** The names the sandbox injects, in the order an author meets them. Offered first. */
   globals: readonly SurfaceEntry[];
-  /** Names the sandbox injects for older code but never offers or documents. */
-  hiddenGlobals: readonly string[];
   /** Built-ins the VM already has that are worth offering. */
   builtins: readonly SurfaceEntry[];
   /** What to offer after an exact expression and a dot, like `Math` or `args`. An empty list offers
@@ -53,7 +51,6 @@ export function surfaceKnownNames(surface: CodeSurface): ReadonlySet<string> {
   if (!names) {
     names = new Set([
       ...surface.globals.map((entry) => entry.name),
-      ...surface.hiddenGlobals,
       ...surface.builtins.map((entry) => entry.name),
       ...surface.languageNames,
     ]);
@@ -64,7 +61,7 @@ export function surfaceKnownNames(surface: CodeSurface): ReadonlySet<string> {
 
 /** Whether the surface injects `name`. */
 export const surfaceHasGlobal = (surface: CodeSurface, name: string): boolean =>
-  surface.globals.some((entry) => entry.name === name) || surface.hiddenGlobals.includes(name);
+  surface.globals.some((entry) => entry.name === name);
 
 /** How far apart two names may be and still read as the same one mistyped. Scaled to length so short
  *  names don't suggest each other and long ones tolerate a slip. */

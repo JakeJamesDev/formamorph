@@ -2,7 +2,9 @@ import type { CodeBounds, Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
 import { VALUE_JOIN } from './placeholders';
-import { PLACEHOLDER_ENTRY_MEMBERS, placeholderPathExpression, placeholderPathLabel } from './statCodePaths';
+import {
+  PLACEHOLDER_ENTRY_MEMBERS, placeholderPathExpression, placeholderPathLabel, type PlaceholderPathRoot,
+} from './statCodePaths';
 import { dayAndHour, daypart, FLAT_HOURS_PER_TURN, type WorldCalendar } from './gameClock';
 
 // Stat `code` ships inside world definitions, and worlds are downloaded from the community server — treat it as
@@ -28,14 +30,8 @@ export interface StatClock {
   calendar?: WorldCalendar;
 }
 
-/** The flat clock variable names, injected for released code. Exported so the editor's surface reads from
- *  this list rather than restating it. */
-export const STAT_CLOCK_VARS = [
-  'deltaHours', 'elapsedHours', 'day', 'daypart', 'startDay', 'startDaypart',
-] as const;
-
-/** The clock readings a run exposes, resolved from `clock` and its defaults. */
-const resolveClock = (clock?: StatClock) => {
+/** The `clock` object a run reads, resolved from `clock` and its defaults. */
+const clockObject = (clock?: StatClock) => {
   const deltaHours = Math.max(0, clock?.deltaHours ?? FLAT_HOURS_PER_TURN);
   const elapsedHours = Math.max(0, clock?.elapsedHours ?? deltaHours);
   const end = dayAndHour(elapsedHours, clock?.calendar);
@@ -43,18 +39,13 @@ const resolveClock = (clock?: StatClock) => {
   // in the afternoon and ends at night. Both readings are exposed; neither is derivable from the other.
   const start = dayAndHour(Math.max(0, elapsedHours - deltaHours), clock?.calendar);
   return {
-    deltaHours,
-    elapsedHours,
     day: end.day,
     daypart: daypart(end.hour, clock?.calendar),
-    startDay: start.day,
-    startDaypart: daypart(start.hour, clock?.calendar),
+    deltaHours,
+    elapsedHours,
+    previous: { day: start.day, daypart: daypart(start.hour, clock?.calendar) },
   };
 };
-
-/** The `clock` object over the resolved readings. */
-const clockObject = ({ day, daypart, deltaHours, elapsedHours, startDay, startDaypart }: ReturnType<typeof resolveClock>) =>
-  ({ day, daypart, deltaHours, elapsedHours, previous: { day: startDay, daypart: startDaypart } });
 
 /** How a run failed, for a caller that sorts failures rather than printing them. `bad-write` is a
  *  placeholder or trait written a value of the wrong type. */
@@ -224,6 +215,8 @@ export interface SandboxPlaceholderNode {
   name: string;
   /** Every segment from the map root to this node, by the path that names it. */
   path: readonly string[];
+  /** The kind of owner whose entry the path starts at; absent for the world's own rows. */
+  ownedBy?: PlaceholderPathRoot;
   /** Absent on an owner node. */
   entry?: SandboxPlaceholder;
   /** The placeholders this node owns, as members. */
@@ -377,7 +370,7 @@ function flattenPlaceholderMap(
 /**
  * The `placeholders` prelude. The map is a tree: every node is an object on a null prototype carrying its
  * children as members, then its own fixed members, which win a name a child shares. A Proxy on each node
- * hands an unknown member a tracked blank entry, so a write to `placeholders.Molly.Hiar` is dropped rather
+ * hands an unknown member a tracked blank entry, so a write to `placeholders.Hair.Shdae` is dropped rather
  * than thrown, and reported by the path that named it.
  *
  * `value` is an accessor, so the reader knows whether the entry was written and whether an unpin came after;
@@ -397,7 +390,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     children.map((child) => [child.name, indexOf.get(child)]);
   const spec = {
     nodes: nodes.map((node) => ({
-      p: node.path,
+      p: [node.ownedBy ?? '', ...node.path],
       ...(node.entry ? { e: { id: node.entry.id, name: node.name, value: node.entry.value, values: node.entry.values, text: node.entry.text } } : {}),
       ...(node.children?.length ? { c: keyed(node.children) } : {}),
     })),
@@ -456,7 +449,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `    if (entry) for (const member of ${JSON.stringify(PLACEHOLDER_ENTRY_MEMBERS)}) set[member] = 1;`,
     `    return set;`,
     `  };`,
-    `  const scanned = [{ object: root, built: expected(spec.top, false), path: [] }]`,
+    `  const scanned = [{ object: root, built: expected(spec.top, false), path: [''] }]`,
     `    .concat(spec.nodes.map((n, i) => ({ object: targets[i], built: expected(n.c || [], !!n.e), path: n.p })));`,
     // Every key an entry actually sits at, so a run that replaced one wholesale is read back as a write of
     // it. A child whose name lost to a member of its holder sits at no key, so it has no site here.
@@ -506,7 +499,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `    scanned.push({ object: target, built: Object.create(null), path, absent });`,
     `    return view(target, path, absent);`,
     `  };`,
-    `  return [view(root, []), readWrites, ownerView];`,
+    `  return [view(root, ['']), readWrites, ownerView];`,
     `})(JSON.stringify, Object.keys, Array.isArray, Object.defineProperty, globalThis.${ROLL_HOOK});`,
     `delete globalThis.${ROLL_HOOK};`,
   ].join('\n');
@@ -568,7 +561,7 @@ const entitiesPrelude = (
     `    const [traits, rows] = traitMap(data.traits || {});`,
     `    const written = [];`,
     `    readers.push([key, unknown, rows, written]);`,
-    `    const placeholders = ${OWNER_VIEW}(data.ph ?? -1, [key || 'persona'], unknown || !key);`,
+    `    const placeholders = ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
     `    const values = { id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits, placeholders };`,
     `    const out = {};`,
     `    for (const field of ${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}) {`,
@@ -610,7 +603,7 @@ const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], indexOf
     `  const entry = (key, data, unknown) => {`,
     `    const written = [];`,
     `    readers.push([key, written]);`,
-    `    const values = { id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, [key], unknown) };`,
+    `    const values = { id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) };`,
     `    const out = {};`,
     `    for (const field of ${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}) {`,
     `      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });`,
@@ -721,6 +714,10 @@ function readEntityWrites(
   return { writes, unknown, readOnly };
 }
 
+/** The root a prelude path leads with: '' for the world's own map. */
+const pathRoot = (root: string): PlaceholderPathRoot | undefined =>
+  (root === 'entity' || root === 'dictionary' || root === 'persona' ? root : undefined);
+
 /** The paths in a reader's list: each a list of names; anything else is skipped. */
 const pathsIn = (rows: unknown): string[][] =>
   (Array.isArray(rows) ? rows : []).filter((path): path is string[] => Array.isArray(path) && path.every((step) => typeof step === 'string'));
@@ -748,24 +745,27 @@ function readPlaceholderWrites(
     if (!node?.entry) continue;
     const { id } = node.entry;
     const { path } = node;
+    const named = placeholderPathExpression(path, node.ownedBy);
     if (row[1] === 'unpin') { writes.push({ id, path, unpin: true }); continue; }
     if (!Array.isArray(node.entry.value)) {
       const text = writtenText(row[2]);
-      if (text === null) return { error: `${placeholderPathExpression(path)}.value must be text` };
+      if (text === null) return { error: `${named}.value must be text` };
       writes.push({ id, path, value: text });
       continue;
     }
     const items: string[] = [];
     for (const item of Array.isArray(row[2]) ? row[2] : [row[2]]) {
       const text = writtenText(item);
-      if (text === null) return { error: `${placeholderPathExpression(path)}.value must be a list of text` };
+      if (text === null) return { error: `${named}.value must be a list of text` };
       items.push(text);
     }
     writes.push({ id, path, value: items });
   }
-  const unknown = pathsIn(missed).map((path) => placeholderPathLabel(path));
-  const unknownOwned = pathsIn(missedOwners).map((path) => placeholderPathLabel(path));
-  const readOnly = pathsIn(readOnlyRows).map((path) => placeholderPathExpression(path));
+  // Each path the prelude reports leads with its root: '' for the world's own map, else the owner kind.
+  const label = ([, ...segments]: string[]) => placeholderPathLabel(segments);
+  const unknown = pathsIn(missed).map(label);
+  const unknownOwned = pathsIn(missedOwners).map(label);
+  const readOnly = pathsIn(readOnlyRows).map(([root, ...segments]) => placeholderPathExpression(segments, pathRoot(root)));
   return { writes, unknown, unknownOwned, readOnly };
 }
 
@@ -875,7 +875,6 @@ export const executeStatCode = async (
     const selfIndex = stats.findIndex(stat => stat.id === currentStat.id);
     const selfData = selfIndex >= 0 ? statsData[selfIndex] : marshal(currentStat);
     const selfIsEntry = selfIndex >= 0 && owner.get(selfData.name) === selfData;
-    const resolvedClock = resolveClock(clock);
 
     const runtime = QuickJS.newRuntime();
     runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
@@ -911,12 +910,10 @@ export const executeStatCode = async (
         statsPrelude(keyedStats, { ...(blankOf(selfData) as object), enabled: false }, selfIsEntry ? selfData.name : null),
         `const ${LOOSE_WRITES} = [];`,
         `const ${LOOSE_NOTE} = (path) => { if (!${LOOSE_WRITES}.includes(path)) ${LOOSE_WRITES}.push(path); };`,
-        `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
         ...(selfIsEntry ? [] : [`(${LOCK_STAT})(self, true, (path) => ${LOOSE_NOTE}('self.' + path));`]),
-        ...Object.entries(resolvedClock).map(([name, value]) => `const ${name} = ${JSON.stringify(value)};`),
         `const clock = ((lock) => {`,
-        `  const clock = ${JSON.stringify(clockObject(resolvedClock))};`,
+        `  const clock = ${JSON.stringify(clockObject(clock))};`,
         `  Object.freeze(lock(clock.previous, ['day', 'daypart'], 'clock.previous.', ${LOOSE_NOTE}));`,
         `  return Object.freeze(lock(clock, Object.keys(clock), 'clock.', ${LOOSE_NOTE}));`,
         `})(${LOCK_FIELDS});`,

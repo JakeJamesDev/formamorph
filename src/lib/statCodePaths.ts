@@ -1,10 +1,11 @@
 /**
  * How code names a placeholder: the path the editor shows, as a member chain.
  *
- * The `placeholders` map is a tree. Its top level keys every placeholder by bare name, last authored
- * winning a shared one, and carries one node per entity or dictionary that owns placeholders. An entry or
- * an owner node exposes its children as members, as deep as the ownership tree goes, so
- * `placeholders.Molly.Hair.Shade` reads what the editor calls `Molly › Hair › Shade`.
+ * The `placeholders` map is a tree. Its top level keys each of the world's own rows by name, last authored
+ * winning a shared one. Each entity or dictionary that owns placeholders has an owner node, which its entry
+ * carries as its `placeholders`. An entry or an owner node exposes its children as members, as deep as the
+ * ownership tree goes, so `entities.Molly.placeholders.Hair.Shade` reads what the editor calls
+ * `Molly › Hair › Shade`.
  *
  * One resolver, because four surfaces read the same grammar: the sandbox builds the map from it, the
  * editor's completions and checks walk it, and the Test Bench reports what a write missed by it. A second
@@ -37,6 +38,8 @@ export interface PlaceholderPathNode {
   owner?: PlaceholderOwnerRef;
   /** Every segment from the map root to this node: owner, then the holder chain, then its own name. */
   path: readonly string[];
+  /** The kind of owner whose entry the path starts at; absent for the world's own rows. */
+  ownedBy?: PlaceholderOwnerRef['kind'];
   /** The placeholders this node owns, in authored order. */
   children: readonly PlaceholderPathNode[];
 }
@@ -46,8 +49,6 @@ export interface PlaceholderPathSource {
   list: readonly Placeholder[];
   /** Absent, nothing is scoped and the map has no owner nodes. */
   owners?: PlaceholderOwners;
-  /** Placeholder ids that take no top-level key: reached only through their owner's node. */
-  unlisted?: ReadonlySet<string>;
 }
 
 /** One claim on a top-level key, in authored order. The last claim on a key is the one that reads. */
@@ -58,13 +59,13 @@ export interface PlaceholderKeyClaim {
 
 /** The whole map: its top-level keys and every claim that was made on one. */
 export interface PlaceholderPathMap {
-  /** One node per top-level key: the map's own rows and owner nodes first, then the bare-name fallbacks. */
+  /** One node per top-level key: the world's own rows. */
   top: readonly PlaceholderPathNode[];
   /** Each top-level key and the node that reads. */
   keys: ReadonlyMap<string, PlaceholderPathNode>;
   /** Every claim, so a duplicate name can be counted. */
   claims: readonly PlaceholderKeyClaim[];
-  /** Each owner's node by owner id, whether or not it holds a top-level key. */
+  /** Each owner's node by owner id. */
   owners: ReadonlyMap<string, PlaceholderPathNode>;
 }
 
@@ -73,9 +74,7 @@ type MutableNode = PlaceholderPathNode & { children: PlaceholderPathNode[] };
 
 const EMPTY_MAP: PlaceholderPathMap = { top: [], keys: new Map(), claims: [], owners: new Map() };
 
-const cache = new WeakMap<readonly Placeholder[], {
-  owners: PlaceholderOwners | undefined; unlisted: ReadonlySet<string> | undefined; map: PlaceholderPathMap;
-}>();
+const cache = new WeakMap<readonly Placeholder[], { owners: PlaceholderOwners | undefined; map: PlaceholderPathMap }>();
 
 /**
  * The map `placeholders` is, for one world. The same list and owner map answer with the same object, so the
@@ -84,13 +83,13 @@ const cache = new WeakMap<readonly Placeholder[], {
 export function placeholderPathMap(source: PlaceholderPathSource): PlaceholderPathMap {
   if (!source.list.length) return EMPTY_MAP;
   const hit = cache.get(source.list);
-  if (hit && hit.owners === source.owners && hit.unlisted === source.unlisted) return hit.map;
+  if (hit && hit.owners === source.owners) return hit.map;
   const map = buildMap(source);
-  cache.set(source.list, { owners: source.owners, unlisted: source.unlisted, map });
+  cache.set(source.list, { owners: source.owners, map });
   return map;
 }
 
-function buildMap({ list, owners, unlisted }: PlaceholderPathSource): PlaceholderPathMap {
+function buildMap({ list, owners }: PlaceholderPathSource): PlaceholderPathMap {
   const byId = new Map(list.map((p) => [p.id, p]));
   const heldBy = new Map(list.map((p) => [p.id, holderOf(list, p)]));
   const childrenOf = new Map<string, Placeholder[]>();
@@ -106,7 +105,7 @@ function buildMap({ list, owners, unlisted }: PlaceholderPathSource): Placeholde
   const ownerKey = (name: string) => statCodeName(name, list);
 
   /** The canonical segments that reach `p`: its owner, every holder above it, then its own name. */
-  const pathOf = (p: Placeholder): string[] => {
+  const pathOf = (p: Placeholder): { path: string[]; owner?: PlaceholderOwnerRef } => {
     const chain: string[] = [];
     const seen = new Set<string>();
     let at: Placeholder | undefined = p;
@@ -120,7 +119,7 @@ function buildMap({ list, owners, unlisted }: PlaceholderPathSource): Placeholde
     // everything below it is reached through that row rather than through the owner again.
     const root = [...seen].pop();
     const owner = root === undefined ? undefined : owners?.get(root);
-    return owner ? [ownerKey(owner.name), ...chain] : chain;
+    return owner ? { path: [ownerKey(owner.name), ...chain], owner } : { path: chain };
   };
 
   const nodeById = new Map<string, MutableNode>();
@@ -129,51 +128,35 @@ function buildMap({ list, owners, unlisted }: PlaceholderPathSource): Placeholde
     if (hit) return hit;
     // Registered before its children are walked, so a hand-edited world where two placeholders hold each
     // other builds one node apiece rather than recursing forever.
-    const node: MutableNode = { name: p.name, placeholder: p, path: pathOf(p), children: [] };
+    const { path, owner } = pathOf(p);
+    const node: MutableNode = { name: p.name, placeholder: p, path, ...(owner ? { ownedBy: owner.kind } : {}), children: [] };
     nodeById.set(p.id, node);
     for (const child of childrenOf.get(p.id) ?? []) node.children.push(nodeOf(child));
     return node;
   };
 
   const claims: PlaceholderKeyClaim[] = [];
-  // The map's own top level is the world's unowned rows and one node per owner. A row that lives under an
-  // owner or under a holder is reached by its path; its bare name is a fallback, so it takes a top-level key
-  // only where nothing at the top level claims that name. That is what keeps `placeholders.Hair` on the
-  // world's `Hair` while `Molly › Hair` and `Anna › Hair` exist, and on the last of those two when it doesn't.
-  const rows = new Map<string, PlaceholderPathNode>();
-  const fallbacks = new Map<string, PlaceholderPathNode>();
-  // A later claim of the same rank wins, which is the duplicate rule every name-keyed map in the sandbox
-  // follows; `Map.set` on an existing key keeps its position.
-  const claim = (key: string, node: PlaceholderPathNode, rank: 'row' | 'fallback') => {
-    claims.push({ key, node });
-    (rank === 'row' ? rows : fallbacks).set(key, node);
-  };
-
+  // A later claim wins, the duplicate rule of every name-keyed map in the sandbox; `Map.set` keeps the key's position.
+  const keys = new Map<string, PlaceholderPathNode>();
   const ownerNodes = new Map<string, MutableNode>();
-  const claimed = new Set<string>();
   for (const p of list) {
+    if (heldBy.get(p.id)) continue;
     const owner = owners?.get(p.id);
-    const held = heldBy.get(p.id);
-    const listed = !unlisted?.has(p.id);
-    // An owner node stands where its first listed placeholder does, and carries the rows that owner holds directly.
-    if (owner && !held) {
-      let node = ownerNodes.get(owner.id);
-      if (!node) {
-        const name = ownerKey(owner.name);
-        node = { name, placeholder: null, owner, path: [name], children: [] };
-        ownerNodes.set(owner.id, node);
-      }
-      if (listed && !claimed.has(owner.id)) {
-        claimed.add(owner.id);
-        claim(node.name, node, 'row');
-      }
-      node.children.push(nodeOf(p));
+    if (!owner) {
+      const node = nodeOf(p);
+      claims.push({ key: p.name, node });
+      keys.set(p.name, node);
+      continue;
     }
-    if (listed) claim(p.name, nodeOf(p), owner || held ? 'fallback' : 'row');
+    // An owner node carries the rows that owner holds directly.
+    let node = ownerNodes.get(owner.id);
+    if (!node) {
+      const name = ownerKey(owner.name);
+      node = { name, placeholder: null, owner, path: [name], ownedBy: owner.kind, children: [] };
+      ownerNodes.set(owner.id, node);
+    }
+    node.children.push(nodeOf(p));
   }
-
-  const keys = new Map(rows);
-  for (const [key, node] of fallbacks) if (!keys.has(key)) keys.set(key, node);
   return { top: [...keys.values()], keys, claims, owners: ownerNodes };
 }
 
@@ -228,20 +211,24 @@ export function placeholderKeyWinner(
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
 /** One member step: `.Name` for an identifier, `["Name"]` for anything else. */
-const step = (name: string) => (IDENTIFIER.test(name) ? `.${name}` : `[${JSON.stringify(name)}]`);
+export const memberStep = (name: string): string => (IDENTIFIER.test(name) ? `.${name}` : `[${JSON.stringify(name)}]`);
 
-/** A path as the whole expression: `placeholders.Molly.Hair`, `placeholders["Old Molly"]["Eye Color"]`. */
-export const placeholderPathExpression = (segments: readonly string[]): string =>
-  `placeholders${segments.map(step).join('')}`;
+/** Where a path starts: the world's `placeholders`, an owner entry's, or the persona's. */
+export type PlaceholderPathRoot = PlaceholderOwnerRef['kind'] | 'persona';
+
+/** The global each kind of owner's entry hangs off. */
+export const OWNER_GLOBAL: Record<PlaceholderOwnerRef['kind'], string> = { entity: 'entities', dictionary: 'dictionaries' };
+
+/** A path as the whole expression: `placeholders.Hair`, `entities["Old Molly"].placeholders["Eye Color"]`.
+ *  Under an owner, the first segment is the owner's name, or `persona`. */
+export const placeholderPathExpression = (segments: readonly string[], root?: PlaceholderPathRoot): string => {
+  const steps = (list: readonly string[]) => list.map(memberStep).join('');
+  if (!root) return `placeholders${steps(segments)}`;
+  const [owner, ...rest] = segments;
+  const head = root === 'persona' ? 'persona' : `${OWNER_GLOBAL[root]}${memberStep(owner)}`;
+  return `${head}.placeholders${steps(rest)}`;
+};
 
 /** A path as every other surface in the editor names it: `Molly › Hair`. What a message about one reads. */
 export const placeholderPathLabel = (segments: readonly string[]): string =>
   segments.join(PLACEHOLDER_PATH_SEPARATOR);
-
-/**
- * A path as the member chain to insert after `placeholders.`, or null where a segment needs brackets: the
- * caret sits after a dot, so `["Old Molly"]` there would not parse. A name like that is reached from the
- * quoted list inside `placeholders[` instead.
- */
-export const placeholderPathDots = (segments: readonly string[]): string | null =>
-  (segments.every((segment) => IDENTIFIER.test(segment)) ? segments.join('.') : null);

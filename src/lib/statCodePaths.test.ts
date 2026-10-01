@@ -5,7 +5,7 @@ import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes'
 import { placeholderEntryFields } from './statCodeSurface';
 import {
   PLACEHOLDER_ENTRY_MEMBERS, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathAt,
-  placeholderPathDots, placeholderPathExpression, placeholderPathLabel, placeholderPathMap,
+  placeholderPathExpression, placeholderPathLabel, placeholderPathMap, walkPlaceholderPath,
   type PlaceholderPathMap, type PlaceholderPathNode,
 } from './statCodePaths';
 
@@ -35,9 +35,12 @@ const chip = (id: string) => `{{ph:${id}:world:p-${id}}}`;
 const owners = (...pairs: readonly [string, PlaceholderOwnerRef][]): PlaceholderOwners => new Map(pairs);
 const entity = (id: string, name: string): PlaceholderOwnerRef => ({ kind: 'entity', id, name });
 
-/** The segments of every path in a map, as the accessor an author would type. */
-const accessors = (list: readonly Placeholder[], owned?: PlaceholderOwners) =>
-  everyNode(placeholderPathMap({ list, owners: owned })).map((node) => node.path.join('.'));
+/** The node `segments` reach under one owner's node, as that owner's entry reads it. */
+const ownedAt = (map: PlaceholderPathMap, ownerId: string, segments: readonly string[]) => {
+  const owner = map.owners.get(ownerId);
+  const { node, rest } = walkPlaceholderPath(map, segments, owner ?? null);
+  return owner && rest.length === 0 ? node : null;
+};
 
 describe('the top level', () => {
   it('keys a world placeholder by its bare name', () => {
@@ -45,40 +48,45 @@ describe('the top level', () => {
     expect(placeholderPathAt(map, ['Hair'])?.placeholder?.id).toBe('p1');
   });
 
-  it('reaches the world-level one by bare name when each owner has a placeholder of the same name', () => {
+  it('keys only the world’s own rows, and hangs each owner’s rows under its owner node', () => {
     const list = [ph('world', 'Hair'), ph('molly', 'Hair'), ph('anna', 'Hair')];
     const map = placeholderPathMap({
       list, owners: owners(['molly', entity('e-molly', 'Molly')], ['anna', entity('e-anna', 'Anna')]),
     });
     expect(placeholderPathAt(map, ['Hair'])?.placeholder?.id).toBe('world');
-    expect(placeholderPathAt(map, ['Molly', 'Hair'])?.placeholder?.id).toBe('molly');
-    expect(placeholderPathAt(map, ['Anna', 'Hair'])?.placeholder?.id).toBe('anna');
+    expect(placeholderPathAt(map, ['Molly', 'Hair'])).toBeNull();
+    expect(ownedAt(map, 'e-molly', ['Hair'])?.placeholder?.id).toBe('molly');
+    expect(ownedAt(map, 'e-anna', ['Hair'])?.placeholder?.id).toBe('anna');
+    expect(placeholderKeyWinner(map, 'Hair').count).toBe(1);
   });
 
-  it('reaches the last authored by bare name when only the owners carry the name', () => {
+  it('keys no owned row by its bare name', () => {
     const list = [ph('molly', 'Hair'), ph('anna', 'Hair')];
     const map = placeholderPathMap({
       list, owners: owners(['molly', entity('e-molly', 'Molly')], ['anna', entity('e-anna', 'Anna')]),
     });
-    expect(placeholderPathAt(map, ['Hair'])?.placeholder?.id).toBe('anna');
-    expect(placeholderKeyWinner(map, 'Hair')).toMatchObject({ count: 2 });
-    expect(placeholderKeyWinner(map, 'Hair').node?.path).toEqual(['Anna', 'Hair']);
+    expect(placeholderPathAt(map, ['Hair'])).toBeNull();
+    expect(placeholderKeyWinner(map, 'Hair')).toEqual({ count: 0, node: null });
   });
 
-  it('gives an owner named like a world placeholder one key, the last authored winning', () => {
+  it('leaves an owner’s name to a world row of that name', () => {
     const list = [ph('world', 'Molly'), ph('scoped', 'Hair')];
     const map = placeholderPathMap({ list, owners: owners(['scoped', entity('e-molly', 'Molly')]) });
-    // The owner node stands where its first placeholder does, which is after the world row.
-    expect(placeholderPathAt(map, ['Molly'])?.placeholder).toBeNull();
-    expect(placeholderKeyWinner(map, 'Molly').count).toBe(2);
-    // The world row keeps its own key nowhere else, so it is only reachable as the loser of the contest.
-    expect(placeholderPathAt(map, ['Molly', 'Hair'])?.placeholder?.id).toBe('scoped');
+    expect(placeholderPathAt(map, ['Molly'])?.placeholder?.id).toBe('world');
+    expect(placeholderKeyWinner(map, 'Molly').count).toBe(1);
+    expect(ownedAt(map, 'e-molly', ['Hair'])?.placeholder?.id).toBe('scoped');
   });
 
-  it('keys an owned child by its bare name too, as the flat map always did', () => {
+  it('reaches a held row only through its holder', () => {
     const list = [ph('hair', 'Hair', [chip('shade')]), ph('shade', 'Shade', ['ash'], { ownerId: 'hair' })];
     const map = placeholderPathMap({ list });
-    expect(placeholderPathAt(map, ['Shade'])?.placeholder?.id).toBe('shade');
+    expect(placeholderPathAt(map, ['Shade'])).toBeNull();
+    expect(placeholderPathAt(map, ['Hair', 'Shade'])?.placeholder?.id).toBe('shade');
+  });
+
+  it('keys the later of two world rows that share a name, and counts both', () => {
+    const map = placeholderPathMap({ list: [ph('first', 'Mood'), ph('later', 'Mood')] });
+    expect(placeholderKeyWinner(map, 'Mood')).toMatchObject({ count: 2, node: { placeholder: { id: 'later' } } });
   });
 });
 
@@ -88,8 +96,9 @@ describe('the tree', () => {
     const map = placeholderPathMap({
       list, owners: owners(['eyes', entity('e1', 'Molly')], ['hair', entity('e1', 'Molly')]),
     });
-    const molly = placeholderPathAt(map, ['Molly']);
+    const molly = map.owners.get('e1');
     expect(molly?.placeholder).toBeNull();
+    expect(molly?.name).toBe('Molly');
     expect(molly?.children.map((child) => child.name)).toEqual(['Eyes', 'Hair']);
   });
 
@@ -112,8 +121,10 @@ describe('the tree', () => {
       list,
       owners: owners(['hair', entity('e1', 'Molly')], ['shade', entity('e1', 'Molly')], ['tone', entity('e1', 'Molly')]),
     });
-    expect(placeholderPathAt(map, ['Molly', 'Hair', 'Shade', 'Tone'])?.placeholder?.id).toBe('tone');
-    expect(placeholderPathAt(map, ['Molly', 'Hair', 'Shade', 'Tone'])?.path).toEqual(['Molly', 'Hair', 'Shade', 'Tone']);
+    const tone = ownedAt(map, 'e1', ['Hair', 'Shade', 'Tone']);
+    expect(tone?.placeholder?.id).toBe('tone');
+    expect(tone?.path).toEqual(['Molly', 'Hair', 'Shade', 'Tone']);
+    expect(tone?.ownedBy).toBe('entity');
   });
 
   it('leaves a shared row out of its referrer’s children, since only ownership names a path', () => {
@@ -124,24 +135,15 @@ describe('the tree', () => {
     expect(placeholderPathAt(map, ['Shade'])?.placeholder?.id).toBe('shade');
   });
 
-  it('reads one node for a placeholder reached by bare name and by path', () => {
-    const list = [ph('hair', 'Hair', [chip('shade')]), ph('shade', 'Shade', ['ash'], { ownerId: 'hair' })];
-    const map = placeholderPathMap({ list });
-    expect(placeholderPathAt(map, ['Shade'])).toBe(placeholderPathAt(map, ['Hair', 'Shade']));
-  });
-
-  it('builds one node apiece when two placeholders hold each other', () => {
+  it('terminates on two placeholders that hold each other, and keys neither', () => {
     const list = [
       ph('a', 'A', [chip('b')], { ownerId: 'b' }),
       ph('b', 'B', [chip('a')], { ownerId: 'a' }),
     ];
-    // Each holds the other, so each path names the other above it. The walk has to terminate and produce
-    // one node apiece rather than recursing through the pair forever.
+    // Each is held, so neither is a row of the world's own: no path reaches the pair.
     const map = placeholderPathMap({ list });
-    expect(everyNode(map)).toHaveLength(2);
-    expect(accessors(list)).toEqual(['B.A', 'A.B']);
-    expect(placeholderPathAt(map, ['A'])?.placeholder?.id).toBe('a');
-    expect(placeholderPathAt(map, ['A', 'B'])?.placeholder?.id).toBe('b');
+    expect(everyNode(map)).toEqual([]);
+    expect(placeholderPathAt(map, ['A'])).toBeNull();
   });
 
   it('reads an owner’s name through the code-name rule, so a chip in it does not move the path', () => {
@@ -150,26 +152,26 @@ describe('the tree', () => {
     const map = placeholderPathMap({
       list, owners: owners(['mood', entity('e1', `${chip('town')} Guard`)]),
     });
-    expect(placeholderPathAt(map, ['Town Guard', 'Mood'])?.placeholder?.id).toBe('mood');
+    expect(map.owners.get('e1')?.name).toBe('Town Guard');
+    expect(ownedAt(map, 'e1', ['Mood'])?.path).toEqual(['Town Guard', 'Mood']);
   });
 });
 
 describe('spelling a path', () => {
   it('uses a dot for an identifier and brackets for anything else', () => {
-    expect(placeholderPathExpression(['Molly', 'Hair'])).toBe('placeholders.Molly.Hair');
+    expect(placeholderPathExpression(['Hair', 'Shade'])).toBe('placeholders.Hair.Shade');
     expect(placeholderPathExpression(['Eye Color'])).toBe('placeholders["Eye Color"]');
-    expect(placeholderPathExpression(['Old Molly', 'Eye Color'])).toBe('placeholders["Old Molly"]["Eye Color"]');
+  });
+
+  it('starts an owned path at its owner’s entry', () => {
+    expect(placeholderPathExpression(['Old Molly', 'Eye Color'], 'entity')).toBe('entities["Old Molly"].placeholders["Eye Color"]');
+    expect(placeholderPathExpression(['Weather', 'Sky'], 'dictionary')).toBe('dictionaries.Weather.placeholders.Sky');
+    expect(placeholderPathExpression(['persona', 'Eyes'], 'persona')).toBe('persona.placeholders.Eyes');
   });
 
   it('names a path for a message the way every other editor surface does', () => {
     expect(placeholderPathLabel(['Molly', 'Hair'])).toBe('Molly › Hair');
     expect(placeholderPathLabel(['Hair'])).toBe('Hair');
-  });
-
-  it('offers a dotted insert only where every segment is an identifier', () => {
-    expect(placeholderPathDots(['Molly', 'Hair'])).toBe('Molly.Hair');
-    expect(placeholderPathDots(['Molly', 'Eye Color'])).toBeNull();
-    expect(placeholderPathDots(['Old Molly', 'Hair'])).toBeNull();
   });
 });
 

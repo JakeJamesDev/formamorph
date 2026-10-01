@@ -7,7 +7,6 @@ export const SCRIPT_SURFACE: CodeSurface = {
     { name: 'args', detail: '{ name }', info: 'The arguments the model sent.' },
     { name: 'world', detail: 'object', info: 'The world, read-only.' },
   ],
-  hiddenGlobals: [],
   builtins: [{ name: 'Math', detail: 'object', info: 'min, max and the rest.' }],
   members: new Map([
     ['args', [{ name: 'name', detail: 'string', info: 'The name the model asked for.' }]],

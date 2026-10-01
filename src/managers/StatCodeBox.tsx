@@ -5,6 +5,7 @@ import { CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, type CodeBoundFie
 import { codePinText } from "@/lib/placeholderPins";
 import { sandboxDictionaries, sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { placeholderPathLabel } from "@/lib/statCodePaths";
+import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
 import { sandboxTraits, unplayedEntities } from "@/lib/statCodeTraits";
 import type { CodeEntityNames, CodePlaceholders } from "@/lib/statCodeAnalysis";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
@@ -194,7 +195,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         stats={codeNamedStats}
         currentStatId={stat.id}
         hasExistingCode={!!value.trim()}
-        onInsert={write}
+        onInsert={(code) => write(migrateStatCodeRoutes(code, placeholders))}
         placeholderNames={placeholderNames}
         traitNames={traitNames}
       />

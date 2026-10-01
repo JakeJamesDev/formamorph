@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { phMap, phNode } from '@/test/sandboxPlaceholders';
-import { executeStatCode, STAT_CLOCK_VARS, type CodeBoundField } from './statCodeExecutor';
+import { executeStatCode, type CodeBoundField } from './statCodeExecutor';
 import {
   BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DICTIONARY_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
-  SANDBOX_UNDOCUMENTED_GLOBALS, SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
+  SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import { runStatCodeTurn } from './statCodeTurn';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
@@ -20,7 +20,7 @@ const stats = [stat({}), stat({ id: 'b', name: 'Stamina', value: 20 })];
 const run = (code: string) => executeStatCode(code, stats, stats[0]);
 
 describe('the described surface against the sandbox that provides it', () => {
-  it.each([...SANDBOX_GLOBALS.map(entry => entry.name), ...SANDBOX_UNDOCUMENTED_GLOBALS])('injects %s', async (name) => {
+  it.each(SANDBOX_GLOBALS.map(entry => entry.name))('injects %s', async (name) => {
     await expect(run(`return typeof ${name} === 'undefined' ? 0 : 1;`)).resolves.toEqual({ value: 1, error: null });
   });
 
@@ -71,11 +71,13 @@ describe('the described surface against the sandbox that provides it', () => {
     },
   );
 
-  it('documents clock and keeps the flat clock globals out of the documented list', () => {
-    const documented = SANDBOX_GLOBALS.map(entry => entry.name);
-    expect(documented).toContain('clock');
-    expect(documented.filter(name => STAT_CLOCK_VARS.includes(name as (typeof STAT_CLOCK_VARS)[number]))).toEqual([]);
-  });
+  // Retired routes; the load rewrite moves released code off them.
+  it.each(['deltaHours', 'elapsedHours', 'day', 'daypart', 'startDay', 'startDaypart', 'currentStatId'])(
+    'no longer injects %s',
+    async (name) => {
+      await expect(run(`return typeof ${name} === 'undefined' ? 1 : 0;`)).resolves.toEqual({ value: 1, error: null });
+    },
+  );
 
   it('describes every member of a placeholders entry, and no member it does not', async () => {
     const expected = placeholderEntryFields('Wildcard').map(entry => entry.name).sort().join(',');
@@ -255,7 +257,7 @@ describe('the described surface in each of the two boxes', () => {
 
 describe('nearestSurfaceName', () => {
   it('points a near miss at the name it was reaching for', () => {
-    expect(nearestSurfaceName('elapsedHrs')).toBe('elapsedHours');
+    expect(nearestSurfaceName('clok')).toBe('clock');
     expect(nearestSurfaceName('Stats')).toBe('stats');
   });
 

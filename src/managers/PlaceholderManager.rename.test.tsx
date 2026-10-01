@@ -70,7 +70,7 @@ beforeEach(() => {
   ];
   store.stats = [
     { id: 's1', name: 'Health', type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0,
-      code: 'return placeholders.Molly.Hair.text.length + placeholders.Hair.text.length;' } as unknown as Stat,
+      code: 'return entities.Molly.placeholders.Hair.text.length + placeholders.Hair.text.length;' } as unknown as Stat,
   ];
 });
 
@@ -88,6 +88,6 @@ describe('the placeholder panel’s rename offer', () => {
     expect(screen.getByText(/names the placeholder “Hair” 1 time\./)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Update Code' }));
     expect(store.stats[0].code)
-      .toBe('return placeholders.Molly.Mane.text.length + placeholders.Hair.text.length;');
+      .toBe('return entities.Molly.placeholders.Mane.text.length + placeholders.Hair.text.length;');
   });
 });

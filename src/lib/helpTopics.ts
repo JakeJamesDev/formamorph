@@ -486,15 +486,15 @@ self.max = level * 10;
 self.value = self.previous.value + Math.min(self.delta.ai.value, 10);
 \`\`\`
 
-**Placeholders.** \`placeholders\` holds every placeholder by name. Each entry has \`values\`, every authored value as text; \`value\`, the current value; \`text\`, the value the prompt sees; and \`roll()\`, one weighted draw. On a Wildcard or a Variable, \`value\` is one text and \`text\` is the same text. On an Object, \`value\` is the list of current values and \`text\` joins them with \`", "\`. Compare narration wording with \`text\`. \`pin(x)\` pins the placeholder until the code changes it again. \`unpin()\` restores the other pins and the roll. \`pin\` takes the same shape \`value\` reads: one text on a Wildcard, a list on an Object. One text on an Object pins a one-item list. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
+**Placeholders.** \`placeholders\` holds the world's own placeholders by name. An entity's or a dictionary's placeholders are on its entry: \`entities.Molly.placeholders\`, \`persona.placeholders\` and \`dictionaries.Weather.placeholders\`. Each entry has \`values\`, every authored value as text; \`value\`, the current value; \`text\`, the value the prompt sees; and \`roll()\`, one weighted draw. On a Wildcard or a Variable, \`value\` is one text and \`text\` is the same text. On an Object, \`value\` is the list of current values and \`text\` joins them with \`", "\`. Compare narration wording with \`text\`. \`pin(x)\` pins the placeholder until the code changes it again. \`unpin()\` restores the other pins and the roll. \`pin\` takes the same shape \`value\` reads: one text on a Wildcard, a list on an Object. One text on an Object pins a one-item list. A name with a space needs brackets: \`placeholders["Hair Color"]\`.
 
-**Paths.** Code reaches a placeholder by the path the editor shows. An entity or dictionary that owns placeholders is a path segment. A placeholder that holds parts carries them as members, to any depth. An owner segment has no placeholder members, only the placeholders it owns. Every placeholder has \`values\`, \`value\`, \`text\`, \`roll\`, \`pin\` and \`unpin\`, so a part with one of those names is shadowed by the member. A bare name resolves to the world's own row first, then the last one authored. Write the full path for an exact match.
+**Paths.** Code reaches a placeholder by the path the editor shows. A placeholder that holds parts carries them as members, to any depth. Each placeholder has one path: a part's bare name doesn't reach it. Every placeholder has \`values\`, \`value\`, \`text\`, \`roll\`, \`pin\` and \`unpin\`, so a part with one of those names is shadowed by the member.
 
 \`\`\`js
 placeholders.Mood.pin(self.value < 20 ? 'furious' : 'calm');
 placeholders.Hair.pin(['gray', 'cropped short']);
-placeholders.Molly.Hair.Shade.pin('ash');
-placeholders["Old Molly"]["Eye Color"].pin('green');
+placeholders.Hair.Shade.pin('ash');
+entities["Old Molly"].placeholders["Eye Color"].pin('green');
 \`\`\`
 
 **Traits.** \`traits\` holds every trait in the world's own trait list by name, Blueprint items included. A trait an entity owns is not in it. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Both read the player's state only. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores **Player Can Toggle In-Game**, so it can switch a trait the player can't toggle. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.

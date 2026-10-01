@@ -950,8 +950,8 @@ describe('stat sanity rules', () => {
 
   it('says nothing when the code builds on the stat’s own value, which is what the trait moved', () => {
     const ashen = trait({ id: 't1', name: 'Ashen', statChanges: [{ statId: 's1', type: 'starting', value: -10 }] });
-    // Both ways code can find itself: the injected id, and its own name as a literal.
-    const byId = 'const me = stats.find(s => s.id === currentStatId); return Math.min(me.value + 1, me.max);';
+    // Both ways code can find itself by a literal: its own id, and its own name.
+    const byId = 'const me = Object.values(stats).find(s => s.id === "s1"); return Math.min(me.value + 1, me.max);';
     const byName = 'const me = stats.find(s => s.name === "Fertility"); return me.value + 1;';
     expect(only(oneStat({ starting: 40, code: byId }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
     expect(only(oneStat({ starting: 40, code: byName }, [ashen]), 'stat-code-overrides-trait')).toEqual([]);
