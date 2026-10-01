@@ -86,6 +86,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'worldEditorStat.descriptors': { page: 'World-Editor-Stats', anchor: 'stat-descriptors' },
   'worldEditorStat.code': { page: 'World-Editor-Stats', anchor: 'dynamic-value-calculation' },
   'worldEditorTrait.details': { page: 'World-Editor-Traits', anchor: 'the-panel' },
+  'worldEditorTrait.availability': { page: 'World-Editor-Traits', anchor: 'availability' },
   'worldEditorTrait.stats': { page: 'World-Editor-Traits', anchor: 'stat-changes' },
   'worldEditorTrait.pins': { page: 'World-Editor-Traits', anchor: 'placeholder-pins' },
   'worldEditorEntry.details': { page: 'World-Editor-Dictionary', anchor: 'details' },
@@ -108,8 +109,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 
 /** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
-  // Traits, Placeholders, Persona Authoring
-  '02': ['worldEditorTrait.availability'],
   // World Editor pages
   '03': ['entityEditor.traits', 'worldEditorLocation.media'],
   // Player pages
@@ -145,10 +144,6 @@ export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]
 
 /** Help topics with no docs heading yet, by owning ticket. */
 export const KNOWN_HELP_TOPIC_GAPS: Partial<Record<DocsTicket, readonly string[]>> = {
-  '02': [
-    'worldEditor.traits', 'worldEditor.statChanges', 'worldEditor.statAvailability', 'worldEditor.placeholderPins',
-    'worldEditor.pinsOnPlaceholder', 'worldEditor.placeholders',
-  ],
   '03': [
     'worldEditor.locations', 'worldEditor.entities', 'worldEditor.aliases', 'worldEditor.locationPins',
     'worldEditor.stats', 'worldEditor.dictionary',

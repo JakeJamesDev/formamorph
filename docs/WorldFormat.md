@@ -213,7 +213,7 @@ People, creatures and objects in the world.
 | `aliases` | String[] | Other names this entity answers to. Sent to the AI as "also known as", and matched in the story text to detect that the entity is present — **case-sensitive**, whole-word, plural-aware |
 | `type` | String | Optional category label |
 | `pronouns` | String | Free text, such as "she/her". Sent to the AI beside the name and aliases |
-| `persona` | Boolean | `true` makes the entity [playable](Persona-Authoring#make-an-entity-playable). In a library entity, it marks one of the player's personas. Absent = off |
+| `persona` | Boolean | `true` makes the entity [playable](Persona-Authoring#playable-entities). In a library entity, it marks one of the player's personas. Absent = off |
 | `playerDescription` | String | Shown to the player in-game |
 | `aiDescription` | String | Full description sent to the AI |
 | `aiSummary` | String | Short description sent to the AI where the full one is too long |
