@@ -56,6 +56,9 @@ Each entity's `traits` map works like `traits`. `enabled` is writable and switch
 - **Q17. Identity and state fields match across entries.** A placeholder entry gains `id` and `name`, read-only. A stat entry gains `enabled`, read-only: false while a trait's stat toggle switches the stat off.
 - **Q18. Placeholder writes keep both routes.** `value =` and `pin()` stay aliases, with `unpin()`.
 - **Q19. Released code is rewritten at load.** `migrateWorld` rewrites `placeholders.Owner.Name`, the flat clock globals and `currentStatId` in every stat's code to their new routes, through the rename tooling. The rewrite is idempotent and runs at every import boundary, so old worlds keep working.
+- **Q20. `persona.name` is the entity's code name**, never the name the player typed under None. Q8 needs `persona === entities[persona.name]`, and `entities` is keyed by authored names. The typed name is not exposed.
+- **Q21. The editor can't know the played persona.** After `persona.traits`, completions offer the traits that entities with the Persona or Custom Persona mark hold, owned or linked. An unknown persona trait name is a warning, not an error, because a library persona can carry it.
+- **Q22. A persona trait switch mirrors a `traits` code switch** on the persona's owned lists. It ignores Player Can Toggle, and a switch-on of an unchosen trait in the persona's set acquires it. It never switches an Always On trait. It retires exclusive siblings in the persona's groups. A locked switch-on lands, and then the settle switches it off. A switch to the state the trait already holds does nothing.
 
 ## User Stories
 
