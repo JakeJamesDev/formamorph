@@ -870,11 +870,11 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 - 🏷️ **Help tab.** A launcher that stays flat against one of the four screen edges and is round on its inner side. Its label reads top to bottom on the right edge, bottom to top on the left edge, and left to right on the top and the bottom. It is never upside down. A press opens or closes the window. A drag, or an arrow key while the tab has focus, moves it. The tab shows the accent fill while the window is open.
 - 🪟 **Floating window.** A title bar with the name, **Wide View** and **Close**. The title bar moves the window. A grip at the bottom right corner resizes it. The window stays whole on the screen. Only the tab snaps to an edge.
 - ↔️ **Two widths.** Narrow (400px) shows one part at a time behind three tabs: **Ask**, **Search** and **Guide**. Wide (720px) shows a rail with search and contents beside the conversation or the reader. **Wide View** swaps them, and the grip crosses the same line at 560px. The conversation, the search text and the open section carry over.
-- 💬 **Conversation.** A scrolling log of questions and answers above the question field. It stays at its end while an answer comes in, unless the player scrolled up.
+- 💬 **Conversation.** A scrolling log of questions and answers above the question field. It stays at its end while an answer comes in, unless the player scrolled up. Above it, a row with **Clear** shows once there is a question. The row has the look of the **Back to Conversation** row.
 - 🙋 **Question bubble.** The player's question, right-aligned on `muted`, with an 8-unit left margin so it never spans the full width.
 - 📝 **Answer.** Markdown through the streaming renderer, with no bubble. A `Meta` line says **Stopped** under an answer the player ended.
 - 🔗 **Source link.** A small bordered chip under an answer: the page in the muted color, a chevron, then the section in the foreground color. Chips wrap, under a `Meta` label **Sources**. A press opens the section in the reader.
-- ⌨️ **Question field.** A two-row text area with an icon button beside it. The button is **Send**, and it is **Stop** in the outline variant while an answer comes in.
+- ⌨️ **Question field.** A two-row text area with an icon button beside it. The button is **Send**, and it is **Stop** in the outline variant while an answer comes in. While a game turn generates, **Send** is unavailable and a helper line under the field says why.
 - 🔎 **Search result row.** The section name at label weight, the page as `Meta`, and a two-line excerpt in the helper role. The wide rail leaves out the excerpt.
 - 📖 **Reader.** The page as `Meta`, the section name, the body, then an **On This Page** list. In the narrow layout a **Contents** row above it goes back to the list. In the wide layout a **Back to Conversation** row above it shows the conversation again.
 - 📚 **Contents.** One collapsible row per page, with its sections as Compact Selection Lists rows.
@@ -930,6 +930,7 @@ Below the `md` breakpoint the window is a full-screen sheet in the narrow layout
 | No question yet | A centered hint in the conversation. |
 | Answer in progress | A helper line until the first words, then the text as it comes in. **Stop** takes the place of **Send**. |
 | Stopped | The text so far, then a `Meta` line. |
+| Game turn in progress | **Send** is unavailable, with a helper line under the field. The player can still type, search and read. |
 | No AI, or a failed request | One helper line that says why, then the search result rows for the question. With no matching section, the line says so and no rows show. A failed request also shows the standard error toast, and keeps the text that came before the failure. |
 | Loading | A status line in place of the content while the docs load. |
 | Load failed | A line that says so, and **Try Again**. |
@@ -950,14 +951,14 @@ Below the `md` breakpoint the window is a full-screen sheet in the narrow layout
 | 6 | Question bubble: the player's question, right-aligned on `muted` | ✅ |
 | 7 | Search result row | ✅ |
 | 8 | Reader with an On This Page list and a Back row | ✅ |
-| 9 | Send reason: a help line under the field when Send is unavailable | Not built |
+| 9 | Send reason: a help line under the field when Send is unavailable | ✅ |
 | 10 | Movable edge tab | ✅ |
 
 A pattern that is not built gets its composition and its reference here when its production component lands.
 
 ### Writing review
 
-**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
+**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Clear** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
 
 ## UI and prototype workflow
 

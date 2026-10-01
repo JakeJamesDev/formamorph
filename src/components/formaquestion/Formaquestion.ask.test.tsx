@@ -219,7 +219,9 @@ describe('during a game turn', () => {
     await userEvent.type(field, 'How do I add a trait?{Enter}');
 
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
-    expect(screen.getByText('Wait for the game turn to finish to send a question')).toBeInTheDocument();
+    const reason = screen.getByText('Wait for the game turn to finish to send a question');
+    // Approved pattern 9: the line sits under the field.
+    expect(field.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(field).toHaveValue('How do I add a trait?');
 

@@ -3,7 +3,7 @@ import { toastAiRequestFailure } from '@/lib/aiRequest/aiRequestFailureToast';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { askHelp } from '@/lib/formaquestion/helpSession';
-import { useTurnGenerating } from '@/lib/turnActivity';
+import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { HelpAi } from './useHelpAi';
 
@@ -45,8 +45,6 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   const exchangesRef = useRef(exchanges);
   exchangesRef.current = exchanges;
   const held = useTurnGenerating();
-  const heldRef = useRef(held);
-  heldRef.current = held;
   const mountedRef = useMountedRef();
   const running = useRef<AbortController | null>(null);
   // Read when the player sends, so a question uses the settings of that moment.
@@ -56,8 +54,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   useEffect(() => () => running.current?.abort(), []);
 
   const ask = useCallback((question: string) => {
-    if (!index || running.current || heldRef.current) return;
-    const history = exchangesRef.current.map(({ question: earlier, answer }) => ({ question: earlier, answer }));
+    if (!index || running.current || turnActivity.get()) return;
+    const history = exchangesRef.current;
     const controller = new AbortController();
     running.current = controller;
     const id = crypto.randomUUID();

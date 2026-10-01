@@ -8,7 +8,7 @@ import type { AIRequestType } from '@/types';
 import { languageDirective } from '@/lib/languages';
 import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import {
-  askHelp, helpSearchQuery, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_HISTORY_EXCHANGES, type HelpEvent, type HelpQuestion, type HelpTurn,
+  askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_HISTORY_EXCHANGES, type EarlierExchange, type HelpEvent, type HelpQuestion,
 } from './helpSession';
 
 const PAGES = {
@@ -134,6 +134,19 @@ describe('the docs sections of a request', () => {
     expect(helpSections(zebraIndex(8, 200), 'zebra')).toHaveLength(5);
   });
 
+  it('holds at most five sections for a follow-up too, when its own best section is not among the others', () => {
+    // "Stripes" is the best match for the follow-up alone; with "zebra" the six zebra sections rank above it.
+    const zebras = createDocsIndex({
+      pages: {
+        ...Object.fromEntries(Array.from({ length: 6 }, (_, n) => [`Zebra${n}`, `## Zebra ${n}\n\nA zebra has stripes.`])),
+        Stripes: '## Stripes\n\nA band of color.',
+      },
+    });
+    const sections = helpSections(zebras, 'stripes', { history: [{ question: 'zebra', answer: 'A horse.' }] });
+    expect(sections[0].id).toBe('Stripes#stripes');
+    expect(sections).toHaveLength(5);
+  });
+
   it('stops before the section that takes the docs text over the budget', () => {
     // Each section is about 5,000 characters: two fit in 12,000 and a third does not.
     const sections = helpSections(zebraIndex(8, 5000), 'zebra');
@@ -143,7 +156,7 @@ describe('the docs sections of a request', () => {
 
   it('always holds the best match, even when it is over the budget alone', () => {
     const big = zebraIndex(3, 5000);
-    expect(helpSections(big, 'zebra', 1000).map((section) => section.id)).toEqual([big.search('zebra')[0].id]);
+    expect(helpSections(big, 'zebra', { budget: 1000 }).map((section) => section.id)).toEqual([big.search('zebra')[0].id]);
   });
 
   it('holds no section when no word of the question is in the docs, and still asks once', async () => {
@@ -219,7 +232,7 @@ describe('a request that fails', () => {
 });
 
 describe('a follow-up', () => {
-  const turn = (question: string, answer: string): HelpTurn => ({ question, answer });
+  const turn = (question: string, answer: string): EarlierExchange => ({ question, answer });
 
   it('carries the earlier questions and answers as text, and no earlier docs sections', async () => {
     const fetchImpl = replyWith(sseReply('Select **Add Trait** again.'));
@@ -261,18 +274,30 @@ describe('a follow-up', () => {
     expect(done?.type === 'done' && done.sources[0].id).toBe('Library#how-to-import-a-world');
   });
 
+  /** The ids of the sections a question gets after the earlier exchanges. */
+  const sectionIds = (question: string, history: EarlierExchange[]) => helpSections(index, question, { history }).map((section) => section.id);
+
+  it('puts the best section of the question itself first after a change of topic, then the earlier topic', () => {
+    const ids = sectionIds('How do I add a stat?', [turn('How do I import a world?', 'a')]);
+    expect(ids[0]).toBe('Stats#how-to-add-a-stat');
+    expect(ids).toContain('Library#how-to-import-a-world');
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it('searches with the previous question and not the ones before it', () => {
-    const history = [turn('How do I add a stat?', 'a'), turn('How do I import a world?', 'b')];
-    expect(helpSearchQuery('and then?', history)).toBe('How do I import a world? and then?');
+    const ids = sectionIds('and then?', [turn('How do I add a stat?', 'a'), turn('How do I import a world?', 'b')]);
+    expect(ids).toContain('Library#how-to-import-a-world');
+    expect(ids).not.toContain('Stats#how-to-add-a-stat');
   });
 
   it('searches with the previous question that got an answer', () => {
-    const history = [turn('How do I import a world?', 'a'), turn('How do I add a stat?', '')];
-    expect(helpSearchQuery('and then?', history)).toBe('How do I import a world? and then?');
+    const ids = sectionIds('and then?', [turn('How do I import a world?', 'a'), turn('How do I add a stat?', '')]);
+    expect(ids).toContain('Library#how-to-import-a-world');
+    expect(ids).not.toContain('Stats#how-to-add-a-stat');
   });
 
   it('searches with the question alone when nothing came before', () => {
-    expect(helpSearchQuery('How do I add a trait?', [])).toBe('How do I add a trait?');
+    expect(sectionIds('How do I add a trait?', [])).toEqual(index.search('How do I add a trait?', 5).map((section) => section.id));
   });
 });
 

@@ -3,7 +3,8 @@
 // Part 1, follow-up retrieval (no model, exact): for each case in `help-followup-cases.json`, is the
 // section the follow-up needs among the sections sent, and is the first question's top section (the
 // topic)? `alone` searches the follow-up by itself (the single-question behavior); `shipped` searches it
-// with the previous question.
+// with the previous question. A topic-change control asks each docs-wording question after another one:
+// its own section must still be sent, and first.
 //
 // Part 2, follow-up answers: per run and case, the first question is asked once, then the follow-up goes
 // out in two arms in the same batch:
@@ -26,7 +27,7 @@ import path from 'node:path';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
-import { askHelp, helpSearchQuery, helpSections, type HelpTurn } from '@/lib/formaquestion/helpSession';
+import { askHelp, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
 const args = process.argv.slice(2);
@@ -66,7 +67,7 @@ const snapshot: AiSettingsSnapshot = {
 interface Sample { answer: string; promptChars: number; messages: number; sources: string[] }
 
 /** One question through the app's `askHelp`. The fetch adds the probe's reasoning-off field. */
-async function ask(question: string, history: HelpTurn[], language: string): Promise<Sample> {
+async function ask(question: string, history: EarlierExchange[], language: string): Promise<Sample> {
   let promptChars = 0;
   let messages = 0;
   const fetchImpl: typeof fetch = (url, init) => {
@@ -113,7 +114,7 @@ if (parts.has(1)) {
   const rows = followUps.map((c) => {
     const history = [{ question: c.first, answer: 'An answer.' }];
     const alone = helpSections(index, c.followUp).map((s) => s.id);
-    const shipped = helpSections(index, helpSearchQuery(c.followUp, history)).map((s) => s.id);
+    const shipped = helpSections(index, c.followUp, { history }).map((s) => s.id);
     const topic = helpSections(index, c.first)[0]?.id;
     return {
       id: c.id, alone: alone.includes(c.section), shipped: shipped.includes(c.section),
@@ -125,7 +126,12 @@ if (parts.has(1)) {
   const count = (pick: (r: (typeof rows)[number]) => boolean) => `${rows.filter(pick).length}/${rows.length}`;
   console.log(`follow-up section sent: alone ${count((r) => r.alone)}, shipped ${count((r) => r.shipped)}`);
   console.log(`topic section sent: alone ${count((r) => r.aloneTopic)}, shipped ${count((r) => r.shippedTopic)}`);
-  out.retrieval = rows;
+  const changes = languageCases.map((next, i) => ({ before: languageCases[(i + 3) % languageCases.length], next }));
+  const changed = changes.map(({ before, next }) => helpSections(index, next.question, { history: [{ question: before.question, answer: 'An answer.' }] }).map((s) => s.id));
+  const sent = changed.filter((ids, i) => ids.includes(changes[i].next.section!)).length;
+  const first = changed.filter((ids, i) => ids[0] === changes[i].next.section).length;
+  console.log(`topic change: own section sent ${sent}/${changes.length}, first ${first}/${changes.length}`);
+  out.retrieval = { followUps: rows, topicChanges: changes.map((c, i) => ({ before: c.before.id, next: c.next.id, ids: changed[i] })) };
 }
 
 // Part 2: follow-up answers.

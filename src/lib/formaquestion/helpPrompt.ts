@@ -27,7 +27,7 @@ export const HELP_LOOKUP_SYSTEM_PROMPT = [
   ...ANSWER_RULES,
 ].join('\n');
 
-/** The help prompt for the AI Language: the fixed prompt, plus the narration's directive when it is not English. */
+/** The help prompt for the AI Language: the fixed prompt, plus the language directive for answers when it is not English. */
 export function helpSystemPrompt(language: string, prompt = HELP_SYSTEM_PROMPT): string {
   const directive = languageDirective('answers', language);
   if (!directive) return prompt;

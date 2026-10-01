@@ -24,8 +24,8 @@ export const HELP_MAX_TOKENS = 800;
 /** The most earlier exchanges one help request carries, newest kept. */
 export const HELP_HISTORY_EXCHANGES = 4;
 
-/** An earlier question and the answer text it got. */
-export interface HelpTurn {
+/** An earlier question of the conversation and the answer text it got. */
+export interface EarlierExchange {
   question: string;
   answer: string;
 }
@@ -33,7 +33,7 @@ export interface HelpTurn {
 export interface HelpQuestion {
   question: string;
   /** The earlier exchanges of the conversation, oldest first. The request keeps the newest that have an answer. */
-  history?: readonly HelpTurn[];
+  history?: readonly EarlierExchange[];
   /** The AI Language setting. */
   language?: string;
   snapshot: AiSettingsSnapshot;
@@ -49,14 +49,29 @@ export type HelpEvent =
   /** The end of the answer, with the docs sections that reached the model. */
   | { type: 'done'; text: string; sources: DocSection[]; stopped: boolean };
 
+/** The earlier exchanges a request carries: the newest that got answer text, at most the cap. */
+function keptHistory(history: readonly EarlierExchange[]): EarlierExchange[] {
+  return history.filter((exchange) => exchange.answer.trim()).slice(-HELP_HISTORY_EXCHANGES);
+}
+
 /**
- * The docs sections for a question, best first: the top search hit always, then more hits in rank order
- * while the docs text stays inside the budget.
+ * The docs sections for a question, best first, while the docs text stays inside the budget. The top hit
+ * is always kept. A follow-up such as "and then?" has few keywords of its own, so after the question's own
+ * top hit come the hits of the previous question and the follow-up searched together.
  */
-export function helpSections(index: DocsIndex, question: string, budget = HELP_DOCS_CHAR_BUDGET): DocSection[] {
+export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET }: {
+  history?: readonly EarlierExchange[];
+  budget?: number;
+} = {}): DocSection[] {
+  const previous = keptHistory(history).at(-1);
+  const hits = previous
+    ? [...index.search(question, 1), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT)]
+    : index.search(question, HELP_SECTION_LIMIT);
   const kept: DocSection[] = [];
   let size = 0;
-  for (const hit of index.search(question, HELP_SECTION_LIMIT)) {
+  for (const hit of hits) {
+    if (kept.length === HELP_SECTION_LIMIT) break;
+    if (kept.some((section) => section.id === hit.id)) continue;
     if (kept.length > 0 && size + hit.markdown.length > budget) break;
     kept.push(hit);
     size += hit.markdown.length;
@@ -64,25 +79,11 @@ export function helpSections(index: DocsIndex, question: string, budget = HELP_D
   return kept;
 }
 
-/** The earlier exchanges a request carries: the newest that got answer text, at most the cap. */
-function keptHistory(history: readonly HelpTurn[]): HelpTurn[] {
-  return history.filter((turn) => turn.answer.trim()).slice(-HELP_HISTORY_EXCHANGES);
-}
-
-/**
- * The text a question is searched with. A follow-up such as "and then?" has few keywords of its own, so
- * the search also uses the previous question.
- */
-export function helpSearchQuery(question: string, history: readonly HelpTurn[]): string {
-  const previous = keptHistory(history).at(-1);
-  return previous ? `${previous.question} ${question}` : question;
-}
-
 /** The earlier exchanges as chat messages: the question and answer text only. */
-function historyMessages(history: readonly HelpTurn[]): RequestMessage[] {
-  return keptHistory(history).flatMap((turn): RequestMessage[] => [
-    { role: 'user', content: turn.question },
-    { role: 'assistant', content: turn.answer },
+function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] {
+  return keptHistory(history).flatMap((exchange): RequestMessage[] => [
+    { role: 'user', content: exchange.question },
+    { role: 'assistant', content: exchange.answer },
   ]);
 }
 
@@ -99,7 +100,7 @@ function historyMessages(history: readonly HelpTurn[]): RequestMessage[] {
 export async function* askHelp({
   question, history = [], language = '', snapshot, index, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
-  const found = helpSections(index, helpSearchQuery(question, history));
+  const found = helpSections(index, question, { history });
   const lookupMode = toolsSupported(snapshot.resolveTarget('help').reasoning);
   const inPrompt = lookupMode ? found.slice(0, 1) : found;
   const lookup = lookupMode
