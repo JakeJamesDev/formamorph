@@ -4,7 +4,7 @@ Settings controls how the app looks, what the AI writes each turn, which AI it c
 
 To open it, select **Menu** on the main menu, then **Settings**. During a game, open the **Menu** and select **Settings**.
 
-> The **Prompts** and **Tools** tabs have their own page. This page covers the other four tabs.
+> The **Prompts** and **Tools** tabs have their own pages: [Prompts](Prompts) and [Tools](Tools). This page covers the other four tabs.
 
 ## How to Change the Narration Layout
 
@@ -160,7 +160,7 @@ Turn on **Show Reasoning** to read what a mode wrote.
 
 ### Tools
 
-**Advanced.** **Tools** lets the AI call Tools to get information it does not have. Each round of calls adds a request, so turns take longer. Only endpoints that support Tools get them. On other endpoints, the row shows a note in place of the checkbox. The **Tools** tab sets which Tools each prompt can use.
+**Advanced.** **Tools** lets the AI call Tools to get information it does not have. Each round of calls adds a request, so turns take longer. Only endpoints that support Tools get them. On other endpoints, the row shows a note in place of the checkbox. The **Tools** tab sets which Tools each prompt can use. See [How to Turn On Tools](Tools#how-to-turn-on-tools).
 
 ### Memory
 

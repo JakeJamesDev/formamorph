@@ -1,6 +1,7 @@
 # 08: New pages, Prompts and Tools
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: b3288c9a
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -36,10 +37,23 @@ Recommended model rationale: both areas are new, dense, and have rules (capabili
 
 ## Acceptance criteria
 
-- [ ] Both pages exist, follow the writing guide and use exact control names
-- [ ] Every Prompts and Tools tab, surface and editor tab maps to a heading
-- [ ] Every built-in Tool in the catalog is listed with what it returns
-- [ ] The tool-support rule matches ADR-0008
-- [ ] The sidebar and the home index list both pages
-- [ ] The known-gaps entries for these surfaces are removed, and the coverage test passes
-- [ ] Four gates green
+- [x] Both pages exist, follow the writing guide and use exact control names
+- [x] Every Prompts and Tools tab, surface and editor tab maps to a heading
+- [x] Every built-in Tool in the catalog is listed with what it returns
+- [x] The tool-support rule matches ADR-0008
+- [x] The sidebar and the home index list both pages
+- [x] The known-gaps entries for these surfaces are removed, and the coverage test passes
+- [x] Four gates green
+
+## Comments
+
+**Built.** `docs/Prompts.md` and `docs/Tools.md`, linked from the sidebar, the home index and Settings.
+
+- **Per-prompt tabs are enforced.** A new `settingsPrompts` ledger entry (the existing `subtab=` slot, drift-tested against `allGroupedTabs()`) puts all 15 prompt ids in the coverage gate. They map to "The Prompts", one row per prompt with its job and when it runs (spec ruling on shared headings). Guard bite: renaming that heading fails all 15 ids.
+- **`worldPrompts` moved here** from ticket 10's gaps, per the spec session. It maps to "World Prompts and the Diff Viewer".
+- **Review folded in.** Wrong place for **Use this world's prompt**, the per-Tool meaning of **Max Calls per Request** and the 6-request cap, the Tools tab's **Preset** list also setting the active preset, a stale ledger comment, and STE fixes.
+
+**Adjacent, not fixed.**
+- The per-prompt **Endpoint** ⓘ says "the **AI Endpoints** tab"; the tab is **Endpoints** (`SettingsModal.tsx` `PromptEndpointField`).
+- `PromptEndpointField`'s doc comment says routing is not preset-scoped and stays editable under a built-in preset. The code disables it there.
+- Home.md and the Related lists call Tools "functions". The glossary avoids that word, but its own definition uses it; left as is.
