@@ -22,6 +22,7 @@ import {
   type PlaceholderPathMap, type PlaceholderPathNode, type PlaceholderPathSource,
 } from './statCodePaths';
 import { statCodeName } from './statCodeNames';
+import type { TraitHolders } from './statCodeTraits';
 import { boxCode, STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 
 /** The name-keyed maps a rename can reach. */
@@ -187,13 +188,6 @@ interface CodeRewrite {
   names: ReadonlyMap<ChainRoot, NameRenames>;
   /** The trait names that move inside entity trait maps, and whose maps they move in. Absent where none do. */
   entityTraits?: { moved: NameRenames; holders: TraitHolders };
-}
-
-/** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */
-export interface TraitHolders {
-  world: boolean;
-  persona: boolean;
-  entities: readonly string[];
 }
 
 /** The splices for one entity trait map's key: `traits` at `at`, the trait name after it. */

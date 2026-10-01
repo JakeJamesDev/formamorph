@@ -1,6 +1,6 @@
 # 02: Entities map
 
-Status: in-progress
+Status: ready-for-human
 Base: 8fa13c68
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -19,11 +19,17 @@ Stat code gets an `entities` global. Each entry has `name` and `traits`, in the 
 
 ## Acceptance criteria
 
-- [ ] `entities` lists authored entities, library characters added at Enter World, and the played persona. Characters the narrator invents are not listed (Q5).
-- [ ] An entity trait write switches that entity's owned trait and cascades as a manual switch does (Q6).
-- [ ] `persona === entities[persona.name]`, so a write through either is one write (Q8).
-- [ ] Entity names reach code under their code name. Of two entities sharing a code name, the later one wins (Q7).
-- [ ] An unknown or not-in-play entity reads as a blank entry (Q23, Q25). A write to its trait is warned about and dropped.
-- [ ] Completions and diagnostics offer entity names and their trait names. An entity rename rewrites `entities['Old']`, and a trait rename rewrites `entities['X'].traits['Old']` and `persona.traits['Old']`. Name-drift warns on a shared entity code name.
-- [ ] The editor test run lists authored entities with nothing chosen.
-- [ ] Tests at `runStatCodeTurn` and the rename and name-drift seams, each shown to bite. The changelog line is in In Progress.
+- [x] `entities` lists authored entities, library characters added at Enter World, and the played persona. Characters the narrator invents are not listed (Q5).
+- [x] An entity trait write switches that entity's owned trait and cascades as a manual switch does (Q6).
+- [x] `persona === entities[persona.name]`, so a write through either is one write (Q8).
+- [x] Entity names reach code under their code name. Of two entities sharing a code name, the later one wins (Q7).
+- [x] An unknown or not-in-play entity reads as a blank entry (Q23, Q25). A write to its trait is warned about and dropped.
+- [x] Completions and diagnostics offer entity names and their trait names. An entity rename rewrites `entities['Old']`, and a trait rename rewrites `entities['X'].traits['Old']` and `persona.traits['Old']`. Name-drift warns on a shared entity code name.
+- [x] The editor test run lists authored entities with nothing chosen.
+- [x] Tests at `runStatCodeTurn` and the rename and name-drift seams, each shown to bite. The changelog line is in In Progress.
+
+## Notes for review
+
+- Bite run: nine mutations, each failing its tests. Dropping the persona name override, the in-play filter, entity writes in the turn, the persona traits, later-wins keying, the entity name check, the entity trait rename, the entity key rename, and the editor run's entities.
+- An authored entity whose code name is empty shares the empty persona's key, so a switch through it reports as an unknown trait. Not handled.
+- Out of this ticket: the Test Bench run sends no entities, and renaming an entity's own trait checks for name clashes against the world's traits.

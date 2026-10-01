@@ -41,13 +41,15 @@ describe('entities in stat code', () => {
       .toEqual(['2 entities are named “Rook”. This reads the last one authored.']);
   });
 
-  it('warns on an unknown entity name with a suggestion, since a library character can have it', () => {
+  it('warns on an unknown entity name with a suggestion, since a library entity can have it', () => {
     const [problem] = statCodeDiagnostics('return entities.Mia.traits.Scarred.enabled ? 1 : 0;', { entities });
     expect(problem).toMatchObject({ severity: 'warning' });
-    expect(problem.message).toBe('Unknown entity name “Mia”. A library character can have it. Did you mean “Mira”?');
+    expect(problem.message).toBe('Unknown entity name “Mia”. A library entity can have it. Did you mean “Mira”?');
   });
 
-  it('flags a trait the entity’s set does not have, and reads the later entity’s set for a shared name', () => {
+  it('warns on a trait the entity’s set does not have, and reads the later entity’s set for a shared name', () => {
+    const [problem] = statCodeDiagnostics('return entities.Mira.traits.Scared.enabled ? 1 : 0;', { entities });
+    expect(problem).toMatchObject({ severity: 'warning' });
     expect(messages('return entities.Mira.traits.Scared.enabled ? 1 : 0;', { entities }))
       .toEqual(['“Mira” has no trait named “Scared”. Did you mean “Scarred”?']);
     expect(messages('return entities.Rook.traits.Calm.enabled ? 1 : 0;', { entities }))

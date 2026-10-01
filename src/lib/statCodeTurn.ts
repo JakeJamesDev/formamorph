@@ -1,6 +1,6 @@
 import type { CascadeOffTraitIds, CodeBounds, CodePins, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
 import {
-  CODE_BOUND_FIELDS, executeStatCode, type EntityTraitWrites, type PlaceholderWrite, type StatClock,
+  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type PlaceholderWrite, type StatClock,
   type StatTurnInputs, type TraitWrite, type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
@@ -145,14 +145,14 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
-  const cast = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
-  const sandboxCast = cast && { entities: cast.entities.map(sandboxEntity), persona: sandboxEntity(cast.persona) };
+  const inPlay = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
+  const sandboxInPlay = inPlay && { entities: inPlay.entities.map(sandboxEntity), persona: sandboxEntity(inPlay.persona) };
   const writes = new Map<string, { value: number | null; bounds: CodeBounds | null }>();
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   const traitWritesByStat = new Map<string, StatTraitWrites>();
   await Promise.all(coded.map(async (stat) => {
     const result = await executeStatCode(boxCode(stat, timing), named, stat, {
-      clock: turn.clock, turn: inputs, placeholders, traits, ...sandboxCast,
+      clock: turn.clock, turn: inputs, placeholders, traits, ...sandboxInPlay,
     });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
@@ -200,7 +200,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   };
   const switched = applyCodeTraitSwitches(
     before,
-    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, cast, placeholderDefs, turn.statNameOf),
+    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, inPlay, placeholderDefs, turn.statNameOf),
     turn.traits.world, turn.traitNameOf,
   );
   const active = statTraitsInForce(switched.state, turn.traits.world);
@@ -236,12 +236,6 @@ interface StatTraitWrites {
   entities: readonly EntityTraitWrites[];
 }
 
-/** Each entity by the name code reaches it by, as the sandbox keys them; the empty name is the empty persona. */
-function entitiesByCodeName({ entities, persona }: CodeEntities): Map<string, CodeEntity> {
-  const keyed = new Map(entities.map((entity) => [entity.name, entity]));
-  keyed.set(persona.name, persona);
-  return keyed;
-}
 
 /** Each stat's trait switches keyed by bearer and trait, in stat order: the later stat wins, and its switch
  *  applies at that stat's position. A name resolves to the last trait with it, as the sandbox map does. */
@@ -249,13 +243,14 @@ function traitSwitchesInStatOrder(
   stats: readonly PlayerStat[],
   writesByStat: ReadonlyMap<string, StatTraitWrites>,
   traits: StatCodeTraits,
-  cast: CodeEntities | null,
+  inPlay: CodeEntities | null,
   placeholders: readonly Placeholder[],
   /** The switching stat's name as the player reads it — the log line names it. */
   statNameOf: (stat: PlayerStat) => string,
 ): CodeTraitSwitch[] {
   const idByName = new Map(traits.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
-  const entityByName = cast ? entitiesByCodeName(cast) : new Map<string, CodeEntity>();
+  // The empty persona switches nothing, so only named entries matter.
+  const entityByName = inPlay ? keyedEntities(inPlay.entities, inPlay.persona) : new Map<string, CodeEntity>();
   const out = new Map<string, CodeTraitSwitch>();
   const setLast = (key: string, at: CodeTraitSwitch) => {
     out.delete(key);
