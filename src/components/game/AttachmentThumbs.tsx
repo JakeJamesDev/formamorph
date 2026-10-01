@@ -35,7 +35,7 @@ export function AttachmentThumbs({ images, onRemove, className }: {
               <button
                 type="button"
                 aria-label={`Remove attached image ${i + 1}`}
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                 onClick={() => onRemove(image.id)}
               >
                 <X className="h-3 w-3" />

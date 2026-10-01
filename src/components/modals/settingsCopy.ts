@@ -296,7 +296,7 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
     info: `Adds an attach button to the action box. The images go with your action text, on that turn only. Each prompt's **Include Attachments** option decides which requests get them. **Narration** has it on by default.
 
 - Your model must read images. A text-only model returns an error.
-- Each image is shrunk to 1568 px on its long side before it's sent.`,
+- An image over 1568 px on its long side is shrunk to that size before it's sent.`,
   },
 
   // ── Output · Performance ────────────────────────────────────────────────────
