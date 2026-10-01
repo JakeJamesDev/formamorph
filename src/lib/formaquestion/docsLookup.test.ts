@@ -48,7 +48,7 @@ describe('a section id the model has seen', () => {
     for (const id of shown) {
       const docs = lookup();
       const result = await call(docs, { sections: id });
-      expect(ids(docs.fetched()), id).toContain(id);
+      expect(ids(docs.fetched())[0], id).toBe(id);
       expect(result.text, id).toContain(`<section id="${id}">`);
     }
   });

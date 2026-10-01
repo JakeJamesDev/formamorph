@@ -22,7 +22,7 @@ The app already has function calls: a **Tool** is a function the AI calls during
 - **The mode is chosen before the request.** A failed request is never sent again in the other mode. This keeps the "no runtime fallback" rule of ADR-0008.
 - **It runs through the existing tool loop** with its own executor. The request layer and the loop take any offered function (`OfferedFunction`: id, name, description, parameters, call limit). A Tool is one; the docs lookup is another.
 - **The prompt holds the search hits, and no contents list.** A lookup request starts with the same docs sections as a retrieval request. The model finds other sections by search words, or reads them by the ids it has seen in the prompt and in earlier results.
-- **Its limits are its own.** The call limit is a constant of the help session. The round cap is the tool loop's default. The fetched text of one question has its own budget, on top of the prompt's sections.
+- **Its limits are its own.** The call limit is a constant of the help session. The round cap is the tool loop's default. The fetched text of one question has its own budget, in addition to the prompt's sections.
 
 ## Consequences
 

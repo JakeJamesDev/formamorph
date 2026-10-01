@@ -1,5 +1,6 @@
 // Ticket 22's lookup request, frozen as the in-batch control for a change to lookup mode: the contents list,
-// the best search hit only, and the fetched text inside the one 12,000-character docs budget.
+// the best search hit only, and the fetched text inside the one 12,000-character docs budget. The prompt text
+// is frozen; the search, the lookup executor and the budget constants are the app's live ones.
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { streamAiToolLoop } from '@/lib/aiRequest/toolLoop';
 import { stripReasoningLive } from '@/lib/aiResponse';

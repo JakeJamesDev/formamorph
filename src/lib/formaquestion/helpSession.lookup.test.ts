@@ -97,7 +97,7 @@ describe('lookup mode, on an endpoint known to take function calls', () => {
     expect(unsent.length).toBeGreaterThan(2);
     for (const id of unsent) {
       expect(request, id).not.toContain(id);
-      expect(request, id).not.toContain(id.slice(id.indexOf('#')));
+      if (id.includes('#')) expect(request, id).not.toContain(id.slice(id.indexOf('#')));
     }
     expect(request).not.toContain('<contents>');
   });
@@ -228,6 +228,25 @@ describe('a bad call', () => {
     expect(sourcesOf(events)).toEqual(['Library#how-to-make-a-folder', ...hitIds(TRAIT)]);
   });
 
+  it('reads a section by an id that an earlier result showed', async () => {
+    // The second call passes the first near id the first result shows, whatever it is.
+    let shown = '';
+    const fetchImpl: FetchSpy = vi.fn(async (_url: string, init: RequestInit) => {
+      const results = toolResults(JSON.parse(init.body as string) as SentBody);
+      if (results.length === 0) return sseResponse(callFrames({ sections: 'Library#how-to-make-folders' }));
+      if (results.length === 1) {
+        shown = /Ids near it: ([^,.]+)/.exec(results[0])?.[1] ?? '';
+        return sseResponse(callFrames({ sections: shown }));
+      }
+      return sseResponse(sseReply('Select **New Folder**.'));
+    });
+    const events = await collect(ask(TRAIT, fetchImpl));
+
+    expect(shown).toBe('Library#how-to-make-a-folder');
+    expect(toolResults(bodyOf(fetchImpl, 2))[1]).toContain(`<section id="${shown}">`);
+    expect(sourcesOf(events)).toEqual([shown, ...hitIds(TRAIT)]);
+  });
+
   it('withdraws the function after a call it cannot read, and the model answers from the prompt', async () => {
     const fetchImpl = script(callFrames('Library'), sseReply('Select **Add Trait**.'));
     const events = await collect(ask(TRAIT, fetchImpl));
@@ -285,7 +304,7 @@ describe('the docs text of one question', () => {
     expect(sourcesOf(events)).toEqual(hitIds(TRAIT));
   });
 
-  it('gives the fetched text a budget of its own, on top of the sections in the prompt', async () => {
+  it('gives the fetched text a budget of its own, in addition to the sections in the prompt', async () => {
     // Each section is about 5,250 characters, so two fit in each budget and a third does not.
     const zebras = createDocsIndex({
       pages: Object.fromEntries(Array.from({ length: 6 }, (_, n) => [`Page${n}`, `## Zebra ${n}\n\n${'A zebra has stripes. '.repeat(250)}`])),

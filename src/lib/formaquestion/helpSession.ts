@@ -25,7 +25,7 @@ export const HELP_SECTION_LIMIT = 5;
  */
 export const HELP_DOCS_CHAR_BUDGET = 12_000;
 
-/** The most characters of docs section text the lookup calls of one question return together, on top of the prompt's. */
+/** The most characters of docs section text the lookup calls of one question return together, in addition to the prompt's. */
 export const HELP_LOOKUP_CHAR_BUDGET = 12_000;
 
 /** The answer cap in tokens: room for a long list of steps. */
