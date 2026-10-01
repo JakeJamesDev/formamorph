@@ -81,6 +81,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q42 | Ten new visual patterns from ticket 14 are approved and go to the Design System as a proposal: the nine listed there, plus the movable edge tab (pattern 10). Pattern 11 is variant D and is not proposed |
 | Q43 | Only the tab snaps to an edge. The window moves freely, stays whole on the screen, and does not follow the tab (ticket 14) |
 | Q45 | The Guide contents list has one collapsible row per page. Its expander is a small plain chevron with no outline and no hover fill (user, in ticket 16) |
+| Q46 | On the mobile sheet, opening moves focus to the sheet, not to a text field, so the on-screen keyboard opens only when the player taps a field. The Android back action closes Formaquestion first whenever it is open (ticket 17) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
