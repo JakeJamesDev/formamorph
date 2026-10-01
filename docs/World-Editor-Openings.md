@@ -15,6 +15,32 @@ Each opening has two buttons, **Player Action** and **Narration**. This choice i
 
 After an Opening Narration, the input box is empty. A written page one works like any other page. Choices, stat changes, the clock, read-aloud and the scene image all run on it.
 
+## How to Add an Others Opening
+
+An Others opening is the normal kind. Every opening starts as one.
+
+1. Select **Advanced** at the top of the editor.
+2. Open the **Overview** tab.
+3. Under **Custom Prompts**, select **Openings**.
+4. Select the **+** button (**Add Opening**) at the top of the panel. The new opening belongs to the world.
+5. Write the opening's text.
+6. Choose **Player Action** or **Narration**.
+7. Optional: set its weight in the number box.
+
+To add an opening to a location or an entity, select **Add Opening to** and its name under its group. You can also use the **Openings** tab on its own panel.
+
+## How to Add a Self Opening
+
+A Self opening starts the game for a player who plays as the entity.
+
+1. Select **Advanced** at the top of the editor.
+2. Select the entity. On its **Profile** tab, set **Persona** to **Playable**, **Persona-Only** or **Custom Persona**.
+3. Open its **Openings** tab.
+4. Select the **+** button (**Add Opening**), then write the text.
+5. Select **Self** on the opening.
+
+See [Self Openings](#self-openings) for when a Self opening draws.
+
 ## Weights and chances
 
 | Setting | What it does |
@@ -33,14 +59,14 @@ Each opening is a card. A card collapses to one line: the handle, "Opening N", t
 |---|---|
 | **Opens collapsed** | A list of three or more openings opens collapsed. A shorter list opens expanded. |
 | **New opening** | It opens expanded, so you can write it at once. |
-| **Collapse all / Expand all** | The button above a list of two or more cards sets every card at once. |
+| **Collapse all openings / Expand all openings** | The button above each list of two or more cards sets every card in that list at once. |
 | **Not saved** | The open state never goes into your world file. |
 
 ## The list switch
 
 The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening. Off covers every opening in the world, including locations, entities and an entity the player picks at Enter World.
 
-**The box starts unchecked and is disabled until an opening exists.** Write one here or on an entity and it checks itself. A player who plays a library persona with Self openings also turns it on, unless you unchecked it. There is nothing to switch before that: a world with no openings plays the default opening either way.
+**The box starts unchecked and is disabled until an opening with text exists.** Write one here, on a location or on an entity, and it checks itself. An empty opening doesn't count. A player who plays a library persona with Self openings also turns it on, unless you unchecked it. There is nothing to switch before that: a world with no openings plays the default opening either way.
 
 > 💡 **The chances stay visible with the switch off.** They show the odds after you switch the list on. Tune the weights before you publish.
 
@@ -68,7 +94,7 @@ The **Openings** panel shows every opening in the world, grouped by owner:
 | One group per location with openings | The openings on that location's **Openings** tab. The location's name opens that tab. |
 | One group per entity with openings | The openings on that entity's **Openings** tab. The entity's name opens that tab. |
 
-Groups run in this order: World, Locations, Entities. Each group's button reads **Add Opening to** and the owner's name. Search reaches every group.
+Groups run in this order: World, Locations, Entities. Each location and entity group has a button that reads **Add Opening to** and the owner's name. Add a world opening with the **+** button (**Add Opening**) at the top of the panel. Search reaches every group.
 
 An edit in the panel changes the owner's opening. The switch covers every group.
 
@@ -124,9 +150,9 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 |---|---|
 | **Starting location** | The entity's Others openings join the draw only when it is at the player's starting location. |
 | **The world switch** | The world's **Openings** checkbox turns the entity's openings off too, and an entity's openings check that box. An entity has no switch of its own. |
-| **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch turns them off with the rest. |
+| **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch turns them off with the rest. They also never draw when the world, its locations and its entities have no openings. That world plays the default opening. |
 | **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
-| **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#make-an-entity-playable), its **Others** openings leave the draw for that game. Its **Self** openings take over. See below. |
+| **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#how-to-make-an-entity-playable), its **Others** openings leave the draw for that game. Its **Self** openings take over. See below. |
 
 ## Self Openings
 
@@ -137,7 +163,7 @@ An opening has a second switch, **Others** or **Self**.
 | **Others** | The entity greets the player. This is the default, and every older opening reads as Others. |
 | **Self** | A start written for playing as this entity. It draws only while the player plays it. |
 
-The switch shows on world entities set to **Playable**, **Persona-Only** or **Custom Persona**, and on library entities with the **Persona** mark. It never shows on the world's or a location's openings. A flip keeps the text, the Opens As choice and the weight.
+The switch shows on world entities set to **Playable**, **Persona-Only** or **Custom Persona**, and on library entities set to **Playable**. It never shows on the world's or a location's openings. A flip keeps the text, the Opens As choice and the weight.
 
 ### Who draws a Self opening
 
@@ -158,8 +184,8 @@ The game looks for Self openings in this order. The first source that has one wi
 - **A world persona with no Self openings starts on the normal pool.** Its Others openings still stay out.
 - **A library persona with no Self openings uses the Custom Persona's Self openings.** With none there, it starts on the normal pool.
 - **A Persona-Only entity's Self openings draw when the player picks it.** Its Others openings never draw.
-- **Unmarking keeps the text.** An entity that loses its **Persona** mark keeps its Self openings in the file. The editor hides them until you mark it again.
+- **Setting it back to Cast keeps the text.** An entity set back to **Cast** keeps its Self openings in the file. The editor hides them until you set it to a persona choice again.
 
 In the panel, Self openings stay in their owner's group with a **Self** badge.
 
-> 💡 **Write a start for each persona.** Mark each persona **Playable**, add an opening, and flip it to **Self**. A player who picks that persona then starts on it.
+> 💡 **Write a start for each persona.** Set each persona to **Playable**, add an opening, and select **Self** on it. A player who picks that persona then starts on it.

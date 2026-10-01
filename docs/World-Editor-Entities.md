@@ -10,16 +10,57 @@ Without entities, the narrator invents a stranger, names them, and forgets both 
 
 The default prompt introduces entities as "Characters and things that **may** appear in this location". That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the prompt editor.
 
+## How to Add an Entity
+
+1. Open the **Entities** tab.
+2. Type the entity's name in the **Search or add new entities** box.
+3. Select the **+** button (**Add to Entities**). In Advanced mode, the button opens a menu: select **Add Entity**.
+4. The new entity opens in the panel. On the **Profile** tab, pick one or more places in **Locations**.
+5. On the **Descriptions** tab, write the **AI-Facing Description**.
+6. Select **Save** at the bottom of the editor.
+
+> 💡 With the box empty, the new entity is named "New Entity". Rename it in **Name**.
+
+To add a copy of an entity from your library, select **Add Entity** at the bottom of the editor.
+
+## How to Import a SillyTavern Card
+
+1. On the Main Menu, open the library's **Entities** tab.
+2. Select **Import Entity**.
+3. Pick the card's `.png` or `.json` file.
+4. The card joins your library as an entity. The card image becomes the entity's image. Its lorebook, if it has one, joins your library as a dictionary.
+5. In the World Editor, open the **Entities** tab and select **Add Entity** at the bottom of the editor.
+6. Select the entity, then select **Add Entity** in the window.
+
+You can also import a card directly into a world. On the **Entities** tab, select the arrow beside **Add Entity**, then **Import Entity…**. Pick the file, keep or clear **Link through my library**, and select **Add Entity**. This route doesn't bring in the card's lorebook.
+
+See [SillyTavern cards](#sillytavern-cards) for what each part of the card becomes.
+
+## How to Give an Entity an Opening
+
+**Advanced mode only** in the World Editor.
+
+1. Select the entity, then open its **Openings** tab.
+2. Select the **+** button (**Add Opening**).
+3. Write the opening's text.
+4. Choose **Player Action** or **Narration**. See [Openings](World-Editor-Openings) for the difference.
+5. Make sure the entity is in a **Starting Location**. Its openings draw only when it is at the player's starting location.
+
+The world's **Openings** checkbox turns on by itself once an opening has text, unless you unchecked it. See [Entity Openings](World-Editor-Openings#entity-openings).
+
 ## The panel
 
 Select an entity to open its panel.
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Profile** | Name, aliases, pronouns, type, locations, the image and the 3D model | Simple and Advanced |
-| **Descriptions** | The three description fields | Simple and Advanced |
+| **Profile** | **Name**, **Pronouns**, **Locations** and the **Image**. In Advanced mode, also **Aliases**, the **Persona** control, **Type**, **Image Tags** and the **3D Model**. | Simple and Advanced |
+| **Descriptions** | **Player-Facing Description** and **AI-Facing Description**. In Advanced mode, also **AI-Facing Summary**. | Simple and Advanced |
+| **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits) | Advanced only |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders#placeholders-that-belong-to-an-entity-or-a-dictionary) | Advanced only |
 | **Openings** | The entity's own openings, including Self openings for a playable entity | Advanced only |
+
+The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only** and **Custom Persona**. It decides whether the player can play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). An entity marked **Playable**, **Persona-Only** or **Custom Persona** also shows a **Starting Location** picker: where the player starts as this persona.
 
 ## What reaches the AI
 
@@ -33,9 +74,10 @@ An entity reaches the AI only through a location. An entity in no location never
 | **AI-Facing Description** | Yes. This is the main text the AI uses. |
 | **AI-Facing Summary** | Only in prompt slots that ask for the short form |
 | **Type** | Yes, as a plain field |
+| The entity's active traits | Yes, after its description. See [Entity Traits](World-Editor-Traits#entity-traits). |
 | **Player-Facing Description** | **Never** |
 | Image, Image Tags, 3D model, group, order | Never |
-| The **Persona** control | Not as a field. It lets the player play as the entity. See [Personas for Authors](Persona-Authoring#make-an-entity-playable). |
+| The **Persona** control | Not as a field. It lets the player play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). |
 
 > 💡 **The player reads only the Player-Facing Description, and the AI reads only the AI-Facing fields.** Put a secret in the **AI-Facing Description**. The narrator can act on it, and the player doesn't see it. The default prompt also asks the narrator not to use a name until the player can know it. That is a request to the AI, and the game doesn't enforce it.
 
@@ -45,9 +87,9 @@ An entity reaches the AI only through a location. An entity in no location never
 |---|---|---|
 | **Player-Facing Description** | The player, on the entity's card | Never sent to the AI, so it uses no context |
 | **AI-Facing Description** | The AI | The full text. Put secrets here. |
-| **AI-Facing Summary** | The AI | One line, for slots where the full text is too long. A blank summary is fine, and the game uses the full description in its place. |
+| **AI-Facing Summary** | The AI | **Advanced mode only.** One line, for slots where the full text is too long. A blank summary is fine, and the game uses the full description in its place. |
 
-The default prompt uses summaries for entities in *reachable* locations. It uses full descriptions for entities at the player's current location.
+The default prompt uses summaries for entities in *reachable* locations. It uses full descriptions for entities at the player's current location. So add a summary only when the entity shows up in reachable locations.
 
 The **✨ toolbar** beside **AI-Facing Summary** can write a draft from your AI-Facing Description.
 
@@ -63,7 +105,7 @@ The game reads each page of narration to find which entities are present. It mat
 | Several words, such as `Emily Foster` | The words in order. One distinctive word with a capital also matches, so "Emily" is enough. A common word alone doesn't match. |
 | Plurals | `Wolf` also matches "Wolves" |
 
-**Aliases** are other names the entity uses: a title, a nickname, an epithet. The AI reads them as *"also known as"*. The game also counts the entity as present when the narration uses an alias.
+**Aliases** are other names the entity uses: a title, a nickname, an epithet. Press Enter after each alias. The **Aliases** field shows in Advanced mode only, but aliases work in both modes. The AI reads them as *"also known as"*. The game also counts the entity as present when the narration uses an alias.
 
 | Rule | Example |
 |---|---|
@@ -94,7 +136,7 @@ An entity can have its own openings, so it can start the scene in its own voice.
 
 ## Groups
 
-Groups are folders for you. Nesting and order are for the editor only and **never reach the AI**. A group can't change the story.
+**Advanced mode only.** In Advanced mode, the **+** button's menu also has **Add Group**. Groups are folders for you. Nesting and order are for the editor only and **never reach the AI**. A group can't change the story.
 
 ## Images and models
 
@@ -104,32 +146,31 @@ An image field takes an uploaded file or a web address. See [Upload or link](Wor
 
 ## SillyTavern cards
 
-Import a SillyTavern PNG card into your entity library, and it becomes an entity. The card's greetings become [Entity Openings](World-Editor-Openings#entity-openings):
+Import a SillyTavern PNG or JSON card, and it becomes an entity. The card's description, personality and scenario become the **AI-Facing Description**. The card's greetings become [Entity Openings](World-Editor-Openings#entity-openings):
 
 | On the card | Becomes |
 |---|---|
 | **First message** | The entity's first Opening Narration |
 | Each **alternate greeting** | One more Opening Narration, in card order, at weight 1 |
-| The name macro, `{{char}}` | The entity's name |
+| The name macro, `{{char}}` | The **Character Name** chip, in the entity's description and openings. In the card's lorebook, the entity's name as plain text. |
 | The user macro, `{{user}}` | The [Player Name chip](Persona-Authoring#the-player-name-chip) |
 
 When these openings are in the draw, **Re-generate** on page one shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
+
+> 💡 **The Character Name chip shows the entity's name, and it follows a rename.** Rename the entity, and its description and openings use the new name.
 
 > 💡 **`{{user}}` stays in the stored text, as the Player Name chip.** The shown page says the persona's name, or "you" with no persona. The entity's descriptions and the card's lorebook keep the chip too, and there it reads "the player" with no persona.
 
 ## In the library
 
-Open an entity in the library's **Entities** tab, and its editor has two tabs.
+Open an entity in the library's **Entities** tab, and its editor has three tabs.
 
 | Tab | What it holds |
 |---|---|
-| **Entity** | **Tags** in a column on the left. On the right, the **Profile**, **Descriptions** and **Openings** tabs, with the same fields as the World Editor. |
+| **Entity** | **Author** and **Tags** in a column on the left. On the right, the **Profile**, **Descriptions** and **Openings** tabs, with the same fields as the World Editor. |
+| **Traits** | The entity's own [traits](World-Editor-Traits#entity-traits), across the full width. |
 | **Placeholders** | The entity's own [placeholders](World-Editor-Placeholders), across the full width. |
 
-The editor opens on **Entity** at **Profile**. The tags stay in view on all three tabs. On mobile, the tags show at the top of **Profile** only.
+The editor opens on **Entity** at **Profile**. The author and tags stay in view on all three of its tabs. On mobile, they show at the top of **Profile** only.
 
-The library editor has no Simple or Advanced mode, so it always shows every tab.
-
-## Getting started
-
-Write the AI-Facing Description first. It's safe to put things there that the player shouldn't know yet. Add a summary only when the entity shows up in reachable locations. Use the Player-Facing Description for text the player reads and the AI doesn't need.
+The library editor has no Simple or Advanced mode, so it always shows every tab and field. Its **Persona** control has two choices, **Cast** and **Playable**.

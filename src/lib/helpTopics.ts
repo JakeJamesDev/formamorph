@@ -141,9 +141,26 @@ Only story-invented entries and Library Additions can be removed. The world's ow
 
 Settings → Output → Characters → **Describe New Characters** gives each invented entity a written description you can open from here. The **Characters** section shows in Advanced mode. Everything else on this list works whether that's on or off.`,
   },
+  'worldEditor.overview': {
+    title: 'Overview',
+    wikiPage: 'World-Editor-Overview',
+    wikiAnchor: '-world-editor-overview',
+    body: `Sets how your world is listed and the text the AI reads on every turn
+
+**The left column** sets how players find your world: **World Name**, **Author**, **Tags** and the **Thumbnail**. **3D Player Avatar** gives the world a 3D avatar that the player can customize. **Background Music** sets the track the world plays.
+
+**The right column** holds what you write:
+
+- **Player-Facing Description** shows on the library card and the community listing. The AI never reads it.
+- **Readme** has two tabs. **Introduction** shows before the player's setup choices, and **Gameplay** shows when they enter the world.
+- **AI-Facing Description** is sent to the AI on every turn. Players never see it, so it's where a secret belongs.
+
+**Simple mode hides** Custom Player Avatar, Allowed Personas, Starts On and Custom Prompts. **Custom Prompts** replaces the player's narration, choices or stats prompt. Its **Openings** item holds the world's openings.`,
+  },
   'worldEditor.locations': {
     title: 'Locations',
     wikiPage: 'World-Editor-Locations',
+    wikiAnchor: '\u{FE0F}-world-editor-locations',
     body: `The places your story happens. The player is always in exactly one, and it decides what the AI is told about the scene: the description, who's there, and where the story might go next.
 
 Locations keep the story in one place. Without a fixed place the narrator loses track of where the scene is. The tavern becomes a street, then a forest, and nothing stays put. A location is sent to the AI again every turn, so the scene stays where you put it.
@@ -167,13 +184,14 @@ Nesting decides where *the story* can take them. When the AI reads an action as 
 
 The background image, image tags and ambient sound are for the player's screen. The narrator never sees them.
 
-**Simple mode hides** AI-Facing Summary, Ambient Sound and Image Tags. Switch the editor to Advanced to use them.
+**Simple mode hides** AI-Facing Summary, Ambient Sound, Image Tags, and the Pins and Openings tabs. Switch the editor to Advanced to use them.
 
 Write the AI-Facing Description first, since it's the one doing the work. Nest locations when you want the story to move the player on its own.`,
   },
   'worldEditor.entities': {
     title: 'Entities',
     wikiPage: 'World-Editor-Entities',
+    wikiAnchor: '-world-editor-entities',
     body: `The people, creatures and things that populate your world: a ferryman, an eel-smoker, a barred door. An entity belongs to one or more **Locations**, and the AI is handed the ones that could turn up wherever the player currently is.
 
 Entities give the AI a cast it can't lose track of. Left to itself the narrator invents a stranger, gives them a name, and forgets both by the next turn. An entity is fixed and reusable, so the story can keep returning to it.
@@ -184,22 +202,30 @@ Entities give the AI a cast it can't lose track of. Left to itself the narrator 
 - The **AI-Facing Description** field is the full description, and the main thing the AI knows. **The player never sees this field**, so it's where a secret belongs: who the ferryman really works for, what's behind the door. The default prompt does ask the narrator to hold a name back until the player would have learned it, but that's a request to the AI, not a guarantee.
 - The **AI-Facing Summary** field is a one-line version for prompt slots where the full text is too long. The default prompt uses it for entities in reachable locations. Left blank, the full description is used instead.
 - The **Player-Facing Description** field is what the player reads when they look at this entity. It's **never sent to the AI**, so it costs no context, and anything you write here, the player knows.
+- The **Pronouns** field is sent beside the name, so the AI refers to the entity the right way
 - The **Type** field is sent as a plain field
+- The entity's active traits are sent after its description
 
 The **Locations** picker decides where the entity can appear. Assign it to as many as you like. An entity in no location never reaches the AI at all.
 
-**The link lives on the location.** Assigning locations here writes the entity into each of those locations' lists, so **deleting a location quietly drops its entities from it**. They aren't deleted, but one that was only in that location now appears nowhere, and nothing warns you.
+**The entity holds its own locations.** A location's **Entities** picker shows the same link from the other side. **Deleting a location drops it from its entities.** They aren't deleted, but one that was only in that location now appears nowhere, and nothing warns you.
+
+The **Persona** control decides whether the player can play as this entity: **Cast**, **Playable**, **Persona-Only** or **Custom Persona**.
+
+The **Traits** tab holds the entity's own traits. The **Openings** tab holds openings that start the game in this entity's voice.
 
 **Groups** are organizational. Nesting and order are editor-only and never reach the AI, so grouping never changes the story.
 
 Image, Image Tags and the 3D model are for the player's screen and for image generation. The narrator never sees them.
 
-**Simple mode hides** Aliases, AI-Facing Summary, Type, Image Tags and the 3D model, and adds entities without groups. Switch the editor to Advanced to use them.
+**Simple mode hides** Aliases, the Persona control, Type, Image Tags, the 3D model, AI-Facing Summary, and the Traits, Placeholders and Openings tabs. It adds entities without groups. Switch the editor to Advanced to use them.
 
 Give a location the two or three entities the scene genuinely depends on. Everything at the player's location is sent every turn, so a crowded location costs context on every turn.`,
   },
   'worldEditor.aliases': {
     title: 'Aliases',
+    wikiPage: 'World-Editor-Entities',
+    wikiAnchor: 'names-and-aliases',
     body: `Other names an entity goes by: a nickname, a title, an epithet. "Rosalind" answers to "Roz", and to her title, "Warden". List as many as you like.
 
 Aliases keep the story recognizing an entity even when it doesn't use the full name. Given only the name, the narrator writes "the Warden" and Rosalind is no longer detected in the scene. She drops off the cast, out of the choices, off the Entities tab. An alias closes that gap, and the AI is told the nickname too so it can use it naturally.
@@ -318,6 +344,8 @@ When two active traits pin the same placeholder, the one lower in the trait list
   },
   'worldEditor.locationPins': {
     title: 'Placeholder Pins',
+    wikiPage: 'World-Editor-Locations',
+    wikiAnchor: 'placeholder-pins',
     body: `Holds a placeholder at a fixed value while the player is here, like the *Fen* pinning Weather to *fog*. The pin releases the moment the player leaves, and the playthrough's own roll shows again. A sub-location doesn't inherit its parent's pins.
 
 The pinned value doesn't have to come from the placeholder's own list. The box suggests the authored values, but anything you type is used as written.
@@ -387,27 +415,29 @@ Define a placeholder here, then place its chip from any field that offers them. 
   'worldEditor.stats': {
     title: 'Stats',
     wikiPage: 'World-Editor-Stats',
+    wikiAnchor: '-world-editor-stats',
     body: `The numbers that describe your player: health, coin, reputation, whatever your world needs. Each stat has a value between a **Min** and **Max**, and the AI sees them every turn and lets them color how each action turns out.
 
 Stats give the story a memory with consequences. Prose alone forgets. A stat is a fact the AI has to write around: a low one shows up as effort and cost, a high one as ease. The narrator is told to work them into events rather than announce them, so stats shape the story without reading like a spreadsheet.
 
 **What the AI sees.** Each stat's **Name** is always sent. The Stats chip in your prompt picks what is sent with it:
 
-- **Values** sends the current number and its ceiling, like \`62/100\` (or \`62%\` for a percentage stat)
-- **Status** sends the matching **Stat Descriptor**, a word for the current level
-- **Meaning** sends the stat's **Description**, what it represents
+- **Range** sends the current number and its ceiling, like \`62/100\` (or \`62%\` for a percentage stat)
+- **Descriptor** sends the matching **Stat Descriptor**, a word for the current level
+- **Description** sends the stat's **Description**, what it represents
 
 **The fields**
 
 - **Type** is **Number** or **Percentage**. A Number stat spans a range you set. A Percentage stat is pinned from 0 to 100 and shown everywhere as \`N%\`. Everything below works the same for both. A percentage stat fixes the range for you and drops the Max, so you only set its **Initial Value (%)**.
 - **Min / Max / Initial Value** set the range and where the stat starts. (A percentage stat locks Min/Max at 0/100 and shows just Initial Value.)
-- **Regen** is added every turn, then clamped to the range. A positive number heals over time, a negative one drains.
+- **Regen** is added for each hour of story time, then clamped to the range. With **Measured Clock** off, each turn is one hour. A positive number heals over time, a negative one drains.
+- **Availability** has **Enabled**, which keeps the stat active, and **Hidden**, which hides it from the player while the AI still reads it
 - **Stat Descriptors** turn a number into a word. A threshold is a **value of this stat** (on a 0–10 stat, \`3\` means 3) and it is the *top* of its band, so the lowest band the value fits in wins, whatever order you list them in. Give the highest one a threshold of your **Max**, or a value above it gets no descriptor at all. The coverage bar draws every band's real extent with the gap above them in red, and each row says what it covers. Switch **Thresholds in** to **% of Max** if you'd rather the bands rescale when you change the range. Your numbers are converted as you switch, so nothing moves.
 - **Prevent AI Changes** locks a stat against the AI in one direction. Useful for anything only your world's rules should move.
 - **Body Sliders** bind a body morph to the stat, so its value sets the slider from Min to Max
 - **Dynamic Value Calculation** runs a small script that can set the value, Min, Max, or Regen, pin a placeholder, or switch a trait. It has a **?** of its own beside it.
 
-**Simple mode hides** Stat Descriptors, Prevent AI Changes and Dynamic Value Calculation. Switch the editor to Advanced to use them.
+**Simple mode hides** Availability, Stat Descriptors, Prevent AI Changes and Dynamic Value Calculation. Switch the editor to Advanced to use them.
 
 Start with two or three stats that the story would genuinely depend on. Every stat you add spends context on every turn, whether it matters to the scene or not.`,
   },
@@ -497,6 +527,7 @@ This enables a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only
   'worldEditor.dictionary': {
     title: 'Dictionary',
     wikiPage: 'World-Editor-Dictionary',
+    wikiAnchor: '-world-editor-dictionary',
     body: `Your world's lorebook. Each **book** holds **entries**, and an entry injects its content into the AI's prompt whenever one of its keywords shows up in the scanned text.
 
 The AI can't hold your whole world in mind at once. Rather than spending context on every detail every turn, the Dictionary keeps lore on standby and pays for it only when it's relevant. Someone mentions the Gloamwater, and the AI knows what it is.
@@ -511,7 +542,7 @@ Text that's present every single turn is deliberately left out: your world's AI-
 
 **The controls**
 
-- **Trigger Keywords** fire an entry. List as many as you like, comma-separated, and any single match is enough.
+- **Trigger Keywords** fire an entry. Press Enter after each keyword. List as many as you like, and any single match is enough.
 - **Always Inject** skips the scan and sends the entry every turn. Use it sparingly, since it costs context every turn.
 - **Secondary Keywords** add a condition: *bridge* fires only if *toll* also appears in the scanned text
 - **Background** and **Foreground** are two separate lore blocks placed in the system prompt. Drag an entry between a book's two groups to move it. By default, Background comes earlier than Foreground.

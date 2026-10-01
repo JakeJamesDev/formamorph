@@ -26,6 +26,7 @@ import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HelpButton } from '@/components/HelpButton';
 import { useListSearch } from '@/components/listToolbarHooks';
+import { ListToolbar } from '@/components/ListToolbar';
 import { useListEditor, type ListEditorParts } from '@/components/listEditorHooks';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
@@ -916,7 +917,10 @@ const WorldEditorInner = ({
       ))}
     </ToggleGroup>
   );
-  const addSearchBar = listEditorParts?.toolbar('mt-4', { children: locationViewToggle, after: helpButton });
+  // A tab with no list (Overview) gets the row anyway, holding only its `?` at the same right end.
+  const addSearchBar = listEditorParts
+    ? listEditorParts.toolbar('mt-4', { children: locationViewToggle, after: helpButton })
+    : helpButton && <ListToolbar className="mt-4 self-end">{helpButton}</ListToolbar>;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   const footerBar = (

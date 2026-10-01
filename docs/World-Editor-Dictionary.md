@@ -10,6 +10,19 @@ The AI can't keep your whole world in its context at one time. If you write ever
 
 A dictionary entry uses no context until a keyword matches. Mention the Gloamwater, and the AI knows what it is.
 
+## How to Add a Dictionary Entry
+
+1. Open the **Dictionary** tab.
+2. If the world has no book yet, type a name in the **Search or add new dictionaries** box and select the **+** button (**Add to Dictionary**).
+3. On the book's row, select **Add entry**. The new entry opens in the panel.
+4. In **Trigger Keywords**, type a keyword and press Enter. Repeat for each keyword.
+5. Write the text the AI gets in **Value**.
+6. Select **Save** at the bottom of the editor.
+
+> 💡 A comma doesn't split keywords. When a keyword holds commas, the field offers to split it.
+
+To add a dictionary from your library, select **Add Dictionary** at the bottom of the editor.
+
 ## What gets scanned
 
 The rule: **if the AI reads it, it can activate an entry.** A **turn** is one action from you and the AI's reply. On each turn, the game scans:
@@ -20,7 +33,7 @@ The rule: **if the AI reads it, it can activate an entry.** A **turn** is one ac
 | **Your notes** and the **action** you sent | Always |
 | **Earlier turns**: your actions and the AI's narration | As far back as the entry's **Scan Depth** |
 
-> 💡 Keywords match **the exact text the AI gets**. Where your prompt sends a *summary*, the game scans the summary. A keyword that is only in an entity's full description doesn't match when the AI got the short form. Check which form your prompt sends in **Settings → Output → Turn Extras**.
+> 💡 Keywords match **the exact text the AI gets**. Where your prompt sends a *summary*, the game scans the summary. A keyword that is only in an entity's full description doesn't match when the AI got the short form. Check which form your prompt sends in **Settings → Prompts** (Advanced mode only).
 
 The scan covers the blocks your prompt uses. If you remove the location, entities or notes chip from your prompt, the game doesn't scan that block.
 
@@ -38,6 +51,8 @@ Select an entry to open its panel. **Trigger Keywords** and **Value** are all mo
 | **Matching** | **Always Inject**, **Regex**, **Recursive**, **Scan Depth** and **Secondary Keywords** | Advanced only |
 
 Simple mode also hides the Background and Foreground groups and the **Enabled** switches.
+
+Use the **Matching** tab only when an entry activates at the wrong time, or doesn't activate at the right time.
 
 ### Details
 
@@ -70,7 +85,7 @@ Two checkboxes change the **Secondary Keywords** test:
 
 ## Semantic Lore
 
-**Semantic Lore** is an experimental player setting. It activates entries by meaning, after the keyword scan. Write *"the ruined tower"*, and an *Old Beacon* entry can activate with no keyword present. It only adds entries. Keyword activation doesn't change.
+**Semantic Lore** is a player setting in **Settings → Output → Lore**, in Advanced mode. It is off by default. It activates entries by meaning, after the keyword scan. Write *"the ruined tower"*, and an *Old Beacon* entry can activate with no keyword present. It only adds entries. Keyword activation doesn't change.
 
 ## Background and Foreground
 
@@ -90,7 +105,7 @@ Select a book in the tree to open its panel. It has two tabs.
 
 | Tab | What it holds |
 |---|---|
-| **Details** | **Name**, **Description**, **Enabled** and the entry count. |
+| **Details** | **Name**, **Description**, the entry count and, in Advanced mode, **Enabled**. |
 | **Placeholders** | The book's own [placeholders](World-Editor-Placeholders), across the full panel. **Advanced mode only.** |
 
 In Simple mode the panel shows the Details fields with no tabs. The tab you pick stays open when you select another book.
@@ -101,12 +116,9 @@ A dictionary in your library is always one book, so its editor has no row for th
 
 | Tab | What it holds |
 |---|---|
-| **Overview** | Everything about the book: **Tags** and **Cover Image**, beside **Name**, **Description** and **Enabled**. |
-| **Dictionary** | The entries only. The **+** button at the top of the list adds one. |
+| **Overview** | Everything about the book: **Author**, **Tags** and **Cover Image**, beside **Name** and **Description**. |
+| **Dictionary** | The entries only. The **+** button (**Add entry**) at the top of the list adds one. |
 | **Placeholders** | The book's own [placeholders](World-Editor-Placeholders), across the full width. |
 
 The editor opens on **Dictionary** with the first entry selected. An empty book shows a hint beside the **+** button. Rename the book on **Overview**. The rename changes no world.
 
-## Getting started
-
-Start with one book and a few entries with plain keywords. Use the **Matching** tab only when an entry activates at the wrong time, or doesn't activate at the right time.

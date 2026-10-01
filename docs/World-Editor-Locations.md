@@ -8,6 +8,59 @@ Locations are the places where your story happens. The player is always in one l
 
 Without a fixed place, the narrator loses track of the scene. The tavern becomes a street, then a forest. A location is sent to the AI again on every turn, so the scene stays where you put it.
 
+## How to Add a Location
+
+1. Open the **Locations** tab.
+2. Type the location's name in the **Search or add new locations** box.
+3. Select the **+** button (**Add to Locations**). The new location opens in the panel.
+4. On the **Details** tab, write the **AI-Facing Description**.
+5. Select **Save** at the bottom of the editor.
+
+> 💡 With the box empty, the new location is named "New Location". Rename it in **Name**.
+
+## How to Nest a Location
+
+**In the list:**
+
+1. Select **List** beside the search box.
+2. Drag the location by its handle onto the row above it.
+3. Move it to the right while you drag. The indent shows that it is now a sub-location.
+
+**On the canvas:**
+
+1. Select **Canvas** beside the search box.
+2. Drag the location's box into the box of its new parent. To nest into a location that has no sub-locations yet, hold the drag over it for a moment.
+3. To move a location back to the top level, drop it on **Top Level**.
+
+## How to Connect Two Locations
+
+**In the panel:**
+
+1. Select one of the two locations, then open its **Presence** tab.
+2. Under **Connections**, pick the other location in **Connect to…**.
+3. Select the **+** button (**Add Connection**). The new Connection is **Two-Way**.
+4. To make it one-way, pick **Outgoing** or **Incoming** on its row.
+5. Optional: write a **Travel Hint**.
+
+**On the canvas:** drag from the handle on the right edge of one box (**Drag To Connect**) onto the other box.
+
+## How to Set a Starting Location
+
+1. Select the location, then open its **Details** tab.
+2. Check **Starting Location**.
+3. Check it on more locations to let the player pick one. See [Starting Location](#starting-location).
+
+## How to Pin a Placeholder to a Location
+
+**Advanced mode only.**
+
+1. Select the location, then open its **Pins** tab.
+2. Select **Add Placeholder Pin**.
+3. In the new row, select **Select placeholder** and pick the placeholder.
+4. Type the value in **Pinned value**. The box suggests the placeholder's own values, and it also takes any text.
+
+While the player is at this location, the placeholder reads the pinned value. See [Placeholder Pins](#placeholder-pins).
+
 ## Nesting is the AI's map, not the player's
 
 > 💡 **The player can always travel anywhere.** The in-game location list and the in-game map offer **every** location in your world. Nesting never limits the player, and no arrangement can trap them.
@@ -37,23 +90,33 @@ The **Locations** tab has two views. Switch between them with **List** and **Can
 | View | Use it to |
 |---|---|
 | **List** | Edit a location's fields. Drag a location under another to nest it. |
-| **Canvas** | See how the world connects. Drag to nest, draw Connections, set their direction and Travel Hint, and arrange the layout. It has undo and redo, search, a minimap and fullscreen. It marks a location the story can't reach. |
+| **Canvas** | See how the world connects. Drag to nest, draw Connections, set their direction and Travel Hint, and arrange the layout. It marks a location that no starting location can reach. |
+
+**Edit Full Screen** opens the canvas at full size, with undo and redo, search and a minimap. Right-click a box and select **Edit Location** to open its panel.
 
 Nothing on the canvas moves until you move it or ask for a layout. The in-game map uses your canvas layout.
 
 ## The panel
 
-Select a location in the list to open its panel.
+Select a location in the list to open its panel. The tab you pick stays open when you select another location.
 
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name**, **Starting Location** and the descriptions | Simple and Advanced |
 | **Presence** | **Entities** and **Connections** | Simple and Advanced |
-| **Media** | **Background Image**, **Image Tags** and **Ambient Sound** | Simple and Advanced |
+| **Media** | **Background Image**. In Advanced mode, also **Image Tags** and **Ambient Sound**. | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 | **Openings** | The location's own [openings](World-Editor-Openings#location-openings), drawn when a game starts here | Advanced only |
 
-Simple mode hides **AI-Facing Summary**, **Ambient Sound** and **Image Tags**.
+Simple mode also hides **AI-Facing Summary**.
+
+### Media
+
+| Field | What it does |
+|---|---|
+| **Background Image** | The image behind the story while the player is here. Upload a file, or paste an address into **Or paste an image URL**. See [Upload or link](World-Editor-Overview#upload-or-link). **Generate with AI** makes one when image generation is on in Settings. |
+| **Image Tags** | **Advanced mode only.** Booru tags for AI image generation |
+| **Ambient Sound** | **Advanced mode only.** A sound that plays while the player is here. Select **Add Sound** to pick a file. |
 
 ## What reaches the AI
 
@@ -89,7 +152,7 @@ The **Connections** section lists every link this location is part of, from this
 | **Outgoing** | The story can leave here for the other place. It can never bring the player back. |
 | **Incoming** | The story can arrive here from the other place. It can't go the other way. |
 
-Pick a place from the **Connect to…** dropdown and press **Add Connection**.
+Pick a place in **Connect to…**, then select the **+** button (**Add Connection**).
 
 ### Travel Hints
 
@@ -144,9 +207,7 @@ The **Starting Location** checkbox marks a place where a new game can start:
 ## Delete a location
 
 - Its sub-locations move up to its parent. They aren't deleted.
-- Its Connections stop working.
+- Its Connections are deleted.
+- Nothing asks you to confirm.
 - Each entity that was there loses this location. See the warning on the [Entities page](World-Editor-Entities#locations).
 
-## Getting started
-
-Write the AI-Facing Description first. Nest locations when you want the story to move the player on its own. Add Connections where nesting can't make the link you want. Check **Starting Location** on one location at least, so a new game doesn't start at a random place.
