@@ -1116,7 +1116,10 @@ const entityNoCodeName: Rule = {
     if (!(world.stats ?? []).some((stat) => filledCodeBoxes(stat).length)) return [];
     return (world.entities ?? [])
       .filter((entity) => !statCodeName(entity.name, allPlaceholders(world)))
-      .map((entity) => finding(entityNoCodeName, 'An entity has no name, so stat code can’t reach it through entities — give it a name', [asItem(entity, world)]));
+      .map((entity) => {
+        const item = asItem(entity, world);
+        return finding(entityNoCodeName, `${quote(item.name)} has no name, so stat code can’t reach it through \`entities\``, [item]);
+      });
   },
 };
 

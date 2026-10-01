@@ -64,6 +64,9 @@ export type StatCodeFailure = 'timeout' | 'non-number' | 'throw' | 'bad-write';
 export const CODE_BOUND_FIELDS = ['min', 'max', 'regen'] as const satisfies readonly (keyof CodeBounds)[];
 export type CodeBoundField = (typeof CODE_BOUND_FIELDS)[number];
 
+/** The fields on `self` that a write reaches. Every other stat field is read-only. */
+export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
+
 export interface StatCodeResult {
   /** The value the code set, by return or by `self.value`, clamped to the range after this run's bound
    *  writes; null when it left the value alone. */
@@ -326,7 +329,7 @@ const LOCK_STAT = `(entry, isSelf, note) => {
   for (const source of Object.keys(entry.delta)) deep(entry.delta[source], 'delta.' + source + '.');
   deep(entry.delta, 'delta.');
   deep(entry.previous, 'previous.');
-  const writable = ${JSON.stringify(['value', ...CODE_BOUND_FIELDS])};
+  const writable = ${JSON.stringify(SELF_WRITABLE_FIELDS)};
   lock(entry, Object.keys(entry).filter((field) => !(isSelf && writable.includes(field))), '', note);
 }`;
 
@@ -696,7 +699,7 @@ function readEntityWrites(
   for (const row of Array.isArray(parsed) ? parsed : []) {
     if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
     const [name, isUnknown, rows, fields] = row as [string, unknown, unknown, unknown];
-    readOnly.push(...readOnlyPaths(entityPath(name), fields));
+    readOnly.push(...readOnlyPaths(isUnknown === true ? memberPath('entities', name) : entityPath(name), fields));
     // A blank entry has no traits, so any trait row through it is a switch on an entity that is not there.
     if (isUnknown === true) {
       if (Array.isArray(rows) && rows.length) unknown.push(name);
@@ -766,7 +769,8 @@ function readPlaceholderWrites(
   return { writes, unknown, unknownOwned, readOnly };
 }
 
-/** The read-only fields the run wrote on `stats` entries, then the loose ones, as code spelled them. */
+/** The read-only fields the run wrote on `stats` entries, then the loose ones. A `self` that is an entry
+ *  reports under its `stats` path. */
 function readStatReadOnlyWrites(dump: string): string[] {
   const parsed: unknown = JSON.parse(dump);
   const [rows, loose] = Array.isArray(parsed) ? parsed : [];

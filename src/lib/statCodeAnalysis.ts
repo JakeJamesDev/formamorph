@@ -242,7 +242,11 @@ const entityNamed = (match: RegExpExecArray) => match[1] ?? match[2];
 
 /** One entry per distinct entity name. `dotted` keeps only the names a `.` can reach. */
 const entityNameEntries = (entities: readonly CodeEntityNames[], dotted: boolean): SurfaceEntry[] =>
-  mapNameEntries(entities.flatMap((entity) => (entity.name ? [entity.name] : [])), 'entity', dotted);
+  mapNameEntries(keyedEntityNames(entities), 'entity', dotted);
+
+/** The entity names the sandbox keys: every non-empty one. */
+const keyedEntityNames = (entities: readonly CodeEntityNames[]): string[] =>
+  entities.flatMap((entity) => (entity.name ? [entity.name] : []));
 
 /** The trait names of the last authored entity called `name`, as the sandbox keys it. An unnamed one is not keyed. */
 const traitsOfEntity = (entities: readonly CodeEntityNames[], name: string): readonly string[] | null =>
@@ -890,7 +894,7 @@ function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' 
 }
 
 const checkEntityName = (ref: EntryRef, entities: readonly CodeEntityNames[]) =>
-  checkOwnerName(ref, entities.flatMap((entity) => (entity.name ? [entity.name] : [])), 'entity');
+  checkOwnerName(ref, keyedEntityNames(entities), 'entity');
 
 /** What is wrong with a trait name on a known entity: its set has no trait called that. A later library
  *  entity can take the name with another set, so this is only a warning. */

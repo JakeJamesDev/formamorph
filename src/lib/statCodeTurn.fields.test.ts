@@ -199,10 +199,27 @@ describe('runStatCodeTurn entry fields', () => {
     for (const path of ['clock.day', 'clock.previous', 'clock.previous.day']) expect(reported).toContain(path);
   });
 
-  it('leaves an entity with an empty code name out of entities', async () => {
+  it('reads a switched-off stat’s previous and delta from the turn', async () => {
+    const out = await runStatCodeTurn({
+      stats: [
+        stat({ id: 'a', name: 'A', value: 0, max: 1000, code: 'return stats.B.previous.value * 100 + stats.B.delta.ai.value;' }),
+        stat({ id: 'b', name: 'B', value: 7 }),
+      ],
+      enabled: { b: false }, previous: [stat({ id: 'b', name: 'B', value: 3 })], asks: [{ id: 'b', value: 4, max: 0 }],
+      regenApplied: {}, clock: {}, traits: played(),
+      statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    });
+    expect(valueOf(out, 'a')).toBe(304);
+  });
+
+  it('leaves an entity with an empty code name out of entities, and reports a write through the blank name as such', async () => {
     const blank: Entity = { id: 'blank', name: '', traits: [calm] };
     const traits = { ...played(), entities: [mira, rook, pip, blank] };
     expect(await holds("!Object.keys(entities).includes('') && entities[''].id === ''", traits)).toBe(true);
+    await run(["entities[''].type = 'z';", 'return 0;'], traits);
+    const reported = vi.mocked(console.warn).mock.calls.map(([line]) => String(line)).join('\n');
+    expect(reported).toContain('entities[""].type');
+    expect(reported).not.toContain('persona.type');
   });
 
   it('still switches an unnamed persona’s trait through persona', async () => {
