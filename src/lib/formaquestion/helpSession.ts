@@ -11,7 +11,7 @@ import { toolsSupported } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { RequestMessage } from '@/types';
 import { createDocsLookup, docsContents, DOCS_LOOKUP } from './docsLookup';
-import { readMarker } from './generalKnowledge';
+import { isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { surfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
@@ -150,12 +150,12 @@ export async function* askHelp({
     } else if (event.type === 'done') {
       const sources = [...(lookup?.fetched() ?? []), ...inPrompt];
       const stopped = event.result.finishReason === ABORTED_FINISH_REASON;
-      const answer = readMarker(stripReasoningLive(event.result.content), { final: true });
+      // A Stop can land while a start of the marker is held back; that start stays hidden.
+      const answer = readMarker(stripReasoningLive(event.result.content), { final: !stopped });
       if (!answer.text && !stopped) {
         throw new Error(`The model sent an empty answer (finish reason: ${event.result.finishReason ?? 'none'})`);
       }
-      // No marker means grounded, unless no section reached the model at all.
-      const flagged = answer.marked || sources.length === 0;
+      const flagged = isGeneralKnowledge(answer.marked, sources.length);
       const nearest = flagged ? helpSections(index, question, { history }) : [];
       yield { type: 'done', text: answer.text, sources, stopped, flagged, nearest };
     }

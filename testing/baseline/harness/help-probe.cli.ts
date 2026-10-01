@@ -24,7 +24,8 @@
 //   invented    bold names in the answer that are nowhere in the docs
 //   flagged     the app's general-knowledge flag: the answer has the marker, or no section reached the model.
 //               Wanted on a case with no section and on the mismatch arm, and a fault on a covered case
-//   first       of the marked answers, the share with the marker on the first line, where the prompt asks
+//   first       of the marked answers, the share with the marker on the first line, where the prompt asks.
+//               Not on the lookup arm, whose session removes the marker
 //
 // Usage: npx vite-node testing/baseline/harness/help-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--only backup-docs,regen-player]
@@ -35,7 +36,7 @@ import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiR
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
-import { GENERAL_KNOWLEDGE_MARKER, readMarker } from '@/lib/formaquestion/generalKnowledge';
+import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
@@ -122,7 +123,9 @@ interface Sample {
   answerTokens: number | null;
   finish: string | null;
   /** The docs sections that reached the model. */
-  sent: number;
+  sentSections: number;
+  /** Lookup arm: the session's flag, since the session removes the marker. */
+  flagged?: boolean;
   /** Lookup arm: the answer's sources, the lookup calls the model made, and the requests sent. */
   sources?: string[];
   calls?: string[];
@@ -183,9 +186,7 @@ async function lookupRequest(c: HelpCase): Promise<Sample> {
     sources = event.sources.map((section) => section.id);
     flagged = event.flagged;
   }
-  // The session removes the marker, so the score gets it back from the flag.
-  const marked = flagged && sources.length > 0;
-  return { answer: marked ? `${GENERAL_KNOWLEDGE_MARKER}\n${answer}` : answer, promptTokens, answerTokens, finish: null, sent: sources.length, sources, calls, requests };
+  return { answer, promptTokens, answerTokens, finish: null, sentSections: sources.length, flagged, sources, calls, requests };
 }
 
 async function request(arm: Arm, c: HelpCase): Promise<Sample> {
@@ -206,7 +207,7 @@ async function request(arm: Arm, c: HelpCase): Promise<Sample> {
     promptTokens: json.usage?.prompt_tokens ?? null,
     answerTokens: json.usage?.completion_tokens ?? null,
     finish: json.choices?.[0]?.finish_reason ?? null,
-    sent: sections.length,
+    sentSections: sections.length,
   };
 }
 
@@ -242,7 +243,7 @@ function score(c: HelpCase, sample: Sample): Score {
     declined: DECLINED.test(answer),
     invented: boldLower.filter((name) => name.length > 1 && !allDocs.includes(name)).length,
     empty: !answer.trim(),
-    flagged: marked || sample.sent === 0,
+    flagged: sample.flagged ?? isGeneralKnowledge(marked, sample.sentSections),
     first: marked ? readMarker(raw.split('\n')[0], { final: true }).marked : null,
   };
 }
