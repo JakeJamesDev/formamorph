@@ -204,7 +204,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - Retrieval sends ranked sections under a character budget, not a fixed count: always the top hit, then more while the docs block stays under the budget, up to a maximum count. Both numbers are named constants; ticket 26's probes can tune them (ticket 20 ruling).
 - "No AI connected" means the app's existing reachability check reports the active endpoint blocked. On Send, a cached "blocked" gets one fresh check first. The default cloud endpoint always counts as connected (ticket 20 ruling).
 - A fresh window opens on the Ask tab, with or without an AI (ticket 20 ruling).
-- The session reports which sections reached the model. Those become the answer's sources.
+- The session reports which sections reached the model. In lookup mode the sources are the fetched sections in fetch order, then the prompt's own sections, with no duplicates. The lookup call limit is a named constant in the help session; no Tools setting affects it (ticket 22 ruling). Those become the answer's sources.
 - An answer is flagged as general knowledge when no docs section supports it. The prompt gives the model a positive contract for this case, and the session derives the flag from a marker the model must emit, not from the answer's wording.
 - History is capped by exchange count. Fetched section text from earlier exchanges is not resent; only the question and answer text is.
 - The language directive is the same one narration uses (Q11).
