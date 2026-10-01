@@ -1037,13 +1037,6 @@ export const MiddlePanel = ({
               />
             )}
             <div className="flex items-end">
-              <ActionInput
-                value={playerInput}
-                onChange={(e) => setPlayerInput(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Type your action... [square brackets] direct the story as the author"
-                disabled={disabled}
-              />
               {/* The opening turn sends the drawn opening, so images wait for the game to start. */}
               {imageAttachments && isGameStarted && (
                 <>
@@ -1063,7 +1056,6 @@ export const MiddlePanel = ({
                   />
                   <Tip tip="Attach images">
                     <Button
-                      variant="ghost"
                       size="icon"
                       className="mr-2 shrink-0"
                       aria-label="Attach images"
@@ -1075,6 +1067,13 @@ export const MiddlePanel = ({
                   </Tip>
                 </>
               )}
+              <ActionInput
+                value={playerInput}
+                onChange={(e) => setPlayerInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Type your action... [square brackets] direct the story as the author"
+                disabled={disabled}
+              />
               <HelpButton
                 topicId="game.howToPlay"
                 className="mr-2"
