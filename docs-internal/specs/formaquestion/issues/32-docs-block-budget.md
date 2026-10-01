@@ -1,0 +1,33 @@
+# 32: Docs block budget and cap
+
+Status: ready-for-agent
+Blocked by: 26
+Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
+Reasoning effort: medium
+
+## What to build
+
+A "here" question gets every section the budget allows, and never more than the cap (Q54). The effort review found two faults in how the help session fills the docs block.
+
+- **Double count.** The help session takes the surface section's length off the budget, then searches. When the search also finds that section, its length counts a second time before the duplicate is dropped. The other hits get less room than the budget allows.
+- **Cap.** The 5-section limit covers only the search hits, so the surface section makes a sixth.
+
+The fix:
+
+- The budget and the cap cover the whole docs block, the surface section included.
+- The surface section counts once, whether or not the search finds it too.
+- The surface section still goes first.
+- Drop the `?? id` fallback in the surface label lookup. The coverage test already fails for an unlabeled id, so the fallback is dead code that ticket 29 asked to remove.
+
+**Probe.** This changes which sections reach the model, so rerun ticket 26's "here" cases on the default cloud model, same harness, with an in-batch control on the old build. Report sections sent and grounded-correct rate per arm.
+
+Recommended model rationale: a small selection fix with a focused probe.
+
+## Acceptance criteria
+
+- [ ] When the top search hit is the surface section, the block counts it once; a test asserts the other hits fill the full budget
+- [ ] A request never holds more than 5 sections, surface section included; a test asserts it
+- [ ] The surface section stays first in the block
+- [ ] The surface label lookup has no raw-id fallback
+- [ ] Probe numbers for the "here" cases, fixed vs old build, same batch, are in the handover
+- [ ] Four gates green

@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: formaquestion — spec
-Status note: 31 tickets in issues/. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
+Status note: 33 tickets in issues/. 32 and 33 are follow-ups from the effort review and wait for 26. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
 
 ## Problem Statement
 
@@ -89,6 +89,9 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q51 | The surface hint uses a table of exact UI labels per surface id, not names derived from ids (ticket 29) |
 | Q52 | A flagged answer keeps its general-knowledge marker in the follow-up history (ticket 30) |
 | Q53 | Lookup mode stays in the code but ships off: every question uses retrieval. After ticket 27, retrieval scored 48/48 and lookup 45/48 at about twice the tokens. Refines Q48 (ticket 31) |
+| Q54 | The 5-section cap and the character budget cover the whole docs block, the surface section included, and count it once (ticket 32) |
+| Q55 | The budget fix waits for ticket 26, so the baseline measures one build; it lands as ticket 32 and re-runs the "here" cases |
+| Q56 | The review's standards smells go in one refactor ticket with no behavior change, after ticket 26 (ticket 33) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
@@ -208,6 +211,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - The choice is not a retry. A request never goes out twice. This keeps the "no runtime fallback" rule of ADR-0008.
 - The docs lookup is not a Tool (Q30). It never appears in the Tools tab, no preset enables it, and the Output → Tools switch does not affect it. It uses the same capability gate as Tools. A new ADR records this.
 - Retrieval sends ranked sections under a character budget, not a fixed count: always the top hit, then more while the docs block stays under the budget, up to a maximum count. Both numbers are named constants; ticket 26's probes can tune them (ticket 20 ruling).
+- The budget and the maximum count cover the whole docs block, the surface section included. The surface section counts once, even when the search also finds it (Q54, ticket 32).
 - "No AI connected" means the app's existing reachability check reports the active endpoint blocked. On Send, a cached "blocked" gets one fresh check first. The default cloud endpoint always counts as connected (ticket 20 ruling).
 - A fresh window opens on the Ask tab, with or without an AI (ticket 20 ruling).
 - The session reports which sections reached the model. In lookup mode the sources are the fetched sections in fetch order, then the prompt's own sections, with no duplicates. The lookup call limit is a named constant in the help session; no Tools setting affects it (ticket 22 ruling). Lookup calls get their own docs budget, the same size as the prompt's, so the prompt's search hits never leave the calls empty (ticket 28 ruling). Those become the answer's sources.
