@@ -219,6 +219,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - Every stale and contradictory statement from the audit is fixed against the code, not against the changelog.
 - New pages: How to Play, Starting a Game, Settings, Prompts, Tools, Saves and Backup, Library, Community Creations, Avatars, Image Generation, Test Bench, Glossary. Account and troubleshooting topics go on the page that owns the screen.
 - Every page gains "How to…" sections with numbered steps and exact control names (Q20). Reference text stays.
+- How-to shape (ticket 02 ruling): one `##` heading per task, "How to <Verb> <Object>" in Title Case, so each task is its own section and anchor. The how-to sections sit together after "Why it exists" (or after the intro on a page without one), above the reference. A page's "Getting started" section folds into them and is removed when it only repeats them. Steps are numbered, with control names in bold.
 - The world format reference is rewritten from the current world types.
 - The glossary is written for players from the internal glossary. It leaves out developer terms.
 - The seven help topics with no docs link get one. The stale help topics are corrected.
