@@ -280,7 +280,7 @@ A write to an unknown trait name is ignored. **Test Code** and the Test Bench bo
 
 | Member | What it is |
 | --- | --- |
-| `name` | The persona's name, as code names it. Read-only |
+| `name` | The persona's code name. Read-only |
 | `traits` | The persona's own traits by name, owned or linked |
 
 Each entry in `persona.traits` has the same `enabled` and `acquired` as a `traits` entry, for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.

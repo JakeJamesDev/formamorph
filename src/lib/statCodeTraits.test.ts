@@ -77,7 +77,7 @@ describe('applyCodeTraitSwitches on a bearer’s own trait', () => {
     expect(log).toEqual([]);
   });
 
-  it('lands a locked switch-on, which the settle then turns off', () => {
+  it('applies a locked switch-on, which the settle then turns off', () => {
     const { state } = flip(['calm'], 'fury', true);
     expect(state.ownedTraits?.mira?.chosen).toContain('fury');
     expect(state.ownedTraits?.mira?.disabled).toContain('fury');

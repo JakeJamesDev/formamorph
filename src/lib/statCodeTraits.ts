@@ -80,12 +80,13 @@ export function codePersona(traits: StatCodeTraits, placeholders: readonly Place
   const state = traits.ownedTraits?.[id];
   const chosen = new Set(state?.chosen ?? []);
   const off = new Set(state?.disabled ?? []);
+  const named = withOwnPlaceholders(placeholders, authored);
   return {
     id,
-    name: statCodeName(authored?.name ?? bearer?.name, placeholders),
+    name: statCodeName(authored?.name ?? bearer?.name, named),
     traits: (bearer?.traits ?? []).map((trait) => ({
       id: trait.id,
-      name: statCodeName(authoredTraitName(trait, authored, traits.world.traits), placeholders),
+      name: statCodeName(authoredTraitName(trait, authored, traits.world.traits), named),
       acquired: chosen.has(trait.id),
       enabled: chosen.has(trait.id) && !off.has(trait.id),
     })),
@@ -96,12 +97,17 @@ export function codePersona(traits: StatCodeTraits, placeholders: readonly Place
 const authoredTraitName = (trait: Trait, entity: Entity | null | undefined, worldTraits: readonly Trait[]): string =>
   entity?.traits?.find((t) => t.id === trait.id)?.name ?? worldTraits.find((t) => t.id === trait.id)?.name ?? trait.name;
 
+/** The placeholders an entity's chips can name: the world's, then the entity's own. */
+const withOwnPlaceholders = (placeholders: readonly Placeholder[], entity: Entity | null | undefined): readonly Placeholder[] =>
+  (entity?.placeholders?.length ? [...placeholders, ...entity.placeholders] : placeholders);
+
 /** The code names of every trait a persona in the world can hold, owned or linked: what the editor offers
  *  after `persona.traits`. A library persona can hold others. */
 export function personaTraitNames(world: BearerWorld, placeholders: readonly Placeholder[]): string[] {
   return resolveBearers(world, undefined).bearers
     .filter((bearer) => bearer.entity && canBePlayer(bearer.entity))
-    .flatMap((bearer) => bearer.traits.map((trait) => statCodeName(authoredTraitName(trait, bearer.entity, world.traits), placeholders)));
+    .flatMap((bearer) => bearer.traits.map((trait) =>
+      statCodeName(authoredTraitName(trait, bearer.entity, world.traits), withOwnPlaceholders(placeholders, bearer.entity))));
 }
 
 /** The sandbox's `persona` entry: the played persona's name and trait entries, without the ids. */

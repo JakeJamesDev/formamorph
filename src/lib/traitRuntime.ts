@@ -523,10 +523,10 @@ function sameCascadeOff(a: CascadeOffTraitIds, b: CascadeOffTraitIds): boolean {
  *  With `ownerId`, only that owner's list. */
 function withoutCascadeOff(state: TraitRuntimeState, traitId: string, ownerId?: string): TraitRuntimeState {
   const lists = state.cascadeOffTraitIds ?? {};
-  const mine = (owner: string) => ownerId === undefined || owner === ownerId;
-  if (!Object.entries(lists).some(([owner, ids]) => mine(owner) && ids.includes(traitId))) return state;
+  const inScope = (owner: string) => ownerId === undefined || owner === ownerId;
+  if (!Object.entries(lists).some(([owner, ids]) => inScope(owner) && ids.includes(traitId))) return state;
   const next = Object.fromEntries(Object.entries(lists)
-    .map(([owner, ids]) => [owner, mine(owner) ? ids.filter((id) => id !== traitId) : ids]));
+    .map(([owner, ids]) => [owner, inScope(owner) ? ids.filter((id) => id !== traitId) : ids]));
   return { ...state, cascadeOffTraitIds: compactCascadeOff(next) };
 }
 

@@ -288,7 +288,7 @@ describe('what Test Code reports', () => {
 
     await testCode(user, 'persona.traits.Scarred.enabled = true; persona.traits.Marked.acquired = true;');
 
-    await waitFor(() => expect(row()).toHaveTextContent('No persona plays in a test. Writes ignored: persona.traits.Scarred.'));
+    await waitFor(() => expect(row()).toHaveTextContent('Unknown persona trait names. Writes ignored: persona.traits.Scarred.'));
     expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: persona.traits.Marked.');
   });
 

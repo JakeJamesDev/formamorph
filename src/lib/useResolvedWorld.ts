@@ -67,8 +67,8 @@ export interface ResolvedWorld {
   traitEntities: Entity[];
   /** The library entities in the playthrough, resolved the same way; their nodes sit last in the tree. */
   traitLibrary: Entity[];
-  /** Every entity in play as authored, chips and all: the world's, then the library's. Stat code alone reads
-   *  it, for code names that no roll moves. */
+  /** Every entity in play as authored, chips and all: the world's, then the library's. Only stat code reads
+   *  it: code names derive from authored names, never from a roll. */
   codeEntities: Entity[];
   /** Every pin in force in world-level text: the player's active traits', the current location's, each live
    *  stat's band's, and the Code Pins, with value pins settled underneath. `pinSet.world`. */
