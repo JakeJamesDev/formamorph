@@ -1,0 +1,234 @@
+import {
+  useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { ensureShieldedLayer } from '@/components/ui/shielded-layer';
+import { useDevRoute } from '@/lib/devRouter';
+import type { DocsIndex } from '@/lib/docs/docsIndex';
+import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
+import { createGuide } from '@/lib/formaquestion/guide';
+import {
+  clampBox, defaultBox, isWide, moveBox, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
+  NARROW_WIDTH, WIDE_WIDTH, type WindowBox,
+} from '@/lib/formaquestion/windowBox';
+import { useIsMobile } from '@/lib/useIsMobile';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { EdgeTab } from './EdgeTab';
+import { FormaquestionFrame } from './FormaquestionFrame';
+import { FORMAQUESTION_TABS, INITIAL_GUIDE_VIEW, type GuideView } from './formaquestionTabs';
+import { GuideBody } from './GuideBody';
+
+const WINDOW_ID = 'formaquestion-window';
+
+/** Close animation length in ms. It matches `data-[state=closed]:duration-150` in `WINDOW_MOTION`. */
+const CLOSE_MS = 150;
+
+/**
+ * The window zooms out of the Help tab and fades in, and goes back the same way. The closed state keeps
+ * its last frame until React unmounts it, and takes no presses on the way out. Reduced motion shows and
+ * hides at once.
+ *
+ * `transition-none` is load-bearing: `duration-*` also sets the transition duration, and with no property
+ * named a transition covers `left` and `top`, so every drag step would ease and the window would trail
+ * the pointer.
+ */
+const WINDOW_MOTION = 'transition-none ease-out data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-75 data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-in data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-75 data-[state=closed]:fill-mode-forwards data-[state=closed]:pointer-events-none motion-reduce:!animate-none';
+
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Formaquestion: the Help tab and the help window, mounted once for the whole app in the shielded layer,
+ * so both stay usable above every dialog. The window holds the guide and a search of it.
+ */
+export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: {
+  /** Hides the tab and the window and turns F1 off, while something covers the whole screen. */
+  suspended?: boolean;
+  loadIndex?: () => Promise<DocsIndex>;
+}) {
+  const [layer] = useState(ensureShieldedLayer);
+  const mobile = useIsMobile();
+  const hidden = suspended || mobile;
+  const mountedRef = useMountedRef();
+  const windowRef = useRef<HTMLElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<GuideView>(INITIAL_GUIDE_VIEW);
+  const changeView = useCallback((change: Partial<GuideView>) => setView((current) => ({ ...current, ...change })), []);
+  const [box, setBox] = useState<WindowBox>(() => readStoredBox(viewportOf(window)) ?? defaultBox(viewportOf(window)));
+
+  // The docs load on the first open, from their own chunk.
+  const [index, setIndex] = useState<DocsIndex | null>(null);
+  const [failed, setFailed] = useState(false);
+  const loading = useRef(false);
+  const load = useCallback(() => {
+    if (loading.current) return;
+    loading.current = true;
+    setFailed(false);
+    loadIndex().then(
+      (loaded) => { if (mountedRef.current) setIndex(loaded); },
+      () => {
+        loading.current = false;
+        if (mountedRef.current) setFailed(true);
+      },
+    );
+  }, [loadIndex, mountedRef]);
+  useEffect(() => {
+    if (open && !index && !failed) load();
+  }, [open, index, failed, load]);
+  const guide = useMemo(() => (index ? createGuide(index) : null), [index]);
+
+  // The window stays inside the screen after a browser resize.
+  useEffect(() => {
+    const onResize = () => setBox((current) => clampBox(current, viewportOf(window)));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const focusWindow = useCallback(() => {
+    const root = windowRef.current;
+    (root?.querySelector<HTMLElement>('[data-fq-autofocus]') ?? root)?.focus();
+  }, []);
+
+  // The window grows out of the Help tab and shrinks back into it.
+  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  const aimAtTab = useCallback(() => {
+    const rect = layer.querySelector('[data-fq-launcher]')?.getBoundingClientRect();
+    setOrigin(rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null);
+  }, [layer]);
+
+  const openWindow = useCallback(() => {
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    aimAtTab();
+    setOpen(true);
+  }, [aimAtTab]);
+
+  const closeWindow = useCallback(() => {
+    aimAtTab();
+    setOpen(false);
+    const back = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (back?.isConnected) back.focus();
+  }, [aimAtTab]);
+
+  // The window stays mounted while its close animation runs. `present` drops when the animation ends.
+  const [present, setPresent] = useState(false);
+  useEffect(() => {
+    if (open) {
+      setPresent(true);
+      return;
+    }
+    if (!present) return;
+    if (hidden || reducedMotion()) {
+      setPresent(false);
+      return;
+    }
+    // A hidden browser tab does not finish animations, so the end event has a timed backstop.
+    const backstop = window.setTimeout(() => setPresent(false), CLOSE_MS + 150);
+    return () => window.clearTimeout(backstop);
+  }, [open, present, hidden]);
+
+  const shown = (open || present) && !hidden;
+
+  // Focus moves into the window when it opens.
+  const wasShown = useRef(false);
+  useLayoutEffect(() => {
+    const nowShown = open && !hidden;
+    if (nowShown && !wasShown.current) focusWindow();
+    wasShown.current = nowShown;
+  }, [open, hidden, focusWindow]);
+
+  // The docs can load after the window opens. Focus then goes from the frame to the search field.
+  useEffect(() => {
+    if (guide && document.activeElement === windowRef.current) focusWindow();
+  }, [guide, focusWindow]);
+
+  // F1 opens the window, then moves focus in when focus is elsewhere, then closes it.
+  useEffect(() => {
+    if (hidden) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'F1' || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+      event.preventDefault();
+      if (!open) openWindow();
+      else if (!windowRef.current?.contains(document.activeElement)) {
+        returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        focusWindow();
+      } else closeWindow();
+    };
+    // Capture: a prompt field stops keydown from bubbling.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [hidden, open, openWindow, closeWindow, focusWindow]);
+
+  // DEV: `#dev?modal=formaquestion&tab=guide&subtab=<section id>&mode=wide` opens the window in one jump.
+  const devRoute = useDevRoute();
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestion') return;
+    setOpen(true);
+    const tab = FORMAQUESTION_TABS.find((entry) => entry.value === devRoute.tab)?.value;
+    if (devRoute.subtab) changeView({ sectionId: devRoute.subtab, tab: 'guide', reading: true });
+    else if (tab) changeView({ tab });
+    if (devRoute.mode === 'wide' || devRoute.mode === 'narrow') {
+      const w = devRoute.mode === 'wide' ? WIDE_WIDTH : NARROW_WIDTH;
+      setBox((current) => (isWide(current) === (devRoute.mode === 'wide') ? current : clampBox({ ...current, w }, viewportOf(window))));
+    }
+  }, [devRoute, changeView]);
+
+  const drag = useRef<{ kind: 'move' | 'resize'; x: number; y: number; start: WindowBox; latest: WindowBox } | null>(null);
+  // The device keeps the place and size the player left the window at.
+  const endDrag = () => {
+    if (drag.current) writeStoredBox(drag.current.latest);
+    drag.current = null;
+  };
+  const dragHandlers = (kind: 'move' | 'resize') => ({
+    onPointerDown: (event: PointerEvent<HTMLElement>) => {
+      if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      drag.current = { kind, x: event.clientX, y: event.clientY, start: box, latest: box };
+    },
+    onPointerMove: (event: PointerEvent<HTMLElement>) => {
+      const current = drag.current;
+      if (!current) return;
+      const step = current.kind === 'move' ? moveBox : resizeBox;
+      current.latest = step(current.start, event.clientX - current.x, event.clientY - current.y, viewportOf(window));
+      setBox(current.latest);
+    },
+    onPointerUp: endDrag,
+    onPointerCancel: endDrag,
+  });
+  const swap = () => {
+    const next = swapWidth(box, viewportOf(window));
+    setBox(next);
+    writeStoredBox(next);
+  };
+
+  return createPortal(
+    <>
+      {!hidden && <EdgeTab open={open} controls={WINDOW_ID} onToggle={() => (open ? closeWindow() : openWindow())} />}
+      {shown && (
+        <FormaquestionFrame
+          ref={windowRef}
+          id={WINDOW_ID}
+          data-state={open ? 'open' : 'closed'}
+          onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
+          wide={isWide(box)}
+          onSwapWidth={swap}
+          onClose={closeWindow}
+          move={dragHandlers('move')}
+          resize={dragHandlers('resize')}
+          className={`pointer-events-auto fixed ${WINDOW_MOTION}`}
+          style={{
+            left: box.x,
+            top: box.y,
+            width: box.w,
+            height: box.h,
+            transformOrigin: origin ? `${origin.x - box.x}px ${origin.y - box.y}px` : undefined,
+          }}
+        >
+          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeView} wide={isWide(box)} />
+        </FormaquestionFrame>
+      )}
+    </>,
+    layer,
+  );
+}

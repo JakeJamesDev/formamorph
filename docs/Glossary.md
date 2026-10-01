@@ -8,6 +8,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 
 | Term | Meaning |
 |---|---|
+| [Formaquestion](Formaquestion) | The help window. It holds this guide and a search of it. The **Help** tab or F1 opens it. |
 | [Turn](How-to-Play) | One action from you and the AI's reply to it |
 | [Action](How-to-Play#how-to-take-an-action) | What you write in the action box: what you do next |
 | [Choice](How-to-Play#how-to-use-a-choice) | A ready-made action under the story. Select one to put its text in the action box. |
