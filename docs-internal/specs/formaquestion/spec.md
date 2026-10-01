@@ -69,16 +69,18 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q30 | The docs lookup is an app-internal function call, outside the Tool catalog. A new ADR records it |
 | Q31 | 26 tickets: paired docs pages share a ticket; the known-gaps list shrinks ticket by ticket and ticket 13 deletes it |
 | Q32 | The Formaquestion tickets run beside the docs tickets. Only the probe baseline waits for complete docs |
-| Q33 | Window structure A: three tabs (Ask, Search, Guide), one part at a time. Refines Q13 (ticket 14) |
-| Q34 | The launcher is a tab on the right screen edge at mid height, in the window's top layer. Refines Q22. The bottom-right corner covers Send on mobile (ticket 14) |
-| Q35 | The window opens and closes with motion: it zooms out of the launcher and back, and the mobile sheet slides from the right edge. Reduced motion shows and hides at once. Durations are 200ms open and 150ms close (ticket 14) |
+| Q33 | Window A is one design at two widths. Narrow (400px): three tabs, Ask, Search and Guide. Wide (720px): a rail with search and contents beside the conversation or the reader. A **Wide View** button in the title bar swaps them, and the resize grip crosses the same line at 560px. The search text, the open section and the conversation carry over. The mobile sheet uses the narrow layout. Refines Q13 (ticket 14) |
+| Q34 | The launcher is a tab in the window's top layer. The player can drag it: it stays flat on the nearest screen edge (any of the four) and follows the pointer along it. Its label turns with the edge and is never upside down. A press with no move opens the window. The tab's place is stored per device. The default place is the right edge at mid height. Refines Q22 (ticket 14) |
+| Q35 | The window zooms out of the tab and back, wherever the tab is. The mobile sheet slides in from the tab's edge. Reduced motion shows and hides at once. Durations are 200ms open and 150ms close (ticket 14) |
 | Q36 | With the window open and focus elsewhere, F1 moves focus into the window; a second F1 closes it |
 | Q37 | Escape does nothing to the window. Only F1 and the Close control close it |
 | Q38 | The launcher says **Help**. The window title says Formaquestion |
 | Q39 | The launcher stays above open dialogs, in the window's layer |
 | Q40 | The chip typeahead keeps painting above the window |
 | Q41 | The layering approach is approved: one shielded host on `<body>` at z-65, and the dialog, alert dialog and drawer wrappers ignore presses and focus inside it. Ticket 14's Answer is the build reference |
-| Q42 | The nine new visual patterns from ticket 14 are approved and go to the Design System as a proposal |
+| Q42 | Ten new visual patterns from ticket 14 are approved and go to the Design System as a proposal: the nine listed there, plus the movable edge tab (pattern 10). Pattern 11 is variant D and is not proposed |
+| Q43 | Only the tab snaps to an edge. The window moves freely, stays whole on the screen, and does not follow the tab (ticket 14) |
+| Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
 
@@ -260,6 +262,7 @@ A good test here calls the module through its public operations and asserts on w
 ## Out of Scope
 
 - Navigation from an answer ("Take Me There") and the production deep-link map it needs (Q3).
+- Variant D, the frameless chat overlay, for the user's later plans (Q44). Reference: branch `prototype/formaquestion-window`, commit `f11cfe43`.
 - Any edit to a world, a save or a setting by the AI.
 - Reading the player's world or save to answer a question (Q2).
 - Stored conversation history.
