@@ -38,7 +38,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world. A bare name reaches the world’s own; write the path for an owned one, as in placeholders.Molly.Hair. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
-  { name: 'persona', detail: 'Entity', info: 'The entity the player plays, with its own traits. Empty when the player plays no entity.' },
+  { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits. Empty when the player plays no entity.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 

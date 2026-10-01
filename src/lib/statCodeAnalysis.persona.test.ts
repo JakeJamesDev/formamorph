@@ -33,7 +33,7 @@ describe('persona in stat code', () => {
     const [problem] = statCodeDiagnostics('return persona.traits.Scared.enabled ? 1 : 0;', { personaTraits });
     expect(problem).toMatchObject({
       severity: 'warning',
-      message: 'No persona in this world has a trait named “Scared”. A library persona can still have it. Did you mean “Scarred”?',
+      message: 'Unknown persona trait name “Scared”. A library persona can have it. Did you mean “Scarred”?',
     });
   });
 
@@ -43,7 +43,7 @@ describe('persona in stat code', () => {
 
   it('keeps persona trait names apart from the world’s', () => {
     expect(messages('return persona.traits.Brave.enabled ? 1 : 0;', { traits: ['Brave'], personaTraits }))
-      .toEqual(['No persona in this world has a trait named “Brave”. A library persona can still have it.']);
+      .toEqual(['Unknown persona trait name “Brave”. A library persona can have it.']);
     expect(messages('return traits.Scarred.enabled ? 1 : 0;', { traits: ['Brave'], personaTraits }))
       .toEqual(['No trait is named “Scarred”.']);
   });
@@ -53,7 +53,7 @@ describe('persona in stat code', () => {
       .toEqual(['persona.traits.Scarred.acquired can’t be written. Only persona.traits.Scarred.enabled can.']);
     expect(messages('persona.traits.Scarred = false;', { personaTraits }))
       .toEqual(['Write to persona.traits.Scarred.enabled instead.']);
-    expect(messages('persona.name = "Rook";')).toEqual(['persona.name can’t be written. Only a trait’s enabled can.']);
+    expect(messages('persona.name = "Rook";')).toEqual(['persona.name is read-only.']);
   });
 
   it('counts a persona switch as code that does something, so it asks for no return', () => {

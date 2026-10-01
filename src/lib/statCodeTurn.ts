@@ -5,6 +5,7 @@ import {
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
+import { recordKey } from './ownedTraitState';
 import { codePersona, sandboxPersona, sandboxTraits, type CodePersona, type StatCodeTraits } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
@@ -230,8 +231,8 @@ interface StatTraitWrites {
   persona: readonly TraitWrite[];
 }
 
-/** Each stat's trait switches keyed by bearer and trait, laid in stat order so the later stat wins and its
- *  switch lands where that stat stands. A name reaches the last trait carrying it, as the sandbox map does. */
+/** Each stat's trait switches keyed by bearer and trait, in stat order: the later stat wins, and its switch
+ *  applies at that stat's position. A name resolves to the last trait with it, as the sandbox map does. */
 function traitSwitchesInStatOrder(
   stats: readonly PlayerStat[],
   writesByStat: ReadonlyMap<string, StatTraitWrites>,
@@ -244,7 +245,7 @@ function traitSwitchesInStatOrder(
   const idByName = new Map(traits.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
   const personaIdByName = new Map((persona?.traits ?? []).map((trait) => [trait.name, trait.id]));
   const out = new Map<string, CodeTraitSwitch>();
-  const lay = (key: string, at: CodeTraitSwitch) => {
+  const setLast = (key: string, at: CodeTraitSwitch) => {
     out.delete(key);
     out.set(key, at);
   };
@@ -252,12 +253,12 @@ function traitSwitchesInStatOrder(
     const written = writesByStat.get(stat.id);
     for (const write of written?.world ?? []) {
       const traitId = idByName.get(write.name);
-      if (traitId !== undefined) lay(traitId, { traitId, enabled: write.enabled, by: statNameOf(stat) });
+      if (traitId !== undefined) setLast(traitId, { traitId, enabled: write.enabled, by: statNameOf(stat) });
     }
     for (const write of written?.persona ?? []) {
       const traitId = personaIdByName.get(write.name);
       if (traitId === undefined || !persona?.id) continue;
-      lay(`${persona.id}/${traitId}`, { traitId, enabled: write.enabled, by: statNameOf(stat), ownerId: persona.id });
+      setLast(recordKey(persona.id, traitId), { traitId, enabled: write.enabled, by: statNameOf(stat), ownerId: persona.id });
     }
   }
   return [...out.values()];

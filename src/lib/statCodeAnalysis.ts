@@ -652,7 +652,7 @@ function checkTraitWrite(
 function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
   const own = entryRef(target, code, 'persona');
   if (own) {
-    const message = `persona.${own.name} can’t be written. Only a trait’s ${TRAIT_WRITABLE_FIELD} can.`;
+    const message = `persona.${own.name} is read-only.`;
     return { from: own.from, to: own.to, severity: 'error', message };
   }
   return checkTraitWrite(target, code, assignment, personaTraitRef);
@@ -662,7 +662,7 @@ function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean
  *  hold it, so this is only a warning. */
 function checkPersonaTraitName({ name, from, to }: EntryRef, names: readonly string[]): CodeDiagnostic | null {
   if (names.includes(name)) return null;
-  const lead = `No persona in this world has a trait named “${name}”. A library persona can still have it.`;
+  const lead = `Unknown persona trait name “${name}”. A library persona can have it.`;
   const suggestion = nearestName(name, [...new Set(names)]);
   return { from, to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
 }

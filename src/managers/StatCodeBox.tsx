@@ -142,7 +142,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         ...(outcome.unknownTraits ? [`Unknown trait names. Writes ignored: ${outcome.unknownTraits.join(', ')}.`] : []),
         ...(outcome.acquiredWrites ? [`acquired is read-only. Writes ignored: ${outcome.acquiredWrites.join(', ')}.`] : []),
         ...(outcome.unknownPersonaTraits
-          ? [`No persona plays in a test. Writes ignored: ${outcome.unknownPersonaTraits.map((name) => `persona.traits.${name}`).join(', ')}.`] : []),
+          ? [`Unknown persona trait names. Writes ignored: ${outcome.unknownPersonaTraits.map((name) => `persona.traits.${name}`).join(', ')}.`] : []),
         ...(outcome.personaAcquiredWrites
           ? [`acquired is read-only. Writes ignored: ${outcome.personaAcquiredWrites.map((name) => `persona.traits.${name}`).join(', ')}.`] : []),
       ]);

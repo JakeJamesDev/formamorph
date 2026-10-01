@@ -8,7 +8,8 @@ import type { StatCodeTraits } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { recordKey } from './ownedTraitState';
 import { withPersonaEntry } from './persona';
-import type { Entity, OwnedTraitStates, PersonaRef, PlayerStat, Trait } from '@/types';
+import { encodePlaceholderToken } from './placeholders';
+import type { Entity, OwnedTraitStates, PersonaRef, Placeholder, PlayerStat, Trait } from '@/types';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -84,7 +85,7 @@ describe('runStatCodeTurn persona traits', () => {
     expect(valueOf(out, 's0')).toBe(10);
   });
 
-  it('switches the persona’s own trait off and hands back what it moved, leaving the player’s list alone', async () => {
+  it('switches the persona’s own trait off and reverses what it moved, leaving the player’s list alone', async () => {
     const out = await run(['persona.traits.Scarred.enabled = false;']);
     expect(out.traits?.ownedTraits).toEqual({ mira: { chosen: ['scarred'], disabled: ['scarred'] } });
     expect(out.traits?.acquired).toEqual([]);
@@ -144,6 +145,24 @@ describe('runStatCodeTurn persona traits', () => {
     const out = await run(
       ["return persona.name === '' && !persona.traits['Scarred']?.enabled ? 1 : 0;"],
       played({ source: 'none' }, { entities: [mira] }),
+    );
+    expect(valueOf(out, 's0')).toBe(1);
+  });
+
+  it('drops and reports a persona switch where no persona entity plays, and the run still sets its value', async () => {
+    const out = await run(['persona.traits.Scarred.enabled = true; return 3;'], played({ source: 'none' }, { entities: [mira] }));
+    expect(out.traits).toBeUndefined();
+    expect(valueOf(out, 's0')).toBe(3);
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Scarred'));
+  });
+
+  it('names a library persona and its trait by a chip from the persona’s own placeholders', async () => {
+    const tag: Placeholder = { id: 'p-tag', name: 'Tag', values: [] };
+    const chip = encodePlaceholderToken({ id: 'p-tag', mode: 'world', placementId: 'pl' });
+    const tagged: Entity = { ...rook, name: `${chip} Rook`, placeholders: [tag], traits: [{ ...rookScarred, name: `${chip} Scar` }] };
+    const out = await run(
+      ["return persona.name === 'Tag Rook' && persona.traits['Tag Scar'].enabled ? 1 : 0;"],
+      played({ source: 'library', entityId: 'rook' }, { library: [tagged], ownedTraits: { rook: { chosen: ['r-scarred'] } } }),
     );
     expect(valueOf(out, 's0')).toBe(1);
   });
