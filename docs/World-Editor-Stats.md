@@ -10,17 +10,52 @@ Prose alone changes from turn to turn. A stat is a fact the AI must write around
 
 The narrator's prompt tells it to let stats change how an action turns out. A low stat shows as effort and cost. A high stat shows as ease. The prompt also tells the narrator not to list the stats or report their changes. A separate step changes the numbers.
 
+## How to Add a Stat
+
+1. Open the **Stats** tab.
+2. Type the stat's name in the **Search or add new stats** box.
+3. Select the **+** button (**Add to Stats**). The new stat opens in the panel.
+4. Set **Min**, **Max** and **Initial Value**.
+5. Write its **Description**.
+6. Select **Save** at the bottom of the editor.
+
+> 💡 With the box empty, the new stat is named "New Stat". A new stat starts at 0 on a 0–100 range, with three descriptors: low, medium and high.
+
+## How to Make a Stat a Percentage
+
+1. Select the stat.
+2. On the **Details** tab, set **Type** to **Percentage**.
+3. Set **Initial Value (%)**. **Min** and **Max** lock at 0 and 100.
+
+## How to Hide a Stat
+
+**Advanced mode only.**
+
+1. Select the stat.
+2. On the **Details** tab, under **Availability**, check **Hidden**.
+
+The player no longer sees the stat. The AI still reads it, and its Regen and code still run.
+
+## How to Add a Stat Descriptor
+
+**Advanced mode only.**
+
+1. Select the stat, then open its **Descriptors** tab.
+2. In the empty row at the bottom, type the top of the band in **Up to**.
+3. Type the word or phrase in **New Description**.
+4. Select the **+** button (**Add Descriptor**).
+
 ## What the AI sees
 
 Each stat's **Name** is always sent. The Stats chip in your prompt decides what is sent with it:
 
 | Piece | Adds |
 |---|---|
-| **Values** | The current value and its maximum: `62/100`, or `62%` for a percentage stat |
-| **Status** | The matching Stat Descriptor, a word for the current level |
-| **Meaning** | The stat's **Description** |
+| **Range** | The current value and its maximum: `62/100`, or `62%` for a percentage stat |
+| **Descriptor** | The matching Stat Descriptor, a word for the current level |
+| **Description** | The stat's **Description** |
 
-With no piece selected, the line is only the stat's name.
+Each piece is a checkbox on the chip. At least one stays checked.
 
 > ⚠️ **Every active stat is sent on every turn.** Stats use your context budget all the time. Three stats that matter are better than twelve that don't.
 
@@ -42,10 +77,10 @@ In Simple mode the panel shows the basic fields with no tabs.
 |---|---|
 | **Name** | The AI uses this name for the stat. The game also uses it to match stat changes to the stat. |
 | **Type** | **Number** has a range you set. **Percentage** is fixed at 0–100 and shows everywhere as `N%`. All other fields work the same for both. |
-| **Description** | What the stat represents. Sent to the AI when the chip's **Meaning** piece is on. Takes placeholder chips. |
+| **Description** | What the stat represents. Sent to the AI when the chip's **Description** piece is on. Takes placeholder chips. |
 | **Min** / **Max** | The range. The value always stays in it. A percentage stat locks these at 0 and 100, so you set only its **Initial Value (%)**. |
 | **Initial Value** | Where the stat starts. |
-| **Regen** | Added to the value one time per turn. A positive number heals over time, and a negative number drains. |
+| **Regen** | Added to the value for each hour of story time that passes. With **Measured Clock** off, each turn is one hour. A positive number heals over time, and a negative number drains. An inactive stat gets no Regen. |
 | **Body Sliders** | Binds body sliders to this stat. The value, from Min to Max, sets each slider's position. Each slider belongs to one stat only. |
 
 ### Availability
@@ -72,11 +107,11 @@ A percentage stat shows only the first two, because its Max is always 100.
 
 ## Stat Descriptors
 
-A descriptor turns a number into a word, such as `Winded` or `Exhausted`. The AI gets that word when the chip's **Status** piece is on. A descriptor takes placeholder chips, so a band can name the rolled town or the rolled rival.
+A descriptor turns a number into a word, such as `Winded` or `Exhausted`. The AI gets that word when the chip's **Descriptor** piece is on. A descriptor takes placeholder chips, so a band can name the rolled town or the rolled rival.
 
-Each descriptor has a **threshold** and a **Description**. The coverage bar above the rows shows each band from Min to Max, and it marks where the stat starts. The range above your top band shows in red with the label "no status". In that range the AI gets no status. Each row says what it covers.
+Each descriptor has a **threshold** and a **Description**. The coverage bar above the rows shows each band from Min to Max, and it marks where the stat starts. It shows when the stat has one descriptor at least. The range above your top band shows in red with the label "no status". In that range the AI gets no status. Each row says what it covers.
 
-> ⚠️ **A threshold is the top of its band, and the lowest band that fits the value wins.** The game reads descriptors from low to high, in any list order. So `30 → Barren` covers Min–30, and a `60` row covers 31–60. Give your highest descriptor a threshold of your **Max**, or a value above it gets no descriptor.
+> ⚠️ **A threshold is the top of its band, and the lowest band that fits the value wins.** The game reads descriptors from low to high, in any list order. So `30 → Barren` covers Min to 30, and a `60` row covers the values above 30, up to 60. Give your highest descriptor a threshold of your **Max**, or a value above it gets no descriptor.
 
 ### Thresholds in: Raw or % of Max
 
@@ -92,11 +127,11 @@ When you switch, your numbers convert, so no band moves. The choice only changes
 
 ### Pins on a descriptor
 
-Each descriptor row has a pin button. A pin keeps a [placeholder](World-Editor-Placeholders) at one value while the stat is in that band.
+**Advanced mode only.** Each descriptor row has a pin button. A pin keeps a [placeholder](World-Editor-Placeholders) at one value while the stat is in that band.
 
 ## Dynamic Value Calculation
 
-The **Code** tab holds two code boxes. Each box takes JavaScript, and each has its own **Test Code** button and **Templates** menu.
+The **Code** tab holds two code boxes. Each box takes JavaScript, and each has its own **Test Code** and **Templates** buttons. **Templates** opens a list of code shapes to insert.
 
 | Box | Runs |
 |---|---|
@@ -110,7 +145,7 @@ Code can do four things:
 - Set this stat's value, Min, Max or Regen. A returned number sets the value.
 - Pin or unpin a placeholder
 - Switch a trait on or off
-- Read every stat, every trait, every placeholder and the story clock
+- Read every active stat, every trait, every placeholder and the story clock
 
 The code runs in an isolated sandbox with no page and no network. The editor suggests the names you can use as you type, and it underlines unknown names. **Test Code** runs one box and shows the result, the warnings and the errors.
 
@@ -118,6 +153,3 @@ The code runs in an isolated sandbox with no page and no network. The editor sug
 
 > 📘 Full reference: [Stat Code Guide](StatCodeGuide).
 
-## Getting started
-
-Start with two or three stats your story depends on. Give each a Min, a Max and two descriptors. Add Regen, **Prevent AI Changes** and code only when a stat needs behavior the AI shouldn't invent.

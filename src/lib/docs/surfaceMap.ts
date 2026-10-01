@@ -82,6 +82,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'worldEditorEntity.openings': ENTITY_OPENINGS,
   'worldEditorLocation.details': { page: 'World-Editor-Locations', anchor: 'the-panel' },
   'worldEditorLocation.presence': { page: 'World-Editor-Locations', anchor: 'entities' },
+  'worldEditorLocation.media': { page: 'World-Editor-Locations', anchor: 'media' },
   'worldEditorLocation.pins': { page: 'World-Editor-Locations', anchor: 'placeholder-pins' },
   'worldEditorLocation.openings': { page: 'World-Editor-Openings', anchor: 'location-openings' },
   'worldEditorStat.details': { page: 'World-Editor-Stats', anchor: 'the-fields' },
@@ -97,6 +98,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'worldEditorBook.placeholders': ENTITY_OWNED_PLACEHOLDERS,
 
   'entityEditor.entity': { page: 'World-Editor-Entities', anchor: 'in-the-library' },
+  'entityEditor.traits': { page: 'World-Editor-Entities', anchor: 'in-the-library' },
   'entityEditor.placeholders': ENTITY_OWNED_PLACEHOLDERS,
   'entityEditorEntity.profile': { page: 'World-Editor-Entities', anchor: 'the-panel' },
   'entityEditorEntity.descriptions': { page: 'World-Editor-Entities', anchor: 'descriptions-and-summaries' },
@@ -111,8 +113,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 
 /** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
-  // World Editor pages
-  '03': ['entityEditor.traits', 'worldEditorLocation.media'],
   // How to Play, Starting a Game
   '06': [
     'gameViewer', 'entity', 'export', 'intro', 'editText', 'location', 'aiContext', 'enterWorld', 'demoAI',
@@ -144,9 +144,5 @@ export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]
 
 /** Help topics with no docs heading yet, by owning ticket. */
 export const KNOWN_HELP_TOPIC_GAPS: Partial<Record<DocsTicket, readonly string[]>> = {
-  '03': [
-    'worldEditor.locations', 'worldEditor.entities', 'worldEditor.aliases', 'worldEditor.locationPins',
-    'worldEditor.stats', 'worldEditor.dictionary',
-  ],
   '06': ['game.howToPlay'],
 };

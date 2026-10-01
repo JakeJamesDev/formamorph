@@ -1,6 +1,7 @@
 # 03: Docs for Entities, Openings, Dictionary, Locations, Stats and Overview
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 6f6228d7
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

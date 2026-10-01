@@ -2,7 +2,23 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-The **Overview** tab holds the world's own details: its name, its library card, and the text the AI reads on every turn. It has two columns. On mobile, the left column shows first.
+The **Overview** tab holds the world's own details: its name, its library card, and the text the AI reads on every turn. It has two columns. On mobile, the left column shows first. The **?** button at the top of the tab has a short version of this page.
+
+## How to Set the World's Images
+
+1. Open the **Overview** tab.
+2. Under **Thumbnail**, select the frame (**Click to upload image**) and pick a file. You can also drop a file on the frame.
+3. To link an image, paste its address into **Or paste an image URL** and select **Use this image URL**. See [Upload or link](#upload-or-link).
+4. To make one, select **Generate with AI**. It shows when image generation is on in Settings.
+5. Select **Save** at the bottom of the editor.
+
+Each location's background is on its **Media** tab. See [World Editor: Locations](World-Editor-Locations#media). Each entity's image is on its **Profile** tab.
+
+## How to Add Background Music
+
+1. Open the **Overview** tab.
+2. Under **Background Music**, select **Add Sound** and pick an audio file.
+3. Select **Save** at the bottom of the editor.
 
 ## The left column: how your world is listed
 
@@ -11,12 +27,12 @@ The **Overview** tab holds the world's own details: its name, its library card, 
 | **World Name** | The title on the library card and in every menu. |
 | **Author** | Your name on the card. |
 | **Tags** | The words the community browser filters on. |
-| **Thumbnail** | The card's picture. **Generate with AI** under the frame makes one from your description. |
+| **Thumbnail** | The card's image. **Generate with AI** under the frame makes one from your Player-Facing Description, or from the AI-Facing Description when that is empty. |
 | **3D Player Avatar** | Gives this world a 3D avatar. The player can customize it before they start. |
 | **Custom Player Avatar** | **Advanced mode only**, and only with **3D Player Avatar** on. Your own `.vrm` or `.glb` replaces the bundled model. **Preview** opens it, and **Remove** goes back to the default. |
 | **Allowed Personas** | **Advanced mode only.** Decides which personas the player can pick: **Any** or **World Only**. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
-| **Background Music** | The track the world plays. Drop a file on the box, or click the box to pick one. |
+| **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |
 
 ## The right column: what you write
 
@@ -37,16 +53,16 @@ Every image field in the World Editor takes an uploaded file or a web address. P
 | Works offline | Always | After you've seen it once, or after **Make Available Offline** |
 | Works after the host removes it | Always | No |
 
-- **Link when your world has many pictures.** A published world stays small.
-- **Upload when the picture must never disappear.**
+- **Link when your world has many images.** A published world stays small.
+- **Upload when the image must never disappear.**
 
 A linked image shows a 🔗 badge. Two badges are warnings:
 
 | Badge | Means | What to do |
 |---|---|---|
-| **Expiring link** | Discord attachment links stop working after a while. Later players won't see the picture. Discord's permanent addresses (avatars, emojis, server icons) are fine. | Use a permanent host, or upload the file |
-| **Linked image, display only** | The site won't let Formamorph download the picture. It shows online. It won't work offline, and it can't go into a character card. | Upload the file |
+| **Expiring link** | Discord attachment links stop working after a while. Later players won't see the image. Discord's permanent addresses (avatars, emojis, server icons) are fine. | Use a permanent host, or upload the file |
+| **Linked image, display only** | The site won't let Formamorph download the image. It shows online. It won't work offline, and it can't go into a character card. | Upload the file |
 
-> 💡 **Make Available Offline** in a world's details window downloads all its linked pictures at once. Use it before you lose your connection.
+> 💡 **Make Available Offline** in a world's details window downloads all its linked images at once. Use it before you lose your connection.
 
-When you export a world with linked pictures, you choose: keep the links for a small file, or download the pictures into the file so it works anywhere. A **character card** export always downloads the portrait, because the card is the picture.
+When you export a world with linked images, you choose: keep the links for a small file, or download the images into the file so it works anywhere. A **character card** export always downloads the portrait, because the card is the image.
