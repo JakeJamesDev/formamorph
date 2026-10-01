@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { readFileSync } from 'fs'
+import { releasedMinorChangelog } from './src/lib/docs/changelogSlice'
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
 const syncAppOrigin = process.env.E2E_SYNC_APP_ORIGIN
@@ -55,8 +56,23 @@ const holdUpdates = {
   },
 }
 
+// `docs/<Page>.md?docs-index`: the page as a string for the Docs Index, with the changelog cut to its
+// newest released minor series (src/lib/docs/bundledDocsIndex.ts).
+const docsIndexMarkdown = {
+  name: 'docs-index-markdown',
+  enforce: 'pre',
+  load(id) {
+    const [file, query] = id.split('?')
+    if (query === undefined || !new URLSearchParams(query).has('docs-index')) return null
+    this.addWatchFile(file)
+    const markdown = readFileSync(file, 'utf-8')
+    const text = path.basename(file) === 'Changelog.md' ? releasedMinorChangelog(markdown) : markdown
+    return `export default ${JSON.stringify(text)}`
+  },
+}
+
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown],
   ...(process.env.E2E_SYNC_APP
     ? { cacheDir: path.resolve(__dirname, 'node_modules/.vite-sync-app') }
     : {}),
