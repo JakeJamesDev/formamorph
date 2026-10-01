@@ -10,9 +10,11 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 
 1. On your device, open [formamorph.ai](https://formamorph.ai) and tap the **Android** button at the bottom of the page.
 2. Open the downloaded file.
-3. If Android asks, allow **your browser** to install apps. Go back and tap **Install** again.
-4. If Google Play Protect warns you, open **More details** and continue. See [The Play Protect Warning](#%EF%B8%8F-the-play-protect-warning).
-5. Open Formamorph.
+3. If Android asks, allow **your browser** to install apps.
+4. Go back and tap **Install** again.
+5. If Google Play Protect warns you, open **More details**. See [The Play Protect Warning](#%EF%B8%8F-the-play-protect-warning).
+6. Continue the install from there.
+7. Open Formamorph.
 
 ## How to Update the App
 
@@ -20,8 +22,10 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 2. Tap the version number. The update dialog opens.
 3. Tap **Download**. Progress shows under the version line.
 4. When it finishes, tap **Install**.
-5. The first time, Android asks you to allow **Formamorph** to install apps. Turn it on, come back, and tap **Install** again.
-6. Confirm in Android's install sheet.
+5. The first time, Android asks you to allow **Formamorph** to install apps. Turn it on.
+6. Come back to Formamorph.
+7. Tap **Install** again.
+8. Confirm in Android's install sheet.
 
 ## How to Get Beta Builds
 
@@ -34,7 +38,8 @@ Set it back to **Stable** for finished releases only.
 
 1. Export as you would on desktop. Android's **Save As** picker opens.
 2. Choose a folder, such as **Downloads**.
-3. Check the filename and tap **Save**.
+3. Check the filename.
+4. Tap **Save**.
 
 ## How to Use a Model on Your PC
 
@@ -90,7 +95,7 @@ Updating on Android works like the desktop app, with one extra tap at the end fo
 
 **What the app makes sure of:**
 
-- 🔐 The download is checked against the checksum published with the release. A file that does not match is deleted and never reaches the installer.
+- 🔐 The download is checked against the checksum published with the release. A file that does not match is erased and never reaches the installer.
 - 💾 A finished download survives closing the app. Reopen it and you get **Install**, not a second 90 MB download.
 - 📴 An update check with no connection fails quietly. It never shows an error.
 - 🗂️ Your saves, worlds, and settings survive updates.

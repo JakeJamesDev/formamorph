@@ -6,7 +6,7 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 
 1. In the World Editor, select **Advanced** in the mode switch. The **Code** tab shows in Advanced mode only.
 2. Open the **Stats** tab and select the stat.
-3. Open the stat's **Code** tab. It shows **Dynamic Value Calculation** with two boxes, **Before the AI** and **After the AI**.
+3. Open the stat's **Code** tab. Only a number or percentage stat has it. It shows **Dynamic Value Calculation** with two boxes, **Before the AI** and **After the AI**.
 4. Type your script into one box. For a value the AI should read this turn, use **Before the AI**. For a reaction to the AI's change, use **After the AI**.
 5. Select **Test Code** under the box. Read the result, any error, and every write the run made.
 
@@ -15,14 +15,16 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 1. Open the stat's **Code** tab.
 2. Select **Templates** beside the box's **Test Code** button.
 3. Pick a template. Each box lists only the templates written for its timing.
-4. Fill in the inputs the template asks for, then edit the inserted code as you like.
+4. Fill in the inputs the template asks for.
+5. Edit the inserted code as you like.
 
 ## How to Limit the AI's Change to a Stat
 
 1. Open the stat's **Code** tab.
 2. In **After the AI**, read the AI's ask from `self.delta.ai.value`.
-3. Clamp it, then set `self.value` from `self.previous.value`, the clamped ask and `self.delta.regen.value`. See [Reading This Turn](#reading-this-turn) for an example.
-4. Select **Test Code**.
+3. Clamp the ask.
+4. Set `self.value` from `self.previous.value`, the clamped ask and `self.delta.regen.value`. See [Reading This Turn](#reading-this-turn) for an example.
+5. Select **Test Code**.
 
 ## How to Pin a Placeholder from Code
 
@@ -33,8 +35,9 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 ## How to Debug Stat Code
 
 1. Select **Test Code** to see the error and every write.
-2. Add `console.log()` lines, then open your browser's developer console. Each line shows there.
-3. In the World Editor's Test Bench, read the **Issues** list for writes to unknown names.
+2. Add `console.log()` lines.
+3. Open your browser's developer console. Each line shows there.
+4. In the World Editor's Test Bench, read the **Issues** list for writes to unknown names.
 
 ## Overview
 

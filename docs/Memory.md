@@ -25,16 +25,18 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 2. Select **Manage Memories**. The **Memories** dialog opens.
 3. Find the memory. Type in **Search memories…**, or select a filter chip.
 4. Select the pencil button, **Edit This Memory**.
-5. Rewrite the text, then select **Save**.
+5. Rewrite the text.
+6. Select **Save**.
 
 The story always keeps your version. To go back to the story's own words, select **Revert to the Original** on that memory.
 
 ## How to Add a Memory
 
-1. Open the side panel's **Memory** tab and select **Manage Memories**.
-2. Select **Add Memory**.
-3. Type the fact the story should carry, such as a promise or a standing detail.
-4. Select **Add**.
+1. Open the side panel's **Memory** tab.
+2. Select **Manage Memories**.
+3. Select **Add Memory**.
+4. Type the fact the story should carry, such as a promise or a standing detail.
+5. Select **Add**.
 
 Memories you write are always kept. The story never judges them.
 
@@ -49,26 +51,29 @@ Memories you wrote have no pin button, because the story never lets them go.
 
 ## How to Undo Your Memory Changes
 
-1. Open the side panel's **Memory** tab and select **Manage Memories**.
-2. Select **Reset All My Changes**.
-3. Confirm in **Reset Every Memory Change?**.
+1. Open the side panel's **Memory** tab.
+2. Select **Manage Memories**.
+3. Select **Reset All My Changes**.
+4. Confirm in **Reset Every Memory Change?**.
 
 To bring back one deleted memory instead, select the **Deleted** filter chip, then **Restore This Memory** on that memory.
 
 ## How to Turn Memory Off
 
-1. Open **Settings** and select **Advanced** next to the title.
-2. Open the **Output** tab.
-3. In the **Memory** section, turn off **Memory Summaries**.
+1. Open **Settings**.
+2. Select **Advanced** next to the title.
+3. Open the **Output** tab.
+4. In the **Memory** section, turn off **Memory Summaries**.
 
 During play, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
 
 ## How to Date Each Memory
 
-1. Open **Settings** and select **Advanced** next to the title.
-2. Open the **Output** tab. **Memory Summaries** must be on, or the **Time** section does not show.
-3. In the **Time** section, turn on **Measured Clock**.
-4. Turn on **Time in Memory** if the AI should also read the dates.
+1. Open **Settings**.
+2. Select **Advanced** next to the title.
+3. Open the **Output** tab. **Memory Summaries** must be on, or the **Time** section does not show.
+4. In the **Time** section, turn on **Measured Clock**.
+5. Turn on **Time in Memory** if the AI should also read the dates.
 
 ## The Memory Tab
 
@@ -83,7 +88,7 @@ Open the side panel's **Memory** tab during play to see the whole ledger. Faded,
 
 The filter chips are **All · Verbatim · Summary · Held · Custom**. **Custom** shows the memories you wrote.
 
-Memories under the **Recent** divider still ride word for word, so a pin on one of them matters only after it ages out. The divider shows under the **All** chip only.
+Memories under the **Recent** divider still go to the AI word for word, so a pin on one of them matters only after it ages out. The divider shows under the **All** chip only.
 
 ## The Memory Manager
 
@@ -125,10 +130,10 @@ The three forms a memory can be in:
 | **Summary** | The compressed line you're reading, and nothing more |
 | **Held** | Nothing this turn. Still kept, until it is relevant again |
 
-A memory that **Scene Recall** sent back as its full original prose has an accent too, and a **Scene** badge in the **Memories** dialog. The story saw the whole scene, not only the one-line summary. The **Verbatim** chip collects those and the recent turns that still ride word for word.
+A memory that **Scene Recall** sent back as its full original prose has an accent too, and a **Scene** badge in the **Memories** dialog. The story saw the whole scene, not only the one-line summary. The **Verbatim** chip collects those and the recent turns that still go to the AI word for word.
 
 > [!NOTE]
-> Nothing is marked until a turn has run. A save you just loaded shows no accents. Memories under the **Recent** divider are never marked, because they always ride word for word.
+> Nothing is marked until a turn has run. A save you just loaded shows no accents. Memories under the **Recent** divider are never marked, because they always go to the AI word for word.
 
 ## Memory Settings
 
@@ -147,7 +152,7 @@ All of these are in Settings → **Output**, in **Advanced** mode.
 
 The **Time** section shows only while **Memory Summaries** is on.
 
-**Milestone Select** is a prompt, not a setting. Between turns, it decides which summarized turns stay in long-term memory. Edit it under Settings → **Prompts** → **Milestone Select**. Its tab shows while **Memory Summaries** is on.
+**Milestone Select** is a prompt, not a setting. Between turns, it decides which summarized turns stay in long-term memory. Edit it under Settings → **Prompts** → **Milestone Select**, in **Advanced** mode. Its tab shows while **Memory Summaries** is on.
 
 ## When Each Memory Happened
 
@@ -185,7 +190,7 @@ The clock also has to start at the right time of day. With **Measured Clock** on
 > [!IMPORTANT]
 > **Turning Measured Clock on partway through a story does not change when that story began.** The opening scene is long gone by then, and a new start would move every stamp you already have.
 
-Edit how it judges a scene under Settings → **Prompts** → **Opening**, next to **Clock**. Both tabs show while **Measured Clock** is on.
+Edit how it judges a scene under Settings → **Prompts** → **Opening**, next to **Clock**. The **Prompts** tab shows in **Advanced** mode, and both tabs show while **Measured Clock** is on.
 
 ## Memories vs Notes
 

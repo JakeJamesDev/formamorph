@@ -48,7 +48,7 @@ const ENTITY_OPENINGS: DocTarget = { page: 'World-Editor-Openings', anchor: 'ent
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
-  aiSetup: { page: 'Connect-Your-Own-AI', anchor: 'set-up-your-ai' },
+  aiSetup: { page: 'Connect-Your-Own-AI', anchor: 'the-set-up-your-ai-dialog' },
   componentUpdates: { page: 'LinkedContent', anchor: 'update-available' },
   connectReferences: { page: 'LinkedContent', anchor: 'connect-world-references' },
   dictionaryEditor: { page: 'World-Editor-Dictionary', anchor: 'in-the-library' },
