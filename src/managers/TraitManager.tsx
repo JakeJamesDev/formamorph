@@ -150,6 +150,7 @@ const TraitManager = ({
     siblings: traits,
     ownId: trait.id,
     codeNameOf: (name) => statCodeName(name, placeholders),
+    traitId: trait.id,
   });
 
   const handleStatChangeAdd = () => {

@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LayoutTemplate } from "lucide-react";
-import { CODE_BOUND_FIELDS, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
+import { CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
 import { codePinText } from "@/lib/placeholderPins";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { placeholderPathLabel } from "@/lib/statCodePaths";
-import { sandboxTraits } from "@/lib/statCodeTraits";
+import { sandboxTraits, type EntityTraitNames } from "@/lib/statCodeTraits";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
 import { STAT_CODE_SURFACE } from "@/lib/statCodeSurface";
@@ -41,6 +41,8 @@ export interface StatCodeBoxContext {
   traits: readonly Trait[];
   /** The trait code names a persona in the world can hold: completions and name checks after `persona.traits`. */
   personaTraitNames: string[];
+  /** Every authored entity's code name and trait code names: completions, name checks, and the run's entries. */
+  entities: EntityTraitNames[];
 }
 
 /**
@@ -71,7 +73,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
   const label = TIMING_LABEL[timing];
   const {
-    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traits, personaTraitNames,
+    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traits, personaTraitNames, entities,
   } = context;
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
@@ -96,15 +98,15 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
       // stays off the world editor's own bundle.
       const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
       setProblems(summarizeProblems(statCodeDiagnostics(value, {
-        placeholders, traits: traitNames, personaTraits: personaTraitNames, statNames, selfName,
+        placeholders, traits: traitNames, personaTraits: personaTraitNames, entities, statNames, selfName,
       })));
     } catch {
       // What the run itself found is the point; the count is what the editor adds to it.
     }
 
     try {
-      // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, the player has no
-      // traits, and no persona plays. A switch is reported here and never applied.
+      // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, no one holds a trait,
+      // and no persona plays. A switch is reported here and never applied.
       const placeholderEntries = sandboxPlaceholders({
         placeholders: placeholders.list, owners: placeholders.owners, rolls: {},
       });
@@ -116,7 +118,12 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         // A half-filled stat still runs: the executor defaults every number it marshals, so only the id
         // and the code name have to be real.
         value, codeNamedStats, { ...stat, name: selfName } as Stat,
-        { clock: TEST_CLOCK[timing], placeholders: placeholderEntries, traits: traitEntries },
+        {
+          clock: TEST_CLOCK[timing], placeholders: placeholderEntries, traits: traitEntries,
+          entities: entities.map((entity) => ({
+            name: entity.name, traits: entity.traits.map((name) => ({ name, enabled: false, acquired: false })),
+          })),
+        },
       );
       if (outcome.error) {
         setError(outcome.error);
@@ -134,17 +141,22 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
           return 'unpin' in entry ? `${at} unpinned` : `${at} = ${codePinText(entry.value)}`;
         }),
         ...(outcome.traits ?? []).map((entry) => `${entry.name} switched ${entry.enabled ? 'on' : 'off'}`),
-        ...(outcome.personaTraits ?? []).map((entry) => `persona.traits.${entry.name} switched ${entry.enabled ? 'on' : 'off'}`),
+        ...(outcome.entities ?? []).flatMap(({ entity, traits: switched = [] }) =>
+          switched.map((entry) => `${entityTraitsPath(entity)}.${entry.name} switched ${entry.enabled ? 'on' : 'off'}`)),
       ];
       if (parts.length) setResult(parts.join(' · '));
       setWarnings([
         ...(outcome.unknownPlaceholders ? [`Unknown placeholder paths. Writes ignored: ${outcome.unknownPlaceholders.join(', ')}.`] : []),
         ...(outcome.unknownTraits ? [`Unknown trait names. Writes ignored: ${outcome.unknownTraits.join(', ')}.`] : []),
         ...(outcome.acquiredWrites ? [`acquired is read-only. Writes ignored: ${outcome.acquiredWrites.join(', ')}.`] : []),
-        ...(outcome.unknownPersonaTraits
-          ? [`Unknown persona trait names. Writes ignored: ${outcome.unknownPersonaTraits.map((name) => `persona.traits.${name}`).join(', ')}.`] : []),
-        ...(outcome.personaAcquiredWrites
-          ? [`acquired is read-only. Writes ignored: ${outcome.personaAcquiredWrites.map((name) => `persona.traits.${name}`).join(', ')}.`] : []),
+        ...(outcome.unknownEntities ? [`Unknown entity names. Writes ignored: ${outcome.unknownEntities.join(', ')}.`] : []),
+        ...(outcome.entities ?? []).flatMap(({ entity, unknownTraits, acquiredWrites }) => {
+          const at = (names: string[]) => names.map((name) => `${entityTraitsPath(entity)}.${name}`).join(', ');
+          return [
+            ...(unknownTraits ? [`Unknown trait names. Writes ignored: ${at(unknownTraits)}.`] : []),
+            ...(acquiredWrites ? [`acquired is read-only. Writes ignored: ${at(acquiredWrites)}.`] : []),
+          ];
+        }),
       ]);
     } catch (thrown) {
       setError((thrown as Error).message);
@@ -165,6 +177,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         placeholders={placeholders}
         traits={traitNames}
         personaTraits={personaTraitNames}
+        entities={entities}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
         label={label}

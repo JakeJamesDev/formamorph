@@ -95,6 +95,7 @@ describe('what each box completes and checks against', () => {
       placeholders: props.placeholders as { list: Placeholder[] },
       traits: props.traits as string[],
       personaTraits: props.personaTraits as string[],
+      entities: props.entities as { name: string; traits: string[] }[],
     };
   };
 
@@ -106,6 +107,7 @@ describe('what each box completes and checks against', () => {
     expect(optionsOf('Before the AI').selfName).toBe('Warmth');
     expect(optionsOf('Before the AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
     expect(optionsOf('Before the AI').personaTraits).toEqual(['Scarred']);
+    expect(optionsOf('Before the AI').entities).toEqual([{ name: 'Mira', traits: ['Scarred'] }, { name: 'Ash', traits: ['Loyal'] }]);
   });
 
   // The acceptance case, run through the real reader and the real completion source rather than compared
@@ -269,7 +271,7 @@ describe('what Test Code reports', () => {
 
   it('runs with no persona playing, and lists a persona switch without making it', async () => {
     const user = userEvent.setup();
-    executeStatCode.mockResolvedValue({ value: null, error: null, personaTraits: [{ name: 'Scarred', enabled: false }] });
+    executeStatCode.mockResolvedValue({ value: null, error: null, entities: [{ entity: '', traits: [{ name: 'Scarred', enabled: false }] }] });
     renderCodePanel(stats[0]);
 
     await testCode(user, 'persona.traits.Scarred.enabled = false;');
@@ -282,14 +284,41 @@ describe('what Test Code reports', () => {
   it('names the persona trait writes that did nothing', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({
-      value: null, error: null, unknownPersonaTraits: ['Scarred'], personaAcquiredWrites: ['Marked'],
+      value: null, error: null, entities: [{ entity: '', unknownTraits: ['Scarred'], acquiredWrites: ['Marked'] }],
     });
     renderCodePanel(stats[0]);
 
     await testCode(user, 'persona.traits.Scarred.enabled = true; persona.traits.Marked.acquired = true;');
 
-    await waitFor(() => expect(row()).toHaveTextContent('Unknown persona trait names. Writes ignored: persona.traits.Scarred.'));
+    await waitFor(() => expect(row()).toHaveTextContent('Unknown trait names. Writes ignored: persona.traits.Scarred.'));
     expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: persona.traits.Marked.');
+  });
+
+  it('runs with every authored entity listed and nothing chosen, and lists an entity switch without making it', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: null, error: null, entities: [{ entity: 'Ash', traits: [{ name: 'Loyal', enabled: true }] }] });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'entities.Ash.traits.Loyal.enabled = true;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('entities.Ash.traits.Loyal switched on'));
+    expect(executeStatCode.mock.calls[0][3].entities).toEqual([
+      { name: 'Mira', traits: [{ name: 'Scarred', enabled: false, acquired: false }] },
+      { name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }] },
+    ]);
+  });
+
+  it('names the entity writes that did nothing', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: null, error: null, unknownEntities: ['Nobody'], entities: [{ entity: 'Ash', unknownTraits: ['Brave'] }],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'entities.Nobody.traits.X.enabled = true; entities.Ash.traits.Brave.enabled = true;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('Unknown entity names. Writes ignored: Nobody.'));
+    expect(row()).toHaveTextContent('Unknown trait names. Writes ignored: entities.Ash.traits.Brave.');
   });
 
   it('names the trait switches and acquired writes that did nothing', async () => {

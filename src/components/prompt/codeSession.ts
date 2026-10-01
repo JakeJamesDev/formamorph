@@ -30,7 +30,7 @@ import {
 import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
-import { codeCompletions, codeDiagnostics, type CodePlaceholders } from '@/lib/statCodeAnalysis';
+import { codeCompletions, codeDiagnostics, type CodeEntityNames, type CodePlaceholders } from '@/lib/statCodeAnalysis';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { InsertSnippet } from '@/lib/codeSnippets';
 
@@ -227,6 +227,7 @@ export interface CodeSession {
   setTraits: (traits: readonly string[] | undefined) => void;
   /** The trait names a persona can hold, for completions and name checks. Re-lints when the list changes. */
   setPersonaTraits: (names: readonly string[] | undefined) => void;
+  setEntities: (entities: readonly CodeEntityNames[] | undefined) => void;
   focus: () => void;
   destroy: () => void;
 }
@@ -249,6 +250,8 @@ export interface CodeSessionOptions {
   traits?: readonly string[];
   /** The trait names a persona can hold. Absent, persona trait names are neither offered nor checked. */
   personaTraits?: readonly string[];
+  /** The world's entities and their trait names. Absent, entity names are neither offered nor checked. */
+  entities?: readonly CodeEntityNames[];
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
@@ -271,13 +274,14 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   let placeholders: CodePlaceholders | undefined = options.placeholders;
   let traits: readonly string[] | undefined = options.traits;
   let personaTraits: readonly string[] | undefined = options.personaTraits;
+  let entities: readonly CodeEntityNames[] | undefined = options.entities;
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
    *  what the sandbox exposes. */
   const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
     const result = codeCompletions(doc, context.pos, {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits,
+      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits, entities,
     });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
@@ -289,7 +293,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
 
   const codeLinter = linter(
     (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits,
+      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits, entities,
     }),
     {
       delay: 400,
@@ -424,6 +428,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     setPersonaTraits(next) {
       if (next === personaTraits) return;
       personaTraits = next;
+      relint();
+    },
+    setEntities(next) {
+      if (next === entities) return;
+      entities = next;
       relint();
     },
     setSurface(next) {

@@ -185,7 +185,7 @@ describe('planCodeRename', () => {
 describe('codeRenameTarget', () => {
   it('maps a find-and-replace on a name field to its map', () => {
     expect(codeRenameTarget('stat:s1', 'name')).toEqual({ root: 'stats' });
-    expect(codeRenameTarget('trait:t1', 'name')).toEqual({ root: 'traits' });
+    expect(codeRenameTarget('trait:t1', 'name')).toEqual({ root: 'traits', traitId: 't1' });
     expect(codeRenameTarget('placeholder:p1', 'name'))
       .toEqual({ root: 'placeholders', subject: { kind: 'placeholder', id: 'p1' } });
   });

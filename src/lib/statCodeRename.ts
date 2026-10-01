@@ -27,6 +27,9 @@ import { boxCode, STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTimin
 /** The name-keyed maps a rename can reach. */
 export type RenameRoot = 'stats' | 'placeholders' | 'traits';
 
+/** Every global a renamed key can hang off: the maps, and `persona` and `entities`, whose entries hold trait maps. */
+type ChainRoot = RenameRoot | 'entities' | 'persona';
+
 /** One key of a member chain hanging off a map, and what it takes to rewrite that key alone. */
 export interface CodeRenameKey {
   /** The name the key reads as. */
@@ -73,7 +76,7 @@ function isInnerMember(node: SyntaxNode): boolean {
 }
 
 /** The keys of one chain off `root`, outermost first, cut short at the first key a run would name. */
-function chainAt(node: SyntaxNode, code: string, root: RenameRoot): CodeRenameKey[] | null {
+function chainAt(node: SyntaxNode, code: string, root: ChainRoot): CodeRenameKey[] | null {
   const members: SyntaxNode[] = [];
   let at: SyntaxNode | null = node;
   while (at?.name === 'MemberExpression') {
@@ -99,7 +102,7 @@ function chainAt(node: SyntaxNode, code: string, root: RenameRoot): CodeRenameKe
  * walk asks: whether the author declared a name of their own over the map — in which case none of these
  * members is the sandbox's map and the whole code is left alone — and where each key of each chain sits.
  */
-export function codeRenameChains(code: string, root: RenameRoot): CodeRenameKey[][] {
+export function codeRenameChains(code: string, root: ChainRoot): CodeRenameKey[][] {
   if (!code || !code.includes(root)) return [];
   const found: CodeRenameKey[][] = [];
   const cursor = javascriptLanguage.parser.parse(code).cursor();
@@ -181,7 +184,23 @@ interface CodeRewrite {
   /** The map a rename walks as a tree, and the nodes it moves there. Absent where nothing moves. */
   paths?: { map: PlaceholderPathMap; renames: PathRenames };
   /** The bare-name lookups that move, per root. */
-  names: ReadonlyMap<RenameRoot, NameRenames>;
+  names: ReadonlyMap<ChainRoot, NameRenames>;
+  /** The trait names that move inside entity trait maps, and whose maps they move in. Absent where none do. */
+  entityTraits?: { moved: NameRenames; holders: TraitHolders };
+}
+
+/** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */
+export interface TraitHolders {
+  world: boolean;
+  persona: boolean;
+  entities: readonly string[];
+}
+
+/** The splices for one entity trait map's key: `traits` at `at`, the trait name after it. */
+function entityTraitSplice(chain: readonly CodeRenameKey[], at: number, moved: NameRenames): CodeSplice | null {
+  const key = chain[at + 1];
+  const to = key && chain[at].name === 'traits' ? moved.get(key.name) : undefined;
+  return to === undefined ? null : rewrittenKey(key, to);
 }
 
 /**
@@ -202,6 +221,16 @@ function rewriteCode(code: string, rewrite: CodeRewrite): { code: string; refere
       const to = moved.get(chain[0].name);
       if (to !== undefined) edits.push(rewrittenKey(chain[0], to));
     }
+  }
+  if (rewrite.entityTraits) {
+    const { moved, holders } = rewrite.entityTraits;
+    const splices = [
+      ...(holders.persona ? codeRenameChains(code, 'persona').map((chain) => entityTraitSplice(chain, 0, moved)) : []),
+      ...codeRenameChains(code, 'entities')
+        .filter((chain) => holders.entities.includes(chain[0].name))
+        .map((chain) => entityTraitSplice(chain, 1, moved)),
+    ];
+    edits.push(...splices.filter((splice): splice is CodeSplice => splice !== null));
   }
   return { code: edits.length ? spliced(code, edits) : code, references: edits.length };
 }
@@ -226,14 +255,14 @@ const TARGET_ROOTS: Record<string, { root: RenameRoot; kind?: CodeRenameSubject[
  *  not a rename. */
 export function codeRenameTarget(
   itemKey: string, fieldKey: string,
-): { root: RenameRoot; subject?: CodeRenameSubject } | null {
+): { root: RenameRoot; subject?: CodeRenameSubject; traitId?: string } | null {
   if (fieldKey !== 'name') return null;
   const at = itemKey.indexOf(':');
   const target = TARGET_ROOTS[itemKey.slice(0, at)];
   if (!target) return null;
-  return target.kind
-    ? { root: target.root, subject: { kind: target.kind, id: itemKey.slice(at + 1) } }
-    : { root: target.root };
+  const id = itemKey.slice(at + 1);
+  if (target.kind) return { root: target.root, subject: { kind: target.kind, id } };
+  return target.root === 'traits' ? { root: target.root, traitId: id } : { root: target.root };
 }
 
 /** Whether a subject is the entity or book that owns placeholders, rather than an entry of its own. */
@@ -293,6 +322,10 @@ export interface CodeRenameInput {
   stats: readonly Stat[];
   /** Every trait in the world. A placeholder rename moves the code name of a trait whose name carries it. */
   traits?: readonly { name: string }[];
+  /** Every entity in the world. A placeholder rename moves the code name of an entity whose name carries it. */
+  entities?: readonly { name: string }[];
+  /** Whose trait maps hold a renamed trait. Absent, only `traits` follows the rename. */
+  traitHolders?: TraitHolders;
   /** The names the other entries of this kind carry. A rename onto one of them is a duplicate, which the
    *  duplicate-name warning already covers, so it gets no offer. */
   otherNames: readonly string[];
@@ -369,15 +402,18 @@ function treeRewrite(
   newName: string,
   stats: readonly { name: string }[],
   traits: readonly { name: string }[],
+  entities: readonly { name: string }[],
 ): CodeRewrite {
   const before = sourceNaming(source, subject, oldName);
   const after = sourceNaming(source, subject, newName);
   const renames = movedNodes(before, after, subject, newName);
-  const names = new Map<RenameRoot, NameRenames>();
-  for (const [root, entries] of [['stats', stats], ['traits', traits]] as const) {
+  const names = new Map<ChainRoot, NameRenames>();
+  for (const [root, entries] of [['stats', stats], ['traits', traits], ['entities', entities]] as const) {
     const moved = movedNames(entries, before, after);
     if (moved.size) names.set(root, moved);
   }
+  // An entity is keyed in `entities` by its code name, which is what the rename carries.
+  if (subject.kind === 'entity') names.set('entities', new Map([...names.get('entities') ?? [], [oldName, newName]]));
   return { paths: renames.size ? { map: placeholderPathMap(before), renames } : undefined, names };
 }
 
@@ -386,7 +422,7 @@ function treeRewrite(
  * blank name, a name another entry of the same kind already carries, or a name no stat's code references.
  */
 export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
-  const { root, stats, traits = [], otherNames, placeholders, subject } = input;
+  const { root, stats, traits = [], entities = [], otherNames, placeholders, subject, traitHolders } = input;
   const from = input.oldName.trim();
   const to = input.newName.trim();
   // Trimmed on both sides of the comparison: the field's text is what an author typed, and a name that
@@ -394,9 +430,13 @@ export function planCodeRename(input: CodeRenameInput): CodeRenamePlan | null {
   if (!from || !to || from === to || otherNames.some((name) => name.trim() === to)) return null;
   // A rename that names its node follows the tree. Without one — a caller that knows only the name — the
   // bare-name form is all that can be proven, which is what every root but `placeholders` has anyway.
+  const moved: NameRenames = new Map([[from, to]]);
   const rewrite: CodeRewrite = placeholders && subject
-    ? treeRewrite(placeholders, subject, from, to, stats, traits)
-    : { names: new Map([[root, new Map([[from, to]])]]) };
+    ? treeRewrite(placeholders, subject, from, to, stats, traits, entities)
+    : {
+      names: new Map(root === 'traits' && traitHolders?.world === false ? [] : [[root, moved]]),
+      ...(root === 'traits' && traitHolders ? { entityTraits: { moved, holders: traitHolders } } : {}),
+    };
   const edits: CodeRenameEdit[] = [];
   let references = 0;
   // Both boxes, because a rename that moved one and left the other would strand the lookups it skipped.

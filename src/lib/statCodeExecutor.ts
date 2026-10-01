@@ -79,12 +79,23 @@ export interface StatCodeResult {
   unknownTraits?: string[];
   /** Traits whose `acquired` the code wrote; each write was dropped. */
   acquiredWrites?: string[];
-  /** The persona's traits the code switched, in map order. Absent when it switched none. */
-  personaTraits?: TraitWrite[];
-  /** Names the code switched that the persona's set lacks; each switch was dropped. */
-  unknownPersonaTraits?: string[];
-  /** Persona traits whose `acquired` the code wrote; each write was dropped. */
-  personaAcquiredWrites?: string[];
+  /** What the code did to each entity's traits, through `entities` or `persona`, in map order. Absent when
+   *  it wrote into none. */
+  entities?: EntityTraitWrites[];
+  /** Entity names the code switched a trait through that no entity in play has; each switch was dropped. */
+  unknownEntities?: string[];
+}
+
+/** What one run did to one entity's traits. */
+export interface EntityTraitWrites {
+  /** The entity's code name; empty for the empty persona. */
+  entity: string;
+  /** Absent when the code switched none. */
+  traits?: TraitWrite[];
+  /** Names the code switched that the entity's set lacks; each switch was dropped. */
+  unknownTraits?: string[];
+  /** Traits whose `acquired` the code wrote; each write was dropped. */
+  acquiredWrites?: string[];
 }
 
 /** One placeholder a run pinned, or released with `unpin()`. The pin carries the type the entry's `value`
@@ -108,8 +119,9 @@ export interface SandboxTrait {
   acquired: boolean;
 }
 
-/** The sandbox's `persona`: the played persona's code name and its own traits. Empty when none plays. */
-export interface SandboxPersona {
+/** One entry of the sandbox's `entities`: an entity's code name and its own traits. `persona` is one too,
+ *  with an empty name when no persona entity plays. */
+export interface SandboxEntity {
   name: string;
   traits: readonly SandboxTrait[];
 }
@@ -191,64 +203,66 @@ const ROLL_HOOK = '__formamorphRollPlaceholder';
 // code runs in a function whose parameters shadow both names, so it cannot reach them.
 const PLACEHOLDER_WRITES = '__formamorphPlaceholderWrites';
 const TRAIT_WRITES = '__formamorphTraitWrites';
-const PERSONA_TRAITS = '__formamorphPersonaTraits';
-const PERSONA_TRAIT_WRITES = '__formamorphPersonaTraitWrites';
+const ENTITY_WRITES = '__formamorphEntityWrites';
 
-/** One sandbox map and how its entries are tracked. Every `string` field is JS source the prelude inlines. */
+/** How one sandbox map's entries are tracked. Every `string` field is JS source the prelude inlines. */
 interface TrackedMapBase {
-  /** The variable code reads the map by. */
-  root: string;
-  data: Record<string, unknown>;
   /** `(name, entry, state) => void`: installs the entry's accessors; `state` starts as `{ entry }`. */
   track: string;
   /** The literal an unknown name reads as. */
   blank: string;
-  /** Host values the prelude closes over, as parameter and argument pairs. */
-  hostArgs?: readonly (readonly [string, string])[];
 }
 
 /** How the host reads back what a run wrote to a map. A map the host reads nothing back from leaves it out. */
 interface TrackedMapWrites {
-  /** The variable the reader of the map's writes is bound to. */
-  reader: string;
   /** `(name, state) => row | null` for an entry still in place; null when the run left it alone. */
   row: string;
   /** `(name, entry) => row` for an entry the code replaced wholesale. */
   replaced: string;
 }
 
-type TrackedMapSpec = TrackedMapBase & (TrackedMapWrites | { [K in keyof TrackedMapWrites]?: undefined });
+type TrackedMapKind = TrackedMapBase & (TrackedMapWrites | { [K in keyof TrackedMapWrites]?: undefined });
 
-/** The prelude that builds one sandbox map and a reader of what the run did to it. The map is parsed from a
- *  JSON string onto a null prototype, so `__proto__` is a plain name and `toString` is not one. A Proxy hands
- *  an unknown name a tracked blank entry, so a write to it is dropped rather than thrown, and reported when
- *  the map has a reader. */
-const trackedMapPrelude = (spec: TrackedMapSpec): string => {
-  const hostArgs = spec.hostArgs ?? [];
-  const params = hostArgs.map(([param]) => `, ${param}`).join('');
-  const args = hostArgs.map(([, arg]) => `, ${arg}`).join('');
-  const writes = spec.reader === undefined ? null : spec;
-  return [
-    `const [${spec.root}${writes ? `, ${writes.reader}` : ''}] = ((stringify, keys${params}) => {`,
-    `  const map = Object.assign(Object.create(null), JSON.parse(${JSON.stringify(JSON.stringify(spec.data))}));`,
-    `  const own = Object.create(null);`,
-    `  const track = (name, entry) => { const state = own[name] = { entry }; (${spec.track})(name, entry, state); return entry; };`,
-    `  for (const name of keys(map)) track(name, map[name]);`,
-    `  const ${spec.root} = new Proxy(map, {`,
-    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
-    `      : own[key] ? own[key].entry : track(key, ${spec.blank}),`,
-    `  });`,
-    ...(writes ? [
-      `  const readWrites = () => stringify([...keys(map), ...keys(own).filter((name) => !(name in map))].map((name) => {`,
-      `    const entry = map[name], state = own[name];`,
-      `    if (!state || (name in map && entry !== state.entry)) return (${writes.replaced})(name, entry);`,
-      `    return (${writes.row})(name, state);`,
-      `  }).filter((row) => row));`,
-    ] : []),
-    `  return [${spec.root}${writes ? ', readWrites' : ''}];`,
-    `})(JSON.stringify, Object.keys${args});`,
-  ].join('\n');
+/** One sandbox map: its kind, the variable code reads it by, its data, and the reader of its writes. */
+type TrackedMapSpec = TrackedMapKind & {
+  root: string;
+  data: Record<string, unknown>;
+  /** The variable the reader of the map's writes is bound to. Absent when the host reads nothing back. */
+  reader?: string;
 };
+
+/** JS source of `(data) => [map, rows]`, closing over `keys`. The map sits on a null prototype, so
+ *  `__proto__` is a plain name and `toString` is not one. A Proxy hands an unknown name a tracked blank
+ *  entry, so a write to it is dropped rather than thrown. `rows()` lists what the run did, unstringified. */
+const trackedMapFactory = (kind: TrackedMapKind): string => [
+  `((data) => {`,
+  `  const map = Object.assign(Object.create(null), data);`,
+  `  const own = Object.create(null);`,
+  `  const track = (name, entry) => { const state = own[name] = { entry }; (${kind.track})(name, entry, state); return entry; };`,
+  `  for (const name of keys(map)) track(name, map[name]);`,
+  `  const proxy = new Proxy(map, {`,
+  `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
+  `      : own[key] ? own[key].entry : track(key, ${kind.blank}),`,
+  `  });`,
+  kind.row === undefined ? `  const rows = () => [];` : [
+    `  const rows = () => [...keys(map), ...keys(own).filter((name) => !(name in map))].map((name) => {`,
+    `    const entry = map[name], state = own[name];`,
+    `    if (!state || (name in map && entry !== state.entry)) return (${kind.replaced})(name, entry);`,
+    `    return (${kind.row})(name, state);`,
+    `  }).filter((row) => row);`,
+  ].join('\n'),
+  `  return [proxy, rows];`,
+  `})`,
+].join('\n');
+
+/** The prelude that builds one sandbox map and, with a `reader`, a reader of what the run did to it. The
+ *  data rides in as a JSON string. */
+const trackedMapPrelude = (spec: TrackedMapSpec): string => [
+  `const [${spec.root}${spec.reader ? `, ${spec.reader}` : ''}] = ((stringify, keys) => {`,
+  `  const [map, rows] = ${trackedMapFactory(spec)}(JSON.parse(${JSON.stringify(JSON.stringify(spec.data))}));`,
+  `  return [map, () => stringify(rows())];`,
+  `})(JSON.stringify, Object.keys);`,
+].join('\n');
 
 /** `entry` with every string emptied and every number zeroed, at every depth. */
 const blankOf = (entry: unknown): unknown => {
@@ -412,13 +426,10 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
   ].join('\n');
 };
 
-/** A trait map's prelude, `traits` or the persona's. Every assignment to `enabled` is a switch; `acquired` is
- *  read-only and a write to it is recorded. Rows are `[name, enabled, assigned, acquiredWritten]`; a replaced
- *  entry reads as itself when it is not an object. */
-const traitMapPrelude = (root: string, reader: string, entries: readonly SandboxTrait[]): string => trackedMapPrelude({
-  root,
-  reader,
-  data: Object.fromEntries(entries.map(({ name, enabled, acquired }) => [name, { enabled, acquired }])),
+/** A trait map, `traits` or an entity's. Every assignment to `enabled` is a switch; `acquired` is read-only
+ *  and a write to it is recorded. Rows are `[name, enabled, assigned, acquiredWritten]`; a replaced entry
+ *  reads as itself when it is not an object. */
+const TRAIT_MAP: TrackedMapKind = {
   track: `(name, entry, state) => {
     state.enabled = entry.enabled; state.acquired = entry.acquired; state.assigned = false; state.acquiredWritten = false;
     Object.defineProperty(entry, 'enabled', { enumerable: true, get: () => state.enabled, set: (v) => { state.enabled = v; state.assigned = true; } });
@@ -427,22 +438,64 @@ const traitMapPrelude = (root: string, reader: string, entries: readonly Sandbox
   blank: `{ enabled: false, acquired: false }`,
   row: `(name, state) => state.assigned || state.acquiredWritten ? [name, state.enabled, state.assigned, state.acquiredWritten] : null`,
   replaced: `(name, entry) => [name, typeof entry === 'object' && entry !== null ? entry.enabled : entry, true, false]`,
-});
+};
 
-/** The `persona` prelude: a frozen entry whose `traits` is a trait map of its own. */
-const personaPrelude = ({ name, traits }: SandboxPersona): string => [
-  traitMapPrelude(PERSONA_TRAITS, PERSONA_TRAIT_WRITES, traits),
-  `const persona = Object.freeze({ name: ${JSON.stringify(name)}, traits: ${PERSONA_TRAITS} });`,
-].join('\n');
+const traitData = (entries: readonly SandboxTrait[]) =>
+  Object.fromEntries(entries.map(({ name, enabled, acquired }) => [name, { enabled, acquired }]));
+
+/** The entities as the sandbox keys them: the later of two sharing a name wins, and the played persona
+ *  holds its own name whatever comes after it. */
+function keyedEntities(entities: readonly SandboxEntity[], persona: SandboxEntity): Map<string, SandboxEntity> {
+  const keyed = new Map(entities.map((entity) => [entity.name, entity]));
+  if (persona.name) keyed.set(persona.name, persona);
+  return keyed;
+}
+
+/**
+ * The `entities` and `persona` prelude. Each entry is frozen, its `traits` a trait map of its own. An unknown
+ * name reads as a blank entry whose `traits` holds no names, so a switch through it is dropped and reported as
+ * an unknown entity. `persona` is the played persona's entry, or a blank one of its own. Rows are
+ * `[name, unknownEntity, traitRows]`, one per entry the run wrote into.
+ */
+const entitiesPrelude = (keyed: ReadonlyMap<string, SandboxEntity>, persona: SandboxEntity): string => {
+  const spec = {
+    entities: [...keyed].map(([name, entity]) => [name, traitData(entity.traits)]),
+    persona: persona.name ? null : traitData(persona.traits),
+  };
+  return [
+    `const [entities, persona, ${ENTITY_WRITES}] = ((stringify, keys, freeze) => {`,
+    `  const traitMap = ${trackedMapFactory(TRAIT_MAP)};`,
+    `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
+    `  const readers = [];`,
+    `  const entry = (key, data, unknown) => {`,
+    `    const [traits, rows] = traitMap(data);`,
+    `    readers.push([key, unknown, rows]);`,
+    `    return freeze({ name: unknown ? '' : key, traits });`,
+    `  };`,
+    `  const map = Object.create(null);`,
+    `  for (const [name, data] of spec.entities) map[name] = entry(name, data, false);`,
+    `  const persona = spec.persona ? entry('', spec.persona, false) : map[${JSON.stringify(persona.name)}];`,
+    `  const strays = Object.create(null);`,
+    `  const entities = new Proxy(freeze(map), {`,
+    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
+    `      : strays[key] || (strays[key] = entry(key, {}, true)),`,
+    `  });`,
+    `  const readWrites = () => stringify(readers.map(([key, unknown, rows]) => [key, unknown, rows()]).filter((row) => row[2].length));`,
+    `  return [entities, persona, readWrites];`,
+    `})(JSON.stringify, Object.keys, Object.freeze);`,
+  ].join('\n');
+};
 
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
 const memberPath = (root: string, name: string) =>
   /^[A-Za-z_$][\w$]*$/.test(name) ? `${root}.${name}` : `${root}[${JSON.stringify(name)}]`;
 
-/** A reader's dump as rows, split into those naming an entry and the names no entry has. */
-function splitWriteRows(dump: string, entries: readonly { name: string }[]): { known: [string, ...unknown[]][]; unknown: string[] } {
+/** How code names an entity's trait map: through `entities`, or through `persona` for the empty persona. */
+export const entityTraitsPath = (entity: string) => (entity ? `${memberPath('entities', entity)}.traits` : 'persona.traits');
+
+/** A reader's rows, split into those naming an entry and the names no entry has. */
+function splitWriteRows(rows: unknown, entries: readonly { name: string }[]): { known: [string, ...unknown[]][]; unknown: string[] } {
   const names = new Set(entries.map((entry) => entry.name));
-  const rows: unknown = JSON.parse(dump);
   const known: [string, ...unknown[]][] = [];
   const unknown: string[] = [];
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -456,12 +509,12 @@ function splitWriteRows(dump: string, entries: readonly { name: string }[]): { k
 /** The switches in the reader's dump, one per assigned `enabled`. A name no trait has is dropped; a switch
  *  holds true or false, and anything else fails the run. */
 function readTraitWrites(
-  dump: string,
+  rows: unknown,
   entries: readonly SandboxTrait[],
   /** How code names the map, for the error. */
   root: string,
 ): { writes: TraitWrite[]; unknown: string[]; acquired: string[] } | { error: string } {
-  const { known, unknown } = splitWriteRows(dump, entries);
+  const { known, unknown } = splitWriteRows(rows, entries);
   const writes: TraitWrite[] = [];
   const acquired: string[] = [];
   for (const [name, enabled, assigned, acquiredWritten] of known) {
@@ -471,6 +524,34 @@ function readTraitWrites(
     writes.push({ name, enabled });
   }
   return { writes, unknown, acquired };
+}
+
+/** What the run did to each entity's traits, from the `entities` reader's dump. A row through an unknown
+ *  entity names the entity, not its traits. */
+function readEntityWrites(
+  dump: string,
+  keyed: ReadonlyMap<string, SandboxEntity>,
+  persona: SandboxEntity,
+): { writes: EntityTraitWrites[]; unknown: string[] } | { error: string } {
+  const parsed: unknown = JSON.parse(dump);
+  const writes: EntityTraitWrites[] = [];
+  const unknown: string[] = [];
+  for (const row of Array.isArray(parsed) ? parsed : []) {
+    if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
+    const [name, isUnknown, rows] = row as [string, unknown, unknown];
+    if (isUnknown === true) { unknown.push(name); continue; }
+    const entity = name ? keyed.get(name) : persona;
+    if (!entity) continue;
+    const read = readTraitWrites(rows, entity.traits, entityTraitsPath(name));
+    if ('error' in read) return read;
+    writes.push({
+      entity: name,
+      ...(read.writes.length ? { traits: read.writes } : {}),
+      ...(read.unknown.length ? { unknownTraits: read.unknown } : {}),
+      ...(read.acquired.length ? { acquiredWrites: read.acquired } : {}),
+    });
+  }
+  return { writes, unknown };
 }
 
 /** One written item as text: a string, or a finite number spelled out. Anything else is not text. */
@@ -532,22 +613,25 @@ export interface StatCodeRunOptions {
   /** The map's top-level keys, in authored order. Absent, the map is empty. */
   placeholders?: readonly SandboxPlaceholderNode[];
   traits?: readonly SandboxTrait[];
+  /** The entities in play, in play order. */
+  entities?: readonly SandboxEntity[];
   /** Absent, `persona` is the empty entry. */
-  persona?: SandboxPersona;
+  persona?: SandboxEntity;
 }
 
-const EMPTY_PERSONA: SandboxPersona = { name: '', traits: [] };
+const EMPTY_PERSONA: SandboxEntity = { name: '', traits: [] };
 
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
- *  the clock, `placeholders`, `traits` and `persona`. A number return or a `self.value` write sets the value, clamped;
- *  a `self.min`, `self.max` or `self.regen` write sets that bound; a `traits.<name>.enabled` write switches
- *  that trait, and a `persona.traits.<name>.enabled` write the persona's own; a failure discards every write. Of two placeholders or traits sharing a name, the later one
- *  is the entry. */
+ *  the clock, `placeholders`, `traits`, `entities` and `persona`. A number return or a `self.value` write sets the
+ *  value, clamped; a `self.min`, `self.max` or `self.regen` write sets that bound; a `traits.<name>.enabled`
+ *  write switches that trait, and an `entities.<entity>.traits.<name>.enabled` write that entity's own; a
+ *  failure discards every write. Of two placeholders, traits or entities sharing a name, the later one is the
+ *  entry. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
   currentStat: Stat,
-  { clock, turn, placeholders = [], traits = [], persona = EMPTY_PERSONA }: StatCodeRunOptions = {},
+  { clock, turn, placeholders = [], traits = [], entities = [], persona = EMPTY_PERSONA }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -587,6 +671,7 @@ export const executeStatCode = async (
       };
     };
     const placeholderMap = flattenPlaceholderMap(placeholders);
+    const keyed = keyedEntities(entities, persona);
     const statsData = stats.map(marshal);
     // `self` is the current stat's own entry in `stats`. A stat missing from `stats`, or one that loses its
     // name to a later stat, stands alone.
@@ -623,8 +708,8 @@ export const executeStatCode = async (
       // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
       // roll hook are the only host functions. The user code runs as a function body so `return` works, with
       // the readers' names shadowed as its parameters; the program's completion value pairs what it returned
-      // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and the
-      // persona's traits.
+      // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and
+      // the entities' traits.
       const program = [
         statsPrelude(statsData, blankOf(selfData)),
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
@@ -640,11 +725,11 @@ export const executeStatCode = async (
         `const clock = Object.freeze({ day, daypart, deltaHours, elapsedHours,`,
         `  previous: Object.freeze({ day: startDay, daypart: startDaypart }) });`,
         placeholdersPrelude(placeholderMap),
-        traitMapPrelude('traits', TRAIT_WRITES, traits),
-        personaPrelude(persona),
-        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${PERSONA_TRAITS}, ${PERSONA_TRAIT_WRITES}) {`,
+        trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
+        entitiesPrelude(keyed, persona),
+        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}) {`,
         code,
-        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${PERSONA_TRAIT_WRITES}()];`,
+        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}()];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -688,7 +773,7 @@ export const executeStatCode = async (
       };
       const writesDump = readDump(2 + CODE_BOUND_FIELDS.length);
       const traitsDump = readDump(3 + CODE_BOUND_FIELDS.length);
-      const personaTraitsDump = readDump(4 + CODE_BOUND_FIELDS.length);
+      const entitiesDump = readDump(4 + CODE_BOUND_FIELDS.length);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -710,10 +795,10 @@ export const executeStatCode = async (
       }
       const placeholderWrites = readPlaceholderWrites(writesDump, placeholderMap.nodes);
       if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'bad-write');
-      const traitWrites = readTraitWrites(traitsDump, traits, 'traits');
+      const traitWrites = readTraitWrites(JSON.parse(traitsDump), traits, 'traits');
       if ('error' in traitWrites) return failure(traitWrites.error, 'bad-write');
-      const personaWrites = readTraitWrites(personaTraitsDump, persona.traits, 'persona.traits');
-      if ('error' in personaWrites) return failure(personaWrites.error, 'bad-write');
+      const entityWrites = readEntityWrites(entitiesDump, keyed, persona);
+      if ('error' in entityWrites) return failure(entityWrites.error, 'bad-write');
 
       const min = bounds.min ?? selfData.min;
       const max = Math.max(min, bounds.max ?? selfData.max);
@@ -726,9 +811,8 @@ export const executeStatCode = async (
         ...(traitWrites.writes.length ? { traits: traitWrites.writes } : {}),
         ...(traitWrites.unknown.length ? { unknownTraits: traitWrites.unknown } : {}),
         ...(traitWrites.acquired.length ? { acquiredWrites: traitWrites.acquired } : {}),
-        ...(personaWrites.writes.length ? { personaTraits: personaWrites.writes } : {}),
-        ...(personaWrites.unknown.length ? { unknownPersonaTraits: personaWrites.unknown } : {}),
-        ...(personaWrites.acquired.length ? { personaAcquiredWrites: personaWrites.acquired } : {}),
+        ...(entityWrites.writes.length ? { entities: entityWrites.writes } : {}),
+        ...(entityWrites.unknown.length ? { unknownEntities: entityWrites.unknown } : {}),
       });
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);

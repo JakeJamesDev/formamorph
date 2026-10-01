@@ -296,6 +296,25 @@ When the player plays no entity, `name` is empty and every trait reads as off. *
 
 > ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits the world doesn't have, so an unknown name is a warning, not an error.
 
+### Entities
+
+`entities` holds every entity in play by its code name: the world's cast, the played persona, and the library characters the player added at **Enter World**. Each entry has the same `name` and `traits` as `persona`.
+
+```javascript
+// Mira's wound costs the party a point each turn.
+if (entities.Mira.traits.Wounded.enabled) self.value -= 1;
+
+// Switch Mira's trait, as the Traits panel does.
+entities.Mira.traits.Calm.enabled = self.value > 50;
+```
+
+- `persona` is the played persona's entry, so `persona === entities[persona.name]`.
+- An entity the narrator invents in play is not listed. Neither is a persona-only entity the player didn't pick.
+- A name no entity in play has reads as a blank entry: `name` is empty and every trait reads as off. A switch through it is ignored. Check `entities.Mira.name` to test whether Mira is in play.
+- Of two entities that share a code name, the later one is the entry. The played persona always keeps its own name.
+
+**Test Code** lists every authored entity, with no trait chosen.
+
 ### Order of Effects
 
 Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
