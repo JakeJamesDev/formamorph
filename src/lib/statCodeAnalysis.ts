@@ -266,7 +266,7 @@ const PATH_STEP = /^\s*(?:\?\.)?(?:\.?\[\s*(["'])([^"'\\]*)\1\s*\]|\.([A-Za-z_$]
  * reads as no path at all rather than as a wrong one.
  *
  * Read from the text, as `expressionBeforeDot` is, because a completion runs on half-typed code the grammar
- * cannot parse. `placeholderChain` reads the same grammar off the tree, where a check needs each segment's
+ * cannot parse. `placeholderChainRoute` reads the same grammar off the tree, where a check needs each segment's
  * own span to underline; neither can do the other's job, and a test holds the two to the same answers.
  */
 function placeholderPathSegments(expression: string): string[] | null {
@@ -640,16 +640,8 @@ const entityTraitRef = (node: SyntaxNode, code: string): EntryRef | null => enti
 type TraitEntryOf = (node: SyntaxNode, code: string) => EntryRef | null;
 const worldTraitRef: TraitEntryOf = (node, code) => entryRef(node, code, 'traits');
 
-/**
- * The segments a `placeholders` member chain names, each with where it is written. Null for a chain rooted
- * anywhere else; a step whose key only a run could know ends the chain, as the text parser does.
- */
-function placeholderChain(node: SyntaxNode, code: string): EntryRef[] | null {
-  const chain = placeholderChainRoute(node, code);
-  return chain?.kind === 'world' ? chain.refs : null;
-}
-
-/** A placeholder chain off the tree: its route, the owner's key where an entry names one, and its keys. */
+/** A placeholder chain off the tree: its route, the owner's key where an entry names one, and its keys, each
+ *  with where it is written. A step whose key only a run could know ends the chain, as the text parser does. */
 interface PlaceholderChain {
   kind: PlaceholderRouteKind;
   owner?: EntryRef;
@@ -840,8 +832,9 @@ function checkPlaceholderEntryWrite(
   const written = code.slice(from, to);
   const warn = (message: string): CodeDiagnostic => ({ from, to, severity: 'warning', message });
   if (!placeholders) return entryRef(target, code, 'placeholders') ? warn(`Write to ${written}.value instead.`) : null;
-  const refs = placeholderChain(target, code);
-  if (!refs?.length) return null;
+  const chain = placeholderChainRoute(target, code);
+  const refs = chain?.kind === 'world' ? chain.refs : [];
+  if (!refs.length) return null;
   const { node, rest } = walkPlaceholderPath(pathMapOf(placeholders), refs.map((ref) => ref.name));
   if (rest.length > 0 || !node) return null;
   if (!node.placeholder) return warn(`“${node.name}” owns placeholders. Write to one of them instead.`);
@@ -1150,7 +1143,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
       sawPlaceholderWrite = true;
     }
     const chain = cursor.type.name === 'MemberExpression' && options.placeholders ? placeholderChainRoute(cursor.node, code) : null;
-    if (chain && options.placeholders && chainRootInScope(chain.kind === 'world' ? 'placeholders' : ROUTE_GLOBAL[chain.kind])) {
+    if (chain && options.placeholders && chainRootInScope(ROUTE_GLOBAL[chain.kind])) {
       // Every nesting of one chain is visited, and each reports the same complaint at the same span, so the
       // duplicate filter below leaves one of each rather than one per nesting.
       const refs = chain.refs.filter((ref) => !overlapsAny(ref.from, ref.to, ranges));

@@ -20,7 +20,7 @@ export interface StatCodePlaceholderSet {
   /** Placeholder ids `placeholders` never keys: reached only through their owner's entry. */
   unlisted?: ReadonlySet<string>;
   /** Every dictionary, in authored order. Each is a `dictionaries` entry, its placeholders its owner node. */
-  dictionaries?: readonly { id: string; name: string }[];
+  dictionaries?: readonly CodeOwnerName[];
   /** The playthrough's rolls. Read, never written. */
   rolls: PlaceholderRolls;
   /** Placeholder id → the text every pin in force holds it to. */
@@ -70,7 +70,7 @@ export function withLibraryPersonaPlaceholders(set: StatCodePlaceholderSet, pers
 
 /** Each dictionary under its code name: chips read as code reads them. */
 export const codeDictionaries = (
-  dictionaries: readonly { id: string; name: string }[] | undefined, list: readonly Placeholder[],
+  dictionaries: readonly CodeOwnerName[] | undefined, list: readonly Placeholder[],
 ): CodeOwnerName[] => (dictionaries ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, list) }));
 
 /** Each dictionary as a `dictionaries` entry, its owner node its `placeholders`. */

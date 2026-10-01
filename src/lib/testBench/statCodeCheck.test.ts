@@ -46,7 +46,7 @@ describe('the on-demand stat-code check', () => {
 
   it('runs code that pins an owner’s placeholder through its entry, and reports only a name the owner lacks', async () => {
     const world = base([
-      stat({ id: 's1', name: 'Fertility', code: 'entities.Mira.placeholders.Hair.pin("red"); dictionaries.Lore.placeholders.Sky.pin("grey");' }),
+      stat({ id: 's1', name: 'Fertility', code: 'entities.Mira.placeholders.Hair.pin("red"); dictionaries.Lore.placeholders.Sky.pin("gray");' }),
       // No persona plays in the check, so a pin through it names nothing the check can judge.
       stat({ id: 's2', name: 'Vigor', code: 'persona.placeholders.Hair.pin("red"); entities.Mira.placeholders.Hiar.pin("x");' }),
     ]);

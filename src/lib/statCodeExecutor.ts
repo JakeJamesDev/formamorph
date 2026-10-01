@@ -529,7 +529,8 @@ export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], p
 /**
  * The `entities` and `persona` prelude. Each entry is frozen, its `traits` a trait map of its own and its
  * `placeholders` its owner node's view. An unknown name reads as a blank entry whose `traits` and
- * `placeholders` hold no names, so a switch through it is dropped and reported as an unknown entity. `persona` is the played persona's entry, or a blank one of its own. Rows are
+ * `placeholders` hold no names, so a switch through it is dropped and reported as an unknown entity.
+ * `persona` is the played persona's entry, or a blank one of its own. Rows are
  * `[name, unknownEntity, traitRows]`, one per entry the run wrote into.
  */
 const entitiesPrelude = (
@@ -579,7 +580,7 @@ const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceho
   (node ? indexOf.get(node) ?? -1 : -1);
 
 /** The fields on a dictionary entry. None takes a write. */
-const DICTIONARY_FIELDS = ['id', 'name', 'placeholders'] as const;
+const DICTIONARY_READ_ONLY_FIELDS = ['id', 'name', 'placeholders'] as const;
 
 /**
  * The `dictionaries` prelude. Each entry is frozen and keyed by code name, the later of two sharing one
@@ -597,7 +598,7 @@ const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], indexOf
     `    readers.push([key, written]);`,
     `    const values = { id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, [key], unknown) };`,
     `    const out = {};`,
-    `    for (const field of ${JSON.stringify(DICTIONARY_FIELDS)}) {`,
+    `    for (const field of ${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}) {`,
     `      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });`,
     `    }`,
     `    return freeze(out);`,

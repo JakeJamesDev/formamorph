@@ -147,7 +147,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
       if (parts.length) setResult(parts.join(' · '));
       setWarnings([
         ...(outcome.unknownPlaceholders ? [`Unknown placeholder paths. Writes ignored: ${outcome.unknownPlaceholders.join(', ')}.`] : []),
-        ...(outcome.unknownOwnerPlaceholders ? [`Unknown owners. Writes ignored: ${outcome.unknownOwnerPlaceholders.join(', ')}.`] : []),
+        ...(outcome.unknownOwnerPlaceholders ? [`Placeholders of owners not in play. Writes ignored: ${outcome.unknownOwnerPlaceholders.join(', ')}.`] : []),
         ...(outcome.unknownTraits ? [`Unknown trait names. Writes ignored: ${outcome.unknownTraits.join(', ')}.`] : []),
         ...(outcome.acquiredWrites ? [`acquired is read-only. Writes ignored: ${outcome.acquiredWrites.join(', ')}.`] : []),
         ...(outcome.unknownEntities ? [`Unknown entity names. Writes ignored: ${outcome.unknownEntities.join(', ')}.`] : []),
