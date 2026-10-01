@@ -5,6 +5,7 @@ Community Creations is where players share what they make. You can download worl
 > Browsing and downloading need no account. Comments, follows, Reports and publishing need you to log in.
 
 ## How to Download a World
+<!-- keywords: get, find, browse, install, community worlds, workshop, online, add to library -->
 
 1. On the main menu, select **Community Creations**.
 2. If the **Adult Content Ahead** dialog opens, read it and select **Accept**.
@@ -15,6 +16,7 @@ Community Creations is where players share what they make. You can download worl
 The world goes into your library. To play it, see [How to Start a Game](Starting-a-Game#how-to-start-a-game). To download from the card, select the cloud button on its image.
 
 ## How to Publish a World
+<!-- keywords: share, upload, post, put online, community page, release, make public -->
 
 1. Log in. See [Login and Register](#login-and-register).
 2. On the main menu, open the library's **Worlds** tab and select your world. The world dialog opens.
@@ -26,6 +28,7 @@ The world goes into your library. To play it, see [How to Start a Game](Starting
 The listing takes its name, description, image and tags from the world itself. Set them in the World Editor before you publish. See [What a Listing Shows](#what-a-listing-shows).
 
 ## How to Update a Listing
+<!-- keywords: new version, republish, upload again, change, edit published world, push update, changelog -->
 
 1. Open the item's publish dialog. For a world, select **Publish World** in the world dialog. For other kinds, see [Where to Publish Each Kind](#where-to-publish-each-kind).
 2. Under **Or update existing world:**, select your listing.
@@ -35,6 +38,7 @@ The listing takes its name, description, image and tags from the world itself. S
 The listing gets your current version. Players who downloaded it see that an update is available. To add an entry to the [Listing Changelog](#the-listing-changelog) without a new version, open your listing and select **Add Entry**.
 
 ## How to Enter a Contest
+<!-- keywords: competition, jam, event, submit, join, compete -->
 
 1. While a contest runs, start [How to Publish a World](#how-to-publish-a-world).
 2. In the **Publish World** dialog, find the contest card. Select **Contest Rules** to read the rules.
@@ -44,6 +48,7 @@ The listing gets your current version. Players who downloaded it see that an upd
 You can enter one world per contest. Only a world can enter. To enter a world you already published, select it under **Or update existing world:** and turn on the switch. To enter a different world, select **Withdraw Entry** on the contest card first.
 
 ## How to Report a Listing
+<!-- keywords: flag, abuse, inappropriate, complain, offensive, rule break, moderation -->
 
 1. Log in.
 2. Open the listing's details window.
@@ -55,6 +60,7 @@ You can enter one world per contest. Only a world can enter. To enter a world yo
 To report a comment, select its **Report comment** button. To report a person, open their profile and select **Report Profile**.
 
 ## How to Delete Your Account
+<!-- keywords: remove, close, erase, cancel, deactivate, my data, profile, gdpr -->
 
 1. On the main menu, select the round **User Profile** button at the bottom left.
 2. Select **Delete Account**.
@@ -65,6 +71,7 @@ To report a comment, select its **Report comment** button. To report a person, o
 You are logged out immediately. The account is erased seven days later. To cancel, log in before that day. See [Account Deletion](#account-deletion).
 
 ## How to Report a Bug or Suggest Something
+<!-- keywords: feedback, issue, problem, error, broken, crash, idea, feature request, contact, developer -->
 
 1. Log in.
 2. On the main menu, select the round **Feedback** button at the bottom left.

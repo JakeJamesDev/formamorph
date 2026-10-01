@@ -5,6 +5,7 @@ Everywhere Formamorph shows you formatted prose — world descriptions, readmes,
 > Formatting is written in the text itself. In the World Editor's prose fields a **toolbar** sits above the box and applies most of this to your selection, so you rarely have to type the punctuation by hand.
 
 ## How to Format Text with the Toolbar
+<!-- keywords: bold, italic, markdown, heading, list, style, link, table -->
 
 1. Select the text in a World Editor prose field.
 2. Select a toolbar button: **Bold**, **Italic**, **Strikethrough**, **Inline code** or **Blockquote**.
@@ -13,6 +14,7 @@ Everywhere Formamorph shows you formatted prose — world descriptions, readmes,
 A split button's face then applies the last item you picked from it.
 
 ## How to Highlight Text
+<!-- keywords: color, mark, marker, background, colour -->
 
 1. Select the text.
 2. Select the highlighter button for the plain highlight, in your theme's color.

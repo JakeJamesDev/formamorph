@@ -11,6 +11,7 @@ Prose alone changes from turn to turn. A stat is a fact the AI must write around
 The narrator's prompt tells it to let stats change how an action turns out. A low stat shows as effort and cost. A high stat shows as ease. The prompt also tells the narrator not to list the stats or report their changes. A separate step changes the numbers.
 
 ## How to Add a Stat
+<!-- keywords: attribute, health, hp, meter, number, bar, create, new stat, variable -->
 
 1. Open the **Stats** tab.
 2. Type the stat's name in the **Search or add new stats** box.
@@ -22,12 +23,14 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 > 💡 With the box empty, the new stat is named "New Stat". A new stat starts at 0 on a 0–100 range, with three descriptors: low, medium and high.
 
 ## How to Make a Stat a Percentage
+<!-- keywords: percent, %, 0 to 100, ratio -->
 
 1. Select the stat.
 2. On the **Details** tab, set **Type** to **Percentage**.
 3. Set **Initial Value (%)**. **Min** and **Max** lock at 0 and 100.
 
 ## How to Hide a Stat
+<!-- keywords: secret, invisible, hidden from player, ai only, conceal -->
 
 **Advanced mode only.**
 
@@ -37,6 +40,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 The player no longer sees the stat. The AI still reads it, and its Regen and code still run.
 
 ## How to Add a Stat Descriptor
+<!-- keywords: label, band, threshold, level, word, text for value, range -->
 
 **Advanced mode only.**
 

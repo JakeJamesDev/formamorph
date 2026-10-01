@@ -7,6 +7,7 @@ The AI writes everything you read. A stronger model gives you sharper narration,
 Every route ends in the same place: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode.
 
 ## How to Connect LM Studio
+<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, gguf -->
 
 1. Download LM Studio from [lmstudio.ai](https://lmstudio.ai) and install it.
 2. Open the **Discover** tab and download a model.
@@ -23,6 +24,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 13. Type the model identifier that LM Studio shows into **Model Name**.
 
 ## How to Connect Ollama
+<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, ollama_origins, cors -->
 
 1. Download Ollama from [ollama.com/download](https://ollama.com/download) and install it.
 2. Download a model: `ollama pull <model>`. Use a model name from the Ollama library.
@@ -36,6 +38,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 10. Type the model's name into **Model Name**, exactly as `ollama ls` lists it.
 
 ## How to Connect a Hosted API
+<!-- keywords: openrouter, openai, api key, cloud, paid service, provider, gpt, deepseek, set up, own key, endpoint -->
 
 1. Make an account with a service that offers an **OpenAI-compatible chat-completions** endpoint.
 2. Get an API token from the service. Some services call it an API key.
@@ -48,6 +51,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 9. Type the identifier of the model you want into **Model Name**.
 
 ## How to Use the Desktop Engine
+<!-- keywords: built-in, offline, local model, download model, gpu, vram, run locally, no internet, own pc, windows app -->
 
 1. Get the desktop app from [formamorph.ai](https://formamorph.ai) and install it.
 2. Open Settings → **Endpoints** → **Text**.
@@ -59,6 +63,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 With **Auto-Load** on, the default, the model loads when its download finishes. With it off, select **Load** on the model.
 
 ## How to Play Against Your PC from Another Device
+<!-- keywords: phone, tablet, laptop, network, wifi, lan, remote, mobile, home server, connect -->
 
 1. Make your server accept connections from your network. In LM Studio, turn on **Serve on Local Network**. In Ollama, set `OLLAMA_HOST` to `0.0.0.0:11434`.
 2. On the other device, open Settings → **Endpoints** → **Text**.

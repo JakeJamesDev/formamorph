@@ -7,6 +7,7 @@ A Tool only reads. It never changes the world, the save or your settings.
 The **Tools** tab in Settings lists the built-in Tools and your own Tools. It shows in **Advanced** mode only. To open it, open **Settings**, select **Advanced** in the switch next to the title, then open the **Tools** tab.
 
 ## How to Turn On Tools
+<!-- keywords: function calling, tool calling, enable, ai call, let the ai use, functions -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.
@@ -20,6 +21,7 @@ The **Tools** tab in Settings lists the built-in Tools and your own Tools. It sh
 The dot next to a Tool's name is filled while the Tool is on in that preset. A note at the top of the tab tells you when your prompts get no Tools: when the **Tools** checkbox is clear, or when your text endpoint does not support Tools. See [Endpoints Without Tool Support](#endpoints-without-tool-support).
 
 ## How to Make a Tool
+<!-- keywords: create, custom, new function, function calling, script, write -->
 
 1. Open the **Tools** tab.
 2. Under **My Tools**, select **New Tool**.
@@ -36,6 +38,7 @@ A new Tool is on in the active preset. **Save Tool** is off while the Tool has a
 To start from a built-in Tool, select it and then **Duplicate**. To change your own Tool later, select it and then **Edit**.
 
 ## How to Try a Tool
+<!-- keywords: test, run, debug, preview, check -->
 
 1. Select the Tool in the **Tools** tab, or open it with **Edit**.
 2. Under **Try It**, type a value for each parameter. A parameter of type **True/False** or **One of a List** shows a list.
@@ -46,6 +49,7 @@ To start from a built-in Tool, select it and then **Duplicate**. To change your 
 Open **What the AI Receives** under **Try It** to read the Tool's definition as the AI gets it. When you edit the Tool after a run, a note tells you the result is from before your last edit.
 
 ## How to Share Your Tools
+<!-- keywords: export, import, file, json, send, copy -->
 
 1. Open the **Tools** tab.
 2. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.

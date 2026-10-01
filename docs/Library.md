@@ -5,6 +5,7 @@ The library is the main menu's board of everything on this device: your worlds, 
 > A world's own copy of a library entity or dictionary is a linked copy. See [Linked Content](LinkedContent).
 
 ## How to Import a World
+<!-- keywords: load, open, add, bring in, json file, upload, install, file, downloaded world -->
 
 1. On the **Worlds** tab, select **Import World**.
 2. Select one or more world `.json` files.
@@ -13,6 +14,7 @@ The library is the main menu's board of everything on this device: your worlds, 
 One file opens its world dialog. More files add their tiles. If the world brings entities or dictionaries you do not have, see [Importing a World File](LinkedContent#importing-a-world-file).
 
 ## How to Export a World
+<!-- keywords: save to file, download, back up, json, share file, copy, send to friend -->
 
 1. On the **Worlds** tab, select the world.
 2. Select **Export World**.
@@ -22,6 +24,7 @@ One file opens its world dialog. More files add their tiles. If the world brings
 You get a `.json` file with the world's name.
 
 ## How to Import an Entity
+<!-- keywords: character card, png card, chub, load character, add character, upload -->
 
 1. On the **Entities** tab, select **Import Entity**.
 2. Select one or more files. These work:
@@ -32,6 +35,7 @@ You get a `.json` file with the world's name.
 A lorebook inside a SillyTavern card also comes in, as a dictionary. If you import one file that names worlds, a review opens. See [Importing an Entity or Dictionary File](LinkedContent#importing-an-entity-or-dictionary-file).
 
 ## How to Import a Dictionary
+<!-- keywords: lorebook, sillytavern, load, add, upload, json -->
 
 1. On the **Dictionaries** tab, select **Import Dictionary**.
 2. Select one or more `.json` files. A Formamorph dictionary and a SillyTavern World Info lorebook both work.
@@ -39,6 +43,7 @@ A lorebook inside a SillyTavern card also comes in, as a dictionary. If you impo
 If you import one file that names worlds, a review opens. See [Importing an Entity or Dictionary File](LinkedContent#importing-an-entity-or-dictionary-file).
 
 ## How to Export an Entity or a Dictionary
+<!-- keywords: character card, lorebook, save to file, download, share, webp, json -->
 
 1. Select the tile. Its editor opens.
 2. Select **Export** at the bottom of the editor.
@@ -48,6 +53,7 @@ An entity exports as a `.webp` card: its portrait with the entity's data inside.
 To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-import-an-avatar) and [How to Export an Avatar](Avatars#how-to-export-an-avatar).
 
 ## How to Make a Group
+<!-- keywords: folder, create folder, organize, sort, collection, category, new folder -->
 
 1. Right-click a tile. On a touch screen, press and hold it.
 2. Select **Create New Group…**.
@@ -58,6 +64,7 @@ The Group goes where the tile was, at the same size, and the tile goes into it.
 You can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles go into a new Group named *New Group*.
 
 ## How to Add a Tile to a Group
+<!-- keywords: folder, put in, move into, organize, sort, collection -->
 
 1. Right-click the tile.
 2. Under **Add To Group**, select a Group. Only three Groups show there. To see all of them, select **Add To Group…** and find the Group by name.
@@ -65,6 +72,7 @@ You can also drag one tile onto the near half of another tile and hold it there.
 You can also drag the tile onto the near half of a Group's tile, hold it, and release it.
 
 ## How to Remove a Tile from a Group
+<!-- keywords: folder, take out, move out, ungroup -->
 
 1. Open the Group.
 2. Right-click the tile, then select **Remove From Group**.
@@ -72,6 +80,7 @@ You can also drag the tile onto the near half of a Group's tile, hold it, and re
 The tile goes to the end of the board. Formamorph removes a Group that has no tiles left.
 
 ## How to Move a Tile
+<!-- keywords: drag, reorder, rearrange, sort, organize, swap, position -->
 
 1. Drag the tile. On a touch screen, press and hold it first.
 2. Hold it over the far half of another tile. The tiles show where the tile will go.
@@ -80,6 +89,7 @@ The tile goes to the end of the board. Formamorph removes a Group that has no ti
 A tile that shares a row or a column with the target pushes the tiles between them. Otherwise the two tiles swap. A red ring means the tile cannot go there.
 
 ## How to Change a Tile's Size
+<!-- keywords: bigger, smaller, resize, large, small, medium, grid -->
 
 1. Right-click the tile.
 2. Under **Tile Size**, select **Small**, **Medium** or **Large**.
@@ -87,12 +97,14 @@ A tile that shares a row or a column with the target pushes the tiles between th
 A **Small** tile hides its name. Point to it to see the name. **Tile Size** shows only in the grid view.
 
 ## How to Rename a Group
+<!-- keywords: folder, name, change name, title -->
 
 1. Select the Group to open it.
 2. Select its name at the top, and type a new one.
 3. Press Enter to keep the name, or Escape to cancel.
 
 ## How to Delete a Group
+<!-- keywords: folder, remove, ungroup, get rid of -->
 
 1. Right-click the Group.
 2. Select **Delete Group**.

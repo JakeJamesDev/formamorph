@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HELP_TOPICS } from '@/lib/helpTopics';
 import {
-  docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, surfaceCoverageProblems,
+  docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, keywordLineProblems, surfaceCoverageProblems,
   HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
 } from './docsChecks';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, SURFACE_MAP } from './surfaceMap';
@@ -46,6 +46,10 @@ describe('docs coverage of the app', () => {
 
   it('links every glossary term to the page that explains it', () => {
     expect(glossaryProblems(DOCS)).toEqual([]);
+  });
+
+  it('gives every how-to section a keyword line', () => {
+    expect(keywordLineProblems(DOCS)).toEqual([]);
   });
 });
 
@@ -214,5 +218,25 @@ describe('docsLinkProblems', () => {
   it('skips outside sites, repo paths, images and code', () => {
     const page = '# Home\n\n[Site](https://example.com/x#y) [Src](../src/a.ts) ![Pic](missing.png) `[No](Nope)`\n```\n[No](Nope)\n```\n';
     expect(docsLinkProblems({ ...PAGES, Home: page })).toEqual([]);
+  });
+});
+
+describe('keywordLineProblems', () => {
+  it('passes a how-to heading with a keyword line under it, at any heading level', () => {
+    const pages = { P: '# P\n\n## How to Go\n<!-- keywords: leave, exit -->\n\nText.\n\n### How to Stop\n\n<!-- keywords: halt -->\n' };
+    expect(keywordLineProblems(pages)).toEqual([]);
+  });
+
+  it('fails a how-to heading with no keyword line, or an empty one', () => {
+    const pages = { P: '# P\n\n## How to **Go**\n\nText.\n\n## How to Stop\n<!-- keywords: -->\n\n## Notes\n\nText.\n' };
+    expect(keywordLineProblems(pages)).toEqual([
+      'P:3 heading How to Go has no keyword line under it',
+      'P:7 heading How to Stop has no keyword line under it',
+    ]);
+  });
+
+  it('skips headings inside code and pages outside the guide', () => {
+    const pages = { P: '# P\n\n```md\n## How to Go\n```\n', 'Writing-Guide': '# W\n\n## How to Write\n\nText.\n' };
+    expect(keywordLineProblems(pages)).toEqual([]);
   });
 });

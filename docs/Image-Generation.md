@@ -5,6 +5,7 @@ Formamorph can draw images with an image server that you connect. It makes portr
 > Image generation is off until you turn it on. To connect a text AI, see [Connect Your Own AI](Connect-Your-Own-AI).
 
 ## How to Turn On Image Generation
+<!-- keywords: enable, pictures, art, images, stable diffusion, ai art, set up, generate, illustrations -->
 
 1. Open **Settings**, then the **Endpoints** tab, then the **Image** tab.
 2. Select the **Enable Image Generation** checkbox.
@@ -15,6 +16,7 @@ Formamorph can draw images with an image server that you connect. It makes portr
 The **Generate with AI** buttons now show beside the World Editor's image fields. To get an image of each turn, see [How to Turn On Scene Images](#how-to-turn-on-scene-images).
 
 ## How to Connect ComfyUI
+<!-- keywords: comfy, stable diffusion, local, set up, cors, checkpoint, sdxl -->
 
 1. Install ComfyUI.
 2. Add `--enable-cors-header` to the start command in your `run_*.bat` file.
@@ -26,6 +28,7 @@ The **Generate with AI** buttons now show beside the World Editor's image fields
 To use your own ComfyUI graph, see [How to Use Your Own ComfyUI Workflow](#how-to-use-your-own-comfyui-workflow).
 
 ## How to Connect InvokeAI
+<!-- keywords: invoke, stable diffusion, local, set up, cors, allow_origins, sdxl -->
 
 1. Install InvokeAI.
 2. Open `invokeai.yaml` in the InvokeAI root folder.
@@ -38,6 +41,7 @@ To use your own ComfyUI graph, see [How to Use Your Own ComfyUI Workflow](#how-t
 A Z-Image or Anima model also needs a Qwen3 text encoder and a VAE. Formamorph picks installed ones. To choose them yourself, see [InvokeAI Fields](#invokeai-fields).
 
 ## How to Connect Automatic1111 or Forge
+<!-- keywords: a1111, auto1111, sd webui, stable diffusion, local, set up, cors, api, webui -->
 
 1. Install Automatic1111 or Forge.
 2. Add this line to `webui-user.bat`:
@@ -54,6 +58,7 @@ A Z-Image or Anima model also needs a Qwen3 text encoder and a VAE. Formamorph p
 To use **Face Fix**, install the **ADetailer** extension on your server.
 
 ## How to Connect NovelAI
+<!-- keywords: nai, novel ai, anime, anlas, subscription, cloud, api token, set up -->
 
 You need a NovelAI subscription.
 
@@ -66,6 +71,7 @@ You need a NovelAI subscription.
 NovelAI starts at 1024×1024 and 28 steps. **Opus** subscribers get one free image per request at those values or lower. Larger images or more steps spend Anlas. **Stop** can't cancel an image that NovelAI has started, so that image can still cost Anlas.
 
 ## How to Connect an OpenAI-Compatible Service
+<!-- keywords: dall-e, dalle, gpt-image, openai, api key, cloud, set up -->
 
 This provider works only in the [desktop app](Connect-Your-Own-AI). The desktop app sends the requests for you, so the service needs no CORS setup.
 
@@ -77,6 +83,7 @@ This provider works only in the [desktop app](Connect-Your-Own-AI). The desktop 
 This provider ignores **Negative Prompt**, **Steps / CFG** and **Sampler**. Each image is 1024×1024, 1536×1024 or 1024×1536, whichever shape is nearest to the size you set.
 
 ## How to Use Your Own ComfyUI Workflow
+<!-- keywords: graph, custom, nodes, json, api format, lora, template, own setup -->
 
 The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI graph that Formamorph sends. **How to Get This** shows these steps too.
 
@@ -89,6 +96,7 @@ The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI
 **Reset to Defaults** puts back the default graph.
 
 ## How to Turn On Scene Images
+<!-- keywords: every turn, automatic, pictures, illustrations, art, each turn, show images -->
 
 1. Turn on image generation. See [How to Turn On Image Generation](#how-to-turn-on-image-generation).
 2. Open **Settings**, then the **Display** tab.
@@ -97,6 +105,7 @@ The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI
 Each turn now ends with an image. See [Scene Images](#scene-images).
 
 ## How to Make an Image of One Turn
+<!-- keywords: picture, single, generate, draw, illustrate, art, scene tags -->
 
 1. In the game, open the turn's **More** menu.
 2. Select **Generate Scene Image**. The item shows when the turn has no image.
@@ -104,6 +113,7 @@ Each turn now ends with an image. See [Scene Images](#scene-images).
 If a turn is still running, the image starts when it ends. **Write Scene Tags** writes the tags only, so you can edit them before the image is made.
 
 ## How to Add an Image Preset
+<!-- keywords: save settings, profile, switch, multiple, config, new setup -->
 
 1. On the **Image** tab, open **Preset**.
 2. Select **Add New Preset…**.

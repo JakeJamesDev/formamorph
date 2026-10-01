@@ -7,6 +7,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 **You need:** Android 7.0 or newer, and about **90 MB** free for the download.
 
 ## How to Install on Android
+<!-- keywords: phone, mobile, apk, download, app, tablet, sideload, play store -->
 
 1. On your device, open [formamorph.ai](https://formamorph.ai) and tap the **Android** button at the bottom of the page.
 2. Open the downloaded file.
@@ -17,6 +18,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 7. Open Formamorph.
 
 ## How to Update the App
+<!-- keywords: new version, upgrade, latest, phone, apk, mobile -->
 
 1. On the main menu, look at the version number at the bottom. It reads **— Update Available!** when a newer release exists.
 2. Tap the version number. The update dialog opens.
@@ -28,6 +30,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 8. Confirm in Android's install sheet.
 
 ## How to Get Beta Builds
+<!-- keywords: pre-release, prerelease, test version, early access, channel, nightly -->
 
 1. Tap the version number on the main menu.
 2. Set **Release channel** to **Pre-release**.
@@ -35,6 +38,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 Set it back to **Stable** for finished releases only.
 
 ## How to Save an Export to a Folder
+<!-- keywords: downloads, file, phone, storage, save as, where, location -->
 
 1. Export as you would on desktop. Android's **Save As** picker opens.
 2. Choose a folder, such as **Downloads**.
@@ -42,6 +46,7 @@ Set it back to **Stable** for finished releases only.
 4. Tap **Save**.
 
 ## How to Use a Model on Your PC
+<!-- keywords: phone, mobile, local, network, wifi, lm studio, ollama, computer, connect -->
 
 1. On your PC, make LM Studio or Ollama accept connections from your network. See [Connect Your Own AI](Connect-Your-Own-AI#how-to-play-against-your-pc-from-another-device).
 2. In the app, open Settings → **Endpoints** → **Text**.

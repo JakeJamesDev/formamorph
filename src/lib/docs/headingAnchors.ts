@@ -26,6 +26,9 @@ export function headingAnchor(text: string): string {
   return text.replace(MARKDOWN_LINK, '$1').toLowerCase().replace(NOT_SLUG_CHAR, '').replace(/ /g, '-');
 }
 
+/** A section's hidden keyword line, `<!-- keywords: … -->`; group 1 is the list. */
+export const KEYWORD_LINE = /^\s{0,3}<!--\s*keywords:(.*?)-->\s*$/i;
+
 /** A code fence line; group 1 is its marker. */
 export const FENCE = /^\s{0,3}(```|~~~)/;
 const ATX_HEADING = /^\s{0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;

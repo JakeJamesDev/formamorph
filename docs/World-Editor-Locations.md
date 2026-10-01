@@ -9,6 +9,7 @@ Locations are the places where your story happens. The player is always in one l
 Without a fixed place, the narrator loses track of the scene. The tavern becomes a street, then a forest. A location is sent to the AI again on every turn, so the scene stays where you put it.
 
 ## How to Add a Location
+<!-- keywords: place, area, room, map, create, new place, zone, region -->
 
 1. Open the **Locations** tab.
 2. Type the location's name in the **Search or add new locations** box.
@@ -19,6 +20,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 > 💡 With the box empty, the new location is named "New Location". Rename it in **Name**.
 
 ## How to Nest a Location
+<!-- keywords: sub-location, child, inside, parent, hierarchy, room in building, indent -->
 
 **In the list:**
 
@@ -33,6 +35,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 3. To move a location back to the top level, drop it on **Top Level**.
 
 ## How to Connect Two Locations
+<!-- keywords: link, path, route, travel, road, door, map, one-way -->
 
 **In the panel:**
 
@@ -45,12 +48,14 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 **On the canvas:** drag from the handle on the right edge of one box (**Drag To Connect**) onto the other box.
 
 ## How to Set a Starting Location
+<!-- keywords: spawn, begin, start point, first place, where players start -->
 
 1. Select the location, then open its **Details** tab.
 2. Check **Starting Location**.
 3. Check it on more locations to let the player pick one. See [Starting Location](#starting-location).
 
 ## How to Pin a Placeholder to a Location
+<!-- keywords: place, fixed value, override, wildcard, variable, per place -->
 
 **Advanced mode only.**
 

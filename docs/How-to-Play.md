@@ -5,6 +5,7 @@ You play by writing what you do. The AI narrator writes what happens next. The s
 > New to a world? [Starting a Game](Starting-a-Game) covers everything before page one.
 
 ## How to Take an Action
+<!-- keywords: play, type, write, do something, move, respond, reply, input, send, enter, talk, say -->
 
 1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
 2. Write what you do, in the first person: *I ask her where the road leads.*
@@ -15,6 +16,7 @@ While the AI writes, the **Send** button turns red and becomes **Stop generating
 > 💡 Success isn't guaranteed. The narrator decides how your attempt goes, and your stats shape it.
 
 ## How to Use a Choice
+<!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine -->
 
 1. Read the choices under the story. Each one is a ready-made action.
 2. Select a choice. Its text replaces what is in the action box.
@@ -23,6 +25,7 @@ While the AI writes, the **Send** button turns red and becomes **Stop generating
 To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on Mac). On a touch screen, press and hold it. The choice joins the box as a new sentence, so you can stack two choices.
 
 ## How to Continue the Story
+<!-- keywords: keep going, go on, next, more, proceed, advance, wait, skip turn -->
 
 1. Select **[Continue the Story]** under the choices. It shows once page one is on screen and the AI is done.
 2. Send the action.
@@ -30,6 +33,7 @@ To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on M
 The text is in brackets, so the narrator reads it as a push to keep going, not as something you do. **Settings** → **Output** → **Choices** → **Continue the Story** sets when it shows. See [Choices](Settings#choices).
 
 ## How to Turn Choices Off
+<!-- keywords: disable, hide, remove, options, suggestions, buttons, no choices -->
 
 1. Select the **?** button beside the action box. The **How to Play** dialog opens.
 2. Open the **Choices** tab.
@@ -38,6 +42,7 @@ The text is in brackets, so the narrator reads it as a push to keep going, not a
 The same checkbox is in **Settings** → **Output** → **Turn Extras**. With choices off, you write every action yourself.
 
 ## How to Direct the Story
+<!-- keywords: brackets, ooc, out of character, author, control, steer, force, outcome, tell the ai, square brackets -->
 
 1. In the action box, write your action as usual.
 2. Add what should happen in square brackets: *I climb on behind her. [She agrees, and they ride off.]*
@@ -48,6 +53,7 @@ The AI reads text in brackets as direction from the author, not as something you
 > 💡 Brackets direct one turn. For a fact the AI should keep in mind every turn, use the [Notes](#notes) tab.
 
 ## How to Attach Images to an Action
+<!-- keywords: picture, photo, screenshot, upload, paste, drop, vision, send image, add image -->
 
 1. Open **Settings** → **Output**.
 2. In the **Attachments** section, select the **Image Attachments** checkbox.
@@ -61,6 +67,7 @@ Each action takes up to 4 images. They go with that turn only. Select a thumbnai
 The attach button shows after the game starts, not on the opening turn.
 
 ## How to Re-generate a Turn
+<!-- keywords: redo, retry, reroll, re-roll, regenerate, try again, different answer, last turn, swipe, did not like -->
 
 1. Find the latest turn's action row, under its narration.
 2. Select **Re-generate Narration**.
@@ -70,6 +77,7 @@ The game goes back to the state before the turn and sends the same action again,
 To re-roll only the choices, select **Re-generate Choices** beside them.
 
 ## How to Edit Narration
+<!-- keywords: change, fix, rewrite, correct, ai text, response, reply, typo -->
 
 1. On a turn's action row, select **Edit**.
 2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
@@ -78,6 +86,7 @@ To re-roll only the choices, select **Re-generate Choices** beside them.
 Saving rewrites the turn's narration. The game reads the edited text for entities again. It also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
 
 ## How to Edit Your Action
+<!-- keywords: change, fix, typo, rewrite, my message, input, correct -->
 
 1. Right-click your action line, or press and hold it on a touch screen.
 2. Select **Edit**.
@@ -87,6 +96,7 @@ Saving rewrites the turn's narration. The game reads the edited text for entitie
 Only the action text and its images change. The narration stays as it is.
 
 ## How to Rewind to an Earlier Turn
+<!-- keywords: undo, go back, rollback, roll back, revert, previous, delete turns, restore, reset -->
 
 1. Go back to the turn you want to keep. In Pages, use the page buttons. In Chat, scroll up.
 2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
@@ -95,6 +105,7 @@ Only the action text and its images change. The narration stays as it is.
 > ⚠️ You can't undo a rewind. It removes every later turn, with its stats, its location, the entities the story invented in it, and its scene images. Your notes go back to that turn's notes.
 
 ## How to Read Earlier Turns
+<!-- keywords: history, scroll back, previous pages, past, log, look back, page number -->
 
 1. In Pages, select **Previous**, or a page number under the story.
 2. To jump far back, select the current page number, type a page in the box, and select **Go**.
@@ -103,6 +114,7 @@ Only the action text and its images change. The narration stays as it is.
 An earlier page is read-only. The side panel shows a banner, *Viewing turn n of total*, and the turn's notes, stats and location. In Chat, scroll up. **Jump to Latest** takes you back down.
 
 ## How to Change Location
+<!-- keywords: travel, move, go somewhere, map, place, teleport, walk, leave -->
 
 1. In the right panel, open the **Location** tab.
 2. Select **Current Location**. The **Change Location** dialog opens.
@@ -111,6 +123,7 @@ An earlier page is read-only. The side panel shows a banner, *Viewing turn n of 
 You move at once. Travel costs no turn and writes no narration. The narrator can also suggest a move: select **Go** in the *Move to …?* bar, or **Dismiss**.
 
 ## How to Export the Story
+<!-- keywords: save as text, download, txt, markdown, copy, transcript, share, print, log -->
 
 1. Select the **More narration options** button at the top right of the story.
 2. Select **Export Story**.
@@ -119,6 +132,7 @@ You move at once. Travel costs no turn and writes no narration. The narrator can
 The file holds every turn's narration. Markdown keeps the formatting; plain text doesn't. To keep your progress, use **Save Game** in the game menu instead.
 
 ## How to See What the AI Read
+<!-- keywords: context, prompt, debug, inspector, raw, request, sent, tokens, log -->
 
 1. Select the **Show the full AI context sent each turn** button at the top left. On mobile, open the **Menu** and select **AI Context**.
 2. Use the turn pager to pick a turn.
@@ -127,6 +141,7 @@ The file holds every turn's narration. Markdown keeps the formatting; plain text
 See [The AI Context Inspector](#the-ai-context-inspector) for the search and the highlights.
 
 ## How to Read a Turn Aloud
+<!-- keywords: tts, text to speech, voice, speak, audio, narrator voice, listen, kokoro, sound -->
 
 1. On the latest turn's action row, select **Text to Speech**. The **Text to Speech** dialog opens.
 2. Select **Load Model**. The voice model runs in your browser and needs WebGPU.
@@ -136,6 +151,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 **Stream narration audio** starts speaking each sentence as it arrives. **Highlight while speaking** marks the sentence you hear. **Unload Model** frees the memory the model uses. After the model loads, **Regenerate Audio** is under the turn's **More** button.
 
 ## How to Report an Error
+<!-- keywords: bug, crash, problem, failed, copy error, details, send feedback, broken -->
 
 1. On an error message, select **View Details →**. The **Error Details** dialog opens.
 2. Select **Copy** to copy the full details, or **Report Bug** to send them.
