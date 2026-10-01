@@ -211,7 +211,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - An answer is flagged as general knowledge when no docs section supports it. The prompt gives the model a positive contract for this case, and the session derives the flag from a marker the model must emit, not from the answer's wording.
 - History is capped by exchange count. Fetched section text from earlier exchanges is not resent; only the question and answer text is.
 - The language directive is the same one narration uses (Q11).
-- Attachments reuse the existing image intake and its cap. The attach control shows only when the active model accepts images (Q28).
+- Attachments reuse the existing image intake and its cap. The attach control shows only when the Image Attachments setting is on, which is the app's signal that the model reads images (Q28, ticket 25 ruling). Images go on the current question only.
 - The session takes a cancel signal. The window cancels on unmount and guards every async write.
 
 ### Current surface
