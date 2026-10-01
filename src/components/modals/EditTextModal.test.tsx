@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { EditTextModal } from './EditTextModal';
+import type { ImageAttachment } from '@/types';
 
 // The editing surface is a Lexical field whose caret jsdom cannot drive; these cases are about the modal's
 // own contract (seed, save, cancel, reseed), so it stands in as a textarea that records its props. The
@@ -12,6 +13,8 @@ vi.mock('@/components/prompt/PromptField', () => ({
     return <textarea aria-label={props.ariaLabel} value={props.value} onChange={(e) => props.onChange(e.target.value)} />;
   },
 }));
+
+const image = (id: string): ImageAttachment => ({ id, mime: 'image/webp', dataUrl: `data:image/webp;base64,${id}` });
 
 describe('EditTextModal', () => {
   it('shows the current text and saves edits, then closes', () => {
@@ -25,7 +28,7 @@ describe('EditTextModal', () => {
     fireEvent.change(box, { target: { value: 'hello world' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(onSave).toHaveBeenCalledWith('hello world');
+    expect(onSave).toHaveBeenCalledWith('hello world', []);
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -38,6 +41,26 @@ describe('EditTextModal', () => {
 
     expect(onSave).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("saves an action's images without the ones the player removed", () => {
+    const onSave = vi.fn();
+    render(<EditTextModal isOpen text="I show the map." images={[image('a'), image('b')]} onOpenChange={() => {}} onSave={onSave} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove attached image 1' }));
+    expect(screen.getAllByRole('button', { name: /^View attached image/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onSave).toHaveBeenCalledWith('I show the map.', [image('b')]);
+  });
+
+  it('brings a removed image back when the edit is canceled and reopened', () => {
+    const images = [image('a'), image('b')];
+    const { rerender } = render(<EditTextModal isOpen text="a" images={images} onOpenChange={() => {}} onSave={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove attached image 2' }));
+    rerender(<EditTextModal isOpen={false} text="a" images={images} onOpenChange={() => {}} onSave={() => {}} />);
+    rerender(<EditTextModal isOpen text="a" images={images} onOpenChange={() => {}} onSave={() => {}} />);
+    expect(screen.getAllByRole('button', { name: /^View attached image/ })).toHaveLength(2);
   });
 
   it('reseeds from text on each open, discarding edits abandoned on a prior open', () => {

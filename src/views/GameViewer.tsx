@@ -155,7 +155,7 @@ import { ReasoningChip } from "@/components/game/ReasoningChip";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
-import { addToPending, attachToTurn, pruneAttachments } from "../lib/actionAttachments";
+import { addToPending, attachToTurn, latestTurnAttachments, pruneAttachments } from "../lib/actionAttachments";
 import { useImageAttachments } from "../lib/useImageAttachments";
 import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
@@ -257,6 +257,8 @@ interface PendingTurn {
   action: string;
   /** An Opening Narration's resolved text; the turn plays it as page one. */
   writtenNarration?: string;
+  /** A regenerate's images, read before the rewind lets the prune drop them. */
+  resentImages?: ImageAttachment[];
 }
 
 /** What one playthrough remembers about its openings. Session state only, so a save never carries it. */
@@ -641,6 +643,7 @@ const GameViewer = ({
     setMemoryNotes,
     sceneImages,
     setSceneImages,
+    actionAttachments,
     setActionAttachments,
     pendingAttachments,
     setPendingAttachments,
@@ -1016,9 +1019,10 @@ const GameViewer = ({
     })();
   }, [devRoute?.attach, fullMessageHistory, mounted, setPendingAttachments, setActionAttachments]);
   // Images belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
-  // was re-generated.
+  // was re-generated. The controller marks a running turn at once: a regenerate starts inside an effect, and
+  // its user message can commit before `isWaitingForAI` does.
   useEffect(() => {
-    if (!isWaitingForAI) setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
+    if (!isWaitingForAI && !abortControllerRef.current) setActionAttachments((prev) => pruneAttachments(prev, fullMessageHistory));
   }, [isWaitingForAI, fullMessageHistory, setActionAttachments]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
@@ -1321,7 +1325,7 @@ const GameViewer = ({
       );
       return;
     }
-    pendingTurnRef.current = { action };
+    pendingTurnRef.current = { action, resentImages: latestTurnAttachments(actionAttachments, fullMessageHistory) };
     setPendingTurnNonce((n) => n + 1);
   };
 
@@ -2126,7 +2130,12 @@ const GameViewer = ({
    */
   const sendGameAction = async (
     action: string,
-    { writtenNarration, attachments }: { writtenNarration?: string; attachments?: ImageAttachment[] } = {},
+    { writtenNarration, attachments, resentImages }: {
+      writtenNarration?: string;
+      attachments?: ImageAttachment[];
+      /** The re-sent turn's images. They are kept even when the turn may not send them. */
+      resentImages?: ImageAttachment[];
+    } = {},
   ) => {
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
     stopCommandPreview(); // a real turn supersedes any command preview
@@ -2143,7 +2152,7 @@ const GameViewer = ({
       locationCount: locations.length,
       hasCurrentLocation: !!currentLocation,
       writtenNarration,
-      attachments,
+      attachments: resentImages ?? attachments,
       settings: turnSettings(),
       prompts: turnPrompts(),
     });
@@ -2199,8 +2208,10 @@ const GameViewer = ({
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
       // The images leave the action box with the text. A turn that may not carry them leaves them pending.
-      if (plan.attachments.length) {
-        const turnId = currentTurnIdRef.current;
+      // A regenerate keeps its turn's images and leaves the box alone.
+      const turnId = currentTurnIdRef.current;
+      if (resentImages) setActionAttachments((prev) => attachToTurn(prev, turnId, resentImages));
+      else if (plan.attachments.length) {
         setActionAttachments((prev) => attachToTurn(prev, turnId, plan.attachments));
         setPendingAttachments([]);
       }
@@ -2593,7 +2604,7 @@ const GameViewer = ({
     if (pendingTurnNonce === 0) return;
     const pending = pendingTurnRef.current;
     pendingTurnRef.current = null;
-    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration });
+    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration, resentImages: pending.resentImages });
     // sendGameAction is deliberately not a dependency — we want this render's (post-restore) closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTurnNonce]);

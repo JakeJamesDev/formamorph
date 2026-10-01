@@ -6,23 +6,30 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { cn } from "@/lib/utils";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { useMorphResize } from "@/lib/useMorphFullscreen";
+import { AttachmentThumbs } from "@/components/game/AttachmentThumbs";
+import type { ImageAttachment } from "@/types";
 
 // Narration is prose, not a template: `plainVocabulary` chips nothing, so a brace the AI happened to write
 // stays the text it is.
 const VOCABULARY = plainVocabulary();
+const NO_IMAGES: ImageAttachment[] = [];
 
 export const EditTextModal = ({
   isOpen,
   onOpenChange,
   text,
+  images = NO_IMAGES,
   onSave
 }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   text: string;
-  onSave: (text: string) => void;
+  /** An action's attached images. The player can remove them; the removal lands on Save. */
+  images?: ImageAttachment[];
+  onSave: (text: string, images: ImageAttachment[]) => void;
 }) => {
   const [editedText, setEditedText] = useState(text);
+  const [keptImages, setKeptImages] = useState(images);
   const [fullscreen, setFullscreen] = useState(false);
   // This window grows in place rather than raising a second one over itself, so the trip is the dialog
   // travelling between its own two sizes — the same animation, measured on one element.
@@ -31,10 +38,10 @@ export const EditTextModal = ({
   // Reseed from `text` on each open, not on `text` changing — otherwise cancelling and reopening the same
   // page (unchanged `text`) would leave the discarded edits sitting in the editor. Fullscreen resets with
   // it, so a dialog never reopens filling the screen for a small edit.
-  useResetOnOpen(isOpen, () => { setEditedText(text); setFullscreen(false); });
+  useResetOnOpen(isOpen, () => { setEditedText(text); setKeptImages(images); setFullscreen(false); });
 
   const handleSave = () => {
-    onSave(editedText);
+    onSave(editedText, keptImages);
     onOpenChange(false);
   };
 
@@ -79,6 +86,11 @@ export const EditTextModal = ({
             fullscreen={fullscreen}
           />
         </div>
+        <AttachmentThumbs
+          images={keptImages}
+          onRemove={(id) => setKeptImages((prev) => prev.filter((image) => image.id !== id))}
+          className="pt-1.5"
+        />
         {/* A row at every width: two short buttons never need the stacked form. */}
         <DialogFooter className="flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

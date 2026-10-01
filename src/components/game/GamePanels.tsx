@@ -36,7 +36,7 @@ import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, ImagePlus, type LucideIcon } from "lucide-react";
 import { toast } from 'react-toastify';
-import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS, addToPending, pastedImageFiles, removePending, turnAttachments } from '@/lib/actionAttachments';
+import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS, addToPending, pastedImageFiles, pageTurnId, removePending, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
 import { useImageDropTarget } from '@/lib/useImageDropTarget';
 import { useImageAttachments } from '@/lib/useImageAttachments';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -589,6 +589,7 @@ export const MiddlePanel = ({
     viewContinueUsed,
     isGameStarted,
     actionAttachments,
+    setActionAttachments,
     pendingAttachments,
     setPendingAttachments,
   } = useGameplay();
@@ -727,7 +728,7 @@ export const MiddlePanel = ({
   }
 
   // A turn's Edit and Rewind to Here target that turn's own page, never the viewed one.
-  const [editTarget, setEditTarget] = useState<{ kind: 'narration' | 'action'; page: number; text: string } | null>(null);
+  const [editTarget, setEditTarget] = useState<{ kind: 'narration' | 'action'; page: number; text: string; turnId?: string } | null>(null);
   const [rewindPage, setRewindPage] = useState<number | null>(null);
   const actionsFor = (turn: ChatBubbleTurn) => {
     const page = turn.index + 1;
@@ -756,8 +757,12 @@ export const MiddlePanel = ({
       },
     );
   };
+  const editAction = (page: number, text: string) => {
+    setEditTarget({ kind: 'action', page, text, turnId: pageTurnId(fullMessageHistory, page) });
+    setIsEditMode(true);
+  };
   const playerActionsFor = (turn: ChatPlayerTurn) => playerBubbleActions({ live: turn.live, busy: isWaitingForAI }, {
-    edit: () => { setEditTarget({ kind: 'action', page: turn.index + 1, text: turn.text }); setIsEditMode(true); },
+    edit: () => { editAction(turn.index + 1, turn.text); },
     copy: () => copyWithToast(turn.text),
   });
 
@@ -969,11 +974,15 @@ export const MiddlePanel = ({
             isOpen={isEditMode}
             onOpenChange={(open) => { setIsEditMode(open); if (!open) setEditTarget(null); }}
             text={editTarget?.text ?? currentPageText}
-            onSave={(text) => {
+            // Removal shows with the setting off too: it sends nothing, and it lets the player take an image back.
+            images={editTarget?.kind === 'action' ? turnAttachments(actionAttachments, editTarget.turnId) : undefined}
+            onSave={(text, images) => {
               const page = editTarget?.page ?? currentPage;
               if (editTarget?.kind === 'action') {
                 // Rewrites only the turn's user message; the turn's memory digest stays as it is.
                 setFullMessageHistory(prev => rewriteTurnAction(prev, page, text, 2));
+                const { turnId } = editTarget;
+                if (turnId) setActionAttachments((prev) => setTurnAttachments(prev, turnId, images));
                 return;
               }
               // Only the most recent page drives the live gameplay text (used by TTS, etc.).

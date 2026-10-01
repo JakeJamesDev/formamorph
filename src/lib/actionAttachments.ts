@@ -4,7 +4,8 @@
 import type { ChatMessage, ImageAttachment } from '@/types';
 import { fileToDataUrl } from './imageDrop';
 import { dataUrlMime, optimizeToWebpDataUrl } from './imageOptim';
-import { pruneTurnMap } from './turnDigest';
+import { parseTurnContent, pruneTurnMap } from './turnDigest';
+import { pageAssistantIndex } from './turnHistory';
 
 /** How many images one action carries. */
 export const MAX_ATTACHMENTS = 4;
@@ -72,6 +73,25 @@ export function attachToTurn(map: AttachmentMap, turnId: string, attachments: Im
 /** A turn's images, in attach order. */
 export const turnAttachments = (map: AttachmentMap, turnId: string | undefined): ImageAttachment[] =>
   (turnId && map[turnId]) || EMPTY;
+
+/** Replace a turn's images. None left drops the entry. */
+export function setTurnAttachments(map: AttachmentMap, turnId: string, attachments: ImageAttachment[]): AttachmentMap {
+  if (attachments.length) return { ...map, [turnId]: attachments };
+  if (!(turnId in map)) return map;
+  const { [turnId]: _dropped, ...rest } = map;
+  return rest;
+}
+
+/** The images of the newest turn in the history: the ones a regenerate of that turn sends again. */
+export const latestTurnAttachments = (map: AttachmentMap, history: ChatMessage[]): ImageAttachment[] =>
+  turnAttachments(map, turnIdOf(history.findLast((message) => message.role === 'assistant')));
+
+/** The id of the turn on `page`. Undefined when its narration carries none. */
+export const pageTurnId = (history: ChatMessage[], page: number): string | undefined =>
+  turnIdOf(history[pageAssistantIndex(page, 2)]);
+
+const turnIdOf = (message: ChatMessage | undefined): string | undefined =>
+  message?.role === 'assistant' ? parseTurnContent(message.content)?.turnId : undefined;
 
 /** Forget the images of turns no longer in the history: a failed, rolled-back or re-generated turn. */
 export const pruneAttachments = (map: AttachmentMap, history: ChatMessage[]): AttachmentMap => pruneTurnMap(map, history);
