@@ -38,6 +38,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The ⓘ help for Continue the Story in Settings now says the button puts its text in the action box for you to send.** Before, it said the button sends the turn at once.
   - **The wiki's World Format page lists every world file field, with steps to add a stat, trait or entity by hand.** It shows the chip form for hand-written text and which older fields still load. Before, it listed a `list` stat type that was removed, named a **Begin** button that doesn't exist, and left out placeholders, Blueprints, links, persona marks and openings on locations.
   - **Settings now reads the Context Window from a llama.cpp server.** Before, detection found no value, so the window showed the built-in default or a number from another endpoint. Each detected value now stays with its endpoint and model.
+  - **Stat code now reads and switches the played persona's own traits through `persona.traits`.** Before, `traits['Scarred'].enabled` read false for a trait the persona holds, because `traits` lists only the world's own traits. `persona.traits['Scarred'].enabled = false` switches the persona's trait off, as a `traits` write does. `persona.name` gives the persona's name. With **None** picked, `persona` is the Custom Persona entity. The code editor completes the persona trait names, and **Test Code** runs with no persona.
 
 ---
 

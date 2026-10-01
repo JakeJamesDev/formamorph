@@ -465,6 +465,8 @@ export interface CodeTraitSwitch {
   traitId: string;
   enabled: boolean;
   by: string;
+  /** The entity bearer whose own trait this switches. Absent ⇒ the player's world trait. */
+  ownerId?: string;
 }
 
 /** Every bearer's traits and active set, as the gate module reads them. */
@@ -517,11 +519,14 @@ function sameCascadeOff(a: CascadeOffTraitIds, b: CascadeOffTraitIds): boolean {
     && owners.every((owner) => a[owner].length === b[owner]?.length && a[owner].every((id, i) => b[owner][i] === id));
 }
 
-/** `state` with `traitId` off its cascade-off list, so it never returns; the same state when it was not listed. */
-function withoutCascadeOff(state: TraitRuntimeState, traitId: string): TraitRuntimeState {
+/** `state` with `traitId` off its cascade-off list, so it never returns; the same state when it was not listed.
+ *  With `ownerId`, only that owner's list. */
+function withoutCascadeOff(state: TraitRuntimeState, traitId: string, ownerId?: string): TraitRuntimeState {
   const lists = state.cascadeOffTraitIds ?? {};
-  if (!Object.values(lists).some((ids) => ids.includes(traitId))) return state;
-  const next = Object.fromEntries(Object.entries(lists).map(([owner, ids]) => [owner, ids.filter((id) => id !== traitId)]));
+  const mine = (owner: string) => ownerId === undefined || owner === ownerId;
+  if (!Object.entries(lists).some(([owner, ids]) => mine(owner) && ids.includes(traitId))) return state;
+  const next = Object.fromEntries(Object.entries(lists)
+    .map(([owner, ids]) => [owner, mine(owner) ? ids.filter((id) => id !== traitId) : ids]));
   return { ...state, cascadeOffTraitIds: compactCascadeOff(next) };
 }
 
@@ -696,6 +701,7 @@ export function switchPlayerTrait(
  * Always On trait. Code does not ignore gates: a switch-on of a locked trait retires no sibling, and the
  * settle turns it off again. A switch to the state a trait already holds does nothing: switching an off trait
  * off again would reverse its record a second time. It does take a cascade-off trait off its list, so the trait stays off.
+ * A switch with an `ownerId` moves that bearer's own trait by the same rules, in its own lists.
  */
 export function applyCodeTraitSwitches(
   state: TraitRuntimeState,
@@ -705,7 +711,13 @@ export function applyCodeTraitSwitches(
 ): { state: TraitRuntimeState; log: string[] } {
   let next = state;
   const log: string[] = [];
-  for (const { traitId, enabled, by } of switches) {
+  for (const { traitId, enabled, by, ownerId } of switches) {
+    if (ownerId !== undefined && ownerId !== WORLD_OWNER) {
+      const switched = codeSwitchOwned(next, ownerId, traitId, enabled, by, world, nameOf);
+      next = switched.state;
+      log.push(...switched.log);
+      continue;
+    }
     const acquired = next.traits.find((t) => t.id === traitId);
     const trait = acquired ?? world.traits.find((t) => t.id === traitId);
     if (!trait || isAlwaysOn(world.traits.find((t) => t.id === traitId) ?? trait)) continue;
@@ -723,6 +735,36 @@ export function applyCodeTraitSwitches(
     log.push(...settled.log);
   }
   return { state: next, log };
+}
+
+/** One code switch of a bearer's own trait, then a settle: the world-trait rules of
+ *  {@link applyCodeTraitSwitches}, in the bearer's lists and groups. */
+function codeSwitchOwned(
+  state: TraitRuntimeState, ownerId: string, traitId: string, enabled: boolean, by: string, world: TraitWorld,
+  nameOf: (trait: Trait) => string,
+): { state: TraitRuntimeState; log: string[] } {
+  const owned = ownedTrait(world, traitId, ownerId);
+  if (!owned || isAlwaysOn(owned.trait)) return { state, log: [] };
+  if (ownedOn(state, ownerId, traitId) === enabled) {
+    return { state: enabled ? state : withoutCascadeOff(state, traitId, ownerId), log: [] };
+  }
+  const { owner, trait } = owned;
+  const chosen = !!state.ownedTraits?.[ownerId]?.chosen.includes(traitId);
+  const retired = enabled && !isLocked(state, world, ownerId, traitId)
+    ? exclusiveSiblings(trait, owner.traits, owner.groups)
+      .filter((id) => ownedOn(state, ownerId, id))
+      .flatMap((id) => owner.traits.filter((t) => t.id === id))
+    : [];
+  let switched = state;
+  for (const sibling of retired) switched = flipBearerTrait(switched, ownerId, sibling, false, world);
+  switched = flipBearerTrait(switched, ownerId, trait, enabled, world);
+  const label = labeler(world, nameOf);
+  const kind: TraitSwitchKind = !chosen ? 'acquired' : enabled ? 'on' : 'off';
+  const settled = settleTraits(switched, world, nameOf, by);
+  return {
+    state: settled.state,
+    log: [...traitSwitchLog(label(trait, ownerId), kind, retired.map((t) => label(t, ownerId)), by), ...settled.log],
+  };
 }
 
 /**

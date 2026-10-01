@@ -67,6 +67,9 @@ export interface ResolvedWorld {
   traitEntities: Entity[];
   /** The library entities in the playthrough, resolved the same way; their nodes sit last in the tree. */
   traitLibrary: Entity[];
+  /** Every entity in play as authored, chips and all: the world's, then the library's. Stat code alone reads
+   *  it, for code names that no roll moves. */
+  codeEntities: Entity[];
   /** Every pin in force in world-level text: the player's active traits', the current location's, each live
    *  stat's band's, and the Code Pins, with value pins settled underneath. `pinSet.world`. */
   pins: Record<string, string>;
@@ -302,6 +305,7 @@ export function useResolvedWorld(): ResolvedWorld {
     () => resolveOwnedNames(resolveEntityNames(rawLibrary, resolveNameOf)),
     [resolveOwnedNames, rawLibrary, resolveNameOf],
   );
+  const codeEntities = useMemo(() => [...rawEntities, ...rawLibrary], [rawEntities, rawLibrary]);
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
   // the object it stored is a snapshot of how the name read on arrival. Falls back to the stored copy for a
@@ -321,7 +325,7 @@ export function useResolvedWorld(): ResolvedWorld {
   return {
     entities, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
-    playerStats, viewStats, traitOrder, traitEntities, traitLibrary, pins, pinSet, pinsFor,
+    playerStats, viewStats, traitOrder, traitEntities, traitLibrary, codeEntities, pins, pinSet, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
     resolveEntityText, resolveEntityFor,
   };

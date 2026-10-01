@@ -225,6 +225,8 @@ export interface CodeSession {
   setPlaceholders: (placeholders: CodePlaceholders | undefined) => void;
   /** The world's trait names, for completions and name checks. Re-lints when the list changes. */
   setTraits: (traits: readonly string[] | undefined) => void;
+  /** The trait names a persona can hold, for completions and name checks. Re-lints when the list changes. */
+  setPersonaTraits: (names: readonly string[] | undefined) => void;
   focus: () => void;
   destroy: () => void;
 }
@@ -245,6 +247,8 @@ export interface CodeSessionOptions {
   placeholders?: CodePlaceholders;
   /** The world's trait names. Absent, trait names are neither offered nor checked. */
   traits?: readonly string[];
+  /** The trait names a persona can hold. Absent, persona trait names are neither offered nor checked. */
+  personaTraits?: readonly string[];
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
   onUpdate?: () => void;
@@ -266,12 +270,15 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   let selfName: string | undefined = options.selfName;
   let placeholders: CodePlaceholders | undefined = options.placeholders;
   let traits: readonly string[] | undefined = options.traits;
+  let personaTraits: readonly string[] | undefined = options.personaTraits;
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
    *  what the sandbox exposes. */
   const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = codeCompletions(doc, context.pos, { surface, slots: options.slots, statNames, selfName, placeholders, traits });
+    const result = codeCompletions(doc, context.pos, {
+      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits,
+    });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
@@ -281,7 +288,9 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   };
 
   const codeLinter = linter(
-    (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), { surface, slots: options.slots, statNames, selfName, placeholders, traits }),
+    (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), {
+      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits,
+    }),
     {
       delay: 400,
       needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(worldListsChanged))),
@@ -410,6 +419,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     setTraits(next) {
       if (next === traits) return;
       traits = next;
+      relint();
+    },
+    setPersonaTraits(next) {
+      if (next === personaTraits) return;
+      personaTraits = next;
       relint();
     },
     setSurface(next) {

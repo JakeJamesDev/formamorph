@@ -5,7 +5,7 @@ import {
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
-import { sandboxTraits, type StatCodeTraits } from './statCodeTraits';
+import { codePersona, sandboxPersona, sandboxTraits, type CodePersona, type StatCodeTraits } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
   applyCodeTraitSwitches, statTraitsInForce, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
@@ -46,7 +46,7 @@ export interface StatCodeTurn {
   /** Regen applied this turn, by stat id. */
   regenApplied: Readonly<Record<string, number>>;
   clock: StatClock;
-  /** What `traits` reads and switches. Bounds re-derive under the ones in force. */
+  /** What `traits` and `persona` read and switch. Bounds re-derive under the ones in force. */
   traits: StatCodeTraits;
   /** What `placeholders` reads. Absent, the map is empty. */
   placeholders?: StatCodePlaceholderSet;
@@ -142,11 +142,14 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
+  const persona = coded.length ? codePersona(turn.traits, placeholderDefs) : null;
   const writes = new Map<string, { value: number | null; bounds: CodeBounds | null }>();
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
-  const traitWritesByStat = new Map<string, readonly TraitWrite[]>();
+  const traitWritesByStat = new Map<string, StatTraitWrites>();
   await Promise.all(coded.map(async (stat) => {
-    const result = await executeStatCode(boxCode(stat, timing), named, stat, { clock: turn.clock, turn: inputs, placeholders, traits });
+    const result = await executeStatCode(boxCode(stat, timing), named, stat, {
+      clock: turn.clock, turn: inputs, placeholders, traits, ...(persona ? { persona: sandboxPersona(persona) } : {}),
+    });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
       return;
@@ -155,7 +158,9 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
       writes.set(stat.id, { value: result.value, bounds: result.bounds ? { ...stat.codeBounds, ...result.bounds } : null });
     }
     if (result.placeholders) placeholderWritesByStat.set(stat.id, result.placeholders);
-    if (result.traits) traitWritesByStat.set(stat.id, result.traits);
+    if (result.traits || result.personaTraits) {
+      traitWritesByStat.set(stat.id, { world: result.traits ?? [], persona: result.personaTraits ?? [] });
+    }
     if (result.unknownPlaceholders) {
       console.warn(`Stat ${stat.name} wrote placeholders the world does not have: ${result.unknownPlaceholders.join(', ')}`);
     }
@@ -164,6 +169,12 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     }
     if (result.acquiredWrites) {
       console.warn(`Stat ${stat.name} wrote acquired on: ${result.acquiredWrites.join(', ')}`);
+    }
+    if (result.unknownPersonaTraits) {
+      console.warn(`Stat ${stat.name} switched persona traits the persona does not have: ${result.unknownPersonaTraits.join(', ')}`);
+    }
+    if (result.personaAcquiredWrites) {
+      console.warn(`Stat ${stat.name} wrote acquired on persona traits: ${result.personaAcquiredWrites.join(', ')}`);
     }
   }));
   const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat);
@@ -183,7 +194,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   };
   const switched = applyCodeTraitSwitches(
     before,
-    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, placeholderDefs, turn.statNameOf),
+    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, persona, placeholderDefs, turn.statNameOf),
     turn.traits.world, turn.traitNameOf,
   );
   const active = statTraitsInForce(switched.state, turn.traits.world);
@@ -213,24 +224,40 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   return { stats, moved, boundsChanged, pinWrites, ...(traitResult ? { traits: traitResult } : {}) };
 }
 
-/** Each stat's trait switches keyed by trait, laid in stat order so the later stat wins and its switch lands
- *  where that stat stands. A name reaches the last authored trait carrying it, as the sandbox map does. */
+/** One stat's switches: through `traits`, then through `persona.traits`. */
+interface StatTraitWrites {
+  world: readonly TraitWrite[];
+  persona: readonly TraitWrite[];
+}
+
+/** Each stat's trait switches keyed by bearer and trait, laid in stat order so the later stat wins and its
+ *  switch lands where that stat stands. A name reaches the last trait carrying it, as the sandbox map does. */
 function traitSwitchesInStatOrder(
   stats: readonly PlayerStat[],
-  writesByStat: ReadonlyMap<string, readonly TraitWrite[]>,
+  writesByStat: ReadonlyMap<string, StatTraitWrites>,
   traits: StatCodeTraits,
+  persona: CodePersona | null,
   placeholders: readonly Placeholder[],
   /** The switching stat's name as the player reads it — the log line names it. */
   statNameOf: (stat: PlayerStat) => string,
 ): CodeTraitSwitch[] {
   const idByName = new Map(traits.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
+  const personaIdByName = new Map((persona?.traits ?? []).map((trait) => [trait.name, trait.id]));
   const out = new Map<string, CodeTraitSwitch>();
+  const lay = (key: string, at: CodeTraitSwitch) => {
+    out.delete(key);
+    out.set(key, at);
+  };
   for (const stat of stats) {
-    for (const write of writesByStat.get(stat.id) ?? []) {
+    const written = writesByStat.get(stat.id);
+    for (const write of written?.world ?? []) {
       const traitId = idByName.get(write.name);
-      if (traitId === undefined) continue;
-      out.delete(traitId);
-      out.set(traitId, { traitId, enabled: write.enabled, by: statNameOf(stat) });
+      if (traitId !== undefined) lay(traitId, { traitId, enabled: write.enabled, by: statNameOf(stat) });
+    }
+    for (const write of written?.persona ?? []) {
+      const traitId = personaIdByName.get(write.name);
+      if (traitId === undefined || !persona?.id) continue;
+      lay(`${persona.id}/${traitId}`, { traitId, enabled: write.enabled, by: statNameOf(stat), ownerId: persona.id });
     }
   }
   return [...out.values()];

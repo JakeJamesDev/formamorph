@@ -28,6 +28,8 @@ vi.mock('@/contexts/GameDataContext', () => ({
     stats: [store.stat],
     placeholders: store.placeholders,
     traits: [],
+    traitGroups: [],
+    entities: [],
     placementLetters: new Map(),
     placeholderOwners: new Map(),
     updateStat: (next: Stat) => {

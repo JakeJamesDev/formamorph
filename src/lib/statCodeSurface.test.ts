@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { phNode } from '@/test/sandboxPlaceholders';
 import { executeStatCode, STAT_CLOCK_VARS, type CodeBoundField } from './statCodeExecutor';
 import {
-  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, LANGUAGE_NAMES, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
+  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
   SANDBOX_UNDOCUMENTED_GLOBALS, SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import { runStatCodeTurn } from './statCodeTurn';
@@ -99,6 +99,24 @@ describe('the described surface against the sandbox that provides it', () => {
     const result = await executeStatCode('traits.Brave.enabled = true;', stats, stats[0],
       { traits: [{ name: 'Brave', enabled: false, acquired: false }] });
     expect(result.traits).toEqual([{ name: 'Brave', enabled: true }]);
+  });
+
+  const persona = { name: 'Mira', traits: [{ name: 'Scarred', enabled: true, acquired: true }] };
+
+  it.each([
+    ['persona', PERSONA_FIELDS],
+    ['persona.traits.Scarred', TRAIT_ENTRY_FIELDS],
+  ] as const)('describes every member of %s, and no member it does not', async (path, described) => {
+    const expected = described.map(entry => entry.name).sort().join(',');
+    await expect(executeStatCode(
+      `return Object.keys(${path}).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
+      stats, stats[0], { persona },
+    )).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('reads a write to a persona trait’s enabled back out of the sandbox', async () => {
+    const result = await executeStatCode('persona.traits.Scarred.enabled = false;', stats, stats[0], { persona });
+    expect(result.personaTraits).toEqual([{ name: 'Scarred', enabled: false }]);
   });
 
   it('offers self as the stat’s own entry in stats', async () => {

@@ -657,7 +657,7 @@ const GameViewer = ({
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
-    resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary,
+    resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary, codeEntities,
   } = useResolvedWorld();
   usePersonaNotice();
   // The session's rolls for the init effect's pins, and its Placeholder Set with the library persona's list.
@@ -2699,7 +2699,7 @@ const GameViewer = ({
         const result = await runStatCodeTurn({
           timing,
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
-          traits: { ...held, world: gatedWorld() },
+          traits: { ...held, world: gatedWorld(), entities: codeEntities },
           placeholders: {
             // The world's list only: stat code is authored with the world and never reads a persona's.
             placeholders: worldPlaceholders, owners: placeholderOwners, rolls: sessionRolls,
@@ -2751,7 +2751,7 @@ const GameViewer = ({
       }
     },
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, sessionRolls, pinsFor,
-      traits, authoredStats, resolveTraitText, gatedWorld, inForceOn,
+      traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
