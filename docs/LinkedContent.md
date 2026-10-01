@@ -45,15 +45,6 @@ A linked copy of your own item also updates the next time you open its world.
 3. **Show** starts on **Needs Attention**. Set each offer to **Approved**, **Unreviewed** or **Declined**. **Mark Reviewed** accepts a changed source and keeps your answer.
 4. Select **Save Changes**.
 
-## How to Import an Entity or Dictionary File
-
-1. In the library, select **Import Entity** or **Import Dictionary**.
-2. Pick one file.
-3. If the file names worlds, the import review opens. Under **Add to Your Worlds**, check each world that should get a linked copy.
-4. Select **Import Entity** or **Import Dictionary**.
-
-See [Importing an Entity or Dictionary File](#importing-an-entity-or-dictionary-file).
-
 ## How to Repair a Missing Source
 
 1. In the World Editor, open the Test Bench's **Issues** list.
@@ -234,9 +225,9 @@ A world file bundles its entities and dictionaries, and records what each linked
 
 ### Importing an Entity or Dictionary File
 
-An entity or dictionary file carries the entity or dictionary and the worlds it is offered for.
+An entity or dictionary file carries the entity or dictionary and the worlds it is offered for. For the import steps, see [How to Import an Entity](Library#how-to-import-an-entity) and [How to Import a Dictionary](Library#how-to-import-a-dictionary).
 
-When you import one file that names worlds or a source, a review opens first, titled **Import Entity** or **Import Dictionary**.
+When you import one file that names worlds or a source, a review opens first, titled **Import Entity** or **Import Dictionary**. Select the worlds you want, then the **Import Entity** or **Import Dictionary** button. **Cancel** imports nothing.
 
 | Section | What it does |
 |---|---|
