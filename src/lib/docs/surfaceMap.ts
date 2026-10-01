@@ -47,6 +47,12 @@ const ENTITY_OWNED_PLACEHOLDERS: DocTarget = {
 const ENTITY_OPENINGS: DocTarget = { page: 'World-Editor-Openings', anchor: 'entity-openings' };
 // One table row per prompt says what it does in a turn and when it shows.
 const THE_PROMPTS: DocTarget = { page: 'Prompts', anchor: 'the-prompts' };
+const community = (anchor: string): DocTarget => ({ page: 'Community-Creations', anchor });
+const PUBLISH_DIALOG = community('the-publish-dialog');
+const EVENT_POSTERS = community('event-posters-and-banners');
+const USER_PROFILE = community('the-user-profile-dialog');
+const ACCOUNT_DELETION = community('account-deletion');
+const BUGS_AND_SUGGESTIONS = community('bugs-and-suggestions');
 const THE_LIBRARY_TABS: DocTarget = { page: 'Library', anchor: 'the-library-tabs' };
 const THE_GROUP_DIALOGS: DocTarget = { page: 'Library', anchor: 'the-group-dialogs' };
 
@@ -118,26 +124,26 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'settingsToolEdit.parameters': { page: 'Tools', anchor: 'parameters' },
   'settingsToolEdit.handler': { page: 'Tools', anchor: 'handler' },
 
-  community: { page: 'Community-Creations', anchor: '-community-creations' },
-  ...Object.fromEntries(
-    tabsOf('community').map((id) => [id, { page: 'Community-Creations', anchor: id === 'community.contest' ? 'contests' : 'the-tabs' }]),
-  ),
-  publish: { page: 'Community-Creations', anchor: 'the-publish-dialog' },
-  'publish.world': { page: 'Community-Creations', anchor: 'the-publish-dialog' },
-  'publish.prompt': { page: 'Community-Creations', anchor: 'publishing-a-prompt-preset' },
-  eventAck: { page: 'Community-Creations', anchor: 'event-posters-and-banners' },
-  ...Object.fromEntries(tabsOf('eventAck').map((id) => [id, { page: 'Community-Creations', anchor: 'event-posters-and-banners' }])),
-  ageGate: { page: 'Community-Creations', anchor: 'the-adult-content-warning' },
-  auth: { page: 'Community-Creations', anchor: 'login-and-register' },
-  privacyPolicy: { page: 'Community-Creations', anchor: 'the-privacy-policy' },
-  profile: { page: 'Community-Creations', anchor: 'the-user-profile-dialog' },
-  'profile.messages': { page: 'Community-Creations', anchor: 'the-user-profile-dialog' },
-  'profile.notifications': { page: 'Community-Creations', anchor: 'the-follow-feed' },
-  'profile.terms': { page: 'Community-Creations', anchor: 'publishing-terms' },
-  deleteAccount: { page: 'Community-Creations', anchor: 'account-deletion' },
-  deletionCancelled: { page: 'Community-Creations', anchor: 'account-deletion' },
-  feedbackHub: { page: 'Community-Creations', anchor: 'bugs-and-suggestions' },
-  ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, { page: 'Community-Creations', anchor: 'bugs-and-suggestions' }])),
+  community: community('opening-community-creations'),
+  // One table row per tab says what it holds.
+  ...Object.fromEntries(tabsOf('community').map((id) => [id, community('the-tabs')])),
+  'community.contest': community('contests'),
+  publish: PUBLISH_DIALOG,
+  'publish.world': PUBLISH_DIALOG,
+  'publish.prompt': community('publishing-a-prompt-preset'),
+  eventAck: EVENT_POSTERS,
+  ...Object.fromEntries(tabsOf('eventAck').map((id) => [id, EVENT_POSTERS])),
+  ageGate: community('the-adult-content-warning'),
+  auth: community('login-and-register'),
+  privacyPolicy: community('the-privacy-policy'),
+  profile: USER_PROFILE,
+  'profile.messages': USER_PROFILE,
+  'profile.notifications': community('the-follow-feed'),
+  'profile.terms': community('publishing-terms'),
+  deleteAccount: ACCOUNT_DELETION,
+  deletionCancelled: ACCOUNT_DELETION,
+  feedbackHub: BUGS_AND_SUGGESTIONS,
+  ...Object.fromEntries(tabsOf('feedbackHub').map((id) => [id, BUGS_AND_SUGGESTIONS])),
 
   'worldEditor.overview': { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   'worldEditor.stats': { page: 'World-Editor-Stats', anchor: '-world-editor-stats' },
