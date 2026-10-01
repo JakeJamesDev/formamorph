@@ -383,7 +383,7 @@ describe('a request that fails', () => {
 });
 
 describe('an answer that did not come from the guide', () => {
-  const NOTICE = 'Not from the guide. This answer can be wrong about Formamorph.';
+  const NOTICE = 'This answer is not from the guide. It can be wrong about Formamorph.';
 
   it('shows the notice above the answer and the nearest sections in place of the sources, with no marker', async () => {
     // Lookup mode sends only the best hit, so the nearest sections are more than the sources.

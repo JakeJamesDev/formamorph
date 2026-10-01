@@ -1,6 +1,6 @@
 # 24: General-knowledge flag
 
-Status: in-progress
+Status: ready-for-human
 Base: 8fa13c68
 Blocked by: 20 — Ask a question
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -26,11 +26,37 @@ Recommended model rationale: the marker contract must hold on small models, and 
 
 ## Acceptance criteria
 
-- [ ] A stream with the marker yields a flagged answer with the marker removed from the text
-- [ ] A marker split across two chunks is read and removed
-- [ ] No sections sent and no marker: flagged. Sections sent and no marker: not flagged
-- [ ] A flagged answer shows the nearest sections; a grounded answer shows sources and no flag
-- [ ] The flag uses an approved pattern, with `verify-ui` evidence in both themes
-- [ ] Probe numbers for both error directions are in the handover
-- [ ] Changelog: folded into the Formaquestion In Progress entry
-- [ ] Four gates green
+- [x] A stream with the marker yields a flagged answer with the marker removed from the text
+- [x] A marker split across two chunks is read and removed
+- [x] No sections sent and no marker: flagged. Sections sent and no marker: not flagged
+- [x] A flagged answer shows the nearest sections; a grounded answer shows sources and no flag
+- [x] The flag uses an approved pattern, with `verify-ui` evidence in both themes
+- [x] Probe numbers for both error directions are in the handover
+- [x] Changelog: folded into the Formaquestion In Progress entry
+- [x] Four gates green
+
+## Handover
+
+Built: `generalKnowledge.ts` reads and removes the `[NOT IN GUIDE]` marker. A start that can still grow into the marker stays hidden while the stream runs, and after a Stop. The prompt asks for the marker alone on the first line. The session reads it at any place in the answer, so a misplaced marker still flags and never shows. A flagged answer gets pattern 5 above it, and **Nearest Sections** (a fresh search for the question) in place of **Sources**. The notice copy follows Writing Guide rule 4.5: "This answer is not from the guide. It can be wrong about Formamorph." The prototype line had no subject.
+
+Probe (`help-probe.cli.ts --flag --lookup --alt <base prompt>`, cloud default endpoint, 21 cases x 5 runs, one batch). The cloud endpoint refuses function calls, so cloud players get retrieval mode and the lookup arm failed (HTTP 400, 105 requests).
+
+| Retrieval mode, new prompt | n | flagged | wanted |
+|---|---|---|---|
+| Covered, right section sent | 50 | 0% | 0% |
+| Covered, search missed the section (player wording) | 30 | 33% | 100% |
+| Not covered (5 cases) | 25 | 100% | 100% |
+| Control: covered question with another task's sections | 80 | 75% | 100% |
+
+- Wrongly flagged: 0 of 50 when the right section was sent.
+- Wrongly left unflagged: 0 of 25 on questions the guide does not cover. In the control, 20 of 80. All 20 are 4 pairs (publish and import questions, each 0 of 5) whose stand-in sections hold a near topic. There the model answered from the wrong section, for example Restore for "import a world". The 4 player-wording misses that stayed unflagged are the same kind.
+- Every marker was on the first line (100%).
+- Answer quality did not drop against the base prompt in the same batch: covered, all, complete 63% vs 63%; facts 69% vs 66%.
+
+Gates after the review fold-in: typecheck, lint (0 errors), test (16054 passed, 139 s), build green. `verify-ui`: design-system reference, both themes, warning tint and icon read from computed styles.
+
+Open:
+- Lookup-mode flag numbers need an endpoint that takes function calls (Cydonia, local). Not run, per the cloud-first test policy.
+- A flagged answer goes back in history without its marker, so the model sees its own unmarked general answer on a follow-up. Re-adding the marker to history is a small change. It changes the request, so it needs a probe that sends follow-ups.
+- A grounded answer from a wrong section is not flagged. That is a search problem (ticket 27), not a marker problem.
+

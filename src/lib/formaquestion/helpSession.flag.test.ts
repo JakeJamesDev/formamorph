@@ -95,6 +95,20 @@ describe('the general-knowledge flag', () => {
 
     expect(doneOf(events)).toMatchObject({ text: 'A trait', flagged: true, stopped: true });
   });
+
+  it('keeps a held start of the marker hidden when Stop lands on it', async () => {
+    const controller = new AbortController();
+    // The player stops once the held start has been read, and before more text comes.
+    const body = new ReadableStream<Uint8Array>({
+      start(stream) { stream.enqueue(new TextEncoder().encode(sseFrame({ content: '[NOT IN G' }))); },
+      pull() { controller.abort(); },
+    });
+    const fetchImpl = vi.fn(async () => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
+    const events = await collect(ask('How do I add a trait?', fetchImpl, { signal: controller.signal }));
+
+    expect(doneOf(events)).toMatchObject({ text: '', stopped: true });
+    expect(answerTexts(events).every((text) => !text.includes('['))).toBe(true);
+  });
 });
 
 describe('the general-knowledge flag in lookup mode', () => {

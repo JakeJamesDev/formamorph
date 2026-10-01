@@ -5,7 +5,9 @@
 export const GENERAL_KNOWLEDGE_MARKER = '[NOT IN GUIDE]';
 
 /** The marker as models write it: any case, in bold, with "the", or with a colon after it. */
-const MARKER = /\*{0,2}\[\s*not\s+in\s+(?:the\s+)?guide\s*\]\*{0,2}:?/gi;
+const MARKER_SOURCE = String.raw`\*{0,2}\[\s*not\s+in\s+(?:the\s+)?guide\s*\]\*{0,2}:?`;
+const HAS_MARKER = new RegExp(MARKER_SOURCE, 'i');
+const EVERY_MARKER = new RegExp(MARKER_SOURCE, 'gi');
 
 /** The written forms a start of an answer can still grow into. */
 const MARKER_FORMS = ['[not in guide]', '[not in the guide]'];
@@ -24,14 +26,17 @@ export interface MarkedAnswer {
 }
 
 /**
- * Reads and removes the marker. While the stream runs, a start that can still grow into the marker
- * reads as empty, so a marker split across chunks never shows; with `final` that start is answer text.
+ * Reads and removes the marker. A start that can still grow into the marker reads as empty, so a marker
+ * split across chunks never shows; with `final` the stream is complete and that start is answer text.
  */
 export function readMarker(text: string, { final = false }: { final?: boolean } = {}): MarkedAnswer {
   const trimmed = text.trim();
-  const marked = MARKER.test(trimmed);
-  MARKER.lastIndex = 0;
-  if (marked) return { text: trimmed.replace(MARKER, '').trim(), marked };
-  if (!final && trimmed && startsMarker(trimmed)) return { text: '', marked };
-  return { text: trimmed, marked };
+  if (HAS_MARKER.test(trimmed)) return { text: trimmed.replace(EVERY_MARKER, '').trim(), marked: true };
+  if (!final && trimmed && startsMarker(trimmed)) return { text: '', marked: false };
+  return { text: trimmed, marked: false };
+}
+
+/** An answer is general knowledge when it carries the marker, or when no docs section reached the model. */
+export function isGeneralKnowledge(marked: boolean, sectionsSent: number): boolean {
+  return marked || sectionsSent === 0;
 }

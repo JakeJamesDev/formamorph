@@ -46,7 +46,7 @@ function GeneralKnowledgeNotice() {
   return (
     <div className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 px-2 py-1.5 text-helper">
       <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-      <span>Not from the guide. This answer can be wrong about Formamorph.</span>
+      <span>This answer is not from the guide. It can be wrong about Formamorph.</span>
     </div>
   );
 }
@@ -66,7 +66,7 @@ function Answer({ guide, exchange, onOpen }: { guide: Guide; exchange: HelpExcha
   );
   return (
     <div className="flex flex-col gap-2 text-label">
-      {flagged && <GeneralKnowledgeNotice />}
+      {flagged && answer && <GeneralKnowledgeNotice />}
       {answer && (
         <div className="[&_:first-child]:mt-0">
           <MarkdownRenderer text={text} animate={status === 'writing'} components={components} />
