@@ -184,6 +184,12 @@ export const DEV_MODAL_TABS = {
   // MainMenu's library card-type switcher. Not a modal: reached with `tab=…` and no `modal=…`, i.e.
   // `#dev?view=mainMenu&tab=models`. Listed here so the same drift guard covers it.
   mainMenu: ['worlds', 'entities', 'dictionaries', 'models'],
+  // Settings → Prompts opens one prompt with `subtab=…` (`#dev?modal=settings&tab=prompts&subtab=choices`).
+  // A prompt whose feature is off is not in the rail, and the panel lands on Narration.
+  settingsPrompts: [
+    'narration', 'thinking', 'director', 'character', 'discover', 'storyboard', 'choices',
+    'statupdates', 'location', 'timepassed', 'timeopening', 'summary', 'milestone', 'diary', 'scenetags',
+  ],
   // Settings → Prompts has a THIRD level: which surface of the open prompt is on show, reached with
   // `surface=…` (`#dev?modal=settings&tab=prompts&subtab=narration&surface=anatomy`). `anatomy` is the
   // hub every prompt lands on, not an editor; the panel falls back to it wherever a surface doesn't apply.
@@ -203,7 +209,5 @@ export const DEV_MODAL_TABS = {
   gameViewerAttach: [DEV_ATTACH_SAMPLE],
 } as const;
 
-// Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those
-// triggers render conditionally (thinking mode, enabled features), so they're not guarded as a fixed list.
-// Admin Panel → Policies uses the same `subtab=…` slot, and its two are fixed, so they are guarded above.
+// Admin Panel → Policies uses the `subtab=…` slot, and its two are fixed, so they are guarded above.
 // Mid-game boot fixtures live in `devFixtures.ts` (`DEV_FIXTURES`); reached via `bootFixture(name)`.

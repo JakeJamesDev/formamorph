@@ -45,6 +45,8 @@ const ENTITY_OWNED_PLACEHOLDERS: DocTarget = {
   anchor: 'placeholders-that-belong-to-an-entity-or-a-dictionary',
 };
 const ENTITY_OPENINGS: DocTarget = { page: 'World-Editor-Openings', anchor: 'entity-openings' };
+// One table row per prompt says what it does in a turn and when it shows.
+const THE_PROMPTS: DocTarget = { page: 'Prompts', anchor: 'the-prompts' };
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
@@ -89,6 +91,20 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   'settingsEndpoints.text': { page: 'Settings', anchor: 'text' },
   'settingsEndpoints.image': { page: 'Settings', anchor: 'image' },
   'settingsEndpoints.tagPrompt': { page: 'Settings', anchor: 'tag-prompt' },
+
+  'settings.prompts': { page: 'Prompts', anchor: '-prompts' },
+  worldPrompts: { page: 'Prompts', anchor: 'world-prompts-and-the-diff-viewer' },
+  ...Object.fromEntries(tabsOf('settingsPrompts').map((id) => [id, THE_PROMPTS])),
+  'settingsPromptPreset.overview': { page: 'Prompts', anchor: 'the-overview' },
+  'settingsPromptSurfaces.anatomy': { page: 'Prompts', anchor: 'anatomy' },
+  'settingsPromptSurfaces.system': { page: 'Prompts', anchor: 'system-prompt' },
+  'settingsPromptSurfaces.user': { page: 'Prompts', anchor: 'user-message' },
+  'settingsPromptSurfaces.messages': { page: 'Prompts', anchor: 'messages' },
+  'settingsPromptSurfaces.options': { page: 'Prompts', anchor: 'options' },
+  'settings.tools': { page: 'Tools', anchor: '-tools' },
+  'settingsToolEdit.definition': { page: 'Tools', anchor: 'definition' },
+  'settingsToolEdit.parameters': { page: 'Tools', anchor: 'parameters' },
+  'settingsToolEdit.handler': { page: 'Tools', anchor: 'handler' },
 
   'worldEditor.overview': { page: 'World-Editor-Overview', anchor: '-world-editor-overview' },
   'worldEditor.stats': { page: 'World-Editor-Stats', anchor: '-world-editor-stats' },
@@ -138,11 +154,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 
 /** Surfaces with no docs section yet, by owning ticket. Each ticket removes its group; ticket 13 deletes the list. */
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
-  // Prompts and Tools
-  '08': [
-    'settings.prompts', 'settings.tools', ...tabsOf('settingsToolEdit'), ...tabsOf('settingsPromptSurfaces'),
-    ...tabsOf('settingsPromptPreset'),
-  ],
   // Saves and Backup, Library. The group picker ledger opens the library's production Groups dialogs.
   '09': [
     'mainMenu', 'menu', 'backup', 'updateRequired', 'changelog', ...tabsOf('mainMenu'),
@@ -150,7 +161,7 @@ export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]
   ],
   // Community Creations
   '10': [
-    'community', 'profile', 'auth', 'feedbackHub', 'eventAck', 'publish', 'worldPrompts', 'ageGate',
+    'community', 'profile', 'auth', 'feedbackHub', 'eventAck', 'publish', 'ageGate',
     'privacyPolicy', 'deleteAccount', 'deletionCancelled', ...tabsOf('community'), ...tabsOf('publish'),
     ...tabsOf('profile'), ...tabsOf('feedbackHub'), ...tabsOf('eventAck'),
   ],

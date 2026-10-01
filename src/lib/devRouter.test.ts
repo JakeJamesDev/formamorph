@@ -7,7 +7,7 @@ import { BROWSE_TABS } from './browseTabs';
 import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
 import { SETTINGS_ENDPOINT_TABS, SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { TOOL_EDIT_TABS } from '@/components/modals/toolsView';
-import { PROMPT_SURFACE_ROUTES, PRESET_ROUTES } from './promptGroups';
+import { allGroupedTabs, PROMPT_SURFACE_ROUTES, PRESET_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { BUILT_BENCH_TABS } from '@/lib/testBench/benchTabs';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
@@ -134,6 +134,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the Endpoints tabs the surface renders', () => {
     expect([...DEV_MODAL_TABS.settingsEndpoints]).toEqual(SETTINGS_ENDPOINT_TABS.map((t) => t.route));
+  });
+
+  it('ledger lists exactly the prompts the Prompts rail can show', () => {
+    expect([...DEV_MODAL_TABS.settingsPrompts]).toEqual(allGroupedTabs());
   });
 
   // Drift guard for the third level: a new prompt surface must be consciously made routable.

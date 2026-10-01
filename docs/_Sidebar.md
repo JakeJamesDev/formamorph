@@ -11,6 +11,8 @@
 - [🎭 Entities in Play](Entities)
 - [🪪 Personas](Personas)
 - [⚙️ Settings](Settings)
+  - [📜 Prompts](Prompts)
+  - [🧰 Tools](Tools)
 
 **Reference**
 - [✍️ Text Formatting](TextFormatting)
