@@ -1,4 +1,6 @@
-/** The parts of the Formaquestion window, in tab order. The dev router and the surface map read this list. */
+import { useCallback, useState } from 'react';
+
+/** The parts of the Formaquestion window, in tab order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_TABS = [
   { value: 'search', label: 'Search' },
   { value: 'guide', label: 'Guide' },
@@ -6,16 +8,35 @@ export const FORMAQUESTION_TABS = [
 
 export type FormaquestionTab = (typeof FORMAQUESTION_TABS)[number]['value'];
 
-/** What the window shows: the tab, the search text and the open docs section. It outlives a close. */
+/** What the window shows. It outlives a close, a tab change and a change of layout. */
 export interface GuideView {
   tab: FormaquestionTab;
   query: string;
   sectionId: string | null;
   /** The narrow Guide tab shows the open section. False shows the contents, with that section marked. */
   reading: boolean;
+  /** The pages whose sections show in the contents list. */
+  openPages: readonly string[];
 }
 
-export const INITIAL_GUIDE_VIEW: GuideView = { tab: 'search', query: '', sectionId: null, reading: false };
+export const INITIAL_GUIDE_VIEW: GuideView = { tab: 'search', query: '', sectionId: null, reading: false, openPages: [] };
+
+/** The fields to change, or a function that reads the view and returns them. */
+export type GuideViewChange = Partial<GuideView> | ((current: GuideView) => Partial<GuideView>);
+
+export function useGuideView(): [GuideView, (change: GuideViewChange) => void] {
+  const [view, setView] = useState<GuideView>(INITIAL_GUIDE_VIEW);
+  const changeView = useCallback((change: GuideViewChange) => setView((current) => ({
+    ...current,
+    ...(typeof change === 'function' ? change(current) : change),
+  })), []);
+  return [view, changeView];
+}
 
 /** A search runs from this many characters. */
-export const MIN_QUERY_LENGTH = 2;
+const MIN_QUERY_LENGTH = 2;
+
+/** True when the search text is long enough to search. */
+export function isSearchable(query: string): boolean {
+  return query.trim().length >= MIN_QUERY_LENGTH;
+}

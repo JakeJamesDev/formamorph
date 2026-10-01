@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentPropsWithoutRef } from 'react';
+import { useMemo, type ComponentPropsWithoutRef } from 'react';
 import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
 import { MarkdownRenderer, type MarkdownComponents } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import type { DocsContentsPage } from '@/lib/docs/docsIndex';
 import { readerLinkTarget, sectionBody, sectionExcerpt, withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
-import { MIN_QUERY_LENGTH } from './formaquestionTabs';
+import { isSearchable } from './formaquestionTabs';
 
 /** The most sections one search shows. */
 const RESULT_LIMIT = 20;
@@ -30,7 +30,7 @@ export function SearchField({ value, onChange, className }: {
         data-fq-autofocus=""
         type="search"
         aria-label="Search the Guide"
-        placeholder="Search the guide"
+        placeholder="Search the Guide"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         // Escape belongs to the dialog behind the window. Here it must not clear the field.
@@ -49,11 +49,8 @@ export function SearchResults({ guide, query, onOpen, compact = false }: {
   compact?: boolean;
 }) {
   const text = query.trim();
-  const results = useMemo(
-    () => (text.length >= MIN_QUERY_LENGTH ? guide.index.search(text, RESULT_LIMIT) : []),
-    [guide, text],
-  );
-  if (text.length < MIN_QUERY_LENGTH) return <Hint className="p-3">Type two or more letters</Hint>;
+  const results = useMemo(() => (isSearchable(text) ? guide.index.search(text, RESULT_LIMIT) : []), [guide, text]);
+  if (!isSearchable(text)) return <Hint className="p-3">Type two or more letters</Hint>;
   if (results.length === 0) return <Hint role="status" className="p-3">No sections match “{text}”</Hint>;
   return (
     <ul className="flex flex-col p-1" aria-label="Search Results">
@@ -66,7 +63,7 @@ export function SearchResults({ guide, query, onOpen, compact = false }: {
           >
             <span className="text-label font-medium">{section.label}</span>
             <Meta>{guide.titleOf(section.page)}</Meta>
-            {!compact && <span className="line-clamp-2 text-helper text-muted-foreground">{sectionExcerpt(section)}</span>}
+            {!compact && <Hint as="span" className="line-clamp-2">{sectionExcerpt(section)}</Hint>}
           </button>
         </li>
       ))}
@@ -79,33 +76,22 @@ function rowLabel(section: DocsContentsPage['sections'][number]): string {
   return section.level <= 1 ? 'Introduction' : section.label;
 }
 
-export function ContentsList({ guide, current, onOpen }: {
+export function ContentsList({ guide, current, openPages, onPageOpenChange, onOpen }: {
   guide: Guide;
   current: string | null;
+  /** The pages whose sections show. */
+  openPages: readonly string[];
+  onPageOpenChange: (page: string, open: boolean) => void;
   onOpen: (id: string) => void;
 }) {
-  const currentPage = current === null ? null : guide.section(current)?.page ?? null;
-  const [openPages, setOpenPages] = useState<ReadonlySet<string>>(new Set());
-  const setPageOpen = (page: string, open: boolean) => setOpenPages((pages) => {
-    const next = new Set(pages);
-    if (open) next.add(page);
-    else next.delete(page);
-    return next;
-  });
-  // The page of the open section shows its sections until the player closes it.
-  const [followed, setFollowed] = useState<string | null>(null);
-  if (currentPage !== followed) {
-    setFollowed(currentPage);
-    if (currentPage !== null) setPageOpen(currentPage, true);
-  }
   return (
     <nav aria-label="Guide Contents" className="flex flex-col p-3">
       {guide.contents.map(({ page, title, sections }) => (
-        <Collapsible key={page} open={openPages.has(page)} onOpenChange={(open) => setPageOpen(page, open)}>
+        <Collapsible key={page} open={openPages.includes(page)} onOpenChange={(open) => onPageOpenChange(page, open)}>
           {/* The whole row toggles. The chevron is a plain mark, so the row does not read as a button. */}
           <CollapsibleTrigger className={cn('flex min-h-8 w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-label font-medium', FOCUS_RING)}>
             <span className="min-w-0 break-words">{title}</span>
-            <ChevronDown aria-hidden className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground', openPages.has(page) && 'rotate-180')} />
+            <ChevronDown aria-hidden className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground', openPages.includes(page) && 'rotate-180')} />
           </CollapsibleTrigger>
           <CollapsibleContent className="mb-2 flex flex-col">
             {sections.map((section) => (
@@ -125,12 +111,13 @@ export function ContentsList({ guide, current, onOpen }: {
   );
 }
 
-export function BackRow({ label, onBack }: { label: string; onBack: () => void }) {
+/** The row above a section in the narrow layout. It goes back to the contents list. */
+export function BackRow({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex shrink-0 items-center border-b px-2 py-1">
       <Button variant="link" size="sm" className="gap-1 px-1 text-foreground" onClick={onBack}>
         <ArrowLeft aria-hidden className="h-4 w-4" />
-        {label}
+        Contents
       </Button>
     </div>
   );

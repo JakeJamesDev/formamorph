@@ -3,11 +3,16 @@
  * heading line, and a plain-text excerpt. Built on the Docs Index's three operations.
  */
 import { docHeadings, FENCE, MARKDOWN_LINK } from './headingAnchors';
-import { hrefParts, INLINE_CODE, INLINE_LINK, isDocsHref } from './docsChecks';
+import { hrefParts, INLINE_CODE, INLINE_LINK, isDocsHref } from './docsLinks';
 import type { DocSection, DocsIndex } from './docsIndex';
 
 /** The section a docs href opens, read from the page that holds the link; null when it names none. */
 export type DocsLinkResolver = (fromPage: string, href: string) => string | null;
+
+/** The section with exactly this id. `get` on the id of a split section returns every part. */
+export function sectionWithId(index: DocsIndex, id: string): DocSection | null {
+  return index.get([id]).find((section) => section.id === id) ?? null;
+}
 
 /** Part 2 or later of a split section. It repeats the heading line of part 1. */
 function isLaterPart(section: DocSection): boolean {
@@ -30,7 +35,7 @@ export function createDocsLinkResolver(index: DocsIndex): DocsLinkResolver {
     const lines: string[] = [];
     const owners: string[] = [];
     for (const id of sectionIds) {
-      const section = index.get([id]).find((s) => s.id === id);
+      const section = sectionWithId(index, id);
       if (!section) continue;
       const own = section.markdown.split('\n').slice(isLaterPart(section) ? 1 : 0);
       lines.push(...own);

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { BUNDLED_DOCS, bundledDocsIndex } from './bundledDocsIndex';
-import { docsLinkProblems, INLINE_CODE, INLINE_LINK, isDocsHref } from './docsChecks';
+import { docsLinkProblems } from './docsChecks';
+import { docsHrefs } from './docsLinks';
 import { createDocsIndex, SECTION_CHAR_LIMIT } from './docsIndex';
 import {
-  createDocsLinkResolver, readerLinkTarget, sectionBody, sectionExcerpt, withReaderLinks,
+  createDocsLinkResolver, readerLinkTarget, sectionBody, sectionExcerpt, sectionWithId, withReaderLinks,
 } from './docsReader';
 import { docHeadings, forEachProseLine } from './headingAnchors';
 
@@ -40,11 +41,7 @@ const PAGES = {
 /** The hrefs of a section's links to docs pages, outside code. */
 function docsHrefsOf(markdown: string): string[] {
   const hrefs: string[] = [];
-  forEachProseLine(markdown, (source) => {
-    for (const [, image, , href] of source.replace(INLINE_CODE, '').matchAll(INLINE_LINK)) {
-      if (!image && isDocsHref(href)) hrefs.push(href);
-    }
-  });
+  forEachProseLine(markdown, (source) => hrefs.push(...docsHrefs(source)));
   return hrefs;
 }
 
@@ -164,7 +161,7 @@ describe('the bundled docs in the reader', () => {
     for (const [page, markdown] of Object.entries(BUNDLED_DOCS)) {
       for (const heading of docHeadings(markdown)) {
         const id = realResolve('Home', `${page}#${heading.anchor}`);
-        const section = id === null ? undefined : realIndex.get([id]).find((s) => s.id === id);
+        const section = id === null ? null : sectionWithId(realIndex, id);
         // A split section keeps the heading on part 1, and a later part may hold a sub-heading.
         const text = id === null ? '' : realIndex.get([id.replace(/-part-\d+$/, '')]).map((s) => s.markdown).join('\n');
         if (!section || !text.includes(heading.text)) missing.push(`${page}#${heading.anchor}`);
@@ -178,7 +175,7 @@ describe('the bundled docs in the reader', () => {
     let readerLinks = 0;
     for (const { page, sections } of realIndex.contents()) {
       for (const { id } of sections) {
-        const section = realIndex.get([id]).find((s) => s.id === id)!;
+        const section = sectionWithId(realIndex, id)!;
         for (const href of docsHrefsOf(withReaderLinks(section.markdown, page, realResolve))) {
           if (readerLinkTarget(href) === null) left.push(`${id}: ${href}`);
           else readerLinks++;

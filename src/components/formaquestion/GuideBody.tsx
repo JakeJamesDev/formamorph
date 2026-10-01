@@ -5,7 +5,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Hint } from '@/components/ui/typography';
 import type { Guide } from '@/lib/formaquestion/guide';
-import { FORMAQUESTION_TABS, MIN_QUERY_LENGTH, type FormaquestionTab, type GuideView } from './formaquestionTabs';
+import {
+  FORMAQUESTION_TABS, isSearchable, type FormaquestionTab, type GuideView, type GuideViewChange,
+} from './formaquestionTabs';
 import { BackRow, ContentsList, Reader, SearchField, SearchResults } from './GuideParts';
 
 const TAB_ICONS: Record<FormaquestionTab, typeof Search> = { search: Search, guide: BookOpen };
@@ -21,12 +23,20 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
   failed: boolean;
   onRetry: () => void;
   view: GuideView;
-  onViewChange: (change: Partial<GuideView>) => void;
+  onViewChange: (change: GuideViewChange) => void;
   wide: boolean;
 }) {
   // The tab follows the reader, so a swap to narrow lands on the section that is open.
-  const openSection = useCallback((sectionId: string) => onViewChange({ sectionId, tab: 'guide', reading: true }), [onViewChange]);
+  // Its page opens in the contents list, and stays open until the player closes it.
+  const openSection = useCallback((sectionId: string) => onViewChange((current) => {
+    const page = guide?.section(sectionId)?.page;
+    const openPages = page === undefined || current.openPages.includes(page) ? current.openPages : [...current.openPages, page];
+    return { sectionId, tab: 'guide', reading: true, openPages };
+  }), [guide, onViewChange]);
   const setQuery = (query: string) => onViewChange({ query });
+  const setPageOpen = (page: string, open: boolean) => onViewChange((current) => ({
+    openPages: open ? [...current.openPages, page] : current.openPages.filter((name) => name !== page),
+  }));
 
   if (!guide) {
     return failed ? (
@@ -40,15 +50,14 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
   }
 
   if (wide) {
-    const searching = view.query.trim().length >= MIN_QUERY_LENGTH;
     return (
       <div className="flex h-full min-h-0" data-fq-layout="wide">
         <div className="flex min-h-0 w-56 shrink-0 flex-col border-r">
           <SearchField value={view.query} onChange={setQuery} className="m-2 shrink-0" />
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'rail' }}>
-            {searching
+            {isSearchable(view.query)
               ? <SearchResults guide={guide} query={view.query} onOpen={openSection} compact />
-              : <ContentsList guide={guide} current={view.sectionId} onOpen={openSection} />}
+              : <ContentsList guide={guide} current={view.sectionId} openPages={view.openPages} onPageOpenChange={setPageOpen} onOpen={openSection} />}
           </ScrollArea>
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -89,12 +98,12 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
       <TabsContent value="guide" className={TAB_PANEL}>
         {view.sectionId && view.reading ? (
           <>
-            <BackRow label="Contents" onBack={() => onViewChange({ reading: false })} />
+            <BackRow onBack={() => onViewChange({ reading: false })} />
             <Reader guide={guide} sectionId={view.sectionId} onOpen={openSection} />
           </>
         ) : (
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'contents' }}>
-            <ContentsList guide={guide} current={view.sectionId} onOpen={openSection} />
+            <ContentsList guide={guide} current={view.sectionId} openPages={view.openPages} onPageOpenChange={setPageOpen} onOpen={openSection} />
           </ScrollArea>
         )}
       </TabsContent>
