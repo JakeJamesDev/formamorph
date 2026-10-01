@@ -13,32 +13,36 @@ import { STAT_CODE_SNIPPETS } from '@/lib/codeSnippets';
 import { nearestName, surfaceKnownNames, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
 
-/** What each clock reading means. Keyed off the executor's own list so a rename there shows up as a
- *  missing description rather than a silently stale one. */
-const CLOCK_INFO: Record<(typeof STAT_CLOCK_VARS)[number], SurfaceEntry> = {
-  deltaHours: { name: 'deltaHours', detail: 'number', info: 'Story hours this turn consumed.' },
-  elapsedHours: { name: 'elapsedHours', detail: 'number', info: 'Total story hours at the end of this turn.' },
-  day: { name: 'day', detail: 'number', info: 'Day number at the end of this turn.' },
-  daypart: { name: 'daypart', detail: 'string', info: 'Daypart at the end of this turn — night, dawn, morning, midday, afternoon or evening.' },
-  startDay: { name: 'startDay', detail: 'number', info: 'Day number at the start of this turn.' },
-  startDaypart: { name: 'startDaypart', detail: 'string', info: 'Daypart at the start of this turn.' },
-};
+/** An object's members as its completion detail: `{ a, b }`. */
+const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
+
+/** The fields on `clock.previous`: the story clock at the start of the turn. Frozen. */
+export const CLOCK_PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'day', detail: 'number', info: 'Day number at the start of this turn.' },
+  { name: 'daypart', detail: 'string', info: 'Daypart at the start of this turn.' },
+];
+
+/** The members of `clock`: the story clock at the end of the turn, then `previous` for its start. Read-only. */
+export const CLOCK_MEMBERS: readonly SurfaceEntry[] = [
+  { name: 'day', detail: 'number', info: 'Day number at the end of this turn.' },
+  { name: 'daypart', detail: 'string', info: 'Daypart at the end of this turn — night, dawn, morning, midday, afternoon or evening.' },
+  { name: 'deltaHours', detail: 'number', info: 'Story hours this turn consumed.' },
+  { name: 'elapsedHours', detail: 'number', info: 'Total story hours at the end of this turn.' },
+  { name: 'previous', detail: shapeOf(CLOCK_PREVIOUS_FIELDS), info: 'The clock at the start of this turn: day and daypart.' },
+];
 
 /** Every name the sandbox injects into the program, in the order an author meets them. */
 export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
   { name: 'stats', detail: 'object', info: 'Every stat in the world by name. Use stats["Two Words"] for a name with a space.' },
-  ...STAT_CLOCK_VARS.map((name) => CLOCK_INFO[name]),
+  { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world. A bare name reaches the world’s own; write the path for an owned one, as in placeholders.Molly.Hair. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
 /** Names the sandbox injects for older code but never offers or documents. */
-export const SANDBOX_UNDOCUMENTED_GLOBALS: readonly string[] = ['currentStatId'];
-
-/** An object's members as its completion detail: `{ a, b }`. */
-const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
+export const SANDBOX_UNDOCUMENTED_GLOBALS: readonly string[] = ['currentStatId', ...STAT_CLOCK_VARS];
 
 /** The fields on every member of `delta`. */
 export const DELTA_FIELDS: readonly SurfaceEntry[] = [

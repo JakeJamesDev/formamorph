@@ -256,7 +256,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await type(user, 'return elap');
+    await type(user, 'return cloc');
 
     await waitFor(() => expect(document.querySelector('.cm-tooltip-autocomplete')).toBeTruthy());
     const tooltip = document.querySelector('.cm-tooltip-autocomplete') as HTMLElement;
@@ -400,15 +400,15 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await type(user, 'return elap');
+    await type(user, 'return cloc');
 
     await waitFor(() => expect(popup()).toBeTruthy());
     // The matched prefix is its own span, so the entry is found by what it reads as, not by one text node.
     const option = within(popup()!).getAllByRole('option')
-      .find(entry => entry.textContent?.startsWith('elapsedHours'));
+      .find(entry => entry.textContent?.startsWith('clock'));
     await user.click(option!);
 
-    expect(owned()).toBe('return elapsedHours');
+    expect(owned()).toBe('return clock');
   });
 
   it('offers the world’s stat names inside a string literal', async () => {
@@ -426,42 +426,42 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await type(user, 'return elap');
+    await type(user, 'return cloc');
     await waitFor(() => expect(popup()).toBeTruthy());
 
     await user.keyboard('{Escape}');
     await waitFor(() => expect(popup()).toBeNull());
     // That Escape went to the list, so this Tab still indents — the field is not yet being left.
     await user.tab();
-    expect(owned()).toBe('return elap  ');
+    expect(owned()).toBe('return cloc  ');
 
     await user.keyboard('{Escape}');
     await user.tab();
-    expect(owned()).toBe('return elap  ');
+    expect(owned()).toBe('return cloc  ');
   });
 
   it('takes the highlighted completion on Tab, the way every editor does', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await type(user, 'return elap');
+    await type(user, 'return cloc');
     await waitFor(() => expect(popup()).toBeTruthy());
     await settle();
 
     await user.tab();
-    expect(owned()).toBe('return elapsedHours');
+    expect(owned()).toBe('return clock');
   });
 
   it('still takes the highlighted completion on Enter', async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await type(user, 'return elap');
+    await type(user, 'return cloc');
     await waitFor(() => expect(popup()).toBeTruthy());
     await settle();
 
     await user.keyboard('{Enter}');
-    expect(owned()).toBe('return elapsedHours');
+    expect(owned()).toBe('return clock');
   });
 
   // The popup hangs off `<body>`, and a dialog's scroll lock preventDefaults any scroll whose target is
@@ -471,7 +471,7 @@ describe('CodeArea', () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(await editor());
-    await type(user, 'return elap');
+    await type(user, 'return cloc');
     await waitFor(() => expect(popup()).toBeTruthy());
 
     const reachedDocument = vi.fn();

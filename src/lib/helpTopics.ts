@@ -503,20 +503,20 @@ placeholders["Old Molly"]["Eye Color"].pin('green');
 traits.Cursed.enabled = self.value <= 0;
 \`\`\`
 
-**Clock.** Six values describe the story time:
+**Clock.** \`clock\` is a read-only object that describes the story time:
 
 | | |
 |---|---|
-| \`deltaHours\` | Story hours **this** turn consumed |
-| \`elapsedHours\` | Total story hours so far, counting this turn |
-| \`day\` | Day number at the **end** of the turn |
-| \`daypart\` | Time of day at the **end** of the turn |
-| \`startDay\` | Day number at the **start** of the turn |
-| \`startDaypart\` | Time of day at the **start** of the turn |
+| \`clock.deltaHours\` | Story hours **this** turn consumed |
+| \`clock.elapsedHours\` | Total story hours so far, counting this turn |
+| \`clock.day\` | Day number at the **end** of the turn |
+| \`clock.daypart\` | Time of day at the **end** of the turn |
+| \`clock.previous.day\` | Day number at the **start** of the turn |
+| \`clock.previous.daypart\` | Time of day at the **start** of the turn |
 
-Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`. With **Measured Clock** off, \`deltaHours\` is \`1\`.
+Both ends are given because a turn spans time: an eight-hour sleep begins in the afternoon and ends at night. Dayparts are \`night\`, \`dawn\`, \`morning\`, \`midday\`, \`afternoon\`, \`evening\`. With **Measured Clock** off, \`clock.deltaHours\` is \`1\`.
 
-This enables a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only rises after dark.
+This enables a per-hour drain (\`current + 2 * clock.deltaHours\`) or a stat that only rises after dark.
 
 **The code runs every turn.** Both boxes run on the opening turn and on a turn with no AI stat change. They run when the stat request is off or fails. On those turns \`delta.ai\` reads zero in the after box, as it always does in the before box.
 

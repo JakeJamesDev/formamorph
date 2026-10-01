@@ -76,7 +76,7 @@ A turn runs your code twice, once on each side of the AI:
 
 **After the AI** runs where a single box always ran, so a world written before the split keeps its meaning with no edits. It reads the AI's change, this turn's regen, and the values the before box set.
 
-> ⚠️ **The before box has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start, so `deltaHours` is `0`. Code that scales the AI's change belongs in the after box.
+> ⚠️ **The before box has no turn behind it yet.** `previous` reads as the stat itself, `delta.ai`, `delta.regen`, `delta.total` and `delta.actual` all read zeros, and the clock reads turn start, so `clock.deltaHours` is `0`. Code that scales the AI's change belongs in the after box.
 
 **Bounds carry across both boxes.** A `self.max` the before box sets persists through an after box that never writes it. Emptying one box leaves the bounds the other set. Emptying both clears them.
 
@@ -282,22 +282,22 @@ The two runs are ordered against each other, though: everything the before box w
 
 ### The Story Clock
 
-Six values describe the story time. They are plain variables. Use them by name.
+`clock` is a read-only object that describes the story time. A write to any of its fields does nothing.
 
-| Variable | What it is |
+| Field | What it is |
 | --- | --- |
-| `deltaHours` | Story hours **this turn** consumed |
-| `elapsedHours` | Total story hours so far, counting this turn |
-| `day` | Day number (1-based) at the **end** of the turn |
-| `daypart` | Time of day at the **end** of the turn |
-| `startDay` | Day number at the **start** of the turn |
-| `startDaypart` | Time of day at the **start** of the turn |
+| `clock.deltaHours` | Story hours **this turn** consumed |
+| `clock.elapsedHours` | Total story hours so far, counting this turn |
+| `clock.day` | Day number (1-based) at the **end** of the turn |
+| `clock.daypart` | Time of day at the **end** of the turn |
+| `clock.previous.day` | Day number at the **start** of the turn |
+| `clock.previous.daypart` | Time of day at the **start** of the turn |
 
-`daypart` and `startDaypart` are one of six words: `night`, `dawn`, `morning`, `midday`, `afternoon`, `evening`.
+`clock.daypart` and `clock.previous.daypart` are one of six words: `night`, `dawn`, `morning`, `midday`, `afternoon`, `evening`.
 
-**Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `startDaypart === 'afternoon'` and `daypart === 'night'`. Neither reading alone describes the turn.
+**Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `clock.previous.daypart === 'afternoon'` and `clock.daypart === 'night'`. Neither reading alone describes the turn.
 
-> ⚠️ **With the clock off, `deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
+> ⚠️ **With the clock off, `clock.deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
 
 ### Examples
 
@@ -398,7 +398,7 @@ Scale a change by how long the turn actually took, so a night's sleep costs more
 ```javascript
 // Thirst rises 2 per story hour
 const current = stats.Thirst.value;
-return current + (2 * deltaHours);
+return current + (2 * clock.deltaHours);
 ```
 
 #### Time of Day
@@ -408,8 +408,8 @@ React to when the turn happened rather than to another stat:
 ```javascript
 // A vampire's Power climbs at night and fades by day
 const current = stats.Power.value;
-const rate = (daypart === 'night' || daypart === 'evening') ? 4 : -4;
-return current + (rate * deltaHours);
+const rate = (clock.daypart === 'night' || clock.daypart === 'evening') ? 4 : -4;
+return current + (rate * clock.deltaHours);
 ```
 
 #### Resource Consumption
@@ -433,7 +433,7 @@ const sizeFactor = size / 50;
 return baseRate * activityMultiplier * sizeFactor;
 ```
 
-> 💡 **Prefer the `regen` field for plain regeneration.** A stat that simply drifts at a fixed rate already scales with story hours without any code at all. Use `deltaHours` when the rate itself depends on something: the time of day, another stat, a threshold.
+> 💡 **Prefer the `regen` field for plain regeneration.** A stat that simply drifts at a fixed rate already scales with story hours without any code at all. Use `clock.deltaHours` when the rate itself depends on something: the time of day, another stat, a threshold.
 
 ## Best Practices
 
@@ -453,7 +453,7 @@ return baseRate * activityMultiplier * sizeFactor;
 - Circular dependencies between stats may cause unexpected behavior
 - The code runs in a sandboxed environment with limited JavaScript features
 - Code writes only its own bounds; another stat's entry is read-only
-- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before the AI runs as the opening turn, where `deltaHours` and `elapsedHours` are both `0`; After the AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
+- **Test Code** runs one box with no player traits, so it cannot preview a long turn or a different daypart. Before the AI runs as the opening turn, where `clock.deltaHours` and `clock.elapsedHours` are both `0`; After the AI runs as a one-hour turn on day one. It shows a trait switch and never applies it to the world
 - Each box's **Templates** menu lists only the templates written for that box
 
 ### A Note on Accumulating Stats

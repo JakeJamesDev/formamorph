@@ -187,8 +187,9 @@ describe('summarizeProblems', () => {
 
 describe('statCodeCompletions', () => {
   it('offers the sandbox globals at the top level', () => {
-    const offered = labels('return el|');
-    expect(offered).toContain('elapsedHours');
+    const offered = labels('return cl|');
+    expect(offered).toContain('clock');
+    expect(labels('return el|')).not.toContain('elapsedHours');
     expect(offered).toContain('stats');
     expect(offered).toContain('self');
   });
@@ -221,6 +222,11 @@ describe('statCodeCompletions', () => {
   it('offers the stat fields after self, and after a name that holds self', () => {
     expect(labels('return self.|')).toContain('delta');
     expect(labels('const me = self;\nreturn me.|')).toContain('previous');
+  });
+
+  it('offers the clock members after clock, and day and daypart after clock.previous', () => {
+    expect(labels('return clock.|')).toEqual(['day', 'daypart', 'deltaHours', 'elapsedHours', 'previous']);
+    expect(labels('return clock.previous.|')).toEqual(['day', 'daypart']);
   });
 
   it('offers the four members after delta, and the four numbers after each member', () => {

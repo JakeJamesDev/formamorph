@@ -297,6 +297,52 @@ describe('runStatCodeTurn timing', () => {
     expect(valueOf(out.stats, 'a')).toBe(12);
   });
 
+  // Each reading is compared to its flat twin inside the VM, so the case holds for any calendar value.
+  const CLOCK_MATCHES_FLAT = `return clock.day === day && clock.daypart === daypart
+    && clock.deltaHours === deltaHours && clock.elapsedHours === elapsedHours
+    && clock.previous.day === startDay && clock.previous.daypart === startDaypart ? 1 : 0;`;
+
+  it.each(['before', 'after'] as const)('reads the same clock values as the flat globals in the %s box', async (timing) => {
+    const out = await runStatCodeTurn(turn({
+      timing,
+      stats: [stat({ id: 'a', value: 50, [timing === 'before' ? 'beforeCode' : 'code']: CLOCK_MATCHES_FLAT })],
+      clock: { deltaHours: 30, elapsedHours: 30 },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(1);
+  });
+
+  it('reads a turn start that differs from its end, and the turn’s own hours', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({ id: 'a', max: 1000, code: 'return (clock.day - clock.previous.day) * 100 + clock.deltaHours;' })],
+      clock: { deltaHours: 30, elapsedHours: 30 },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(130);
+  });
+
+  it('drops a write to any clock field', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({
+        id: 'a',
+        code: `clock.day = 99; clock.deltaHours = 99; clock.previous = null; clock.extra = 1;
+          return clock.day === day && clock.deltaHours === deltaHours && clock.previous.day === startDay
+            && clock.extra === undefined ? 1 : 0;`,
+      })],
+      clock: { deltaHours: 30, elapsedHours: 30 },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(1);
+  });
+
+  it('drops a write to clock.previous', async () => {
+    const out = await runStatCodeTurn(turn({
+      stats: [stat({
+        id: 'a',
+        code: 'clock.previous.day = 99; clock.previous.daypart = "x"; return clock.previous.day === startDay && clock.previous.daypart === startDaypart ? 1 : 0;',
+      })],
+      clock: { deltaHours: 30, elapsedHours: 30 },
+    }));
+    expect(valueOf(out.stats, 'a')).toBe(1);
+  });
+
   it('keeps a bound the before box set through an after box that writes none', async () => {
     const before = await runStatCodeTurn(turn({
       timing: 'before',
