@@ -9,6 +9,7 @@ import { resolveReasoningCapability } from './reasoningEffort';
 const ENDPOINT = 'https://cloud.example/v1/chat/completions';
 const V0 = 'https://cloud.example/api/v0/models';
 const OPENAI = 'https://cloud.example/v1/models';
+const PROPS = 'https://cloud.example/props';
 
 const response = (status: number, body: unknown = {}) =>
   ({ ok: status >= 200 && status < 300, status, json: async () => body }) as Response;
@@ -91,6 +92,6 @@ describe('probe consumers skip a native URL the session has seen 404', () => {
     await probeEndpoint(ENDPOINT, '', 'm'); // learns V0's 404
     urlsFetched = [];
     await fetchContextLength(ENDPOINT, '', 'm');
-    expect(urlsFetched).toEqual([OPENAI]);
+    expect(urlsFetched).toEqual([OPENAI, PROPS]); // the list has no length, so llama.cpp's /props is next
   });
 });

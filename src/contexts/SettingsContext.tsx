@@ -27,10 +27,10 @@ import {
 } from '../lib/textEndpointPresets';
 import type { EndpointSampler } from '../lib/endpointSamplers';
 import type { RejectedEndpointOverride } from '../lib/aiRequest/rejectedOverride';
-import { fetchContextLength } from '../lib/contextLength';
+import { fetchContextLength, detectedContextCodec, type DetectedContextEntry } from '../lib/contextLength';
 import { normalizeEndpointUrl } from '../lib/endpointUrl';
 import { registerDevHook } from '../lib/devRouter';
-import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
+import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec } from '../lib/usePersistentState';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useRootSnapshot, readRootMode } from '../lib/useRootSnapshot';
 import { parseHex6 } from '../lib/hslColor';
@@ -544,7 +544,11 @@ function useProvideSettings() {
   const activeModelName = modelName;
 
   // Context window (tokens): auto-detected from the active endpoint, with an optional manual override.
-  const [detectedContextWindow, setDetectedContextWindow] = usePersistentState<number | null>(`${APP_ID}_detectedContextWindow`, null, nullableIntCodec);
+  // Stored with the `endpoint|model` it came from, so another endpoint never inherits it.
+  const [detectedContextEntry, setDetectedContextEntry] = usePersistentState<DetectedContextEntry | null>(
+    `${APP_ID}_detectedContextWindow`, null, detectedContextCodec);
+  const activeContextSig = endpointSignature(activeEndpointUrl, activeModelName);
+  const detectedContextWindow = detectedContextEntry?.sig === activeContextSig ? detectedContextEntry.tokens : null;
   const [detectStatus, setDetectStatus] = useState<DetectStatus>('idle');
 
   // Desktop bundled-model runtime. Only meaningful when the local engine is active (desktop + no custom
@@ -600,13 +604,13 @@ function useProvideSettings() {
     const detected = await fetchContextLength(activeEndpointUrl, activeApiToken, activeModelName);
     if (!mountedRef.current || reqId !== detectReqRef.current) return; // superseded by a newer detect
     if (detected !== null) {
-      setDetectedContextWindow(detected);
+      setDetectedContextEntry({ sig: activeContextSig, tokens: detected });
       if (force) setContextWindowOverride(null); // snap the field back to the detected value
       setDetectStatus('success');
     } else {
       setDetectStatus(force ? 'error' : 'idle'); // auto-attempts fail quietly
     }
-  }, [activeEndpointUrl, activeApiToken, activeModelName, setDetectedContextWindow, setContextWindowOverride, mountedRef]);
+  }, [activeEndpointUrl, activeApiToken, activeModelName, activeContextSig, setDetectedContextEntry, setContextWindowOverride, mountedRef]);
 
   // Auto-detect on connect (custom endpoint only); debounced so editing the URL doesn't fire per keystroke.
   useEffect(() => {
