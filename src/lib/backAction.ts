@@ -11,7 +11,7 @@ export interface BackButtonState {
   modalOpen: boolean;
   /** Screens that fill a view without being a modal or a view of their own, such as the avatar editor. */
   subScreens: number;
-  /** The innermost sub-screen lives inside the topmost layer, so its back step is that layer's own. */
+  /** A sub-screen lives inside the topmost layer, so its back step is that layer's own. */
   stopInsideLayer?: boolean;
   /** Views entered so far, oldest first. The last one is on screen. */
   viewHistory: readonly string[];

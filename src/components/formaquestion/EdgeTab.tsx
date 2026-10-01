@@ -47,14 +47,18 @@ EdgeTabButton.displayName = 'EdgeTabButton';
 /**
  * The Formaquestion launcher: a tab that stays flat on the nearest screen edge. A press opens or closes
  * the window. A drag, or an arrow key while the tab has focus, moves it, and the device keeps its place.
+ * Its edges are those of the visible area, so the on-screen keyboard moves it up with the app.
  */
-export function EdgeTab({ open, controls, onToggle }: {
+export function EdgeTab({ open, concealed = false, controls, onToggle }: {
   open: boolean;
+  /** Hides the tab and keeps its place, while the mobile sheet covers the screen. */
+  concealed?: boolean;
   /** The id of the window the tab opens. */
   controls: string;
   onToggle: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
+  const areaRef = useRef<HTMLDivElement>(null);
   const hintId = useId();
   // The tab owns its place, so a move re-renders the tab only.
   const [place, setPlace] = useState<TabPlace>(readTabPlace);
@@ -67,10 +71,18 @@ export function EdgeTab({ open, controls, onToggle }: {
     return rect ? Math.max(rect.width, rect.height) : 0;
   };
 
+  /** The visible area the tab sits on, and where it starts in the layout viewport. */
+  const area = () => {
+    const rect = areaRef.current?.getBoundingClientRect();
+    return rect && rect.height > 0
+      ? { left: rect.left, top: rect.top, viewport: { width: rect.width, height: rect.height } }
+      : { left: 0, top: 0, viewport: viewportOf(window) };
+  };
+
   // The tab stays whole on the screen when it first shows and when the browser window changes size.
   useLayoutEffect(() => {
     const fit = () => setPlace((current) => {
-      const next = wholeOnScreen(current, tabLength(), viewportOf(window));
+      const next = wholeOnScreen(current, tabLength(), area().viewport);
       return Math.abs(next.at - current.at) > 0.0005 ? next : current;
     });
     fit();
@@ -89,7 +101,8 @@ export function EdgeTab({ open, controls, onToggle }: {
     if (!current) return;
     if (!current.moved && Math.hypot(event.clientX - current.x, event.clientY - current.y) < DRAG_THRESHOLD) return;
     current.moved = true;
-    current.latest = wholeOnScreen(placeAt(event.clientX, event.clientY, viewportOf(window)), current.length, viewportOf(window));
+    const { left, top, viewport } = area();
+    current.latest = wholeOnScreen(placeAt(event.clientX - left, event.clientY - top, viewport), current.length, viewport);
     setPlace(current.latest);
   };
   // The device keeps the place the player left the tab at.
@@ -108,7 +121,7 @@ export function EdgeTab({ open, controls, onToggle }: {
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!isArrowKey(event.key)) return;
     event.preventDefault();
-    const next = moveByKey(place, event.key, tabLength(), viewportOf(window));
+    const next = moveByKey(place, event.key, tabLength(), area().viewport);
     if (next === place) return;
     setPlace(next);
     writeTabPlace(next);
@@ -119,7 +132,7 @@ export function EdgeTab({ open, controls, onToggle }: {
     : { [place.edge]: 0, left: `${place.at * 100}%`, transform: 'translateX(-50%)' };
 
   return (
-    <>
+    <div ref={areaRef} className="app-viewport pointer-events-none">
       <Tip tip="Opens or closes Formaquestion (F1). Drag the tab to move it." side={EDGE_SHAPE[place.edge].tip} labelsChild={false}>
         <EdgeTabButton
           ref={ref}
@@ -135,11 +148,11 @@ export function EdgeTab({ open, controls, onToggle }: {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerEnd}
           onPointerCancel={onPointerEnd}
-          style={style}
-          className="pointer-events-auto fixed cursor-grab touch-none active:cursor-grabbing"
+          style={concealed ? { ...style, visibility: 'hidden' } : style}
+          className="pointer-events-auto absolute cursor-grab touch-none active:cursor-grabbing"
         />
       </Tip>
       <span id={hintId} className="sr-only">Press the arrow keys to move this tab</span>
-    </>
+    </div>
   );
 }

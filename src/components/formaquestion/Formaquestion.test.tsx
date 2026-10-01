@@ -167,14 +167,6 @@ describe('while it stands down', () => {
     expect(key.defaultPrevented).toBe(false);
   });
 
-  it('shows no tab and ignores F1 on a mobile-size screen', () => {
-    setScreenWidth(600);
-    render(<Formaquestion loadIndex={loadFixture} />);
-    expect(helpTab()).toBeNull();
-    pressF1();
-    expect(helpWindow()).toBeNull();
-  });
-
   it('hides an open window while suspended and shows it again with its state', async () => {
     const view = await openWindow();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'trait' } });
@@ -426,6 +418,53 @@ describe('the window on the screen', () => {
     const { left, top, width, height } = frame().style;
     expect(parseFloat(left) + parseFloat(width)).toBeLessThanOrEqual(1000);
     expect(parseFloat(top) + parseFloat(height)).toBeLessThanOrEqual(700);
+  });
+});
+
+describe('on a mobile-size screen', () => {
+  beforeEach(() => setScreenWidth(375));
+
+  it('opens a full-screen sheet from the Help tab, with no Wide View and no resize grip', async () => {
+    await openWindow();
+    const sheet = helpWindow() as HTMLElement;
+    expect(sheet).toHaveAttribute('data-fq-sheet');
+    expect(sheet.style.width).toBe('');
+    expect(within(sheet).queryByRole('button', { name: 'Wide View' })).toBeNull();
+    expect(sheet.querySelector('[data-fq-resize]')).toBeNull();
+    expect(screen.getByRole('tablist', { name: 'Formaquestion Parts' })).toBeInTheDocument();
+  });
+
+  it('puts focus on the sheet, not in a field, so no keyboard opens', async () => {
+    await openWindow();
+    await waitFor(() => expect(helpWindow()).toHaveFocus());
+    expect(screen.getByRole('searchbox', { name: 'Search the Guide' })).not.toHaveFocus();
+  });
+
+  it('hides the Help tab while the sheet is open', async () => {
+    render(<Formaquestion loadIndex={loadFixture} />);
+    await userEvent.click(helpTab()!);
+    await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    // A hidden tab leaves the accessibility tree.
+    expect(helpTab()).toBeNull();
+    expect(document.querySelector('[data-fq-launcher]')).not.toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+    expect(helpTab()).toBeVisible();
+    // Focus goes back to the tab that opened the sheet.
+    expect(helpTab()).toHaveFocus();
+  });
+
+  it('leads from the contents to the reader and back in one column', async () => {
+    await openWindow();
+    await userEvent.click(screen.getByRole('tab', { name: 'Guide' }));
+    const contents = screen.getByRole('navigation', { name: 'Guide Contents' });
+    await userEvent.click(within(contents).getByRole('button', { name: '📊 Stats' }));
+    await userEvent.click(within(contents).getByRole('button', { name: 'The Panel' }));
+    expect(screen.getByRole('article', { name: '📊 Stats: The Panel' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Guide Contents' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Contents' }));
+    expect(screen.queryByRole('article')).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Guide Contents' })).toBeInTheDocument();
   });
 });
 

@@ -2,12 +2,12 @@
 
 Formaquestion is the help window. It holds this guide and a search of it. The guide is part of the app, so the window works with no network and no AI.
 
-> 📱 The window needs a screen 768 pixels wide or more. On a mobile-size screen, the **Help** tab does not show and F1 does nothing.
+> 📱 On a mobile-size screen, Formaquestion opens as a full-screen sheet. See [On Mobile](#on-mobile).
 
 ## How to Open Formaquestion
 
 1. Select the **Help** tab on the edge of the screen, or press F1.
-2. To close the window, select **Close** at its top right.
+2. To close the window, select **Close** at its top right. On Android, you can also use the back action.
 
 The window stays open when you go to a different screen or open a dialog. You can use the dialog and the window together. Escape closes the dialog and leaves the window open.
 
@@ -92,6 +92,16 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - **On This Page**, under a section, lists the other sections of the same page.
 - A link to a guide page opens that section in the window.
 - A link to a website opens in your browser.
+
+## On Mobile
+
+On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the **Search** and **Guide** tabs of the narrow layout.
+
+- The sheet slides in from the edge that holds the **Help** tab. The tab hides while the sheet is open.
+- The sheet opens above an open dialog. When you close the sheet, the dialog is as you left it.
+- The keyboard does not open until you select a field. With the keyboard open, the sheet fits the space above it.
+- The sheet has no **Wide View**, and you cannot move it or change its size.
+- On Android, the back action closes the sheet first, before a dialog under it.
 
 ## The Help Tab
 

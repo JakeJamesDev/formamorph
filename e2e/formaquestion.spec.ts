@@ -508,7 +508,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(searchField(page)).toBeFocused();
   });
 
-  test('a trip to a mobile-size screen hides the window and brings it back as it was', async ({ page }) => {
+  test('a trip to a mobile-size screen shows the sheet and brings the window back as it was', async ({ page }) => {
     await openApp(page);
     await openHelp(page);
     await dragWindowTo(page, 900);
@@ -517,11 +517,12 @@ test.describe('Formaquestion on a desktop screen', () => {
     const placed = await settledBox(page);
 
     await page.setViewportSize({ width: 600, height: 900 });
-    await expect(helpWindow(page)).toHaveCount(0);
-    await expect(helpTab(page)).toHaveCount(0);
+    await expect(helpWindow(page)).toHaveAttribute('data-fq-sheet', '');
+    expect(await settledBox(page)).toEqual({ x: 0, y: 0, width: 600, height: 900 });
+    await expect(searchField(page)).toHaveValue('blueprint');
 
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await expect(searchField(page)).toHaveValue('blueprint');
+    await expect(helpWindow(page)).not.toHaveAttribute('data-fq-sheet');
     expect(await settledBox(page)).toEqual(placed);
   });
 });
@@ -529,11 +530,97 @@ test.describe('Formaquestion on a desktop screen', () => {
 test.describe('Formaquestion on a mobile-size screen', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test('shows no Help tab and does not open on F1', async ({ page }) => {
+  // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'The sheet is the phone form');
+  });
+
+  const SCREEN = { x: 0, y: 0, width: 375, height: 812 };
+  const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  async function openSheet(page: Page): Promise<void> {
+    await helpTab(page).click();
+    await expect(helpWindow(page)).toHaveAttribute('data-fq-sheet', '');
+    await settledBox(page);
+  }
+
+  test('the Help tab opens a full-screen sheet and takes focus without a keyboard', async ({ page }) => {
     await openApp(page);
-    await expect(page.getByRole('button', { name: 'Menu', exact: true }).first()).toBeVisible();
+    await openSheet(page);
+
+    expect(await settledBox(page)).toEqual(SCREEN);
+    expect(await focusOwner(page)).toBe('window');
+    await expect(searchField(page)).not.toBeFocused();
+    await expect(helpWindow(page).getByRole('button', { name: 'Wide View' })).toHaveCount(0);
     await expect(helpTab(page)).toHaveCount(0);
-    await page.keyboard.press('F1');
+
+    await helpWindow(page).getByRole('button', { name: 'Close Formaquestion' }).click();
     await expect(helpWindow(page)).toHaveCount(0);
+    await expect(helpTab(page)).toBeFocused();
+  });
+
+  test('the Help tab does not cover the action box', async ({ page }) => {
+    // A reachable endpoint, so the AI setup prompt stays closed over the game view.
+    await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
+    await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
+    await openApp(page);
+    await gotoDev(page, 'gameViewer', { fixture: 'whiteRoom' });
+    const send = page.getByRole('button', { name: 'Send', exact: true });
+    await expect(send).toBeVisible();
+    const tab = (await helpTab(page).boundingBox())!;
+    for (const control of [send, page.getByPlaceholder(/^Type your action/)]) {
+      expect(overlaps(tab, (await control.boundingBox())!)).toBe(false);
+    }
+  });
+
+  test('the sheet opens above Settings, and Settings is as it was after the close', async ({ page }) => {
+    await openApp(page);
+    await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'endpoints' });
+    await expect(settings(page)).toBeVisible();
+    await settings(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const model = settings(page).locator('#modelName');
+    await model.fill('typed-before-help');
+
+    await openSheet(page);
+    const sheetZ = await helpWindow(page).evaluate((el) => document.elementFromPoint(187, 400)?.closest('#formaquestion-window') === el);
+    expect(sheetZ, 'the sheet is on top at the center of the screen').toBe(true);
+    await searchField(page).fill('endpoint');
+    await expect(results(page)).toBeVisible();
+
+    await helpWindow(page).getByRole('button', { name: 'Close Formaquestion' }).click();
+    await expect(helpWindow(page)).toHaveCount(0);
+    await expect(settings(page)).toBeVisible();
+    await expect(model).toHaveValue('typed-before-help');
+  });
+
+  test('with the keyboard open, the sheet and its field stay in the visible area', async ({ page }) => {
+    await openApp(page);
+    await openSheet(page);
+    // An on-screen keyboard shrinks the visual viewport, and the app reports it in --app-h.
+    await page.evaluate(() => document.documentElement.style.setProperty('--app-h', '450px'));
+    await searchField(page).focus();
+
+    const sheet = (await helpWindow(page).boundingBox())!;
+    expect(sheet.y + sheet.height).toBe(450);
+    const field = (await searchField(page).boundingBox())!;
+    expect(field.y + field.height).toBeLessThanOrEqual(450);
+  });
+
+  test('the sheet slides in from the edge that holds the Help tab', async ({ page }) => {
+    await openApp(page, { 'formamorph.formaquestion.tab': { edge: 'top', at: 0.5 } });
+    await helpTab(page).click();
+    const enter = await helpWindow(page).evaluate((el) => getComputedStyle(el).getPropertyValue('--tw-enter-translate-y').trim());
+    expect(enter).toBe('-100%');
+  });
+
+  test('the title bar does not move the sheet', async ({ page }) => {
+    await openApp(page);
+    await openSheet(page);
+    await page.mouse.move(120, 24);
+    await page.mouse.down();
+    await page.mouse.move(220, 300, { steps: 5 });
+    await page.mouse.up();
+    expect(await settledBox(page)).toEqual(SCREEN);
+    expect(await page.evaluate(() => localStorage.getItem('formamorph.formaquestion.window'))).toBeNull();
   });
 });

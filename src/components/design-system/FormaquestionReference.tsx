@@ -43,6 +43,7 @@ const EDGE_PLACE: Record<Edge, string> = {
   bottom: 'bottom-0 left-1/2 -translate-x-1/2',
 };
 const EDGES: Edge[] = ['right', 'left', 'top', 'bottom'];
+const SHEET_SIZE = { width: 360, height: 560 };
 
 function SampleWindow() {
   const [wide, setWide] = useState(false);
@@ -51,6 +52,16 @@ function SampleWindow() {
   return (
     <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onClose={() => {}} className="relative max-w-full" style={style}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} />
+    </FormaquestionFrame>
+  );
+}
+
+/** The mobile sheet at a phone's width, in a box of its own. */
+function SampleSheet() {
+  const [view, changeView] = useGuideView();
+  return (
+    <FormaquestionFrame sheet wide={false} onSwapWidth={() => {}} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
+      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} />
     </FormaquestionFrame>
   );
 }
@@ -78,6 +89,10 @@ export function FormaquestionReference() {
           <div className="overflow-x-auto pb-2">
             <SampleWindow />
           </div>
+        </section>
+        <section aria-label="Mobile Sheet" className="min-w-0 space-y-2">
+          <SectionTitle>Mobile Sheet</SectionTitle>
+          <SampleSheet />
         </section>
       </CardContent>
     </Card>
