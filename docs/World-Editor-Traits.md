@@ -297,7 +297,7 @@ On a **Playable**, **Persona-Only** or Custom Persona entity, the trait keeps it
 
 ### Links in the Library
 
-An entity's links go with it to the library, to a character card and into a world bundle. Each link keeps the name of its original and its overrides. When the entity joins a world, each link binds to:
+An entity's links go with it to the library, to an entity card and into a world bundle. Each link keeps the name of its original and its overrides. When the entity joins a world, each link binds to:
 
 1. The Blueprints trait or group with the same id, when the world has it
 2. Else the one Blueprints trait or group of its kind with the same name

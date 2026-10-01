@@ -20,6 +20,7 @@
   - [🎨 Image Generation](Image-Generation)
 
 **Reference**
+- [🔤 Glossary](Glossary)
 - [✍️ Text Formatting](TextFormatting)
 - [🛠️ World Editor](WorldEditor)
   - [🌍 Overview](World-Editor-Overview)

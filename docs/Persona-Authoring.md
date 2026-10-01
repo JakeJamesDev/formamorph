@@ -93,7 +93,7 @@ Some entities exist only as a player slot, such as a "Custom Character" with no 
 | Picks someone else, or **None** | Isn't in the world. It's left out of the cast, scenes, diaries and the side panel. |
 
 - **Its Others openings never draw.** When picked, it's the player. When not picked, it's absent.
-- **Its Self openings draw when the player picks it.** They give a persona-only character its own start.
+- **Its Self openings draw when the player picks it.** They give a Persona-Only entity its own start.
 - **The choice is in the World Editor only.** A library entity is never in a cast, so the library editor doesn't offer it.
 
 ## Custom Persona
@@ -174,7 +174,7 @@ Select the placed chip to open its pop-out and set **Content**:
 | Placement | Put the chip beside the **Traits** chip, above **Location**. The persona rarely changes mid-game, and a stable top helps the AI server reuse its work. |
 | A world persona | **Full** and **Summary** add the line that says the world knows this person. **Name** stays bare. |
 
-Narration stays in second person, and characters say the player's name only after they learn it. Your prompt can state otherwise, for example that one entity already knows the player.
+Narration stays in second person, and entities say the player's name only after they learn it. Your prompt can state otherwise, for example that one entity already knows the player.
 
 ## The Player Name Chip
 

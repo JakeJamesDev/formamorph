@@ -8,7 +8,7 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 
 ## How to Edit a World File by Hand
 
-1. In the main menu, select the world. In its details window, select **Export World**.
+1. In the main menu, select the world. In its [world dialog](Starting-a-Game#the-world-dialog), select **Export World**.
 2. Open the `.json` file in a text editor. Make your changes.
 3. In the main menu, open the **Worlds** tab and select **Import World**. Pick the file.
 
@@ -80,11 +80,11 @@ The import adds a new world. It never replaces the world you exported. Import sk
 | `locations` | ✓ | [Location](#locations)[] | Places. A location can nest inside another |
 | `connections` | | [Connection](#connections)[] | Travel links between locations. Absent = travel follows nesting only |
 | `entities` | ✓ | [Entity](#entities)[] | People, creatures and objects |
-| `entityGroups` | | [Group](#entity-groups)[] | Editor-only folders for entities |
+| `entityGroups` | | [Group](#entity-groups)[] | Editor-only groups for entities |
 | `traits` | ✓ | [Trait](#traits)[] | The world's traits |
-| `traitGroups` | | [TraitGroup](#trait-groups)[] | Folders for the world's traits |
+| `traitGroups` | | [TraitGroup](#trait-groups)[] | Groups for the world's traits |
 | `placeholders` | | [Placeholder](#placeholders)[] | The world's shared placeholders |
-| `placeholderGroups` | | [Group](#placeholder-groups)[] | Editor-only folders for shared placeholders |
+| `placeholderGroups` | | [Group](#placeholder-groups)[] | Editor-only groups for shared placeholders |
 | `dictionaries` | ✓ | [Dictionary](#dictionaries)[] | Lore books. Import makes one empty book when the list is absent or empty |
 | `statUpdates` | ✓ | [StatUpdate](#stat-updates)[] | An older field. Write `[]` |
 
@@ -364,12 +364,12 @@ An entity links each original one time.
 
 ### Entity Groups
 
-Editor-only folders for entities.
+Editor-only groups for entities.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
-| `name` | ✓ | String | The folder name |
+| `name` | ✓ | String | The group name |
 | `parentId` | ✓ | String \| `null` | The parent group's `id`. `null` = the top level |
 | `order` | | Number | The order among groups with the same parent |
 
@@ -411,7 +411,7 @@ A placeholder is a named value that a chip shows in text. The world's `placehold
 | `sharedWeights` | | Object | Draw weights this placeholder sets on shared placeholders it reaches through its values. The outer key is a path of `id`s joined with `/`. The inner map is like `weights` |
 | `blueprintId` | | String | Makes this a [copy](#copies) of that blueprint |
 | `valueOverrides` | | Object | On a copy: changes per blueprint value `id` |
-| `groupId` | | String \| `null` | Editor-only. A shared placeholder's [folder](#placeholder-groups) `id`. Absent or `null` = no folder |
+| `groupId` | | String \| `null` | Editor-only. A shared placeholder's [group](#placeholder-groups) `id`. Absent or `null` = no group |
 
 Each value:
 
@@ -435,7 +435,7 @@ A pin sets one placeholder to one value while its source is active. Traits, loca
 
 ### Copies
 
-A world shared placeholder in the [Blueprints folder](#placeholder-groups), or a folder below it, is a **blueprint**. An entity holds a copy of each blueprint its traits need, in its own `placeholders`, with `blueprintId` set. The app makes copies when it loads the world.
+A world shared placeholder in the [Blueprints group](#placeholder-groups), or a group below it, is a **blueprint**. An entity holds a copy of each blueprint its traits need, in its own `placeholders`, with `blueprintId` set. The app makes copies when it loads the world.
 
 A copy reads its blueprint's values live. Its own `values` hold only the values it adds. Its `valueOverrides` map a blueprint value `id` to changes:
 
@@ -447,15 +447,15 @@ A copy reads its blueprint's values live. Its own `values` hold only the values 
 
 ### Placeholder Groups
 
-Editor-only folders for the world's shared placeholders.
+Editor-only groups for the world's shared placeholders.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
-| `name` | ✓ | String | The folder name |
-| `parentId` | ✓ | String \| `null` | The parent folder's `id`. `null` = the top level |
-| `order` | | Number | The order among folders with the same parent |
-| `system` | | `"blueprints"` | Marks the Blueprints folder. Only one folder has it, at the top level |
+| `name` | ✓ | String | The group name |
+| `parentId` | ✓ | String \| `null` | The parent group's `id`. `null` = the top level |
+| `order` | | Number | The order among groups with the same parent |
+| `system` | | `"blueprints"` | Marks the Blueprints group. Only one group has it, at the top level |
 
 ### Chips in Text
 

@@ -93,7 +93,7 @@ What you see and hear.
 | **Background Music** | Plays the music of each location during the scene |
 | **Location Background** | Shows the location image behind the game |
 | **Background Fade** | Fades the location image toward the background color, so the text is easier to read. Shows when **Location Background** is on. |
-| **Scene Images** | Makes an image of each turn. Your next action waits for the image, so each turn takes as long as your image server needs. Shows when **Enable Image Generation** is on. |
+| **Scene Images** | Makes an image of each turn. See [Scene Images](Image-Generation#scene-images). Your next action waits for the image, so each turn takes as long as your image server needs. Shows when **Enable Image Generation** is on. |
 
 ### Narration
 
@@ -211,7 +211,7 @@ Which AI the app connects to. The tab has its own tabs: **Text**, **Image** and,
 
 ### Text
 
-The **Preset** list holds your saved endpoints. **Default** is the shared cloud endpoint, and you cannot edit it. On the desktop app, **Built-In Engine** runs a model on your PC. **Add New Preset…** makes a new one. **Rename**, **Reset** and **Delete** act on the preset you made.
+The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud endpoint, and you cannot edit it. On the desktop app, **Built-In Engine** runs a model on your PC. **Add New Preset…** makes a new one. **Rename**, **Reset** and **Delete** act on the preset you made.
 
 | Setting | What it does |
 |---|---|
@@ -278,7 +278,7 @@ The **Image** section sets how each image is made.
 
 ## Data
 
-Saves, the Authoring Tour, and stored data. To back up your worlds and saves, use **Backup & Restore** in the main menu's **Menu**.
+Saves, the Authoring Tour, and stored data. To back up your worlds and saves, use **Backup & Restore** in the main menu's **Menu**. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 
 ### Saves
 
@@ -286,7 +286,7 @@ Saves, the Authoring Tour, and stored data. To back up your worlds and saves, us
 
 ### Authoring
 
-**Start Authoring Tour** opens the World Editor on a new world and shows an example for each step. Your other worlds do not change. This section shows only when you open Settings from the main menu.
+**Start Authoring Tour** opens the World Editor on a new world and shows an example for each step. See [The Authoring Tour](WorldEditor#the-authoring-tour). Your other worlds do not change. This section shows only when you open Settings from the main menu.
 
 ### Storage
 

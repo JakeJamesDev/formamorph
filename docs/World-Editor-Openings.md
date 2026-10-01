@@ -2,7 +2,7 @@
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
-**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a player presses **Start Game**, the game draws one opening from the pool.
+**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. The world, each location and each entity can own openings. When a player presses **Start game**, the game draws one opening from the pool.
 
 Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text lands:
 
@@ -130,7 +130,7 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 
 ## Re-generate on page one
 
-**Re-generate** on page one draws again. The game picks an opening this playthrough hasn't shown yet. When every opening has been shown, the draw starts over. A world with one opening keeps the same page.
+**Re-generate** on page one draws again. The game picks an opening it hasn't shown yet in this session. When every opening has been shown, the draw starts over. A world with one opening keeps the same page.
 
 ## Chips, search and older worlds
 
@@ -151,7 +151,7 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 | **Starting location** | The entity's Others openings join the draw only when it is at the player's starting location. |
 | **The world switch** | The world's **Openings** checkbox turns the entity's openings off too, and an entity's openings check that box. An entity has no switch of its own. |
 | **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch turns them off with the rest. They also never draw when the world, its locations and its entities have no openings. That world plays the default opening. |
-| **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
+| **Entity card** | The openings and their weights travel with the entity in its [card file](Library#how-to-export-an-entity-or-a-dictionary) and in a published listing. |
 | **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#how-to-make-an-entity-playable), its **Others** openings leave the draw for that game. Its **Self** openings take over. See below. |
 
 ## Self Openings

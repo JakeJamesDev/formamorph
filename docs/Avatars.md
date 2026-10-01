@@ -102,7 +102,7 @@ Under **Details** are the same controls as in **Character Customization**. Use t
 | Button | What it does |
 |---|---|
 | **Export** | Saves the file. See [How to Export an Avatar](#how-to-export-an-avatar). |
-| **Publish** | Publishes the Avatar to Community Creations. Shows when you are signed in. |
+| **Publish** | Publishes the Avatar to Community Creations. Shows when you are logged in. |
 
 Right-click a tile for **Publish**, **Thumbnail**, **Delete**, **Tile Size** and **Add To Group**. See [The Card Menu](Library#the-card-menu).
 

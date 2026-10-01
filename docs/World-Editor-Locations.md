@@ -94,7 +94,7 @@ The **Locations** tab has two views. Switch between them with **List** and **Can
 
 **Edit Full Screen** opens the canvas at full size, with undo and redo, search and a minimap. Right-click a box and select **Edit Location** to open its panel.
 
-Nothing on the canvas moves until you move it or ask for a layout. The in-game map uses your canvas layout.
+Nothing on the canvas moves until you move it or ask for a layout. **Auto Arrange All** in the toolbar lays out every box. Right-click a location with sub-locations and select **Auto Arrange** to lay out only its children. The in-game map uses your canvas layout.
 
 ## The panel
 
@@ -114,7 +114,7 @@ Simple mode also hides **AI-Facing Summary**.
 
 | Field | What it does |
 |---|---|
-| **Background Image** | The image behind the story while the player is here. Upload a file, or paste an address into **Or paste an image URL**. See [Upload or link](World-Editor-Overview#upload-or-link). **Generate with AI** makes one when image generation is on in Settings. |
+| **Background Image** | The image behind the story while the player is here. Upload a file, or paste an address into **Or paste an image URL**. See [Upload or link](World-Editor-Overview#upload-or-link). **Generate with AI** makes one when [image generation](Image-Generation#how-to-turn-on-image-generation) is on in Settings. |
 | **Image Tags** | **Advanced mode only.** Booru tags for AI image generation |
 | **Ambient Sound** | **Advanced mode only.** A sound that plays while the player is here. Select **Add Sound** to pick a file. |
 

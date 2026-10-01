@@ -139,7 +139,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 1. On an error message, select **View Details →**. The **Error Details** dialog opens.
 2. Select **Copy** to copy the full details, or **Report Bug** to send them.
-3. If you aren't signed in, sign in first.
+3. If you aren't logged in, log in first.
 4. Check the pre-filled **Send Feedback** form, then select **Send Report**.
 
 **Report Bug** shows only when community features are on.
@@ -167,7 +167,7 @@ Each turn has an action row under its narration. Some actions sit under its **Mo
 |---|---|
 | **Re-generate Narration** | The latest turn |
 | **Re-generate Stats** | The latest turn, under **More**, when stat updates are on |
-| **Generate Scene Image** | Under **More**, when image generation is on and the turn has no image |
+| **Generate Scene Image** | Under **More**, when [image generation](Image-Generation#how-to-make-an-image-of-one-turn) is on and the turn has no image |
 | **Write Scene Tags** | Under **More**, when image generation is on |
 | **Edit** | Every turn |
 | **Text to Speech** | The latest turn |
@@ -243,7 +243,7 @@ Select the **Menu** button at the top right.
 | **Edit World** | Opens the World Editor on this world. Mobile only; desktop has its own button. |
 | **AI Context** | Opens the AI Context inspector. Mobile only. |
 | **Settings** | Opens **Settings** |
-| **Send Feedback** | Sends a bug report or a suggestion. Shows when you are signed in to community features. |
+| **Send Feedback** | Sends a bug report or a suggestion. Shows when you are logged in to Community Creations. |
 | **Exit to Main Menu** | Leaves the game. Unsaved progress is lost. |
 
 ## Narration Layout
@@ -282,7 +282,7 @@ Most error messages have a **View Details →** link. The **Error Details** dial
 
 ## The Demo AI Notice
 
-A new install plays on the **Demo AI**, a small free model that needs no setup. The first time you start a game on it, **You're Playing on the Demo AI** opens. A **Demo AI** badge at the top right of the story opens it again.
+In the browser and on Android, Formamorph starts on the **Demo AI**, a small free model that needs no setup. The first time you start a game on it, **You're Playing on the Demo AI** opens. A **Demo AI** badge at the top right of the story opens it again.
 
 | Button | What it does |
 |---|---|

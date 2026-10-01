@@ -38,43 +38,34 @@ function targetProblem(index: AnchorIndex, target: DocTarget): string | null {
   return null;
 }
 
-/** A dead target, or a live one whose owner is still a known gap. `owner` reads "X maps to". */
-function mappingProblem(index: AnchorIndex, owner: string, target: DocTarget, isGap: boolean): string | null {
-  const problem = targetProblem(index, target);
-  if (problem) return `${owner} ${formatTarget(target)}, but ${problem}`;
-  return isGap ? `${owner} ${formatTarget(target)}, so remove it from the known gaps` : null;
-}
-
 export interface SurfaceCoverage {
   /** Every surface id the app has. */
   surfaceIds: readonly string[];
   map: Partial<Record<string, DocTarget>>;
   /** Surfaces players never see, with the reason. */
   exclusions: Partial<Record<string, string>>;
-  /** Surfaces that have no docs section yet. */
-  knownGaps: readonly string[];
   pages: DocsPages;
 }
 
-/** Problems with the surface map: unmapped ids, dead targets, and list entries that must go. */
+/** Problems with the surface map: unmapped ids, dead targets, and list entries that are not surfaces. */
 export function surfaceCoverageProblems(input: SurfaceCoverage): string[] {
   const index = anchorIndex(input.pages);
   const known = new Set(input.surfaceIds);
-  const gaps = new Set(input.knownGaps);
   const problems: string[] = [];
   for (const id of input.surfaceIds) {
     const target = input.map[id];
     const excluded = input.exclusions[id] !== undefined;
-    if (excluded && (target || gaps.has(id))) problems.push(`${id} is excluded, so it needs no map entry or known gap`);
+    if (excluded && target) problems.push(`${id} is excluded, so it needs no map entry`);
     if (target) {
-      const problem = mappingProblem(index, `${id} maps to`, target, gaps.has(id));
-      if (problem) problems.push(problem);
-    } else if (!excluded && !gaps.has(id)) {
+      const problem = targetProblem(index, target);
+      if (problem) problems.push(`${id} maps to ${formatTarget(target)}, but ${problem}`);
+    } else if (!excluded) {
       problems.push(`${id} has no docs section: add it to the surface map`);
     }
   }
-  const listed = [...Object.keys(input.map), ...Object.keys(input.exclusions), ...input.knownGaps];
-  for (const id of new Set(listed)) if (!known.has(id)) problems.push(`${id} is listed but is not a surface id`);
+  for (const id of new Set([...Object.keys(input.map), ...Object.keys(input.exclusions)])) {
+    if (!known.has(id)) problems.push(`${id} is listed but is not a surface id`);
+  }
   return problems;
 }
 
@@ -84,28 +75,19 @@ export interface HelpTopicLink {
   wikiAnchor?: string;
 }
 
-/** Problems with help-topic docs links: a missing or dead heading, and known gaps that must go. */
-export function helpTopicProblems(
-  topics: Record<string, HelpTopicLink>,
-  knownGaps: readonly string[],
-  pages: DocsPages,
-): string[] {
+/** Problems with help-topic docs links: a topic with no heading, or a heading that does not resolve. */
+export function helpTopicProblems(topics: Record<string, HelpTopicLink>, pages: DocsPages): string[] {
   const index = anchorIndex(pages);
-  const gaps = new Set(knownGaps);
   const problems: string[] = [];
   for (const [id, topic] of Object.entries(topics)) {
-    const page = topic.wikiPage;
-    if (page && topic.wikiAnchor) {
-      const target = { page, anchor: topic.wikiAnchor };
-      const problem = mappingProblem(index, `help topic ${id} links`, target, gaps.has(id));
-      if (problem) problems.push(problem);
-    } else if (page && pageProblem(index, page)) {
-      problems.push(`help topic ${id} links ${page}, but ${pageProblem(index, page)}`);
-    } else if (!gaps.has(id)) {
+    if (!topic.wikiPage || !topic.wikiAnchor) {
       problems.push(`help topic ${id} links no docs heading: set wikiPage and wikiAnchor`);
+      continue;
     }
+    const target = { page: topic.wikiPage, anchor: topic.wikiAnchor };
+    const problem = targetProblem(index, target);
+    if (problem) problems.push(`help topic ${id} links ${formatTarget(target)}, but ${problem}`);
   }
-  for (const id of gaps) if (!(id in topics)) problems.push(`help topic ${id} is a known gap but is not a help topic`);
   return problems;
 }
 
@@ -121,19 +103,32 @@ function safeDecode(text: string): string {
   }
 }
 
+/** The hrefs of one prose line's links to docs pages. */
+function docsHrefs(source: string): string[] {
+  const hrefs: string[] = [];
+  for (const [, image, , href] of source.replace(INLINE_CODE, '').matchAll(LINK)) {
+    // Images, outside sites and repo paths (`../src/…`) are not links between docs pages.
+    if (!image && !SCHEME.test(href) && !href.startsWith('../') && !href.startsWith('/')) hrefs.push(href);
+  }
+  return hrefs;
+}
+
+/** The page part of an href, empty for a same-page link. */
+function hrefPage(href: string): string {
+  const hash = href.indexOf('#');
+  return hash < 0 ? href : href.slice(0, hash);
+}
+
 /** Problems with links between docs pages: a missing page, a missing heading, or a `.md` suffix. */
 export function docsLinkProblems(pages: DocsPages): string[] {
   const index = anchorIndex(pages);
   const problems: string[] = [];
   for (const [page, markdown] of Object.entries(pages)) {
     forEachProseLine(markdown, (source, line) => {
-      for (const match of source.replace(INLINE_CODE, '').matchAll(LINK)) {
-        const [, image, , href] = match;
-        // Images, outside sites and repo paths (`../src/…`) are not links between docs pages.
-        if (image || SCHEME.test(href) || href.startsWith('../') || href.startsWith('/')) continue;
+      for (const href of docsHrefs(source)) {
         const where = `${page}:${line + 1} links ${href}`;
+        const pagePart = hrefPage(href);
         const hash = href.indexOf('#');
-        const pagePart = hash < 0 ? href : href.slice(0, hash);
         const anchor = hash < 0 ? null : safeDecode(href.slice(hash + 1));
         if (pagePart.endsWith('.md')) {
           problems.push(`${where}: write ${pagePart.slice(0, -3)}, the wiki page name`);
@@ -147,4 +142,39 @@ export function docsLinkProblems(pages: DocsPages): string[] {
     });
   }
   return problems;
+}
+
+/** Guide pages that `indexPage` does not link. The home page and the index itself need no entry. */
+export function indexProblems(pages: DocsPages, indexPage: string): string[] {
+  const listed = new Set<string>();
+  forEachProseLine(pages[indexPage] ?? '', (source) => {
+    for (const href of docsHrefs(source)) listed.add(hrefPage(href));
+  });
+  return Object.keys(pages)
+    .filter((page) => page !== 'Home' && page !== indexPage && !NON_GUIDE_PAGES.includes(page) && !listed.has(page))
+    .map((page) => `${indexPage} does not list ${page}`);
+}
+
+const GLOSSARY_PAGE = 'Glossary';
+const TABLE_SEPARATOR = /^\|[\s:|-]+\|$/;
+
+/** Glossary table rows whose term cell links no other guide page. */
+export function glossaryProblems(pages: DocsPages): string[] {
+  const glossary = pages[GLOSSARY_PAGE];
+  if (glossary === undefined) return [`page ${GLOSSARY_PAGE} does not exist`];
+  const index = anchorIndex(pages);
+  const rows: { cell: string; line: number }[] = [];
+  forEachProseLine(glossary, (source, line) => {
+    const row = source.trim();
+    if (!row.startsWith('|')) return;
+    // A separator row follows the header row, which names no term.
+    if (TABLE_SEPARATOR.test(row)) rows.pop();
+    else rows.push({ cell: row.slice(1).split('|')[0].trim(), line });
+  });
+  return rows
+    .filter(({ cell }) => !docsHrefs(cell).some((href) => {
+      const page = hrefPage(href);
+      return page !== '' && page !== GLOSSARY_PAGE && pageProblem(index, page) === null;
+    }))
+    .map(({ cell, line }) => `${GLOSSARY_PAGE}:${line + 1} term ${cell} links no guide page`);
 }

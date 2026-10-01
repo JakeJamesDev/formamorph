@@ -114,7 +114,7 @@ On a wide screen, the tabs are at the top left. On mobile, they are at the botto
 
 Each tab has a **New** button, such as **New World**, and an **Import** button, such as **Import World**. **Avatars** has only **Import Avatar**. On a narrow screen, these buttons are in the **Menu** button at the top center.
 
-The **Entities** tab also has an **All** and **Personas** switch. **Personas** shows only the entities you can play as. See [Personas](Personas). While **Personas** is on, you cannot move tiles or change Groups.
+The **Entities** tab also has an **All** and **Personas** switch. **Personas** shows only the entities you can play as. See [Personas](Personas). While **Personas** is on, you cannot move tiles, change their size or change Groups.
 
 ## The Board
 
@@ -154,7 +154,7 @@ Right-click a tile, or press and hold it on a touch screen. With the keyboard, p
 | **Remove From Group** | All | Takes the tile out of its Group |
 | **Check for Updates** | Entities, Dictionaries | Looks for worlds that have an older version of this item. See [Update Available](LinkedContent#update-available). |
 | **Set as Default Persona** | Entities | Makes the entity your default persona. Shows for a persona entity. See [Personas](Personas#how-to-set-a-default-persona). |
-| **Publish** | Avatars | Publishes the avatar to Community Creations. Shows when you are signed in. |
+| **Publish** | Avatars | Publishes the avatar to Community Creations. Shows when you are logged in. |
 | **Thumbnail** | Avatars | Uses the image in the file, or a generated one. Shows when the file has an image. |
 | **Delete** | All | Erases the item after you confirm |
 
@@ -164,7 +164,7 @@ World actions such as **Edit World** and **Publish World** are in the world dial
 
 ### Deleting an Item
 
-**Delete** asks you to confirm, and you cannot undo it. Make a backup first. See [How to Back Up Everything](Saves-and-Backup#how-to-back-up-everything).
+**Delete** asks you to confirm, and you cannot undo it. Make a backup first. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 
 - When saves use an avatar, the dialog names them. Those saves use the default avatar after you erase it.
 - You cannot delete your last avatar.
@@ -178,7 +178,7 @@ World actions such as **Edit World** and **Publish World** are in the world dial
 | Button | What it does |
 |---|---|
 | **Export** | Exports the item as a file |
-| **Publish** | Publishes the item to Community Creations. Shows when you are signed in. |
+| **Publish** | Publishes the item to Community Creations. Shows when you are logged in. |
 | **Save** | Saves your changes. A new item is stored only when you save it. |
 
 If you close the editor with unsaved changes, **Unsaved changes** asks what to do: **Save & Exit**, **Exit Without Saving** or **Cancel**.

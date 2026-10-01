@@ -47,7 +47,7 @@ A linked copy of your own item also updates the next time you open its world.
 
 ## How to Repair a Missing Source
 
-1. In the World Editor, open the Test Bench's **Issues** list.
+1. In the World Editor, open the [Test Bench](Test-Bench#issues)'s **Issues** list.
 2. Select **Check Sources**.
 3. For each copy with a missing source, pick **Replace from Library**, **Unlink and Keep Content** or **Remove from World**.
 4. Select **Apply** on that copy.
@@ -63,7 +63,7 @@ A linked copy of your own item also updates the next time you open its world.
 | **Independent copy** | A copy that follows nothing. |
 | **Local replacement** | A linked copy of another author's item that you edited. No update overwrites it. |
 | **Source** | The published listing a copy follows. |
-| **Add-on** | A published entity or dictionary offered for a world, which a player installs by choice. |
+| **Add-on** | A published entity or dictionary offered for a world, which a player downloads by choice. |
 | **Bundled content** | The entities and dictionaries an imported world file carries whose library items are not on this machine. |
 
 ## Linked Copies
@@ -202,13 +202,13 @@ A community world's details window lists what it brings under **Linked Content**
 | **Approved Add-ons** | The world's author approved it. | Yes, one checkbox each. |
 | **Community Add-ons** | Its own author offered it. The world's author has not reviewed it. | Yes, one checkbox each. |
 
-The download button counts what the press installs, so it reads **Download World + 3 Items**. Downloading places every item in your library and links the world's own copies to them. Each copy opens in the World Editor as **Linked** with its source named.
+The download button counts what the press downloads, so it reads **Download World + 3 Items**. Downloading places every item in your library and links the world's own copies to them. Each copy opens in the World Editor as **Linked** with its source named.
 
 A required item that does not download leaves the world out of your library and names what failed. **Retry** finishes it, and what already downloaded is kept. An add-on that does not download leaves the world ready and gets its own **Retry**.
 
 ### A Listing's Compatible Worlds
 
-An entity's or a dictionary's details window lists the worlds it is offered for under **Compatible Worlds**, in three groups: **Approved**, **Unreviewed**, and **Declined by the world author**. Only the entity's or dictionary's own author sees the declined group. Pressing a world opens that world's listing. Downloading the entity or dictionary installs it alone. Each world stays a download of its own.
+An entity's or a dictionary's details window lists the worlds it is offered for under **Compatible Worlds**, in three groups: **Approved**, **Unreviewed**, and **Declined by the world author**. Only the entity's or dictionary's own author sees the declined group. Pressing a world opens that world's listing. Downloading the entity or dictionary gets only that item. Each world stays a download of its own.
 
 ### Importing a World File
 
@@ -242,7 +242,7 @@ If the file's source is already in your library, **Update Available** opens inst
 
 ### Check Sources
 
-The Test Bench's **Issues** list gains **Check Sources**. It asks the server about every library item this world's copies follow. Formamorph asks only when you press it, so an installed world stays playable with no connection.
+The Test Bench's **Issues** list gains **Check Sources**. It asks the server about every library item this world's copies follow. Formamorph asks only when you press it, so a downloaded world stays playable with no connection.
 
 | Result | Meaning |
 |---|---|

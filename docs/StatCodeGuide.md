@@ -37,7 +37,7 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 1. Select **Test Code** to see the error and every write.
 2. Add `console.log()` lines.
 3. Open your browser's developer console. Each line shows there.
-4. In the World Editor's Test Bench, read the **Issues** list for writes to unknown names.
+4. In the World Editor's [Test Bench](Test-Bench#issues), read the **Issues** list for writes to unknown names.
 
 ## Overview
 
@@ -297,7 +297,7 @@ Six values describe the story time. They are plain variables. Use them by name.
 
 **Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `startDaypart === 'afternoon'` and `daypart === 'night'`. Neither reading alone describes the turn.
 
-> ⚠️ **With the clock off, `deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under Settings → **Output** → **Time**, in **Advanced** mode.
+> ⚠️ **With the clock off, `deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
 
 ### Examples
 

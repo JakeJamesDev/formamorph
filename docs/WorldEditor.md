@@ -4,7 +4,7 @@ A guide to each tab in the World Editor: what it does, why it exists, and the se
 
 > 💡 Every tab has a **?** button with a short version of its page. It sits at the right end of the row above the list. On every tab except **Overview**, that row also has the search box. These pages are the long version.
 
-Each tab has its own page. A tab missing below isn't documented yet.
+Each tab has its own page.
 
 | Page | Covers |
 |---|---|
