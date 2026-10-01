@@ -2,7 +2,7 @@
  * The Docs Index: the player docs split into sections, with contents, keyword search and lookup by id. It
  * needs no network and no model. Section ids are `<page>#<anchor>`, with the wiki's anchor rule.
  */
-import { docHeadings, type DocHeading } from './headingAnchors';
+import { docHeadings, MARKDOWN_LINK, type DocHeading } from './headingAnchors';
 import type { DocsPages } from './docsChecks';
 import { sectionParts } from './sectionParts';
 
@@ -13,10 +13,7 @@ export const SECTION_CHAR_LIMIT = 6000;
 const BASE_SPLIT_LEVEL = 2;
 
 export interface DocSection {
-  /**
-   * `<page>#<anchor>`, or the page name for text above its first heading. Part 2 and later of a split
-   * section add `-part-N`; those ids and the built changelog ids are index-only, so no wiki link uses them.
-   */
+  /** `<page>#<anchor>`, or the page name for text above its first heading; part N of a split section adds `-part-N`. */
   id: string;
   page: string;
   /** The heading's text with inline markdown removed. */
@@ -48,15 +45,13 @@ export interface DocsIndex {
   get(ids: readonly string[]): DocSection[];
 }
 
-const MARKDOWN_LINK = /!?\[([^\]]*)\]\([^)]*\)/g;
-
 /** A heading's source text as a reader sees it. */
 function plainText(text: string): string {
   return text.replace(MARKDOWN_LINK, '$1').replace(/[*`]/g, '').trim();
 }
 
 /** A section with its heading level (0 for text above the page's first heading) and its base id. */
-export interface SplitSection extends DocSection {
+interface SplitSection extends DocSection {
   level: number;
   /** The id of the whole section; equal to `id` unless this is part 2 or later. */
   baseId: string;
@@ -66,7 +61,7 @@ export interface SplitSection extends DocSection {
  * Splits one page into sections at `#` and `##`. A section over the limit splits at its sub-headings, and
  * a section with none splits into parts at block boundaries.
  */
-export function splitPage(page: string, markdown: string): SplitSection[] {
+function splitPage(page: string, markdown: string): SplitSection[] {
   const lines = markdown.split(/\r?\n/);
   const headings = docHeadings(markdown);
   const sections: SplitSection[] = [];
@@ -82,7 +77,7 @@ export function splitPage(page: string, markdown: string): SplitSection[] {
     }
     return trail;
   };
-  const push = (heading: DocHeading | null, index: number, text: string) => {
+  const addSection = (heading: DocHeading | null, index: number, text: string) => {
     if (heading === null && text.trim() === '') return;
     const baseId = heading ? `${page}#${heading.anchor}` : page;
     const name = heading ? plainText(heading.text) : page;
@@ -101,7 +96,7 @@ export function splitPage(page: string, markdown: string): SplitSection[] {
     });
   };
   /** Emits headings[first..last) as sections; each starts at its heading and ends at the next one kept. */
-  const emit = (first: number, last: number, end: number, splitLevel: number) => {
+  const splitAtHeadings = (first: number, last: number, end: number, splitLevel: number) => {
     const starts: number[] = [];
     for (let i = first; i < last; i++) if (i === first || headings[i].level <= splitLevel) starts.push(i);
     starts.forEach((start, k) => {
@@ -110,16 +105,16 @@ export function splitPage(page: string, markdown: string): SplitSection[] {
       const text = textOf(headings[start].line, to);
       const deeper = headings.slice(start + 1, next).map((h) => h.level);
       if (text.length <= SECTION_CHAR_LIMIT || deeper.length === 0) {
-        push(headings[start], start, text);
+        addSection(headings[start], start, text);
         return;
       }
       // Too long: the heading keeps its intro, and each next-level sub-heading starts its own section.
-      emit(start, next, to, Math.min(...deeper));
+      splitAtHeadings(start, next, to, Math.min(...deeper));
     });
   };
   const firstLine = headings[0]?.line ?? lines.length;
-  push(null, -1, textOf(0, firstLine));
-  if (headings.length > 0) emit(0, headings.length, lines.length, BASE_SPLIT_LEVEL);
+  addSection(null, -1, textOf(0, firstLine));
+  if (headings.length > 0) splitAtHeadings(0, headings.length, lines.length, BASE_SPLIT_LEVEL);
   return sections;
 }
 
@@ -138,7 +133,7 @@ function stem(word: string): string {
 }
 
 /** The search terms of a text: lowercase words and numbers, stop words dropped, plurals folded. */
-export function searchTerms(text: string): string[] {
+function searchTerms(text: string): string[] {
   const words = text.replace(MARKDOWN_LINK, '$1').toLowerCase().match(/[\p{L}\p{N}]+(?:\.\p{N}+)*/gu) ?? [];
   return words.filter((word) => !STOP_WORDS.has(word)).map(stem);
 }
@@ -152,7 +147,8 @@ const BM25_K1 = 1.2;
 const BM25_B = 0.75;
 const DEFAULT_SEARCH_LIMIT = 5;
 
-interface Ranked {
+/** One section's search terms, by where they appear. */
+interface SectionTerms {
   section: SplitSection;
   heading: Set<string>;
   trail: Set<string>;
@@ -160,7 +156,7 @@ interface Ranked {
   length: number;
 }
 
-function counts(terms: string[]): Map<string, number> {
+function termCounts(terms: string[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const term of terms) map.set(term, (map.get(term) ?? 0) + 1);
   return map;
@@ -186,20 +182,20 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
   const all = [...byPage.values()].flat();
   const byId = new Map(all.map((section) => [section.id, section]));
 
-  const ranked: Ranked[] = all.map((section) => {
+  const sectionTerms: SectionTerms[] = all.map((section) => {
     const lines = section.markdown.split('\n');
     const bodyTerms = searchTerms(section.level > 0 ? lines.slice(1).join('\n') : section.markdown);
     return {
       section,
       heading: new Set(section.level > 0 ? searchTerms(section.heading) : []),
       trail: new Set(section.trail.flatMap(searchTerms)),
-      body: counts(bodyTerms),
+      body: termCounts(bodyTerms),
       length: bodyTerms.length,
     };
   });
-  const averageLength = ranked.reduce((sum, r) => sum + r.length, 0) / Math.max(ranked.length, 1);
+  const averageLength = sectionTerms.reduce((sum, r) => sum + r.length, 0) / Math.max(sectionTerms.length, 1);
   const documentFrequency = new Map<string, number>();
-  for (const r of ranked) {
+  for (const r of sectionTerms) {
     for (const term of new Set([...r.heading, ...r.trail, ...r.body.keys()])) {
       documentFrequency.set(term, (documentFrequency.get(term) ?? 0) + 1);
     }
@@ -219,7 +215,7 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
     search: (query, limit = DEFAULT_SEARCH_LIMIT) => {
       const terms = [...new Set(searchTerms(query))];
       if (terms.length === 0) return [];
-      const scored = ranked.map((r) => {
+      const scored = sectionTerms.map((r) => {
         let score = 0;
         let matched = 0;
         for (const term of terms) {
@@ -229,7 +225,7 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
           if (tf === 0 && !inHeading && !inTrail) continue;
           matched++;
           const df = documentFrequency.get(term) ?? 0;
-          const idf = Math.log(1 + (ranked.length - df + 0.5) / (df + 0.5));
+          const idf = Math.log(1 + (sectionTerms.length - df + 0.5) / (df + 0.5));
           const body = (tf * (BM25_K1 + 1)) / (tf + BM25_K1 * (1 - BM25_B + (BM25_B * r.length) / averageLength));
           score += idf * (body + (inHeading ? HEADING_WEIGHT : 0) + (inTrail ? TRAIL_WEIGHT : 0));
         }

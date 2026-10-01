@@ -4,7 +4,7 @@
  */
 import sidebar from '../../../docs/_Sidebar.md?raw';
 import { createDocsIndex, type DocsIndex } from './docsIndex';
-import type { DocsPages } from './docsChecks';
+import { pageNameOf, type DocsPages } from './docsChecks';
 
 // Glob patterns must be literals; `NON_GUIDE_PAGES` lists the same three pages and a test keeps them equal.
 const FILES = import.meta.glob<string>(
@@ -14,7 +14,7 @@ const FILES = import.meta.glob<string>(
 
 /** The bundled docs pages by wiki page name. */
 export const BUNDLED_DOCS: DocsPages = Object.fromEntries(
-  Object.entries(FILES).map(([path, markdown]) => [path.slice(path.lastIndexOf('/') + 1, -'.md'.length), markdown]),
+  Object.entries(FILES).map(([path, markdown]) => [pageNameOf(path), markdown]),
 );
 
 let index: DocsIndex | null = null;

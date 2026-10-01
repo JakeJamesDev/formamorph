@@ -1,6 +1,6 @@
 # 15: Docs Index
 
-Status: in-progress
+Status: ready-for-human
 Base: 8a206765
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -78,5 +78,10 @@ Recommended model rationale: the ranking and the section-size rule decide answer
 | No nested list split | 2 |
 | Keep every changelog series | 3 |
 | Bundle Design-System | 2 |
+| Close a cut `~~~` fence with ```` ``` ```` | 1 |
+| Split inside a code fence | 2 |
+| Static import of the bundled index in the loader | 1 |
+
+**Review fold-in.** The fence rule and the link regex now come from `headingAnchors.ts`, and a cut `~~~` fence closes with `~~~`. `pageNameOf` replaces three copies of the path slice. Internal helpers are no longer exported. A test keeps every production module but the loader from naming the bundled index, and the loader may name it only through `import()`. Kept as ruled: the series comes from the newest released changelog block, not from the app version.
 
 **No changelog line.** Nothing shows to a player until ticket 16.

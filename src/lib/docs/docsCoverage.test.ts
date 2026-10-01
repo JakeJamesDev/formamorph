@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { HELP_TOPICS } from '@/lib/helpTopics';
 import {
   docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, surfaceCoverageProblems,
-  HOME_PAGE, SIDEBAR_PAGE, type DocsPages,
+  HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
 } from './docsChecks';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, SURFACE_MAP } from './surfaceMap';
 
 const DOCS: DocsPages = Object.fromEntries(
   Object.entries(import.meta.glob<string>('../../../docs/*.md', { query: '?raw', import: 'default', eager: true })).map(
-    ([path, md]) => [path.slice(path.lastIndexOf('/') + 1, -'.md'.length), md],
+    ([path, md]) => [pageNameOf(path), md],
   ),
 );
 
