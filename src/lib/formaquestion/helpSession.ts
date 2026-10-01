@@ -16,6 +16,12 @@ import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './gene
 import { surfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
+/**
+ * Switches lookup mode on for every help question. It ships off (ADR-0009): retrieval mode answered as
+ * completely for about half the tokens. Not a player setting, and in no preset or export.
+ */
+export const HELP_LOOKUP_MODE = false;
+
 /** The most docs sections the search puts in one help request, or returns for one lookup call. */
 export const HELP_SECTION_LIMIT = 5;
 
@@ -54,6 +60,8 @@ export interface HelpQuestion {
   surface?: Surface;
   /** The images the player attached to this question. They go on the question alone, never on history. */
   images?: readonly ImageAttachment[];
+  /** Overrides `HELP_LOOKUP_MODE` for this question: tests and the probe's lookup arm. */
+  lookup?: boolean;
   /** Stop: the stream ends and the answer so far is kept. */
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
@@ -107,25 +115,25 @@ function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] 
 }
 
 /**
- * Asks one help question, after the earlier exchanges. The endpoint's known capability picks the mode
- * before anything is sent, and a failed request is never sent again in the other mode (ADR-0008).
+ * Asks one help question, after the earlier exchanges. The mode is picked before anything is sent, and a
+ * failed request is never sent again in the other mode (ADR-0008).
  *
  * In both modes the sections that match the question go in the prompt.
  *
- * - Lookup mode, where the endpoint is known to take function calls: the model reads more sections through
- *   the docs lookup.
- * - Retrieval mode, everywhere else: one request.
+ * - Lookup mode, only while `HELP_LOOKUP_MODE` is on and the endpoint is known to take function calls: the
+ *   model reads more sections through the docs lookup.
+ * - Retrieval mode, everywhere else: one request. The capability check does not run.
  *
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', snapshot, index, surface, images = [], signal, fetchImpl,
+  question, history = [], language = '', snapshot, index, surface, images = [], lookup: lookupOn = HELP_LOOKUP_MODE, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = surfaceHint(surface, index);
   const lead = hint ? [hint.section] : [];
   const found = helpSections(index, question, { history, budget: HELP_DOCS_CHAR_BUDGET - (hint?.section.markdown.length ?? 0) })
     .filter((section) => section.id !== hint?.section.id);
-  const lookupMode = toolsSupported(snapshot.resolveTarget('help').reasoning);
+  const lookupMode = lookupOn && toolsSupported(snapshot.resolveTarget('help').reasoning);
   const inPrompt = [...lead, ...found];
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })

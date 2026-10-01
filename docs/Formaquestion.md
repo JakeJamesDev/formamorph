@@ -121,7 +121,6 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
-- On an endpoint that supports Tools, the AI can also search the guide and read the other sections it picks. **Sources** lists those sections first. This is part of Formaquestion, so it works with the **Tools** checkbox clear, and each read adds a request.
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
 - With **Image Attachments** on, a question can carry up to 4 images, the same as an action. **Attach images** shows next to the field, and a paste or a drop on the field adds an image. The images go with that question only, and the app does not store them.

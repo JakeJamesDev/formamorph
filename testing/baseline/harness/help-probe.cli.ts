@@ -196,7 +196,7 @@ async function lookupRequest(arm: Arm, c: HelpCase): Promise<Sample> {
   let sources: string[] = [];
   let flagged = false;
   const session = arm === 'lookup22' ? askHelpTicket22 : askHelp;
-  for await (const event of session({ question: c.question, snapshot: lookupSnapshot, index, fetchImpl })) {
+  for await (const event of session({ question: c.question, snapshot: lookupSnapshot, index, lookup: true, fetchImpl })) {
     if (event.type !== 'done') continue;
     answer = event.text;
     sources = event.sources.map((section) => section.id);

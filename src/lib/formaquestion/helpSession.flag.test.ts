@@ -22,7 +22,7 @@ const script = (...replies: string[][]): FetchSpy => {
 };
 
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, snapshot: textSnapshot(), index, fetchImpl: fetchImpl as unknown as typeof fetch, ...over });
+  askHelp({ question, snapshot: textSnapshot(), index, lookup: true, fetchImpl: fetchImpl as unknown as typeof fetch, ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];
