@@ -1,13 +1,13 @@
 # 🎮 How to Play
 
-You play by writing what your character does. The AI narrator writes what happens next, and the story moves one turn at a time.
+You play by writing what you do. The AI narrator writes what happens next. The story moves one turn at a time.
 
 > New to a world? [Starting a Game](Starting-a-Game) covers everything before page one.
 
 ## How to Take an Action
 
 1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
-2. Write what your character does, in the first person: *I ask her where the road leads.*
+2. Write what you do, in the first person: *I ask her where the road leads.*
 3. Press **Enter**, or select the **Send** button. **Shift+Enter** starts a new line.
 
 While the AI writes, the **Send** button turns red and becomes **Stop generating**. Select it to stop the turn.
@@ -24,10 +24,10 @@ To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on M
 
 ## How to Continue the Story
 
-1. Select **[Continue the Story]** under the choices. It shows after the first page, once the AI is done.
+1. Select **[Continue the Story]** under the choices. It shows once page one is on screen and the AI is done.
 2. Send the action.
 
-The text is in brackets, so the narrator reads it as a nudge to keep going, not as something your character does. See [Continue the Story](#continue-the-story) below to change when it shows.
+The text is in brackets, so the narrator reads it as a push to keep going, not as something you do. **Settings** → **Output** → **Choices** → **Continue the Story** sets when it shows. See [Choices](Settings#choices).
 
 ## How to Turn Choices Off
 
@@ -39,11 +39,11 @@ The same checkbox is in **Settings** → **Output** → **Turn Extras**. With ch
 
 ## How to Direct the Story
 
-1. In the action box, write your character's action as usual.
+1. In the action box, write your action as usual.
 2. Add what should happen in square brackets: *I climb on behind her. [She agrees, and they ride off.]*
 3. Send the action.
 
-Text in brackets speaks to the AI as the author, not as your character. Use it to steer an outcome, skip ahead, or hold a tone. The brackets never enter the story: the prose doesn't quote them, and the story's memory leaves them out.
+The AI reads text in brackets as direction from the author, not as something you do. Use it to decide an outcome, skip ahead, or keep a tone. The narration doesn't quote the bracketed text, and the story's memory leaves it out.
 
 > 💡 Brackets direct one turn. For a fact the AI should keep in mind every turn, use the [Notes](#notes) tab.
 
@@ -56,7 +56,7 @@ Text in brackets speaks to the AI as the author, not as your character. Use it t
 
 Each action takes up to 4 images. They go with that turn only. Select a thumbnail to view it, or its **Remove image** button to take it off.
 
-> ⚠️ Your model must read images. A text-only model returns an error. An image over 1568 px on its long side is shrunk before it is sent.
+> ⚠️ Your model must read images. A text-only model returns an error. The game shrinks an image over 1568 px on its long side before it sends it.
 
 The attach button shows after the game starts, not on the opening turn.
 
@@ -75,7 +75,7 @@ To re-roll only the choices, select **Re-generate Choices** beside them.
 2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
 3. Select **Save**.
 
-Saving rewrites the turn's narration. The game reads the edited text for entities again. It also clears that turn's memory and diary entries, and your own edit to that memory, so the story writes them again from your version.
+Saving rewrites the turn's narration. The game reads the edited text for entities again. It also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
 
 ## How to Edit Your Action
 
@@ -92,7 +92,7 @@ Only the action text and its images change. The narration stays as it is.
 2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
 3. Select **Confirm** in the **Confirm Rollback** dialog.
 
-> ⚠️ Rewind can't be undone. Every later turn goes, with its stats, its location, the entities the story invented in it, and its scene images. Your notes go back to that turn's notes.
+> ⚠️ You can't undo a rewind. It removes every later turn, with its stats, its location, the entities the story invented in it, and its scene images. Your notes go back to that turn's notes.
 
 ## How to Read Earlier Turns
 
@@ -126,26 +126,14 @@ The file holds every turn's narration. Markdown keeps the formatting; plain text
 
 See [The AI Context Inspector](#the-ai-context-inspector) for the search and the highlights.
 
-## How to Switch Between Pages and Chat
+## How to Read a Turn Aloud
 
-1. Open **Settings** → **Display**.
-2. In the **Narration** section, set **Narration Layout** to **Pages** or **Chat**.
+1. On the latest turn's action row, select **Text to Speech**. The **Text to Speech** dialog opens.
+2. Select **Load Model**. The voice model runs in your browser and needs WebGPU.
+3. Pick a voice under **Voice Selection**, and set the **Speed**.
+4. Select **Start**.
 
-## How to Color Quoted Speech
-
-1. Open **Settings** → **Display**.
-2. In the **Accessibility** section, select the **Quote Color** checkbox.
-3. To pick your own color, use **Light Mode Color** or **Dark Mode Color**. **Reset to Theme** brings back the theme's color.
-
-Only double quotes count, so contractions keep the body color. **Quote Italic** sets quoted speech in italic.
-
-## How to Change the Narration Font
-
-1. Open **Settings** → **Display**.
-2. In the **Accessibility** section, pick a **Narration Font**. It includes typefaces tuned for dyslexia and low vision.
-3. Adjust **Narration Text Size** and **Line Spacing** if you like.
-
-These change the story text only, not the rest of the app.
+**Stream narration audio** starts speaking each sentence as it arrives. **Highlight while speaking** marks the sentence you hear. **Unload Model** frees the memory the model uses. After the model loads, **Regenerate Audio** is under the turn's **More** button.
 
 ## How to Report an Error
 
@@ -169,7 +157,7 @@ These change the story text only, not the rest of the app.
 | Top right | **Edit World** and the **Menu** |
 | Bottom left | **Hide UI**, which hides the panels so only the story shows |
 
-On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). **Edit World** and **AI Context** move into the **Menu**.
+On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). The **Character** tab also has an **Avatar** tab for the 3D model. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
 
 ## Turn Actions
 
@@ -187,17 +175,7 @@ Each turn has an action row under its narration. Some actions sit under its **Mo
 | **Regenerate Audio** | Under **More**, after you load the **Text to Speech** model |
 | **Rewind to Here** | Earlier turns only |
 
-No actions show while a turn is still writing.
-
-## Continue the Story
-
-**Settings** → **Output** → **Choices** → **Continue the Story** sets when the button shows:
-
-| Option | The button |
-|---|---|
-| **Off** | Never shows |
-| **On** *(default)* | Shows under the choices while the **Choices** request is on |
-| **Always** | Shows even with the **Choices** request off, alone in place of the choices |
+No actions show while the AI writes a turn.
 
 ## The Side Panel Tabs
 
@@ -277,6 +255,8 @@ Select the **Menu** button at the top right.
 
 Both layouts have the same turn actions and the same choices.
 
+The layout, the quote color and the narration font are in **Settings** → **Display**. See [How to Change the Narration Layout](Settings#how-to-change-the-narration-layout).
+
 ## The AI Context Inspector
 
 The inspector shows exactly what the game sent to the AI each turn, and what came back. Use it to learn why the story did something.
@@ -284,16 +264,16 @@ The inspector shows exactly what the game sent to the AI each turn, and what cam
 | Control | What it does |
 |---|---|
 | Search box | Finds terms in the turn. **Enter** goes to the next match, **Shift+Enter** to the previous one. |
-| **Dictionary** | Highlights the dictionary entries in the text. Select a legend chip to hide its highlights. |
+| **Dictionary** / **Hydrations** | Picks what the text highlights. **Dictionary** marks the dictionary entries. Select a legend chip to hide its highlights. |
 | **Current context only** | Hides turns that were re-generated, rewound or stopped. On by default. |
-| **Collapse all** / **Expand all** | Folds every section |
+| **Collapse all** / **Expand all** | Collapses or expands every section |
 | **Export** | Downloads the full turn history as a `.json` file |
 
 Each request lists its **Raw Input**, **Tool Rounds**, **Raw Reasoning** and **Raw Output** where it has them. Before your first action it has nothing to show.
 
 ## Error Details
 
-Every error message has a **View Details →** link. The **Error Details** dialog shows the error and the full diagnostics behind it.
+Most error messages have a **View Details →** link. The **Error Details** dialog shows the error and the full diagnostics behind it.
 
 | Button | What it does |
 |---|---|
@@ -307,21 +287,21 @@ A new install plays on the **Demo AI**, a small free model that needs no setup. 
 | Button | What it does |
 |---|---|
 | **Keep Playing** | Closes the notice |
-| **Get the Desktop App** | Opens the desktop app's download page. Shows on devices that can run it. |
+| **Get the Desktop App** | Opens formamorph.ai, where you can get the desktop app. Shows on devices that can run it. |
 | **Connect an AI** | Opens **Settings** → **Endpoints** |
 
-A stronger model writes sharper narration and keeps characters in character. See [Connect Your Own AI](Connect-Your-Own-AI).
+A stronger model writes better narration and keeps each entity consistent. See [Connect Your Own AI](Connect-Your-Own-AI).
 
 ## The Like Prompt
 
-After 15 turns in a world you downloaded from Community Creations, a card above the page buttons asks *Enjoying …?*
+After 15 turns in a world you downloaded from Community Creations, a card under the story asks *Enjoying …?*
 
 | Button | What it does |
 |---|---|
 | **♥ Like** | Likes the world's listing, so its author knows |
 | **Not Now** | Closes the card |
 
-Either button closes it for good on this device. It doesn't show for your own worlds, the bundled worlds, or a world you already liked. If the like fails to send, the card asks again on a later turn.
+After either button, the card doesn't show again for that world on this device. It doesn't show for your own worlds, the bundled worlds, or a world you already liked. If the like fails to send, the card asks again on a later turn.
 
 ## Related
 

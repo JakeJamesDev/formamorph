@@ -2,7 +2,7 @@
 
 A new game starts at **Enter World**. One dialog holds every choice before page one: who you play, your starting traits, where you start, and what you add from your library.
 
-> Once the story starts, [How to Play](How-to-Play) takes over.
+> After the story starts, see [How to Play](How-to-Play).
 
 ## How to Start a Game
 
@@ -12,7 +12,7 @@ A new game starts at **Enter World**. One dialog holds every choice before page 
 4. In the **Enter World** dialog, select each category in the list on the left and make your picks. The categories are in [The Enter World Dialog](#the-enter-world-dialog).
 5. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**, and the avatar step comes next.
 
-A world with nothing to choose skips the dialog and starts at once.
+A world with nothing to choose skips the **Enter World** dialog.
 
 For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a-persona). To add entities from your library, see [How to Add Your Own Entities to a Game](Entities#how-to-add-your-own-entities-to-a-game).
 
@@ -21,13 +21,13 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 1. On the main menu, select a world.
 2. Select **Quick Start**. In portrait it is the icon beside **Enter World**.
 
-**Quick Start** skips the **Introduction** and the **Enter World** dialog. You get the persona that **Enter World** would pick first, the author's default traits, and a random starting location. When the persona is one of the world's own entities, you start at its location. No library additions come in, and the world's own dictionaries are on.
+**Quick Start** skips the **Introduction** and the **Enter World** dialog. You get the persona that **Enter World** picks first. You also get the author's default traits and a random starting location. When the persona is one of the world's own entities, you start at its location. No library additions come in, and the world's own dictionaries are on.
 
 ## How to Pick Starting Traits
 
 1. In the **Enter World** dialog, open a category under **Starting Traits**.
 2. Select the traits you want. A round button allows one pick in its group; a checkbox allows several.
-3. Do the same for each category with a count below its minimum. The category list shows each count, such as **1/3**.
+3. Do the same for each category under **Starting Traits**. The category list shows how many traits you picked out of those shown, such as **1/3**.
 
 **Start game** stays off until every group has its minimum picks. A group that is short shows *Choose 1 more trait*.
 
@@ -45,7 +45,8 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 
 ## How to Read the Introduction Again
 
-1. In the **Enter World** dialog, select **Introduction** at the top.
+1. Select **Enter World** on the world.
+2. In the **Enter World** dialog, select **Introduction** at the top.
 
 To stop the **Introduction** and the in-game **Readme** from showing on entry, select **Don't Show This Again** in either one. The **Show Readme on entry** checkbox in the world dialog turns them back on.
 
@@ -71,15 +72,15 @@ Under the buttons:
 - **Show Readme on entry** shows when the world has an **Introduction** or a **Readme**.
 
 > [!NOTE]
-> When a source the world requires was removed, **Enter World** and **Quick Start** are off. See [While a Source Is Missing](LinkedContent#while-a-source-is-missing).
+> When its author removed a source the world requires, **Enter World** and **Quick Start** are off. See [While a Source Is Missing](LinkedContent#while-a-source-is-missing).
 
 ## The Enter World Dialog
 
-The dialog shows the world's name at the top and a category list on the left. On a narrow screen the list folds into a **Categories** button.
+The dialog shows the world's name at the top and a category list on the left. On a narrow screen, a **Categories** button shows the list.
 
 | Category | What you pick | Shows when |
 |---|---|---|
-| **Persona** | Who you play | The world or your library has a persona to pick |
+| **Persona** | Who you play | The world or your library has a persona to pick, or the world has a **Custom Persona** |
 | **Starting Traits** | One category per trait group, and one per entity whose traits you set | The world has traits you can pick |
 | **Starting Location** | Where the story begins | The world offers more than one starting location |
 | **Library Additions** | Entities and dictionaries for this game | Your library has something to add, or the world has dictionaries |
@@ -98,6 +99,7 @@ An entity whose traits you set gets a category with its portrait and name. Your 
 | A checkbox | Pick several. When the group is full, the rest turn off. |
 | A check mark with no control | **Always On**. The trait is on and you can't change it. |
 | A lock and *Requires …* | The trait needs another trait first. Pick one it names and it unlocks. |
+| A lock and *Locked* | The trait needs only traits you can't see |
 | *Unlocked by …* | The trait you picked that opened it |
 | A stat line, such as *Strength: +2* | What the trait does to a stat |
 
@@ -159,7 +161,7 @@ Then, in order, these can open:
 
 ## The Welcome Animation
 
-The first time you open Formamorph, a short animation spells out the name, then fades into the main menu. To see it again, select the version line at the foot of the main menu.
+The first time you open Formamorph, a short animation spells out the name, then fades into the main menu. To see it again, select the **©** line at the bottom of the main menu. Its tooltip reads **Replay intro**.
 
 ## Related
 
