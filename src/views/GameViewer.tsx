@@ -54,6 +54,7 @@ import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import AuthService from "@/services/AuthService";
 import { useDevRoute } from "../lib/devRouter";
+import { DEV_ATTACH_SAMPLE } from "../lib/devRoutes";
 import { loadDevFixture } from "../lib/devFixtures";
 import { putSaveRecord } from "../components/modals/dbUtils";
 import WorldStorageService from "../services/WorldStorageService";
@@ -155,7 +156,7 @@ import { ReasoningChip } from "@/components/game/ReasoningChip";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
-import { addToPending, attachToTurn, latestTurnAttachments, pruneAttachments } from "../lib/actionAttachments";
+import { addToPending, setTurnAttachments, latestTurnAttachments, pruneAttachments } from "../lib/actionAttachments";
 import { useImageAttachments } from "../lib/useImageAttachments";
 import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
@@ -258,7 +259,7 @@ interface PendingTurn {
   /** An Opening Narration's resolved text; the turn plays it as page one. */
   writtenNarration?: string;
   /** A regenerate's images, read before the rewind lets the prune drop them. */
-  resentImages?: ImageAttachment[];
+  resentAttachments?: ImageAttachment[];
 }
 
 /** What one playthrough remembers about its openings. Session state only, so a save never carries it. */
@@ -1004,7 +1005,7 @@ const GameViewer = ({
   // real attach path. Tree-shaken in prod.
   const devAttachLoadedRef = useRef(false);
   useEffect(() => {
-    if (!import.meta.env.DEV || devRoute?.attach !== 'sample' || devAttachLoadedRef.current) return;
+    if (!import.meta.env.DEV || devRoute?.attach !== DEV_ATTACH_SAMPLE || devAttachLoadedRef.current) return;
     const lastTurn = fullMessageHistory.findLast((m) => m.role === "assistant");
     const turnId = lastTurn && parseTurnContent(lastTurn.content)?.turnId;
     if (!turnId) return;
@@ -1015,7 +1016,7 @@ const GameViewer = ({
       const { pending } = await addToPending([], files);
       if (!mounted.current) return;
       setPendingAttachments(pending.slice(0, 2));
-      setActionAttachments((prev) => attachToTurn(prev, turnId, pending.slice(2)));
+      setActionAttachments((prev) => setTurnAttachments(prev, turnId, pending.slice(2)));
     })();
   }, [devRoute?.attach, fullMessageHistory, mounted, setPendingAttachments, setActionAttachments]);
   // Images belong to turns in the history. Between turns, drop the ones whose turn failed, rolled back or
@@ -1325,7 +1326,7 @@ const GameViewer = ({
       );
       return;
     }
-    pendingTurnRef.current = { action, resentImages: latestTurnAttachments(actionAttachments, fullMessageHistory) };
+    pendingTurnRef.current = { action, resentAttachments: latestTurnAttachments(actionAttachments, fullMessageHistory) };
     setPendingTurnNonce((n) => n + 1);
   };
 
@@ -2130,11 +2131,11 @@ const GameViewer = ({
    */
   const sendGameAction = async (
     action: string,
-    { writtenNarration, attachments, resentImages }: {
+    { writtenNarration, attachments, resentAttachments }: {
       writtenNarration?: string;
       attachments?: ImageAttachment[];
       /** The re-sent turn's images. They are kept even when the turn may not send them. */
-      resentImages?: ImageAttachment[];
+      resentAttachments?: ImageAttachment[];
     } = {},
   ) => {
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
@@ -2152,7 +2153,7 @@ const GameViewer = ({
       locationCount: locations.length,
       hasCurrentLocation: !!currentLocation,
       writtenNarration,
-      attachments: resentImages ?? attachments,
+      attachments: resentAttachments ?? attachments,
       settings: turnSettings(),
       prompts: turnPrompts(),
     });
@@ -2207,14 +2208,12 @@ const GameViewer = ({
       setSuggestedLocation(null);
       // Stamp a stable id for this turn, written into its assistant JSON (powers the digest apply-guard).
       currentTurnIdRef.current = randomUUID();
-      // The images leave the action box with the text. A turn that may not carry them leaves them pending.
-      // A regenerate keeps its turn's images and leaves the box alone.
+      // The attachments leave the action box with the text, and the turn keeps the ones it may carry.
+      // A regenerate keeps its turn's attachments and leaves the box alone.
       const turnId = currentTurnIdRef.current;
-      if (resentImages) setActionAttachments((prev) => attachToTurn(prev, turnId, resentImages));
-      else if (plan.attachments.length) {
-        setActionAttachments((prev) => attachToTurn(prev, turnId, plan.attachments));
-        setPendingAttachments([]);
-      }
+      const carried = resentAttachments ?? plan.attachments;
+      setActionAttachments((prev) => setTurnAttachments(prev, turnId, carried));
+      if (!resentAttachments) setPendingAttachments([]);
       // This turn hasn't entered history yet; an abort before the user message is added (the up-front
       // location request) must not be mistaken for "narration came through" (see abortGeneration).
       userTurnAddedRef.current = false;
@@ -2604,7 +2603,7 @@ const GameViewer = ({
     if (pendingTurnNonce === 0) return;
     const pending = pendingTurnRef.current;
     pendingTurnRef.current = null;
-    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration, resentImages: pending.resentImages });
+    if (pending !== null) sendGameAction(pending.action, { writtenNarration: pending.writtenNarration, resentAttachments: pending.resentAttachments });
     // sendGameAction is deliberately not a dependency — we want this render's (post-restore) closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTurnNonce]);

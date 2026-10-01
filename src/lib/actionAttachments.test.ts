@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ATTACHMENT_MAX_DIM, MAX_ATTACHMENTS, addToPending, attachToTurn, pruneAttachments, removePending, restoreAttachments, turnAttachments,
+  ATTACHMENT_MAX_DIM, MAX_ATTACHMENTS, addToPending, joinPending, pruneAttachments, withoutAttachment, restoreAttachments, turnAttachments,
   latestTurnAttachments, pageTurnId, setTurnAttachments,
 } from './actionAttachments';
 import type { ChatMessage, ImageAttachment } from '@/types';
@@ -73,11 +73,29 @@ describe('addToPending', () => {
   });
 });
 
-describe('removePending', () => {
+describe('withoutAttachment', () => {
   it('removes one image by id and keeps the order of the rest', async () => {
     const { pending } = await addToPending([], [photo('1x1'), photo('2x2'), photo('3x3')]);
-    const left = removePending(pending, pending[1].id);
+    const left = withoutAttachment(pending, pending[1].id);
     expect(left.map((a) => decoded(a).size)).toEqual(['1x1', '3x3']);
+  });
+});
+
+describe('joinPending', () => {
+  const image = (id: string): ImageAttachment => ({ id, mime: 'image/webp', dataUrl: `data:image/webp;base64,${id}` });
+
+  it('appends in order when there is room', () => {
+    const { pending, overflow } = joinPending([image('a')], [image('b'), image('c')]);
+    expect(pending.map((a) => a.id)).toEqual(['a', 'b', 'c']);
+    expect(overflow).toBe(false);
+  });
+
+  it('keeps the set at the cap and reports what did not fit', () => {
+    const full = Array.from({ length: MAX_ATTACHMENTS - 1 }, (_, i) => image(`p${i}`));
+    const { pending, overflow } = joinPending(full, [image('x'), image('y')]);
+    expect(pending).toHaveLength(MAX_ATTACHMENTS);
+    expect(pending.at(-1)?.id).toBe('x');
+    expect(overflow).toBe(true);
   });
 });
 
@@ -89,22 +107,22 @@ describe('the turn map', () => {
   ];
 
   it("stores a turn's images and reads them back in order", () => {
-    const map = attachToTurn({}, 'turn-1', [image('a'), image('b')]);
+    const map = setTurnAttachments({}, 'turn-1', [image('a'), image('b')]);
     expect(turnAttachments(map, 'turn-1').map((a) => a.id)).toEqual(['a', 'b']);
     expect(turnAttachments(map, 'turn-2')).toEqual([]);
   });
 
   it('stores nothing for a turn with no images', () => {
-    expect(attachToTurn({}, 'turn-1', [])).toEqual({});
+    expect(setTurnAttachments({}, 'turn-1', [])).toEqual({});
   });
 
   it('drops the images of turns no longer in the history', () => {
-    const map = attachToTurn(attachToTurn({}, 'kept', [image('a')]), 'rolled-back', [image('b')]);
+    const map = setTurnAttachments(setTurnAttachments({}, 'kept', [image('a')]), 'rolled-back', [image('b')]);
     expect(Object.keys(pruneAttachments(map, turn('kept')))).toEqual(['kept']);
   });
 
   it("reads the latest turn's images, the ones a regenerate sends again", () => {
-    const map = attachToTurn(attachToTurn({}, 'first', [image('a')]), 'second', [image('b'), image('c')]);
+    const map = setTurnAttachments(setTurnAttachments({}, 'first', [image('a')]), 'second', [image('b'), image('c')]);
     expect(latestTurnAttachments(map, [...turn('first'), ...turn('second')]).map((a) => a.id)).toEqual(['b', 'c']);
     expect(latestTurnAttachments(map, [...turn('second'), ...turn('first')]).map((a) => a.id)).toEqual(['a']);
     expect(latestTurnAttachments(map, [])).toEqual([]);
@@ -116,7 +134,7 @@ describe('the turn map', () => {
   });
 
   it("replaces a turn's images and drops the entry when none are left", () => {
-    const map = attachToTurn(attachToTurn({}, 'other', [image('x')]), 'turn-1', [image('a'), image('b')]);
+    const map = setTurnAttachments(setTurnAttachments({}, 'other', [image('x')]), 'turn-1', [image('a'), image('b')]);
     expect(turnAttachments(setTurnAttachments(map, 'turn-1', [image('b')]), 'turn-1').map((a) => a.id)).toEqual(['b']);
     expect(setTurnAttachments(map, 'turn-1', [])).toEqual({ other: [image('x')] });
   });
@@ -126,7 +144,7 @@ describe('the save map', () => {
   const image = (id: string): ImageAttachment => ({ id, mime: 'image/webp', dataUrl: `data:image/webp;base64,${id}` });
 
   it('reads a written map back with every turn and image in order', () => {
-    const map = attachToTurn(attachToTurn({}, 'turn-1', [image('a'), image('b')]), 'turn-2', [image('c')]);
+    const map = setTurnAttachments(setTurnAttachments({}, 'turn-1', [image('a'), image('b')]), 'turn-2', [image('c')]);
     expect(restoreAttachments(JSON.parse(JSON.stringify(map)))).toEqual(map);
   });
 

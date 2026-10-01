@@ -213,7 +213,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                   </BubbleMenu>
                 )}
                 {turn.action !== null && (
-                  <AttachmentThumbs images={turnAttachments(actionAttachments, turnId)} className="mb-3 justify-end" />
+                  <AttachmentThumbs attachments={turnAttachments(actionAttachments, turnId)} className="mb-3 justify-end" />
                 )}
                 {(turn.narration || (showReasoning && reasoning?.text)) && (
                   <TurnCard actions={narrationActions} turnNumber={item.index + 1} live={liveReveal} style={revealStyle}>

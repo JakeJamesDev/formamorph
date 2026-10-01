@@ -9,18 +9,18 @@ import type { ImageAttachment } from '@/types';
  * A row of an action's attached images. A click opens the image viewer on that image; `onRemove` adds a
  * remove button to each one.
  */
-export function AttachmentThumbs({ images, onRemove, className }: {
-  images: ImageAttachment[];
+export function AttachmentThumbs({ attachments, onRemove, className }: {
+  attachments: ImageAttachment[];
   onRemove?: (id: string) => void;
   className?: string;
 }) {
   const [open, setOpen] = useState<number | null>(null);
-  if (images.length === 0) return null;
-  const shown = open === null ? null : images[Math.min(open, images.length - 1)];
+  if (attachments.length === 0) return null;
+  const shown = open === null ? null : attachments[Math.min(open, attachments.length - 1)];
 
   return (
     <div className={cn('flex flex-wrap gap-2', className)} data-testid="attachment-thumbs">
-      {images.map((image, i) => (
+      {attachments.map((image, i) => (
         <div key={image.id} className="relative">
           <button
             type="button"
@@ -50,9 +50,9 @@ export function AttachmentThumbs({ images, onRemove, className }: {
         open={shown !== null}
         onOpenChange={(next) => { if (!next) setOpen(null); }}
         gallery={{
-          count: images.length,
+          count: attachments.length,
           index: open ?? 0,
-          onStep: (by) => setOpen((at) => ((at ?? 0) + by + images.length) % images.length),
+          onStep: (by) => setOpen((at) => ((at ?? 0) + by + attachments.length) % attachments.length),
         }}
       />
     </div>
