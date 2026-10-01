@@ -1,7 +1,7 @@
 # 14: Prototype, the window above dialogs
 
 Status: ready-for-human
-Status note: Prototype built and proven on `prototype/formaquestion-window` (`059426ae`). The layering works. The user picked window A with the edge tab and asked for open and close motion, which is built. Still open: approval of the layering approach, the nine new patterns, and decisions D1 to D5. See Answer.
+Status note: Prototype built and proven on `prototype/formaquestion-window` (`b09a82e4`). The layering works. The user picked window A with the edge tab, then asked for open and close motion, a movable tab and a minimal variant D; all three are built. Still open: A or D as the window, approval of the layering approach, the eleven new patterns, and decisions D1 to D5. See Answer.
 Base: 9edac2fd
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -42,10 +42,10 @@ Recommended model rationale: the inert scope, focus trap and scroll lock of the 
 
 | | |
 |---|---|
-| 🌿 Branch | `prototype/formaquestion-window`, commit `059426ae` |
+| 🌿 Branch | `prototype/formaquestion-window`, commit `b09a82e4` |
 | 📁 Worktree | `.claude/worktrees/prototype-formaquestion-window` |
 | ▶️ Run | Launch entry `proto-formaquestion-window` (port 5216). From the worktree: `npx vite --port 5216 --strictPort --force` |
-| ✅ Proof | `npx playwright test -c playwright.prototype.config.ts prototype.spec` → 30 pass |
+| ✅ Proof | `npx playwright test -c playwright.prototype.config.ts prototype.spec` → 35 pass |
 | 🖼️ Frames | `npx playwright test -c playwright.prototype.config.ts frames.spec` → `.scratch/formaquestion-window/review/` in the worktree |
 | 📖 Start here | `src/prototype/formaquestion/README.md`, then `helpLayer.ts` |
 
@@ -138,12 +138,51 @@ Frames: `launcher-<icon|pill|tab>-<main-menu|world-editor|game>-<dark|light>`, a
 | Form | Open | Close |
 |---|---|---|
 | Floating window | Zooms from 75% and fades in, 200ms. The fixed point of the zoom is the launcher's center, so the window grows out of the tab | The same in reverse, 150ms |
-| Mobile sheet | Slides in from the right edge, 200ms | Slides out to the right, 150ms |
+| Mobile sheet | Slides in from the tab's edge, 200ms | Slides back out to that edge, 150ms |
 | Reduced motion | Shows at once | Hides at once |
 
 - The window stays mounted until the close animation ends. A timed backstop unmounts it when the end event does not arrive (a hidden tab).
 - ⚠️ A bare `duration-200` loses to the 150ms default of `animate-in`. The duration needs the same `data-[state=open]:` variant. The app's own dialogs have the bare form.
 - Three Playwright tests read the painted transform on every frame. Without `fill-mode-forwards` the closed window flashes at full size for a frame, and two of the tests fail.
+
+#### The movable edge tab (asked for by the user, 2026-10-01)
+
+The player drags the tab. It stays flat on the nearest screen edge and follows the pointer along it. It never floats free. A press with no move opens the window.
+
+| Edge | Label reads | Icon | Round side |
+|---|---|---|---|
+| Right | Top to bottom | Above the label | Left |
+| Left | Bottom to top | Under the label | Right |
+| Top | Left to right | Left of the label | Bottom |
+| Bottom | Left to right | Left of the label | Top |
+
+- The label is never upside down. On the side edges its letter tops point at the edge.
+- The tab keeps a gap from each corner, so it is always whole on the screen.
+- The window grows out of the tab wherever the tab is. The mobile sheet slides in from the tab's edge.
+- The move works while a dialog is open.
+- The default window place now leaves room for the tab on the right edge. Before, the window covered it.
+- Frames: `tab-edge-<top|left|bottom|right>-dark`, `tab-edge-top-window-open-dark`.
+- 🔜 For ticket 16: keep the tab's place per device, next to the window's place. Add a keyboard way to move it; the prototype has only the pointer.
+
+#### Variant D: Minimal (asked for by the user, 2026-10-01)
+
+The least chrome that still reads as a chat. It shows as an overlay on the app, not as a separate window. Ask only: no Search and no Guide for now. Switch to it with `?fq=D`.
+
+| Part | Variant D |
+|---|---|
+| Frame | None: no border, no fill, no shadow box, no title bar, no tabs |
+| Messages | Bubbles that float on the app. The player's are on `primary`, right. Answers are on `popover` with a border, left |
+| Gaps | Belong to the app: a press between two bubbles reaches the app under it |
+| Top edge | Older bubbles fade out. No scroll bar is drawn |
+| Field | One rounded field with Send inside it |
+| Chrome | One small pill at the top right: a grip that moves the chat, Clear, Close |
+| Sources | Names under an answer, not links, because there is no reader |
+| Not from the guide | One short line inside the bubble |
+| Mobile | A dim, blurred full-screen sheet stands in for the frame |
+
+- It does not resize in the prototype.
+- Frames: `window-D-ask`, `window-D-above-settings`, `window-D-over-game` (each `-dark` and `-light`), `mobile-sheet-D-ask-dark`, `mobile-sheet-D-ask-light`.
+- ⚠️ Over a busy screen, the faded top bubble lets app text show through it. `window-D-over-game-dark` shows this over the Stats panel.
 
 #### New visual patterns, for approval
 
@@ -158,6 +197,8 @@ Frames: `launcher-<icon|pill|tab>-<main-menu|world-editor|game>-<dark|light>`, a
 | 7 | **Search result row**: heading, page, two-line excerpt | Search |
 | 8 | **Reader**: page name, heading, body, an On This Page list, a Back row | Guide |
 | 9 | **Send reason**: a help line under the field when Send is unavailable | Ask field |
+| 10 | **Movable edge tab**: a launcher that drags along the screen edge, with a label that turns per edge | All screens |
+| 11 | **Frameless chat overlay** (variant D): floating bubbles, a rounded field, one control pill, a faded top edge, no scroll bar | Desktop and mobile |
 
 Existing patterns and components in use: `Button`, `Input`, `Textarea`, `Tabs`, `ScrollArea` (Standard: Scrollbars), `Tip`, `CompactSelectionRow` (Compact Selection Lists) for the contents lists, the typography roles, `MarkdownRenderer`, the semantic `warning` token, the shared focus ring.
 
