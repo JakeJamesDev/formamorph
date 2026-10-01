@@ -115,6 +115,8 @@ describe('lookup mode, on an endpoint known to take function calls', () => {
     const body = bodyOf(fetchImpl);
     expect(body.tools).toHaveLength(1);
     expect(lastUser(body)).not.toContain('<section ');
+    expect(lastUser(body)).not.toContain('<guide>');
+    expect(lastUser(body)).toContain(docsContents(index));
     expect(sourcesOf(events)).toEqual([]);
   });
 
@@ -222,8 +224,10 @@ describe('a model that calls without end', () => {
 
     // A model that never writes an answer ends as an empty answer, after a bounded count of requests.
     expect((failure as Error).message).toContain('empty answer');
+    // The call limit ends the question two requests after the last call it allows. The loop's round cap is
+    // the bound for a limit that high; the tool loop's own tests prove the cap.
+    expect(DOCS_LOOKUP_CALL_LIMIT + 2).toBeLessThanOrEqual(DEFAULT_TOOL_ROUND_CAP);
     expect(fetchImpl).toHaveBeenCalledTimes(DOCS_LOOKUP_CALL_LIMIT + 2);
-    expect(fetchImpl.mock.calls.length).toBeLessThanOrEqual(DEFAULT_TOOL_ROUND_CAP);
     const last = bodyOf(fetchImpl, fetchImpl.mock.calls.length - 1);
     expect(last).not.toHaveProperty('tools');
     const results = toolResults(last);

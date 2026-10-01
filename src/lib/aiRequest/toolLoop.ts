@@ -29,7 +29,7 @@ import {
 /** Requests one call of the loop may send, tool rounds and the final round together. */
 export const DEFAULT_TOOL_ROUND_CAP = 6;
 
-/** Runs one call of `tool` with the argument text the model streamed. Stop reaches it through `signal`. */
+/** Runs one call of `tool`, a Tool or an app-internal function, with the argument text the model streamed. Stop reaches it through `signal`. */
 export type ToolExecutor<TTool extends OfferedFunction = Tool> =
   (tool: TTool, argumentsText: string, signal?: AbortSignal) => Promise<ToolCallResult>;
 
@@ -65,9 +65,9 @@ export type AiToolLoopEvent =
   | { type: 'roundStarted' };
 
 export interface AiToolLoopOptions<TTool extends OfferedFunction = Tool> extends AiStreamOptions {
-  /** Runs the offered Tools. Without it, the request goes out as the plain stream. */
+  /** Runs the offered functions. Without it, the request goes out as the plain stream. */
   execute?: ToolExecutor<TTool>;
-  /** Calls one Tool may make per request where the Tool sets no limit of its own. */
+  /** Calls one offered function may make per request where it sets no limit of its own. */
   callLimit?: number;
   roundCap?: number;
   /** Show Silent Requests: emit a `toolRound` event per tool round. */

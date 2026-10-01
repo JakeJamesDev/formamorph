@@ -13,7 +13,7 @@ import { runToolCall } from '@/lib/tools/toolRunner';
 import { toolSchema } from '@/lib/tools/toolSchema';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import type { AssistantToolCallMessage, RequestMessage, Tool, ToolResultMessage, WireMessage } from '@/types';
-import type { AiRequestBody, AiRequestSpec as AnyRequestSpec } from './aiRequestSpec';
+import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import { AiStreamError } from './aiStream';
 import { DEFAULT_TOOL_ROUND_CAP, streamAiToolLoop, type AiToolLoopEvent, type AiToolLoopOptions } from './toolLoop';
 
@@ -26,9 +26,9 @@ const BRAM_FACT = 'only one arm';
 const ODETTE_FACT = 'burn scar';
 
 /** A request whose offered functions are Tools, which the Tool Runner can run. */
-type AiRequestSpec = AnyRequestSpec<RequestMessage, Tool>;
+type ToolRequestSpec = AiRequestSpec<RequestMessage, Tool>;
 
-const spec = (tools: readonly Tool[] | null = [GET_ENTITY]): AiRequestSpec => ({
+const spec = (tools: readonly Tool[] | null = [GET_ENTITY]): ToolRequestSpec => ({
   url: 'http://localhost:1234/v1/chat/completions',
   headers: { 'Content-Type': 'application/json', Authorization: 'Bearer token' },
   body: {
@@ -118,7 +118,7 @@ function scripted(script: Array<string[] | ((signal: AbortSignal | undefined) =>
   return { fetchImpl, sent };
 }
 
-async function run(transport: Transport, options: Partial<AiToolLoopOptions> = {}, s: AiRequestSpec = spec()): Promise<AiToolLoopEvent[]> {
+async function run(transport: Transport, options: Partial<AiToolLoopOptions> = {}, s: ToolRequestSpec = spec()): Promise<AiToolLoopEvent[]> {
   const events: AiToolLoopEvent[] = [];
   for await (const event of streamAiToolLoop(s, { execute, fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, ...options })) events.push(event);
   return events;
@@ -487,7 +487,7 @@ describe('streamAiToolLoop: cut thoughts', () => {
   const cutFrames = (...before: string[]): string[] => [...before, frame({ reasoning_content: CUT }), frame({}, 'length')];
 
   /** Runs the loop to its end and returns the error it threw, with every event it yielded first. */
-  async function runUntilThrow(transport: Transport, s: AiRequestSpec = spec()): Promise<{ error: unknown; events: AiToolLoopEvent[] }> {
+  async function runUntilThrow(transport: Transport, s: ToolRequestSpec = spec()): Promise<{ error: unknown; events: AiToolLoopEvent[] }> {
     const events: AiToolLoopEvent[] = [];
     try {
       for await (const event of streamAiToolLoop(s, { execute, fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0 })) events.push(event);
@@ -636,7 +636,7 @@ describe('streamAiToolLoop: silent capture', () => {
 });
 
 describe('streamAiToolLoop: Answer Cap', () => {
-  const capped = (answerCap: number, tools: readonly Tool[] | null = null): AiRequestSpec => ({ ...spec(tools), answerCap });
+  const capped = (answerCap: number, tools: readonly Tool[] | null = null): ToolRequestSpec => ({ ...spec(tools), answerCap });
   // At a cap of 5 the answer holds 20 characters, so the cut lands inside the second piece.
   const LONG_PROSE = ['The door opens. ', 'Bram looks up and ', 'waves. ', 'He smiles.'];
 

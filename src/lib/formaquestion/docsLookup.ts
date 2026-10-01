@@ -126,11 +126,16 @@ export function createDocsLookup(index: DocsIndex, options: DocsLookupOptions = 
     return index.search(words.join(' '), NEAR_ID_LIMIT).map((hit) => hit.id).filter((id) => !isLaterPart(index, id));
   };
 
-  /** Adds the sections that are new and fit the budget to the result; sorts the rest into the notes. */
+  /**
+   * Adds the sections that are new to the result, in order, up to the first one that does not fit the
+   * budget; sorts the rest into the notes. The parts of a split section thus never arrive without the first.
+   */
   const take = (sections: readonly DocSection[], out: { text: string[]; have: string[]; over: string[] }) => {
+    let full = false;
     for (const section of sections) {
       if (heldIds.has(section.id)) { out.have.push(section.id); continue; }
-      if (size + section.markdown.length > budget) { out.over.push(section.id); continue; }
+      full ||= size + section.markdown.length > budget;
+      if (full) { out.over.push(section.id); continue; }
       heldIds.add(section.id);
       fetched.push(section);
       size += section.markdown.length;

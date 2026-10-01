@@ -60,7 +60,7 @@ export interface AiCall<TTool extends OfferedFunction = OfferedFunction> {
   requestType: AIRequestType;
   /** Overrides the target's own output cap for the answer. */
   maxTokensOverride?: number | null;
-  /** The Tools this prompt offers. Sent only where the target's record says it takes them. */
+  /** The functions this prompt offers: its Tools, or an app-internal function. Sent only where the target's record says it takes them. */
   tools?: readonly TTool[];
 }
 
@@ -92,7 +92,7 @@ export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage, TT
   requestType: AIRequestType;
   /** The Answer Cap in tokens, which the tool loop enforces on answer text. Absent where nothing caps the output. */
   answerCap?: number;
-  /** The Tools the body offers, present exactly when the body carries `tools`. The loop runs calls against these. */
+  /** The functions the body offers, present exactly when the body carries `tools`. The loop runs calls against these. */
   tools?: readonly TTool[];
   /** The effort literal this request carried, whichever field the dialect spelled it in. Absent where it
    *  carried none. Read by the observation, which asks what was in force rather than which key held it. */
@@ -273,7 +273,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   };
 }
 
-/** The Tools the call offers where the target is known to take them; null sends none (ADR-0008). */
+/** The functions the call offers where the target is known to take them; null sends none (ADR-0008). */
 function offeredTools<TTool extends OfferedFunction>(call: AiCall<TTool>, target: AiEndpointTarget): readonly TTool[] | null {
   return call.tools?.length && toolsSupported(target.reasoning) ? call.tools : null;
 }
