@@ -40,6 +40,7 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const stats = useMemo(() => world?.stats ?? [], [world?.stats]);
   const traits = useMemo(() => world?.traits ?? [], [world?.traits]);
   const entities = useMemo(() => world?.entities ?? [], [world?.entities]);
+  const dictionaries = useMemo(() => world?.dictionaries ?? [], [world?.dictionaries]);
   const traitGroups = useMemo(() => world?.traitGroups ?? [], [world?.traitGroups]);
   // The tree as code reads it, so a rename of one node follows every path that passes through it.
   const placeholders = useMemo(
@@ -57,11 +58,11 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
       const { traitId, ...request } = queue[i];
       const holders = traitId === undefined ? undefined
         : traitHolders({ traits, traitGroups, entities }, placeholders.list, traitId);
-      const plan = planCodeRename({ ...request, stats, traits, entities, placeholders, traitHolders: holders });
+      const plan = planCodeRename({ ...request, stats, traits, entities, dictionaries, placeholders, traitHolders: holders });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, traits, traitGroups, entities, placeholders]);
+  }, [queue, stats, traits, traitGroups, entities, dictionaries, placeholders]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.

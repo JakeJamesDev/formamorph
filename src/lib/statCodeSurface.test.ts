@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { phNode } from '@/test/sandboxPlaceholders';
+import { phMap, phNode } from '@/test/sandboxPlaceholders';
 import { executeStatCode, STAT_CLOCK_VARS, type CodeBoundField } from './statCodeExecutor';
 import {
-  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
+  BUILTIN_MEMBERS, CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DICTIONARY_FIELDS, DELTA_MEMBERS, ENTITY_FIELDS, LANGUAGE_NAMES, PERSONA_FIELDS, placeholderEntryFields, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS,
   SANDBOX_UNDOCUMENTED_GLOBALS, SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import { runStatCodeTurn } from './statCodeTurn';
@@ -102,18 +102,27 @@ describe('the described surface against the sandbox that provides it', () => {
   });
 
   const persona = { name: 'Mira', traits: [{ name: 'Scarred', enabled: true, acquired: true }] };
-  const entities = [{ name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }] }];
+  const [ashOwns, weatherOwns] = phMap([
+    { name: 'Ash', children: [{ name: 'Hair', value: 'ash' }] },
+    { name: 'Weather', children: [{ name: 'Sky', value: 'clear' }] },
+  ]);
+  const entities = [{ name: 'Ash', traits: [{ name: 'Loyal', enabled: false, acquired: false }], placeholders: ashOwns }];
+  const dictionaries = [{ name: 'Weather', id: 'weather', placeholders: weatherOwns }];
 
   it.each([
     ['persona', PERSONA_FIELDS],
     ['persona.traits.Scarred', TRAIT_ENTRY_FIELDS],
     ['entities.Ash', ENTITY_FIELDS],
     ['entities.Ash.traits.Loyal', TRAIT_ENTRY_FIELDS],
+    ['entities.Ash.placeholders.Hair', placeholderEntryFields('Wildcard')],
+    ['dictionaries.Weather', DICTIONARY_FIELDS],
+    ['dictionaries.Nope', DICTIONARY_FIELDS],
+    ['dictionaries.Weather.placeholders.Sky', placeholderEntryFields('Wildcard')],
   ] as const)('describes every member of %s, and no member it does not', async (path, described) => {
     const expected = described.map(entry => entry.name).sort().join(',');
     await expect(executeStatCode(
       `return Object.keys(${path}).sort().join(',') === ${JSON.stringify(expected)} ? 1 : 0;`,
-      stats, stats[0], { persona, entities },
+      stats, stats[0], { persona, entities, dictionaries },
     )).resolves.toEqual({ value: 1, error: null });
   });
 

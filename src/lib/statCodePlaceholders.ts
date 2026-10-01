@@ -1,11 +1,14 @@
-import type { CodePins, Placeholder, PlaceholderRolls } from '@/types';
-import type { PlaceholderOwners } from './placeholderHomes';
+import type { CodePins, Entity, Placeholder, PlaceholderRolls } from '@/types';
+import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
+import { personaPlaceholderSet } from './personaPlaceholders';
 import {
   drawablePlaceholderValues, placeholderKindNoun, readPlaceholders, weightedPick,
   type PlaceholderPick, type PlaceholderReading,
 } from './placeholders';
 import { placeholderPathMap, type PlaceholderPathNode } from './statCodePaths';
-import type { SandboxPlaceholder, SandboxPlaceholderNode } from './statCodeExecutor';
+import type { SandboxDictionary, SandboxPlaceholder, SandboxPlaceholderNode } from './statCodeExecutor';
+import type { CodeOwnerName } from './statCodeAnalysis';
+import { statCodeName } from './statCodeNames';
 
 /** The placeholders one stat-code run reads, and what they resolve under. */
 export interface StatCodePlaceholderSet {
@@ -14,6 +17,10 @@ export interface StatCodePlaceholderSet {
    *  every placeholder reads as the world's own: there are no owner nodes and no paths, and a shared bare
    *  name reaches the last authored rather than the world's own row. Every play and editor site passes it. */
   owners?: PlaceholderOwners;
+  /** Placeholder ids `placeholders` never keys: reached only through their owner's entry. */
+  unlisted?: ReadonlySet<string>;
+  /** Every dictionary, in authored order. Each is a `dictionaries` entry, its placeholders its owner node. */
+  dictionaries?: readonly { id: string; name: string }[];
   /** The playthrough's rolls. Read, never written. */
   rolls: PlaceholderRolls;
   /** Placeholder id → the text every pin in force holds it to. */
@@ -44,6 +51,40 @@ function objectValue(ph: Placeholder, reading: PlaceholderReading, set: StatCode
 }
 
 /**
+ * `set` with a library persona's own pool joined, as the session's Placeholder Set joins it. Its rows are
+ * reached through its entry only, never through `placeholders`. The world copy wins an id both hold.
+ */
+export function withLibraryPersonaPlaceholders(set: StatCodePlaceholderSet, persona: Entity | undefined): StatCodePlaceholderSet {
+  const joined = persona ? personaPlaceholderSet([...set.placeholders], persona) : set.placeholders;
+  if (!persona || joined.length === set.placeholders.length) return set;
+  const added = joined.slice(set.placeholders.length);
+  const ref: PlaceholderOwnerRef = { kind: 'entity', id: persona.id, name: persona.name };
+  const own = new Set((persona.placeholders ?? []).map((p) => p.id));
+  return {
+    ...set,
+    placeholders: joined,
+    owners: new Map([...set.owners ?? [], ...added.filter((p) => own.has(p.id)).map((p) => [p.id, ref] as const)]),
+    unlisted: new Set([...set.unlisted ?? [], ...added.map((p) => p.id)]),
+  };
+}
+
+/** Each dictionary under its code name: chips read as code reads them. */
+export const codeDictionaries = (
+  dictionaries: readonly { id: string; name: string }[] | undefined, list: readonly Placeholder[],
+): CodeOwnerName[] => (dictionaries ?? []).map(({ id, name }) => ({ id, name: statCodeName(name, list) }));
+
+/** Each dictionary as a `dictionaries` entry, its owner node its `placeholders`. */
+export const sandboxDictionaries = (
+  books: readonly CodeOwnerName[], owners: ReadonlyMap<string, SandboxPlaceholderNode> | undefined,
+): SandboxDictionary[] => books.map((book) => ({ ...book, placeholders: owners?.get(book.id) }));
+
+/** One run's placeholder nodes: the top-level keys of `placeholders`, and each owner's node by owner id. */
+export interface SandboxPlaceholderMap {
+  top: SandboxPlaceholderNode[];
+  owners: ReadonlyMap<string, SandboxPlaceholderNode>;
+}
+
+/**
  * The `placeholders` map one run reads: its top-level keys, in authored order, each a node of the path tree.
  * `roll()` draws with the author's weights and hands back the drawn value's resolved text; nothing it draws
  * is kept.
@@ -51,7 +92,7 @@ function objectValue(ph: Placeholder, reading: PlaceholderReading, set: StatCode
  * The structure comes from the one path resolver, so the map code walks is the one the editor completes and
  * checks. A placeholder reachable both by bare name and by path is one node, and so holds one pin state.
  */
-export function sandboxPlaceholders(set: StatCodePlaceholderSet): SandboxPlaceholderNode[] {
+export function sandboxPlaceholders(set: StatCodePlaceholderSet): SandboxPlaceholderMap {
   const pick = set.pick ?? weightedPick;
   const resolveOpts = {
     placeholders: [...set.placeholders], rolls: set.rolls, pins: set.pins && { ...set.pins }, pick,
@@ -91,5 +132,6 @@ export function sandboxPlaceholders(set: StatCodePlaceholderSet): SandboxPlaceho
     for (const child of node.children) children.push(nodeOf(child));
     return made;
   };
-  return placeholderPathMap({ list: set.placeholders, owners: set.owners }).top.map(nodeOf);
+  const map = placeholderPathMap({ list: set.placeholders, owners: set.owners, unlisted: set.unlisted });
+  return { top: map.top.map(nodeOf), owners: new Map([...map.owners].map(([id, node]) => [id, nodeOf(node)])) };
 }

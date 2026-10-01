@@ -1,10 +1,12 @@
 import type { CascadeOffTraitIds, CodeBounds, CodePins, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
 import {
-  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type PlaceholderWrite, type StatClock,
-  type StatTurnInputs, type TraitWrite, type ValueAndMax,
+  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type PlaceholderWrite,
+  type SandboxPlaceholderNode, type StatClock, type StatTurnInputs, type TraitWrite, type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
-import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlaceholders';
+import {
+  codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPersonaPlaceholders, type StatCodePlaceholderSet,
+} from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import {
   codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeTraits,
@@ -51,7 +53,7 @@ export interface StatCodeTurn {
   clock: StatClock;
   /** What `traits`, `entities` and `persona` read and switch. Bounds re-derive under the ones in force. */
   traits: StatCodeTraits;
-  /** What `placeholders` reads. Absent, the map is empty. */
+  /** What `placeholders`, each owner entry's `placeholders` and `dictionaries` read. Absent, all are empty. */
   placeholders?: StatCodePlaceholderSet;
   /** A stat's name as the player reads it, for the turn log. Required, not defaulted: a caller that left
    *  it out would print an unresolved chip token in a line the player reads. */
@@ -143,15 +145,21 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
 
   const coded = named.filter((stat) => boxCode(stat, timing).trim());
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
-  const placeholders = coded.length && turn.placeholders ? sandboxPlaceholders(turn.placeholders) : [];
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
-  const inPlay = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
+  const cast = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
+  // The played library persona's pool joins the run as the session's Placeholder Set joins it.
+  const libraryPersona = cast?.persona.id ? turn.traits.library?.find((e) => e.id === cast.persona.id) : undefined;
+  const placeholderSet = turn.placeholders && withLibraryPersonaPlaceholders(turn.placeholders, libraryPersona);
+  const sandbox = coded.length && placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
+  const placeholders = sandbox?.top ?? [];
+  const inPlay = cast && withOwnerNodes(cast, sandbox?.owners);
+  const dictionaries = sandboxDictionaries(codeDictionaries(placeholderSet?.dictionaries, placeholderDefs), sandbox?.owners);
   const writes = new Map<string, { value: number | null; bounds: CodeBounds | null }>();
   const placeholderWritesByStat = new Map<string, readonly PlaceholderWrite[]>();
   const traitWritesByStat = new Map<string, StatTraitWrites>();
   await Promise.all(coded.map(async (stat) => {
     const result = await executeStatCode(boxCode(stat, timing), named, stat, {
-      clock: turn.clock, turn: inputs, placeholders, traits, ...inPlay,
+      clock: turn.clock, turn: inputs, placeholders, traits, ...inPlay, dictionaries,
     });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
@@ -166,6 +174,9 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     }
     if (result.unknownPlaceholders) {
       console.warn(`Stat ${stat.name} wrote placeholders the world does not have: ${result.unknownPlaceholders.join(', ')}`);
+    }
+    if (result.unknownOwnerPlaceholders) {
+      console.warn(`Stat ${stat.name} wrote placeholders of owners not in play: ${result.unknownOwnerPlaceholders.join(', ')}`);
     }
     if (result.unknownTraits) {
       console.warn(`Stat ${stat.name} switched traits the world does not have: ${result.unknownTraits.join(', ')}`);
@@ -230,6 +241,16 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   });
   if (!traitResult && moved.length === 0 && boundsChanged.length === 0) return { stats: turn.stats, moved, boundsChanged, pinWrites };
   return { stats, moved, boundsChanged, pinWrites, ...(traitResult ? { traits: traitResult } : {}) };
+}
+
+/** The entities with each one's owner node as its `placeholders`, `persona` still one of them. */
+function withOwnerNodes(cast: CodeEntities, owners: ReadonlyMap<string, SandboxPlaceholderNode> | undefined): CodeEntities {
+  if (!owners?.size) return cast;
+  const entities = cast.entities.map((entity) => {
+    const node = owners.get(entity.id);
+    return node ? { ...entity, placeholders: node } : entity;
+  });
+  return { entities, persona: entities.find((entity) => cast.persona.id && entity.id === cast.persona.id) ?? cast.persona };
 }
 
 /** One stat's switches: through `traits`, then through each entity's `traits`. */

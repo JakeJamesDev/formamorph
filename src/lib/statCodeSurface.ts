@@ -38,8 +38,9 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world. A bare name reaches the world’s own; write the path for an owned one, as in placeholders.Molly.Hair. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
-  { name: 'entities', detail: 'object', info: 'Every entity in play by name, with its own traits. Use entities["Two Words"] for a name with a space.' },
-  { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits. Empty when the player plays no entity.' },
+  { name: 'entities', detail: 'object', info: 'Every entity in play by name, with its own traits and placeholders. Use entities["Two Words"] for a name with a space.' },
+  { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits and placeholders. Empty when the player plays no entity.' },
+  { name: 'dictionaries', detail: 'object', info: 'Every dictionary in the world by name, with its own placeholders. Use dictionaries["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
@@ -145,6 +146,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'pronouns', detail: 'string', info: 'The persona’s pronouns text. Empty when it has none. Read-only.' },
   { name: 'inScene', detail: 'boolean', info: 'True while the persona plays. False when the player plays no entity. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
+  { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name. Empty when the player plays no entity.' },
 ];
 
 /** The members of one entry in `entities`. None takes a write; a trait switches through its own `enabled`. */
@@ -155,6 +157,14 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'pronouns', detail: 'string', info: 'The entity’s pronouns text. Empty when it has none. Read-only.' },
   { name: 'inScene', detail: 'boolean', info: 'Whether the entity is in this turn’s scene. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
+  { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
+];
+
+/** The members of one entry in `dictionaries`. None takes a write. */
+export const DICTIONARY_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'id', detail: 'string', info: 'The dictionary’s unique id. Read-only.' },
+  { name: 'name', detail: 'string', info: 'The dictionary’s code name. Read-only.' },
+  { name: 'placeholders', detail: 'object', info: 'The dictionary’s own placeholders by name. Use dictionaries.Lore.placeholders["Two Words"] for a name with a space.' },
 ];
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the
