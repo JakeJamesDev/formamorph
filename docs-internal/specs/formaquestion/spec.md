@@ -224,7 +224,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - The glossary is written for players from the internal glossary. It leaves out developer terms.
 - The seven help topics with no docs link get one. The stale help topics are corrected.
 - Docs follow the writing guide. One ticket per page.
-- A task has one how-to section, on the page of the screen that holds its control. Other pages name the place in one line and link it. A link to a page that does not exist yet is left out; ticket 13 adds it.
+- A task has one how-to section. A feature page owns the how-tos for its feature, even when the control sits in Settings or another screen. A screen page holds a how-to only when no feature page owns that task. Other pages name the place in one line and link it. A link to a page that does not exist yet is left out; ticket 13 adds it.
 
 ### Shape and settings
 
