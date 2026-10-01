@@ -8,18 +8,20 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 
 ## How to Edit a World File by Hand
 
-1. Open the world's details in the main menu. Select **Export World**. Or open the world in the **World Editor** and select **Export World** on the **Overview** tab.
+1. In the main menu, select the world. In its details window, select **Export World**.
 2. Open the `.json` file in a text editor. Make your changes.
 3. In the main menu, open the **Worlds** tab and select **Import World**. Pick the file.
 
-The import adds a new world. It never replaces the world you exported. A file that fails to load is skipped, and the menu tells you.
+> 💡 The World Editor's **Overview** tab has **Export World** too.
+
+The import adds a new world. It never replaces the world you exported. Import skips a file that fails to load, and the menu tells you.
 
 ## How to Add a Stat
 
 1. Add an object to the top-level `stats` list.
 2. Give it a new `id` and a `name`. Stat code and the AI find a stat by its name, so keep names unique.
 3. Set `type` to `"number"`, or to `"percentage"` for a 0–100 stat.
-4. Set `min`, `max`, `value` (the start value) and `regen`.
+4. Set `min`, `max`, `value` (the **Initial Value**) and `regen`.
 5. Write a `description`, and set `descriptors` to `[]` or to a list of [descriptors](#stat-descriptors).
 
 ```json
@@ -37,7 +39,7 @@ The import adds a new world. It never replaces the world you exported. A file th
 
 ```json
 { "id": "strong", "name": "Strong", "playerDescription": "Above-average strength",
-  "aiDescription": "This character is unusually strong.", "groupId": "physical",
+  "aiDescription": "This person is unusually strong.", "groupId": "physical",
   "statChanges": [{ "statId": "stamina", "value": 10, "type": "max" }] }
 ```
 
@@ -96,7 +98,7 @@ Import runs every world through a migration. The migration changes an older shap
 
 | Older form | Loads as |
 |---|---|
-| No `version` (before 2.0) | The current shape, with the steps below |
+| No `version` (before 2.0) | The current shape |
 | A flat `dictionary` list | One book named "Default" in `dictionaries` |
 | A dictionary `key` or `secondaryKeys` as one comma-separated string | A list of keywords |
 | An entity `image` string | The first item of `images` |
@@ -111,9 +113,12 @@ Import runs every world through a migration. The migration changes an older shap
 | An entity link to a trait outside Blueprints | Removed, with its overrides |
 | A stat with `type: "list"` | A `number` stat at its `min`. The items are dropped |
 | Stat code that uses `stats.find(…)` | The same code with the stat map |
+| A Stomach, Fatness or Breastsize stat with no `morphBindings` | The matching body morphs |
 | A root `customPlayerVRM` | `worldOverview.customPlayerVRM` |
 | Entity and location `inGameDescription` and `detailedDescription` | `playerDescription` and `aiDescription` |
 | A trait `description` | Both `playerDescription` and `aiDescription` |
+
+> ⚠️ **The last six rows run only when `version` is not the app's version.** A file stamped with the current version keeps those older forms as written.
 
 Write new files in the current shape.
 
@@ -165,14 +170,14 @@ Each stat is a number the player has. The AI reads it, and [stat code](StatCodeG
 | `min` | ✓ | Number | The lowest value |
 | `max` | ✓ | Number | The highest value |
 | `value` | | Number | The **Initial Value**: what a new game starts at. Absent or `0` = `min` |
-| `starting` | | Number | The start value for a save that did not have this stat yet. Absent = `value`. Keep it equal to `value` |
+| `starting` | | Number | The value a save gets when it did not have this stat yet. A new game also measures turn one's change from it. Absent = `value`. Keep it equal to `value` |
 | `regen` | ✓ | Number | The change per story hour. Negative drains |
 | `descriptors` | ✓ | [Descriptor](#stat-descriptors)[] | Text for each band of values |
-| `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures: the stat's own units, or a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
+| `thresholdUnit` | | `"raw"` \| `"percent"` | What a descriptor's `threshold` measures. `"raw"` = the stat's own units. `"percent"` = a percent of `min` to `max`. Absent = `"raw"`. A `percentage` stat is always percent |
 | `beforeCode` | | String | Stat code that runs before the AI's turn. Its changes reach that turn's prompt. See the [Stat Code Guide](StatCodeGuide) |
 | `code` | | String | Stat code that runs after the AI's changes and regen |
 | `morphBindings` | | String[] | Body morph names this stat drives. `min` to `max` maps to 0 to 1 |
-| `enabled` | | Boolean | `false` starts the stat off: the player and the AI don't see it, and regen and code stop. A trait's `statToggles` switches it on. Absent = on |
+| `enabled` | | Boolean | `false` starts the stat off. The player and the AI don't see it, and regen and code stop. A trait's `statToggles` switches it on. Absent = on |
 | `hidden` | | Boolean | `true` hides the stat from the player. The AI still reads it, and regen and code still run |
 | `noIncrease` / `noDecrease` | | Boolean | The AI can't raise or lower the value |
 | `noIncreaseMax` / `noDecreaseMax` | | Boolean | The AI can't raise or lower the max |
@@ -186,7 +191,7 @@ A descriptor gives the AI a word or phrase for a band of values.
 | `id` | ✓ | String \| Number | Unique id |
 | `threshold` | ✓ | Number | The top of the band, in the stat's `thresholdUnit` |
 | `description` | ✓ | String | The text the AI reads while the value is in the band |
-| `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values held while the value is in the band |
+| `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the value is in the band |
 
 The lowest band that holds the value wins, in any list order. A value above every threshold has no descriptor.
 
@@ -203,7 +208,7 @@ A trait changes a stat with a list of these.
 
 ## Traits
 
-A trait describes a character. The player picks traits before play. An entity can own traits too.
+A trait describes the player or an entity. The player picks traits before play. An entity can own traits too.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -219,7 +224,7 @@ A trait describes a character. The player picks traits before play. An entity ca
 | `mode` | | `"alwaysOn"` \| `"hidden"` | Absent = Optional: the player picks. `"alwaysOn"` is active while its requirements hold, and the player can't switch it. `"hidden"` acts as `"alwaysOn"`, and the player never sees it. Both ignore `isDefault` and `playerToggle` |
 | `requires` | | [Requirement](#trait-requirements)[] | Any one of these makes the trait available. Absent or empty = always available |
 | `statToggles` | | `{ "statId", "enabled" }`[] | Stats switched on or off while the trait is active |
-| `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values held while the trait is active |
+| `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
 
 See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave in play.
 
@@ -269,10 +274,10 @@ The world group with `system: "blueprints"`, and every group below it, holds Blu
 | `backgroundImage` | | [Image](#media-fields) | The background |
 | `imageTags` | | String | Comma-separated tags for image generation |
 | `ambientSound` | | [MediaAsset](#media-fields) | Looping sound |
-| `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location |
+| `isStarting` | | Boolean | A new game can start here. One marked = every game starts there. Several = the player picks. None = any location. A played entity's `startingLocationId` joins the choices |
 | `parentId` | | String \| `null` | The parent location's `id`. Absent or `null` = the top level. List order is the order among siblings |
 | `canvasPosition` | | `{ "x", "y" }` | Editor-only. The location's place on the Locations canvas, relative to its parent. Absent = automatic |
-| `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values held while the player is here. A child location does not get its parent's pins |
+| `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the player is here. A child location does not get its parent's pins |
 | `openings` | | [Opening](#openings)[] | Openings that draw when a game starts at this exact location |
 | `openingWeights` | | Object | Draw weight per opening `id`, as in `worldOverview` |
 
@@ -296,13 +301,13 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 |---|---|---|---|
 | `id` | ✓ | String | Unique id |
 | `name` | ✓ | String | The name |
-| `aliases` | | String[] | Other names. The AI reads them, and the story text is matched against them. The match is case-sensitive and whole-word |
+| `aliases` | | String[] | Other names. The AI reads them. The app finds them in the story text, case-sensitive and whole-word |
 | `pronouns` | | String | Free text, such as "she/her". The AI reads it |
 | `type` | | String | An optional category label |
 | `persona` | | Boolean | The **Persona** mark. See [Persona Marks](#persona-marks) |
 | `personaOnly` | | Boolean | The entity exists only while the player plays it |
 | `customPersona` | | Boolean | The **Custom Persona** mark |
-| `startingLocationId` | | String | The start location preselected when the player plays this entity. Absent = Automatic: the first of its `locations` marked `isStarting` |
+| `startingLocationId` | | String | The **Starting Location** preselected when the player plays this entity. Absent = Automatic: the first of its `locations` marked `isStarting` |
 | `playerDescription` | | String | What the player reads |
 | `aiDescription` | | String | The full description the AI reads |
 | `aiSummary` | | String | A short description the AI reads where the full one is too long |
@@ -323,7 +328,7 @@ A connection needs at least one leg. Both legs = two-way. A leg has one optional
 | `traitPlacement` | | `{ "groupId", "order" }` | Where the entity's node sits in the world's Traits tree. `groupId` is a world group `id` or `null` for the top level. Absent = the end of the top level |
 | `link` | | [ContentLink](#linked-copies) | What library item this copy follows. Absent = it follows nothing |
 
-An entity's own `statChanges` and `statToggles` apply only on a playable, persona-only or Custom Persona entity, while the player plays as it. Only the player has stats.
+Only the player has stats. So `statChanges` and `statToggles` on an entity's own traits apply only on a playable, persona-only or Custom Persona entity. A playable or persona-only entity's apply while the player plays it. The Custom Persona entity's apply while the player has no world persona.
 
 ### Persona Marks
 
@@ -340,7 +345,7 @@ One entity at most has `customPersona`, at the top level of the Traits tree. In 
 
 ### Trait Links
 
-A link gives a [Blueprints](#blueprints) trait or group to an entity without a copy. The link reads its original live, except for the fields it overrides.
+A link gives a [Blueprints](#blueprints) trait or group to an entity. The entity does not get its own trait. The link reads its original live, except for the fields it overrides.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -351,7 +356,7 @@ A link gives a [Blueprints](#blueprints) trait or group to an entity without a c
 | `groupId` | ✓ | String \| `null` | One of the entity's own group `id`s. `null` = the entity's top level |
 | `order` | | Number | The order among the entity's items with the same parent |
 | `overrides` | | Object | Overrides per trait. The key is the original trait's `id`. A linked group keys each of its traits here |
-| `keyNames` | | Object | In a library entity only: trait `id` to name, for each key of `overrides` |
+| `keyNames` | | Object | Outside a world only, such as in an entity file: trait `id` to name, for each key of `overrides` |
 
 Each override map can hold `isDefault`, `requires`, `placeholderPins`, `playerToggle`, `statChanges` and `mode`. `mode` takes `"optional"`, `"alwaysOn"` or `"hidden"`. Each field holds `{ "value": …, "blueprint": … }`: your value, and the original's value when you set it. The app uses `blueprint` to tell you when the original changed.
 
@@ -387,7 +392,7 @@ An opening is one way a game can start. The world, each location and each entity
 | `id` | ✓ | String | Unique within its owner. `openingWeights` uses it as the key |
 | `text` | ✓ | String | The text. It can hold [chips](#chips-in-text) |
 | `kind` | ✓ | `"action"` \| `"narration"` | `"action"` fills the player's input box. `"narration"` is page one, as written |
-| `self` | | `true` | A Self opening: it draws only while the player plays its owner. Read only on an entity with the Persona or Custom Persona mark. Absent = an Others opening |
+| `self` | | `true` | A Self opening. It draws only while the player plays its owner. Only an entity with the Persona or Custom Persona mark can own one. Absent = an Others opening |
 
 See [World Editor: Openings](World-Editor-Openings) for which openings draw.
 
@@ -401,7 +406,7 @@ A placeholder is a named value that a chip shows in text. The world's `placehold
 | `name` | ✓ | String | The name in the editor. Chips use the `id`, so a new name breaks nothing |
 | `values` | ✓ | Value[] | The values. See below. Empty = the chip reads as nothing |
 | `weights` | | Object | Draw weight per value `id`. A missing entry weighs 1. `0` keeps a value and never draws it |
-| `roll` | | Boolean | `true` = a Wildcard: one value is drawn per game. `false` = an Object: all values, joined with `", "`. Absent = a Wildcard with two or more values. One value is always fixed |
+| `roll` | | Boolean | `true` = a Wildcard, which draws one value per game. `false` = an Object, which joins all values with `", "`. Absent = a Wildcard with two or more values. With one value, the placeholder is a Variable |
 | `ownerId` | | String | The placeholder this one belongs to. Absent = the top level |
 | `sharedWeights` | | Object | Draw weights this placeholder sets on shared placeholders it reaches through its values. The outer key is a path of `id`s joined with `/`. The inner map is like `weights` |
 | `blueprintId` | | String | Makes this a [copy](#copies) of that blueprint |
@@ -414,13 +419,13 @@ Each value:
 |---|---|---|---|
 | `id` | ✓ | String | Unique id. Pins and weights use it |
 | `text` | ✓ | String | The text. It can hold chips. A value that is exactly one chip makes that placeholder a part of this one |
-| `pins` | | [Pin](#placeholder-pins)[] | Placeholder values held while this value is the drawn one |
+| `pins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while this value is the drawn one |
 
 See [World Editor: Placeholders](World-Editor-Placeholders) for kinds, parts and weights.
 
 ### Placeholder Pins
 
-A pin holds a placeholder at one value. Traits, locations, stat descriptors and placeholder values carry pins.
+A pin sets one placeholder to one value while its source is active. Traits, locations, stat descriptors and placeholder values carry pins.
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -510,7 +515,7 @@ Book order sets the order in the prompt.
 | `caseSensitive` | | Boolean | Keywords match case. Absent = any case |
 | `recursive` | | Boolean | Text from other active entries can activate this entry |
 | `position` | | `"before"` \| `"after"` | `"before"` = Background Lore, early in the prompt. `"after"` = Foreground Lore, late. Absent = `"after"` |
-| `scanDepth` | | Number | Scan only the last N messages. The current scene is always scanned. Absent = all |
+| `scanDepth` | | Number | Scan only the last N messages. The app always scans the current scene. Absent = all |
 | `priority` | | Number | Kept from an imported lorebook for export. The app does not use it |
 | `tokenBudget` | | Number | Kept from an imported lorebook for export. The app does not use it |
 | `extensions` | | Object | Other imported lorebook fields, kept for export |
@@ -558,7 +563,7 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 
 ## Example World
 
-A short world. Media data is cut.
+A short world. `...` replaces the media data.
 
 ```json
 {
@@ -614,7 +619,7 @@ A short world. Media data is cut.
       "id": "strong",
       "name": "Strong",
       "playerDescription": "Above-average strength",
-      "aiDescription": "This character is unusually strong.",
+      "aiDescription": "This person is unusually strong.",
       "groupId": "body",
       "statChanges": [{ "statId": "health", "value": 20, "type": "max" }]
     }

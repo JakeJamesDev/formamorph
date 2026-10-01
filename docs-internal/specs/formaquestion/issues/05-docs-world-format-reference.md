@@ -1,6 +1,7 @@
 # 05: World format reference rewrite
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 618cf31e
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -27,10 +28,18 @@ Recommended model rationale: the page must be exact against a large type file, a
 
 ## Acceptance criteria
 
-- [ ] Every field in the exported world shape is on the page with its type and meaning
-- [ ] The page names no field, value or control that does not exist
-- [ ] The stat code guide's `beforeCode` reference resolves to a section on this page
-- [ ] The save file format is either covered or stated as not covered, in one line
-- [ ] A field-by-field check against the world types is described in the commit body
-- [ ] The coverage test passes
-- [ ] Four gates green
+- [x] Every field in the exported world shape is on the page with its type and meaning
+- [x] The page names no field, value or control that does not exist
+- [x] The stat code guide's `beforeCode` reference resolves to a section on this page
+- [x] The save file format is either covered or stated as not covered, in one line
+- [x] A field-by-field check against the world types is described in the commit body
+- [x] The coverage test passes
+- [x] Four gates green
+
+## Comments
+
+**Built.** `docs/WorldFormat.md` is rewritten from `src/types/world.ts`, `migrateWorld`, `serializeWorldFile`, the Main Menu import and `storeWorld`. A scratch script read all 235 fields of the 29 world interfaces and found each on the page. Every table field on the page maps back to a type field, except `formamorphKind`, which the serializer writes. Dropping `beforeCode` or misspelling `pronouns` made the script fail in both directions. The Stat Code Guide links `WorldFormat#stats`.
+
+**Read from code, not the types.** `value` is the Initial Value a new game starts at. `starting` seeds a stat a save lacks and the turn-one baseline. Nothing reads `statUpdates` or `StatChange.interval`. Export drops `id`, and import mints a new one. Six legacy migrations run only when `version` differs from the app's version, and the page says so.
+
+**Gates.** Typecheck, lint, test and build pass. `src/lib/docs` passes 39/39. The full suite passes 15,598 tests.
