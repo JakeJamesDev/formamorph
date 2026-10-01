@@ -1,4 +1,5 @@
 import type { DocSection } from '@/lib/docs/docsIndex';
+import { languageDirective } from '@/lib/languages';
 
 /** The fixed help prompt. The contract is positive and names no sample value a small model can copy. */
 export const HELP_SYSTEM_PROMPT = [
@@ -10,6 +11,13 @@ export const HELP_SYSTEM_PROMPT = [
   '- After the steps, add one or two sentences of detail when the player needs them.',
   '- When the guide sections do not answer the question, say that the guide does not cover the question.',
 ].join('\n');
+
+/** The help prompt for the AI Language: the fixed prompt, plus the narration's directive when it is not English. */
+export function helpSystemPrompt(language: string): string {
+  const directive = languageDirective('answers', language);
+  if (!directive) return HELP_SYSTEM_PROMPT;
+  return `${HELP_SYSTEM_PROMPT}\n\n${directive} Keep each control name exactly as the guide writes it, in bold, so the player finds it on the screen.`;
+}
 
 /** The page name as a reader says it: wiki page names join their words with hyphens. */
 const pageLabel = (page: string): string => page.replace(/-/g, ' ');

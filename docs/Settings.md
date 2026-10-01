@@ -101,7 +101,7 @@ What you see and hear.
 |---|---|
 | **Narration Layout** | **Pages** shows one turn at a time, and the page buttons go back. **Chat** shows every turn in one list that you scroll, with your actions on the right. |
 | **Narration Reveal** | **Choose reveal animation…** sets how each sentence appears as it streams: **Fade**, **Move in**, **Scale** and **Blur**, with an easing and a minimum speed. The dialog has a preview. |
-| **AI Language** | Sets the language or style of the narration and the choices. Pick a suggestion or type your own, such as *formal English*. |
+| **AI Language** | Sets the language or style of the narration, the choices and the answers in [Formaquestion](Formaquestion). Pick a suggestion or type your own, such as *formal English*. |
 | **Paragraph Limit** | **Advanced.** **None**, **Single** or **Auto**. **Auto** fits the paragraph count to **Max Output Tokens**, so the turn has a planned ending. With **None**, a long turn can stop at the token cap with no real ending. |
 | **Markdown Formatting** | **Advanced.** Lets the narration use bold, lists and tables. See [Text Formatting](TextFormatting). |
 

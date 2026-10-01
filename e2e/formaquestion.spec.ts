@@ -597,6 +597,71 @@ test.describe('Formaquestion on a desktop screen', () => {
     expect(field.y + field.height).toBeLessThanOrEqual(frame.y + frame.height);
   });
 
+  test('a follow-up carries the first exchange, the conversation survives a screen change, and a reload empties it', async ({ page }) => {
+    const bodies = await openWithAi(page, '1. Open the **Traits** tab.\n2. Select **New Blueprint**.');
+    await openHelp(page);
+    await askField(page).fill('How do I make a blueprint?');
+    await page.keyboard.press('Enter');
+    await expect(conversation(page)).toContainText('Select New Blueprint.');
+    await askField(page).fill('and then?');
+    await page.keyboard.press('Enter');
+    await expect(conversation(page).getByRole('group', { name: 'Sources' })).toHaveCount(2);
+
+    const followUp = bodies[1].messages;
+    expect(followUp.map((message) => message.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    expect(followUp[1].content).toBe('How do I make a blueprint?');
+    expect(followUp[3].content).toContain('## How to Make a Blueprint');
+
+    await gotoDev(page, 'gameViewer', { fixture: 'whiteRoom' });
+    await expect(page.getByPlaceholder(/Type your action/)).toBeVisible();
+    await expect(conversation(page)).toContainText('and then?');
+
+    await page.reload();
+    await openHelp(page);
+    await expect(conversation(page)).toContainText('Ask how to do something in Formamorph');
+    await expect(conversation(page)).not.toContainText('How do I make a blueprint?');
+  });
+
+  test('while a game turn generates, Send waits and Search works; after the turn, Send works', async ({ page }) => {
+    let finishTurn = () => {};
+    const turnDone = new Promise<void>((resolve) => { finishTurn = resolve; });
+    let helpRequests = 0;
+    await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
+    await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
+    await page.route('**/chat/completions', async (route) => {
+      const isHelp = (route.request().postData() ?? '').includes('help writer for Formamorph');
+      if (isHelp) helpRequests++;
+      else await turnDone;
+      const frame = `data: ${JSON.stringify({ choices: [{ delta: { content: isHelp ? 'Select **New Blueprint**.' : 'The console blinks.' }, finish_reason: null }] })}\n\n`;
+      await route.fulfill({ contentType: 'text/event-stream', body: `${frame}data: [DONE]\n\n` });
+    });
+    await openApp(page, {
+      FORMAMORPH_endpointUrl: 'http://127.0.0.1:5190/v1/chat/completions',
+      FORMAMORPH_thinkingMode: 'off', FORMAMORPH_choicesEnabled: false,
+      FORMAMORPH_locationChangeEnabled: false, FORMAMORPH_memoryDigests: false, FORMAMORPH_aiClock: false,
+    }, { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
+    await page.getByPlaceholder(/Type your action/).fill('I knock on the seam.');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+
+    await openHelp(page);
+    await askField(page).fill('How do I make a blueprint?');
+    await page.keyboard.press('Enter');
+    const send = helpWindow(page).getByRole('button', { name: 'Send' });
+    await expect(send).toBeDisabled();
+    await expect(helpWindow(page)).toContainText('Wait for the game turn to finish to send a question');
+    await showSearch(page);
+    await searchField(page).fill('blueprint');
+    await expect(results(page).getByRole('button').first()).toContainText('Blueprint');
+    expect(helpRequests).toBe(0);
+
+    finishTurn();
+    await expect(page.getByText('The console blinks.').last()).toBeVisible();
+    await helpWindow(page).getByRole('tab', { name: 'Ask' }).click();
+    await send.click();
+    await expect(conversation(page)).toContainText('Select New Blueprint.');
+    expect(helpRequests).toBe(1);
+  });
+
   test('with no AI to reach, a question shows the guide sections that match it and sends no request', async ({ page }) => {
     // The app also sends its own capability checks to the endpoint, so the count is of requests that hold the question.
     const question = 'How do I make a blueprint?';

@@ -1,0 +1,13 @@
+{
+  "note": "Help follow-up probe. Each case asks `first`, then `followUp`, a short question with few keywords of its own. `section` is the section the follow-up needs; `facts` are control names a correct follow-up answer holds and the first answer does not need.",
+  "cases": [
+    { "id": "backup-restore", "first": "How do I make a backup?", "followUp": "How do I put it back?", "section": "Saves-and-Backup#how-to-restore-a-backup", "facts": ["Overwrite existing"] },
+    { "id": "save-export", "first": "How do I save a game?", "followUp": "And to get it onto another computer?", "section": "Saves-and-Backup#how-to-export-a-save", "facts": ["Export save"] },
+    { "id": "publish-update", "first": "How do I publish a world?", "followUp": "And how do I change it later?", "section": "Community-Creations#how-to-update-a-listing", "facts": ["Or update existing world"] },
+    { "id": "group-add", "first": "How do I make a Group in the library?", "followUp": "How do I put a world in it?", "section": "Library#how-to-add-a-tile-to-a-group", "facts": ["Add To Group"] },
+    { "id": "regen-edit", "first": "How do I re-generate a turn?", "followUp": "Can I fix the text by hand instead?", "section": "How-to-Play#how-to-edit-narration", "facts": ["Edit Text"] },
+    { "id": "import-entity", "first": "How do I import a world?", "followUp": "What about an entity?", "section": "Library#how-to-import-an-entity", "facts": ["Import Entity"] },
+    { "id": "quotes-italic", "first": "How do I color quoted speech?", "followUp": "Can they be slanted too?", "section": "Settings#how-to-color-quoted-speech", "facts": ["Quote Italic"] },
+    { "id": "tools-make", "first": "How do I turn on Tools?", "followUp": "How do I make my own?", "section": "Tools#how-to-make-a-tool", "facts": ["New Tool", "Save Tool"] }
+  ]
+}

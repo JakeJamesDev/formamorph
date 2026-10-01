@@ -3,6 +3,7 @@ import { toastAiRequestFailure } from '@/lib/aiRequest/aiRequestFailureToast';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { askHelp } from '@/lib/formaquestion/helpSession';
+import { useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { HelpAi } from './useHelpAi';
 
@@ -27,16 +28,25 @@ export interface HelpChat {
   exchanges: readonly HelpExchange[];
   /** A question is in progress. */
   busy: boolean;
+  /** A game turn generates, so a question waits. */
+  held: boolean;
   ask: (question: string) => void;
   stop: () => void;
+  /** Empties the conversation and ends the answer that is coming in. */
+  clear: () => void;
 }
 
 /**
  * The conversation of the one Formaquestion instance. It lives in memory, so it outlives the window
- * and ends with the app. Each question is one request that carries only that question.
+ * and ends with the app. A question carries the earlier exchanges, so a follow-up works.
  */
 export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   const [exchanges, setExchanges] = useState<HelpExchange[]>([]);
+  const exchangesRef = useRef(exchanges);
+  exchangesRef.current = exchanges;
+  const held = useTurnGenerating();
+  const heldRef = useRef(held);
+  heldRef.current = held;
   const mountedRef = useMountedRef();
   const running = useRef<AbortController | null>(null);
   // Read when the player sends, so a question uses the settings of that moment.
@@ -46,7 +56,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   useEffect(() => () => running.current?.abort(), []);
 
   const ask = useCallback((question: string) => {
-    if (!index || running.current) return;
+    if (!index || running.current || heldRef.current) return;
+    const history = exchangesRef.current.map(({ question: earlier, answer }) => ({ question: earlier, answer }));
     const controller = new AbortController();
     running.current = controller;
     const id = crypto.randomUUID();
@@ -69,7 +80,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
             return;
           }
         }
-        for await (const event of askHelp({ question, snapshot: aiRef.current.snapshot, index, signal: controller.signal })) {
+        const { snapshot, language } = aiRef.current;
+        for await (const event of askHelp({ question, history, language, snapshot, index, signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text });
           else change({ answer: event.text, sources: event.sources, status: event.stopped ? 'stopped' : 'answered' });
         }
@@ -84,6 +96,11 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   }, [index, mountedRef]);
 
   const stop = useCallback(() => running.current?.abort(), []);
+  const clear = useCallback(() => {
+    running.current?.abort();
+    running.current = null;
+    setExchanges([]);
+  }, []);
   const busy = exchanges.at(-1)?.status === 'writing';
-  return useMemo(() => ({ exchanges, busy, ask, stop }), [exchanges, busy, ask, stop]);
+  return useMemo(() => ({ exchanges, busy, held, ask, stop, clear }), [exchanges, busy, held, ask, stop, clear]);
 }
