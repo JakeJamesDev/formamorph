@@ -5,6 +5,7 @@ An Avatar is a 3D model of you, the player. It is a VRM file. You keep your Avat
 > An Avatar is not an entity's 3D model, and not your Profile Image. See [Avatars, 3D Models and Profile Images](#avatars-3d-models-and-profile-images).
 
 ## How to Import an Avatar
+<!-- keywords: add, load, upload, vrm, glb, 3d model, character model, vroid, file -->
 
 1. On the main menu, select the **Avatars** tab.
 2. Select **Import Avatar**. On a narrow screen, the button is in the **Menu** button at the top center.
@@ -15,6 +16,7 @@ The Avatar gets the title in its file, or the file name. A message counts the Av
 You can also add a file during **Character Customization**: select **Add .vrm**. The app adds it to your library and selects it.
 
 ## How to Customize Your Avatar
+<!-- keywords: change, edit, hair, body, colors, appearance, look, character creator, 3d model -->
 
 You customize an Avatar when you start a game in a world with a 3D model.
 
@@ -26,6 +28,7 @@ You customize an Avatar when you start a game in a world with a 3D model.
 Your choices are kept in the game and its saves. The Avatar in your library does not change. **Quick Start** skips this step and uses the Avatar as it is. See [Character Customization](#character-customization).
 
 ## How to Check an Avatar's License
+<!-- keywords: allowed, permission, rights, terms of use, copyright, share, redistribute, commercial, credit, vroid hub -->
 
 1. On the **Avatars** tab, select the Avatar's tile. Its details open.
 2. Open **Details**.
@@ -35,6 +38,7 @@ Your choices are kept in the game and its saves. The Avatar in your library does
 If it shows **Not shareable**, a line under it names what the file does not allow. See [The Permissive License](#the-permissive-license).
 
 ## How to Export an Avatar
+<!-- keywords: download, save to file, get the file, back up, vrm file, copy out -->
 
 1. On the **Avatars** tab, select the Avatar's tile.
 2. Select **Export**.
@@ -42,6 +46,7 @@ If it shows **Not shareable**, a line under it names what the file does not allo
 You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no VRM data.
 
 ## How to Change Your Profile Image
+<!-- keywords: picture, photo, pfp, icon, account picture, upload, crop -->
 
 You need a Community Creations account.
 

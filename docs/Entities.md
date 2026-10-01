@@ -5,12 +5,14 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 > Authoring a world's cast is the [World Editor](WorldEditor)'s job. This page is about the same entities at **runtime**: who the story counts as present, and what it does with an entity it made up itself.
 
 ## How to See Who Is in the Scene
+<!-- keywords: characters, npcs, people, present, list, cast, who is here, nearby -->
 
 1. During play, open the side panel's **Entities** tab. On desktop, select **Entities** above the panel if the avatar shows.
 2. Read the list. Your persona heads it, marked **(You)**.
 3. Select an entry to open its details.
 
 ## How to Add Your Own Entities to a Game
+<!-- keywords: characters, npcs, bring, include, library, custom characters, extra, import -->
 
 1. On the main menu, select a world.
 2. Select **Enter World**.
@@ -20,6 +22,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
 
 ## How to Remove a Cast Member
+<!-- keywords: delete, character, npc, get rid of, kick out, drop -->
 
 1. During play, open the side panel's **Entities** tab.
 2. Find the entry and select its trash button, **Remove** followed by its name.
@@ -28,6 +31,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 Only story-invented entities and Library Additions have the button. See [Removing One](#removing-one).
 
 ## How to Get Descriptions for New Entities
+<!-- keywords: characters, npcs, invented, auto describe, profile, details, generate -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.

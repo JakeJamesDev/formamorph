@@ -115,6 +115,60 @@ describe('Docs Index search', () => {
     const index = createDocsIndex({ pages: { P: '# P\n\nSee [the guide](Secret-Page).' } });
     expect(index.search('secret')).toEqual([]);
   });
+
+  it('matches singular and plural, and verb forms, to one stem', () => {
+    const index = createDocsIndex({
+      pages: {
+        Library: '# Library\n\n## How to Make a Folder\n\nPress **New**.',
+        Saves: '# Saves\n\n## Backing Up\n\nPress **Save**.',
+        Worlds: '# Worlds\n\n## How to Delete a World\n\nPress **Trash**.',
+        Play: '# Play\n\n## How to Re-generate a Turn\n\nPress **Again**.',
+      },
+    });
+    const top = (query: string) => index.search(query)[0]?.id;
+    expect(top('folders')).toBe('Library#how-to-make-a-folder');
+    expect(top('backed')).toBe('Saves#backing-up');
+    expect(top('deleting')).toBe('Worlds#how-to-delete-a-world');
+    expect(top('regenerating')).toBe('Play#how-to-re-generate-a-turn');
+  });
+});
+
+describe('Docs Index keyword line', () => {
+  const page = (heading: string, keywords: string) =>
+    `# P\n\n## ${heading}\n${keywords}\nPress **Go** to start.\n`;
+  const KEYWORDS = '<!-- keywords: folder, directory -->';
+
+  it('finds a section by a word only its keyword line holds', () => {
+    const index = createDocsIndex({ pages: { Library: page('How to Make a Group', KEYWORDS) } });
+    expect(index.search('make a directory')[0]?.id).toBe('Library#how-to-make-a-group');
+  });
+
+  it('ranks a keyword-line match like a heading match', () => {
+    const pages = {
+      Heading: page('How to Make a Folder', ''),
+      Keyword: page('How to Make a Group', KEYWORDS),
+      Body: '# P\n\n## Tiles\n\nA folder holds tiles. Open the folder. Close the folder.\n',
+    };
+    // Equal scores keep page order, so each sidebar order puts its first page first.
+    const first = (sidebar: string) => createDocsIndex({ pages, sidebar }).search('folder').map((s) => s.page);
+    expect(first('[a](Heading) [b](Keyword) [c](Body)')).toEqual(['Heading', 'Keyword', 'Body']);
+    expect(first('[a](Keyword) [b](Heading) [c](Body)')).toEqual(['Keyword', 'Heading', 'Body']);
+  });
+
+  it('keeps the keyword line out of the section text', () => {
+    const index = createDocsIndex({ pages: { Library: page('How to Make a Group', KEYWORDS) } });
+    expect(index.get(['Library#how-to-make-a-group'])[0]?.markdown).toBe('## How to Make a Group\nPress **Go** to start.');
+  });
+
+  it('reads no keyword line inside a code fence', () => {
+    const fenced = '# P\n\n## Syntax\n\n```md\n<!-- keywords: zebra -->\n```\n';
+    const index = createDocsIndex({
+      pages: { A: fenced, B: '# Q\n\n## Stripes\n<!-- keywords: zebra -->\nA long body about stripes and more stripes.\n' },
+      sidebar: '[a](A) [b](B)',
+    });
+    expect(index.search('zebra').map((s) => s.id)).toEqual(['B#stripes', 'A#syntax']);
+    expect(index.get(['A#syntax'])[0]?.markdown).toContain('<!-- keywords: zebra -->');
+  });
 });
 
 describe('Docs Index section size', () => {

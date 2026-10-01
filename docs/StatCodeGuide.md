@@ -3,6 +3,7 @@
 This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are the `beforeCode` and `code` fields of an entry in the world's `stats` list. The [World Format](WorldFormat#stats) page describes the rest of a stat.
 
 ## How to Add Stat Code to a Stat
+<!-- keywords: script, javascript, js, formula, calculate, dynamic, programming, code tab -->
 
 1. In the World Editor, select **Advanced** in the mode switch. The **Code** tab shows in Advanced mode only.
 2. Open the **Stats** tab and select the stat.
@@ -11,6 +12,7 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 5. Select **Test Code** under the box. Read the result, any error, and every write the run made.
 
 ## How to Insert a Template
+<!-- keywords: example, snippet, preset code, starter, sample, script -->
 
 1. Open the stat's **Code** tab.
 2. Select **Templates** beside the box's **Test Code** button.
@@ -19,6 +21,7 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 5. Edit the inserted code as you like.
 
 ## How to Limit the AI's Change to a Stat
+<!-- keywords: clamp, cap, max change, restrict, prevent, too fast, delta, script -->
 
 1. Open the stat's **Code** tab.
 2. In **After the AI**, read the AI's ask from `self.delta.ai.value`.
@@ -27,12 +30,14 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 5. Select **Test Code**.
 
 ## How to Pin a Placeholder from Code
+<!-- keywords: script, javascript, set value, force, wildcard, variable -->
 
 1. Open the stat's **Code** tab.
 2. In **Before the AI**, call `pin` on the placeholder, such as `placeholders.Mood.pin('calm')`. A pin from this box is in the prompt for this turn.
 3. Select **Test Code**. It lists each placeholder the run pinned.
 
 ## How to Debug Stat Code
+<!-- keywords: error, console, log, fix, broken, not working, test, script -->
 
 1. Select **Test Code** to see the error and every write.
 2. Add `console.log()` lines.

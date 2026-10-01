@@ -11,6 +11,7 @@ A trait is a fact about the player that doesn't change. Stats change all the tim
 > 💡 **Only active traits reach the AI.** A trait the player didn't pick is sent nowhere and does nothing.
 
 ## How to Make a Trait
+<!-- keywords: perk, feature, quirk, attribute, ability, background, create, new trait, characteristic -->
 
 1. Open the **Traits** tab.
 2. To name the trait as you add it, type the name in the search box.
@@ -23,6 +24,7 @@ A trait is a fact about the player that doesn't change. Stats change all the tim
 A new trait goes to the top level of the list. Drag it to put it in a group.
 
 ## How to Require Another Trait
+<!-- keywords: prerequisite, depends on, needs, only if, condition, unlock, gate -->
 
 1. Select the trait.
 2. Open the **Availability** tab.
@@ -34,6 +36,7 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 To remove a target, select the **×** on its chip.
 
 ## How to Set a Pick Count
+<!-- keywords: limit, how many, choose one, max picks, min picks, exactly one, radio, multiple -->
 
 1. Select a trait group. To add one, switch to Advanced mode, select **+**, then **Add Group**.
 2. Open the **Pick Count** list and pick **Any**, **Exactly One**, **Up to One** or **Custom**.
@@ -41,6 +44,7 @@ To remove a target, select the **×** on its chip.
 4. For **Exactly One**, select a trait in the group, open its **Availability** tab, and check **Enabled by Default**. A new game then starts with a valid pick.
 
 ## How to Make a Blueprint
+<!-- keywords: template, reusable, shared trait, base, prototype, copy for entities -->
 
 **Advanced mode only.**
 
@@ -51,6 +55,7 @@ To remove a target, select the **×** on its chip.
 The item is now a blueprint. The player never picks it directly. Entities get it only through [links](#links).
 
 ## How to Link to a Blueprint
+<!-- keywords: give to entity, assign, share, attach, reuse, template -->
 
 **Advanced mode only.**
 
@@ -61,6 +66,7 @@ The item is now a blueprint. The player never picks it directly. Entities get it
 Or drag the item from **Blueprints** onto an entity's node in the tree. The original stays in **Blueprints**.
 
 ## How to Override a Linked Trait
+<!-- keywords: change for one entity, per entity, customize, template, exception -->
 
 1. In the **Traits** tab, open the entity's node and select the link row. It shows a link icon.
 2. Open the tab that holds the field: **Availability**, **Stats** or **Pins**.

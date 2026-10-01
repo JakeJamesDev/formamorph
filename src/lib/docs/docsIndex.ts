@@ -2,7 +2,8 @@
  * The Docs Index: the player docs split into sections, with contents, keyword search and lookup by id. It
  * needs no network and no model. Section ids are `<page>#<anchor>`, with the wiki's anchor rule.
  */
-import { docHeadings, MARKDOWN_LINK, type DocHeading } from './headingAnchors';
+import { stemmer } from 'stemmer';
+import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, type DocHeading } from './headingAnchors';
 import type { DocsPages } from './docsChecks';
 import { sectionParts } from './sectionParts';
 
@@ -55,6 +56,24 @@ interface SplitSection extends DocSection {
   level: number;
   /** The id of the whole section; equal to `id` unless this is part 2 or later. */
   baseId: string;
+  /** The lists of the keyword lines in the section's text, which its markdown leaves out. */
+  keywords: string[];
+}
+
+/** A section's text without its keyword lines, and their lists. A blank line the removal doubles goes too. */
+function takeKeywordLines(text: string): { text: string; keywords: string[] } {
+  const lines = text.split('\n');
+  const drop = new Set<number>();
+  const keywords: string[] = [];
+  forEachProseLine(text, (source, line) => {
+    const match = KEYWORD_LINE.exec(source);
+    if (!match) return;
+    keywords.push(match[1]);
+    drop.add(line);
+    if (lines[line - 1]?.trim() === '' && lines[line + 1]?.trim() === '') drop.add(line + 1);
+  });
+  if (drop.size === 0) return { text, keywords };
+  return { text: lines.filter((_, i) => !drop.has(i)).join('\n').trimEnd(), keywords };
 }
 
 /**
@@ -77,10 +96,11 @@ function splitPage(page: string, markdown: string): SplitSection[] {
     }
     return trail;
   };
-  const addSection = (heading: DocHeading | null, index: number, text: string) => {
-    if (heading === null && text.trim() === '') return;
+  const addSection = (heading: DocHeading | null, index: number, source: string) => {
+    if (heading === null && source.trim() === '') return;
     const baseId = heading ? `${page}#${heading.anchor}` : page;
     const name = heading ? plainText(heading.text) : page;
+    const { text, keywords } = takeKeywordLines(source);
     const parts = sectionParts(text, heading !== null, SECTION_CHAR_LIMIT);
     parts.forEach((part, k) => {
       sections.push({
@@ -92,6 +112,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
         trail: heading ? trailOf(index) : [],
         markdown: part,
         level: heading?.level ?? 0,
+        keywords,
       });
     });
   };
@@ -124,18 +145,20 @@ const STOP_WORDS = new Set([
   'why', 'with', 'you', 'your',
 ]);
 
-/** Folds a plural to its singular, so "blueprints" finds "Blueprint". */
-function stem(word: string): string {
-  if (word.length > 4 && word.endsWith('ies')) return `${word.slice(0, -3)}y`;
-  if (word.length > 4 && /(?:ch|sh|x|z|ss)es$/.test(word)) return word.slice(0, -2);
-  if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss')) return word.slice(0, -1);
-  return word;
-}
+/** A word, a number, or a hyphenated run of them. */
+const WORD = /[\p{L}\p{N}]+(?:\.\p{N}+)*(?:-[\p{L}\p{N}]+)*/gu;
 
-/** The search terms of a text: lowercase words and numbers, stop words dropped, plurals folded. */
+/**
+ * The search terms of a text: lowercase words and numbers, stop words dropped, each word cut to its Porter
+ * stem so "folders" finds "Folder" and "deleting" finds "Delete". A hyphenated word also gives its parts
+ * joined, so "re-generate" finds "regenerate".
+ */
 function searchTerms(text: string): string[] {
-  const words = text.replace(MARKDOWN_LINK, '$1').toLowerCase().match(/[\p{L}\p{N}]+(?:\.\p{N}+)*/gu) ?? [];
-  return words.filter((word) => !STOP_WORDS.has(word)).map(stem);
+  const words = text.replace(MARKDOWN_LINK, '$1').toLowerCase().match(WORD) ?? [];
+  return words
+    .flatMap((word) => (word.includes('-') ? [...word.split('-'), word.replace(/-/g, '')] : [word]))
+    .filter((word) => !STOP_WORDS.has(word))
+    .map((word) => stemmer(word));
 }
 
 /** How much a query term in the section's own heading outweighs one body hit. */
@@ -150,6 +173,7 @@ const DEFAULT_SEARCH_LIMIT = 5;
 /** One section's search terms, by where they appear. */
 interface SectionTerms {
   section: SplitSection;
+  /** Terms of the section's heading and keyword lines. */
   heading: Set<string>;
   trail: Set<string>;
   body: Map<string, number>;
@@ -187,7 +211,8 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
     const bodyTerms = searchTerms(section.level > 0 ? lines.slice(1).join('\n') : section.markdown);
     return {
       section,
-      heading: new Set(section.level > 0 ? searchTerms(section.heading) : []),
+      // A keyword-line term counts as a heading term.
+      heading: new Set([...(section.level > 0 ? searchTerms(section.heading) : []), ...section.keywords.flatMap(searchTerms)]),
       trail: new Set(section.trail.flatMap(searchTerms)),
       body: termCounts(bodyTerms),
       length: bodyTerms.length,

@@ -20,6 +20,7 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 > Most memory settings are in Settings → **Output**, in the **Memory**, **Time** and **Characters** sections. Those sections show only in **Advanced** mode. Select **Advanced** next to the **Settings** title to see them.
 
 ## How to Edit a Memory
+<!-- keywords: change, fix, rewrite, summary, correct, wrong, remember -->
 
 1. During play, open the side panel's **Memory** tab.
 2. Select **Manage Memories**. The **Memories** dialog opens.
@@ -31,6 +32,7 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 The story always keeps your version. To go back to the story's own words, select **Revert to the Original** on that memory.
 
 ## How to Add a Memory
+<!-- keywords: remember, new, write, fact, note, summary, make ai remember -->
 
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
@@ -41,6 +43,7 @@ The story always keeps your version. To go back to the story's own words, select
 Memories you write are always kept. The story never judges them.
 
 ## How to Pin or Forget a Memory
+<!-- keywords: keep, remove, delete, lock, important, remember, drop, discard -->
 
 1. Open the side panel's **Memory** tab.
 2. Find the memory.
@@ -50,6 +53,7 @@ Memories you write are always kept. The story never judges them.
 Memories you wrote have no pin button, because the story never lets them go.
 
 ## How to Undo Your Memory Changes
+<!-- keywords: reset, revert, restore, deleted memory, bring back, original -->
 
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
@@ -59,6 +63,7 @@ Memories you wrote have no pin button, because the story never lets them go.
 To bring back one deleted memory instead, select the **Deleted** filter chip, then **Restore This Memory** on that memory.
 
 ## How to Turn Memory Off
+<!-- keywords: disable, summaries, stop, no memory, faster, remove -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
@@ -68,6 +73,7 @@ To bring back one deleted memory instead, select the **Deleted** filter chip, th
 During play, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
 
 ## How to Date Each Memory
+<!-- keywords: time, timestamp, day, calendar, clock, when, dates -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.

@@ -11,6 +11,7 @@ Without entities, the narrator invents a stranger, names them, and forgets both 
 The default prompt introduces entities as "Characters and things that **may** appear in this location". That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the [prompt editor](Prompts#how-to-edit-a-prompt).
 
 ## How to Add an Entity
+<!-- keywords: character, npc, create, new character, make, person -->
 
 1. Open the **Entities** tab.
 2. Type the entity's name in the **Search or add new entities** box.
@@ -24,6 +25,7 @@ The default prompt introduces entities as "Characters and things that **may** ap
 To add a copy of an entity from your library, select **Add Entity** at the bottom of the editor.
 
 ## How to Import a SillyTavern Card
+<!-- keywords: character card, tavern card, png, chub, st, bring in, load character -->
 
 1. On the Main Menu, open the library's **Entities** tab.
 2. Select **Import Entity**.
@@ -37,6 +39,7 @@ You can also import a card directly into a world. On the **Entities** tab, selec
 See [SillyTavern cards](#sillytavern-cards) for what each part of the card becomes.
 
 ## How to Give an Entity an Opening
+<!-- keywords: first message, greeting, intro, start, character start -->
 
 **Advanced mode only** in the World Editor.
 

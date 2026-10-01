@@ -16,6 +16,7 @@ Each opening has two buttons, **Player Action** and **Narration**. This choice i
 After an Opening Narration, the input box is empty. A written page one works like any other page. Choices, stat changes, the clock, read-aloud and the scene image all run on it.
 
 ## How to Add an Others Opening
+<!-- keywords: first message, greeting, intro, start, starting scene, opening scene -->
 
 An Others opening is the normal kind. Every opening starts as one.
 
@@ -30,6 +31,7 @@ An Others opening is the normal kind. Every opening starts as one.
 To add an opening to a location or an entity, select **Add Opening to** and its name under its group. You can also use the **Openings** tab on its own panel.
 
 ## How to Add a Self Opening
+<!-- keywords: first message, greeting, intro, persona start, play as, player character start -->
 
 A Self opening starts the game for a player who plays as the entity.
 

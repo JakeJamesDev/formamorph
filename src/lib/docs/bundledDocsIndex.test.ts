@@ -39,6 +39,11 @@ describe('the bundled Docs Index', () => {
     expect(sections.filter((s) => s.markdown.includes(SECTION_CUT_MARKER)).map((s) => s.id)).toEqual([]);
   });
 
+  it('shows no keyword line in a section, and finds a section by its keyword line', () => {
+    expect(sections.filter((s) => /<!--\s*keywords:/i.test(s.markdown)).map((s) => s.id)).toEqual([]);
+    expect(index.search('make a folder')[0]?.id).toBe('Library#how-to-make-a-group');
+  });
+
   it('stays out of the start chunk: only the loader names it, through a dynamic import', () => {
     const src = resolve(__dirname, '../..');
     const files = readdirSync(src, { recursive: true, encoding: 'utf8' })

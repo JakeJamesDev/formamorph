@@ -4,6 +4,8 @@
 //   docs     the app's own request: the help prompt, plus the sections the Docs Index finds for the question
 //   no-docs  the control: the same model and samplers, the question alone, no guide text
 //   alt      with `--alt FILE`: the docs arm with the system prompt from FILE, to compare two wordings
+//   before   with `--before REF`: the docs arm with the sections the Docs Index at commit REF finds, to
+//            compare a search change
 //   lookup   with `--lookup`: the app's help session in lookup mode, on an endpoint that takes function
 //            calls. The model reads the sections it picks, in more than one round
 //   mismatch with `--flag`: the docs arm with the sections of another covered case, so the guide text does
@@ -29,7 +31,7 @@
 //
 // Usage: npx vite-node testing/baseline/harness/help-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--only backup-docs,regen-player]
-//          [--parallel 4] [--alt FILE] [--lookup] [--flag] [--show]
+//          [--parallel 4] [--alt FILE] [--before REF] [--lookup] [--flag] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
@@ -39,6 +41,7 @@ import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPro
 import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { refDocsIndex } from './refDocsIndex';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -53,6 +56,7 @@ const parallel = Number(argVal('--parallel', '4'));
 const only = argVal('--only', '');
 const show = args.includes('--show');
 const altFile = argVal('--alt', '');
+const beforeRef = argVal('--before', '');
 const withLookup = args.includes('--lookup');
 const withFlag = args.includes('--flag');
 
@@ -64,9 +68,9 @@ interface HelpCase {
   section?: string;
   facts: string[];
 }
-type Arm = 'docs' | 'no-docs' | 'alt' | 'lookup' | 'mismatch';
+type Arm = 'docs' | 'no-docs' | 'alt' | 'before' | 'lookup' | 'mismatch';
 const ARMS: Arm[] = [
-  'docs', ...(altFile ? ['alt' as const] : []), ...(withLookup ? ['lookup' as const] : []), ...(withFlag ? ['mismatch' as const] : []), 'no-docs',
+  'docs', ...(altFile ? ['alt' as const] : []), ...(beforeRef ? ['before' as const] : []), ...(withLookup ? ['lookup' as const] : []), ...(withFlag ? ['mismatch' as const] : []), 'no-docs',
 ];
 const ALT_SYSTEM_PROMPT = altFile ? readFileSync(altFile, 'utf8').trim() : '';
 
@@ -90,6 +94,7 @@ function mismatchPartner(c: HelpCase): HelpCase {
 }
 
 const index = bundledDocsIndex();
+const beforeIndex = beforeRef ? (await refDocsIndex(beforeRef)).index : null;
 const allDocs = index.contents()
   .flatMap((page) => index.get(page.sections.map((section) => section.id)))
   .map((section) => section.markdown)
@@ -191,7 +196,7 @@ async function lookupRequest(c: HelpCase): Promise<Sample> {
 
 async function request(arm: Arm, c: HelpCase): Promise<Sample> {
   if (arm === 'lookup') return lookupRequest(c);
-  const sections = arm === 'no-docs' ? [] : helpSections(index, (arm === 'mismatch' ? mismatchPartner(c) : c).question);
+  const sections = arm === 'no-docs' ? [] : helpSections(arm === 'before' && beforeIndex ? beforeIndex : index, (arm === 'mismatch' ? mismatchPartner(c) : c).question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
     ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS }
     : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS });
@@ -263,10 +268,12 @@ async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> 
 
 interface Row { caseId: string; arm: Arm; run: number; sample: Sample | null; score: Score | null; error?: string }
 
-const retrieval = new Map(cases.map((c) => {
-  const sections = helpSections(index, c.question);
+const retrievalOf = (docsIndex: typeof index) => new Map(cases.map((c) => {
+  const sections = helpSections(docsIndex, c.question);
   return [c.id, { ids: sections.map((s) => s.id), chars: sections.reduce((sum, s) => sum + s.markdown.length, 0), hit: c.section ? sections.some((s) => s.id === c.section) : null }];
 }));
+const retrieval = retrievalOf(index);
+const beforeRetrieval = beforeIndex ? retrievalOf(beforeIndex) : retrieval;
 
 // One job per run, case and arm, with the two arms of a question next to each other in time.
 const jobs: (() => Promise<Row>)[] = [];
@@ -323,7 +330,7 @@ console.log('\ncase                     arm      hit  facts complete bold steps 
 for (const c of cases) {
   for (const arm of ARMS) {
     const m = summarize(arm, new Set([c.id]));
-    const hit = retrieval.get(c.id)?.hit;
+    const hit = (arm === 'before' ? beforeRetrieval : retrieval).get(c.id)?.hit;
     const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : arm === 'lookup' ? m.reached : hit ? 'yes' : ' NO';
     console.log([
       c.id.padEnd(24), arm.padEnd(8), sent.padEnd(4),

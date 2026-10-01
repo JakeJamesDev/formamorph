@@ -5,6 +5,7 @@ A persona is who you are in the story. It gives the AI your name, your pronouns 
 > A persona is an [entity](Entities) with **Persona** set to **Playable**. It uses the same editor as every other entity. Authors who want players to play as a world's own entities should read [Personas for Authors](Persona-Authoring).
 
 ## How to Make a Persona
+<!-- keywords: create, player character, play as, my character, user character, self, profile -->
 
 1. Open the library's **Entities** tab.
 2. Select **New Entity**, or open an entity you already have.
@@ -15,6 +16,7 @@ A persona is who you are in the story. It gives the AI your name, your pronouns 
 No copy is made. The entity is now one of your personas, and you can still add it to a world as an entity.
 
 ## How to Set a Default Persona
+<!-- keywords: always, main character, preferred, usual, favorite, automatic -->
 
 1. Open the library's **Entities** tab.
 2. Right-click a persona tile.
@@ -23,6 +25,7 @@ No copy is made. The entity is now one of your personas, and you can still add i
 A **Default** badge marks it. To remove it, right-click the tile and select **Clear Default Persona**.
 
 ## How to Pick a Persona
+<!-- keywords: choose, select, play as, character select, who to play, which character -->
 
 1. On the main menu, select a world.
 2. Select **Enter World**.
@@ -32,6 +35,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
 
 ## How to Change Persona During Play
+<!-- keywords: switch, swap, mid-game, different character, edit name, rename -->
 
 1. In the side panel, find the persona row above the **Stats**, **Traits** and **Location** tabs.
 2. Select **Change**. The **Change Persona** dialog opens.
@@ -39,6 +43,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 4. Select **Change**. It turns on when your pick, name or description differs from the current one.
 
 ## How to Import SillyTavern Personas
+<!-- keywords: sillytavern, tavern, st, user avatars, backup, migrate, bring over -->
 
 1. In SillyTavern, open **Persona Management** and select **Backup**. Your browser downloads `personas_<date>.json`.
 2. Find your avatar images in the `User Avatars` folder inside your SillyTavern user folder. On a default install it is `data/default-user/User Avatars`.

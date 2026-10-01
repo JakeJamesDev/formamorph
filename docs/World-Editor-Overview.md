@@ -5,6 +5,7 @@
 The **Overview** tab holds the world's own details: its name, its library card, and the text the AI reads on every turn. It has two columns. On mobile, the left column shows first. The **?** button at the top of the tab has a short version of this page.
 
 ## How to Set the World's Images
+<!-- keywords: thumbnail, cover, picture, banner, art, upload, icon -->
 
 1. Open the **Overview** tab.
 2. Under **Thumbnail**, select the frame (**Click to upload image**) and pick a file. You can also drop a file on the frame.
@@ -15,6 +16,7 @@ The **Overview** tab holds the world's own details: its name, its library card, 
 Each location's background is on its **Media** tab. See [World Editor: Locations](World-Editor-Locations#media). Each entity's image is on its **Profile** tab.
 
 ## How to Add Background Music
+<!-- keywords: sound, audio, song, mp3, soundtrack, ambient, bgm -->
 
 1. Open the **Overview** tab.
 2. Under **Background Music**, select **Add Sound** and pick an audio file.

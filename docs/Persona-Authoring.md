@@ -7,6 +7,7 @@ How your world meets the player's persona: playable entities, the **Allowed Pers
 ---
 
 ## How to Make an Entity Playable
+<!-- keywords: play as, character, player character, pov, selectable -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and select the entity.
@@ -17,6 +18,7 @@ How your world meets the player's persona: playable entities, the **Allowed Pers
 For an entity that exists only when the player picks it, select **Persona-Only** in step 3.
 
 ## How to Make a Custom Persona
+<!-- keywords: player character, create your own, own character, name yourself, blank character, self insert -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and add or select the entity. Name it, such as *Wanderer*.
@@ -26,6 +28,7 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 6. Optional: give the entity [Self Openings](World-Editor-Openings#self-openings). They draw for a player with no world persona.
 
 ## How to Choose Who the Player Can Be
+<!-- keywords: allowed, restrict, limit, character select, play as, starting character, allowed personas -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Overview** tab.
@@ -35,6 +38,7 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 See [Persona Rules](#persona-rules) for each choice.
 
 ## How to Put a Name in Your Text
+<!-- keywords: {{user}}, {{char}}, user, char, macro, placeholder, player name, character name, variable -->
 
 1. Select a prose field, such as an entity's **AI-Facing Description** or an opening.
 2. Type `{`. The menu opens with **Built-in** at the top.

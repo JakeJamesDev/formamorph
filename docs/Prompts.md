@@ -7,6 +7,7 @@ The **Prompts** tab shows in **Advanced** mode only. To open it, open **Settings
 > A prompt sends only what it holds. Text you delete is gone from the request, and a chip you delete sends nothing. See [The Chip Editor](#the-chip-editor).
 
 ## How to Make a Prompt Preset
+<!-- keywords: create, new, copy, duplicate, custom prompts, own prompts, system prompt, jailbreak -->
 
 The built-in presets are read-only. To change a prompt, make your own preset first.
 
@@ -18,6 +19,7 @@ The built-in presets are read-only. To change a prompt, make your own preset fir
 The new preset is a copy of the preset that was active, and it is now the active preset. To copy a built-in preset in one step, select **Duplicate & Edit** on its read-only notice. The copy is named "*preset name* (copy)".
 
 ## How to Edit a Prompt
+<!-- keywords: change, rewrite, customize, system prompt, instructions, tweak, modify -->
 
 1. Select your own preset in the **Preset** list.
 2. In the list of prompts, select the prompt, such as **Choices**.
@@ -28,6 +30,7 @@ The new preset is a copy of the preset that was active, and it is now the active
 The app saves each change at once. To go back to the shipped text, select **Reset *name* Prompt** under the editor, then confirm.
 
 ## How to Route a Prompt to Another Endpoint
+<!-- keywords: different model, second model, small model, faster, separate api, per prompt -->
 
 You can send one prompt to a different text endpoint, such as a small fast model for **Choices**. First add the endpoint as a preset on the **Endpoints** tab. See [Text](Settings#text).
 
@@ -39,6 +42,7 @@ You can send one prompt to a different text endpoint, such as a small fast model
 To send the prompt to the active endpoint again, select **Use Active Endpoint**. A prompt route stays on this device. It is never in an exported or published preset.
 
 ## How to Share a Prompt Preset
+<!-- keywords: export, import, copy code, send, file, json, friend -->
 
 1. Select the preset in the **Preset** list.
 2. Select the **Export** button.
@@ -54,6 +58,7 @@ To add a preset that someone shared:
 See [Sharing a Preset](#sharing-a-preset) for what a shared preset holds.
 
 ## How to Publish a Prompt Preset
+<!-- keywords: upload, community, share online, post -->
 
 You must log in to Community Creations to publish. See [Login and Register](Community-Creations#login-and-register).
 
@@ -66,6 +71,7 @@ You must log in to Community Creations to publish. See [Login and Register](Comm
 Without a model in **Models**, **Publish** opens **Add a Model**. Select **Open Overview** to go to the field.
 
 ## How to Use a Preset for One World
+<!-- keywords: per world, different prompts, world specific, override, only this world -->
 
 1. On the main menu, select the world.
 2. In the world dialog, open the **Prompts** list.

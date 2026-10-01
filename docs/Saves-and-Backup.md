@@ -5,6 +5,7 @@ A save keeps one game's progress. A backup keeps your worlds, saves, library ent
 > To start a new game instead, see [Starting a Game](Starting-a-Game).
 
 ## How to Save a Game
+<!-- keywords: progress, keep, save file, store, checkpoint, quit, stop playing -->
 
 1. In the game, select the **Menu** button at the top right.
 2. Select **Save Game**.
@@ -15,6 +16,7 @@ A save keeps one game's progress. A backup keeps your worlds, saves, library ent
 The **Logs** tab records *Game saved as …*. To keep scene images in the save, select their checkbox. See [The Save Game Dialog](#the-save-game-dialog).
 
 ## How to Load a Game
+<!-- keywords: continue, resume, open save, pick up, saved game, return, carry on -->
 
 1. Open **Load Game**:
    - In the game, select **Menu**, then **Load Game**.
@@ -25,6 +27,7 @@ The **Logs** tab records *Game saved as …*. To keep scene images in the save, 
 A save from a world that is not on this device does not load from the main menu. Import or download that world first. See [Loading from Another World](#loading-from-another-world).
 
 ## How to Export a Save
+<!-- keywords: download, save to file, share, transfer, move, copy, json, another device -->
 
 1. Open **Load Game**.
 2. Select the world's folder.
@@ -33,6 +36,7 @@ A save from a world that is not on this device does not load from the main menu.
 You get a `.json` file with the save's name. On Android, choose a folder in the **Save As** sheet. See [Save Exports to a Folder](Install-on-Android#-save-exports-to-a-folder).
 
 ## How to Import a Save
+<!-- keywords: upload, open file, transfer, move, bring in, another device, json -->
 
 1. Open **Load Game**.
 2. Select the **Import** button.
@@ -41,6 +45,7 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 Each save goes into the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
 
 ## How to Make a Backup
+<!-- keywords: back up, backup everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, everything -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Backup** button.
@@ -51,6 +56,7 @@ Each save goes into the folder of its world. The dialog opens that folder, and a
 Make a backup before you update the app or move to a new device. See [What a Backup Holds](#what-a-backup-holds).
 
 ## How to Restore a Backup
+<!-- keywords: recover, bring back, get back, import backup, reinstall, new device, lost data, migrate -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Restore** button, then select a backup `.json` file.
@@ -61,6 +67,7 @@ Make a backup before you update the app or move to a new device. See [What a Bac
 Restore adds to what you have. It never erases an item that is not in the backup.
 
 ## How to Update the Desktop App
+<!-- keywords: new version, upgrade, latest, download, patch, install update, mac, windows -->
 
 1. On the main menu, look at the version number at the bottom left. It shows **— Update Available!** when a newer release is out.
 2. Select the version number. The update dialog opens.
