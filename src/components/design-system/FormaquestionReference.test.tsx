@@ -22,13 +22,27 @@ describe('Formaquestion reference', () => {
   it('searches its sample guide and changes to the wide layout', async () => {
     render(<FormaquestionReference />);
     const frame = within(screen.getByRole('region', { name: 'Window' })).getByRole('dialog', { name: 'Formaquestion' });
+    await userEvent.click(within(frame).getByRole('tab', { name: 'Search' }));
     fireEvent.change(within(frame).getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'light a lantern' } });
     expect(within(frame).getAllByRole('button', { name: /How to Light a Lantern/ })).toHaveLength(1);
 
     await userEvent.click(within(frame).getByRole('button', { name: 'Wide View' }));
     expect(frame.style.width).toBe(`${WIDE_WIDTH}px`);
     expect(within(frame).queryByRole('tab')).toBeNull();
-    expect(within(frame).getByText('Select a section to read it here')).toBeInTheDocument();
+    // The wide pane holds the conversation until a section opens.
+    expect(within(frame).getByRole('log', { name: 'Conversation' })).toBeInTheDocument();
+  });
+
+  it('shows a sample question with its answer and its sources, and answers a new one with the guide search', async () => {
+    render(<FormaquestionReference />);
+    const frame = within(screen.getByRole('region', { name: 'Window' })).getByRole('dialog', { name: 'Formaquestion' });
+    const log = within(frame).getByRole('log', { name: 'Conversation' });
+    expect(log).toHaveTextContent('How do I light a lantern?');
+    expect(within(within(log).getByRole('group', { name: 'Sources' })).getByRole('button', { name: /How to Light a Lantern/ })).toBeInTheDocument();
+
+    await userEvent.type(within(frame).getByRole('textbox', { name: 'Ask a Question' }), 'fill a lantern');
+    await userEvent.click(within(frame).getByRole('button', { name: 'Send' }));
+    expect(within(within(log).getByRole('list', { name: 'Search Results' })).getAllByRole('button')[0]).toHaveTextContent('How to Fill a Lantern');
   });
 
   it('shows the mobile sheet in the narrow layout, with no Wide View', () => {

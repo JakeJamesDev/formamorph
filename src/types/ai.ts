@@ -90,8 +90,9 @@ export type AIRequestType =
   | 'sceneTags'
   | EditorRequestType;
 
-/** The World Editor's generate buttons. No preset rows: they follow the active endpoint with reasoning off. */
-export type EditorRequestType = 'descriptionSummary' | 'descriptionBridge' | 'imageTags';
+/** The World Editor's generate buttons and the Formaquestion help prompt. No preset rows: they follow the
+ *  active endpoint with reasoning off. */
+export type EditorRequestType = 'descriptionSummary' | 'descriptionBridge' | 'imageTags' | 'help';
 
 /** The value type of a Tool parameter; `enum` takes one of the parameter's `options`. */
 export type ToolParamType = 'string' | 'number' | 'boolean' | 'enum';

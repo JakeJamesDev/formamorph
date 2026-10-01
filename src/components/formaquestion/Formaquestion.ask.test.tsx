@@ -1,0 +1,412 @@
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'react-toastify';
+import { createDocsIndex } from '@/lib/docs/docsIndex';
+import { closeErrorDetails } from '@/lib/errorDetails';
+import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
+import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
+import type { HelpAi } from './useHelpAi';
+
+// The AI settings and the reachability check come from the app's providers. Each test sets them here.
+const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi, enabled: [] as boolean[] }));
+vi.mock('./useHelpAi', () => ({
+  useHelpAi: (enabled: boolean) => {
+    ai.enabled.push(enabled);
+    return ai.current;
+  },
+}));
+vi.mock('@/components/theme-provider', () => ({ useTheme: () => ({ resolvedTheme: 'dark' }) }));
+import { ThemedToastContainer } from '@/components/ThemedToastContainer';
+import { Formaquestion } from './Formaquestion';
+
+const PAGES = {
+  Stats: '# 📊 Stats\n\nStats are numbers.\n\n## How to Add a Stat\n\n1. Open the **Stats** tab.\n2. Select **Add Stat**.\n',
+  Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.\n',
+};
+const loadFixture = () => Promise.resolve(createDocsIndex({ pages: PAGES, sidebar: '- [Stats](Stats)\n- [Traits](Traits)\n' }));
+
+const helpTab = () => screen.getByRole('button', { name: 'Help' });
+const conversation = () => screen.getByRole('log', { name: 'Conversation' });
+const searchRows = () => within(within(conversation()).getByRole('list', { name: 'Search Results' })).getAllByRole('button');
+
+/** Renders the app's one Formaquestion and opens the window, with the fixture docs loaded. */
+async function openAsk() {
+  const view = render(<><ThemedToastContainer /><Formaquestion loadIndex={loadFixture} /></>);
+  fireEvent.click(helpTab());
+  const field = await screen.findByRole('textbox', { name: 'Ask a Question' });
+  return { view, field };
+}
+
+async function send(field: HTMLElement, question: string) {
+  await userEvent.type(field, question);
+  await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+}
+
+/** A server that refuses the request, with its error text still on the way until `end` is called. */
+function slowRefusal() {
+  let end = () => {};
+  const body = new ReadableStream<Uint8Array>({ start(controller) { end = () => controller.close(); } });
+  return { end: () => end(), respond: () => new Response(body, { status: 503 }) };
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  ai.enabled = [];
+  ai.current = { snapshot: textSnapshot(), reachable: true, revalidate: vi.fn(async () => true) };
+});
+afterEach(() => {
+  act(() => {
+    toast.dismiss();
+    closeErrorDetails();
+  });
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe('the Ask tab', () => {
+  it('is the first of three tabs and the one a new window opens on, with the cursor in the question field', async () => {
+    const { field } = await openAsk();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Ask', 'Search', 'Guide']);
+    expect(screen.getByRole('tab', { name: 'Ask' })).toHaveAttribute('data-state', 'active');
+    await waitFor(() => expect(field).toHaveFocus());
+  });
+
+  it('shows the question, streams the answer as markdown and lists the sections it came from', async () => {
+    const fetchSpy = stubStream([sseFrame({ content: '1. Open the **Traits** tab.\n' }), ...sseReply('2. Select **Add Trait**.')]);
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+
+    expect(within(conversation()).getByText('How do I add a trait?')).toBeInTheDocument();
+    expect(field).toHaveValue('');
+    // Markdown, not its source: two list items, and the control names with no asterisks.
+    await waitFor(() => expect(within(conversation()).getAllByRole('listitem')).toHaveLength(2));
+    expect(conversation()).toHaveTextContent('Open the Traits tab.');
+    expect(conversation()).toHaveTextContent('Select Add Trait.');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+    const sources = await within(conversation()).findByRole('group', { name: 'Sources' });
+    await userEvent.click(within(sources).getByRole('button', { name: /How to Add a Trait/ }));
+    expect(screen.getByRole('article', { name: '🧬 Traits: How to Add a Trait' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Guide' })).toHaveAttribute('data-state', 'active');
+  });
+
+  it('sends on Enter, and Shift+Enter adds a line to the question', async () => {
+    const fetchSpy = stubStream(sseReply('Done.'));
+    const { field } = await openAsk();
+    await userEvent.type(field, 'How do I add a trait{Shift>}{Enter}{/Shift}to a stat?');
+    expect(field).toHaveValue('How do I add a trait\nto a stat?');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(field).toHaveValue('');
+  });
+
+  it('has no Send for an empty question', async () => {
+    const fetchSpy = stubStream(sseReply('Done.'));
+    const { field } = await openAsk();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    await userEvent.type(field, '   {Enter}');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+  });
+
+  it('opens a docs link in an answer in the reader', async () => {
+    stubStream(sseReply('See [the stats page](Stats#how-to-add-a-stat).'));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await userEvent.click(await within(conversation()).findByRole('link', { name: 'the stats page' }));
+    expect(screen.getByRole('article', { name: '📊 Stats: How to Add a Stat' })).toBeInTheDocument();
+  });
+
+  it('keeps the conversation and the question in progress across a tab change and a close', async () => {
+    stubStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await within(conversation()).findByRole('group', { name: 'Sources' });
+    await userEvent.type(field, 'and then');
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Search' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Ask' }));
+    expect(screen.getByRole('textbox', { name: 'Ask a Question' })).toHaveValue('and then');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion' })).toBeNull());
+    fireEvent.click(helpTab());
+    expect(conversation()).toHaveTextContent('How do I add a trait?');
+    expect(conversation()).toHaveTextContent('Select Add Trait.');
+    expect(screen.getByRole('textbox', { name: 'Ask a Question' })).toHaveValue('and then');
+  });
+});
+
+describe('the conversation while an answer comes in', () => {
+  it('stays at its end, and keeps the place of a player who scrolled up', async () => {
+    const encoder = new TextEncoder();
+    let push: (text: string) => void = () => {};
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) { push = (text) => controller.enqueue(encoder.encode(sseFrame({ content: text }))); },
+    });
+    stubStream(() => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
+    const { field } = await openAsk();
+    // jsdom has no layout: the conversation is 1000px of text in a 200px viewport.
+    const viewport = document.querySelector<HTMLElement>('[data-fq-scroll="conversation"]')!;
+    Object.defineProperty(viewport, 'scrollHeight', { configurable: true, get: () => 1000 });
+    Object.defineProperty(viewport, 'clientHeight', { configurable: true, get: () => 200 });
+    await send(field, 'How do I add a trait?');
+
+    act(() => push('First words. '));
+    await waitFor(() => expect(conversation()).toHaveTextContent('First words.'));
+    expect(viewport.scrollTop).toBe(1000);
+
+    viewport.scrollTop = 100;
+    fireEvent.scroll(viewport);
+    act(() => push('More words.'));
+    await waitFor(() => expect(conversation()).toHaveTextContent('More words.'));
+    expect(viewport.scrollTop).toBe(100);
+  });
+});
+
+describe('stop', () => {
+  it('ends the stream, keeps the answer so far and closes the request', async () => {
+    const reply = openSseReply([sseFrame({ content: '1. Open the **Traits** tab.' })]);
+    const fetchSpy = stubStream(reply.respond);
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+
+    // While the answer comes in, Stop takes the place of Send.
+    const stop = await screen.findByRole('button', { name: 'Stop' });
+    expect(screen.queryByRole('button', { name: 'Send' })).toBeNull();
+    await waitFor(() => expect(conversation()).toHaveTextContent('Open the Traits tab.'));
+    await userEvent.click(stop);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument());
+    expect(conversation()).toHaveTextContent('Open the Traits tab.');
+    expect(conversation()).toHaveTextContent('Stopped');
+    expect(reply.cancel).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // A stop is the player's choice, not a failure.
+    expect(screen.queryByText('Failed to process AI request')).toBeNull();
+  });
+
+  it('takes one question at a time: Enter sends nothing while an answer comes in', async () => {
+    const reply = openSseReply([sseFrame({ content: 'One moment' })]);
+    const fetchSpy = stubStream(reply.respond);
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await screen.findByRole('button', { name: 'Stop' });
+    await userEvent.type(field, 'How do I add a stat?{Enter}');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(field).toHaveValue('How do I add a stat?');
+  });
+});
+
+describe('the check of the AI', () => {
+  it('runs only while the window is open', async () => {
+    render(<Formaquestion loadIndex={loadFixture} />);
+    expect(ai.enabled.at(-1)).toBe(false);
+    fireEvent.click(helpTab());
+    await screen.findByRole('textbox', { name: 'Ask a Question' });
+    expect(ai.enabled.at(-1)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+    expect(ai.enabled.at(-1)).toBe(false);
+  });
+});
+
+describe('with no AI connected', () => {
+  it('shows the docs search for the question, sends nothing and shows no error', async () => {
+    const fetchSpy = stubStream(sseReply('Not used.'));
+    const revalidate = vi.fn(async () => false);
+    ai.current = { ...ai.current, reachable: false, revalidate };
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+
+    await waitFor(() => expect(searchRows()[0]).toHaveTextContent('How to Add a Trait'));
+    expect(conversation()).toHaveTextContent('No AI is connected');
+    expect(revalidate).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(screen.queryByText('Failed to process AI request')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+
+    await userEvent.click(searchRows()[0]);
+    expect(screen.getByRole('article', { name: '🧬 Traits: How to Add a Trait' })).toBeInTheDocument();
+  });
+
+  it('asks the AI when a fresh check finds it, after a check that found none', async () => {
+    const fetchSpy = stubStream(sseReply('Select **Add Trait**.'));
+    ai.current = { ...ai.current, reachable: false, revalidate: vi.fn(async () => true) };
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks the AI without a second check while the first check still runs', async () => {
+    const fetchSpy = stubStream(sseReply('Select **Add Trait**.'));
+    const revalidate = vi.fn(async () => false);
+    ai.current = { ...ai.current, reachable: null, revalidate };
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(revalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('a request that fails', () => {
+  it('shows the error toast with its details, and the docs search for the question', async () => {
+    const fetchSpy = stubStream(() => new Response('{"error":{"message":"model overloaded"}}', { status: 503 }));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+
+    await screen.findByText('Failed to process AI request');
+    expect(searchRows()[0]).toHaveTextContent('How to Add a Trait');
+    expect(conversation()).toHaveTextContent('The AI did not answer');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View Details →' }));
+    const details = await screen.findByRole('dialog', { name: 'Error Details' });
+    expect(details.textContent).toContain('Message: model overloaded');
+    expect(details.textContent).toContain('Status: 503');
+  });
+
+  it('shows the connection toast and the docs search when the server is not there', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a stat?');
+    expect(await screen.findByRole('button', { name: 'Fix connection →' })).toBeInTheDocument();
+    expect(searchRows()[0]).toHaveTextContent('How to Add a Stat');
+  });
+
+  it('keeps the words that came before the failure, and says the answer did not finish', async () => {
+    // The connection breaks after the first words.
+    const encoder = new TextEncoder();
+    let reads = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (reads++ === 0) controller.enqueue(encoder.encode(sseFrame({ content: 'First, go to the Traits screen.' })));
+        else controller.error(new Error('connection reset'));
+      },
+    });
+    stubStream(() => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+
+    await screen.findByText('Failed to process AI request');
+    expect(conversation()).toHaveTextContent('First, go to the Traits screen.');
+    expect(conversation()).toHaveTextContent('The answer did not finish. These guide sections match your question.');
+    expect(conversation()).not.toHaveTextContent('The AI did not answer');
+    expect(searchRows()[0]).toHaveTextContent('How to Add a Trait');
+  });
+
+  it('says so when no guide section matches the question', async () => {
+    stubStream(() => new Response('', { status: 500 }));
+    const { field } = await openAsk();
+    await send(field, 'quasar');
+    await screen.findByText('Failed to process AI request');
+    expect(conversation()).toHaveTextContent('The AI did not answer, and no guide section matches your question');
+    expect(within(conversation()).queryByRole('list', { name: 'Search Results' })).toBeNull();
+    expect(conversation()).not.toHaveTextContent('These guide sections match');
+  });
+});
+
+describe('an answer with a link the model wrote', () => {
+  it('renders no link that runs script', async () => {
+    stubStream(sseReply('Select [this](javascript:alert(1)) and [the site](https://example.com/help).'));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    const site = await within(conversation()).findByRole('link', { name: 'the site' });
+    expect(site).toHaveAttribute('rel', 'noopener noreferrer');
+    for (const link of within(conversation()).queryAllByRole('link')) {
+      expect(link.getAttribute('href') ?? '').not.toMatch(/^\s*javascript:/i);
+    }
+    expect(conversation().querySelector('[href^="javascript" i]')).toBeNull();
+  });
+});
+
+describe('unmount', () => {
+  it('cancels a stream in progress', async () => {
+    const reply = openSseReply([sseFrame({ content: 'One moment' })]);
+    stubStream(reply.respond);
+    const { field, view } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('One moment'));
+
+    view.unmount();
+    await waitFor(() => expect(reply.cancel).toHaveBeenCalledTimes(1));
+  });
+
+  it('shows no toast for a request that fails after it', async () => {
+    // The error text is still on the way at unmount.
+    const refusal = slowRefusal();
+    const fetchSpy = stubStream(refusal.respond);
+    const toastError = vi.spyOn(toast, 'error');
+    const { field, view } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+
+    view.unmount();
+    await act(async () => {
+      refusal.end();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('shows the toast for the same failure while it is mounted', async () => {
+    const refusal = slowRefusal();
+    const fetchSpy = stubStream(refusal.respond);
+    const toastError = vi.spyOn(toast, 'error');
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      refusal.end();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(toastError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the wide layout', () => {
+  beforeEach(() => {
+    vi.stubGlobal('innerWidth', 1600);
+    vi.stubGlobal('innerHeight', 900);
+    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 400, y: 100, w: WIDE_WIDTH, h: 560 }));
+  });
+
+  it('holds the conversation beside the rail, with the cursor in the question field', async () => {
+    const { field } = await openAsk();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.getByRole('searchbox', { name: 'Search the Guide' })).toBeInTheDocument();
+    expect(conversation()).toBeInTheDocument();
+    await waitFor(() => expect(field).toHaveFocus());
+  });
+
+  it('opens a source in the reader, and goes back to the conversation', async () => {
+    stubStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    const sources = await within(conversation()).findByRole('group', { name: 'Sources' });
+    await userEvent.click(within(sources).getByRole('button', { name: /How to Add a Trait/ }));
+    expect(screen.getByRole('article', { name: '🧬 Traits: How to Add a Trait' })).toBeInTheDocument();
+    expect(screen.queryByRole('log')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back to Conversation' }));
+    expect(screen.queryByRole('article')).toBeNull();
+    expect(conversation()).toHaveTextContent('Select Add Trait.');
+  });
+});
+
+describe('on a mobile-size screen', () => {
+  it('opens on Ask with focus on the sheet, so no keyboard opens', async () => {
+    vi.stubGlobal('innerWidth', 375);
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+    const { field } = await openAsk();
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Formaquestion' })).toHaveFocus());
+    expect(field).not.toHaveFocus();
+  });
+});

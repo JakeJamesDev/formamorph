@@ -16,6 +16,7 @@ test.use({ viewport: { width: 1920, height: 1080 } });
 
 const helpWindow = (page: Page) => page.locator('#formaquestion-window');
 const helpTab = (page: Page) => page.getByRole('button', { name: 'Help', exact: true });
+const askField = (page: Page) => helpWindow(page).getByRole('textbox', { name: 'Ask a Question' });
 const searchField = (page: Page) => helpWindow(page).getByRole('searchbox', { name: 'Search the Guide' });
 const results = (page: Page) => helpWindow(page).getByRole('list', { name: 'Search Results' });
 const reader = (page: Page) => helpWindow(page).getByRole('article');
@@ -65,8 +66,14 @@ const windowAnimations = (page: Page) => page.evaluate(() => (window as unknown 
 
 async function openHelp(page: Page): Promise<void> {
   await page.keyboard.press('F1');
-  await expect(searchField(page)).toBeVisible();
+  await expect(askField(page)).toBeVisible();
   await settledBox(page);
+}
+
+/** Goes to the window's Search tab. The window opens on Ask. */
+async function showSearch(page: Page): Promise<void> {
+  await helpWindow(page).getByRole('tab', { name: 'Search' }).click();
+  await expect(searchField(page)).toBeVisible();
 }
 
 async function openHelpOverSettings(page: Page, tab = 'endpoints'): Promise<void> {
@@ -76,6 +83,7 @@ async function openHelpOverSettings(page: Page, tab = 'endpoints'): Promise<void
   // The dialog zooms in as it opens; a press aimed mid-zoom lands elsewhere.
   await settings(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   await openHelp(page);
+  await showSearch(page);
 }
 
 /** Drag the window by its title bar so that its left edge lands on `x`. */
@@ -120,10 +128,11 @@ test.describe('Formaquestion on a desktop screen', () => {
 
   test('the Help tab shows on every screen, F1 toggles the window, and the window keeps its state across screens', async ({ page }) => {
     await openApp(page);
-    const toggles = async () => {
+    /** F1 opens the window with the cursor in the field of its open tab, and the next F1 closes it. */
+    const toggles = async (field = askField) => {
       await expect(helpTab(page)).toBeVisible();
       await page.keyboard.press('F1');
-      await expect(searchField(page)).toBeFocused();
+      await expect(field(page)).toBeFocused();
       await page.keyboard.press('F1');
       await expect(helpWindow(page)).toBeHidden();
     };
@@ -137,6 +146,7 @@ test.describe('Formaquestion on a desktop screen', () => {
 
     // The game view. The window opens before the screen change and is still open after it.
     await page.keyboard.press('F1');
+    await showSearch(page);
     await searchField(page).fill('blueprint');
     await gotoDev(page, 'gameViewer', { fixture: 'whiteRoom' });
     await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
@@ -145,7 +155,8 @@ test.describe('Formaquestion on a desktop screen', () => {
     await searchField(page).focus();
     await page.keyboard.press('F1');
     await expect(helpWindow(page)).toBeHidden();
-    await toggles();
+    // The window is still on its Search tab.
+    await toggles(searchField);
   });
 
   test('the player types in the window, then in Settings, and Escape closes Settings only', async ({ page }) => {
@@ -346,7 +357,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     expect((await helpTab(page).boundingBox())!.y).toBe(moved.y);
 
     await helpTab(page).click();
-    await expect(searchField(page)).toBeFocused();
+    await expect(askField(page)).toBeFocused();
     // The window grows out of the tab: its zoom is fixed at the tab's center.
     const origin = await helpWindow(page).evaluate((el) => {
       const [x, y] = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
@@ -396,6 +407,7 @@ test.describe('Formaquestion on a desktop screen', () => {
   test('search shows ranked sections for a query and an empty state for no match', async ({ page }) => {
     await openApp(page);
     await openHelp(page);
+    await showSearch(page);
     await searchField(page).fill('how do I make a blueprint');
     const rows = results(page).getByRole('button');
     await expect(rows.first()).toContainText('How to Make a Blueprint');
@@ -451,7 +463,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     await openApp(page);
     await countWindowAnimations(page);
     await page.keyboard.press('F1');
-    await expect(searchField(page)).toBeFocused();
+    await expect(askField(page)).toBeFocused();
     await helpWindow(page).getByRole('button', { name: 'Close Formaquestion' }).click();
     await expect(helpWindow(page)).toHaveCount(0);
     expect(await windowAnimations(page)).toBe(0);
@@ -461,7 +473,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     await openApp(page);
     await countWindowAnimations(page);
     await page.keyboard.press('F1');
-    await expect(searchField(page)).toBeFocused();
+    await expect(askField(page)).toBeFocused();
     // Open: 200ms, from 75% and from clear.
     expect(await motionOf(page)).toMatchObject({ duration: '0.2s', enterScale: 0.75, enterOpacity: 0 });
     await settledBox(page);
@@ -498,14 +510,14 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(page.locator('#fm-intro-goo')).toHaveCount(0, { timeout: 30_000 });
     await expect(helpTab(page)).toBeVisible();
     await page.keyboard.press('F1');
-    await expect(searchField(page)).toBeFocused();
+    await expect(askField(page)).toBeFocused();
   });
 
   test('a tutorial note does not block F1', async ({ page }) => {
     await openApp(page, { 'formamorph.tutorialsSeen': [] });
     await expect(page.getByRole('dialog', { name: /^(Sign In|Bugs & Suggestions)$/ }).first()).toBeVisible();
     await page.keyboard.press('F1');
-    await expect(searchField(page)).toBeFocused();
+    await expect(askField(page)).toBeFocused();
   });
 
   test('a trip to a mobile-size screen shows the sheet and brings the window back as it was', async ({ page }) => {
@@ -519,11 +531,91 @@ test.describe('Formaquestion on a desktop screen', () => {
     await page.setViewportSize({ width: 600, height: 900 });
     await expect(helpWindow(page)).toHaveAttribute('data-fq-sheet', '');
     expect(await settledBox(page)).toEqual({ x: 0, y: 0, width: 600, height: 900 });
+    await showSearch(page);
     await expect(searchField(page)).toHaveValue('blueprint');
 
     await page.setViewportSize({ width: 1920, height: 1080 });
     await expect(helpWindow(page)).not.toHaveAttribute('data-fq-sheet');
     expect(await settledBox(page)).toEqual(placed);
+  });
+
+  /** A text endpoint that answers every request with `answer`, and records each request body. */
+  async function openWithAi(page: Page, answer: string): Promise<{ messages: { role: string; content: string }[] }[]> {
+    const bodies: { messages: { role: string; content: string }[] }[] = [];
+    await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
+    await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
+    await page.route('**/chat/completions', async (route) => {
+      bodies.push(route.request().postDataJSON());
+      const half = Math.ceil(answer.length / 2);
+      const frame = (content: string) => `data: ${JSON.stringify({ choices: [{ delta: { content }, finish_reason: null }] })}\n\n`;
+      await route.fulfill({ contentType: 'text/event-stream', body: `${frame(answer.slice(0, half))}${frame(answer.slice(half))}data: [DONE]\n\n` });
+    });
+    await openApp(page, { FORMAMORPH_endpointUrl: 'http://127.0.0.1:5190/v1/chat/completions' });
+    return bodies;
+  }
+
+  const conversation = (page: Page) => helpWindow(page).getByRole('log', { name: 'Conversation' });
+
+  test('a question asked above Settings gets one answer from the docs, and its source opens in the reader', async ({ page }) => {
+    const bodies = await openWithAi(page, '1. Open the **Traits** tab.\n2. Select **New Blueprint**.');
+    await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'endpoints' });
+    await expect(settings(page)).toBeVisible();
+    await settings(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    await openHelp(page);
+
+    await askField(page).click();
+    await page.keyboard.type('How do I make a blueprint?');
+    await helpWindow(page).getByRole('button', { name: 'Send' }).click();
+
+    await expect(conversation(page).getByRole('listitem')).toHaveCount(2);
+    await expect(conversation(page)).toContainText('Select New Blueprint.');
+    await expect(settings(page)).toBeVisible();
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0].messages.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(bodies[0].messages[1].content).toContain('## How to Make a Blueprint');
+
+    const sources = conversation(page).getByRole('group', { name: 'Sources' });
+    await sources.getByRole('button', { name: /How to Make a Blueprint/ }).click();
+    await expect(reader(page).getByRole('heading', { name: 'How to Make a Blueprint', level: 3 })).toBeVisible();
+    // The pressed source left the screen. Focus stays in the window.
+    await expect.poll(() => focusOwner(page)).toBe('window');
+  });
+
+  test('a long answer keeps the conversation at its end, and the question field stays in view', async ({ page }) => {
+    const steps = Array.from({ length: 40 }, (_, n) => `${n + 1}. Select the control for step ${n + 1} and wait for the list to change.`).join('\n');
+    await openWithAi(page, steps);
+    await openHelp(page);
+    await askField(page).fill('How do I make a blueprint?');
+    await page.keyboard.press('Enter');
+
+    await expect(conversation(page).getByRole('listitem')).toHaveCount(40);
+    const scroller = helpWindow(page).locator('[data-fq-scroll="conversation"]');
+    await expect.poll(() => scroller.evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThanOrEqual(2);
+    expect(await scroller.evaluate((el) => el.scrollHeight > el.clientHeight), 'the answer is longer than the window').toBe(true);
+    const field = (await askField(page).boundingBox())!;
+    const frame = await settledBox(page);
+    expect(field.y + field.height).toBeLessThanOrEqual(frame.y + frame.height);
+  });
+
+  test('with no AI to reach, a question shows the guide sections that match it and sends no request', async ({ page }) => {
+    // The app also sends its own capability checks to the endpoint, so the count is of requests that hold the question.
+    const question = 'How do I make a blueprint?';
+    let sent = 0;
+    page.on('request', (request) => {
+      if (request.url().includes('/chat/completions') && (request.postData() ?? '').includes(question)) sent++;
+    });
+    // The seeded endpoint is a closed port.
+    await openApp(page);
+    await openHelp(page);
+    await askField(page).fill('How do I make a blueprint?');
+    await page.keyboard.press('Enter');
+
+    const rows = conversation(page).getByRole('list', { name: 'Search Results' }).getByRole('button');
+    await expect(rows.first()).toContainText('How to Make a Blueprint');
+    await expect(conversation(page)).toContainText('No AI is connected');
+    expect(sent).toBe(0);
+    await rows.first().click();
+    await expect(reader(page).getByRole('heading', { name: 'How to Make a Blueprint', level: 3 })).toBeVisible();
   });
 });
 
@@ -550,7 +642,8 @@ test.describe('Formaquestion on a mobile-size screen', () => {
 
     expect(await settledBox(page)).toEqual(SCREEN);
     expect(await focusOwner(page)).toBe('window');
-    await expect(searchField(page)).not.toBeFocused();
+    await expect(askField(page)).toBeVisible();
+    await expect(askField(page)).not.toBeFocused();
     await expect(helpWindow(page).getByRole('button', { name: 'Wide View' })).toHaveCount(0);
     await expect(helpTab(page)).toHaveCount(0);
 
@@ -584,6 +677,7 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await openSheet(page);
     const sheetZ = await helpWindow(page).evaluate((el) => document.elementFromPoint(187, 400)?.closest('#formaquestion-window') === el);
     expect(sheetZ, 'the sheet is on top at the center of the screen').toBe(true);
+    await showSearch(page);
     await searchField(page).fill('endpoint');
     await expect(results(page)).toBeVisible();
 
@@ -598,6 +692,7 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await openSheet(page);
     // An on-screen keyboard shrinks the visual viewport, and the app reports it in --app-h.
     await page.evaluate(() => document.documentElement.style.setProperty('--app-h', '450px'));
+    await showSearch(page);
     await searchField(page).fill('blueprint');
 
     const sheet = (await helpWindow(page).boundingBox())!;

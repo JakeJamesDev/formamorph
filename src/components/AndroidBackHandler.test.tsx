@@ -34,6 +34,9 @@ vi.mock('@capacitor/app', () => ({
   },
 }));
 
+// Formaquestion reads the AI settings from the app's providers. No test here asks a question.
+vi.mock('./formaquestion/useHelpAi', () => import('@/test/idleHelpAi'));
+
 import { AndroidBackHandler } from './AndroidBackHandler';
 import { Formaquestion } from './formaquestion/Formaquestion';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
@@ -319,7 +322,7 @@ describe('AndroidBackHandler with Formaquestion open', () => {
 
   async function openHelp() {
     fireEvent.click(screen.getByRole('button', { name: 'Help' }));
-    await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    await screen.findByRole('textbox', { name: 'Ask a Question' });
   }
 
   it('closes Formaquestion before the dialog under it, and leaves the dialog as it was', async () => {

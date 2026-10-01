@@ -1,0 +1,23 @@
+{
+  "note": "Help probe questions. `docs` wording uses the guide's own words; `player` wording does not. `facts` are control names a correct answer holds. A case with no `section` is one the guide does not cover.",
+  "cases": [
+    { "id": "backup-docs", "wording": "docs", "question": "How do I make a backup?", "section": "Saves-and-Backup#how-to-make-a-backup", "facts": ["Backup & Restore", "Save backup"] },
+    { "id": "backup-player", "wording": "player", "question": "How do I back up everything before I reinstall?", "section": "Saves-and-Backup#how-to-make-a-backup", "facts": ["Backup & Restore", "Save backup"] },
+    { "id": "lmstudio-docs", "wording": "docs", "question": "How do I connect LM Studio?", "section": "Connect-Your-Own-AI#how-to-connect-lm-studio", "facts": ["Enable CORS", "Endpoints", "Endpoint URL", "Model Name"] },
+    { "id": "lmstudio-player", "wording": "player", "question": "How can I hook up LM Studio?", "section": "Connect-Your-Own-AI#how-to-connect-lm-studio", "facts": ["Enable CORS", "Endpoints", "Endpoint URL", "Model Name"] },
+    { "id": "regen-docs", "wording": "docs", "question": "How do I re-generate a turn?", "section": "How-to-Play#how-to-re-generate-a-turn", "facts": ["Re-generate Narration"] },
+    { "id": "regen-player", "wording": "player", "question": "How do I redo the last turn? I did not like what the AI wrote.", "section": "How-to-Play#how-to-re-generate-a-turn", "facts": ["Re-generate Narration"] },
+    { "id": "publish-docs", "wording": "docs", "question": "How do I publish a world?", "section": "Community-Creations#how-to-publish-a-world", "facts": ["Worlds", "Publish World"] },
+    { "id": "publish-player", "wording": "player", "question": "How do I put my world on the community page?", "section": "Community-Creations#how-to-publish-a-world", "facts": ["Worlds", "Publish World"] },
+    { "id": "group-docs", "wording": "docs", "question": "How do I make a Group in the library?", "section": "Library#how-to-make-a-group", "facts": ["Create New Group", "Create Group"] },
+    { "id": "group-player", "wording": "player", "question": "How do I make a folder for my worlds?", "section": "Library#how-to-make-a-group", "facts": ["Create New Group", "Create Group"] },
+    { "id": "quotes-docs", "wording": "docs", "question": "How do I color quoted speech?", "section": "Settings#how-to-color-quoted-speech", "facts": ["Display", "Quote Color"] },
+    { "id": "quotes-player", "wording": "player", "question": "How do I make the quotes a different color?", "section": "Settings#how-to-color-quoted-speech", "facts": ["Display", "Quote Color"] },
+    { "id": "tools-docs", "wording": "docs", "question": "How do I turn on Tools?", "section": "Tools#how-to-turn-on-tools", "facts": ["Advanced", "Output", "Enabled"] },
+    { "id": "tools-player", "wording": "player", "question": "How do I let the AI call a tool?", "section": "Tools#how-to-turn-on-tools", "facts": ["Advanced", "Output", "Enabled"] },
+    { "id": "import-docs", "wording": "docs", "question": "How do I import a world?", "section": "Library#how-to-import-a-world", "facts": ["Import World"] },
+    { "id": "import-player", "wording": "player", "question": "How do I bring a world file into the game?", "section": "Library#how-to-import-a-world", "facts": ["Import World"] },
+    { "id": "trade-uncovered", "wording": "player", "question": "How do I trade items with another player?", "facts": [] },
+    { "id": "achievements-uncovered", "wording": "player", "question": "How do I earn achievements?", "facts": [] }
+  ]
+}

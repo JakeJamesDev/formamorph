@@ -1,33 +1,34 @@
-import { useMemo, type ComponentPropsWithoutRef } from 'react';
-import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
-import { MarkdownRenderer, type MarkdownComponents } from '@/components/game/MarkdownRenderer';
+import { useMemo } from 'react';
+import { ArrowLeft, ChevronDown, Search, type LucideIcon } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
-import type { DocsContentsPage } from '@/lib/docs/docsIndex';
-import { readerLinkTarget, sectionBody, sectionExcerpt, withReaderLinks } from '@/lib/docs/docsReader';
+import type { DocSection, DocsContentsPage } from '@/lib/docs/docsIndex';
+import { sectionBody, sectionExcerpt, withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
 import { isSearchable } from './formaquestionTabs';
+import { FOCUS_RING, readerComponents } from './readerLinks';
 
 /** The most sections one search shows. */
 const RESULT_LIMIT = 20;
 
-const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
-
-export function SearchField({ value, onChange, className }: {
+export function SearchField({ value, onChange, takesFocus = true, className }: {
   value: string;
   onChange: (text: string) => void;
+  /** The cursor goes here when the window opens. False where the question field is on show too. */
+  takesFocus?: boolean;
   className?: string;
 }) {
   return (
     <div className={cn('relative', className)}>
       <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
-        data-fq-autofocus=""
+        data-fq-autofocus={takesFocus ? '' : undefined}
         type="search"
         aria-label="Search the Guide"
         placeholder="Search the Guide"
@@ -52,9 +53,20 @@ export function SearchResults({ guide, query, onOpen, compact = false }: {
   const results = useMemo(() => (isSearchable(text) ? guide.index.search(text, RESULT_LIMIT) : []), [guide, text]);
   if (!isSearchable(text)) return <Hint className="p-3">Type two or more letters</Hint>;
   if (results.length === 0) return <Hint role="status" className="p-3">No sections match “{text}”</Hint>;
+  return <SectionRows guide={guide} sections={results} onOpen={onOpen} compact={compact} className="p-1" />;
+}
+
+/** Docs sections as result rows: the section, its page, and the start of its text. */
+export function SectionRows({ guide, sections, onOpen, compact = false, className }: {
+  guide: Guide;
+  sections: readonly DocSection[];
+  onOpen: (id: string) => void;
+  compact?: boolean;
+  className?: string;
+}) {
   return (
-    <ul className="flex flex-col p-1" aria-label="Search Results">
-      {results.map((section) => (
+    <ul className={cn('flex flex-col', className)} aria-label="Search Results">
+      {sections.map((section) => (
         <li key={section.id}>
           <button
             type="button"
@@ -111,43 +123,20 @@ export function ContentsList({ guide, current, openPages, onPageOpenChange, onOp
   );
 }
 
-/** The row above a section in the narrow layout. It goes back to the contents list. */
-export function BackRow({ onBack }: { onBack: () => void }) {
+/** The row above a section. It goes back to where the section came from: the contents list, or the conversation. */
+export function BackRow({ label, icon: Icon = ArrowLeft, onBack }: {
+  label: string;
+  icon?: LucideIcon;
+  onBack: () => void;
+}) {
   return (
     <div className="flex shrink-0 items-center border-b px-2 py-1">
       <Button variant="link" size="sm" className="gap-1 px-1 text-foreground" onClick={onBack}>
-        <ArrowLeft aria-hidden className="h-4 w-4" />
-        Contents
+        <Icon aria-hidden className="h-4 w-4" />
+        {label}
       </Button>
     </div>
   );
-}
-
-const LINK_CLASS = cn('rounded-sm font-medium text-primary underline underline-offset-2', FOCUS_RING);
-
-/** Link renderers for the reader: a docs link opens its section here, and every other link opens the browser. */
-function readerComponents(onOpen: (id: string) => void): MarkdownComponents {
-  return {
-    // The link's own target and rel are left out: a docs link must not open a browser tab.
-    a: ({ href, children }: ComponentPropsWithoutRef<'a'> & { node?: unknown }) => {
-      const target = readerLinkTarget(href);
-      if (target === null) {
-        return <a href={href} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>{children}</a>;
-      }
-      return (
-        <a
-          href={href}
-          className={LINK_CLASS}
-          onClick={(event) => {
-            event.preventDefault();
-            onOpen(target);
-          }}
-        >
-          {children}
-        </a>
-      );
-    },
-  };
 }
 
 export function Reader({ guide, sectionId, onOpen }: {

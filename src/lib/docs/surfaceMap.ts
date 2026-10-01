@@ -194,6 +194,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   ...Object.fromEntries(tabsOf('worldEditorTour').map((id) => [id, { page: 'WorldEditor', anchor: 'the-authoring-tour' }])),
 
   formaquestion: { page: 'Formaquestion', anchor: 'the-window' },
+  'formaquestion.ask': { page: 'Formaquestion', anchor: 'ask' },
   'formaquestion.search': { page: 'Formaquestion', anchor: 'search' },
   'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
 

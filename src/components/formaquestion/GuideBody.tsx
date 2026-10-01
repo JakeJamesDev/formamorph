@@ -1,24 +1,27 @@
 import { useCallback } from 'react';
-import { BookOpen, Search } from 'lucide-react';
+import { BookOpen, MessageCircleQuestion, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Hint } from '@/components/ui/typography';
 import type { Guide } from '@/lib/formaquestion/guide';
+import { AskPanel } from './AskParts';
 import {
   FORMAQUESTION_TABS, isSearchable, type FormaquestionTab, type GuideView, type GuideViewChange,
 } from './formaquestionTabs';
 import { BackRow, ContentsList, Reader, SearchField, SearchResults } from './GuideParts';
 import { SurfaceHelpRow } from './SurfaceHelpRow';
+import type { HelpChat } from './useHelpChat';
 
-const TAB_ICONS: Record<FormaquestionTab, typeof Search> = { search: Search, guide: BookOpen };
+const TAB_ICONS: Record<FormaquestionTab, typeof Search> = { ask: MessageCircleQuestion, search: Search, guide: BookOpen };
 const TAB_PANEL = 'mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex';
 
 /**
  * The window's content: one design at two widths. Narrow shows one part at a time behind tabs. Wide keeps
- * a rail with search and contents beside the reader. The search text and the open section carry over.
+ * a rail with search and contents beside the conversation or the reader. The search text, the open section
+ * and the conversation carry over.
  */
-export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: {
+export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, chat }: {
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
@@ -26,6 +29,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
   view: GuideView;
   onViewChange: (change: GuideViewChange) => void;
   wide: boolean;
+  chat: HelpChat;
 }) {
   // The tab follows the reader, so a swap to narrow lands on the section that is open.
   // Its page opens in the contents list, and stays open until the player closes it.
@@ -35,6 +39,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
     return { sectionId, tab: 'guide', reading: true, openPages };
   }), [guide, onViewChange]);
   const setQuery = (query: string) => onViewChange({ query });
+  const setDraft = useCallback((draft: string) => onViewChange({ draft }), [onViewChange]);
   const setPageOpen = (page: string, open: boolean) => onViewChange((current) => ({
     openPages: open ? [...current.openPages, page] : current.openPages.filter((name) => name !== page),
   }));
@@ -53,11 +58,15 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
     );
   }
 
+  const ask = guide && <AskPanel guide={guide} chat={chat} draft={view.draft} onDraftChange={setDraft} onOpen={openSection} />;
+
   if (wide) {
+    // The pane shows the conversation until a section opens, and again after Back to Conversation.
+    const showsReader = view.sectionId !== null && view.tab !== 'ask';
     return (
       <div className="flex h-full min-h-0" data-fq-layout="wide">
         <div className="flex min-h-0 w-56 shrink-0 flex-col border-r">
-          <SearchField value={view.query} onChange={setQuery} className="m-2 shrink-0" />
+          <SearchField value={view.query} onChange={setQuery} takesFocus={showsReader} className="m-2 shrink-0" />
           {helpRowUnlessSearching}
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'rail' }}>
             {isSearchable(view.query)
@@ -66,9 +75,12 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
           </ScrollArea>
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {view.sectionId
-            ? <Reader guide={guide} sectionId={view.sectionId} onOpen={openSection} />
-            : <Hint className="p-6 text-center">Select a section to read it here</Hint>}
+          {showsReader && view.sectionId ? (
+            <>
+              <BackRow label="Back to Conversation" icon={MessageCircleQuestion} onBack={() => onViewChange({ tab: 'ask' })} />
+              <Reader guide={guide} sectionId={view.sectionId} onOpen={openSection} />
+            </>
+          ) : ask}
         </div>
       </div>
     );
@@ -82,7 +94,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
       data-fq-layout="narrow"
     >
       <div className="shrink-0 border-b p-2">
-        <TabsList className="grid w-full grid-cols-2" aria-label="Formaquestion Parts">
+        <TabsList className="grid w-full grid-cols-3" aria-label="Formaquestion Parts">
           {FORMAQUESTION_TABS.map(({ value, label }) => {
             const Icon = TAB_ICONS[value];
             return (
@@ -94,6 +106,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
           })}
         </TabsList>
       </div>
+      <TabsContent value="ask" className={TAB_PANEL}>{ask}</TabsContent>
       <TabsContent value="search" className={TAB_PANEL}>
         <SearchField value={view.query} onChange={setQuery} className="m-3 mb-1 shrink-0" />
         {helpRowUnlessSearching}
@@ -104,7 +117,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide }: 
       <TabsContent value="guide" className={TAB_PANEL}>
         {view.sectionId && view.reading ? (
           <>
-            <BackRow onBack={() => onViewChange({ reading: false })} />
+            <BackRow label="Contents" onBack={() => onViewChange({ reading: false })} />
             <Reader guide={guide} sectionId={view.sectionId} onOpen={openSection} />
           </>
         ) : (

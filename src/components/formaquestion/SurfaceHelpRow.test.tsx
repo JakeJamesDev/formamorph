@@ -7,6 +7,7 @@ import { SurfaceLayer, useSurfaceTab } from '@/components/ui/surface';
 import { renderReporting as render } from '@/test/surfaceReporter';
 import { useGuideView, type FormaquestionTab } from './formaquestionTabs';
 import { GuideBody } from './GuideBody';
+import type { HelpChat } from './useHelpChat';
 
 // The headings the surface map names for the Main Menu, Settings and its Display tab.
 const PAGES = {
@@ -17,12 +18,15 @@ const PAGES = {
 const SIDEBAR = '- [Home](Home)\n- [Library](Library)\n- [Settings](Settings)\n';
 const guide = createGuide(createDocsIndex({ pages: PAGES, sidebar: SIDEBAR }));
 
+/** An empty conversation: these tests are about the guide's first row. */
+const NO_CHAT: HelpChat = { exchanges: [], busy: false, ask: () => {}, stop: () => {} };
+
 afterEach(cleanup);
 
 function Window({ wide = false, tab = 'search' }: { wide?: boolean; tab?: FormaquestionTab }) {
   const [view, changeView] = useGuideView();
   return (
-    <GuideBody guide={guide} failed={false} onRetry={() => {}} view={{ ...view, tab: view.sectionId ? view.tab : tab }} onViewChange={changeView} wide={wide} />
+    <GuideBody guide={guide} failed={false} onRetry={() => {}} view={{ ...view, tab: view.sectionId ? view.tab : tab }} onViewChange={changeView} wide={wide} chat={NO_CHAT} />
   );
 }
 

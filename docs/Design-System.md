@@ -869,9 +869,14 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 
 - 🏷️ **Help tab.** A launcher that stays flat against one of the four screen edges and is round on its inner side. Its label reads top to bottom on the right edge, bottom to top on the left edge, and left to right on the top and the bottom. It is never upside down. A press opens or closes the window. A drag, or an arrow key while the tab has focus, moves it. The tab shows the accent fill while the window is open.
 - 🪟 **Floating window.** A title bar with the name, **Wide View** and **Close**. The title bar moves the window. A grip at the bottom right corner resizes it. The window stays whole on the screen. Only the tab snaps to an edge.
-- ↔️ **Two widths.** Narrow (400px) shows one part at a time behind tabs. Wide (720px) shows a rail with search and contents beside the reader. **Wide View** swaps them, and the grip crosses the same line at 560px. The search text and the open section carry over.
+- ↔️ **Two widths.** Narrow (400px) shows one part at a time behind three tabs: **Ask**, **Search** and **Guide**. Wide (720px) shows a rail with search and contents beside the conversation or the reader. **Wide View** swaps them, and the grip crosses the same line at 560px. The conversation, the search text and the open section carry over.
+- 💬 **Conversation.** A scrolling log of questions and answers above the question field. It stays at its end while an answer comes in, unless the player scrolled up.
+- 🙋 **Question bubble.** The player's question, right-aligned on `muted`, with an 8-unit left margin so it never spans the full width.
+- 📝 **Answer.** Markdown through the streaming renderer, with no bubble. A `Meta` line says **Stopped** under an answer the player ended.
+- 🔗 **Source link.** A small bordered chip under an answer: the page in the muted color, a chevron, then the section in the foreground color. Chips wrap, under a `Meta` label **Sources**. A press opens the section in the reader.
+- ⌨️ **Question field.** A two-row text area with an icon button beside it. The button is **Send**, and it is **Stop** in the outline variant while an answer comes in.
 - 🔎 **Search result row.** The section name at label weight, the page as `Meta`, and a two-line excerpt in the helper role. The wide rail leaves out the excerpt.
-- 📖 **Reader.** The page as `Meta`, the section name, the body, then an **On This Page** list. In the narrow layout a **Contents** row above it goes back to the list.
+- 📖 **Reader.** The page as `Meta`, the section name, the body, then an **On This Page** list. In the narrow layout a **Contents** row above it goes back to the list. In the wide layout a **Back to Conversation** row above it shows the conversation again.
 - 📚 **Contents.** One collapsible row per page, with its sections as Compact Selection Lists rows.
 
 ### Layering
@@ -899,10 +904,11 @@ The mobile sheet slides in from the edge that holds the Help tab, with the same 
 | Window place, size and the two widths | [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
 | Narrow and wide layouts | [`GuideBody.tsx`](../src/components/formaquestion/GuideBody.tsx) |
 | Search field, result rows, contents, reader | [`GuideParts.tsx`](../src/components/formaquestion/GuideParts.tsx) |
+| Conversation, question bubble, answer, source link, question field | [`AskParts.tsx`](../src/components/formaquestion/AskParts.tsx) |
 | The one instance, F1, focus and motion | [`Formaquestion.tsx`](../src/components/formaquestion/Formaquestion.tsx) |
 | Isolated reference | [`FormaquestionReference.tsx`](../src/components/design-system/FormaquestionReference.tsx) |
 
-Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge, a sample window and a sample mobile sheet in local state. Open `#dev?modal=formaquestion` on any screen for the real one.
+Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge, a sample window and a sample mobile sheet in local state. The samples have no AI: a question you send there shows the docs search state. Open `#dev?modal=formaquestion` on any screen for the real one.
 
 ### Responsive behavior
 
@@ -920,12 +926,16 @@ Below the `md` breakpoint the window is a full-screen sheet in the narrow layout
 | State | Treatment |
 | --- | --- |
 | Closed | The tab only. `aria-expanded` is false. |
-| Open | The tab has the accent fill. Focus goes to the search field, or to the sheet on mobile. |
+| Open | The tab has the accent fill. Focus goes to the question field, or to the sheet on mobile. |
+| No question yet | A centered hint in the conversation. |
+| Answer in progress | A helper line until the first words, then the text as it comes in. **Stop** takes the place of **Send**. |
+| Stopped | The text so far, then a `Meta` line. |
+| No AI, or a failed request | One helper line that says why, then the search result rows for the question. With no matching section, the line says so and no rows show. A failed request also shows the standard error toast, and keeps the text that came before the failure. |
 | Loading | A status line in place of the content while the docs load. |
 | Load failed | A line that says so, and **Try Again**. |
 | Too few letters | A hint in place of the results. |
 | No match | A status line that quotes the search text. |
-| Wide, no section | A centered hint in the reader's place. |
+| Wide, no section | The conversation in the reader's place. |
 | Focus | The shared inset ring on every control, the tab included. |
 
 ### Approved patterns
@@ -935,9 +945,9 @@ Below the `md` breakpoint the window is a full-screen sheet in the narrow layout
 | 1 | Fixed launcher above every layer | ✅ |
 | 2 | Floating window with two widths | ✅ |
 | 3 | Full-screen sheet for a non-modal surface, on mobile | ✅ |
-| 4 | Source link: a "Page › Heading" chip under an answer | Not built |
+| 4 | Source link: a "Page › Heading" chip under an answer | ✅ |
 | 5 | Not-from-the-guide notice above an answer | Not built |
-| 6 | Question bubble: the player's question, right-aligned on `muted` | Not built |
+| 6 | Question bubble: the player's question, right-aligned on `muted` | ✅ |
 | 7 | Search result row | ✅ |
 | 8 | Reader with an On This Page list and a Back row | ✅ |
 | 9 | Send reason: a help line under the field when Send is unavailable | Not built |
@@ -947,7 +957,7 @@ A pattern that is not built gets its composition and its reference here when its
 
 ### Writing review
 
-**Help**, **Formaquestion**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **On This Page**, **Introduction** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
+**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
 
 ## UI and prototype workflow
 

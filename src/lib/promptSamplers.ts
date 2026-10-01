@@ -26,6 +26,9 @@ export const PROMPT_SAMPLER_PINS: Partial<Record<AIRequestType, Partial<Record<P
   // A faithful rewrite the author reads as prose; 0 gives flat, near-identical phrasing on our tiers.
   descriptionBridge: { temperature: 0.6 },
   thinking: { temperature: 0.4, repetitionPenalty: 1 },
+  // A help answer copies steps and control names from the docs: near-deterministic, and no penalty, since
+  // a penalty rewords the names a step repeats.
+  help: { temperature: 0.2, repetitionPenalty: 1 },
 };
 
 export interface PromptSamplerSetting {

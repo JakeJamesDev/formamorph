@@ -21,6 +21,8 @@ import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame } from './FormaquestionFrame';
 import { FORMAQUESTION_TABS, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { GuideBody } from './GuideBody';
+import { useHelpAi } from './useHelpAi';
+import { useHelpChat } from './useHelpChat';
 
 const WINDOW_ID = 'formaquestion-window';
 
@@ -58,8 +60,8 @@ function focusedElement(): HTMLElement | null {
 
 /**
  * Formaquestion: the Help tab and the help window, mounted once for the whole app in the shielded layer,
- * so both stay usable above every dialog. The window holds the guide and a search of it. On a mobile-size
- * screen the window is a full-screen sheet in the narrow layout.
+ * so both stay usable above every dialog. The window holds the help conversation, the guide and a search
+ * of it. On a mobile-size screen the window is a full-screen sheet in the narrow layout.
  */
 export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: {
   /** Hides the tab and the window and turns F1 off, while something covers the whole screen. */
@@ -97,6 +99,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (open && !index && !failed) load();
   }, [open, index, failed, load]);
   const guide = useMemo(() => (index ? createGuide(index) : null), [index]);
+
+  // The conversation lives here, so it outlives the window. The AI check runs only while the window is open.
+  const chat = useHelpChat(index, useHelpAi(open));
 
   // The window stays inside the screen after a browser resize. At a mobile width the sheet shows, and
   // the window keeps its place and size for when the screen is wide again.
@@ -216,7 +221,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     });
   }, [target, guide, changeViewInWindow]);
 
-  // The docs can load after the window opens. Focus then goes from the frame to the search field, except on the sheet.
+  // The docs can load after the window opens. Focus then goes from the frame to the window's first field, except on the sheet.
   useEffect(() => {
     if (guide && document.activeElement === windowRef.current) focusWindow();
   }, [guide, focusWindow]);
@@ -314,7 +319,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             },
           })}
         >
-          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} />
+          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} />
         </FormaquestionFrame>
       )}
     </>,

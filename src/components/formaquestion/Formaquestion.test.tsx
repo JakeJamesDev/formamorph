@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
 import { NARROW_WIDTH, WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
+
+// The AI settings come from the app's providers. No test here asks a question.
+vi.mock('./useHelpAi', () => import('@/test/idleHelpAi'));
 import { Formaquestion } from './Formaquestion';
 
 const PAGES = {
@@ -40,7 +43,14 @@ const pressF1 = () => fireEvent.keyDown(document.activeElement ?? document.body,
 async function openWindow(loadIndex: () => Promise<DocsIndex> = loadFixture) {
   const view = render(<Formaquestion loadIndex={loadIndex} />);
   fireEvent.click(helpTab()!);
-  await screen.findByRole('searchbox', { name: 'Search the Guide' });
+  await screen.findByRole('textbox', { name: 'Ask a Question' });
+  return view;
+}
+
+/** Opens the window and goes to its Search tab. */
+async function openSearch() {
+  const view = await openWindow();
+  await userEvent.click(screen.getByRole('tab', { name: 'Search' }));
   return view;
 }
 
@@ -79,21 +89,21 @@ describe('opening and closing', () => {
     render(<Formaquestion loadIndex={loadIndex} />);
     expect(loadIndex).not.toHaveBeenCalled();
     pressF1();
-    await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    await screen.findByRole('textbox', { name: 'Ask a Question' });
     expect(loadIndex).toHaveBeenCalledTimes(1);
   });
 
-  it('F1 opens the window and puts the cursor in the search field', async () => {
+  it('F1 opens the window and puts the cursor in the question field', async () => {
     render(<Formaquestion loadIndex={loadFixture} />);
     pressF1();
-    const field = await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    const field = await screen.findByRole('textbox', { name: 'Ask a Question' });
     await waitFor(() => expect(field).toHaveFocus());
   });
 
   it('F1 moves the cursor into an open window first, and closes the window on the next press', async () => {
     render(<><input aria-label="Outside" /><Formaquestion loadIndex={loadFixture} /></>);
     pressF1();
-    const field = await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    const field = await screen.findByRole('textbox', { name: 'Ask a Question' });
     const outside = screen.getByRole('textbox', { name: 'Outside' });
     outside.focus();
 
@@ -108,7 +118,7 @@ describe('opening and closing', () => {
   });
 
   it('does not close on Escape, and Escape keeps the search text', async () => {
-    await openWindow();
+    await openSearch();
     const field = screen.getByRole('searchbox', { name: 'Search the Guide' });
     fireEvent.change(field, { target: { value: 'stat' } });
     const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
@@ -122,7 +132,8 @@ describe('opening and closing', () => {
   it('keeps the cursor in the window when a press removes the control it was on', async () => {
     render(<Formaquestion loadIndex={loadFixture} />);
     await userEvent.click(helpTab()!);
-    const field = await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    await userEvent.click(await screen.findByRole('tab', { name: 'Search' }));
+    const field = screen.getByRole('searchbox', { name: 'Search the Guide' });
     await userEvent.type(field, 'panel');
     // The result row leaves the screen when its section opens.
     await userEvent.click(within(screen.getByRole('list', { name: 'Search Results' })).getByText('The Panel'));
@@ -141,7 +152,7 @@ describe('opening and closing', () => {
   });
 
   it('keeps the search text and the open section across a close', async () => {
-    await openWindow();
+    await openSearch();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'panel' } });
     fireEvent.click(within(screen.getByRole('list', { name: 'Search Results' })).getByText('The Panel'));
     expect(screen.getByRole('article', { name: '📊 Stats: The Panel' })).toBeInTheDocument();
@@ -169,7 +180,7 @@ describe('while it stands down', () => {
   });
 
   it('hides an open window while suspended and shows it again with its state', async () => {
-    const view = await openWindow();
+    const view = await openSearch();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'trait' } });
 
     view.rerender(<Formaquestion suspended loadIndex={loadFixture} />);
@@ -184,7 +195,7 @@ describe('while it stands down', () => {
     const tree = (suspended: boolean) => <><input aria-label="Outside" /><Formaquestion suspended={suspended} loadIndex={loadFixture} /></>;
     const view = render(tree(false));
     fireEvent.click(helpTab()!);
-    await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    await screen.findByRole('textbox', { name: 'Ask a Question' });
 
     view.rerender(tree(true));
     const outside = screen.getByRole('textbox', { name: 'Outside' });
@@ -198,7 +209,7 @@ describe('while it stands down', () => {
 
 describe('search', () => {
   it('asks for two letters before it searches', async () => {
-    await openWindow();
+    await openSearch();
     expect(screen.getByText('Type two or more letters')).toBeInTheDocument();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 's' } });
     expect(screen.getByText('Type two or more letters')).toBeInTheDocument();
@@ -206,7 +217,7 @@ describe('search', () => {
   });
 
   it('shows ranked sections, each with its heading, its page and the start of its text', async () => {
-    await openWindow();
+    await openSearch();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'add a trait' } });
     const rows = within(screen.getByRole('list', { name: 'Search Results' })).getAllByRole('button');
     // The heading match leads; a section that only names traits in its text follows.
@@ -217,14 +228,14 @@ describe('search', () => {
   });
 
   it('shows an empty state when no section matches', async () => {
-    await openWindow();
+    await openSearch();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'zeppelin' } });
     expect(screen.getByRole('status')).toHaveTextContent('No sections match “zeppelin”');
     expect(screen.queryByRole('list', { name: 'Search Results' })).toBeNull();
   });
 
   it('opens a result in the reader', async () => {
-    await openWindow();
+    await openSearch();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'add a stat' } });
     fireEvent.click(within(screen.getByRole('list', { name: 'Search Results' })).getAllByRole('button')[0]);
     const article = screen.getByRole('article', { name: '📊 Stats: How to Add a Stat' });
@@ -272,7 +283,7 @@ describe('the guide', () => {
   });
 
   it('opens the page of a section that came from a search, and marks the section', async () => {
-    await openWindow();
+    await openSearch();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'add a stat' } });
     fireEvent.click(within(screen.getByRole('list', { name: 'Search Results' })).getAllByRole('button')[0]);
     await userEvent.click(screen.getByRole('button', { name: 'Contents' }));
@@ -369,7 +380,7 @@ describe('the window on the screen', () => {
   it('swaps to the wide layout and back with Wide View, keeps the open section, and stores the width', async () => {
     setScreenWidth(1600);
     vi.stubGlobal('innerHeight', 900);
-    await openWindow();
+    await openSearch();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'panel' } });
     fireEvent.click(within(screen.getByRole('list', { name: 'Search Results' })).getByText('The Panel'));
 
@@ -438,13 +449,13 @@ describe('on a mobile-size screen', () => {
   it('puts focus on the sheet, not in a field, so no keyboard opens', async () => {
     await openWindow();
     await waitFor(() => expect(helpWindow()).toHaveFocus());
-    expect(screen.getByRole('searchbox', { name: 'Search the Guide' })).not.toHaveFocus();
+    expect(screen.getByRole('textbox', { name: 'Ask a Question' })).not.toHaveFocus();
   });
 
   it('hides the Help tab while the sheet is open', async () => {
     render(<Formaquestion loadIndex={loadFixture} />);
     await userEvent.click(helpTab()!);
-    await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    await screen.findByRole('textbox', { name: 'Ask a Question' });
     // A hidden tab leaves the accessibility tree.
     expect(helpTab()).toBeNull();
     expect(document.querySelector('[data-fq-launcher]')).not.toBeVisible();
@@ -509,7 +520,7 @@ describe('a guide that does not load', () => {
     expect(loadIndex).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
-    expect(await screen.findByRole('searchbox', { name: 'Search the Guide' })).toBeInTheDocument();
+    expect(await screen.findByRole('textbox', { name: 'Ask a Question' })).toBeInTheDocument();
     expect(loadIndex).toHaveBeenCalledTimes(2);
   });
 });
@@ -584,7 +595,7 @@ describe('opening a docs heading from outside', () => {
     render(<Formaquestion loadIndex={loadIndex} />);
     act(() => { openDocs({ page: 'Traits' }); });
     await userEvent.click(await screen.findByRole('button', { name: 'Try Again' }));
-    expect(await screen.findByRole('searchbox', { name: 'Search the Guide' })).toBeInTheDocument();
+    expect(await screen.findByRole('textbox', { name: 'Ask a Question' })).toBeInTheDocument();
     expect(screen.queryByRole('article')).toBeNull();
   });
 

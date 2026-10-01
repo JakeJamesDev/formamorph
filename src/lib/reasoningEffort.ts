@@ -306,7 +306,7 @@ export const PROMPT_REQUEST_KINDS = [
   'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
 ] as const satisfies readonly AIRequestType[];
 
-export const EDITOR_REQUEST_KINDS = ['descriptionSummary', 'descriptionBridge', 'imageTags'] as const satisfies readonly EditorRequestType[];
+export const EDITOR_REQUEST_KINDS = ['descriptionSummary', 'descriptionBridge', 'imageTags', 'help'] as const satisfies readonly EditorRequestType[];
 
 export const ALL_REQUEST_KINDS = [...PROMPT_REQUEST_KINDS, ...EDITOR_REQUEST_KINDS] as const;
 
