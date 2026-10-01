@@ -83,7 +83,7 @@ If the bundled local engine runs a pass that has images, the pass drops them and
 **Settings**
 - A new boolean setting, Image Attachments, defaults to off. It lives in a new Attachments section on the Output tab. It shows in Simple and Advanced mode. Narration defaults on, so Simple players get a working feature without the Prompts tab.
 - The existing Output tab dev route covers the setting. The thumbnails use `gameViewer` with `attach=sample`. That route turns the setting on without saving it, and stages two pending images plus two on the latest turn.
-- The turn-id map is pruned against history whenever no turn runs, so a failed turn leaves no orphan. A regenerate must store the old turn's images again under the new turn id before that prune runs.
+- The turn-id map is pruned against history whenever no turn runs, so a failed turn leaves no orphan. "No turn runs" means the waiting flag is clear and the turn's abort controller is gone. A regenerate starts inside an effect, so its user message commits before the waiting flag sets. A regenerate must store the old turn's images again under the new turn id before that prune runs.
 - Off hides the attach button, turns off paste and drop handling, and hides the Include Attachments toggles on the Prompts tab. The stored flags stay unchanged.
 - Off also means no image goes to the AI, including when a turn with attachments is regenerated.
 
