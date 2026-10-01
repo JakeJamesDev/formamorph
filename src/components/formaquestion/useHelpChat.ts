@@ -3,6 +3,7 @@ import { toastAiRequestFailure } from '@/lib/aiRequest/aiRequestFailureToast';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { askHelp } from '@/lib/formaquestion/helpSession';
+import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { HelpAi } from './useHelpAi';
@@ -79,7 +80,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
           }
         }
         const { snapshot, language } = aiRef.current;
-        for await (const event of askHelp({ question, history, language, snapshot, index, signal: controller.signal })) {
+        for await (const event of askHelp({ question, history, language, snapshot, index, surface: surfaceRegistry.get(), signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text });
           else change({ answer: event.text, sources: event.sources, status: event.stopped ? 'stopped' : 'answered' });
         }

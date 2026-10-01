@@ -8,8 +8,10 @@ import { streamAiToolLoop } from '@/lib/aiRequest/toolLoop';
 import { stripReasoningLive } from '@/lib/aiResponse';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { toolsSupported } from '@/lib/reasoningEffort';
+import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { RequestMessage } from '@/types';
 import { createDocsLookup, docsContents, DOCS_LOOKUP } from './docsLookup';
+import { surfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /** The most docs sections the search puts in one help request, or returns for one lookup call. */
@@ -41,6 +43,8 @@ export interface HelpQuestion {
   language?: string;
   snapshot: AiSettingsSnapshot;
   index: DocsIndex;
+  /** What the player has open when they send. Its mapped section leads the docs; an excluded Surface adds nothing. */
+  surface?: Surface;
   /** Stop: the stream ends and the answer so far is kept. */
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
@@ -101,11 +105,14 @@ function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] 
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', snapshot, index, signal, fetchImpl,
+  question, history = [], language = '', snapshot, index, surface, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
-  const found = helpSections(index, question, { history });
+  const hint = surfaceHint(surface, index);
+  const lead = hint ? [hint.section] : [];
+  const found = helpSections(index, question, { history, budget: HELP_DOCS_CHAR_BUDGET - (hint?.section.markdown.length ?? 0) })
+    .filter((section) => section.id !== hint?.section.id);
   const lookupMode = toolsSupported(snapshot.resolveTarget('help').reasoning);
-  const inPrompt = lookupMode ? found.slice(0, 1) : found;
+  const inPrompt = [...lead, ...(lookupMode ? found.slice(0, 1) : found)];
   const lookup = lookupMode
     ? createDocsLookup(index, {
         budget: HELP_DOCS_CHAR_BUDGET - inPrompt.reduce((size, section) => size + section.markdown.length, 0),
@@ -117,7 +124,7 @@ export async function* askHelp({
     systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
     messages: [...historyMessages(history), {
       role: 'user',
-      content: lookup ? helpLookupUserMessage(question, docsContents(index), inPrompt) : helpUserMessage(question, inPrompt),
+      content: lookup ? helpLookupUserMessage(question, docsContents(index), inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where),
     }],
     requestType: 'help',
     maxTokensOverride: HELP_MAX_TOKENS,
