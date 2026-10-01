@@ -19,7 +19,7 @@ const DEFAULT_SEARCH_LIMIT = 5;
 export const DOCS_LOOKUP: OfferedFunction = {
   id: 'docs-lookup',
   name: 'read_guide',
-  description: 'Returns the text of guide sections. Pass `sections` to read sections from the contents list, or pass `search` to find sections by words.',
+  description: 'Returns the text of guide sections. Pass `search` to find sections by words, or pass `sections` to read sections by the ids you have seen.',
   params: [
     { name: 'sections', type: 'string', description: 'Section ids, each written Page#section, separated by commas.', required: false, options: [] },
     { name: 'search', type: 'string', description: 'Words to search the guide for.', required: false, options: [] },
@@ -42,25 +42,18 @@ export interface DocsLookup {
   fetched(): DocSection[];
 }
 
-/** A later part of a split section. Its base id returns it, so the contents list leaves it out. */
+/** A later part of a split section. Its base id returns it, so the near ids leave it out. */
 function isLaterPart(index: DocsIndex, id: string): boolean {
   const base = id.replace(/-part-\d+$/, '');
   return base !== id && index.get([base]).some((section) => section.id === id);
 }
 
 /** The section ids of the guide, by page. An id with no `#` is a page's text above its first heading. */
-function contentsIds(index: DocsIndex): { page: string; ids: string[] }[] {
+function sectionIds(index: DocsIndex): { page: string; ids: string[] }[] {
   return index.contents().map(({ page, sections }) => ({
     page,
     ids: sections.map((section) => section.id).filter((id) => !isLaterPart(index, id)),
   }));
-}
-
-/** The contents list of a lookup request: each page name, then one indented `#section` line per section. */
-export function docsContents(index: DocsIndex): string {
-  return contentsIds(index)
-    .map(({ page, ids }) => [page, ...ids.filter((id) => id !== page).map((id) => ` ${id.slice(page.length)}`)].join('\n'))
-    .join('\n');
 }
 
 /** A page or section name as written by a model, folded to the form of an anchor without its leading hyphens. */
@@ -79,7 +72,7 @@ export const sectionBlock = (section: DocSection): string => `<section id="${sec
 /** A lookup for one help question. It keeps what it returned, so the calls of the question share one budget. */
 export function createDocsLookup(index: DocsIndex, options: DocsLookupOptions = {}): DocsLookup {
   const { budget = Infinity, searchLimit = DEFAULT_SEARCH_LIMIT, held = [] } = options;
-  const pages = contentsIds(index);
+  const pages = sectionIds(index);
   const heldIds = new Set(held.map((section) => section.id));
   const fetched: DocSection[] = [];
   let size = 0;

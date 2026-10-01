@@ -21,13 +21,14 @@ The app already has function calls: a **Tool** is a function the AI calls during
 - **It uses the capability gate of Tools.** A help request offers the function only to an endpoint and model known to take function calls. Every other endpoint gets retrieval mode: the app runs the keyword search and puts the sections in the prompt.
 - **The mode is chosen before the request.** A failed request is never sent again in the other mode. This keeps the "no runtime fallback" rule of ADR-0008.
 - **It runs through the existing tool loop** with its own executor. The request layer and the loop take any offered function (`OfferedFunction`: id, name, description, parameters, call limit). A Tool is one; the docs lookup is another.
-- **Its limits are its own.** The call limit is a constant of the help session. The round cap is the tool loop's default. One question's fetched text stays inside the help request's docs budget.
+- **The prompt holds the search hits, and no contents list.** A lookup request starts with the same docs sections as a retrieval request. The model finds other sections by search words, or reads them by the ids it has seen in the prompt and in earlier results.
+- **Its limits are its own.** The call limit is a constant of the help session. The round cap is the tool loop's default. The fetched text of one question has its own budget, on top of the prompt's sections.
 
 ## Consequences
 
 - The Tool types, the Tool Runner and the settings shape are unchanged. No preset and no export gains a field.
 - A value of type `OfferedFunction` cannot reach the Tool Runner or the **Tools** tab, so the boundary holds in the types.
-- Lookup mode costs more tokens than retrieval mode: the request carries the docs contents list (about 3,900 tokens today), and each call is one more round. The first probe measured 7,800 tokens in per question against 1,700.
+- Lookup mode costs more tokens than retrieval mode: each call is one more round, and it carries the fetched text. The first probe, with a contents list of about 3,900 tokens in the prompt, measured 7,800 tokens in per question against 1,700.
 - A player whose endpoint takes no function calls gets retrieval mode with no notice. The default cloud endpoint is one of these today.
 - A later app-internal function follows the same pattern: its own module, its own executor, the shared gate.
 
