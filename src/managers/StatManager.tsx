@@ -18,6 +18,7 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
+import { personaTraitNames as personaTraitCodeNames } from "@/lib/statCodeTraits";
 import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -59,7 +60,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateStat, stats, placeholders, placeholderOwners, traits } = useGameData();
+  const { updateStat, stats, placeholders, placeholderOwners, traits, traitGroups, entities } = useGameData();
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -100,12 +101,16 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     () => statCodeNamed(traits, placeholders).map((trait) => trait.name),
     [traits, placeholders],
   );
+  const personaTraitNames = useMemo(
+    () => personaTraitCodeNames({ traits, traitGroups, entities }, placeholders),
+    [traits, traitGroups, entities, placeholders],
+  );
   const placeholderNames = useMemo(() => placeholders.map((entry) => entry.name), [placeholders]);
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
     codeNamedStats, statNames, selfName: selfCodeName,
-    placeholders: codePlaceholders, placeholderNames, traitNames, traits,
-  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderNames, traitNames, traits]);
+    placeholders: codePlaceholders, placeholderNames, traitNames, traits, personaTraitNames,
+  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderNames, traitNames, traits, personaTraitNames]);
 
   const handleChange = (field: string, value: unknown) => {
     apply({ [field]: value } as EditingStat);

@@ -39,6 +39,8 @@ export interface StatCodeBoxContext {
   traitNames: string[];
   /** The world's traits, for the run's sandbox entries. */
   traits: readonly Trait[];
+  /** The trait code names a persona in the world can hold: completions and name checks after `persona.traits`. */
+  personaTraitNames: string[];
 }
 
 /**
@@ -68,7 +70,9 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
   const [templatesOpen, setTemplatesOpen] = useState(false);
 
   const label = TIMING_LABEL[timing];
-  const { codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traits } = context;
+  const {
+    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traits, personaTraitNames,
+  } = context;
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
   const clearReport = useCallback(() => {
@@ -92,15 +96,15 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
       // stays off the world editor's own bundle.
       const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
       setProblems(summarizeProblems(statCodeDiagnostics(value, {
-        placeholders, traits: traitNames, statNames, selfName,
+        placeholders, traits: traitNames, personaTraits: personaTraitNames, statNames, selfName,
       })));
     } catch {
       // What the run itself found is the point; the count is what the editor adds to it.
     }
 
     try {
-      // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, and the player
-      // has no traits. A switch is reported here and never applied.
+      // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, the player has no
+      // traits, and no persona plays. A switch is reported here and never applied.
       const placeholderEntries = sandboxPlaceholders({
         placeholders: placeholders.list, owners: placeholders.owners, rolls: {},
       });
@@ -130,12 +134,17 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
           return 'unpin' in entry ? `${at} unpinned` : `${at} = ${codePinText(entry.value)}`;
         }),
         ...(outcome.traits ?? []).map((entry) => `${entry.name} switched ${entry.enabled ? 'on' : 'off'}`),
+        ...(outcome.personaTraits ?? []).map((entry) => `persona.traits.${entry.name} switched ${entry.enabled ? 'on' : 'off'}`),
       ];
       if (parts.length) setResult(parts.join(' · '));
       setWarnings([
         ...(outcome.unknownPlaceholders ? [`Unknown placeholder paths. Writes ignored: ${outcome.unknownPlaceholders.join(', ')}.`] : []),
         ...(outcome.unknownTraits ? [`Unknown trait names. Writes ignored: ${outcome.unknownTraits.join(', ')}.`] : []),
         ...(outcome.acquiredWrites ? [`acquired is read-only. Writes ignored: ${outcome.acquiredWrites.join(', ')}.`] : []),
+        ...(outcome.unknownPersonaTraits
+          ? [`No persona plays in a test. Writes ignored: ${outcome.unknownPersonaTraits.map((name) => `persona.traits.${name}`).join(', ')}.`] : []),
+        ...(outcome.personaAcquiredWrites
+          ? [`acquired is read-only. Writes ignored: ${outcome.personaAcquiredWrites.map((name) => `persona.traits.${name}`).join(', ')}.`] : []),
       ]);
     } catch (thrown) {
       setError((thrown as Error).message);
@@ -155,6 +164,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         selfName={selfName}
         placeholders={placeholders}
         traits={traitNames}
+        personaTraits={personaTraitNames}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.
         label={label}

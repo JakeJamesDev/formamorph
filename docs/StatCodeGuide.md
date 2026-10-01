@@ -274,6 +274,28 @@ A write to an unknown trait name is ignored. **Test Code** and the Test Bench bo
 
 > ℹ️ **A trait name with a placeholder chip in it reads in code as the placeholder's own name.** A trait named `{{Beast}} Fury` is `traits["Beast Fury"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name, and the turn log still writes it.
 
+### Persona
+
+`persona` is the entity the player plays: the picked persona, or the **Custom Persona** entity when the player picks **None**.
+
+| Member | What it is |
+| --- | --- |
+| `name` | The persona's name, as code names it. Read-only |
+| `traits` | The persona's own traits by name, owned or linked |
+
+Each entry in `persona.traits` has the same `enabled` and `acquired` as a `traits` entry, for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.
+
+```javascript
+// Lose a point each turn while the persona is Scarred.
+if (persona.traits.Scarred.enabled) self.value -= 1;
+```
+
+`persona.traits` and `traits` are separate. A world trait and a persona trait can share a name, and each map reads its own.
+
+When the player plays no entity, `name` is empty and every trait reads as off. **Test Code** runs with no persona, so it reports each persona trait write as ignored.
+
+> ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits the world doesn't have, so an unknown name is a warning, not an error.
+
 ### Order of Effects
 
 Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.

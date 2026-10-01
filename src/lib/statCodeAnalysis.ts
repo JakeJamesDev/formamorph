@@ -17,7 +17,7 @@ import {
 } from '@/lib/codeSurface';
 import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  PERSONA_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathDots, placeholderPathLabel, placeholderPathMap,
@@ -65,6 +65,9 @@ export interface AnalysisOptions {
   placeholders?: CodePlaceholders;
   /** The world's trait names, in authored order. Absent, trait names are neither offered nor checked. */
   traits?: readonly string[];
+  /** The trait names a persona in this world can hold. Absent, persona trait names are neither offered nor
+   *  checked. A library persona can hold others, so an unknown one is only a warning. */
+  personaTraits?: readonly string[];
   /** The world's stat names, in authored order. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
   /** The name of the stat the code belongs to, so a write through `stats` to that name counts as its own. */
@@ -80,7 +83,9 @@ export interface SurfaceAnalysisOptions extends AnalysisOptions {
 /** Which of the stat-code maps the surface injects, and so which of their rules apply. */
 function statRulesOf(surface: CodeSurface) {
   const has = (name: string) => surface.statMaps && surfaceHasGlobal(surface, name);
-  return { stats: has('stats'), self: has('self'), placeholders: has('placeholders'), traits: has('traits') };
+  return {
+    stats: has('stats'), self: has('self'), placeholders: has('placeholders'), traits: has('traits'), persona: has('persona'),
+  };
 }
 
 const parse = (code: string): Tree => javascriptLanguage.parser.parse(code);
@@ -194,6 +199,14 @@ function mapNameEntries(names: readonly string[], kind: EntryNoun, dotted: boole
 /** `root.Name` or `root["Name"]`: an expression that is one entry of the map `root`. */
 const entryExpression = (root: string) => new RegExp(`^${root}(\\??\\.[A-Za-z_$][\\w$]*|\\??\\.?\\[\\s*(["'])[^"'\\\\]*\\2\\s*\\])$`);
 const TRAIT_ENTRY_EXPRESSION = entryExpression('traits');
+const PERSONA_TRAITS_EXPRESSION = /^persona\??\.traits$/;
+const PERSONA_TRAIT_ENTRY_EXPRESSION = entryExpression('persona\\??\\.traits');
+
+/** One entry per distinct persona trait name. `dotted` keeps only the names a `.` can reach. */
+const personaTraitEntries = (names: readonly string[], dotted: boolean): SurfaceEntry[] =>
+  [...new Set(names)]
+    .filter((name) => !dotted || IDENTIFIER.test(name))
+    .map((name) => ({ name, detail: 'trait', info: `The “${name}” trait a persona in this world holds.` }));
 
 /** One member step of a path: `.Name`, `?.Name`, `["Name"]`, `?.["Name"]`. */
 const PATH_STEP = /^\s*(?:\?\.)?(?:\.?\[\s*(["'])([^"'\\]*)\1\s*\]|\.([A-Za-z_$][\w$]*))/;
@@ -357,6 +370,11 @@ function membersAfterDot(
   if (rules.stats && expression === 'clock.previous') return CLOCK_PREVIOUS_FIELDS;
   if (rules.traits && expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
   if (rules.traits && TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
+  if (rules.persona && expression === 'persona') return PERSONA_FIELDS;
+  if (rules.persona && PERSONA_TRAITS_EXPRESSION.test(expression)) {
+    return options.personaTraits ? personaTraitEntries(options.personaTraits, true) : null;
+  }
+  if (rules.persona && PERSONA_TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   const listed = options.surface.members.get(expression);
   if (listed) return listed;
   if (!rules.stats && !rules.self) return null;
@@ -463,11 +481,26 @@ function memberKey(node: SyntaxNode, code: string): EntryRef | null {
 
 /** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
  *  run could know. */
-function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats'): EntryRef | null {
+function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona'): EntryRef | null {
   const object = node.firstChild;
   if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
   return memberKey(node, code);
 }
+
+/** Whether `node` is `persona.traits`, the persona's trait map. */
+function isPersonaTraits(node: SyntaxNode | null, code: string): boolean {
+  if (node?.name !== 'MemberExpression') return false;
+  const property = node.getChild('PropertyName');
+  return !!property && code.slice(property.from, property.to) === 'traits' && !!entryRef(node, code, 'persona');
+}
+
+/** The name a `persona.traits.Name` or `persona.traits["Name"]` member names, as `entryRef` reads `traits`. */
+const personaTraitRef = (node: SyntaxNode, code: string): EntryRef | null =>
+  (isPersonaTraits(node.firstChild, code) ? memberKey(node, code) : null);
+
+/** A trait map's entry reader: `traits` or `persona.traits`. */
+type TraitEntryOf = (node: SyntaxNode, code: string) => EntryRef | null;
+const worldTraitRef: TraitEntryOf = (node, code) => entryRef(node, code, 'traits');
 
 /**
  * The segments a `placeholders` member chain names, each with where it is written. Null for a chain rooted
@@ -594,15 +627,17 @@ function checkPlaceholderEntryWrite(
   return warn(`Write to ${written}.value instead.`);
 }
 
-/** What is wrong with a write into `traits`: to the entry itself, or to a field other than `enabled`. */
-function checkTraitWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
+/** What is wrong with a write into a trait map: to the entry itself, or to a field other than `enabled`. */
+function checkTraitWrite(
+  target: SyntaxNode, code: string, assignment: boolean, entryOf: TraitEntryOf = worldTraitRef,
+): CodeDiagnostic | null {
   const { from, to } = target;
-  if (entryRef(target, code, 'traits')) {
+  if (entryOf(target, code)) {
     return assignment ? { from, to, severity: 'warning', message: `Write to ${code.slice(from, to)}.${TRAIT_WRITABLE_FIELD} instead.` } : null;
   }
   const entry = target.firstChild;
   const field = target.getChild('PropertyName');
-  if (!entry || !field || !entryRef(entry, code, 'traits')) return null;
+  if (!entry || !field || !entryOf(entry, code)) return null;
   const name = code.slice(field.from, field.to);
   if (name === TRAIT_WRITABLE_FIELD) return null;
   const path = code.slice(entry.from, entry.to);
@@ -611,6 +646,25 @@ function checkTraitWrite(target: SyntaxNode, code: string, assignment: boolean):
   const message = known ? `${path}.${name} can’t be written. Only ${path}.${TRAIT_WRITABLE_FIELD} can.`
     : suggestion ? `A trait has no field “${name}”. Did you mean “${suggestion}”?` : `A trait has no field “${name}”.`;
   return { from: field.from, to: field.to, severity: 'error', message };
+}
+
+/** What is wrong with a write into `persona`: to one of its own members, or into its traits as `traits`. */
+function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
+  const own = entryRef(target, code, 'persona');
+  if (own) {
+    const message = `persona.${own.name} can’t be written. Only a trait’s ${TRAIT_WRITABLE_FIELD} can.`;
+    return { from: own.from, to: own.to, severity: 'error', message };
+  }
+  return checkTraitWrite(target, code, assignment, personaTraitRef);
+}
+
+/** What is wrong with a persona trait name: no persona in the world holds it. A library persona may still
+ *  hold it, so this is only a warning. */
+function checkPersonaTraitName({ name, from, to }: EntryRef, names: readonly string[]): CodeDiagnostic | null {
+  if (names.includes(name)) return null;
+  const lead = `No persona in this world has a trait named “${name}”. A library persona can still have it.`;
+  const suggestion = nearestName(name, [...new Set(names)]);
+  return { from, to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
 }
 
 
@@ -650,6 +704,11 @@ export function codeCompletions(
       ? placeholderKeysInBrackets(code, node.from, options.placeholders) : null;
     if (bracket) {
       return { from: innerFrom, to: innerTo, options: bracket.map((entry) => asCompletion(entry, 'text')) };
+    }
+    // Before `traits[`, whose pattern the persona's map also matches.
+    if (rules.persona && /\bpersona\s*\??\.\s*traits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
+      const names = personaTraitEntries(options.personaTraits ?? [], false);
+      return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
     }
     if (rules.traits && /\btraits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
       const names = mapNameEntries(options.traits ?? [], 'trait', false);
@@ -753,6 +812,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   let sawTraitWrite = false;
   const placeholdersInScope = rules.placeholders && !declared.has('placeholders');
   const traitsInScope = rules.traits && !declared.has('traits');
+  const personaInScope = rules.persona && !declared.has('persona');
   const statsInScope = rules.stats && !declared.has('stats');
   const statWrites = rules.stats || rules.self;
 
@@ -791,6 +851,11 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
         const traitProblem = checkTraitWrite(target, code, cursor.type.name === 'AssignmentExpression');
         if (traitProblem) diagnostics.push(traitProblem);
       }
+      if (personaInScope && memberRoot(target, code) === 'persona') {
+        sawTraitWrite = true;
+        const personaProblem = checkPersonaWrite(target, code, cursor.type.name === 'AssignmentExpression');
+        if (personaProblem) diagnostics.push(personaProblem);
+      }
     }
     if (cursor.type.name === 'CallExpression' && placeholdersInScope && isPlaceholderWriteCall(cursor.node, code)) {
       sawPlaceholderWrite = true;
@@ -804,6 +869,11 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (cursor.type.name === 'MemberExpression' && options.traits && traitsInScope) {
       const ref = entryRef(cursor.node, code, 'traits');
       const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkTraitName(ref, options.traits) : null;
+      if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && options.personaTraits && personaInScope) {
+      const ref = personaTraitRef(cursor.node, code);
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPersonaTraitName(ref, options.personaTraits) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && options.statNames && statsInScope) {

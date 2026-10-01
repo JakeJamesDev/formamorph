@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Placeholder, Stat, Trait } from '@/types';
+import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
 
@@ -22,9 +22,15 @@ const traits = [
   { id: 't3', name: FURY, statChanges: [] },
 ] as Trait[];
 
+// Mira can be played and Ash cannot, so only Mira's trait is a persona trait.
+const entities = [
+  { id: 'e1', name: 'Mira', persona: true, traits: [{ id: 't4', name: 'Scarred', statChanges: [] }] },
+  { id: 'e2', name: 'Ash', traits: [{ id: 't5', name: 'Loyal', statChanges: [] }] },
+] as Entity[];
+
 const updateStat = vi.fn();
 vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({ updateStat, stats, placeholders: [beast], traits }),
+  useGameData: () => ({ updateStat, stats, placeholders: [beast], traits, traitGroups: [], entities }),
 }));
 vi.mock('@/lib/useBodyMorphNames', () => ({
   useBodyMorphSources: () => ({ sources: [], loading: false, load: vi.fn() }),
@@ -88,6 +94,7 @@ describe('what each box completes and checks against', () => {
       selfName: props.selfName as string,
       placeholders: props.placeholders as { list: Placeholder[] },
       traits: props.traits as string[],
+      personaTraits: props.personaTraits as string[],
     };
   };
 
@@ -98,6 +105,7 @@ describe('what each box completes and checks against', () => {
     expect(optionsOf('Before the AI').statNames).toEqual(['Warmth', 'Damp']);
     expect(optionsOf('Before the AI').selfName).toBe('Warmth');
     expect(optionsOf('Before the AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
+    expect(optionsOf('Before the AI').personaTraits).toEqual(['Scarred']);
   });
 
   // The acceptance case, run through the real reader and the real completion source rather than compared
@@ -257,6 +265,31 @@ describe('what Test Code reports', () => {
       { id: 't2', name: 'Night Owl', statChanges: [] },
       { id: 't3', name: FURY, statChanges: [] },
     ]);
+  });
+
+  it('runs with no persona playing, and lists a persona switch without making it', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({ value: null, error: null, personaTraits: [{ name: 'Scarred', enabled: false }] });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'persona.traits.Scarred.enabled = false;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('persona.traits.Scarred switched off'));
+    // Absent, the executor's `persona` is the empty entry.
+    expect(executeStatCode.mock.calls[0][3].persona).toBeUndefined();
+  });
+
+  it('names the persona trait writes that did nothing', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: null, error: null, unknownPersonaTraits: ['Scarred'], personaAcquiredWrites: ['Marked'],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'persona.traits.Scarred.enabled = true; persona.traits.Marked.acquired = true;');
+
+    await waitFor(() => expect(row()).toHaveTextContent('No persona plays in a test. Writes ignored: persona.traits.Scarred.'));
+    expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: persona.traits.Marked.');
   });
 
   it('names the trait switches and acquired writes that did nothing', async () => {

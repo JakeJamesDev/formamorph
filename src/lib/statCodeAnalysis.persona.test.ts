@@ -1,0 +1,66 @@
+import { describe, it, expect } from 'vitest';
+import { statCodeCompletions, statCodeDiagnostics } from './statCodeAnalysis';
+import { PERSONA_FIELDS, TRAIT_ENTRY_FIELDS } from './statCodeSurface';
+
+/** Completions for a caret written as `|` in the doc. */
+function labels(doc: string, options?: Parameters<typeof statCodeCompletions>[2]) {
+  const pos = doc.indexOf('|');
+  expect(pos, 'every completion case marks its caret with |').toBeGreaterThanOrEqual(0);
+  return (statCodeCompletions(doc.replace('|', ''), pos, options)?.options ?? []).map((option) => option.label);
+}
+
+const messages = (code: string, options?: Parameters<typeof statCodeDiagnostics>[1]) =>
+  statCodeDiagnostics(code, options).map((diagnostic) => diagnostic.message);
+
+const personaTraits = ['Scarred', 'Night Owl', 'Scarred'];
+
+describe('persona in stat code', () => {
+  it('reads the reporter’s script as clean', () => {
+    expect(messages("if (persona.traits['Scarred'].enabled) self.value -= 1;", { personaTraits })).toEqual([]);
+    expect(messages('return persona.traits.Scarred?.enabled && persona.name === "Mira" ? 1 : 0;', { personaTraits })).toEqual([]);
+  });
+
+  it('offers persona’s members, its trait names once each, and a trait’s members', () => {
+    expect(labels('return persona.|')).toEqual(PERSONA_FIELDS.map((field) => field.name));
+    expect(labels('return persona.traits.|', { personaTraits })).toEqual(['Scarred']);
+    expect(labels('return persona.traits["|"];', { personaTraits, traits: ['Brave'] })).toEqual(['Scarred', 'Night Owl']);
+    const members = TRAIT_ENTRY_FIELDS.map((field) => field.name);
+    expect(labels('return persona.traits.Scarred.|', { personaTraits })).toEqual(members);
+    expect(labels('return persona.traits["Night Owl"].|', { personaTraits })).toEqual(members);
+  });
+
+  it('warns on a trait no persona in the world holds, since a library persona can', () => {
+    const [problem] = statCodeDiagnostics('return persona.traits.Scared.enabled ? 1 : 0;', { personaTraits });
+    expect(problem).toMatchObject({
+      severity: 'warning',
+      message: 'No persona in this world has a trait named “Scared”. A library persona can still have it. Did you mean “Scarred”?',
+    });
+  });
+
+  it('checks no persona trait name when it is given no names', () => {
+    expect(messages('return persona.traits.Anything.enabled ? 1 : 0;')).toEqual([]);
+  });
+
+  it('keeps persona trait names apart from the world’s', () => {
+    expect(messages('return persona.traits.Brave.enabled ? 1 : 0;', { traits: ['Brave'], personaTraits }))
+      .toEqual(['No persona in this world has a trait named “Brave”. A library persona can still have it.']);
+    expect(messages('return traits.Scarred.enabled ? 1 : 0;', { traits: ['Brave'], personaTraits }))
+      .toEqual(['No trait is named “Scarred”.']);
+  });
+
+  it('flags a write to anything but a persona trait’s enabled', () => {
+    expect(messages('persona.traits.Scarred.acquired = true;', { personaTraits }))
+      .toEqual(['persona.traits.Scarred.acquired can’t be written. Only persona.traits.Scarred.enabled can.']);
+    expect(messages('persona.traits.Scarred = false;', { personaTraits }))
+      .toEqual(['Write to persona.traits.Scarred.enabled instead.']);
+    expect(messages('persona.name = "Rook";')).toEqual(['persona.name can’t be written. Only a trait’s enabled can.']);
+  });
+
+  it('counts a persona switch as code that does something, so it asks for no return', () => {
+    expect(messages('persona.traits.Scarred.enabled = self.value <= 0;', { personaTraits })).toEqual([]);
+  });
+
+  it('leaves an author’s own persona variable alone', () => {
+    expect(messages('const persona = { traits: {} }; persona.traits.x = 1; return 1;', { personaTraits })).toEqual([]);
+  });
+});

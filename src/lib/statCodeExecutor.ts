@@ -79,6 +79,12 @@ export interface StatCodeResult {
   unknownTraits?: string[];
   /** Traits whose `acquired` the code wrote; each write was dropped. */
   acquiredWrites?: string[];
+  /** The persona's traits the code switched, in map order. Absent when it switched none. */
+  personaTraits?: TraitWrite[];
+  /** Names the code switched that the persona's set lacks; each switch was dropped. */
+  unknownPersonaTraits?: string[];
+  /** Persona traits whose `acquired` the code wrote; each write was dropped. */
+  personaAcquiredWrites?: string[];
 }
 
 /** One placeholder a run pinned, or released with `unpin()`. The pin carries the type the entry's `value`
@@ -100,6 +106,12 @@ export interface SandboxTrait {
   enabled: boolean;
   /** In the player's list, on or off. */
   acquired: boolean;
+}
+
+/** The sandbox's `persona`: the played persona's code name and its own traits. Empty when none plays. */
+export interface SandboxPersona {
+  name: string;
+  traits: readonly SandboxTrait[];
 }
 
 /** A stat's value and max, as one turn input carries them. */
@@ -179,6 +191,8 @@ const ROLL_HOOK = '__formamorphRollPlaceholder';
 // code runs in a function whose parameters shadow both names, so it cannot reach them.
 const PLACEHOLDER_WRITES = '__formamorphPlaceholderWrites';
 const TRAIT_WRITES = '__formamorphTraitWrites';
+const PERSONA_TRAITS = '__formamorphPersonaTraits';
+const PERSONA_TRAIT_WRITES = '__formamorphPersonaTraitWrites';
 
 /** One sandbox map and how its entries are tracked. Every `string` field is JS source the prelude inlines. */
 interface TrackedMapBase {
@@ -398,12 +412,12 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
   ].join('\n');
 };
 
-/** The `traits` prelude. Every assignment to `enabled` is a switch; `acquired` is read-only and a write to it
- *  is recorded. Rows are `[name, enabled, assigned, acquiredWritten]`; a replaced entry reads as itself when it
- *  is not an object. */
-const traitsPrelude = (entries: readonly SandboxTrait[]): string => trackedMapPrelude({
-  root: 'traits',
-  reader: TRAIT_WRITES,
+/** A trait map's prelude, `traits` or the persona's. Every assignment to `enabled` is a switch; `acquired` is
+ *  read-only and a write to it is recorded. Rows are `[name, enabled, assigned, acquiredWritten]`; a replaced
+ *  entry reads as itself when it is not an object. */
+const traitMapPrelude = (root: string, reader: string, entries: readonly SandboxTrait[]): string => trackedMapPrelude({
+  root,
+  reader,
   data: Object.fromEntries(entries.map(({ name, enabled, acquired }) => [name, { enabled, acquired }])),
   track: `(name, entry, state) => {
     state.enabled = entry.enabled; state.acquired = entry.acquired; state.assigned = false; state.acquiredWritten = false;
@@ -414,6 +428,12 @@ const traitsPrelude = (entries: readonly SandboxTrait[]): string => trackedMapPr
   row: `(name, state) => state.assigned || state.acquiredWritten ? [name, state.enabled, state.assigned, state.acquiredWritten] : null`,
   replaced: `(name, entry) => [name, typeof entry === 'object' && entry !== null ? entry.enabled : entry, true, false]`,
 });
+
+/** The `persona` prelude: a frozen entry whose `traits` is a trait map of its own. */
+const personaPrelude = ({ name, traits }: SandboxPersona): string => [
+  traitMapPrelude(PERSONA_TRAITS, PERSONA_TRAIT_WRITES, traits),
+  `const persona = Object.freeze({ name: ${JSON.stringify(name)}, traits: ${PERSONA_TRAITS} });`,
+].join('\n');
 
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
 const memberPath = (root: string, name: string) =>
@@ -438,6 +458,8 @@ function splitWriteRows(dump: string, entries: readonly { name: string }[]): { k
 function readTraitWrites(
   dump: string,
   entries: readonly SandboxTrait[],
+  /** How code names the map, for the error. */
+  root: string,
 ): { writes: TraitWrite[]; unknown: string[]; acquired: string[] } | { error: string } {
   const { known, unknown } = splitWriteRows(dump, entries);
   const writes: TraitWrite[] = [];
@@ -445,7 +467,7 @@ function readTraitWrites(
   for (const [name, enabled, assigned, acquiredWritten] of known) {
     if (acquiredWritten === true) acquired.push(name);
     if (assigned !== true) continue;
-    if (typeof enabled !== 'boolean') return { error: `${memberPath('traits', name)}.enabled must be true or false` };
+    if (typeof enabled !== 'boolean') return { error: `${memberPath(root, name)}.enabled must be true or false` };
     writes.push({ name, enabled });
   }
   return { writes, unknown, acquired };
@@ -510,18 +532,22 @@ export interface StatCodeRunOptions {
   /** The map's top-level keys, in authored order. Absent, the map is empty. */
   placeholders?: readonly SandboxPlaceholderNode[];
   traits?: readonly SandboxTrait[];
+  /** Absent, `persona` is the empty entry. */
+  persona?: SandboxPersona;
 }
 
+const EMPTY_PERSONA: SandboxPersona = { name: '', traits: [] };
+
 /** Run a stat's untrusted `code` in an isolated QuickJS (WASM) VM over `stats`, `self`, the turn inputs,
- *  the clock, `placeholders`, and `traits`. A number return or a `self.value` write sets the value, clamped;
+ *  the clock, `placeholders`, `traits` and `persona`. A number return or a `self.value` write sets the value, clamped;
  *  a `self.min`, `self.max` or `self.regen` write sets that bound; a `traits.<name>.enabled` write switches
- *  that trait; a failure discards every write. Of two placeholders or traits sharing a name, the later one
+ *  that trait, and a `persona.traits.<name>.enabled` write the persona's own; a failure discards every write. Of two placeholders or traits sharing a name, the later one
  *  is the entry. */
 export const executeStatCode = async (
   code: string,
   stats: Stat[],
   currentStat: Stat,
-  { clock, turn, placeholders = [], traits = [] }: StatCodeRunOptions = {},
+  { clock, turn, placeholders = [], traits = [], persona = EMPTY_PERSONA }: StatCodeRunOptions = {},
 ): Promise<StatCodeResult> => {
   // If code is empty, return null (use the manually set value)
   if (!code || code.trim() === '') {
@@ -597,7 +623,8 @@ export const executeStatCode = async (
       // The stat data rides in as JSON literals (JSON is valid JS expression syntax); console.log and the
       // roll hook are the only host functions. The user code runs as a function body so `return` works, with
       // the readers' names shadowed as its parameters; the program's completion value pairs what it returned
-      // with what `self`'s writable fields hold afterwards, then what it did to `placeholders` and to `traits`.
+      // with what `self`'s writable fields hold afterwards, then what it did to `placeholders`, `traits` and the
+      // persona's traits.
       const program = [
         statsPrelude(statsData, blankOf(selfData)),
         `const currentStatId = ${JSON.stringify(String(currentStat.id))};`,
@@ -613,10 +640,11 @@ export const executeStatCode = async (
         `const clock = Object.freeze({ day, daypart, deltaHours, elapsedHours,`,
         `  previous: Object.freeze({ day: startDay, daypart: startDaypart }) });`,
         placeholdersPrelude(placeholderMap),
-        traitsPrelude(traits),
-        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}) {`,
+        traitMapPrelude('traits', TRAIT_WRITES, traits),
+        personaPrelude(persona),
+        `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${PERSONA_TRAITS}, ${PERSONA_TRAIT_WRITES}) {`,
         code,
-        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}()];`,
+        `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${PERSONA_TRAIT_WRITES}()];`,
       ].join('\n');
 
       const result = vm.evalCode(program);
@@ -660,6 +688,7 @@ export const executeStatCode = async (
       };
       const writesDump = readDump(2 + CODE_BOUND_FIELDS.length);
       const traitsDump = readDump(3 + CODE_BOUND_FIELDS.length);
+      const personaTraitsDump = readDump(4 + CODE_BOUND_FIELDS.length);
       result.value.dispose();
 
       if (consoleOutput.trim()) {
@@ -681,8 +710,10 @@ export const executeStatCode = async (
       }
       const placeholderWrites = readPlaceholderWrites(writesDump, placeholderMap.nodes);
       if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'bad-write');
-      const traitWrites = readTraitWrites(traitsDump, traits);
+      const traitWrites = readTraitWrites(traitsDump, traits, 'traits');
       if ('error' in traitWrites) return failure(traitWrites.error, 'bad-write');
+      const personaWrites = readTraitWrites(personaTraitsDump, persona.traits, 'persona.traits');
+      if ('error' in personaWrites) return failure(personaWrites.error, 'bad-write');
 
       const min = bounds.min ?? selfData.min;
       const max = Math.max(min, bounds.max ?? selfData.max);
@@ -695,6 +726,9 @@ export const executeStatCode = async (
         ...(traitWrites.writes.length ? { traits: traitWrites.writes } : {}),
         ...(traitWrites.unknown.length ? { unknownTraits: traitWrites.unknown } : {}),
         ...(traitWrites.acquired.length ? { acquiredWrites: traitWrites.acquired } : {}),
+        ...(personaWrites.writes.length ? { personaTraits: personaWrites.writes } : {}),
+        ...(personaWrites.unknown.length ? { unknownPersonaTraits: personaWrites.unknown } : {}),
+        ...(personaWrites.acquired.length ? { personaAcquiredWrites: personaWrites.acquired } : {}),
       });
       if (returned.type === 'number') return settled(returned.number);
       return settled(Object.is(written.number, selfData.value) ? null : written.number);
