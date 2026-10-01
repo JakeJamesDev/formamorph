@@ -29,12 +29,14 @@ You get a `.json` file with the world's name.
    - A SillyTavern card (`.png` or `.json`)
    - A SillyTavern persona backup, with its avatar images. See [How to Import SillyTavern Personas](Personas#how-to-import-sillytavern-personas).
 
-A lorebook inside a SillyTavern card also comes in, as a dictionary. If the file names worlds, a review opens. See [How to Import an Entity or Dictionary File](LinkedContent#how-to-import-an-entity-or-dictionary-file).
+A lorebook inside a SillyTavern card also comes in, as a dictionary. If you import one file that names worlds, a review opens. See [Importing an Entity or Dictionary File](LinkedContent#importing-an-entity-or-dictionary-file).
 
 ## How to Import a Dictionary
 
 1. On the **Dictionaries** tab, select **Import Dictionary**.
 2. Select one or more `.json` files. A Formamorph dictionary and a SillyTavern World Info lorebook both work.
+
+If you import one file that names worlds, a review opens. See [Importing an Entity or Dictionary File](LinkedContent#importing-an-entity-or-dictionary-file).
 
 ## How to Export an Entity or a Dictionary
 
@@ -43,20 +45,13 @@ A lorebook inside a SillyTavern card also comes in, as a dictionary. If the file
 
 An entity exports as a `.webp` card: its portrait with the entity's data inside. An entity with no portrait gets a generated image. A dictionary exports as a `.json` file.
 
-## How to Import or Export an Avatar
-
-1. On the **Avatars** tab, select **Import Avatar**.
-2. Select one or more `.vrm` or `.glb` files.
-
-To export an avatar, select its tile, then select **Export**. You get the file as you imported it.
-
 ## How to Make a Group
 
 1. Right-click a tile. On a touch screen, press and hold it.
 2. Select **Create New Group…**.
 3. Type a **Group Name**, then select **Create Group**.
 
-The Group takes the tile's place and size, and the tile goes into it.
+The Group goes where the tile was, at the same size, and the tile goes into it.
 
 You can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles go into a new Group named *New Group*.
 
@@ -72,7 +67,7 @@ You can also drag the tile onto the near half of a Group's tile, hold it, and re
 1. Open the Group.
 2. Right-click the tile, then select **Remove From Group**.
 
-The tile goes to the end of the board. A Group with no tiles left is deleted.
+The tile goes to the end of the board. Formamorph removes a Group that has no tiles left.
 
 ## How to Move a Tile
 
@@ -89,10 +84,18 @@ A tile that shares a row or a column with the target pushes the tiles between th
 
 A **Small** tile hides its name. Point to it to see the name. **Tile Size** shows only in the grid view.
 
-## How to Rename or Delete a Group
+## How to Rename a Group
 
-- **Rename:** open the Group, select its name at the top, and type a new one. Press Enter to keep it, or Escape to cancel.
-- **Delete:** right-click the Group, then select **Delete Group**. Its tiles go back to the board where the Group was. Nothing is erased.
+1. Select the Group to open it.
+2. Select its name at the top, and type a new one.
+3. Press Enter to keep the name, or Escape to cancel.
+
+## How to Delete a Group
+
+1. Right-click the Group.
+2. Select **Delete Group**.
+
+The Group's tiles go back to the board. In the grid view, each tile goes to the first free place. In the detailed view, the tiles take the Group's place in the order. Formamorph erases no items.
 
 ---
 
@@ -118,15 +121,15 @@ The **Entities** tab also has an **All** and **Personas** switch. **Personas** s
 - **Grid view** shows tiles in three sizes. A **Large** tile is twice as wide as a **Medium** tile; a **Small** tile is half as wide.
 - **Detailed view** shows one card size with more text. Drag a card to change the order.
 
-The board keeps the place of each tile on this device. A phone and a wide screen each keep their own order. The order is not in a world export or a backup.
+The board keeps the place of each tile on this device. A narrow screen and a wide screen each keep their own order. The order is not in a world export or a backup.
 
-The board has no zoom, sort or search.
+The board has no sort or search.
 
 ## Groups
 
-A Group holds tiles of one tab. Its tile shows a small picture of its board, and a count of its tiles.
+A Group holds tiles of one tab. Its tile shows a small image of its board, and a count of its tiles.
 
-- Select a Group to open it. Its tiles fill the board. Select **Library** at the top to go back.
+- Select a Group to open it. The view zooms from the Group's tile to its board. Select **Library** at the top to zoom back out.
 - Inside a Group, you can move and size tiles as on the main board.
 - A Group cannot hold another Group.
 - On the **Worlds** tab, an open Group has a **Prompts** list. The worlds in the Group use that prompt preset unless a world has its own. See [Prompts](Prompts).
@@ -147,7 +150,7 @@ Right-click a tile, or press and hold it on a touch screen. With the keyboard, p
 | **Add To Group** | All | Adds the tile to a Group. See [How to Add a Tile to a Group](#how-to-add-a-tile-to-a-group). |
 | **Create New Group…** | All | Makes a Group that holds the tile |
 | **Remove From Group** | All | Takes the tile out of its Group |
-| **Check for Updates** | Entities, Dictionaries | Looks for worlds whose linked copy of this item is behind. See [Update Available](LinkedContent#update-available). |
+| **Check for Updates** | Entities, Dictionaries | Looks for worlds that have an older version of this item. See [Update Available](LinkedContent#update-available). |
 | **Set as Default Persona** | Entities | Makes the entity your default persona. Shows for a persona entity. See [Personas](Personas#how-to-set-a-default-persona). |
 | **Publish** | Avatars | Publishes the avatar to Community Creations. Shows when you are signed in. |
 | **Thumbnail** | Avatars | Uses the image in the file, or a generated one. Shows when the file has an image. |
@@ -161,9 +164,9 @@ World actions such as **Edit World** and **Publish World** are in the world dial
 
 **Delete** asks you to confirm, and you cannot undo it. Make a backup first. See [How to Back Up Everything](Saves-and-Backup#how-to-back-up-everything).
 
-- When saves use an avatar, the dialog names them. Those saves use the default avatar after you delete it.
+- When saves use an avatar, the dialog names them. Those saves use the default avatar after you erase it.
 - You cannot delete your last avatar.
-- To bring back a deleted world that came with Formamorph, see [How to Restore Default Worlds](Settings#how-to-restore-default-worlds).
+- To restore an erased world that came with Formamorph, see [How to Restore Default Worlds](Settings#how-to-restore-default-worlds).
 - When worlds use a deleted entity or dictionary, see [Removing a Library Item](LinkedContent#removing-a-library-item).
 
 ## The Library Editors

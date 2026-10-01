@@ -47,6 +47,8 @@ const ENTITY_OWNED_PLACEHOLDERS: DocTarget = {
 const ENTITY_OPENINGS: DocTarget = { page: 'World-Editor-Openings', anchor: 'entity-openings' };
 // One table row per prompt says what it does in a turn and when it shows.
 const THE_PROMPTS: DocTarget = { page: 'Prompts', anchor: 'the-prompts' };
+const THE_LIBRARY_TABS: DocTarget = { page: 'Library', anchor: 'the-library-tabs' };
+const THE_GROUP_DIALOGS: DocTarget = { page: 'Library', anchor: 'the-group-dialogs' };
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
@@ -70,24 +72,22 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
   editText: { page: 'How-to-Play', anchor: 'how-to-edit-narration' },
   entity: { page: 'How-to-Play', anchor: 'the-entity-dialog' },
   enterWorld: { page: 'Starting-a-Game', anchor: 'the-enter-world-dialog' },
-  backup: { page: 'Saves-and-Backup', anchor: 'the-backup--restore-dialog' },
-  changelog: { page: 'Saves-and-Backup', anchor: 'whats-new' },
-  menu: { page: 'Saves-and-Backup', anchor: 'the-load-game-dialog' },
-  updateRequired: { page: 'Saves-and-Backup', anchor: 'the-update-required-dialog' },
-  mainMenu: { page: 'Library', anchor: '-library' },
-  'mainMenu.worlds': { page: 'Library', anchor: 'the-library-tabs' },
-  'mainMenu.entities': { page: 'Library', anchor: 'the-library-tabs' },
-  'mainMenu.dictionaries': { page: 'Library', anchor: 'the-library-tabs' },
-  'mainMenu.models': { page: 'Library', anchor: 'the-library-tabs' },
-  // The group picker ledger opens the library's production Groups dialogs.
-  'designSystemGroupPicker.picker': { page: 'Library', anchor: 'the-group-dialogs' },
-  'designSystemGroupPicker.create': { page: 'Library', anchor: 'the-group-dialogs' },
   errorDetails: { page: 'How-to-Play', anchor: 'error-details' },
   export: { page: 'How-to-Play', anchor: 'how-to-export-the-story' },
   gameViewer: { page: 'How-to-Play', anchor: 'the-game-screen' },
   intro: { page: 'Starting-a-Game', anchor: 'the-welcome-animation' },
   likePrompt: { page: 'How-to-Play', anchor: 'the-like-prompt' },
   location: { page: 'How-to-Play', anchor: 'the-change-location-dialog' },
+
+  // `menu` is the main menu's Load Game dialog.
+  menu: { page: 'Saves-and-Backup', anchor: 'the-load-game-dialog' },
+  backup: { page: 'Saves-and-Backup', anchor: 'the-backup--restore-dialog' },
+  updateRequired: { page: 'Saves-and-Backup', anchor: 'the-update-required-dialog' },
+  changelog: { page: 'Saves-and-Backup', anchor: 'whats-new' },
+  mainMenu: { page: 'Library', anchor: '-library' },
+  ...Object.fromEntries(tabsOf('mainMenu').map((id) => [id, THE_LIBRARY_TABS])),
+  // The group picker ledger opens the library's production Groups dialogs.
+  ...Object.fromEntries(tabsOf('designSystemGroupPicker').map((id) => [id, THE_GROUP_DIALOGS])),
 
   'gameViewer.entities': { page: 'Entities', anchor: '-entities-in-play' },
   'gameViewer.notes': { page: 'How-to-Play', anchor: 'notes' },

@@ -1,6 +1,6 @@
 # 💾 Saves and Backup
 
-A save keeps one game's progress. A backup keeps everything you made or downloaded: worlds, saves, entities and dictionaries, in one file. Formamorph keeps all of it on your device, never on a server.
+A save keeps one game's progress. A backup keeps everything you made or downloaded: worlds, saves, entities and dictionaries, in one file. Formamorph keeps all of it on your device. It sends an item to a server only when you publish it.
 
 > To start a new game instead, see [Starting a Game](Starting-a-Game).
 
@@ -9,10 +9,10 @@ A save keeps one game's progress. A backup keeps everything you made or download
 1. In the game, select the **Menu** button at the top right.
 2. Select **Save Game**.
 3. Type a name in the box. The box shows the name of the save you loaded or saved last.
-4. Select **Save**, or press Enter.
+4. Select the **Save** button, or press Enter.
 5. If a save with that name is in this world, select **Overwrite** to replace it, or **Keep both** to add a second save.
 
-The **Logs** tab records *Game saved as …*. Scene images are not saved unless you select their checkbox. See [The Save Game Dialog](#the-save-game-dialog).
+The **Logs** tab records *Game saved as …*. To keep scene images in the save, select their checkbox. See [The Save Game Dialog](#the-save-game-dialog).
 
 ## How to Load a Game
 
@@ -35,15 +35,15 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 ## How to Import a Save
 
 1. Open **Load Game**.
-2. Select **Import**.
+2. Select the **Import** button.
 3. Select one or more save `.json` files.
 
-Each save goes into the folder of its world. The dialog opens that folder, and a message counts the saves it imported. A file that is not a save is skipped.
+Each save goes into the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
 
 ## How to Back Up Everything
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
-2. Select **Backup**.
+2. Select the **Backup** button.
 3. Clear the checkbox of each item you do not want. All items start selected.
 4. Select **Save backup**. You get a file named `formamorph-backup-` and the date.
 5. Keep the file in a safe place, away from the app's own folder.
@@ -53,7 +53,7 @@ Make a backup before you update the app or move to a new device. See [What a Bac
 ## How to Restore a Backup
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
-2. Select **Restore**, then select a backup `.json` file.
+2. Select the **Restore** button, then select a backup `.json` file.
 3. Clear the checkbox of each item you do not want.
 4. Items you already have show an **exists** tag. To replace them, select **Overwrite existing** in their group.
 5. Select **Restore**. The app reloads when it is done.
@@ -64,10 +64,10 @@ Restore adds to what you have. It never erases an item that is not in the backup
 
 1. On the main menu, look at the version number at the bottom left. It shows **— Update Available!** when a newer release is out.
 2. Select the version number. The update dialog opens.
-3. Select **Download**. A progress bar shows under the version number.
+3. Select the **Download** button. A progress bar shows under the version number.
 4. Select **Update & Restart**.
 
-On a Mac, **Download** opens the new `.dmg` file in your browser. Install it as you did the first time. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
+On a Mac, **Download** opens the new `.dmg` file in your browser. Open the file and copy the new app over the old one. For Android, see [How to Update the App](Install-on-Android#how-to-update-the-app).
 
 ---
 
@@ -97,16 +97,16 @@ The autosave is not in this list. You cannot save over it.
 | **Back** | Goes back to the folder list |
 | Drag handle | Changes the order of folders or saves. Each folder keeps its own order. |
 | A save | Loads it |
-| **Export save** | Downloads the save as a `.json` file |
+| **Export save** | Exports the save as a `.json` file |
 | **Delete save** | Erases the save after you confirm. You cannot undo it. |
 
-Each save row shows its name, the date and time you saved it, and the **Game Time** of the story. The autosave has an **Auto** tag. A save has no rename control: save it again under the new name, then delete the old one.
+Each save row shows its name, the date and time you saved it, and the **Game Time** of the story. The autosave has an **Auto** tag. A save has no rename control: save it again under the new name, then erase the old one with **Delete save**.
 
 Saves are newest first until you drag one. A new save always goes to the top.
 
 ### Loading from Another World
 
-A save belongs to the world it came from.
+Each save is for the world you played when you made it.
 
 | Where you load | The save's world | What happens |
 |---|---|---|
@@ -120,7 +120,7 @@ Unsaved progress is lost each time a game closes.
 
 ### Old Save Files
 
-Saves from older versions of Formamorph load too. A save in the oldest format is converted when you load it. A message shows while that runs. If the conversion fails, the game still loads what it can, and the **Logs** tab says *(with conversion errors)*.
+Saves from older versions of Formamorph load too. Formamorph converts a save in the oldest format when you load it. A message shows while that runs. If the conversion fails, the game still loads what it can, and the **Logs** tab says *(with conversion errors)*.
 
 ## Autosave
 
@@ -142,14 +142,14 @@ To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Se
 
 Open it from the main menu's **Menu** button. It has three buttons: **Backup**, **Restore** and **Close**.
 
-**Backup** lists what you have in four groups: **Worlds**, **Saves**, **Entities** and **Dictionaries**. Each group has a checkbox that selects all of its items, and a count of the items you selected. **Save backup** is off when nothing is selected.
+**Backup** lists what you have in up to four groups: **Worlds**, **Saves**, **Entities** and **Dictionaries**. A group shows only when it has items. Each group has a checkbox that selects all of its items, and a count of the items you selected. **Save backup** is off when nothing is selected.
 
-**Restore** reads a backup file and shows the same four groups.
+**Restore** reads a backup file and shows the groups that the file holds.
 
 | Control | What it does |
 |---|---|
 | **exists** tag | Marks an item that is already on this device |
-| **Overwrite existing** | Replaces the group's existing items. Shows only in a group with **exists** items. Left clear, those items are skipped. |
+| **Overwrite existing** | Replaces the group's existing items. Shows only in a group with **exists** items. When it is clear, the restore skips those items. |
 | **World images**, **Entity images** | Choose **Keep as-is**, **Optimize** or **Downscale** for the images the restore writes |
 | **Restore** | Writes the selected items, then reloads the app |
 
@@ -165,7 +165,7 @@ A file that is not a Formamorph backup shows *This file is not a Formamorph back
 | Library dictionaries | Cached images and other caches |
 | | The order of the **Load Game** list |
 
-To move an avatar, export it from the library. See [Library](Library).
+To move an avatar, open it on the library's **Avatars** tab and select the **Export** button.
 
 ## Where Your Data Lives
 
@@ -174,14 +174,14 @@ Formamorph stores your data in the app's browser storage on your device. Nothing
 | Platform | Where the data is |
 |---|---|
 | 🌐 Web | The browser's storage for the site. Each browser and each site address keeps its own copy. Clearing the site's data in the browser erases it. |
-| 🪟 Windows desktop | The `userdata` folder beside `Formamorph.exe`. AI models are in the `models` folder beside it. An update never changes either folder. |
+| 🪟 Windows desktop | The `userdata` folder beside `Formamorph.exe`. AI models are in the `models` folder beside it, unless you choose a different folder. An update never changes either folder. |
 | 🐧 Linux AppImage | The `userdata` folder beside the AppImage file |
 | 🍎 macOS | The app's default data folder for your user account |
-| 📱 Android | The app's own storage. Uninstalling the app erases it. |
+| 📱 Android | The app's own storage. When you remove the app from the device, Android erases this data. |
 
 The web version asks the browser to keep its storage. A browser can still clear it, and a hosted copy of the app on a new address starts empty. Make a backup if your data matters to you.
 
-On Windows and Linux, a copy of the whole folder carries your data with it.
+On Windows and Linux, copy the whole folder to move your data to a new place.
 
 ## App Updates
 
@@ -198,7 +198,7 @@ The desktop and Android apps check for updates on start, then every few hours. S
 | **Download** | Downloads the update. Shows when an update is available. |
 | **Check for updates** | Checks again. Shows when no update is available. |
 
-After the download, **Update & Restart** shows under the version number on desktop. On Windows, the app checks the download before it uses it. If the new version fails to start, the old version comes back. The web version updates when you reload the page.
+After the download, **Update & Restart** shows under the version number on desktop. On Windows, the app checks the download before it uses it. If the new Windows version fails to start, the app starts the old version again. The web version updates when you reload the page.
 
 Your saves, worlds and settings stay the same through an update.
 
@@ -211,7 +211,7 @@ Your saves, worlds and settings stay the same through an update.
 | **Update** | On the web, reloads the page. On desktop and Android, starts the download of the newest version. |
 | **Not Now** | Closes the dialog. The feature stays off until you update. |
 
-After **Update** starts the download, install the update from the version number on the main menu. See [How to Update the Desktop App](#how-to-update-the-desktop-app).
+After the download, select **Update & Restart** on desktop or **Install** on Android, under the version number on the main menu. See [How to Update the Desktop App](#how-to-update-the-desktop-app).
 
 ### What's New
 
