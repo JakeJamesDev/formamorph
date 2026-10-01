@@ -92,6 +92,8 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q54 | The 5-section cap and the character budget cover the whole docs block, the surface section included, and count it once (ticket 32) |
 | Q55 | The budget fix waits for ticket 26, so the baseline measures one build; it lands as ticket 32 and re-runs the "here" cases |
 | Q56 | The review's standards smells go in one refactor ticket with no behavior change, after ticket 26 (ticket 33) |
+| Q57 | The probe's two-per-page rule covers the guide pages only. Two "what's new" questions cover the changelog, scored on source and flag, with no keyed facts (ticket 26 ruling) |
+| Q58 | Grounded-correct needs all four checks: keyed facts present, forbidden facts absent, the right section among the sources, flag correct. A key may list several acceptable sections; an answer correct from an unlisted section is reported in its own column (ticket 26 ruling) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
