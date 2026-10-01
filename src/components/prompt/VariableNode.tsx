@@ -188,7 +188,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
       if (!$isVariableNode(node)) return;
       const current = vocab.affixes(node.getToken()) ?? { pre: '', post: '' };
       node.setToken(vocab.setAffixes(node.getToken(), ...(which === 'pre' ? [value, current.post] : [current.pre, value]) as [string, string]));
-    }, { tag: SKIP_DOM_SELECTION_TAG });
+    }, { tag: SKIP_DOM_SELECTION_TAG, discrete: true });
   };
 
   // Written straight through to the token like an affix: the label is the placement's own and travels with
@@ -200,7 +200,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
       const node = $getNodeByKey(nodeKey);
       if (!$isVariableNode(node)) return;
       node.setToken(vocab.setPlacementLabel?.(node.getToken(), value) ?? node.getToken());
-    }, { tag: SKIP_DOM_SELECTION_TAG });
+    }, { tag: SKIP_DOM_SELECTION_TAG, discrete: true });
   };
 
   const setHeader = (value: string) => {
@@ -208,7 +208,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
       if ($isVariableNode(node)) node.setToken(vocab.setHeader?.(node.getToken(), value) ?? node.getToken());
-    }, { tag: SKIP_DOM_SELECTION_TAG });
+    }, { tag: SKIP_DOM_SELECTION_TAG, discrete: true });
   };
 
   const handleDragStart = (event: React.DragEvent<HTMLElement>) =>

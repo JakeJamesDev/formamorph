@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.1.2** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **In a chip's pop-out, the Label, Header, Prepend and Append fields keep the cursor where you type and keep every key you press.** Before, each key moved the cursor to the end of the field. On a slow machine, fast typing could also close the pop-out and lose the rest of what you typed.
+
 ---
 
 <details>

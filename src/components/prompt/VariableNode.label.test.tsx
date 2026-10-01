@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
@@ -50,5 +50,46 @@ describe('VariableNode pop-out — Label', () => {
 
     await user.click(screen.getByRole('radio', { name: 'Unique' }));
     expect(labelInput()).toHaveValue('Left: {a}');
+  });
+
+  it('keeps the caret where you type in the middle of the label', async () => {
+    const user = userEvent.setup();
+    render(<Harness token={encodePlaceholderToken({ id: 'eye', mode: 'unique', placementId: 'p1', label: 'Left' })} />);
+    await user.click(screen.getByText('Left'));
+    const input = labelInput() as HTMLInputElement;
+    await user.click(input);
+    input.setSelectionRange(1, 1);
+    await user.keyboard('XY');
+    expect(labelInput()).toHaveValue('LXYeft');
+    expect(decodePlaceholderToken(value())?.label).toBe('LXYeft');
+  });
+
+  // A host that commits each edit later than the next keystroke, the way a loaded machine lags one.
+  function LaggingHarness({ token, held }: { token: string; held: Array<() => void> }) {
+    const [value, setValue] = useState(token);
+    return (
+      <>
+        <ChipInput value={value} onChange={(next) => held.push(() => setValue(next))}
+          vocabulary={usePlaceholderChipVocabulary(WORLD)} ariaLabel="Name" />
+        <div data-testid="value">{value}</div>
+      </>
+    );
+  }
+
+  it('keeps every keystroke when the field hands an edit back late', async () => {
+    const user = userEvent.setup();
+    const held: Array<() => void> = [];
+    render(<LaggingHarness token={encodePlaceholderToken({ id: 'eye', mode: 'unique', placementId: 'p1' })} held={held} />);
+    await user.click(screen.getByText('Eye (Unique)'));
+    const input = labelInput()!;
+    await user.type(input, 'L');
+    const lateEcho = held.splice(0);
+    await user.type(input, 'e');
+    act(() => lateEcho.forEach((commit) => commit()));
+    await user.type(input, 'ft');
+    act(() => held.splice(0).forEach((commit) => commit()));
+    expect(labelInput()).toBe(input);
+    expect(input).toHaveValue('Left');
+    expect(decodePlaceholderToken(value())?.label).toBe('Left');
   });
 });
