@@ -16,7 +16,7 @@ Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} str
 2. Type the name in the search box, such as *Eye Color*.
 3. Select **+**, then **Add Placeholder**. The new placeholder opens.
 4. Under **Values**, type a value and press Enter. Repeat for each value.
-5. Leave **Kind** on **Wildcard** to pick one value at random, or select **Object** to show all values. A placeholder with one value is a Variable: one fact you edit in one place.
+5. Leave **Kind** on **Wildcard** to pick one value at random, or select **Object** to show all values. A placeholder with one value is a Variable. Use it for one fact that you edit in one place.
 6. Open a field that has the chip picker, such as an entity's **AI-Facing Description**. Type `{` and pick the placeholder.
 
 Or type `{` in a field and the new name, then pick **New Placeholder "…"** in the menu. A placeholder needs one value at least, or its chip shows nothing.
@@ -28,7 +28,7 @@ A Wildcard with two values or more can weight them.
 1. Select the placeholder.
 2. Under **Values**, select a value chip. A pop-out opens.
 3. Type a number in **Draw Weight**. A value with weight 2 rolls twice as often as a value with weight 1.
-4. Optional: select the eye button beside **Values** to show each value's roll chance.
+4. Optional: in the **Chips** style, select the eye button beside **Values**. Its tooltip reads **Show roll chances**, and each chip then shows its chance.
 
 In the **Multiline** style, each value has its own weight box. Weight 0 keeps the value in the list and never picks it.
 
@@ -88,7 +88,7 @@ The toggle offers **Wildcard** and **Object**. A Variable has no button: the lin
 
 ## Draw Weight
 
-Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. The pop-out calls it benched.
+Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. The pop-out then reads **Benched**.
 
 ## Parts
 

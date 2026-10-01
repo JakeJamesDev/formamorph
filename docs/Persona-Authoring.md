@@ -12,7 +12,7 @@ How your world meets the player's persona: playable entities, the **Allowed Pers
 2. Open the **Entities** tab, and select the entity.
 3. On the **Profile** tab, find the **Persona** control and select **Playable**.
 4. Optional: in **Starting Location**, pick where the player starts as this persona. **Automatic** uses the entity's first starting location.
-5. Read the entity's descriptions, and the descriptions that mention it, from the player's side. See [Playable Entities](#playable-entities).
+5. Read the entity's descriptions, and the descriptions that mention it. Make sure each one is still correct when the player is this entity. See [Playable Entities](#playable-entities).
 
 For an entity that exists only when the player picks it, select **Persona-Only** in step 3.
 
