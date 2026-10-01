@@ -20,6 +20,8 @@ Add "How to…" sections for the common tasks: change the narration layout, turn
 
 If the page grows past what one page should hold, split Output into its own page and say so in the commit body.
 
+The ticket 01 gate checks only ids in the dev-router ledger. The Endpoints sub-tabs have no id, so the gate does not enforce them. Add their ids to the ledger and the surface map, or check them by hand and list them in the commit body.
+
 Recommended model rationale: the settings surface is wide, and each row's real effect must be read from code, not from its label.
 
 ## Acceptance criteria

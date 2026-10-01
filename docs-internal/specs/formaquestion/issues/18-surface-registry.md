@@ -19,6 +19,8 @@ Prefer one reporting point in the shared dialog and tab components over a call i
 
 The Main Menu view file is shared between sessions; stage it through a filtered patch.
 
+Settings → Prompts per-prompt tabs and Endpoints sub-tabs had no surface id when ticket 01 shipped. If tickets 07 and 08 have not added them, report the parent tab for those.
+
 Recommended model rationale: the registry touches every screen and dialog, and a missed close leaves a wrong Surface for the whole session.
 
 ## Acceptance criteria

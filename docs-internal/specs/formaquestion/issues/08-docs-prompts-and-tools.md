@@ -30,6 +30,8 @@ A player can read how prompt presets and Tools work. Two new docs pages cover Se
 
 Use the glossary's words: Tool, Tool Handler, Request Anatomy, Chip. Add "How to…" sections: edit a prompt, route a prompt to another endpoint, make a preset, make a Tool, try a Tool.
 
+The ticket 01 gate checks only ids in the dev-router ledger. The per-prompt tabs of Settings → Prompts have no id, so the gate does not enforce them. Add their ids to the ledger and the surface map, or check them by hand and list them in the commit body.
+
 Recommended model rationale: both areas are new, dense, and have rules (capability gate, chip injection) that are easy to state wrongly.
 
 ## Acceptance criteria
