@@ -24,7 +24,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🪪 **[Personas](Personas)** | Who you are in the story — making a persona, picking one at Enter World, changing it in game, and the SillyTavern import |
 | 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Allowed Personas** and **Starts On** controls, and the Persona and Player Name chips |
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |
-| 📐 **[World Format](WorldFormat)** | The full structure of a world `.json` — every field of stats, traits, locations, entities, stat-updates, and the dictionary |
+| 📐 **[World Format](WorldFormat)** | Every field of a world `.json` file, and how to add a stat, a trait or an entity by hand |
 | 🧮 **[Stat Code Guide](StatCodeGuide)** | Writing dynamic JS formulas that derive one stat from others |
 | 🔗 **[Linked Content](LinkedContent)** | How a world's entities and dictionaries follow a library item, take updates, publish, download, and repair a missing source |
 | 📝 **[Changelog](Changelog)** | What's changed, release by release |
