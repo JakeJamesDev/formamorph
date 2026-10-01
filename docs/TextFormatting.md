@@ -4,6 +4,22 @@ Everywhere Formamorph shows you formatted prose — world descriptions, readmes,
 
 > Formatting is written in the text itself. In the World Editor's prose fields a **toolbar** sits above the box and applies most of this to your selection, so you rarely have to type the punctuation by hand.
 
+## How to Format Text with the Toolbar
+
+1. Select the text in a World Editor prose field.
+2. Select a toolbar button: **Bold**, **Italic**, **Strikethrough**, **Inline code** or **Blockquote**.
+3. For more, open a split button's chevron: **Heading level**, **List type** or **Insert**. **Insert** has **Link**, **Image**, **Table**, **Code block**, **Horizontal rule**, **Subscript** and **Superscript**.
+
+A split button's face then applies the last item you picked from it.
+
+## How to Highlight Text
+
+1. Select the text.
+2. Select the highlighter button for the plain highlight, in your theme's color.
+3. For a color, open the chevron beside it, **Highlight color**, and pick one.
+
+Pick the same color again on highlighted text to take the highlight off. Pick another color to recolor it.
+
 ---
 
 ## Emphasis
@@ -42,9 +58,9 @@ Put a single letter between the first pair of equals signs to pick a color inste
 | `q` | Pink | `=q=sweet==` |
 | `x` | Gray | `=x=muted==` |
 
-The closing marker is always a plain `==`, whether or not you used a key. A letter that isn't in the table falls back to the plain themed highlight rather than breaking.
+The closing marker is always a plain `==`, whether or not you used a key. Any other letter shows the plain themed highlight.
 
-You don't have to type any of it. The **highlighter button** in the toolbar has a chevron beside it that opens all ten colors, each shown as its own swatch, and the button then remembers whichever you picked last. Pressing a color on text that already carries a different one recolors it in place; pressing the color it already has takes the highlight off.
+You don't have to type any of it. The highlighter button's chevron, **Highlight color**, lists ten highlighters: the plain **Highlight** and the nine colors above, each with its own swatch. The button then applies the last one you picked, while the field stays open. A color on text that already has a different one recolors it in place. The color it already has takes the highlight off.
 
 > [!NOTE]
 > The content can't start or end with a space — `==loose plank==` highlights, `== loose plank ==` doesn't. An empty `====` renders as nothing at all.

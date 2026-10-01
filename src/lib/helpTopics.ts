@@ -103,42 +103,43 @@ As the story grows, older turns stop riding word-for-word and are carried as sho
 
 | | |
 |---|---|
-| **Edit** | Rewrite it in your own words. An edited memory is always kept — you wrote it, so the story doesn't get to drop it. |
-| **Rewrite** | Have the story summarize that turn again, in case the first attempt missed the point. |
-| **Pin / forget** | Force a memory to stay, or let one go, without changing its words. |
-| **Delete** | Remove it entirely. Nothing is really lost — switch the filter to **Deleted** to bring it back. |
+| **Edit This Memory** | Rewrite it in your own words. An edited memory is always kept. You wrote it, so the story can't drop it. |
+| **Have the Story Write This Memory Again** | The story summarizes that turn again, in case the first attempt missed the point. |
+| **Pin This Memory** / **Forget This Memory** | Force a memory to stay, or let one go, without changing its words. **Clear Pin** gives the decision back to the story. |
+| **Delete This Memory** | Remove it entirely. Nothing is really lost. Select the **Deleted** chip, then **Restore This Memory**. |
 | **Add Memory** | Write something the story should remember that never happened in a turn. Yours are always kept. |
 
-**Nothing you do here is permanent.** The story's own version is always kept underneath, so **Revert** restores the original wording and **Reset All My Changes** puts everything back the way the story had it.
+**Nothing you do here is permanent.** The story's own version is always kept underneath, so **Revert to the Original** restores the original wording and **Reset All My Changes** puts everything back the way the story had it.
 
 Memories under the **Recent** line are still fresh enough that the story has them word-for-word — your changes to them start mattering once they age out.
 
 **Kept isn't the same as sent.** A memory the story keeps still has to earn its place each turn — with **Semantic Memory** on, only the handful most relevant to what you just did actually rides. Rows with a **left accent bar** reached the story last turn; plain rows are remembered but sat this one out; struck-through rows are the ones it let go. A memory sent back as a full scene is marked **Scene**. The filter chips sort by the form the story has a memory in: **Verbatim** (its real text — a recent turn, or one recalled as a scene), **Summary** (the compressed line, sent last turn), **Held** (remembered, but not sent this turn).
 
-**When it happened.** With **Measured Clock** on, each memory carries its place in the story's time — *"Day 3, evening — two days ago"* — the same stamp the story itself reads. Without that setting every turn costs a flat hour whatever happened in it, so nothing is dated rather than dating it wrongly.`,
+**When it happened.** With **Measured Clock** on, each memory carries its place in the story's time — *"Day 3, evening — two days ago"* — the same stamp the story itself reads. Without that setting every turn costs a flat hour whatever happened in it, so nothing is dated rather than dating it wrongly. **Measured Clock** is in Settings → Output → Time, in Advanced mode.`,
     wikiPage: 'Memory',
-    wikiAnchor: 'when-each-memory-happened',
+    wikiAnchor: 'the-memory-manager',
   },
   // Deliberately separate from `worldEditor.entities`: that copy is for an author choosing fields, this
   // is for a player mid-story wondering who a name in their scene list is.
   'game.entities': {
     title: 'Entities in Play',
     wikiPage: 'Entities',
-    body: `Who the story counts as being here with you right now. The list changes as the scene does — people arrive, people leave. Your persona always heads the list, marked **(You)**.
+    wikiAnchor: '-entities-in-play',
+    body: `Who the story counts as being here with you right now. The list changes as the scene does. Your persona always heads the list, marked **(You)**.
 
-Most of these are characters the world's author wrote. Some the story **invented on the spot**: ask a shopkeeper for directions and it may answer with a name nobody wrote down. Those are remembered from the moment they're named, so the story can keep them consistent and offer you things to do with them.
+Most of these are entities the world's author wrote. Some you added from your library under **Library Additions** at Enter World. Some the story **invented on the spot**: ask a shopkeeper for directions and it may answer with a name nobody wrote down. Those are remembered from the moment they're named, so the story can keep them consistent and offer you things to do with them.
 
-Someone merely *talked about* isn't added — only characters the story actually shows in the scene. A character who introduces themselves ("I'm Freya") counts as shown.
+Someone only *talked about* isn't added. The story has to show them in the scene. Someone who introduces themselves ("I'm Freya") counts as shown.
 
 **When something isn't a person**
 
-Names come out of the story's own prose, so once in a while it capitalizes a café or a street and that ends up here. Use the remove button beside the entry to take it out. The story stops picking that name up for the rest of this playthrough, and the prose itself is left exactly as written.
+Names come out of the story's own prose, so once in a while it capitalizes a café or a street and that ends up here. Select the trash button beside the entry, then **Confirm**. The story stops picking that name up for the rest of this playthrough, and the prose stays exactly as written.
 
-Only story-invented entries can be removed. The world's own cast belongs to the world — that's the World Editor's job, not yours mid-scene.
+Only story-invented entries and Library Additions can be removed. The world's own cast belongs to the world, so you change it in the World Editor.
 
 **Descriptions**
 
-Settings → Output → Characters → **Describe New Characters** gives each invented character a written description you can open from here. Everything else on this list works whether that's on or off.`,
+Settings → Output → Characters → **Describe New Characters** gives each invented entity a written description you can open from here. The **Characters** section shows in Advanced mode. Everything else on this list works whether that's on or off.`,
   },
   'worldEditor.locations': {
     title: 'Locations',
@@ -413,6 +414,7 @@ Start with two or three stats that the story would genuinely depend on. Every st
   'worldEditor.statCode': {
     title: 'Dynamic Value Calculation',
     wikiPage: 'StatCodeGuide',
+    wikiAnchor: '-stat-code-guide',
     body: `A stat can run a small script. Write JavaScript. A returned number replaces the stat's value. A script with no return can still set \`self\`, pin a placeholder, or switch a trait. Leave a box empty and the manual value stands.
 
 **Two boxes, one turn.** Turn order:
@@ -463,7 +465,7 @@ placeholders.Molly.Hair.Shade.pin('ash');
 placeholders["Old Molly"]["Eye Color"].pin('green');
 \`\`\`
 
-**Traits.** \`traits\` holds every authored trait by name. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores **Player Can Toggle In-Game**, so it can switch a trait the player can't toggle. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
+**Traits.** \`traits\` holds every trait in the world's own trait list by name, Blueprint items included. A trait an entity owns is not in it. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Both read the player's state only. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores **Player Can Toggle In-Game**, so it can switch a trait the player can't toggle. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
 
 \`\`\`js
 traits.Cursed.enabled = self.value <= 0;
@@ -526,6 +528,7 @@ Start with one book and a few entries. Use the extra controls only when an entry
   'library.linkedContent': {
     title: 'Linked Content',
     wikiPage: 'LinkedContent',
+    wikiAnchor: '-linked-content',
     tabs: [
       {
         label: 'Linked Copies',

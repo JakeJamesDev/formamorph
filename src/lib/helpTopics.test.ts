@@ -48,7 +48,7 @@ describe('HELP_TOPICS registry', () => {
     const topic = HELP_TOPICS['library.linkedContent'];
     expect(topic?.title).toBe('Linked Content');
     expect(topic?.wikiPage).toBe('LinkedContent');
-    expect(helpWikiUrl(topic!)).toBe('https://github.com/JakeJamesDev/formamorph/wiki/LinkedContent');
+    expect(helpWikiUrl(topic!)).toBe('https://github.com/JakeJamesDev/formamorph/wiki/LinkedContent#-linked-content');
     expect(topic?.tabs?.map((t) => t.label)).toEqual(['Linked Copies', 'Updates', 'Publishing', 'Downloading', 'Repairs']);
   });
 

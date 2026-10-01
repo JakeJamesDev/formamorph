@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **The ? help in the Memories window, the in-game Entities tab, a stat's Code tab and the linked-content dialogs now matches the app.** **Learn more** opens the matching section of the wiki page. The Memories help names each button by its tooltip. The Entities help says you can also remove an entity you added under **Library Additions**. The stat code help says `traits` holds the world's own trait list, not traits an entity owns. The wiki pages for Memory, Entities, Personas, Connect Your Own AI, Install on Android, Text Formatting, the Stat Code Guide and Linked Content gain numbered "How to…" steps and now match the app.
   - **For staff, a profile window shows only the list for the selected tab, Creations or Likes.** Before, the Likes list stayed on screen under Creations after you switched back.
   - **In Community Creations, a contest's entries stay shuffled while the contest is judged, and sort by likes only after staff announce the winners.** Before, judging already put the most-liked entries first, which showed the counts that are hidden until then. The winners still lead once announced.
   - **For staff, a scheduled contest stays off the Contest tab in Community Creations until it starts.** Before, it showed there as being judged. It still shows under **Scheduled** in the Events tab.

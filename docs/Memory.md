@@ -1,72 +1,153 @@
 # 🧠 Story Memory
 
-How Formamorph remembers a long story — and how you can change what it remembers.
+How Formamorph remembers a long story, and how you can change what it remembers.
 
 ---
 
 ## Why Memory Exists
 
-An AI model can only hold so much text at once. A story that runs 50 turns doesn't fit, so something has to give. Formamorph's answer is to keep the **recent** turns word-for-word and carry **older** turns as short memories instead.
+An AI model can only hold so much text at once. A story that runs 50 turns doesn't fit, so something has to give. Formamorph keeps the **recent** turns word for word and carries **older** turns as short memories instead.
 
 | Layer | What It Is |
 |---|---|
-| 🔍 **Recent turns** | The last few turns, sent exactly as written. Their full prose is what keeps the story's voice consistent. |
+| 🔍 **Recent turns** | The last few turns, sent exactly as written. Their full prose keeps the story's voice consistent. |
 | 📌 **Memories** | Everything older, compressed to a sentence each. The story writes these itself, one per turn. |
-| 🗑️ **Let Go** | Memories the story judged not worth carrying — the errand you already finished, the door you already opened. |
+| 🗑️ **Let Go** | Memories the story judged not worth carrying, such as an errand you already finished. |
 
-That last step is the important one: **more memory is not better memory.** A recap stuffed with everything that ever happened crowds out the part that matters, and the story starts repeating itself. Memories are pruned deliberately.
+**More memory is not better memory.** A recap with everything that ever happened crowds out the part that matters, and the story starts to repeat itself. The story prunes memories on purpose.
+
+> [!NOTE]
+> Most memory settings are in Settings → **Output**, in the **Memory**, **Time** and **Characters** sections. Those sections show only in **Advanced** mode. Select **Advanced** next to the **Settings** title to see them.
+
+## How to Edit a Memory
+
+1. During play, open the side panel's **Memory** tab.
+2. Select **Manage Memories**. The **Memories** dialog opens.
+3. Find the memory. Type in **Search memories…**, or select a filter chip.
+4. Select the pencil button, **Edit This Memory**.
+5. Rewrite the text, then select **Save**.
+
+The story always keeps your version. To go back to the story's own words, select **Revert to the Original** on that memory.
+
+## How to Add a Memory
+
+1. Open the side panel's **Memory** tab and select **Manage Memories**.
+2. Select **Add Memory**.
+3. Type the fact the story should carry, such as a promise or a standing detail.
+4. Select **Add**.
+
+Memories you write are always kept. The story never judges them.
+
+## How to Pin or Forget a Memory
+
+1. Open the side panel's **Memory** tab.
+2. Find the memory.
+3. Select **Pin This Memory** to keep a memory the story let go. Select **Forget This Memory** to let go of a memory the story kept.
+4. To give the decision back to the story, select **Clear Pin (Let the Story Decide)**.
+
+Memories you wrote have no pin button, because the story never lets them go.
+
+## How to Undo Your Memory Changes
+
+1. Open the side panel's **Memory** tab and select **Manage Memories**.
+2. Select **Reset All My Changes**.
+3. Confirm in **Reset Every Memory Change?**.
+
+To bring back one deleted memory instead, select the **Deleted** filter chip, then **Restore This Memory** on that memory.
+
+## How to Turn Memory Off
+
+1. Open **Settings** and select **Advanced** next to the title.
+2. Open the **Output** tab.
+3. In the **Memory** section, turn off **Memory Summaries**.
+
+During play, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
+
+## How to Date Each Memory
+
+1. Open **Settings** and select **Advanced** next to the title.
+2. Open the **Output** tab. **Memory Summaries** must be on, or the **Time** section does not show.
+3. In the **Time** section, turn on **Measured Clock**.
+4. Turn on **Time in Memory** if the AI should also read the dates.
 
 ## The Memory Tab
 
 Open the side panel's **Memory** tab during play to see the whole ledger. Faded, struck-through lines are the ones the story let go.
 
-- 📌 **Pin** a memory to force it to stay.
-- 🚫 **Forget** a memory to force it out.
-- ↺ **Clear the pin** to hand the decision back to the story.
+| Control | What It Does |
+|---|---|
+| 📌 **Pin This Memory** | Forces a let-go memory to stay. |
+| 🚫 **Forget This Memory** | Forces a kept memory out. |
+| ↺ **Clear Pin (Let the Story Decide)** | Gives the decision back to the story. Shows only on a pinned memory. |
+| **Manage Memories** | Opens the **Memories** dialog. |
 
-Memories under the **Recent** divider are still riding word-for-word, so your pin on one of them starts mattering only once it ages out.
+The filter chips are **All · Verbatim · Summary · Held · Custom**. **Custom** shows the memories you wrote.
+
+Memories under the **Recent** divider still ride word for word, so a pin on one of them matters only after it ages out. The divider shows under the **All** chip only.
 
 ## The Memory Manager
 
-**Manage Memories** opens the full editor.
+**Manage Memories** opens the **Memories** dialog, the full editor. Each memory has these buttons:
 
-| Action | What It Does |
+| Button | What It Does |
 |---|---|
-| ✏️ **Edit** | Rewrite a memory in your own words. Your version is always kept — the story doesn't get to drop something you wrote. |
-| 🔄 **Rewrite** | Have the story summarize that turn again, if the first attempt missed the point. |
-| ➕ **Add Memory** | Write a memory for something that never happened in a turn: a standing fact, a promise, a detail you want carried. Yours are always kept and never judged. |
-| 🗑️ **Delete** | Remove a memory. Switch the filter to **Deleted** to bring it back. |
-| ↩️ **Revert** | Put an edited memory back to the story's own wording. |
+| ✏️ **Edit This Memory** | Rewrite a memory in your own words. The story always keeps your version. |
+| 🔄 **Have the Story Write This Memory Again** | The story summarizes that turn again. The new text carries a **Rewritten** badge. |
+| 🗑️ **Delete This Memory** | Removes a memory. Select the **Deleted** chip to bring it back. |
+| ↩️ **Revert to the Original** | Puts an edited memory back to the story's own words. |
+| ♻️ **Restore This Memory** | Brings a deleted memory back. Shows under the **Deleted** chip. |
+| 📌 **Pin This Memory**, 🚫 **Forget This Memory**, ↺ **Clear Pin (Let the Story Decide)** | The same pin buttons as the **Memory** tab. |
 
-Search and the filter chips — **Verbatim · Summary · Held · Let Go · Edited · Custom · Deleted** — make a long story's ledger navigable. The first three name the *form* the story holds a memory in, and no memory is ever two of them at once. The Memory tab carries a short version of the same chips.
+**Add Memory** writes a memory for something that never happened in a turn: a standing fact, a promise, a detail you want carried. Yours carry a **Yours** badge, and the story never judges them.
+
+**Search memories…** and the filter chips find a memory in a long story. The chips are **All · Verbatim · Summary · Held · Let Go · Edited · Custom · Deleted**. **Verbatim**, **Summary** and **Held** name the *form* the story holds a memory in, and a memory is only ever one of them.
 
 > [!TIP]
-> **Nothing here is destructive.** The story's own summary is always preserved underneath whatever you write, so every change is reversible — and **Reset All My Changes** puts the whole ledger back the way the story had it.
+> **Nothing here is destructive.** The story's own summary is always kept under whatever you write, so you can undo every change. **Reset All My Changes** puts the whole ledger back the way the story had it.
 
 ## Kept vs Sent
 
 Being **kept** and being **sent** are different things.
 
-*Kept* is a standing verdict — the story judged this memory worth carrying, or you pinned it. *Sent* is about one turn: with **Semantic Memory** on, the kept pool is ranked against what you just did, and only the most relevant handful actually rides. A long story keeps far more memories than any single turn carries.
+*Kept* is a standing verdict: the story judged this memory worth carrying, or you pinned it. *Sent* is about one turn. With **Semantic Memory** on, the game ranks the kept memories against what you just did, and only the most relevant ones go to the AI. A long story keeps far more memories than any single turn sends.
 
 | Row | Means |
 |---|---|
-| **Left accent bar** | Reached the story on the last turn |
-| **Plain** | Remembered — just held back this turn |
+| **Left accent bar** | Sent to the story on the last turn |
+| **Plain** | Kept, but not sent this turn |
 | ~~**Struck through**~~ | The story let this one go |
 
 The three forms a memory can be in:
 
 | Chip | The story has… |
 |---|---|
-| **Verbatim** | The real text — a recent turn, or one Scene Recall brought back whole |
+| **Verbatim** | The real text: a recent turn, or one that **Scene Recall** sent back whole |
 | **Summary** | The compressed line you're reading, and nothing more |
-| **Held** | Nothing this turn. Still remembered, waiting to become relevant again |
+| **Held** | Nothing this turn. Still kept, until it is relevant again |
 
-A memory **Scene Recall** sent back as its full original prose is accented too, and tagged **Scene** in the Manager — the story saw far more than the one-line summary you're reading. The **Verbatim** filter collects those along with the recent turns still riding word-for-word: both mean the story has the real text, not a compression of it.
+A memory that **Scene Recall** sent back as its full original prose has an accent too, and a **Scene** badge in the **Memories** dialog. The story saw the whole scene, not only the one-line summary. The **Verbatim** chip collects those and the recent turns that still ride word for word.
 
 > [!NOTE]
-> Nothing is marked until a turn has run. A freshly loaded save shows no accents rather than replaying an old turn's selection. Memories under the **Recent** divider are never marked — they ride word-for-word regardless, which the divider already tells you.
+> Nothing is marked until a turn has run. A save you just loaded shows no accents. Memories under the **Recent** divider are never marked, because they always ride word for word.
+
+## Memory Settings
+
+All of these are in Settings → **Output**, in **Advanced** mode.
+
+| Setting | Section | Default | What It Does |
+|---|---|---|---|
+| **Memory Summaries** | Memory | On | Condenses older turns into memories. One extra request per turn. |
+| **Semantic Memory** | Memory | Off | Keeps the memories most relevant to your action, not only the newest. Runs a small model on your device, a one-time download of about 23 MB. Shows when **Memory Summaries** is on. |
+| **Memory Cap** | Memory | On, 12 | Sends at most this many memories each turn. The story opening and the newest memories always stay. Shows when **Semantic Memory** is on. |
+| **Scene Recall** | Memory | Off | Sends a past scene word for word when your action goes back to it. At most two scenes per turn. Shows when **Semantic Memory** is on. |
+| **Measured Clock** | Time | Off | Measures how much story time each turn takes. See [When Each Memory Happened](#when-each-memory-happened). |
+| **Time in Memory** | Time | Off | Tells the AI when each memory happened. |
+| **Character Diaries** | Characters | Off | Each entity present writes a first-person diary entry as turns age out. Its recent entries shape its motivation. Shows in the Staged Thinking mode only. |
+| **Diary Recall** | Characters | Off | Adds older diary entries that are relevant to the moment. Costs nothing extra. Shows when **Character Diaries** and **Semantic Memory** are on. |
+
+The **Time** section shows only while **Memory Summaries** is on.
+
+**Milestone Select** is a prompt, not a setting. Between turns, it decides which summarized turns stay in long-term memory. Edit it under Settings → **Prompts** → **Milestone Select**. Its tab shows while **Memory Summaries** is on.
 
 ## When Each Memory Happened
 
@@ -74,39 +155,37 @@ With **Measured Clock** on, every memory carries its place in the story's own ti
 
 > Day 3, evening — two days ago
 
-Both readings sit together on purpose. *Day 3, evening* tells you where in the story you were; *two days ago* tells you how far back that is. Working out one from the other is a small tax you'd pay on every line, and the AI reads the exact same stamp for exactly this reason.
+Both readings sit together on purpose. *Day 3, evening* tells you where in the story you were. *Two days ago* tells you how far back that is. The AI reads the same stamp when **Time in Memory** is on.
 
-The character panel's clock reads the same way — **Day 1, morning** rather than an elapsed-hours count.
+The side panel's clock reads the same way: **Day 1, morning**, not a count of hours.
 
 | | |
 |---|---|
 | **Recent Memories** | *moments ago*, *earlier today* |
-| **Your Own Memories** | Stamped at the moment you anchored them |
-| **Times of Day** | Coarse — *dawn*, *morning*, *midday*, *afternoon*, *evening*, *night*. Never a clock reading. |
+| **Your Own Memories** | Stamped at the moment you added them |
+| **Times of Day** | Coarse: *dawn*, *morning*, *midday*, *afternoon*, *evening*, *night*. Never a clock reading. |
 
 > [!NOTE]
-> **Nothing is stamped while Measured Clock is off.** Without it every turn costs a flat hour whatever happened in it, so a date would really just be a turn count wearing a costume. Switch it on partway through a story and the earlier turns are dated at that flat hour — roughly wrong in scale, but still in the right order.
+> **Nothing is stamped while Measured Clock is off.** Without it every turn costs a flat hour, so a date would only be a turn count. Turn it on partway through a story, and the earlier turns are dated at that flat hour. The scale is wrong, but the order is right.
 
-Both settings live under Settings → Output → Memory. **Measured Clock** decides whether time is measured at all; **Time in Memory** decides whether the AI is told.
+Both settings are in Settings → **Output** → **Time**, in **Advanced** mode. **Measured Clock** decides whether the game measures time. **Time in Memory** decides whether the AI is told.
 
-### Where the clock starts
+### Where the Clock Starts
 
-Knowing how far each turn moves is only half of it — the clock also has to start in the right place. Every story used to open at eight in the morning, so a world written to begin at a midnight vigil or a supper table was wrong from its first line, and stayed wrong by the same amount forever.
-
-With **Measured Clock** on, the game reads your opening scene once and sets the clock to match it. A story that opens on lamps and a cold watch starts at night; one that opens on morning rounds starts in the morning.
+The clock also has to start at the right time of day. With **Measured Clock** on, the game reads your opening scene once and sets the clock to match it. A story that opens on lamps and a cold watch starts at night. One that opens on morning rounds starts in the morning.
 
 | | |
 |---|---|
-| **When it runs** | Once, on the opening turn, alongside the rest of it |
-| **What it reads** | Your opening scene — not the world description |
-| **If it can't tell** | Falls back to morning, exactly as before |
-| **Existing stories** | Never re-dated — see below |
-| **Re-rolling the opening** | Read again, so a rewritten opening keeps its own clock |
+| **When it runs** | Once, on the opening turn |
+| **What it reads** | Your opening scene, not the world description |
+| **If it can't tell** | The clock starts in the morning |
+| **Existing stories** | Never re-dated. See below. |
+| **Re-generating the opening** | Read again, so a new opening gets its own clock |
 
 > [!IMPORTANT]
-> **Turning Measured Clock on partway through a story does not change when that story began.** The opening scene is long gone by then, and re-dating it would move every stamp you've already collected. Stories started before this existed keep the clock they have.
+> **Turning Measured Clock on partway through a story does not change when that story began.** The opening scene is long gone by then, and a new start would move every stamp you already have.
 
-Edit how it judges a scene under Settings → **Prompts** → **Opening**, next to **Clock**.
+Edit how it judges a scene under Settings → **Prompts** → **Opening**, next to **Clock**. Both tabs show while **Measured Clock** is on.
 
 ## Memories vs Notes
 
@@ -116,13 +195,13 @@ Both travel with the story, but they answer different questions.
 |---|---|---|
 | Answer | *What already happened* | *What's true right now* |
 | Written by | The story (you can edit) | You |
-| Changes over time | Yes — they age and get pruned | No — they stay until you change them |
+| Changes over time | Yes. They age, and the story prunes them. | No. They stay until you change them. |
 | Good for | A promise made, a fight won, a secret learned | Who you're pretending to be, what you're carrying, your current goal |
 
-If the story keeps forgetting something that should always hold, that belongs in **Notes**. If it forgot something that *happened*, that's a memory — pin it, or write it yourself.
+If the story keeps forgetting something that should always hold, put it in **Notes**. If it forgot something that *happened*, that's a memory. Pin it, or write it yourself.
 
 ## Turning Memory Off
 
-Settings → **Memory Summaries** controls whether the story writes memories at all. With it off, the oldest turns simply drop away as the story outgrows its context, and nothing is carried forward in their place.
+**Memory Summaries** controls whether the story writes memories at all. It is in Settings → **Output** → **Memory**, in **Advanced** mode. With it off, the oldest turns drop away as the story outgrows its context, and nothing carries forward in their place.
 
-Memories you wrote by hand still ride even with the setting off — they're yours, not the story's.
+Memories you wrote by hand still go to the AI with the setting off. They're yours, not the story's.

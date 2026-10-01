@@ -48,11 +48,13 @@ const ENTITY_OPENINGS: DocTarget = { page: 'World-Editor-Openings', anchor: 'ent
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
-  aiSetup: { page: 'Connect-Your-Own-AI', anchor: '-connect-your-own-ai' },
+  aiSetup: { page: 'Connect-Your-Own-AI', anchor: 'set-up-your-ai' },
   componentUpdates: { page: 'LinkedContent', anchor: 'update-available' },
   connectReferences: { page: 'LinkedContent', anchor: 'connect-world-references' },
   dictionaryEditor: { page: 'World-Editor-Dictionary', anchor: 'in-the-library' },
   entityEditor: { page: 'World-Editor-Entities', anchor: 'in-the-library' },
+  exitApp: { page: 'Install-on-Android', anchor: '\u{FE0F}-the-back-button' },
+  importComponent: { page: 'LinkedContent', anchor: 'importing-an-entity-or-dictionary-file' },
   manageAddons: { page: 'LinkedContent', anchor: 'manage-add-ons' },
   memoryManager: { page: 'Memory', anchor: 'the-memory-manager' },
   persona: { page: 'Personas', anchor: 'change-it-in-game' },
@@ -111,8 +113,6 @@ export type DocsTicket = '02' | '03' | '04' | '06' | '07' | '08' | '09' | '10' |
 export const KNOWN_SURFACE_GAPS: Partial<Record<DocsTicket, readonly SurfaceId[]>> = {
   // World Editor pages
   '03': ['entityEditor.traits', 'worldEditorLocation.media'],
-  // Player pages
-  '04': ['exitApp', 'importComponent'],
   // How to Play, Starting a Game
   '06': [
     'gameViewer', 'entity', 'export', 'intro', 'editText', 'location', 'aiContext', 'enterWorld', 'demoAI',
@@ -148,6 +148,5 @@ export const KNOWN_HELP_TOPIC_GAPS: Partial<Record<DocsTicket, readonly string[]
     'worldEditor.locations', 'worldEditor.entities', 'worldEditor.aliases', 'worldEditor.locationPins',
     'worldEditor.stats', 'worldEditor.dictionary',
   ],
-  '04': ['game.entities', 'worldEditor.statCode', 'library.linkedContent'],
   '06': ['game.howToPlay'],
 };
