@@ -6,6 +6,7 @@ import { askHelp } from '@/lib/formaquestion/helpSession';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
+import type { ImageAttachment } from '@/types';
 import type { HelpAi } from './useHelpAi';
 
 /**
@@ -18,6 +19,8 @@ export type HelpStatus = 'writing' | 'answered' | 'stopped' | 'no-ai' | 'failed'
 export interface HelpExchange {
   id: string;
   question: string;
+  /** The images sent with the question. */
+  images: ImageAttachment[];
   /** The answer so far, as markdown. */
   answer: string;
   status: HelpStatus;
@@ -35,6 +38,11 @@ export interface HelpChat {
   busy: boolean;
   /** A game turn generates, so a question waits. */
   held: boolean;
+  /** The model reads images, so the ask field takes them. */
+  readsImages: boolean;
+  /** The images waiting for the next question. */
+  pending: ImageAttachment[];
+  setPending: (update: (prev: ImageAttachment[]) => ImageAttachment[]) => void;
   ask: (question: string) => void;
   stop: () => void;
   /** Empties the conversation and ends the answer that is coming in. */
@@ -43,10 +51,14 @@ export interface HelpChat {
 
 /**
  * The conversation of the one Formaquestion instance. It lives in memory, so it outlives the window
- * and ends with the app. A question carries the earlier exchanges, so a follow-up works.
+ * and ends with the app. A question carries the earlier exchanges, so a follow-up works. Its images go
+ * with it alone and are never stored.
  */
 export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   const [exchanges, setExchanges] = useState<HelpExchange[]>([]);
+  const [pending, setPending] = useState<ImageAttachment[]>([]);
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
   const exchangesRef = useRef(exchanges);
   exchangesRef.current = exchanges;
   const held = useTurnGenerating();
@@ -66,10 +78,12 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
     const controller = new AbortController();
     running.current = controller;
     const id = crypto.randomUUID();
+    const images = aiRef.current.readsImages ? pendingRef.current : [];
+    setPending([]);
     const change = (fields: Partial<HelpExchange>) => {
       if (mountedRef.current) setExchanges((all) => all.map((entry) => (entry.id === id ? { ...entry, ...fields } : entry)));
     };
-    setExchanges((all) => [...all, { id, question, answer: '', status: 'writing', sources: [], flagged: false, nearest: [] }]);
+    setExchanges((all) => [...all, { id, question, images, answer: '', status: 'writing', sources: [], flagged: false, nearest: [] }]);
 
     void (async () => {
       try {
@@ -86,7 +100,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
           }
         }
         const { snapshot, language } = aiRef.current;
-        for await (const event of askHelp({ question, history, language, snapshot, index, surface, signal: controller.signal })) {
+        for await (const event of askHelp({ question, history, language, snapshot, index, surface, images, signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text, flagged: event.flagged });
           else change({ answer: event.text, sources: event.sources, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }
@@ -105,7 +119,12 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
     running.current?.abort();
     running.current = null;
     setExchanges([]);
+    setPending([]);
   }, []);
   const busy = exchanges.at(-1)?.status === 'writing';
-  return useMemo(() => ({ exchanges, busy, held, ask, stop, clear }), [exchanges, busy, held, ask, stop, clear]);
+  const { readsImages } = ai;
+  return useMemo(
+    () => ({ exchanges, busy, held, readsImages, pending, setPending, ask, stop, clear }),
+    [exchanges, busy, held, readsImages, pending, ask, stop, clear],
+  );
 }

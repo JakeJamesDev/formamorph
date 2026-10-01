@@ -25,7 +25,7 @@ export type AttachRefusal = 'notImage' | 'limit' | 'unreadable';
 /** The toast for each refusal. */
 export const ATTACH_REFUSAL_COPY: Record<AttachRefusal, string> = {
   notImage: 'You can attach only image files.',
-  limit: `You can attach up to ${MAX_ATTACHMENTS} images to an action.`,
+  limit: `You can attach up to ${MAX_ATTACHMENTS} images.`,
   unreadable: "Formamorph can't read that image. Try a PNG, JPEG, or WebP file.",
 };
 

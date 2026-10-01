@@ -40,6 +40,7 @@ const SAMPLE_GUIDE = createGuide(createDocsIndex({ pages: SAMPLE_PAGES }));
 const SAMPLE_EXCHANGE: HelpExchange = {
   id: 'sample',
   question: 'How do I light a lantern?',
+  images: [],
   answer: '1. Select **Lanterns**.\n2. Select **Light**.\n\nThe room shows its exits.',
   status: 'answered',
   sources: SAMPLE_GUIDE.index.get(['Lanterns#how-to-light-a-lantern']),
@@ -51,6 +52,7 @@ const SAMPLE_EXCHANGE: HelpExchange = {
 const SAMPLE_FLAGGED_EXCHANGE: HelpExchange = {
   id: 'sample-flagged',
   question: 'How long does lantern oil last?',
+  images: [],
   answer: 'Lamp oil often lasts for some hours, but the time depends on the lamp and the wick.',
   status: 'answered',
   sources: [],
@@ -65,7 +67,10 @@ function useSampleChat(): HelpChat {
     exchanges,
     busy: false,
     held: false,
-    ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, answer: '', status: 'no-ai', sources: [], flagged: false, nearest: [] }]),
+    readsImages: false,
+    pending: [],
+    setPending: () => {},
+    ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, images: [], answer: '', status: 'no-ai', sources: [], flagged: false, nearest: [] }]),
     stop: () => {},
     clear: () => setExchanges([]),
   }), [exchanges]);

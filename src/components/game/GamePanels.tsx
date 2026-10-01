@@ -34,11 +34,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, ImagePlus, type LucideIcon } from "lucide-react";
+import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
 import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { useImageAttachments } from '@/lib/useImageAttachments';
 import { AttachmentThumbs } from './AttachmentThumbs';
+import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONTINUE_CHOICE } from "@/lib/choices";
@@ -595,7 +596,6 @@ export const MiddlePanel = ({
   const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
   const imageAttachments = useImageAttachments();
 
-  const attachInput = useRef<HTMLInputElement>(null);
   // Paste and drop wait for the game to start, like the button.
   const { attaching, dragOver: attachDragOver, attachFiles, intakeProps } = useAttachmentIntake({
     enabled: imageAttachments && isGameStarted && !disabled,
@@ -1039,33 +1039,7 @@ export const MiddlePanel = ({
             <div className="flex items-end">
               {/* The opening turn sends the drawn opening, so images wait for the game to start. */}
               {imageAttachments && isGameStarted && (
-                <>
-                  <input
-                    ref={attachInput}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    data-testid="attach-input"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files ?? []);
-                      // Cleared so picking the same file again still fires a change.
-                      e.target.value = '';
-                      void attachFiles(files);
-                    }}
-                  />
-                  <Tip tip="Attach images">
-                    <Button
-                      size="icon"
-                      className="mr-2 shrink-0"
-                      aria-label="Attach images"
-                      disabled={disabled || attaching}
-                      onClick={() => attachInput.current?.click()}
-                    >
-                      {attaching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                    </Button>
-                  </Tip>
-                </>
+                <AttachImagesButton attaching={attaching} disabled={disabled} onFiles={(files) => void attachFiles(files)} className="mr-2 shrink-0" />
               )}
               <ActionInput
                 value={playerInput}

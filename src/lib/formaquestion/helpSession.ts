@@ -9,7 +9,8 @@ import { stripReasoningLive } from '@/lib/aiResponse';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { toolsSupported } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
-import type { RequestMessage } from '@/types';
+import { withImageParts } from '@/lib/aiRequest/imageParts';
+import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, docsContents, DOCS_LOOKUP } from './docsLookup';
 import { isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { surfaceHint } from './surfaceHint';
@@ -46,6 +47,8 @@ export interface HelpQuestion {
   index: DocsIndex;
   /** What the player has open when they send. Its mapped section leads the docs; an excluded Surface adds nothing. */
   surface?: Surface;
+  /** The images the player attached to this question. They go on the question alone, never on history. */
+  images?: readonly ImageAttachment[];
   /** Stop: the stream ends and the answer so far is kept. */
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
@@ -109,7 +112,7 @@ function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] 
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', snapshot, index, surface, signal, fetchImpl,
+  question, history = [], language = '', snapshot, index, surface, images = [], signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = surfaceHint(surface, index);
   const lead = hint ? [hint.section] : [];
@@ -126,10 +129,10 @@ export async function* askHelp({
     : null;
   const spec = buildAiRequestSpec(snapshot, {
     systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
-    messages: [...historyMessages(history), {
+    messages: withImageParts([...historyMessages(history), {
       role: 'user',
       content: lookup ? helpLookupUserMessage(question, docsContents(index), inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where),
-    }],
+    }], images),
     requestType: 'help',
     maxTokensOverride: HELP_MAX_TOKENS,
     ...(lookup && { tools: [DOCS_LOOKUP] }),
