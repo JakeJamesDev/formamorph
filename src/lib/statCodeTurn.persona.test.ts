@@ -41,7 +41,8 @@ function played(
     disabledTraitIds: [],
     appliedValues: { [recordKey('mira', 'scarred')]: { h: -10 } },
     ownedTraits: over.ownedTraits ?? { mira: { chosen: ['scarred'] } },
-    entities: [...entities, ...library],
+    entities,
+    library,
     world: {
       traits: [worldBrave], groups: [], entities: entered, persona,
       bearers: inPlayBearers(bearerWorld, persona, library),

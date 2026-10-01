@@ -17,7 +17,7 @@ import {
 } from '@/lib/codeSurface';
 import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
-  PERSONA_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
+  ENTITY_FIELDS, PERSONA_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathDots, placeholderPathLabel, placeholderPathMap,
@@ -58,6 +58,12 @@ export interface CodePlaceholders {
   owners?: PlaceholderOwners;
 }
 
+/** One entity as the editor reads it: its code name and the code names of its trait set. */
+export interface CodeEntityNames {
+  name: string;
+  traits: readonly string[];
+}
+
 export interface AnalysisOptions {
   /** Treat `{{name:type=default}}` spans as opaque. Template editing only. */
   slots?: boolean;
@@ -68,6 +74,9 @@ export interface AnalysisOptions {
   /** The trait names a persona in this world can hold. Absent, persona trait names are neither offered nor
    *  checked. A library persona can hold others, so an unknown one is only a warning. */
   personaTraits?: readonly string[];
+  /** The world's entities, in authored order. Absent, entity names are neither offered nor checked. A library
+   *  character can carry another name, so an unknown one is only a warning. */
+  entities?: readonly CodeEntityNames[];
   /** The world's stat names, in authored order. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
   /** The name of the stat the code belongs to, so a write through `stats` to that name counts as its own. */
@@ -85,6 +94,7 @@ function statRulesOf(surface: CodeSurface) {
   const has = (name: string) => surface.statMaps && surfaceHasGlobal(surface, name);
   return {
     stats: has('stats'), self: has('self'), placeholders: has('placeholders'), traits: has('traits'), persona: has('persona'),
+    entities: has('entities'),
   };
 }
 
@@ -186,7 +196,9 @@ function expressionBeforeDot(code: string, dotPos: number): string | null {
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
 /** What one entry of a name-keyed sandbox map is called in a message. */
-type EntryNoun = 'placeholder' | 'trait' | 'stat';
+type EntryNoun = 'placeholder' | 'trait' | 'stat' | 'entity';
+
+const PLURAL: Record<EntryNoun, string> = { placeholder: 'placeholders', trait: 'traits', stat: 'stats', entity: 'entities' };
 
 /** One entry per distinct name of a `kind` of map entry. `dotted` keeps only the names a `.` can reach; the
  *  rest need bracket syntax. */
@@ -201,6 +213,25 @@ const entryExpression = (root: string) => new RegExp(`^${root}(\\??\\.[A-Za-z_$]
 const TRAIT_ENTRY_EXPRESSION = entryExpression('traits');
 const PERSONA_TRAITS_EXPRESSION = /^persona\??\.traits$/;
 const PERSONA_TRAIT_ENTRY_EXPRESSION = entryExpression('persona\\??\\.traits');
+const ENTITY_ENTRY_EXPRESSION = entryExpression('entities');
+/** One key of a member chain, by dot or by quoted bracket; the name is in group 1 or group 2. No
+ *  backreference, so the pattern can repeat in one expression. */
+const KEY_STEP = String.raw`(?:\??\.([A-Za-z_$][\w$]*)|\??\.?\[\s*["']([^"'\\]*)["']\s*\])`;
+const ENTITY_TRAITS_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits$`);
+const ENTITY_TRAIT_ENTRY_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits${KEY_STEP}$`);
+/** Text that ends in `entities.Name.traits[`, its entity name captured. */
+const ENTITY_TRAITS_BRACKET = new RegExp(`\\bentities\\s*${KEY_STEP}\\s*\\??\\.\\s*traits\\s*(\\?\\.)?\\[\\s*$`);
+
+/** The entity an `entities.Name…` expression names, from a match of one of the patterns above. */
+const entityNamed = (match: RegExpExecArray) => match[1] ?? match[2];
+
+/** One entry per distinct entity name. `dotted` keeps only the names a `.` can reach. */
+const entityNameEntries = (entities: readonly CodeEntityNames[], dotted: boolean): SurfaceEntry[] =>
+  mapNameEntries(entities.map((entity) => entity.name), 'entity', dotted);
+
+/** The trait names of the last authored entity called `name`, as the sandbox keys it. */
+const traitsOfEntity = (entities: readonly CodeEntityNames[], name: string): readonly string[] | null =>
+  entities.findLast((entity) => entity.name === name)?.traits ?? null;
 
 /** One entry per distinct persona trait name. `dotted` keeps only the names a `.` can reach. */
 const personaTraitEntries = (names: readonly string[], dotted: boolean): SurfaceEntry[] =>
@@ -375,6 +406,16 @@ function membersAfterDot(
     return options.personaTraits ? personaTraitEntries(options.personaTraits, true) : null;
   }
   if (rules.persona && PERSONA_TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
+  if (rules.entities && expression === 'entities') {
+    return options.entities ? entityNameEntries(options.entities, true) : null;
+  }
+  if (rules.entities && ENTITY_ENTRY_EXPRESSION.test(expression)) return ENTITY_FIELDS;
+  const entityTraits = rules.entities ? ENTITY_TRAITS_EXPRESSION.exec(expression) : null;
+  if (entityTraits) {
+    const names = options.entities && traitsOfEntity(options.entities, entityNamed(entityTraits));
+    return names ? mapNameEntries(names, 'trait', true) : null;
+  }
+  if (rules.entities && ENTITY_TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   const listed = options.surface.members.get(expression);
   if (listed) return listed;
   if (!rules.stats && !rules.self) return null;
@@ -481,7 +522,7 @@ function memberKey(node: SyntaxNode, code: string): EntryRef | null {
 
 /** The name a `root.Name` or `root["Name"]` member names, or null for any other member and for a key only a
  *  run could know. */
-function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona'): EntryRef | null {
+function entryRef(node: SyntaxNode, code: string, root: 'placeholders' | 'traits' | 'stats' | 'persona' | 'entities'): EntryRef | null {
   const object = node.firstChild;
   if (object?.name !== 'VariableName' || code.slice(object.from, object.to) !== root) return null;
   return memberKey(node, code);
@@ -498,7 +539,22 @@ function isPersonaTraits(node: SyntaxNode | null, code: string): boolean {
 const personaTraitRef = (node: SyntaxNode, code: string): EntryRef | null =>
   (isPersonaTraits(node.firstChild, code) ? memberKey(node, code) : null);
 
-/** A trait map's entry reader: `traits` or `persona.traits`. */
+/** An `entities.Name.traits.Trait` member: the entity and the trait it names. */
+function entityTraitParts(node: SyntaxNode, code: string): { entity: EntryRef; trait: EntryRef } | null {
+  const traits = node.firstChild;
+  if (traits?.name !== 'MemberExpression') return null;
+  const property = traits.getChild('PropertyName');
+  const entry = traits.firstChild;
+  if (!property || code.slice(property.from, property.to) !== 'traits' || entry?.name !== 'MemberExpression') return null;
+  const entity = entryRef(entry, code, 'entities');
+  const trait = entity && memberKey(node, code);
+  return entity && trait ? { entity, trait } : null;
+}
+
+/** The trait an `entities.Name.traits.Trait` member names. */
+const entityTraitRef = (node: SyntaxNode, code: string): EntryRef | null => entityTraitParts(node, code)?.trait ?? null;
+
+/** A trait map's entry reader: `traits`, `persona.traits` or an entity's `traits`. */
 type TraitEntryOf = (node: SyntaxNode, code: string) => EntryRef | null;
 const worldTraitRef: TraitEntryOf = (node, code) => entryRef(node, code, 'traits');
 
@@ -536,7 +592,7 @@ function checkEntryName(
   if (count > 1) {
     const display = winner(names.lastIndexOf(name));
     const reads = display === name ? 'the last one authored' : `“${display}”, the last one authored`;
-    return { from, to, severity: 'warning', message: `${count} ${noun}s are named “${name}”. This reads ${reads}.` };
+    return { from, to, severity: 'warning', message: `${count} ${PLURAL[noun]} are named “${name}”. This reads ${reads}.` };
   }
   const suggestion = nearestName(name, [...new Set(names)]);
   const message = suggestion ? `No ${noun} is named “${name}”. Did you mean “${suggestion}”?` : `No ${noun} is named “${name}”.`;
@@ -658,6 +714,39 @@ function checkPersonaWrite(target: SyntaxNode, code: string, assignment: boolean
   return checkTraitWrite(target, code, assignment, personaTraitRef);
 }
 
+/** What is wrong with a write into `entities`: to the map, to an entry or one of its members, or into an
+ *  entry's traits as `traits`. */
+function checkEntityWrite(target: SyntaxNode, code: string, assignment: boolean): CodeDiagnostic | null {
+  const readOnly = (from: number, to: number): CodeDiagnostic =>
+    ({ from, to, severity: 'error', message: `${code.slice(target.from, target.to)} is read-only.` });
+  const entry = entryRef(target, code, 'entities');
+  if (entry) return readOnly(entry.from, entry.to);
+  const own = target.firstChild && entryRef(target.firstChild, code, 'entities') ? memberKey(target, code) : null;
+  if (own) return readOnly(own.from, own.to);
+  return checkTraitWrite(target, code, assignment, entityTraitRef);
+}
+
+/** What is wrong with an entity name: several entities share it, or no authored entity has it. A library
+ *  character can still have it, so the miss is only a warning. */
+function checkEntityName(ref: EntryRef, entities: readonly CodeEntityNames[]): CodeDiagnostic | null {
+  const names = entities.map((entity) => entity.name);
+  if (names.includes(ref.name)) return checkEntryName(ref, names, 'entity');
+  const lead = `Unknown entity name “${ref.name}”. A library character can have it.`;
+  const suggestion = nearestName(ref.name, [...new Set(names)]);
+  return { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+}
+
+/** What is wrong with a trait name on a known entity: its set has no trait called that. */
+function checkEntityTraitName(
+  { entity, trait }: { entity: EntryRef; trait: EntryRef }, entities: readonly CodeEntityNames[],
+): CodeDiagnostic | null {
+  const names = traitsOfEntity(entities, entity.name);
+  if (!names || names.includes(trait.name)) return null;
+  const suggestion = nearestName(trait.name, [...new Set(names)]);
+  const lead = `“${entity.name}” has no trait named “${trait.name}”.`;
+  return { from: trait.from, to: trait.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+}
+
 /** What is wrong with a persona trait name: no persona in the world holds it. A library persona may still
  *  hold it, so this is only a warning. */
 function checkPersonaTraitName({ name, from, to }: EntryRef, names: readonly string[]): CodeDiagnostic | null {
@@ -705,7 +794,16 @@ export function codeCompletions(
     if (bracket) {
       return { from: innerFrom, to: innerTo, options: bracket.map((entry) => asCompletion(entry, 'text')) };
     }
-    // Before `traits[`, whose pattern the persona's map also matches.
+    // Before `traits[`, whose pattern every entity's map also matches.
+    const entityBracket = rules.entities ? ENTITY_TRAITS_BRACKET.exec(code.slice(0, node.from)) : null;
+    if (entityBracket) {
+      const names = traitsOfEntity(options.entities ?? [], entityNamed(entityBracket)) ?? [];
+      return { from: innerFrom, to: innerTo, options: mapNameEntries(names, 'trait', false).map((entry) => asCompletion(entry, 'text')) };
+    }
+    if (rules.entities && /\bentities\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
+      const names = entityNameEntries(options.entities ?? [], false);
+      return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
+    }
     if (rules.persona && /\bpersona\s*\??\.\s*traits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
       const names = personaTraitEntries(options.personaTraits ?? [], false);
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
@@ -813,6 +911,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const placeholdersInScope = rules.placeholders && !declared.has('placeholders');
   const traitsInScope = rules.traits && !declared.has('traits');
   const personaInScope = rules.persona && !declared.has('persona');
+  const entitiesInScope = rules.entities && !declared.has('entities');
   const statsInScope = rules.stats && !declared.has('stats');
   const statWrites = rules.stats || rules.self;
 
@@ -856,6 +955,11 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
         const personaProblem = checkPersonaWrite(target, code, cursor.type.name === 'AssignmentExpression');
         if (personaProblem) diagnostics.push(personaProblem);
       }
+      if (entitiesInScope && memberRoot(target, code) === 'entities') {
+        sawTraitWrite = true;
+        const entityProblem = checkEntityWrite(target, code, cursor.type.name === 'AssignmentExpression');
+        if (entityProblem) diagnostics.push(entityProblem);
+      }
     }
     if (cursor.type.name === 'CallExpression' && placeholdersInScope && isPlaceholderWriteCall(cursor.node, code)) {
       sawPlaceholderWrite = true;
@@ -874,6 +978,13 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (cursor.type.name === 'MemberExpression' && options.personaTraits && personaInScope) {
       const ref = personaTraitRef(cursor.node, code);
       const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPersonaTraitName(ref, options.personaTraits) : null;
+      if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && options.entities && entitiesInScope) {
+      const entity = entryRef(cursor.node, code, 'entities');
+      const parts = entityTraitParts(cursor.node, code);
+      const problem = entity && !overlapsAny(entity.from, entity.to, ranges) ? checkEntityName(entity, options.entities)
+        : parts && !overlapsAny(parts.trait.from, parts.trait.to, ranges) ? checkEntityTraitName(parts, options.entities) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && options.statNames && statsInScope) {

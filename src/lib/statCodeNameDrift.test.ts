@@ -11,6 +11,7 @@ import { placeholderPathAt, placeholderPathLabel, placeholderPathMap } from './s
 import type { PlaceholderOwners } from './placeholderHomes';
 import { checkStatCode } from './testBench/statCodeCheck';
 import { runStatCodeTurn } from './statCodeTurn';
+import { entityTraitNames } from './statCodeTraits';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import { runRules, type RuleWorld } from './testBench/rules';
 
@@ -170,6 +171,68 @@ describe.each(STAT_CODE_TIMINGS)('one trait code name across the sandbox, the co
 
   it('derives that name from the one exported producer', async () => {
     expect(statCodeName(fury.name, [beast, probe])).toBe(await traitNamesInSandbox('Wolf', timing));
+  });
+});
+
+/**
+ * An entity's name carries chips the same way, and the sandbox, the completions and the editor's checks have
+ * to spell it alike. Two entities share one code name, so the later one's key is the one all three agree on.
+ */
+const rider: Entity = { id: 'e-rider', name: '{{ph:ph-beast:world:p1}} Rider', traits: [{ ...fury, id: 'rider-fury', name: 'Fury' }] };
+const lateRider: Entity = { id: 'e-rider-2', name: '{{ph:ph-beast:world:p1}} Rider', traits: [{ ...fury, id: 'late-fury', name: 'Calm' }] };
+
+/** The keys the sandbox gives `entities`, and the trait keys under the shared name, read back through a pin. */
+async function entityKeysInSandbox(rolled: string, timing: StatCodeTiming): Promise<string> {
+  const reader = stat({
+    id: 's1', name: 'Reader',
+    ...inBox(timing, 'placeholders.Probe.pin(Object.keys(entities).map((n) => n + ":" + Object.keys(entities[n].traits)).join("|"));'),
+  });
+  const entities = [rider, lateRider];
+  const out = await runStatCodeTurn({
+    timing,
+    stats: [reader],
+    enabled: {},
+    previous: [reader],
+    asks: [],
+    regenApplied: {},
+    clock: {},
+    traits: {
+      acquired: [], disabledTraitIds: [], appliedValues: {}, entities,
+      world: {
+        traits: [], groups: [], entities, persona: { source: 'none' },
+        bearers: entities.map((e) => ({ id: e.id, name: e.name, traits: e.traits ?? [], groups: [] })),
+      },
+    },
+    statNameOf: (stat) => stat.name,
+    traitNameOf: (trait) => trait.name,
+    placeholders: { placeholders: [beast, probe], rolls: { world: { 'ph-beast': rolled } } },
+  });
+  return String(out.pinWrites['ph-probe']);
+}
+
+describe.each(STAT_CODE_TIMINGS)('one entity code name across the sandbox, the completions and the editor (%s box)', (timing) => {
+  const editorEntities = entityTraitNames({ traits: [], traitGroups: [], entities: [rider, lateRider] }, [beast, probe]);
+
+  it('keys the sandbox on the code name whatever the playthrough rolled, the later entity winning', async () => {
+    const keys = await entityKeysInSandbox('Wolf', timing);
+    expect(keys).toBe(await entityKeysInSandbox('Bear', timing));
+    expect(keys).toBe('Beast Rider:Calm');
+  });
+
+  it('offers that same name and the winner’s traits in the completions', () => {
+    const code = 'entities[""]';
+    const offered = statCodeCompletions(code, code.indexOf('""') + 1, { entities: editorEntities })?.options.map((o) => o.label);
+    expect(offered).toEqual(['Beast Rider']);
+    const dotted = "entities['Beast Rider'].traits.";
+    const traits = statCodeCompletions(dotted, dotted.length, { entities: editorEntities })?.options.map((o) => o.label);
+    expect(traits).toEqual(['Calm']);
+  });
+
+  it('warns on the shared name in the editor, and underlines the rolled spelling', () => {
+    const check = (lookup: string) =>
+      statCodeDiagnostics(`return entities[${JSON.stringify(lookup)}].name;`, { entities: editorEntities }).map((d) => d.message);
+    expect(check('Beast Rider')).toEqual(['2 entities are named “Beast Rider”. This reads the last one authored.']);
+    expect(check('Wolf Rider')).toEqual([expect.stringContaining('Unknown entity name “Wolf Rider”')]);
   });
 });
 

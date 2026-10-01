@@ -1,7 +1,8 @@
 import type { CascadeOffTraitIds, Entity, GameState, OwnedTraitStates, Placeholder, Trait } from '@/types';
-import { canBePlayer, resolveBearers, type BearerWorld } from './bearers';
-import type { SandboxPersona, SandboxTrait } from './statCodeExecutor';
+import { canBePlayer, inCast, playsAs, resolveBearers, type BearerWorld } from './bearers';
+import type { SandboxEntity, SandboxTrait } from './statCodeExecutor';
 import { statCodeName } from './statCodeNames';
+import type { TraitHolders } from './statCodeRename';
 import { refreshChosenTraits } from './traitEffects';
 import type { AppliedTraitValues, TraitWorld } from './traitRuntime';
 
@@ -17,9 +18,11 @@ export interface StatCodeTraits {
   ownedTraits?: OwnedTraitStates;
   /** Every authored trait and group, and who the player is, for gates. `traits` maps each authored trait; a code switch-on acquires from here. */
   world: TraitWorld;
-  /** The entities in play as authored, chips and all: the world's, then the library's. Code names read these,
-   *  never the resolved names the bearers carry. Absent ⇒ names fall back to the bearers'. */
+  /** The world's entities as authored, chips and all. Code names read these, never the resolved names the
+   *  bearers carry. Absent ⇒ none. */
   entities?: readonly Entity[];
+  /** The library entities in the playthrough as authored: the library persona, then the added characters. */
+  library?: readonly Entity[];
 }
 
 /** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
@@ -48,14 +51,22 @@ export function sandboxTraits(traits: StatCodeTraits, placeholders: readonly Pla
   }));
 }
 
-/** The played persona as code reads it: its bearer id, and each trait in its set by id. */
-export interface CodePersona extends SandboxPersona {
-  /** Null when no persona entity plays. */
+/** One entity as code reads it: its bearer id, and each trait in its set by id. */
+export interface CodeEntity extends SandboxEntity {
+  /** Null for the empty persona. */
   id: string | null;
   traits: (SandboxTrait & { id: string })[];
 }
 
-const NO_PERSONA: CodePersona = { id: null, name: '', traits: [] };
+/** What a turn's `entities` and `persona` read: every entity in play, and the played persona among them. */
+export interface CodeEntities {
+  /** In play order: the world's, then the library's. */
+  entities: CodeEntity[];
+  /** The empty entry when no persona entity plays. */
+  persona: CodeEntity;
+}
+
+const NO_PERSONA: CodeEntity = { id: null, name: '', traits: [] };
 
 /** The entity the player plays: the picked world or library persona, else the Custom Persona entity under
  *  None. Null when none plays. */
@@ -67,23 +78,19 @@ function playedPersonaId(traits: StatCodeTraits): string | null {
 }
 
 /**
- * The played persona's entry, its traits the Bearer's own set, owned or linked, in tree order. A trait is
- * acquired when the persona has it chosen and enabled when it is also not switched off. Names are code names
- * of the authored text: an owned trait's own, a linked one's original's.
+ * One entity's entry, its traits the Bearer's own set, owned or linked, in tree order. A trait is acquired
+ * when the entity has it chosen and enabled when it is also not switched off. Names are code names of the
+ * authored text: an owned trait's own, a linked one's original's.
  */
-export function codePersona(traits: StatCodeTraits, placeholders: readonly Placeholder[]): CodePersona {
-  const id = playedPersonaId(traits);
-  if (id === null) return NO_PERSONA;
-  const bearer = traits.world.bearers?.find((o) => o.id === id);
-  const authored = traits.entities?.find((e) => e.id === id);
-  if (!bearer && !authored) return NO_PERSONA;
-  const state = traits.ownedTraits?.[id];
+function codeEntity(traits: StatCodeTraits, placeholders: readonly Placeholder[], authored: Entity): CodeEntity {
+  const bearer = traits.world.bearers?.find((o) => o.id === authored.id);
+  const state = traits.ownedTraits?.[authored.id];
   const chosen = new Set(state?.chosen ?? []);
   const off = new Set(state?.disabled ?? []);
   const named = withOwnPlaceholders(placeholders, authored);
   return {
-    id,
-    name: statCodeName(authored?.name ?? bearer?.name, named),
+    id: authored.id,
+    name: statCodeName(authored.name, named),
     traits: (bearer?.traits ?? []).map((trait) => ({
       id: trait.id,
       name: statCodeName(authoredTraitName(trait, authored, traits.world.traits), named),
@@ -91,6 +98,19 @@ export function codePersona(traits: StatCodeTraits, placeholders: readonly Place
       enabled: chosen.has(trait.id) && !off.has(trait.id),
     })),
   };
+}
+
+/**
+ * Every entity in play and the played persona. A world entity is in play when it is the played persona, the
+ * Custom Persona entity outside a world persona, or in the cast; every library entity is in play. Characters
+ * the narrator invents are not listed.
+ */
+export function codeEntities(traits: StatCodeTraits, placeholders: readonly Placeholder[]): CodeEntities {
+  const ref = traits.world.persona;
+  const world = (traits.entities ?? []).filter((e) => playsAs(e, ref) || inCast(e, ref));
+  const entities = [...world, ...traits.library ?? []].map((e) => codeEntity(traits, placeholders, e));
+  const id = playedPersonaId(traits);
+  return { entities, persona: entities.find((e) => e.id === id) ?? NO_PERSONA };
 }
 
 /** A bearer's trait as authored: the entity's own, else the original a link brings. */
@@ -101,6 +121,37 @@ const authoredTraitName = (trait: Trait, entity: Entity | null | undefined, worl
 const withOwnPlaceholders = (placeholders: readonly Placeholder[], entity: Entity | null | undefined): readonly Placeholder[] =>
   (entity?.placeholders?.length ? [...placeholders, ...entity.placeholders] : placeholders);
 
+/** An authored entity's code name and the code names of its trait set, owned or linked. */
+export interface EntityTraitNames {
+  name: string;
+  traits: string[];
+}
+
+/** Every authored entity, persona-only ones included, as the editor reads it: code names only, since the
+ *  editor knows no playthrough. */
+export function entityTraitNames(world: BearerWorld, placeholders: readonly Placeholder[]): EntityTraitNames[] {
+  const bearers = new Map(resolveBearers(world, undefined).bearers.map((bearer) => [bearer.id, bearer]));
+  return world.entities.map((entity) => {
+    const named = withOwnPlaceholders(placeholders, entity);
+    return {
+      name: statCodeName(entity.name, named),
+      traits: (bearers.get(entity.id)?.traits ?? []).map((trait) => statCodeName(authoredTraitName(trait, entity, world.traits), named)),
+    };
+  });
+}
+
+/** Whose trait maps hold a trait, as the editor reads the world: the world's own `traits` when it is a world
+ *  trait, each entity whose set holds it owned or linked, and `persona` when one of those can be played. */
+export function traitHolders(world: BearerWorld, placeholders: readonly Placeholder[], traitId: string): TraitHolders {
+  const holding = resolveBearers(world, undefined).bearers.flatMap((bearer) =>
+    (bearer.entity && bearer.traits.some((trait) => trait.id === traitId) ? [bearer.entity] : []));
+  return {
+    world: world.traits.some((trait) => trait.id === traitId),
+    persona: holding.some(canBePlayer),
+    entities: holding.map((entity) => statCodeName(entity.name, withOwnPlaceholders(placeholders, entity))),
+  };
+}
+
 /** The code names of every trait a persona in the world can hold, owned or linked: what the editor offers
  *  after `persona.traits`. A library persona can hold others. */
 export function personaTraitNames(world: BearerWorld, placeholders: readonly Placeholder[]): string[] {
@@ -110,6 +161,6 @@ export function personaTraitNames(world: BearerWorld, placeholders: readonly Pla
       statCodeName(authoredTraitName(trait, bearer.entity, world.traits), withOwnPlaceholders(placeholders, bearer.entity))));
 }
 
-/** The sandbox's `persona` entry: the played persona's name and trait entries, without the ids. */
-export const sandboxPersona = ({ name, traits }: CodePersona): SandboxPersona =>
+/** The sandbox's entry for an entity: its name and trait entries, without the ids. */
+export const sandboxEntity = ({ name, traits }: CodeEntity): SandboxEntity =>
   ({ name, traits: traits.map(({ name: traitName, acquired, enabled }) => ({ name: traitName, acquired, enabled })) });

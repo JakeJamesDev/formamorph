@@ -5,6 +5,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { planCodeRename, type CodeRenamePlan, type RenameRoot } from '@/lib/statCodeRename';
+import { traitHolders } from '@/lib/statCodeTraits';
 import { CODE_FIELD, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { CodeRenameContext, type CodeRenameRequest, type OfferCodeRename } from '@/lib/useCodeRename';
 
@@ -38,6 +39,8 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   const world = useGameDataOptional();
   const stats = useMemo(() => world?.stats ?? [], [world?.stats]);
   const traits = useMemo(() => world?.traits ?? [], [world?.traits]);
+  const entities = useMemo(() => world?.entities ?? [], [world?.entities]);
+  const traitGroups = useMemo(() => world?.traitGroups ?? [], [world?.traitGroups]);
   // The tree as code reads it, so a rename of one node follows every path that passes through it.
   const placeholders = useMemo(
     () => ({ list: world?.placeholders ?? [], owners: world?.placeholderOwners }),
@@ -51,11 +54,14 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
 
   const pending = useMemo(() => {
     for (let i = 0; i < queue.length; i += 1) {
-      const plan = planCodeRename({ ...queue[i], stats, traits, placeholders });
+      const { traitId, ...request } = queue[i];
+      const holders = traitId === undefined ? undefined
+        : traitHolders({ traits, traitGroups, entities }, placeholders.list, traitId);
+      const plan = planCodeRename({ ...request, stats, traits, entities, placeholders, traitHolders: holders });
       if (plan) return { plan, through: i };
     }
     return null;
-  }, [queue, stats, traits, placeholders]);
+  }, [queue, stats, traits, traitGroups, entities, placeholders]);
   const plan: CodeRenamePlan | null = pending?.plan ?? null;
   // What the dialog reads, kept past the answer: the plan goes as soon as the question is settled, and the
   // body would otherwise empty while the dialog is still animating out.

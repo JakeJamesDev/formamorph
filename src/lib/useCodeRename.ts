@@ -20,6 +20,8 @@ export interface CodeRenameRequest {
   /** Which node of the placeholder tree moved, where the rename moved one. Code reaches a placeholder by
    *  the path the editor shows, and only the node itself says which paths that rename touches. */
   subject?: CodeRenameSubject;
+  /** The renamed trait, so the rename follows it into the trait maps of the entities that hold it. */
+  traitId?: string;
 }
 
 export type OfferCodeRename = (request: CodeRenameRequest) => void;
@@ -47,7 +49,7 @@ export interface RenameFieldHandlers {
  * the name the author settled on. Taking the baseline on focus rather than on the last commit also keeps an
  * edit made elsewhere — a find-and-replace, a discard — from reading as this field's own rename later.
  */
-export function useRenameField({ root, value, siblings, ownId, codeNameOf, subject }: {
+export function useRenameField({ root, value, siblings, ownId, codeNameOf, subject, traitId }: {
   root: RenameRoot;
   /** The field's current text. */
   value: string;
@@ -60,14 +62,16 @@ export function useRenameField({ root, value, siblings, ownId, codeNameOf, subje
   codeNameOf?: (value: string) => string;
   /** The node of the placeholder tree this field names: an entry, or the entity or book that owns entries. */
   subject?: CodeRenameSubject;
+  /** The trait this field names. */
+  traitId?: string;
 }): RenameFieldHandlers {
   const offer = useCodeRenameOffer();
   const otherNames = useMemo(
     () => siblings.filter((entry) => entry.id !== ownId).map((entry) => entry.name),
     [siblings, ownId],
   );
-  const latest = useRef({ value, otherNames, codeNameOf, subject });
-  latest.current = { value, otherNames, codeNameOf, subject };
+  const latest = useRef({ value, otherNames, codeNameOf, subject, traitId });
+  latest.current = { value, otherNames, codeNameOf, subject, traitId };
   const baseline = useRef<string | null>(null);
 
   return useMemo(() => {
@@ -75,11 +79,11 @@ export function useRenameField({ root, value, siblings, ownId, codeNameOf, subje
     // just committed becomes the baseline for whatever the author types next.
     const commit = (stillFocused: boolean) => {
       const started = baseline.current;
-      const { value: now, otherNames: taken, codeNameOf: name, subject: node } = latest.current;
+      const { value: now, otherNames: taken, codeNameOf: name, subject: node, traitId: trait } = latest.current;
       baseline.current = stillFocused ? now : null;
       if (started === null || started === now) return;
       const read = name ?? ((text: string) => text);
-      offer({ root, oldName: read(started), newName: read(now), otherNames: taken.map(read), subject: node });
+      offer({ root, oldName: read(started), newName: read(now), otherNames: taken.map(read), subject: node, traitId: trait });
     };
     return {
       onFocus: () => { baseline.current = latest.current.value; },

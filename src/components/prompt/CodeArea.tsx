@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { SLOT_SNIPPETS, type InsertSnippet } from '@/lib/codeSnippets';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeSession } from '@/components/prompt/codeSession';
-import type { CodePlaceholders } from '@/lib/statCodeAnalysis';
+import type { CodeEntityNames, CodePlaceholders } from '@/lib/statCodeAnalysis';
 
 function InsertMenu({ items, label, Icon, onPick }: {
   items: readonly InsertSnippet[]; label: string; Icon: typeof Braces; onPick: (snippet: InsertSnippet) => void;
@@ -73,6 +73,8 @@ interface CodeAreaProps {
   traits?: readonly string[];
   /** The trait names a persona can hold, completed after `persona.traits` and checked by name. */
   personaTraits?: readonly string[];
+  /** The world's entities and their trait names, completed after `entities` and checked by name. */
+  entities?: readonly CodeEntityNames[];
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
    *  side-by-side split once full screen has the width for it. */
   preview?: ReactNode;
@@ -85,7 +87,7 @@ interface CodeAreaProps {
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
-}: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits' | 'personaTraits'> & {
+}: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits' | 'personaTraits' | 'entities'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The one editor both copies take turns hosting. Null until its chunk has loaded. */
@@ -283,6 +285,7 @@ export function CodeArea(props: CodeAreaProps) {
         placeholders: latest.current.placeholders,
         traits: latest.current.traits,
         personaTraits: latest.current.personaTraits,
+        entities: latest.current.entities,
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
       });
@@ -303,6 +306,7 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
   useEffect(() => { session?.setTraits(props.traits); }, [session, props.traits]);
   useEffect(() => { session?.setPersonaTraits(props.personaTraits); }, [session, props.personaTraits]);
+  useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
 
   return (
     <>

@@ -38,6 +38,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world. A bare name reaches the world’s own; write the path for an owned one, as in placeholders.Molly.Hair. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
+  { name: 'entities', detail: 'object', info: 'Every entity in play by name, with its own traits. Use entities["Two Words"] for a name with a space.' },
   { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits. Empty when the player plays no entity.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
@@ -118,7 +119,7 @@ export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly Surf
   ];
 }
 
-/** The members of one entry in `traits` and in `persona.traits`. */
+/** The members of one entry in `traits` and in an entity's `traits`. */
 export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'enabled', detail: 'boolean', info: 'Whether the trait is held and on. Write it to switch the trait on or off, after this run.' },
   { name: 'acquired', detail: 'boolean', info: 'True when the trait is held, on or off. Read-only.' },
@@ -131,6 +132,12 @@ export const TRAIT_WRITABLE_FIELD = 'enabled';
 export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The persona’s code name. Empty when the player plays no entity. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
+];
+
+/** The members of one entry in `entities`. None takes a write; a trait switches through its own `enabled`. */
+export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
+  { name: 'name', detail: 'string', info: 'The entity’s code name. Read-only.' },
+  { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use ["Two Words"] for a name with a space.' },
 ];
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the

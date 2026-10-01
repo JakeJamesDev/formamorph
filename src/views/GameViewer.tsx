@@ -2699,7 +2699,7 @@ const GameViewer = ({
         const result = await runStatCodeTurn({
           timing,
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
-          traits: { ...held, world: gatedWorld(), entities: codeEntities },
+          traits: { ...held, world: gatedWorld(), entities: codeEntities.world, library: codeEntities.library },
           placeholders: {
             // The world's list only: stat code is authored with the world and never reads a persona's.
             placeholders: worldPlaceholders, owners: placeholderOwners, rolls: sessionRolls,
