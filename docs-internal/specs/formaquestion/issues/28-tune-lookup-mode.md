@@ -1,6 +1,6 @@
 # 28: Tune lookup mode
 
-Status: in-progress
+Status: ready-for-human
 Base: 31488ec8
 Blocked by: 22
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -49,7 +49,9 @@ Recommended model rationale: two prompt changes judged only by probe numbers on 
 
 **Ruling from the spec session.** The lookup calls get their own 12,000-character budget (option B). With every hit in the prompt, a shared budget left the calls nothing.
 
-**Probe.** MeroMero v2 31B (`g4-meromero-v2-31b-i1`, Q4_K_M, LM Studio, context 8,192), ticket 22's 18 questions, 3 runs per arm, one batch of 216 question runs, one request at a time, 22 min. A failed run counts as not complete.
+**Probe.** MeroMero v2 31B (`g4-meromero-v2-31b-i1`, Q4_K_M, LM Studio, context 8,192), ticket 22's 18 questions, 3 runs per arm, one batch of 216 question runs, one request at a time, 22 min. The user agreed to an AFK window on 2026-10-01. Before the run, LM Studio had only this model loaded. A failed run counts as not complete.
+
+- 🔧 **The control is a new arm, `--lookup22`, not `--alt`.** `--alt` swaps only the retrieval system prompt. `lookupControl.ts` freezes ticket 22's prompt text, function description and contents list. The search, the executor and the budget constants are the live ones, so this control has ticket 27's search, not ticket 22's.
 
 | Questions | Arm | n | Complete | Failed | Tokens in, mean | Tokens in, largest | Requests |
 |---|---|---|---|---|---|---|---|
@@ -62,11 +64,11 @@ Recommended model rationale: two prompt changes judged only by probe numbers on 
 | Not covered | lookup (new) | 6 | flagged 6 of 6 | 0 | 2,122 | – | 2.0 |
 | | lookup22 (control) | 6 | flagged 5 of 5 | 1 | 6,828 | – | 1.4 |
 
-- ✅ **Change 2 holds.** Complete answers 45 of 48 against 43 of 48, player wording 21 of 24 against 20 of 24. The contents list is out.
+- ✅ **Change 2 holds.** Complete answers 45 of 48 against 43 of 48, player wording 21 of 24 against 20 of 24. Without the control's failed runs, it is 94% against 96% (43 of 45), and 88% against 91% (20 of 22): inside the noise either way. The contents list is out.
 - 💸 **Tokens in drop 47%** on the mean (3,090 against 5,777) and 29% on the largest question.
 - ✅ **The quotes-player regression is gone:** 3 of 3 complete, against 1 of 3 for the control.
 - ⚠️ **New regression, `group-player`: 0 of 3.** The right section was first in the prompt. The model searched "folder worlds" anyway, got five save and load sections, and declined. The control answered 3 of 3. Every other covered question is 3 of 3.
-- ⚠️ **The control failed 4 runs with HTTP 400**, the new arm none. UNVERIFIED: the probe keeps no error body. A context overflow at 8,192 is likely, since the control's largest question reached 10,815 tokens over two requests.
+- ⚠️ **The control failed 4 runs with HTTP 400**, the new arm none. UNVERIFIED: the probe keeps no error body. 3 of the 4 are in run 2, which points to the server more than to the request size.
 - 🔎 **Ticket 27 changed the baseline.** Retrieval now sends the right section for 16 of 16 questions and answers 48 of 48 completely at 1,653 tokens. Both lookup arms score below it on this question set. Q48 kept lookup mode on ticket 22's numbers, where retrieval reached 63%.
 
 **For the user to decide.**
@@ -76,15 +78,17 @@ Recommended model rationale: two prompt changes judged only by probe numbers on 
 | Does lookup mode still earn its place after ticket 27? | Retrieval: 100% complete, 1,653 tokens. Lookup: 94%, 3,090 tokens. Lookup's lift came from the search misses that ticket 27 fixed |
 | Fix `group-player`? | An extra search can bury the right section. One option is to say in the prompt that the guide sections in the message come first. That is a prompt change and needs its own probe |
 
-**Guards bite.** Four mutations, one at a time, each restored: the best hit only, a contents list put back, the shared budget, no lookup budget. Each fails a test.
+**Guards bite.** Five mutations, one at a time, each restored: the best hit only, a contents list put back, the shared budget, no lookup budget, near ids the lookup cannot read. Each fails a test.
 
-**Gates** (2026-10-01).
+**Review fold-in.** The stricter first-id check is back in the id test. A new test reads a section by an id an earlier result showed. `baseSectionIds` names the id list without later parts. "On top of" is now "in addition to".
+
+**Gates** (2026-10-01, on the fold-in).
 
 | Gate | Exit | Time |
 |---|---|---|
-| `npm run typecheck` | 0 | 69 s |
-| `npm run lint` | 0 | 18 s |
-| `npm run test` | 0 | 149 s, 16,096 tests, suite 146 s |
-| `npm run build` | 0 | 20 s |
+| `npm run typecheck` | 0 | 61 s |
+| `npm run lint` | 0 | 31 s |
+| `npm run test` | 0 | 130 s, 16,129 tests, suite 128 s |
+| `npm run build` | 0 | 21 s |
 
 `lookupControl.ts` is outside the typecheck scope, so it was checked on its own: exit 0.

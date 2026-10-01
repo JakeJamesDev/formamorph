@@ -42,14 +42,14 @@ export interface DocsLookup {
   fetched(): DocSection[];
 }
 
-/** A later part of a split section. Its base id returns it, so the near ids leave it out. */
+/** A later part of a split section. Its base id returns it, so the id lists leave it out. */
 function isLaterPart(index: DocsIndex, id: string): boolean {
   const base = id.replace(/-part-\d+$/, '');
   return base !== id && index.get([base]).some((section) => section.id === id);
 }
 
-/** The section ids of the guide, by page. An id with no `#` is a page's text above its first heading. */
-function sectionIds(index: DocsIndex): { page: string; ids: string[] }[] {
+/** The section ids of the guide by page, without later parts. An id with no `#` is a page's text above its first heading. */
+function baseSectionIds(index: DocsIndex): { page: string; ids: string[] }[] {
   return index.contents().map(({ page, sections }) => ({
     page,
     ids: sections.map((section) => section.id).filter((id) => !isLaterPart(index, id)),
@@ -72,7 +72,7 @@ export const sectionBlock = (section: DocSection): string => `<section id="${sec
 /** A lookup for one help question. It keeps what it returned, so the calls of the question share one budget. */
 export function createDocsLookup(index: DocsIndex, options: DocsLookupOptions = {}): DocsLookup {
   const { budget = Infinity, searchLimit = DEFAULT_SEARCH_LIMIT, held = [] } = options;
-  const pages = sectionIds(index);
+  const pages = baseSectionIds(index);
   const heldIds = new Set(held.map((section) => section.id));
   const fetched: DocSection[] = [];
   let size = 0;
