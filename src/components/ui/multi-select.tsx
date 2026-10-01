@@ -1065,7 +1065,8 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 						}}
 						align="start"
 						onEscapeKeyDown={() => setIsPopoverOpen(false)}>
-						<Command>
+						{/* filteredOptions already filters; cmdk's own filter hides items that mount mid-search. */}
+						<Command shouldFilter={false}>
 							{searchable && (
 								<CommandInput
 									placeholder="Search options..."

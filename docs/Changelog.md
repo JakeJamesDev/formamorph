@@ -46,6 +46,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Settings now reads the Context Window from a llama.cpp server.** Before, detection found no value, so the window showed the built-in default or a number from another endpoint. Each detected value now stays with its endpoint and model.
   - **Placeholders in the library entities and dictionaries you add at Enter World now show their values in the story.** Before, their chips read empty in narration. Each value is rolled once and stays the same for the whole playthrough, after a save and a reload too.
   - **Stat code now reads the played persona's traits correctly, through `persona.traits`.** Before, `traits['Scarred'].enabled` read false for a trait the persona holds, because `traits` lists only the world's own traits. `persona.traits['Scarred'].enabled = false` switches the persona's trait off, as a `traits` write does. `persona.name` gives the persona's name. With **None** picked, `persona` is the Custom Persona entity. The code editor completes the persona trait names, and **Test Code** runs with no persona.
+  - **A search in a multi-pick list, such as a location's entities, shows its matches when you type over the old search.** Before, typing over a selected search showed "No results found." until you cleared the box.
 
 ---
 
