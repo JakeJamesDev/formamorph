@@ -20,5 +20,6 @@ A first pass started before 06 landed and was parked. Start from `.scratch/stat-
 - [ ] The stat code guide documents `persona`, `entities` and `dictionaries` with every field: the Q9 entity fields, the Q10 trait fields, `placeholders` on each owner, and the stat `enabled` field (Q30).
 - [ ] The guide says what an unknown or not-in-play name reads as (Q23, Q25, Q29).
 - [ ] At least one built-in template reads `persona.traits`, and one reads an entity's trait or placeholder.
+- [ ] The editor's shared-stat-name warning states Q33: a stat that is on wins the name over a switched-off one, and otherwise the last one authored wins. Today it says only "This reads the last one authored".
 - [ ] Help copy follows the Writing Guide. The `copy-sweep` skill passes on the changed text.
 - [ ] Template tests run each new template. The changelog line is in In Progress.
