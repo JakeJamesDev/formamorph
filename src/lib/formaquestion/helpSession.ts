@@ -12,7 +12,7 @@ import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { withImageParts } from '@/lib/aiRequest/imageParts';
 import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
-import { isGeneralKnowledge, readMarker } from './generalKnowledge';
+import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { surfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
@@ -38,6 +38,8 @@ export const HELP_HISTORY_EXCHANGES = 4;
 export interface EarlierExchange {
   question: string;
   answer: string;
+  /** The answer did not come from the guide. */
+  flagged?: boolean;
 }
 
 export interface HelpQuestion {
@@ -96,11 +98,11 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   return kept;
 }
 
-/** The earlier exchanges as chat messages: the question and answer text only. */
+/** The earlier exchanges as chat messages: the question, and the answer as the model wrote it, marker included. */
 function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] {
   return keptHistory(history).flatMap((exchange): RequestMessage[] => [
     { role: 'user', content: exchange.question },
-    { role: 'assistant', content: exchange.answer },
+    { role: 'assistant', content: exchange.flagged ? `${GENERAL_KNOWLEDGE_MARKER}\n${exchange.answer}` : exchange.answer },
   ]);
 }
 
