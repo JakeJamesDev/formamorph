@@ -12,10 +12,13 @@ import type { RequestMessage } from '@/types';
 import { createDocsLookup, docsContents, DOCS_LOOKUP } from './docsLookup';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
-/** The most docs sections one help request holds. */
+/** The most docs sections the search puts in one help request, or returns for one lookup call. */
 export const HELP_SECTION_LIMIT = 5;
 
-/** The most characters of docs text one help request holds, so the request fits a small model's context. */
+/**
+ * The most characters of docs section text one help question holds, so the request fits a small model's
+ * context. The contents list of a lookup request is not part of it.
+ */
 export const HELP_DOCS_CHAR_BUDGET = 12_000;
 
 /** The answer cap in tokens: room for a long list of steps. */

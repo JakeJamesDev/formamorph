@@ -27,7 +27,7 @@ The app already has function calls: a **Tool** is a function the AI calls during
 
 - The Tool types, the Tool Runner and the settings shape are unchanged. No preset and no export gains a field.
 - A value of type `OfferedFunction` cannot reach the Tool Runner or the **Tools** tab, so the boundary holds in the types.
-- Lookup mode costs more tokens than retrieval mode: the request carries the docs contents list, and each call is one more round.
+- Lookup mode costs more tokens than retrieval mode: the request carries the docs contents list (about 3,900 tokens today), and each call is one more round. The first probe measured 7,800 tokens in per question against 1,700.
 - A player whose endpoint takes no function calls gets retrieval mode with no notice. The default cloud endpoint is one of these today.
 - A later app-internal function follows the same pattern: its own module, its own executor, the shared gate.
 

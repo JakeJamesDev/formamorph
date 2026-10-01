@@ -64,7 +64,12 @@ describe('the contents list', () => {
       return [`${page}${line.trim()}`];
     });
     expect(listed.length).toBeGreaterThan(6);
-    for (const id of listed) expect(index.get([id]), id).not.toHaveLength(0);
+    for (const id of listed) {
+      const docs = lookup();
+      const result = await call(docs, { sections: id });
+      expect(ids(docs.fetched())[0], id).toBe(id);
+      expect(result.text, id).toContain(`<section id="${id}">`);
+    }
   });
 });
 
@@ -90,19 +95,18 @@ describe('a call with section ids', () => {
   });
 
   it.each([
-    ['another letter case', 'traits#How-To-Add-A-Trait'],
-    ['the heading as the guide prints it', 'Traits: How to Add a Trait'],
-    ['a space before the #', 'Traits #how-to-add-a-trait'],
-    ['quotes around the id', '"Traits#how-to-add-a-trait"'],
-    ['the section name alone, when one page has it', 'how-to-add-a-trait'],
-    ['a heading with a symbol, without its leading hyphen', 'Traits#why-it-exists'],
-  ])('reads an id written with %s', async (_name, written) => {
+    ['another letter case', 'traits#How-To-Add-A-Trait', 'Traits#how-to-add-a-trait'],
+    ['the heading as the guide prints it', 'Traits: How to Add a Trait', 'Traits#how-to-add-a-trait'],
+    ['a space before the #', 'Traits #how-to-add-a-trait', 'Traits#how-to-add-a-trait'],
+    ['quotes around the id', '"Traits#how-to-add-a-trait"', 'Traits#how-to-add-a-trait'],
+    ['the section name alone, when one page has it', 'how-to-add-a-trait', 'Traits#how-to-add-a-trait'],
+    ['a heading with a symbol, without its leading hyphen', 'Traits#why-it-exists', 'Traits#-why-it-exists'],
+  ])('reads an id written with %s', async (_name, written, id) => {
     const docs = lookup();
     const result = await call(docs, { sections: written });
     expect(result.failure).toBeUndefined();
-    expect(docs.fetched()).toHaveLength(1);
-    expect(result.text).toContain(docs.fetched()[0].markdown);
-    expect(ids(docs.fetched())[0]).toMatch(/^Traits#(how-to-add-a-trait|-why-it-exists)$/);
+    expect(ids(docs.fetched())).toEqual([id]);
+    expect(result.text).toContain(index.get([id])[0].markdown);
   });
 
   it('reads a list of ids as well as text', async () => {
@@ -207,6 +211,18 @@ describe('what one question can fetch', () => {
     expect(ids(docs.fetched())).toEqual(['Stats#how-to-add-a-stat']);
     expect(result.text).not.toContain(remove.markdown);
     expect(result.text).toContain('Stats#how-to-remove-a-stat');
+  });
+
+  it('returns the parts of a split section from the first one, and never a later part alone', async () => {
+    const parts = index.get(['Library#folder-rules']);
+    const last = parts.at(-1)!;
+    expect(last.markdown.length).toBeLessThan(parts[0].markdown.length);
+    // Room for the last part, and not for the first.
+    const docs = lookup({ budget: last.markdown.length });
+    const result = await call(docs, { sections: 'Library#folder-rules' });
+    expect(docs.fetched()).toEqual([]);
+    expect(result.text).not.toContain('<section ');
+    for (const part of parts) expect(result.text).toContain(part.id);
   });
 
   it('counts the budget over every call of the question', async () => {
