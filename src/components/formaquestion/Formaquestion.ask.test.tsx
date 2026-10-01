@@ -8,6 +8,8 @@ import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 import { turnActivity } from '@/lib/turnActivity';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS } from '@/lib/actionAttachments';
+import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
 import type { HelpAi } from './useHelpAi';
 
 // The AI settings and the reachability check come from the app's providers. Each test sets them here.
@@ -55,7 +57,7 @@ function slowRefusal() {
 beforeEach(() => {
   localStorage.clear();
   ai.enabled = [];
-  ai.current = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: vi.fn(async () => true) };
+  ai.current = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: vi.fn(async () => true), readsImages: false };
 });
 afterEach(() => {
   act(() => {
@@ -515,5 +517,94 @@ describe('on a mobile-size screen', () => {
     const { field } = await openAsk();
     await waitFor(() => expect(screen.getByRole('dialog', { name: 'Formaquestion' })).toHaveFocus());
     expect(field).not.toHaveFocus();
+  });
+});
+
+describe('screenshots on a question', () => {
+  /** The box that takes a paste or a drop: the ask field's own row and its parent. */
+  const askBox = (field: HTMLElement) => field.parentElement!.parentElement!;
+  const clipboard = (files: File[]) => ({ files, getData: () => '' });
+  const dragOf = (files: File[]) => ({ files, types: ['Files'], getData: () => '', dropEffect: 'none' });
+  /** The image urls on the last message of one request. */
+  const sentImages = (spy: ReturnType<typeof stubStream>, call = 0): string[] => {
+    const last = (JSON.parse(spy.mock.calls[call][1]!.body as string) as { messages: { content: unknown }[] }).messages.at(-1)!.content;
+    return Array.isArray(last) ? (last as { image_url?: { url: string } }[]).flatMap((part) => (part.image_url ? [part.image_url.url] : [])) : [];
+  };
+
+  beforeEach(() => {
+    installFakeImageCodec();
+    ai.current = { ...ai.current, readsImages: true };
+  });
+
+  it('attaches a pasted and a dropped image, sends both with the question, and shows them on it', async () => {
+    const { field } = await openAsk();
+    await act(async () => { fireEvent.paste(askBox(field), { clipboardData: clipboard([fakeImageFile('800x600')]) }); });
+    await act(async () => { fireEvent.drop(askBox(field), { dataTransfer: dragOf([fakeImageFile('4000x3000')]) }); });
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Remove attached image/ })).toHaveLength(2));
+
+    const fetchSpy = stubStream(sseReply('That is the **Traits** tab.'));
+    await send(field, 'What is this?');
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(sentImages(fetchSpy).map((url) => decodedFake(url).size)).toEqual(['800x600', '1568x1176']);
+    expect(screen.queryByRole('button', { name: /^Remove attached image/ })).toBeNull();
+    expect(within(conversation()).getAllByRole('button', { name: /^View attached image/ })).toHaveLength(2);
+  });
+
+  it('picks images with the attach button', async () => {
+    await openAsk();
+    expect(screen.getByRole('button', { name: 'Attach images' })).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('attach-input'), { target: { files: [fakeImageFile('100x100')] } });
+    });
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Remove attached image/ })).toHaveLength(1));
+  });
+
+  it('refuses a fifth image with the action box toast', async () => {
+    const warn = vi.spyOn(toast, 'warning');
+    const { field } = await openAsk();
+    const files = ['1x1', '2x2', '3x3', '4x4', '5x5'].map((size) => fakeImageFile(size));
+    await act(async () => { fireEvent.drop(askBox(field), { dataTransfer: dragOf(files) }); });
+    await waitFor(() => expect(warn).toHaveBeenCalledWith(ATTACH_REFUSAL_COPY.limit));
+    expect(screen.getAllByRole('button', { name: /^Remove attached image/ })).toHaveLength(MAX_ATTACHMENTS);
+  });
+
+  it('writes no image to storage', async () => {
+    const stored: string[] = [];
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      stored.push(`${key}=${value}`);
+    });
+    // jsdom has no IndexedDB, so any open of it counts as a write.
+    const idbOpen = vi.fn();
+    vi.stubGlobal('indexedDB', { open: idbOpen });
+    const { field } = await openAsk();
+    await act(async () => { fireEvent.paste(askBox(field), { clipboardData: clipboard([fakeImageFile('800x600')]) }); });
+    await screen.findByRole('button', { name: 'Remove attached image 1' });
+    const fetchSpy = stubStream(sseReply('Done.'));
+    await send(field, 'What is this?');
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const image = sentImages(fetchSpy)[0];
+    expect(image).toMatch(/^data:image\/jpeg/);
+
+    expect(stored.filter((entry) => entry.includes(image) || entry.includes('data:image'))).toEqual([]);
+    expect(idbOpen).not.toHaveBeenCalled();
+  });
+});
+
+describe('screenshots on a model that does not read images', () => {
+  beforeEach(installFakeImageCodec);
+
+  it('has no attach button, and a pasted image adds nothing and shows no error', async () => {
+    const warn = vi.spyOn(toast, 'warning');
+    const { field } = await openAsk();
+    expect(screen.queryByRole('button', { name: 'Attach images' })).toBeNull();
+    expect(screen.queryByTestId('attach-input')).toBeNull();
+    let notPrevented = false;
+    await act(async () => {
+      notPrevented = fireEvent.paste(field.parentElement!.parentElement!, { clipboardData: { files: [fakeImageFile('800x600')], getData: () => '' } });
+    });
+    // The paste stays with the browser: the intake takes nothing.
+    expect(notPrevented).toBe(true);
+    expect(screen.queryByRole('button', { name: /^Remove attached image/ })).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

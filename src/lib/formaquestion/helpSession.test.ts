@@ -4,7 +4,7 @@ import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { reasoningCapabilityFromLevels } from '@/lib/reasoningEffort';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { AiStreamError } from '@/lib/aiRequest/aiStream';
-import type { AIRequestType } from '@/types';
+import type { AIRequestType, ImageAttachment } from '@/types';
 import { languageDirective } from '@/lib/languages';
 import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import {
@@ -321,5 +321,30 @@ describe('the AI Language', () => {
     const fetchImpl = replyWith(sseReply('Done.'));
     await collect(ask('How do I add a trait?', fetchImpl, { language: '  ' }));
     expect(bodyOf(fetchImpl).messages[0].content).toBe(HELP_SYSTEM_PROMPT);
+  });
+});
+
+describe('a question with images', () => {
+  const screenshot = (id: string): ImageAttachment => ({ id, mime: 'image/jpeg', dataUrl: `data:image/jpeg;base64,${btoa(id)}` });
+  type Part = { type: string; text?: string; image_url?: { url: string } };
+
+  it('puts the images after the question and its docs sections, on the last user message only', async () => {
+    const fetchImpl = replyWith(sseReply('That is the **Traits** tab.'));
+    const history = [{ question: 'How do I import a world?', answer: '1. Select **Import**.' }];
+    await collect(ask('What is this trait screen?', fetchImpl, { history, images: [screenshot('a'), screenshot('b')] }));
+
+    const messages = bodyOf(fetchImpl).messages as { role: string; content: string | Part[] }[];
+    expect(messages.slice(1, -1).every((message) => typeof message.content === 'string')).toBe(true);
+    const parts = messages.at(-1)!.content as Part[];
+    expect(parts.map((part) => part.type)).toEqual(['text', 'image_url', 'image_url']);
+    expect(parts[0].text).toContain('## How to Add a Trait');
+    expect(parts[0].text).toContain('What is this trait screen?');
+    expect(parts.slice(1).map((part) => part.image_url?.url)).toEqual([screenshot('a').dataUrl, screenshot('b').dataUrl]);
+  });
+
+  it('sends the question as plain text with no images', async () => {
+    const fetchImpl = replyWith(sseReply('Select **Add Trait**.'));
+    await collect(ask('How do I add a trait?', fetchImpl, { images: [] }));
+    expect(typeof bodyOf(fetchImpl).messages.at(-1)?.content).toBe('string');
   });
 });

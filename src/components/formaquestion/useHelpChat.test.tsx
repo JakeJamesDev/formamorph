@@ -5,11 +5,20 @@ import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/te
 import { HELP_HISTORY_EXCHANGES } from '@/lib/formaquestion/helpSession';
 import { languageDirective } from '@/lib/languages';
 import { turnActivity } from '@/lib/turnActivity';
+import type { ImageAttachment } from '@/types';
 import type { HelpAi } from './useHelpAi';
 import { useHelpChat } from './useHelpChat';
 
 const index = createDocsIndex({ pages: { Traits: '# Traits\n\n## How to Add a Trait\n\n1. Select **Add Trait**.\n' } });
-const ai: HelpAi = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: async () => true };
+const ai: HelpAi = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: async () => true, readsImages: true };
+
+const screenshot = (id: string): ImageAttachment => ({ id, mime: 'image/jpeg', dataUrl: `data:image/jpeg;base64,${btoa(id)}` });
+
+/** The image urls on the last message of one request the stub received. */
+const sentImages = (spy: ReturnType<typeof stubStream>, call: number): string[] => {
+  const last = (JSON.parse(spy.mock.calls[call][1]!.body as string) as { messages: { content: unknown }[] }).messages.at(-1)!.content;
+  return Array.isArray(last) ? (last as { image_url?: { url: string } }[]).flatMap((part) => (part.image_url ? [part.image_url.url] : [])) : [];
+};
 
 /** The chat messages of one request the stub received. */
 const sentMessages = (spy: ReturnType<typeof stubStream>, call: number) =>
@@ -143,5 +152,40 @@ describe('useHelpChat', () => {
     act(() => { result.current.ask('How do I add a trait?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends the pending images with the question, keeps them on its exchange, and leaves none pending', async () => {
+    const fetchSpy = stubStream(sseReply('That is the **Traits** tab.'));
+    const { result } = renderHook(() => useHelpChat(index, ai));
+    act(() => { result.current.setPending(() => [screenshot('a'), screenshot('b')]); });
+    act(() => { result.current.ask('What is this?'); });
+    expect(result.current.pending).toEqual([]);
+    await waitFor(() => expect(result.current.busy).toBe(false));
+
+    expect(sentImages(fetchSpy, 0)).toEqual([screenshot('a').dataUrl, screenshot('b').dataUrl]);
+    expect(result.current.exchanges[0].images.map((image) => image.id)).toEqual(['a', 'b']);
+  });
+
+  it('sends a follow-up without the images of the earlier question', async () => {
+    const fetchSpy = stubStream(sseReply('Done.'));
+    const { result } = renderHook(() => useHelpChat(index, ai));
+    act(() => { result.current.setPending(() => [screenshot('a')]); });
+    act(() => { result.current.ask('What is this?'); });
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    act(() => { result.current.ask('and then?'); });
+    await waitFor(() => expect(result.current.exchanges.at(-1)?.status).toBe('answered'));
+
+    expect(sentImages(fetchSpy, 1)).toEqual([]);
+    expect(JSON.stringify(sentMessages(fetchSpy, 1))).not.toContain(screenshot('a').dataUrl);
+  });
+
+  it('sends no image when the model does not read images', async () => {
+    const fetchSpy = stubStream(sseReply('Done.'));
+    const { result } = renderHook(() => useHelpChat(index, { ...ai, readsImages: false }));
+    act(() => { result.current.setPending(() => [screenshot('a')]); });
+    act(() => { result.current.ask('What is this?'); });
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(sentImages(fetchSpy, 0)).toEqual([]);
+    expect(result.current.exchanges[0].images).toEqual([]);
   });
 });

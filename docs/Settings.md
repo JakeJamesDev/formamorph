@@ -199,7 +199,7 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 
 ### Attachments
 
-**Image Attachments** adds an attach button to the action box, for up to 4 images with one action. The images go with that turn only. Your model must read images; a text-only model returns an error. Each prompt's **Include Attachments** option sets which requests get the images.
+**Image Attachments** adds an attach button to the action box, for up to 4 images with one action. The images go with that turn only. It also lets you attach images to a question in [Formaquestion](Formaquestion). Your model must read images; a text-only model returns an error. Each prompt's **Include Attachments** option sets which requests get the images.
 
 ### Performance
 

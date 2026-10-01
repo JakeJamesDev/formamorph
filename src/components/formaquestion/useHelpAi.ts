@@ -3,6 +3,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { useAiSettingsSnapshot } from '@/lib/aiRequest/useAiSettingsSnapshot';
 import { useAiReachable } from '@/lib/useAiReachable';
+import { useImageAttachments } from '@/lib/useImageAttachments';
 
 /** What a help question needs from the app's AI settings. */
 export interface HelpAi {
@@ -13,6 +14,8 @@ export interface HelpAi {
   reachable: boolean | null;
   /** Checks the active AI again, now. */
   revalidate: () => Promise<boolean>;
+  /** The Image Attachments setting: the player's model reads images. */
+  readsImages: boolean;
 }
 
 /**
@@ -23,8 +26,9 @@ export function useHelpAi(enabled: boolean): HelpAi {
   const snapshot = useAiSettingsSnapshot();
   const { activeTextEndpointIsDemoAI, language } = useSettings();
   const { reachable, revalidate } = useAiReachable({ enabled: enabled && !activeTextEndpointIsDemoAI });
+  const readsImages = useImageAttachments();
   return useMemo(
-    () => ({ snapshot, language, reachable: activeTextEndpointIsDemoAI ? true : reachable, revalidate }),
-    [snapshot, language, activeTextEndpointIsDemoAI, reachable, revalidate],
+    () => ({ snapshot, language, reachable: activeTextEndpointIsDemoAI ? true : reachable, revalidate, readsImages }),
+    [snapshot, language, activeTextEndpointIsDemoAI, reachable, revalidate, readsImages],
   );
 }

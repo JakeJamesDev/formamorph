@@ -29,6 +29,17 @@ Your AI writes the answer from the guide sections that match your question. To e
 
 The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear** above the conversation.
 
+## How to Ask About a Screenshot
+<!-- keywords: image, picture, paste, upload, attach, what is this, screen capture -->
+
+1. Turn on **Image Attachments**. See [Settings](Settings).
+2. Open Formaquestion and select the **Ask** tab.
+3. Paste a screenshot into **Ask a Question**, drop it on the field, or select **Attach images** and pick a file.
+4. Type your question, such as "what is this?".
+5. Select **Send**.
+
+Your model must read images. The screenshot goes with that question only. A follow-up does not send it again.
+
 ## How to Search the Guide
 
 1. Open Formaquestion.
@@ -105,6 +116,7 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 - On an endpoint that supports Tools, the request holds the contents list of the guide and only the best match. The AI then reads the other sections it picks, and **Sources** lists those sections first. This is part of Formaquestion, so it works with the **Tools** checkbox clear, and each read adds a request.
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
+- With **Image Attachments** on, a question can carry up to 4 images, the same as an action. **Attach images** shows next to the field, and a paste or a drop on the field adds an image. The images go with that question only, and the app does not store them.
 - **Clear** removes every question and answer, and ends an answer that is coming in.
 - While a game turn generates, **Send** waits. **Search** and **Guide** still work.
 - The answer is in your **AI Language**. Control names stay as the guide writes them. See [Settings](Settings).

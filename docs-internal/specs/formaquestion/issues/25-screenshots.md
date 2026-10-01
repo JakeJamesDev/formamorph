@@ -1,6 +1,7 @@
 # 25: Screenshots on a help question
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 9a010b82
 Blocked by: 20 — Ask a question
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -21,11 +22,11 @@ Recommended model rationale: reuse of an existing intake with one capability che
 
 ## Acceptance criteria
 
-- [ ] On a vision model, a pasted or dropped image shows as attached and is in the request for that question
-- [ ] On a non-vision model, the attach control is absent and a paste adds nothing
-- [ ] The cap and size limits match the action box
-- [ ] A follow-up request does not hold the earlier images
-- [ ] A test proves no image is written to storage or to a save
-- [ ] The intake code is shared with the action box, not duplicated
-- [ ] Changelog: folded into the Formaquestion In Progress entry
-- [ ] Four gates green
+- [x] On a vision model, a pasted or dropped image shows as attached and is in the request for that question
+- [x] On a non-vision model, the attach control is absent and a paste adds nothing
+- [x] The cap and size limits match the action box
+- [x] A follow-up request does not hold the earlier images
+- [x] A test proves no image is written to storage or to a save
+- [x] The intake code is shared with the action box, not duplicated
+- [x] Changelog: folded into the Formaquestion In Progress entry
+- [x] Four gates green

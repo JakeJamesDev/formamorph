@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
+import { AttachImagesButton } from '@/components/AttachImagesButton';
+import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
+import { withoutAttachment } from '@/lib/actionAttachments';
 import type { DocSection } from '@/lib/docs/docsIndex';
 import { withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
+import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { cn } from '@/lib/utils';
 import { SectionRows } from './GuideParts';
 import { FOCUS_RING, readerComponents } from './readerLinks';
@@ -124,7 +128,10 @@ function Conversation({ guide, exchanges, busy, onOpen }: {
         {exchanges.length === 0 && <Hint className="py-6 text-center">Ask how to do something in Formamorph</Hint>}
         {exchanges.map((exchange) => (
           <div key={exchange.id} className="flex flex-col gap-3">
-            <p className="ml-8 self-end whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-label [overflow-wrap:anywhere]">{exchange.question}</p>
+            <div className="ml-8 flex flex-col items-end gap-2 self-end">
+              <AttachmentThumbs attachments={exchange.images} />
+              <p className="whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-label [overflow-wrap:anywhere]">{exchange.question}</p>
+            </div>
             <Answer guide={guide} exchange={exchange} onOpen={onOpen} />
           </div>
         ))}
@@ -145,20 +152,18 @@ function ClearRow({ onClear }: { onClear: () => void }) {
   );
 }
 
-function AskField({ draft, onDraftChange, busy, held, onSend, onStop }: {
+function AskField({ draft, onDraftChange, chat }: {
   draft: string;
   onDraftChange: (text: string) => void;
-  busy: boolean;
-  /** A game turn generates, so Send waits. */
-  held: boolean;
-  onSend: (question: string) => void;
-  onStop: () => void;
+  chat: HelpChat;
 }) {
+  const { busy, held, readsImages, pending, setPending, ask, stop } = chat;
+  const { attaching, dragOver, attachFiles, intakeProps } = useAttachmentIntake({ enabled: readsImages, pending, setPending });
   const question = draft.trim();
   const canSend = !busy && !held && question.length > 0;
   const send = () => {
     if (!canSend) return;
-    onSend(question);
+    ask(question);
     onDraftChange('');
   };
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -168,8 +173,14 @@ function AskField({ draft, onDraftChange, busy, held, onSend, onStop }: {
     send();
   };
   return (
-    <div className="flex shrink-0 flex-col gap-2 border-t p-3">
+    <div className={cn('flex shrink-0 flex-col gap-2 border-t p-3', dragOver && 'ring-2 ring-inset ring-ring')} {...intakeProps}>
+      {readsImages && (
+        <AttachmentThumbs attachments={pending} onRemove={(id) => setPending((prev) => withoutAttachment(prev, id))} className="pt-1.5" />
+      )}
       <div className="flex items-end gap-2">
+        {readsImages && (
+          <AttachImagesButton attaching={attaching} onFiles={(files) => void attachFiles(files)} variant="outline" className="shrink-0" />
+        )}
         <Textarea
           data-fq-autofocus=""
           aria-label="Ask a Question"
@@ -182,7 +193,7 @@ function AskField({ draft, onDraftChange, busy, held, onSend, onStop }: {
         />
         {busy ? (
           <Tip tip="Stop">
-            <Button variant="outline" size="icon" className="shrink-0" onClick={onStop}>
+            <Button variant="outline" size="icon" className="shrink-0" onClick={stop}>
               <Square aria-hidden className="h-4 w-4" />
             </Button>
           </Tip>
@@ -212,7 +223,7 @@ export function AskPanel({ guide, chat, draft, onDraftChange, onOpen }: {
     <>
       {chat.exchanges.length > 0 && <ClearRow onClear={chat.clear} />}
       <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} onOpen={onOpen} />
-      <AskField draft={draft} onDraftChange={onDraftChange} busy={chat.busy} held={chat.held} onSend={chat.ask} onStop={chat.stop} />
+      <AskField draft={draft} onDraftChange={onDraftChange} chat={chat} />
     </>
   );
 }

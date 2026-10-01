@@ -292,8 +292,8 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   // ── Output · Attachments ────────────────────────────────────────────────────
   imageAttachments: {
     label: 'Image Attachments',
-    description: 'Lets you attach up to 4 images to an action',
-    info: `Adds an attach button to the action box. The images go with your action text, on that turn only. Each prompt's **Include Attachments** option decides which requests get them. **Narration** has it on by default.
+    description: 'Attach up to 4 images to an action or a help question',
+    info: `Adds an attach button to the action box and to the **Ask a Question** field in Formaquestion. On an action, the images go with your action text, on that turn only. Each prompt's **Include Attachments** option decides which requests get them. **Narration** has it on by default.
 
 - Your model must read images. A text-only model returns an error.
 - An image over 1568 px on its long side is shrunk to that size before it's sent.`,
