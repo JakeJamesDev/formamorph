@@ -6,6 +6,8 @@
 //   alt      with `--alt FILE`: the docs arm with the system prompt from FILE, to compare two wordings
 //   lookup   with `--lookup`: the app's help session in lookup mode, on an endpoint that takes function
 //            calls. The model reads the sections it picks, in more than one round
+//   mismatch with `--flag`: the docs arm with the sections of another covered case, so the guide text does
+//            not cover the question. The control for the general-knowledge flag: same question, wrong docs
 //
 // The request body comes from the app's AI Request Spec, so the sampler pins are the app's. The probe adds
 // `reasoning_effort: "none"` and turns streaming off to read the token counts.
@@ -20,16 +22,20 @@
 //   declined    the answer says the guide does not cover the question. Wanted on a case with no section,
 //               and a fault on a covered case
 //   invented    bold names in the answer that are nowhere in the docs
+//   flagged     the app's general-knowledge flag: the answer has the marker, or no section reached the model.
+//               Wanted on a case with no section and on the mismatch arm, and a fault on a covered case
+//   first       of the marked answers, the share with the marker on the first line, where the prompt asks
 //
 // Usage: npx vite-node testing/baseline/harness/help-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--only backup-docs,regen-player]
-//          [--parallel 4] [--alt FILE] [--lookup] [--show]
+//          [--parallel 4] [--alt FILE] [--lookup] [--flag] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
+import { GENERAL_KNOWLEDGE_MARKER, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
@@ -47,6 +53,7 @@ const only = argVal('--only', '');
 const show = args.includes('--show');
 const altFile = argVal('--alt', '');
 const withLookup = args.includes('--lookup');
+const withFlag = args.includes('--flag');
 
 interface HelpCase {
   id: string;
@@ -56,13 +63,30 @@ interface HelpCase {
   section?: string;
   facts: string[];
 }
-type Arm = 'docs' | 'no-docs' | 'alt' | 'lookup';
-const ARMS: Arm[] = ['docs', ...(altFile ? ['alt' as const] : []), ...(withLookup ? ['lookup' as const] : []), 'no-docs'];
+type Arm = 'docs' | 'no-docs' | 'alt' | 'lookup' | 'mismatch';
+const ARMS: Arm[] = [
+  'docs', ...(altFile ? ['alt' as const] : []), ...(withLookup ? ['lookup' as const] : []), ...(withFlag ? ['mismatch' as const] : []), 'no-docs',
+];
 const ALT_SYSTEM_PROMPT = altFile ? readFileSync(altFile, 'utf8').trim() : '';
 
 const BASELINE = path.resolve('testing/baseline');
 const allCases = (JSON.parse(readFileSync(path.join(BASELINE, 'help-cases.json'), 'utf8')) as { cases: HelpCase[] }).cases;
 const cases = only ? allCases.filter((c) => only.split(',').includes(c.id)) : allCases;
+
+/**
+ * The mismatch arm's partner of a case: the next covered case, in file order, whose section is on another
+ * page. Its sections stand in for the case's own, so the guide text does not cover the question.
+ */
+function mismatchPartner(c: HelpCase): HelpCase {
+  const coveredAll = allCases.filter((other) => other.section);
+  const start = coveredAll.findIndex((other) => other.id === c.id);
+  const page = (other: HelpCase) => other.section?.split('#')[0];
+  for (let step = 1; step < coveredAll.length; step++) {
+    const other = coveredAll[(start + step) % coveredAll.length];
+    if (page(other) !== page(c)) return other;
+  }
+  throw new Error(`no mismatch partner for ${c.id}`);
+}
 
 const index = bundledDocsIndex();
 const allDocs = index.contents()
@@ -97,6 +121,8 @@ interface Sample {
   promptTokens: number | null;
   answerTokens: number | null;
   finish: string | null;
+  /** The docs sections that reached the model. */
+  sent: number;
   /** Lookup arm: the answer's sources, the lookup calls the model made, and the requests sent. */
   sources?: string[];
   calls?: string[];
@@ -150,17 +176,21 @@ async function lookupRequest(c: HelpCase): Promise<Sample> {
 
   let answer = '';
   let sources: string[] = [];
+  let flagged = false;
   for await (const event of askHelp({ question: c.question, snapshot: lookupSnapshot, index, fetchImpl })) {
     if (event.type !== 'done') continue;
     answer = event.text;
     sources = event.sources.map((section) => section.id);
+    flagged = event.flagged;
   }
-  return { answer, promptTokens, answerTokens, finish: null, sources, calls, requests };
+  // The session removes the marker, so the score gets it back from the flag.
+  const marked = flagged && sources.length > 0;
+  return { answer: marked ? `${GENERAL_KNOWLEDGE_MARKER}\n${answer}` : answer, promptTokens, answerTokens, finish: null, sent: sources.length, sources, calls, requests };
 }
 
 async function request(arm: Arm, c: HelpCase): Promise<Sample> {
   if (arm === 'lookup') return lookupRequest(c);
-  const sections = helpSections(index, c.question);
+  const sections = arm === 'no-docs' ? [] : helpSections(index, (arm === 'mismatch' ? mismatchPartner(c) : c).question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
     ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS }
     : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS });
@@ -176,6 +206,7 @@ async function request(arm: Arm, c: HelpCase): Promise<Sample> {
     promptTokens: json.usage?.prompt_tokens ?? null,
     answerTokens: json.usage?.completion_tokens ?? null,
     finish: json.choices?.[0]?.finish_reason ?? null,
+    sent: sections.length,
   };
 }
 
@@ -190,9 +221,14 @@ interface Score {
   declined: boolean;
   invented: number;
   empty: boolean;
+  flagged: boolean;
+  /** The marker came in, on the first line of the answer. Null with no marker. */
+  first: boolean | null;
 }
 
-function score(c: HelpCase, answer: string): Score {
+function score(c: HelpCase, sample: Sample): Score {
+  const raw = sample.answer.trim();
+  const { text: answer, marked } = readMarker(raw, { final: true });
   const lower = answer.toLowerCase();
   const bolds = boldNames(answer);
   const boldLower = bolds.map((name) => name.toLowerCase());
@@ -206,6 +242,8 @@ function score(c: HelpCase, answer: string): Score {
     declined: DECLINED.test(answer),
     invented: boldLower.filter((name) => name.length > 1 && !allDocs.includes(name)).length,
     empty: !answer.trim(),
+    flagged: marked || sample.sent === 0,
+    first: marked ? readMarker(raw.split('\n')[0], { final: true }).marked : null,
   };
 }
 
@@ -237,7 +275,7 @@ for (let run = 1; run <= runs; run++) {
       jobs.push(async () => {
         try {
           const sample = await request(arm, c);
-          return { caseId: c.id, arm, run, sample, score: score(c, sample.answer) };
+          return { caseId: c.id, arm, run, sample, score: score(c, sample) };
         } catch (error) {
           return { caseId: c.id, arm, run, sample: null, score: null, error: error instanceof Error ? error.message : String(error) };
         }
@@ -269,6 +307,8 @@ function summarize(arm: Arm, caseIds: ReadonlySet<string>) {
     declined: share((s) => s.declined),
     invented: mean(scores.map((s) => s.invented)).toFixed(2),
     empty: scores.filter((s) => s.empty).length,
+    flagged: share((s) => s.flagged),
+    first: pct(scores.filter((s) => s.first === true).length, scores.filter((s) => s.first !== null).length),
     tokens: `${Math.round(mean(scored.map((r) => r.sample?.promptTokens ?? 0)))}/${Math.round(mean(scored.map((r) => r.sample?.answerTokens ?? 0)))}`,
     // Lookup arm: the runs whose sources hold the expected section, then lookup calls and requests per question.
     reached: pct(scored.filter((r) => { const want = caseById.get(r.caseId)?.section; return !!want && r.sample?.sources?.includes(want); }).length, n),
@@ -278,7 +318,7 @@ function summarize(arm: Arm, caseIds: ReadonlySet<string>) {
 }
 const caseById = new Map(cases.map((c) => [c.id, c]));
 
-console.log('\ncase                     arm      hit  facts complete bold steps declined invented  prompt/answer tok');
+console.log('\ncase                     arm      hit  facts complete bold steps declined invented flagged  prompt/answer tok');
 for (const c of cases) {
   for (const arm of ARMS) {
     const m = summarize(arm, new Set([c.id]));
@@ -286,7 +326,7 @@ for (const c of cases) {
     const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : arm === 'lookup' ? m.reached : hit ? 'yes' : ' NO';
     console.log([
       c.id.padEnd(24), arm.padEnd(8), sent.padEnd(4),
-      m.facts, m.complete.padStart(8), m.bold, m.steps.padStart(5), m.declined.padStart(8), m.invented.padStart(8), `  ${m.tokens}`,
+      m.facts, m.complete.padStart(8), m.bold, m.steps.padStart(5), m.declined.padStart(8), m.invented.padStart(8), m.flagged.padStart(7), `  ${m.tokens}`,
       ...(arm === 'lookup' ? [`  ${m.calls} calls, ${m.requests} requests`] : []),
     ].join(' '));
   }
@@ -299,7 +339,7 @@ function totals(label: string, arm: Arm, keep: (c: HelpCase) => boolean) {
   console.log([
     `${label} · ${arm}`.padEnd(44), `n=${m.n}`.padEnd(6),
     `facts ${m.facts}`, `complete ${m.complete}`, `bold ${m.bold}`, `steps ${m.steps}`,
-    `declined ${m.declined}`, `invented ${m.invented}`, `empty ${m.empty}`, `tok ${m.tokens}`,
+    `declined ${m.declined}`, `invented ${m.invented}`, `flagged ${m.flagged}`, `first ${m.first}`, `empty ${m.empty}`, `tok ${m.tokens}`,
     ...(arm === 'lookup' ? [`reached ${m.reached}`, `calls ${m.calls}`, `requests ${m.requests}`] : []),
   ].join('  '));
 }

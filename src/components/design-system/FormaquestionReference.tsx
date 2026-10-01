@@ -43,16 +43,29 @@ const SAMPLE_EXCHANGE: HelpExchange = {
   answer: '1. Select **Lanterns**.\n2. Select **Light**.\n\nThe room shows its exits.',
   status: 'answered',
   sources: SAMPLE_GUIDE.index.get(['Lanterns#how-to-light-a-lantern']),
+  flagged: false,
+  nearest: [],
+};
+
+/** One answer the guide does not cover, so the sample shows the notice and the nearest sections. */
+const SAMPLE_FLAGGED_EXCHANGE: HelpExchange = {
+  id: 'sample-flagged',
+  question: 'How long does lantern oil last?',
+  answer: 'Lamp oil often lasts for some hours, but the time depends on the lamp and the wick.',
+  status: 'answered',
+  sources: [],
+  flagged: true,
+  nearest: SAMPLE_GUIDE.index.get(['Oil#how-to-fill-a-lantern', 'Lanterns#how-to-light-a-lantern']),
 };
 
 /** A conversation with no AI behind it: a new question shows the sample guide's search for it. */
 function useSampleChat(): HelpChat {
-  const [exchanges, setExchanges] = useState<HelpExchange[]>([SAMPLE_EXCHANGE]);
+  const [exchanges, setExchanges] = useState<HelpExchange[]>([SAMPLE_EXCHANGE, SAMPLE_FLAGGED_EXCHANGE]);
   return useMemo(() => ({
     exchanges,
     busy: false,
     held: false,
-    ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, answer: '', status: 'no-ai', sources: [] }]),
+    ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, answer: '', status: 'no-ai', sources: [], flagged: false, nearest: [] }]),
     stop: () => {},
     clear: () => setExchanges([]),
   }), [exchanges]);
