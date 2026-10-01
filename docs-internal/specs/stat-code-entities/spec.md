@@ -59,6 +59,9 @@ Each entity's `traits` map works like `traits`. `enabled` is writable and switch
 - **Q20. `persona.name` is the entity's code name**, never the name the player typed under None. Q8 needs `persona === entities[persona.name]`, and `entities` is keyed by authored names. The typed name is not exposed.
 - **Q21. The editor can't know the played persona.** After `persona.traits`, completions offer the traits that entities with the Persona or Custom Persona mark hold, owned or linked. An unknown persona trait name is a warning, not an error, because a library persona can carry it.
 - **Q22. A persona trait switch mirrors a `traits` code switch** on the persona's owned lists. It ignores Player Can Toggle, and a switch-on of an unchosen trait in the persona's set acquires it. It never switches an Always On trait. It retires exclusive siblings in the persona's groups. A locked switch-on lands, and then the settle switches it off. A switch to the state the trait already holds does nothing.
+- **Q23. An unknown entity reads as a blank entry**, the same shape as an empty `persona` (Q4) and an unknown trait (Q3). Its `name` and `id` are `''`, and its `traits` hold no names. A trait write through it is dropped and reported as an unknown entity, so the run doesn't fail. `entities['X'].name` is the existence check.
+- **Q24. The played persona always holds its own code name in `entities`.** When a later entity shares that code name, Q8 wins over Q7: `persona === entities[persona.name]`. The editor's name-drift check warns where it can see the clash.
+- **Q25. `entities` lists only entities in play.** An unpicked persona-only entity has left the cast, and the Custom Persona entity is not a Bearer under a world persona, so neither is listed. Each reads as an unknown entity (Q23). To ask which persona plays, code reads `persona.name`.
 
 ## User Stories
 
@@ -78,7 +81,7 @@ Each entity's `traits` map works like `traits`. `enabled` is writable and switch
 14. As a world author, I want a switched entity trait to cascade as a manual switch does, so that requirements and groups stay consistent.
 15. As a world author, I want an entity switch to appear in the turn log, as a `traits` switch does, so that I can see what my code did.
 16. As a world author, I want library characters added at Enter World in `entities`, so that my code covers the cast the player brought.
-17. As a world author, I want an unknown entity name to read as undefined, so that `entities['X']?.traits` is a safe check.
+17. As a world author, I want an unknown entity name to read as a blank entry, so that `entities['X'].traits['Y'].enabled` never throws and `entities['X'].name` tells me whether the entity exists.
 18. As a world author, I want a write to an unknown entity's trait to be warned about and dropped, as an unknown `traits` write is.
 19. As a world author, I want `persona` and `entities[persona.name]` to be the same entry, so that I learn one shape.
 20. As a world author, I want entity names with placeholder chips to reach code under their code name, as stat and trait names do.
