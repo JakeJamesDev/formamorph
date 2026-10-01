@@ -1,5 +1,5 @@
 import type { DocSection, DocsContentsPage, DocsIndex } from '@/lib/docs/docsIndex';
-import { createDocsLinkResolver, type DocsLinkResolver } from '@/lib/docs/docsReader';
+import { createDocsLinkResolver, sectionWithId, type DocsLinkResolver } from '@/lib/docs/docsReader';
 
 /** What the Formaquestion window reads from a loaded Docs Index. Build it once per index. */
 export interface Guide {
@@ -19,7 +19,7 @@ export function createGuide(index: DocsIndex): Guide {
     index,
     contents,
     titleOf: (page) => titles.get(page) ?? page,
-    section: (id) => index.get([id]).find((s) => s.id === id) ?? null,
+    section: (id) => sectionWithId(index, id),
     resolve: createDocsLinkResolver(index),
   };
 }

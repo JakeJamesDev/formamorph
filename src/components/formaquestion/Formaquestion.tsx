@@ -11,11 +11,11 @@ import {
   clampBox, defaultBox, isWide, moveBox, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
   NARROW_WIDTH, WIDE_WIDTH, type WindowBox,
 } from '@/lib/formaquestion/windowBox';
-import { useIsMobile } from '@/lib/useIsMobile';
+import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/useIsMobile';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame } from './FormaquestionFrame';
-import { FORMAQUESTION_TABS, INITIAL_GUIDE_VIEW, type GuideView } from './formaquestionTabs';
+import { FORMAQUESTION_TABS, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { GuideBody } from './GuideBody';
 
 const WINDOW_ID = 'formaquestion-window';
@@ -36,6 +36,12 @@ const WINDOW_MOTION = 'transition-none ease-out data-[state=open]:animate-in dat
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** The element that holds keyboard focus, or null when nothing does. */
+function focusedElement(): HTMLElement | null {
+  const active = document.activeElement;
+  return active instanceof HTMLElement && active !== document.body ? active : null;
+}
+
 /**
  * Formaquestion: the Help tab and the help window, mounted once for the whole app in the shielded layer,
  * so both stay usable above every dialog. The window holds the guide and a search of it.
@@ -53,8 +59,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<GuideView>(INITIAL_GUIDE_VIEW);
-  const changeView = useCallback((change: Partial<GuideView>) => setView((current) => ({ ...current, ...change })), []);
+  const [view, changeView] = useGuideView();
   const [box, setBox] = useState<WindowBox>(() => readStoredBox(viewportOf(window)) ?? defaultBox(viewportOf(window)));
 
   // The docs load on the first open, from their own chunk.
@@ -78,9 +83,12 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [open, index, failed, load]);
   const guide = useMemo(() => (index ? createGuide(index) : null), [index]);
 
-  // The window stays inside the screen after a browser resize.
+  // The window stays inside the screen after a browser resize. At a mobile width it does not show, so
+  // it keeps its place and size for when the screen is wide again.
   useEffect(() => {
-    const onResize = () => setBox((current) => clampBox(current, viewportOf(window)));
+    const onResize = () => {
+      if (window.innerWidth >= MOBILE_BREAKPOINT) setBox((current) => clampBox(current, viewportOf(window)));
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -98,7 +106,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [layer]);
 
   const openWindow = useCallback(() => {
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    returnFocusRef.current = focusedElement();
     aimAtTab();
     setOpen(true);
   }, [aimAtTab]);
@@ -130,13 +138,30 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const shown = (open || present) && !hidden;
 
-  // Focus moves into the window when it opens.
-  const wasShown = useRef(false);
+  // Focus moves into the window when it opens. A window that shows again after it was hidden leaves
+  // focus where the player has it.
+  const wasOpen = useRef(false);
   useLayoutEffect(() => {
-    const nowShown = open && !hidden;
-    if (nowShown && !wasShown.current) focusWindow();
-    wasShown.current = nowShown;
+    if (open && !wasOpen.current && !hidden) focusWindow();
+    wasOpen.current = open;
   }, [open, hidden, focusWindow]);
+
+  // A press in the window can remove the control it was on: a result row, a contents row, a link.
+  // Focus then stays in the window, on its frame, so the next F1 closes it.
+  const hadFocus = useRef(false);
+  const changeViewInWindow = useCallback((change: GuideViewChange) => {
+    hadFocus.current = !!windowRef.current?.contains(document.activeElement);
+    changeView(change);
+  }, [changeView]);
+  useEffect(() => {
+    if (!hadFocus.current) return;
+    // A tab panel leaves the DOM one commit after the change, so the check waits for the next frame.
+    const frame = requestAnimationFrame(() => {
+      hadFocus.current = false;
+      if (!windowRef.current?.contains(document.activeElement)) windowRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view]);
 
   // The docs can load after the window opens. Focus then goes from the frame to the search field.
   useEffect(() => {
@@ -149,9 +174,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'F1' || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
       event.preventDefault();
+      // A held key repeats. One press is one step.
+      if (event.repeat) return;
       if (!open) openWindow();
       else if (!windowRef.current?.contains(document.activeElement)) {
-        returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        returnFocusRef.current = focusedElement() ?? returnFocusRef.current;
         focusWindow();
       } else closeWindow();
     };
@@ -225,7 +252,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: origin ? `${origin.x - box.x}px ${origin.y - box.y}px` : undefined,
           }}
         >
-          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeView} wide={isWide(box)} />
+          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={isWide(box)} />
         </FormaquestionFrame>
       )}
     </>,

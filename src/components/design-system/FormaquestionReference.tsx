@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SectionTitle } from '@/components/ui/typography';
 import { EdgeTabButton } from '@/components/formaquestion/EdgeTab';
 import { FormaquestionFrame } from '@/components/formaquestion/FormaquestionFrame';
-import { INITIAL_GUIDE_VIEW, type GuideView } from '@/components/formaquestion/formaquestionTabs';
+import { useGuideView } from '@/components/formaquestion/formaquestionTabs';
 import { GuideBody } from '@/components/formaquestion/GuideBody';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { createGuide } from '@/lib/formaquestion/guide';
@@ -46,8 +46,7 @@ const EDGES: Edge[] = ['right', 'left', 'top', 'bottom'];
 
 function SampleWindow() {
   const [wide, setWide] = useState(false);
-  const [view, setView] = useState<GuideView>(INITIAL_GUIDE_VIEW);
-  const changeView = useCallback((change: Partial<GuideView>) => setView((current) => ({ ...current, ...change })), []);
+  const [view, changeView] = useGuideView();
   const style = useMemo(() => ({ width: wide ? WIDE_WIDTH : NARROW_WIDTH, height: 480 }), [wide]);
   return (
     <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onClose={() => {}} className="relative max-w-full" style={style}>

@@ -120,7 +120,7 @@ export function EdgeTab({ open, controls, onToggle }: {
 
   return (
     <>
-      <Tip tip="Opens Formaquestion (F1). Drag it to move it." side={EDGE_SHAPE[place.edge].tip} labelsChild={false}>
+      <Tip tip="Opens or closes Formaquestion (F1). Drag the tab to move it." side={EDGE_SHAPE[place.edge].tip} labelsChild={false}>
         <EdgeTabButton
           ref={ref}
           edge={place.edge}

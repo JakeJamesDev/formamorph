@@ -2,7 +2,7 @@
 
 Formaquestion is the help window. It holds this guide and a search of it. The guide is part of the app, so the window works with no network and no AI.
 
-> 📱 The window needs a screen 768 pixels wide or more. On a narrow screen, such as a phone, the **Help** tab does not show and F1 does nothing.
+> 📱 The window needs a screen 768 pixels wide or more. On a mobile-size screen, the **Help** tab does not show and F1 does nothing.
 
 ## How to Open Formaquestion
 
@@ -15,7 +15,7 @@ The window stays open when you go to a different screen or open a dialog. You ca
 
 1. Open Formaquestion.
 2. Select the **Search** tab.
-3. Type two or more letters in **Search the guide**.
+3. Type two or more letters in **Search the Guide**.
 4. Select a result to read its section.
 
 The best matches are first. Each result shows the section, its page and the start of its text.

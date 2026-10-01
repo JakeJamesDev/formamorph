@@ -118,6 +118,27 @@ describe('opening and closing', () => {
     expect(escape.defaultPrevented).toBe(true);
   });
 
+  it('keeps the cursor in the window when a press removes the control it was on', async () => {
+    render(<Formaquestion loadIndex={loadFixture} />);
+    await userEvent.click(helpTab()!);
+    const field = await screen.findByRole('searchbox', { name: 'Search the Guide' });
+    await userEvent.type(field, 'panel');
+    // The result row leaves the screen when its section opens.
+    await userEvent.click(within(screen.getByRole('list', { name: 'Search Results' })).getByText('The Panel'));
+    await waitFor(() => expect(helpWindow()).toContainElement(document.activeElement as HTMLElement));
+
+    // So the next F1 closes the window, and focus goes back to the tab that opened it.
+    pressF1();
+    expect(helpTab()).toHaveAttribute('aria-expanded', 'false');
+    expect(helpTab()).toHaveFocus();
+  });
+
+  it('does not toggle again while F1 is held down', async () => {
+    await openWindow();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'F1', repeat: true });
+    expect(helpTab()).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('keeps the search text and the open section across a close', async () => {
     await openWindow();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'panel' } });
@@ -164,6 +185,21 @@ describe('while it stands down', () => {
 
     view.rerender(<Formaquestion loadIndex={loadFixture} />);
     expect(screen.getByRole('searchbox', { name: 'Search the Guide' })).toHaveValue('trait');
+  });
+
+  it('does not take the cursor when it shows again', async () => {
+    const tree = (suspended: boolean) => <><input aria-label="Outside" /><Formaquestion suspended={suspended} loadIndex={loadFixture} /></>;
+    const view = render(tree(false));
+    fireEvent.click(helpTab()!);
+    await screen.findByRole('searchbox', { name: 'Search the Guide' });
+
+    view.rerender(tree(true));
+    const outside = screen.getByRole('textbox', { name: 'Outside' });
+    outside.focus();
+    view.rerender(tree(false));
+
+    expect(helpWindow()).not.toBeNull();
+    expect(outside).toHaveFocus();
   });
 });
 
@@ -240,6 +276,36 @@ describe('the guide', () => {
     const back = screen.getByRole('navigation', { name: 'Guide Contents' });
     expect(within(back).getByRole('button', { name: 'How to Add a Trait' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(back).queryByRole('button', { name: 'How to Add a Stat' })).toBeNull();
+  });
+
+  it('opens the page of a section that came from a search, and marks the section', async () => {
+    await openWindow();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search the Guide' }), { target: { value: 'add a stat' } });
+    fireEvent.click(within(screen.getByRole('list', { name: 'Search Results' })).getAllByRole('button')[0]);
+    await userEvent.click(screen.getByRole('button', { name: 'Contents' }));
+    const contents = screen.getByRole('navigation', { name: 'Guide Contents' });
+    expect(within(contents).getByRole('button', { name: 'How to Add a Stat' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps the pages the player opened and closed, across a section and a tab change', async () => {
+    const contents = await openGuideTab();
+    await userEvent.click(within(contents).getByRole('button', { name: '📊 Stats' }));
+    await userEvent.click(within(contents).getByRole('button', { name: '🧬 Traits' }));
+    await userEvent.click(within(contents).getByRole('button', { name: 'How to Add a Trait' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Contents' }));
+
+    // Both pages are still open.
+    let back = screen.getByRole('navigation', { name: 'Guide Contents' });
+    expect(within(back).getByRole('button', { name: 'The Panel' })).toBeInTheDocument();
+    expect(within(back).getByRole('button', { name: 'How to Add a Trait' })).toBeInTheDocument();
+
+    // A page the player closes stays closed, even though it holds the open section.
+    await userEvent.click(within(back).getByRole('button', { name: '🧬 Traits' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Search' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Guide' }));
+    back = screen.getByRole('navigation', { name: 'Guide Contents' });
+    expect(within(back).queryByRole('button', { name: 'How to Add a Trait' })).toBeNull();
+    expect(within(back).getByRole('button', { name: 'The Panel' })).toBeInTheDocument();
   });
 
   it('lists the other sections of the page under a section, and opens one', async () => {
@@ -329,6 +395,21 @@ describe('the window on the screen', () => {
     await userEvent.click(wideView);
     expect(frame().style.width).toBe(`${NARROW_WIDTH}px`);
     expect(screen.getByRole('article', { name: '📊 Stats: The Panel' })).toBeInTheDocument();
+  });
+
+  it('keeps its place and size across a trip to a mobile-size screen', async () => {
+    setScreenWidth(1600);
+    vi.stubGlobal('innerHeight', 900);
+    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 800, y: 200, w: 720, h: 560 }));
+    await openWindow();
+
+    // The browser goes to a mobile width, where the window does not show, and comes back.
+    vi.stubGlobal('innerWidth', 375);
+    act(() => { window.dispatchEvent(new Event('resize')); });
+    vi.stubGlobal('innerWidth', 1600);
+    act(() => { window.dispatchEvent(new Event('resize')); });
+
+    expect(frame().style).toMatchObject({ left: '800px', top: '200px', width: '720px', height: '560px' });
   });
 
   it('comes back inside the screen when the browser window gets smaller', async () => {

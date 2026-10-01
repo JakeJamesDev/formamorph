@@ -1,5 +1,7 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { NON_GUIDE_PAGES } from '../src/lib/docs/docsChecks';
+import { docHeadings } from '../src/lib/docs/headingAnchors';
 import { gotoDev, openApp, openWorldEditor } from './app';
 
 /**
@@ -48,6 +50,16 @@ async function countWindowAnimations(page: Page): Promise<void> {
     }, true);
   });
 }
+
+/** The window's open animation as the browser computed it. */
+const motionOf = (page: Page) => helpWindow(page).evaluate((el) => {
+  const style = getComputedStyle(el);
+  return {
+    duration: style.animationDuration,
+    enterScale: parseFloat(style.getPropertyValue('--tw-enter-scale')),
+    enterOpacity: parseFloat(style.getPropertyValue('--tw-enter-opacity')),
+  };
+});
 
 const windowAnimations = (page: Page) => page.evaluate(() => (window as unknown as { fqAnimations: number }).fqAnimations);
 
@@ -368,12 +380,16 @@ test.describe('Formaquestion on a desktop screen', () => {
     await openHelp(page);
     await helpWindow(page).getByRole('tab', { name: 'Guide' }).click();
     const contents = helpWindow(page).getByRole('navigation', { name: 'Guide Contents' });
-    const indexed = readdirSync('docs')
-      .filter((name) => name.endsWith('.md') && !['_Sidebar.md', 'Design-System.md', 'Writing-Guide.md'].includes(name));
-    await expect(contents.getByRole('button')).toHaveCount(indexed.length);
+    // Each guide page in the docs folder shows by its own title.
+    const titles = readdirSync('docs')
+      .filter((name) => name.endsWith('.md') && !NON_GUIDE_PAGES.includes(name.slice(0, -'.md'.length)))
+      .map((name) => docHeadings(readFileSync(`docs/${name}`, 'utf-8')).find((heading) => heading.level === 1)!.text);
+    expect(titles.length).toBeGreaterThan(30);
+    await expect(contents.getByRole('button')).toHaveCount(titles.length);
+    expect((await contents.getByRole('button').allTextContents()).sort()).toEqual([...titles].sort());
 
     await openSection(page, /Formaquestion/, 'How to Search the Guide');
-    await expect(reader(page)).toContainText('Type two or more letters in Search the guide.');
+    await expect(reader(page)).toContainText('Type two or more letters in Search the Guide.');
     await expect(reader(page).getByRole('heading', { name: 'How to Search the Guide', level: 3 })).toBeVisible();
   });
 
@@ -387,6 +403,12 @@ test.describe('Formaquestion on a desktop screen', () => {
     expect(await rows.count()).toBeGreaterThan(3);
 
     await rows.first().click();
+    await expect(reader(page).getByRole('heading', { name: 'How to Make a Blueprint', level: 3 })).toBeVisible();
+    // The pressed row left the screen. Focus stays in the window, so one F1 closes it.
+    await expect.poll(() => focusOwner(page)).toBe('window');
+    await page.keyboard.press('F1');
+    await expect(helpWindow(page)).toHaveCount(0);
+    await page.keyboard.press('F1');
     await expect(reader(page).getByRole('heading', { name: 'How to Make a Blueprint', level: 3 })).toBeVisible();
 
     await helpWindow(page).getByRole('tab', { name: 'Search' }).click();
@@ -411,9 +433,9 @@ test.describe('Formaquestion on a desktop screen', () => {
     await helpWindow(page).getByRole('button', { name: 'Contents' }).click();
     const contents = helpWindow(page).getByRole('navigation', { name: 'Guide Contents' });
     // The contents still show the page the player came from, open and marked.
-    await expect(contents.getByRole('button', { name: 'Introduction', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(contents.getByRole('button', { name: 'Introduction', exact: true, pressed: true })).toBeVisible();
     await contents.getByRole('button', { name: /Formamorph Wiki/ }).click();
-    // The home page is the first page, so its introduction is the first of the two that now show.
+    // The home page is the first page, so its introduction is the first of those that now show.
     await contents.getByRole('button', { name: 'Introduction', exact: true }).first().click();
     const outside = reader(page).getByRole('link', { name: /play Formamorph in your browser/ });
     await expect(outside).toHaveAttribute('target', '_blank');
@@ -440,10 +462,67 @@ test.describe('Formaquestion on a desktop screen', () => {
     await countWindowAnimations(page);
     await page.keyboard.press('F1');
     await expect(searchField(page)).toBeFocused();
+    // Open: 200ms, from 75% and from clear.
+    expect(await motionOf(page)).toMatchObject({ duration: '0.2s', enterScale: 0.75, enterOpacity: 0 });
     await settledBox(page);
-    await helpWindow(page).getByRole('button', { name: 'Close Formaquestion' }).click();
+
+    // Close: 150ms, to 75% and to clear. The last frame stays until the window leaves, and takes no press.
+    const closing = await page.evaluate(async () => {
+      document.querySelector<HTMLElement>('#formaquestion-window [aria-label="Close Formaquestion"]')!.click();
+      await new Promise(requestAnimationFrame);
+      const style = getComputedStyle(document.getElementById('formaquestion-window')!);
+      return {
+        duration: style.animationDuration,
+        fill: style.animationFillMode,
+        exitScale: parseFloat(style.getPropertyValue('--tw-exit-scale')),
+        exitOpacity: parseFloat(style.getPropertyValue('--tw-exit-opacity')),
+        pointerEvents: style.pointerEvents,
+      };
+    });
+    expect(closing).toEqual({ duration: '0.15s', fill: 'forwards', exitScale: 0.75, exitOpacity: 0, pointerEvents: 'none' });
     await expect(helpWindow(page)).toHaveCount(0);
     expect(await windowAnimations(page)).toBe(2);
+  });
+
+  test('F1 and the Help tab stand down while the welcome animation plays', async ({ page }) => {
+    test.setTimeout(60_000);
+    await openApp(page);
+    await expect(helpTab(page)).toBeVisible();
+    await gotoDev(page, 'mainMenu', { modal: 'intro' });
+    await expect(page.locator('#fm-intro-goo')).toBeAttached();
+    await expect(helpTab(page)).toHaveCount(0);
+    await page.keyboard.press('F1');
+    await expect(helpWindow(page)).toHaveCount(0);
+
+    // The animation ends by itself, and help comes back.
+    await expect(page.locator('#fm-intro-goo')).toHaveCount(0, { timeout: 30_000 });
+    await expect(helpTab(page)).toBeVisible();
+    await page.keyboard.press('F1');
+    await expect(searchField(page)).toBeFocused();
+  });
+
+  test('a tutorial note does not block F1', async ({ page }) => {
+    await openApp(page, { 'formamorph.tutorialsSeen': [] });
+    await expect(page.getByRole('dialog', { name: /^(Sign In|Bugs & Suggestions)$/ }).first()).toBeVisible();
+    await page.keyboard.press('F1');
+    await expect(searchField(page)).toBeFocused();
+  });
+
+  test('a trip to a mobile-size screen hides the window and brings it back as it was', async ({ page }) => {
+    await openApp(page);
+    await openHelp(page);
+    await dragWindowTo(page, 900);
+    await helpWindow(page).getByRole('button', { name: 'Wide View' }).click();
+    await searchField(page).fill('blueprint');
+    const placed = await settledBox(page);
+
+    await page.setViewportSize({ width: 600, height: 900 });
+    await expect(helpWindow(page)).toHaveCount(0);
+    await expect(helpTab(page)).toHaveCount(0);
+
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await expect(searchField(page)).toHaveValue('blueprint');
+    expect(await settledBox(page)).toEqual(placed);
   });
 });
 
