@@ -1,8 +1,4 @@
-/**
- * The docs coverage checks. Each returns one readable line per problem, so a test can assert on an empty
- * list and print what to fix. They take the docs as data (page name → markdown), so they run the same on
- * the real `docs/` folder and on a fixture.
- */
+/** The docs coverage checks: one readable line per problem, over docs passed in as data. */
 import { docHeadings, forEachProseLine } from './headingAnchors';
 
 /** Docs pages by wiki page name (the file name without `.md`). */
@@ -27,13 +23,26 @@ function formatTarget(target: DocTarget): string {
   return `${target.page}#${target.anchor}`;
 }
 
+/** Why a page is not a guide page, or null when it is. */
+function pageProblem(index: AnchorIndex, page: string): string | null {
+  if (!index.has(page)) return `page ${page} does not exist`;
+  if (NON_GUIDE_PAGES.includes(page)) return `page ${page} is not a guide page`;
+  return null;
+}
+
 /** Why a target does not resolve to a guide heading, or null when it does. */
 function targetProblem(index: AnchorIndex, target: DocTarget): string | null {
-  const anchors = index.get(target.page);
-  if (!anchors) return `page ${target.page} does not exist`;
-  if (NON_GUIDE_PAGES.includes(target.page)) return `page ${target.page} is not a guide page`;
-  if (!anchors.has(target.anchor)) return `heading #${target.anchor} is not on ${target.page}`;
+  const problem = pageProblem(index, target.page);
+  if (problem) return problem;
+  if (!index.get(target.page)?.has(target.anchor)) return `heading #${target.anchor} is not on ${target.page}`;
   return null;
+}
+
+/** A dead target, or a live one whose owner is still a known gap. `owner` reads "X maps to". */
+function mappingProblem(index: AnchorIndex, owner: string, target: DocTarget, isGap: boolean): string | null {
+  const problem = targetProblem(index, target);
+  if (problem) return `${owner} ${formatTarget(target)}, but ${problem}`;
+  return isGap ? `${owner} ${formatTarget(target)}, so remove it from the known gaps` : null;
 }
 
 export interface SurfaceCoverage {
@@ -58,9 +67,8 @@ export function surfaceCoverageProblems(input: SurfaceCoverage): string[] {
     const excluded = input.exclusions[id] !== undefined;
     if (excluded && (target || gaps.has(id))) problems.push(`${id} is excluded, so it needs no map entry or known gap`);
     if (target) {
-      const problem = targetProblem(index, target);
-      if (problem) problems.push(`${id} maps to ${formatTarget(target)}, but ${problem}`);
-      else if (gaps.has(id)) problems.push(`${id} maps to ${formatTarget(target)}, so remove it from the known gaps`);
+      const problem = mappingProblem(index, `${id} maps to`, target, gaps.has(id));
+      if (problem) problems.push(problem);
     } else if (!excluded && !gaps.has(id)) {
       problems.push(`${id} has no docs section: add it to the surface map`);
     }
@@ -86,13 +94,13 @@ export function helpTopicProblems(
   const gaps = new Set(knownGaps);
   const problems: string[] = [];
   for (const [id, topic] of Object.entries(topics)) {
-    if (topic.wikiPage && topic.wikiAnchor) {
-      const target = { page: topic.wikiPage, anchor: topic.wikiAnchor };
-      const problem = targetProblem(index, target);
-      if (problem) problems.push(`help topic ${id} links ${formatTarget(target)}, but ${problem}`);
-      else if (gaps.has(id)) problems.push(`help topic ${id} links ${formatTarget(target)}, so remove it from the known gaps`);
-    } else if (topic.wikiPage && !index.has(topic.wikiPage)) {
-      problems.push(`help topic ${id} links page ${topic.wikiPage}, which does not exist`);
+    const page = topic.wikiPage;
+    if (page && topic.wikiAnchor) {
+      const target = { page, anchor: topic.wikiAnchor };
+      const problem = mappingProblem(index, `help topic ${id} links`, target, gaps.has(id));
+      if (problem) problems.push(problem);
+    } else if (page && pageProblem(index, page)) {
+      problems.push(`help topic ${id} links ${page}, but ${pageProblem(index, page)}`);
     } else if (!gaps.has(id)) {
       problems.push(`help topic ${id} links no docs heading: set wikiPage and wikiAnchor`);
     }
@@ -128,7 +136,7 @@ export function docsLinkProblems(pages: DocsPages): string[] {
         const pagePart = hash < 0 ? href : href.slice(0, hash);
         const anchor = hash < 0 ? null : safeDecode(href.slice(hash + 1));
         if (pagePart.endsWith('.md')) {
-          problems.push(`${where}, but the wiki serves Page.md as raw text: write ${pagePart.slice(0, -3)}`);
+          problems.push(`${where}: write ${pagePart.slice(0, -3)}, the wiki page name`);
           continue;
         }
         const targetPage = pagePart || page;
