@@ -1,7 +1,7 @@
 # 06: Remove old routes
 
 Status: ready-for-agent
-Blocked by: 04, 05
+Blocked by: 04, 05, 11
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
@@ -17,5 +17,5 @@ The contract step. Remove `placeholders.Owner.Name`, the six flat clock globals 
 - [ ] The flat clock globals and `currentStatId` are no longer injected.
 - [ ] `migrateWorld` rewrites old routes in every stat's code through the rename tooling. The rewrite is idempotent and runs at every import boundary.
 - [ ] A world written for v3.1.2 that uses each old route loads and runs with the same results.
-- [ ] Templates, snippets and the stat code help use only the new routes.
+- [ ] Templates, snippets and the stat code help use only the new routes. This includes the built-in templates that read flat `deltaHours` and `elapsedHours`, and the `Date` and `now` completion text that points at "deltaHours and friends".
 - [ ] Tests for the rewrite and for the removed routes, each shown to bite. The changelog line is in In Progress.

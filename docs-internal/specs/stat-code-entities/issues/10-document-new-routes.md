@@ -1,0 +1,20 @@
+# 10: Document the new routes
+
+Status: ready-for-agent
+Blocked by: 06
+Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
+Reasoning effort: medium
+
+Parent: [Stat Code Entities spec](../spec.md)
+
+## What to build
+
+From the effort review: authors can't find most of the new routes (story 27). The stat code guide covers only `name` and `traits` for `persona` and `entities`, and no template uses the new routes. Document every route this effort added, and add templates that use them.
+
+## Acceptance criteria
+
+- [ ] The stat code guide documents `persona`, `entities` and `dictionaries` with every field: the Q9 entity fields, the Q10 trait fields, `placeholders` on each owner, and the stat `enabled` field (Q30).
+- [ ] The guide says what an unknown or not-in-play name reads as (Q23, Q25, Q29).
+- [ ] At least one built-in template reads `persona.traits`, and one reads an entity's trait or placeholder.
+- [ ] Help copy follows the Writing Guide. The `copy-sweep` skill passes on the changed text.
+- [ ] Template tests run each new template. The changelog line is in In Progress.
