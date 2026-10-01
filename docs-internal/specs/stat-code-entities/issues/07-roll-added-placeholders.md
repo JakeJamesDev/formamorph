@@ -1,6 +1,7 @@
 # 07: Roll added characters' and library dictionaries' placeholders
 
-Status: ready-for-agent
+Status: in-progress
+Base: 051fd08f
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -10,6 +11,11 @@ Parent: [Stat Code Entities spec](../spec.md)
 ## What to build
 
 Fix a play bug that ticket 04 found. Placeholders owned by library characters added at Enter World, and by library dictionaries picked there, are never rolled. Their chips read empty in narration. Add them to the session's placeholder set and roll them like the library persona's. Then expose them to stat code through `entities` and `dictionaries` (Q14, Q26).
+
+## Notes from ticket 04
+
+- `runStatCodeTurn` joins the played library persona's pool through `withLibraryPersonaPlaceholders`. Its rows are marked `unlisted`, so the old `placeholders` route never reaches them. Once play rolls added characters' pools, joining them there is a one-line change.
+- A test pins that an added character's `placeholders` holds no names. Update it when this ticket exposes them.
 
 ## Acceptance criteria
 
