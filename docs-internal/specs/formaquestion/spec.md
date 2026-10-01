@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: formaquestion — spec
-Status note: 27 tickets in issues/. 27 fixes search in player words and gates 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24 and 27.
+Status note: 28 tickets in issues/. 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
 
 ## Problem Statement
 
@@ -83,6 +83,9 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q45 | The Guide contents list has one collapsible row per page. Its expander is a small plain chevron with no outline and no hover fill (user, in ticket 16) |
 | Q46 | On the mobile sheet, opening moves focus to the sheet, not to a text field, so the on-screen keyboard opens only when the player taps a field. The Android back action closes Formaquestion first whenever it is open (ticket 17) |
 | Q47 | Keyword search gets authored player keywords on every how-to section, plus word stemming (ticket 27). Ticket 20 measured 2 of 8 player-worded questions finding the right section |
+| Q48 | Lookup mode stays. The default cloud endpoint rejects tool calls, so it serves local models with tool support. On MeroMero it answered 81% completely against 63% for retrieval, at 4.6 times the input tokens (ticket 22) |
+| Q49 | The lookup prompt starts with every search hit under the retrieval budget, not the best hit only (ticket 28) |
+| Q50 | The lookup prompt drops the contents list, and a re-probe must show the scores hold; otherwise the list comes back (ticket 28) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
