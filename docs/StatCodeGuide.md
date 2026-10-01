@@ -1,6 +1,40 @@
 # 🧮 Stat Code Guide
 
-This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are a stat's `beforeCode` and `code` fields; see the [World Format](WorldFormat) for where they live.
+This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are the `beforeCode` and `code` fields of an entry in the world's `stats` list. The [World Format](WorldFormat) page describes the rest of a stat.
+
+## How to Add Stat Code to a Stat
+
+1. In the World Editor, select **Advanced** in the mode switch. The **Code** tab shows in Advanced mode only.
+2. Open the **Stats** tab and select the stat.
+3. Open the stat's **Code** tab. It shows **Dynamic Value Calculation** with two boxes, **Before the AI** and **After the AI**.
+4. Type your script into one box. For a value the AI should read this turn, use **Before the AI**. For a reaction to the AI's change, use **After the AI**.
+5. Select **Test Code** under the box. Read the result, any error, and every write the run made.
+
+## How to Insert a Template
+
+1. Open the stat's **Code** tab.
+2. Select **Templates** beside the box's **Test Code** button.
+3. Pick a template. Each box lists only the templates written for its timing.
+4. Fill in the inputs the template asks for, then edit the inserted code as you like.
+
+## How to Limit the AI's Change to a Stat
+
+1. Open the stat's **Code** tab.
+2. In **After the AI**, read the AI's ask from `self.delta.ai.value`.
+3. Clamp it, then set `self.value` from `self.previous.value`, the clamped ask and `self.delta.regen.value`. See [Reading This Turn](#reading-this-turn) for an example.
+4. Select **Test Code**.
+
+## How to Pin a Placeholder from Code
+
+1. Open the stat's **Code** tab.
+2. In **Before the AI**, call `pin` on the placeholder, such as `placeholders.Mood.pin('calm')`. A pin from this box is in the prompt for this turn.
+3. Select **Test Code**. It lists each placeholder the run pinned.
+
+## How to Debug Stat Code
+
+1. Select **Test Code** to see the error and every write.
+2. Add `console.log()` lines, then open your browser's developer console. Each line shows there.
+3. In the World Editor's Test Bench, read the **Issues** list for writes to unknown names.
 
 ## Overview
 
@@ -213,16 +247,18 @@ placeholders.Hair.pin(['gray', 'cropped short']);
 
 A list handed to a Wildcard, or anything that is not text, **fails the run**, and every write that run made is discarded.
 
-A write to a placeholder name the world does not have is dropped. **Test Code** and the Test Bench both report it.
+A write to an unknown placeholder name is ignored. **Test Code** and the Test Bench both report it.
 
 ### Traits
 
-`traits` holds every authored trait in the world, by name, whether the player has it or not. Each entry has:
+`traits` holds every trait in the world's own trait list, by name, whether the player has it or not. Blueprint items are in it. A trait that an entity owns is not. Each entry has:
 
 | Member | What it is |
 | --- | --- |
 | `enabled` | True when the player has the trait and it is on. Write it to switch the trait |
 | `acquired` | True when the player has the trait, on or off. Read-only |
+
+Both read the player's state only. An entity that holds the same trait does not change them.
 
 Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Always On or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can switch a trait the player cannot toggle.
 
@@ -231,7 +267,7 @@ Writing `enabled` switches the trait after the run, with the same effect as the 
 traits.Cursed.enabled = self.value <= 0;
 ```
 
-A write to a trait name the world does not have is dropped. **Test Code** and the Test Bench both report it. A write to `acquired` is dropped, and **Test Code** says so.
+A write to an unknown trait name is ignored. **Test Code** and the Test Bench both report it. A write to `acquired` is ignored, and **Test Code** says so.
 
 > ℹ️ **A trait name with a placeholder chip in it reads in code as the placeholder's own name.** A trait named `{{Beast}} Fury` is `traits["Beast Fury"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name, and the turn log still writes it.
 
@@ -258,7 +294,7 @@ Six values describe the story time. They are plain variables. Use them by name.
 
 **Why start and end are both given.** A turn spans time. An eight-hour sleep that begins at 15:00 has `startDaypart === 'afternoon'` and `daypart === 'night'`. Neither reading alone describes the turn.
 
-> ⚠️ **With the clock off, `deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under Settings → Output → Memory.
+> ⚠️ **With the clock off, `deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under Settings → **Output** → **Time**, in **Advanced** mode.
 
 ### Examples
 
@@ -322,7 +358,7 @@ const randomFactor = 0.8 + (Math.random() * 0.4);
 return baseDamage * skillMultiplier * randomFactor;
 ```
 
-> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn draw the **same** first value, and a stat whose value you re-check within the same instant gets the same number back. Turns are far enough apart in real play that a once-per-turn roll varies. If you need two independent rolls, or a roll that changes on demand, mix in a clock variable: `(Math.random() * 100 + elapsedHours) % 100` stays evenly spread and advances on its own.
+> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn often draw the **same** first value, and a stat whose value you re-check within the same instant can get the same number back. Turns are far enough apart in real play that a once-per-turn roll varies. If you need two independent rolls, or a roll that changes on demand, mix in a clock variable: `(Math.random() * 100 + elapsedHours) % 100` stays evenly spread and advances on its own.
 
 #### Diminishing Returns
 

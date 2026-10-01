@@ -4,6 +4,57 @@ How a world's entities and dictionaries follow a library item, and what that lin
 
 > The same story, in short, is the `?` beside the **Linked** badge in the [World Editor](WorldEditor) and in the title bar of **Update Available** and **Update This World**.
 
+## How to Link a Copy to Your Library
+
+1. In the World Editor, open the entity or dictionary.
+2. Select **Save to Library**. The copy is saved as a library item and follows it.
+
+For an independent copy of an item you already have, open the copy's menu and select **Link to Library Item…**, then pick the item.
+
+## How to Update a Linked Copy
+
+1. In the library, right-click the entity or dictionary tile. Or, in the World Editor, open the linked copy's menu.
+2. Select **Check for Updates**. If a world is behind, **Update Available** opens.
+3. For each world, pick **Update**, **Use Author's**, **Keep Mine** or **Unlink**. Select **View Changes** to compare first.
+4. Select **Apply Updates**.
+
+A linked copy of your own item also updates the next time you open its world.
+
+## How to Publish Linked Content
+
+1. On the main menu, select your world and select **Publish World**.
+2. Under **Linked Content**, check **Include as required** for each item that should download with the world.
+3. For a source of yours with no listing yet, pick **Public** or **Unlisted**. It publishes first.
+4. Select **Publish**. If a source is refused, read the reason and select **Retry**.
+
+## How to Offer an Entity as an Add-on
+
+1. In the library, open the entity or dictionary and select **Publish**.
+2. Set **Listing** to **Public**. An **Unlisted** listing can't be an add-on.
+3. Under **Compatible Worlds**, check **Offer as add-on** for each world.
+4. Select **Publish**. The world's author then reviews the offer.
+
+## How to Review Add-ons for Your World
+
+1. In Community Creations, find your own published world and select **Manage Add-ons**.
+2. **Show** starts on **Needs Attention**. Set each offer to **Approved**, **Unreviewed** or **Declined**. **Mark Reviewed** accepts a changed source and keeps your answer.
+3. Select **Save Changes**.
+
+## How to Import an Entity or Dictionary File
+
+1. In the library, select **Import Entity** or **Import Dictionary**, and pick one file.
+2. If the file names worlds, the import review opens. Under **Add to Your Worlds**, check each world that should get a linked copy.
+3. Select **Import Entity** or **Import Dictionary**.
+
+See [Importing an Entity or Dictionary File](#importing-an-entity-or-dictionary-file).
+
+## How to Repair a Missing Source
+
+1. In the World Editor, open the Test Bench's **Issues** list.
+2. Select **Check Sources**.
+3. For each copy with a missing source, pick **Replace from Library**, **Unlink and Keep Content** or **Remove from World**.
+4. Select **Apply** on that copy.
+
 ---
 
 ## Words This Page Uses
@@ -175,7 +226,20 @@ A world file bundles its entities and dictionaries, and records what each linked
 > [!NOTE]
 > **The file's content always wins.** A copy whose source you already have follows your own item and arrives as a local replacement.
 
-An entity or dictionary file carries the entity or dictionary and the worlds it is offered for. If the file's source is already in your library, Import opens that item's update review with the file as the incoming revision. Every import works with no connection.
+### Importing an Entity or Dictionary File
+
+An entity or dictionary file carries the entity or dictionary and the worlds it is offered for.
+
+When you import one file that names worlds or a source, a review opens first, titled **Import Entity** or **Import Dictionary**.
+
+| Section | What it does |
+|---|---|
+| **Add to Your Worlds** | One checkbox per world you have. Each checked world gets a linked copy of the library item. |
+| **Worlds You Do Not Have** | **Open Listing** opens that world in Community Creations, so you can download it. It needs a connection. |
+
+A file that names no worlds says so, and the import adds it to your library only.
+
+If the file's source is already in your library, **Update Available** opens instead, with the file as the incoming revision. When you import several files at once, no review opens: each file goes into your library as it is.
 
 ## Repairs
 

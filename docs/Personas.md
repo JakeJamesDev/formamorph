@@ -2,34 +2,66 @@
 
 A persona is who you are in the story. It gives the AI your name, your pronouns and your description.
 
-> A persona is an [entity](Entities) set to **Playable** under **Persona**. It uses the same editor as every other entity. Authors who want players to play as a world's own entities should read [Personas for Authors](Persona-Authoring).
+> A persona is an [entity](Entities) with **Persona** set to **Playable**. It uses the same editor as every other entity. Authors who want players to play as a world's own entities should read [Personas for Authors](Persona-Authoring).
 
----
-
-## Make a Persona
+## How to Make a Persona
 
 1. Open the library's **Entities** tab.
 2. Select **New Entity**, or open an entity you already have.
-3. On the **Profile** tab, set **Persona** to **Playable**.
+3. On the **Entity** tab, open **Profile**.
+4. Set the **Persona** control to **Playable**. In the library it has two choices, **Cast** and **Playable**.
+5. Select **Save**.
 
 No copy is made. The entity is now one of your personas, and you can still add it to a world as an entity.
 
-| Field | What the AI gets from it |
-|---|---|
-| **Name** and aliases | What to call you. The story's planner also reads them as "this is the player". |
-| **Pronouns** | Free text, such as "she/her". Summaries and diaries use them when they write about you. |
-| **AI-Facing Description** | Who you are. |
-| Portrait | Shown in the picker and in the game's side panel. |
+## How to Set a Default Persona
+
+1. Open the library's **Entities** tab.
+2. Right-click a persona tile and select **Set as Default Persona**.
+
+A **Default** badge marks it. To remove it, right-click the tile and select **Clear Default Persona**.
+
+## How to Pick a Persona
+
+1. On the main menu, select a world and select **Enter World**.
+2. Open the **Persona** category. It shows when at least one persona is available.
+3. Select **None**, an entity under **From This World**, or one under **Your Personas**.
+4. If the world shows a **Custom Persona** in **None**'s place, type your **Name** and, if you like, a **Description**.
+5. Select **Start game**.
+
+## How to Change Persona During Play
+
+1. In the side panel, find the persona row above the **Stats**, **Traits** and **Location** tabs.
+2. Select **Change**. The **Change Persona** dialog opens.
+3. Pick another persona, or edit the Custom Persona's **Name** or **Description**.
+4. Select **Change**. It turns on when your pick, name or description differs from the current one.
+
+## How to Import SillyTavern Personas
+
+1. In SillyTavern, open **Persona Management** and select **Backup**. Your browser downloads `personas_<date>.json`.
+2. Find your avatar images in the `User Avatars` folder inside your SillyTavern user folder. On a default install it is `data/default-user/User Avatars`.
+3. In Formamorph, open the library's **Entities** tab and select **Import Entity**.
+4. Pick the backup `.json` and the avatar images together, in one pick.
+5. Read the report. See [Import from SillyTavern](#import-from-sillytavern).
+
+---
+
+## What the AI Reads
+
+| Field | Where | What the AI gets from it |
+|---|---|---|
+| **Name** and **Aliases** | **Profile** | What to call you. The story's planner also reads them as "this is the player". **Aliases** shows in Advanced mode. |
+| **Pronouns** | **Profile** | Free text, such as "she/her". Summaries and diaries use them when they write about you. |
+| **AI-Facing Description** | **Descriptions** | Who you are. |
+| **Image** | **Profile** | Your portrait. It shows in the picker and in the game's side panel. |
 
 The **All | Personas** switch above the grid shows only your personas. That view keeps your folders and tile sizes. Dragging, resizing and folder edits are off while it's on.
 
-> 💡 Narration still says "you". Characters use your name only after they learn it in the story.
+> 💡 Narration still says "you". Entities use your name only after they learn it in the story.
 
 ## The Default Persona
 
-Right-click a persona and select **Set as Default Persona**. A **Default** badge marks it. **Clear Default Persona** removes it.
-
-The default stays on this device. It never goes into an export.
+The default persona is the one Enter World and **Quick Start** pick when nothing else decides. The default stays on this device. It never goes into an export.
 
 ## Pick at Enter World
 
@@ -44,11 +76,11 @@ Enter World opens on a **Persona** category when at least one persona is availab
 The category starts on a pick in this order:
 
 1. The persona you last used in this world
-2. The world's own rule, when its author set one
-3. Your default persona
+2. The world's **Starts On** rule, when its author set one
+3. Your default persona. When the world allows **World Only**, its first own persona instead.
 4. **None**
 
-**Quick Start** uses the same order and shows no picker.
+A pick the world doesn't offer is skipped. **Quick Start** uses the same order and shows no picker.
 
 > [!NOTE]
 > One entity has one role per game. A persona you pick leaves the **Library Additions** list, and an entity you add there leaves the persona list.
@@ -76,7 +108,7 @@ Some worlds have a **Custom Persona**. It takes **None**'s place in the list, wi
 - **The world can give you traits**, such as a race and a class. They stay when you switch between it and a persona from your library.
 - **A world persona you pick shows in its slot.** It leaves its own group while you play it.
 
-**Change Persona** in game has the same entry. Change the name, and **Change** turns on.
+**Change Persona** during play has the same entry.
 
 ## Change It in Game
 
@@ -99,28 +131,20 @@ A library persona can have its own [placeholders](World-Editor-Placeholders). It
 
 ## Import from SillyTavern
 
-You can bring every SillyTavern persona over in one import.
-
-### 1. Get the files
+One import brings every SillyTavern persona over. The backup holds no images, so you pick the avatar files beside it.
 
 | File | Where SillyTavern keeps it |
 |---|---|
 | The backup, `personas_<date>.json` | **Persona Management** → **Backup**. Your browser downloads it. |
-| Your avatar images | The `User Avatars` folder inside your SillyTavern user folder: `data/default-user/User Avatars` on a default install |
-
-The backup holds no images, so you pick the avatar files beside it.
-
-### 2. Import
-
-In the **Entities** tab, select **Import Entity**. Pick the backup `.json` and the avatar images together, in one pick.
+| Your avatar images | The `User Avatars` folder inside your SillyTavern user folder |
 
 | In SillyTavern | Becomes |
 |---|---|
 | Each persona | A library persona |
 | An avatar whose filename matches the persona's | Its portrait |
 | A persona with no matching image | A persona with no portrait |
-| `{{user}}` in a description | The persona's own name |
-| `{{char}}` in a description | "the other character" |
+| `{{user}}` in a description | The persona's own name, as plain text |
+| `{{char}}` in a description | The plain text "the other character" |
 | The default persona | Your default, when you have none |
 | Title, position, depth and role | Not imported |
 
@@ -131,5 +155,5 @@ A report lists each persona with no image, each skipped entry, each persona that
 
 ## Related
 
-- [🎭 Entities in Play](Entities) — the cast you meet, and how a game opens
-- [🪪 Personas for Authors](Persona-Authoring) — playable entities, **Allowed Personas** and **Starts On**, and the prompt chips
+- [🎭 Entities in Play](Entities): the cast you meet, and how a game opens
+- [🪪 Personas for Authors](Persona-Authoring): playable entities, **Allowed Personas** and **Starts On**, and the prompt chips
