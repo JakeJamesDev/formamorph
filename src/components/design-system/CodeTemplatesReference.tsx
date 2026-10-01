@@ -57,8 +57,8 @@ const LONG_TEMPLATE: StatCodeTemplate = {
 const floor = {{floor:number=10}};
 const ceiling = {{ceiling:number=90}};
 const recovery = {{recovery:number=4}};
-const nightPenalty = daypart === {{quietPeriod:daypart=night}} ? {{penalty:number=8}} : 0;
-return Math.min(ceiling, Math.max(floor, source + recovery * deltaHours - nightPenalty));`,
+const nightPenalty = clock.daypart === {{quietPeriod:daypart=night}} ? {{penalty:number=8}} : 0;
+return Math.min(ceiling, Math.max(floor, source + recovery * clock.deltaHours - nightPenalty));`,
 };
 
 const IMPORT_TEMPLATE: StatCodeTemplate = {

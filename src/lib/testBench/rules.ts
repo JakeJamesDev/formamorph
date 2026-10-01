@@ -1355,15 +1355,15 @@ const statTraitDeltaClamped: Rule = {
 };
 
 /** Whether a stat's code builds on the stat's own current value, which is the one thing that lets a trait's
- *  starting change survive the first recompute. Three ways code can find itself count: the injected
- *  `currentStatId`, the `self` map entry, and its own name written as a literal or a map lookup. */
+ *  starting change survive the first recompute. Two ways code can find itself count: the `self` map entry,
+ *  and its own id or name written as a literal or a map lookup. */
 const codeReadsSelf = (code: string, stat: Stat, world: RuleWorld): boolean => {
   // The id has to be quoted to be a lookup: bare containment would read a stat whose id is "1" out of
   // `return 100;` and silently quiet the rule. An idless stat has no lookup to find, rather than an empty one.
   const quotedId = stat.id
     ? new RegExp(`["'\`]${stat.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'\`]`)
     : undefined;
-  if (/\bcurrentStatId\b/.test(code) || /\bself\b/.test(code) || quotedId?.test(code)) return true;
+  if (/\bself\b/.test(code) || quotedId?.test(code)) return true;
   const own = statCodeName(stat.name, allPlaceholders(world));
   return statNamesInCode(code).some((name) => name === own);
 };

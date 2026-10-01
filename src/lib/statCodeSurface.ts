@@ -8,7 +8,7 @@
  * caught by the drift guard beside this file.
  */
 
-import { DELTA_SOURCES, STAT_CLOCK_VARS, type DeltaSource } from '@/lib/statCodeExecutor';
+import { DELTA_SOURCES, type DeltaSource } from '@/lib/statCodeExecutor';
 import { STAT_CODE_SNIPPETS } from '@/lib/codeSnippets';
 import { nearestName, surfaceKnownNames, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
@@ -36,16 +36,13 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
   { name: 'stats', detail: 'object', info: 'Every stat in the world by name. Use stats["Two Words"] for a name with a space.' },
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
-  { name: 'placeholders', detail: 'object', info: 'Every placeholder in the world. A bare name reaches the world’s own; write the path for an owned one, as in placeholders.Molly.Hair. Use placeholders["Two Words"] for a name with a space.' },
+  { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'entities', detail: 'object', info: 'Every entity in play by name, with its own traits and placeholders. Use entities["Two Words"] for a name with a space.' },
   { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits and placeholders. Empty when the player plays no entity.' },
   { name: 'dictionaries', detail: 'object', info: 'Every dictionary in play by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
-
-/** Names the sandbox injects for older code but never offers or documents. */
-export const SANDBOX_UNDOCUMENTED_GLOBALS: readonly string[] = ['currentStatId', ...STAT_CLOCK_VARS];
 
 /** The fields on every member of `delta`. */
 export const DELTA_FIELDS: readonly SurfaceEntry[] = [
@@ -174,7 +171,7 @@ export const SANDBOX_BUILTINS: readonly SurfaceEntry[] = [
   { name: 'Boolean', detail: 'function', info: 'Convert to true or false.' },
   { name: 'Array', detail: 'function', info: 'Array.isArray, Array.from.' },
   { name: 'Object', detail: 'function', info: 'Object.keys, Object.values, Object.entries.' },
-  { name: 'Date', detail: 'function', info: 'Real-world clock. The story clock is deltaHours and friends.' },
+  { name: 'Date', detail: 'function', info: 'Real-world clock. For story time, use clock.' },
   { name: 'parseInt', detail: 'function', info: 'Read a whole number out of a string.' },
   { name: 'parseFloat', detail: 'function', info: 'Read a decimal number out of a string.' },
   { name: 'isNaN', detail: 'function', info: 'Whether a value is not a number.' },
@@ -248,7 +245,7 @@ export const BUILTIN_MEMBERS: ReadonlyMap<string, readonly SurfaceEntry[]> = new
   ],
   Boolean: [],
   Date: [
-    { name: 'now', detail: '() => number', info: 'Real-world milliseconds since 1970. The story clock is elapsedHours.' },
+    { name: 'now', detail: '() => number', info: 'Real-world milliseconds since 1970. The story clock is clock.elapsedHours.' },
     { name: 'parse', detail: '(text) => number', info: 'Read a date string as milliseconds.' },
     { name: 'UTC', detail: '(y, m, ...) => number', info: 'Milliseconds for a date given in UTC parts.' },
   ],
@@ -265,7 +262,6 @@ export const LANGUAGE_NAMES: readonly string[] = [
 export const STAT_CODE_SURFACE: CodeSurface = {
   label: 'stat code',
   globals: SANDBOX_GLOBALS,
-  hiddenGlobals: SANDBOX_UNDOCUMENTED_GLOBALS,
   builtins: SANDBOX_BUILTINS,
   members: BUILTIN_MEMBERS,
   languageNames: LANGUAGE_NAMES,

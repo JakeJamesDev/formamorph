@@ -78,9 +78,27 @@ describe('runStatCodeTurn owner placeholders', () => {
     expect(out.pinWrites).toEqual({ probe: 'auburn', 'molly-hair': 'red' });
   });
 
-  it('holds one pin state for a placeholder reached by its owner and by its old path', async () => {
-    const out = await run('entities.Molly.placeholders.Hair.pin("red"); placeholders.Probe.pin(placeholders.Molly.Hair.value);');
-    expect(out.pinWrites).toEqual({ 'molly-hair': 'red', probe: 'red' });
+  it('holds one pin state for a placeholder reached through persona and through its entities entry', async () => {
+    const out = await run('entities.Mira.placeholders.Mark.pin("burn"); placeholders.Probe.pin(persona.placeholders.Mark.value);',
+      played(asMira));
+    expect(out.pinWrites).toEqual({ 'mira-mark': 'burn', probe: 'burn' });
+  });
+
+  it('names an owned placeholder by its owner’s route in what a bad write reports', async () => {
+    await run('entities.Molly.placeholders.Hair.id = "x"; persona.placeholders.Nope.name = "y"; dictionaries.Weather.placeholders.Sky.name = "z";');
+    const warned = vi.mocked(console.warn).mock.calls.flat().join('\n');
+    expect(warned).toContain('entities.Molly.placeholders.Hair.id');
+    // The played persona is an `entities` entry, so its route names it there.
+    expect(warned).toContain('entities.Lyra.placeholders.Nope.name');
+    expect(warned).toContain('dictionaries.Weather.placeholders.Sky.name');
+    await run('entities.Molly.placeholders.Hair.pin({});');
+    expect(vi.mocked(console.error).mock.calls.flat().join('\n')).toContain('entities.Molly.placeholders.Hair.value must be text');
+  });
+
+  it('does not reach an owned placeholder through placeholders', async () => {
+    const out = await run('const blank = placeholders.Molly.Hair === undefined && placeholders.Sky.value === "";'
+      + ' placeholders.Probe.pin(blank ? "blank" : "reached");');
+    expect(out.pinWrites).toEqual({ probe: 'blank' });
   });
 
   it('reads the played library persona’s placeholder through persona, and pins it as a Code Pin on its id', async () => {

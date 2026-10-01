@@ -290,9 +290,9 @@ describe('planCodeRename over the placeholder tree', () => {
     expect(plan?.edits[0].boxes.after).toBe(`stats['Wolf Power'].value + stats['Beast Fury'].value`);
   });
 
-  it('rewrites the owner segment of every path through a renamed owner', () => {
+  it('rewrites the owner key of every entities path through a renamed owner', () => {
     const plan = planOver(
-      `placeholders.Molly.Hair.text + placeholders["Molly"]["Hair"].text`,
+      `entities.Molly.placeholders.Hair.text + entities["Molly"].placeholders["Hair"].text`,
       {
         oldName: 'Molly',
         newName: 'Maud',
@@ -301,12 +301,12 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(2);
-    expect(plan?.edits[0].boxes.after).toBe(`placeholders.Maud.Hair.text + placeholders["Maud"]["Hair"].text`);
+    expect(plan?.edits[0].boxes.after).toBe(`entities.Maud.placeholders.Hair.text + entities["Maud"].placeholders["Hair"].text`);
   });
 
   it('rewrites the leaf of a child rename and leaves a world-level name of its own alone', () => {
     const plan = planOver(
-      `placeholders.Molly.Hair.text + placeholders.Hair.text`,
+      `entities.Molly.placeholders.Hair.text + placeholders.Hair.text`,
       {
         oldName: 'Hair',
         newName: 'Mane',
@@ -315,10 +315,10 @@ describe('planCodeRename over the placeholder tree', () => {
       },
     );
     expect(plan?.references).toBe(1);
-    expect(plan?.edits[0].boxes.after).toBe(`placeholders.Molly.Mane.text + placeholders.Hair.text`);
+    expect(plan?.edits[0].boxes.after).toBe(`entities.Molly.placeholders.Mane.text + placeholders.Hair.text`);
   });
 
-  it('rewrites the bare-name fallback a scoped placeholder answers', () => {
+  it('leaves a bare name alone, since it reaches no owned placeholder', () => {
     const plan = planOver(
       'placeholders.Hair.text',
       {
@@ -328,12 +328,12 @@ describe('planCodeRename over the placeholder tree', () => {
         placeholders: { list: [hair('h1')], owners: new Map([['h1', molly]]) },
       },
     );
-    expect(plan?.edits[0].boxes.after).toBe('placeholders.Mane.text');
+    expect(plan).toBeNull();
   });
 
   it('turns a segment into a bracket form when the new name is not an identifier', () => {
     const plan = planOver(
-      'placeholders.Molly.Hair.text',
+      'entities.Molly.placeholders.Hair.text',
       {
         oldName: 'Hair',
         newName: 'Wild Mane',
@@ -341,7 +341,7 @@ describe('planCodeRename over the placeholder tree', () => {
         placeholders: { list: [hair('h1')], owners: new Map([['h1', molly]]) },
       },
     );
-    expect(plan?.edits[0].boxes.after).toBe(`placeholders.Molly['Wild Mane'].text`);
+    expect(plan?.edits[0].boxes.after).toBe(`entities.Molly.placeholders['Wild Mane'].text`);
   });
 
   it('leaves a computed segment and everything under it alone', () => {
@@ -385,16 +385,17 @@ describe('planCodeRename over the placeholder tree', () => {
       kind: 'entity', id: 'e-guard', name: `${encodePlaceholderToken({ id: 'town', mode: 'world', placementId: 'pl2' })} Guard`,
     };
     const plan = planOver(
-      `placeholders['Town Guard'].Town.text + placeholders.Town.text`,
+      `entities['Town Guard'].placeholders.Town.text`,
       {
         oldName: 'Town',
         newName: 'Ashford',
         subject: { kind: 'placeholder', id: 'town' },
         placeholders: { list: [town], owners: new Map([['town', guard]]) },
+        entities: [{ id: guard.id, name: guard.name }],
       },
     );
-    expect(plan?.references).toBe(3);
-    expect(plan?.edits[0].boxes.after).toBe(`placeholders['Ashford Guard'].Ashford.text + placeholders.Ashford.text`);
+    expect(plan?.references).toBe(2);
+    expect(plan?.edits[0].boxes.after).toBe(`entities['Ashford Guard'].placeholders.Ashford.text`);
   });
 
   it('leaves a path alone where a member of the holder won the name', () => {

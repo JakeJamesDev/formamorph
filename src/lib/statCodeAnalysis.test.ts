@@ -23,7 +23,7 @@ describe('statCodeDiagnostics', () => {
   it('says nothing about code that runs', () => {
     expect(statCodeDiagnostics(`const health = stats.Health.value;
 const me = stats[self.name];
-return Math.min(me.max, health + deltaHours);`)).toEqual([]);
+return Math.min(me.max, health + clock.deltaHours);`)).toEqual([]);
   });
 
   it('underlines syntax the grammar cannot read', () => {
@@ -45,7 +45,7 @@ return Math.min(me.max, health + deltaHours);`)).toEqual([]);
   });
 
   it('names the variable the author probably meant', () => {
-    expect(messages('return elapsedHrs;')[0]).toContain('elapsedHours');
+    expect(messages('return clok.day;')[0]).toContain('clock');
     expect(messages('return stat.length;')[0]).toContain('stats');
   });
 
@@ -89,9 +89,9 @@ return scale(total) + min + max;`)).toEqual([]);
     for (const field of ['self.value', 'self.min', 'self.max', 'self.regen']) expect(problem.message).toContain(field);
   });
 
-  it('accepts a write through the currentStatId lookup, which reaches the same entry as self', () => {
-    expect(statCodeDiagnostics('const me = Object.values(stats).find(s => s.id === currentStatId);\nme.value = 5;')).toEqual([]);
-    expect(statCodeDiagnostics('Object.values(stats).find(s => s.id === currentStatId).value = 5;')).toEqual([]);
+  it('accepts a write through a self.id lookup, which reaches the same entry as self', () => {
+    expect(statCodeDiagnostics('const me = Object.values(stats).find(s => s.id === self.id);\nme.value = 5;')).toEqual([]);
+    expect(statCodeDiagnostics('Object.values(stats).find(s => self.id == s.id).value = 5;')).toEqual([]);
   });
 
   it('flags a write to a field self does not have, and names the one it was reaching for', () => {
@@ -126,7 +126,8 @@ return scale(total) + min + max;`)).toEqual([]);
       'stats[0].value = 1;\nreturn 2;',
       'stats.Health.value = 1;\nreturn 2;',
       'const hp = stats["Health"];\nhp.value -= 1;\nreturn 2;',
-      'const other = Object.values(stats).find(s => s.id !== currentStatId);\nother.value = 1;\nreturn 2;',
+      'const other = Object.values(stats).find(s => s.id !== self.id);\nother.value = 1;\nreturn 2;',
+      'const other = Object.values(stats).find(s => self.id != s.id);\nother.value = 1;\nreturn 2;',
     ]) {
       const problems = statCodeDiagnostics(code);
       expect(problems, code).toHaveLength(1);
@@ -154,7 +155,7 @@ return scale(total) + min + max;`)).toEqual([]);
   });
 
   it('still reads a slot-carrying template for names outside its slots', () => {
-    expect(messages('return {{a:number=1}} + elapsedHrs;', { slots: true })[0]).toContain('elapsedHours');
+    expect(messages('return {{a:number=1}} + clok.day;', { slots: true })[0]).toContain('clock');
   });
 
   it('treats the same slot syntax as real code where slots do not exist', () => {
@@ -257,8 +258,8 @@ describe('statCodeCompletions', () => {
   });
 
   it('offers the stat fields off a lookup itself, without a variable in between', () => {
-    expect(labels('return Object.values(stats).find(s => s.id === currentStatId).|')).toContain('value');
-    expect(labels('return Object.values(stats).find(s => s.id === currentStatId)?.|')).toContain('regen');
+    expect(labels('return Object.values(stats).find(s => s.id === self.id).|')).toContain('value');
+    expect(labels('return Object.values(stats).find(s => s.id === self.id)?.|')).toContain('regen');
     expect(labels('return stats.Health.|')).toContain('max');
   });
 
@@ -389,32 +390,18 @@ describe('placeholders in stat code', () => {
     expect(messages('const key = "Mood";\nreturn placeholders[key].value.length;', { placeholders: { list: [] } })).toEqual([]);
   });
 
-  // A bare name reaches the row the world itself holds before any owned or scoped one, whatever the
-  // authoring order, so the warning says which and points at the path that reaches the other.
-  it('warns on a shared name and says the world’s own row is the one that reads', () => {
-    // An owned placeholder is always a chip value of its owner.
-    const molly = ph('molly', 'Molly', { values: [{ id: 'v:m2', text: encodePlaceholderToken({ id: 'm2', mode: 'world', placementId: 'p1' }) }] });
-    const shared = [ph('m1', 'Mood'), molly, ph('m2', 'Mood', { ownerId: 'molly' })];
-    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: shared } }))
-      .toEqual(['2 placeholders are named “Mood”. This reads the one the world itself holds. Write the path to reach another.']);
-  });
-
-  it('names the owned one when it is the only claim on a shared name', () => {
-    const molly = ph('molly', 'Molly', { values: [{ id: 'v:m2', text: encodePlaceholderToken({ id: 'm2', mode: 'world', placementId: 'p1' }) }] });
-    const anna = ph('anna', 'Anna', { values: [{ id: 'v:m3', text: encodePlaceholderToken({ id: 'm3', mode: 'world', placementId: 'p2' }) }] });
-    const shared = [molly, ph('m2', 'Mood', { ownerId: 'molly' }), anna, ph('m3', 'Mood', { ownerId: 'anna' })];
-    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: shared } }))
-      .toEqual(['2 placeholders are named “Mood”. This reads “Anna › Mood”, the last one authored. Write the path to reach another.']);
-  });
-
-  it('names an entity’s own placeholder by its entity when it is the one that reads', () => {
-    const list = [ph('m1', 'Mood'), ph('m2', 'Mood')];
-    const owners = new Map([['m2', { kind: 'entity' as const, id: 'ent-bo', name: 'Bo' }]]);
-    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list, owners } }))
-      .toEqual(['2 placeholders are named “Mood”. This reads the one the world itself holds. Write the path to reach another.']);
-    // With no world-level row of the name, the entity's own is what a bare name reaches.
-    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list: [list[1]], owners } }))
-      .toEqual([]);
+  it('keys no owned placeholder by its bare name, so a name only an owner holds is unknown', () => {
+    const list = [ph('m1', 'Mood'), ph('m2', 'Mood'), ph('m3', 'Calm')];
+    const owners = new Map([
+      ['m2', { kind: 'entity' as const, id: 'ent-bo', name: 'Bo' }],
+      ['m3', { kind: 'entity' as const, id: 'ent-bo', name: 'Bo' }],
+    ]);
+    // Bo's Mood shares no key with the world's, so there is no shared name to warn about.
+    expect(messages('return placeholders.Mood.value.length;', { placeholders: { list, owners } })).toEqual([]);
+    expect(messages('return placeholders.Calm.value.length;', { placeholders: { list, owners } }))
+      .toEqual(['Unknown placeholder name “Calm”.']);
+    expect(messages('return placeholders.Bo.Calm.value.length;', { placeholders: { list, owners } }))
+      .toEqual(['Unknown placeholder name “Bo”.']);
   });
 
   it('offers the names after placeholders., leaving out any a dot cannot reach', () => {
@@ -472,40 +459,44 @@ describe('placeholders in stat code', () => {
       .toEqual(['This code never returns a number or writes self.value, so the stat keeps its value.']);
   });
 
-  // `placeholders` is a tree: an entity or book that owns placeholders is a node of its own, and a
-  // placeholder that holds others carries them as members. The editor completes and checks the same paths.
+  // `placeholders` is a tree: a placeholder that holds others carries them as members. The editor completes
+  // and checks the same paths. Owner routes have their own suite.
   describe('paths', () => {
-    /** Molly owns Hair; Hair owns Shade. The world has its own Hair and a spaced-name entity.
-     *  An owned placeholder is always a chip value of its holder, which is what nests it. */
+    /** Hair holds Shade, and Shade holds Tone. An owned placeholder is always a chip value of its holder. */
     const chip = (id: string) => ({ id: `v:${id}`, text: encodePlaceholderToken({ id, mode: 'world', placementId: `p-${id}` }) });
     const hair = ph('hair', 'Hair', { values: [chip('shade')] });
-    const shade = ph('shade', 'Shade', { ownerId: 'hair' });
-    const list = [ph('world-hair', 'Hair'), hair, shade, ph('eye', 'Eye Color')];
-    const owners = new Map([
-      ['hair', { kind: 'entity' as const, id: 'e-molly', name: 'Molly' }],
-      ['shade', { kind: 'entity' as const, id: 'e-molly', name: 'Molly' }],
-      ['eye', { kind: 'dictionary' as const, id: 'b-old', name: 'Old Molly' }],
-    ]);
+    const shade = ph('shade', 'Shade', { ownerId: 'hair', values: [chip('tone')] });
+    const tone = ph('tone', 'Tone', { ownerId: 'shade' });
+    const list = [hair, shade, tone, ph('eye', 'Eye Color'), ph('molly-hair', 'Hair')];
+    const owners = new Map([['molly-hair', { kind: 'entity' as const, id: 'e-molly', name: 'Molly' }]]);
     const scoped = { placeholders: { list, owners } };
 
     it('says nothing about a path every segment of which exists, at any depth', () => {
-      expect(messages('placeholders.Molly.Hair.Shade.pin("ash");', scoped)).toEqual([]);
-      expect(messages('placeholders["Old Molly"]["Eye Color"].pin("green");', scoped)).toEqual([]);
+      expect(messages('placeholders.Hair.Shade.Tone.pin("ash");', scoped)).toEqual([]);
+      expect(messages('placeholders["Hair"]["Shade"].pin("ash");', scoped)).toEqual([]);
+    });
+
+    it('flags a held row reached by its bare name, which only its path reaches', () => {
+      expect(messages('placeholders.Shade.pin("x");', scoped)).toEqual(['Unknown placeholder name “Shade”.']);
+    });
+
+    it('flags an owner name under placeholders, since an owner’s rows are on its entry', () => {
+      expect(messages('placeholders.Molly.Hair.pin("x");', scoped)).toEqual(['Unknown placeholder name “Molly”.']);
     });
 
     it('underlines a segment no entry has, and names the nearest under its holder', () => {
-      const [problem] = statCodeDiagnostics('placeholders.Molly.Hiar.pin("x");', scoped);
+      const [problem] = statCodeDiagnostics('placeholders.Hair.Shdae.pin("x");', scoped);
       expect(problem).toMatchObject({
         severity: 'error',
-        message: 'Unknown placeholder name “Hiar” under “Molly”. Did you mean “Hair”?',
+        message: 'Unknown placeholder name “Shdae” under “Hair”. Did you mean “Shade”?',
       });
       // Pointed at the bad segment, not at the whole chain.
-      expect('placeholders.Molly.Hiar.pin("x");'.slice(problem.from, problem.to)).toBe('Hiar');
+      expect('placeholders.Hair.Shdae.pin("x");'.slice(problem.from, problem.to)).toBe('Shdae');
     });
 
     it('reports a bad segment once for a chain, not once per nesting', () => {
-      expect(messages('placeholders.Molly.Hiar.Shade.pin("x");', scoped))
-        .toEqual(['Unknown placeholder name “Hiar” under “Molly”. Did you mean “Hair”?']);
+      expect(messages('placeholders.Hair.Shdae.Tone.pin("x");', scoped))
+        .toEqual(['Unknown placeholder name “Shdae” under “Hair”. Did you mean “Shade”?']);
     });
 
     it('warns on a child whose name loses to a member every placeholder has', () => {
@@ -518,55 +509,29 @@ describe('placeholders in stat code', () => {
     });
 
     it('says nothing about a member read off an entry reached by a path', () => {
-      expect(messages('placeholders.Molly.Hair.value = "gray";', scoped)).toEqual([]);
-      expect(messages('return placeholders.Molly.Hair.Shade.text.length;', scoped)).toEqual([]);
-    });
-
-    it('offers an owner node’s placeholders after its dot, and nothing of an entry’s own', () => {
-      expect(labels('return placeholders.Molly.|', scoped)).toEqual(['Hair']);
+      expect(messages('placeholders.Hair.Shade.value = "gray";', scoped)).toEqual([]);
+      expect(messages('return placeholders.Hair.Shade.Tone.text.length;', scoped)).toEqual([]);
     });
 
     it('offers a holder’s own members first, then what it holds', () => {
       const members = placeholderEntryFields('Wildcard').map((entry) => entry.name);
-      expect(labels('return placeholders.Molly.Hair.|', scoped)).toEqual([...members, 'Shade']);
+      expect(labels('return placeholders.Hair.|', scoped)).toEqual([...members, 'Shade']);
     });
 
-    it('offers the quoted names a bracket can reach, at the top level and under a node', () => {
-      // Keys, not paths: one bracket holds one key, so `Molly › Hair` is not writable there.
-      expect(labels('return placeholders["|"];', scoped)).toEqual(['Hair', 'Molly', 'Old Molly', 'Shade', 'Eye Color']);
-      expect(labels('return placeholders["Old Molly"]["|"];', scoped)).toEqual(['Eye Color']);
-      expect(labels('return placeholders.Molly["|"];', scoped)).toEqual(['Hair']);
-    });
-
-    it('leads with the exact path where a bare name is ambiguous', () => {
-      const offered = labels('return placeholders.|', scoped);
-      // Two placeholders are named Hair, so the path that reaches the scoped one comes first.
-      expect(offered[0]).toBe('Molly.Hair');
-      expect(offered).toContain('Hair');
-      expect(offered).toContain('Molly');
-      // A name a dot cannot reach is left out of the dotted list.
-      expect(offered).not.toContain('Old Molly');
-    });
-
-    it('names an owner node as the entity or book it stands for', () => {
-      const detailOf = (name: string) =>
-        completeAt('return placeholders.|', scoped)?.options.find((option) => option.label === name)?.detail;
-      expect(detailOf('Molly')).toBe('entity');
-      expect(detailOf('Hair')).toBe('placeholder');
-    });
-
-    it('warns that an owner node owns placeholders rather than holding a value', () => {
-      expect(messages('placeholders.Molly = "x";', scoped))
-        .toEqual(['“Molly” owns placeholders. Write to one of them instead.']);
+    it('offers only the world’s own rows at the top level, by dot and by bracket', () => {
+      expect(labels('return placeholders.|', scoped)).toEqual(['Hair']);
+      // Keys, not paths: one bracket holds one key.
+      expect(labels('return placeholders["|"];', scoped)).toEqual(['Hair', 'Eye Color']);
+      expect(labels('return placeholders.Hair["|"];', scoped)).toEqual(['Shade']);
     });
 
     it('suggests .value on a whole entry reached by a path', () => {
-      expect(messages('placeholders.Molly.Hair.Shade = "ash";', scoped))
-        .toEqual(['Write to placeholders.Molly.Hair.Shade.value instead.']);
+      expect(messages('placeholders.Hair.Shade = "ash";', scoped))
+        .toEqual(['Write to placeholders.Hair.Shade.value instead.']);
     });
 
     it('keeps quiet about a segment only a run could name', () => {
-      expect(messages('const key = "Hair";\nplaceholders.Molly[key].pin("x");', scoped)).toEqual([]);
+      expect(messages('const key = "Shade";\nplaceholders.Hair[key].pin("x");', scoped)).toEqual([]);
     });
   });
 });
@@ -695,7 +660,7 @@ describe('the stats map in stat code', () => {
       'return stats.Health.|',
       'return stats["Night Vision"]?.|',
       'return stats[self.name].|',
-      'return Object.values(stats).find(s => s.id === currentStatId).|',
+      'return Object.values(stats).find(s => s.id === self.id).|',
     ]) {
       expect(labels(doc, { statNames }), doc).toEqual(fields);
     }
@@ -727,8 +692,10 @@ describe('the stats map in stat code', () => {
     expect(messages('return stats[""].value;', { statNames })).toEqual([]);
   });
 
-  it('keeps currentStatId working but out of the list', () => {
-    expect(messages('return currentStatId === self.id ? 1 : 0;')).toEqual([]);
+  it('flags currentStatId and the flat clock names as unknown', () => {
+    for (const name of ['currentStatId', 'deltaHours', 'startDaypart']) {
+      expect(messages(`return ${name} ? 1 : 0;`), name).toContainEqual(expect.stringContaining(name));
+    }
     expect(labels('return cur|')).not.toContain('currentStatId');
   });
 });

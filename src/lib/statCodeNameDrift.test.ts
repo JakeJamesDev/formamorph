@@ -7,7 +7,7 @@ import type { Entity, Placeholder, PlayerStat, Trait, WorldOverview } from '@/ty
 import { phValues } from '@/test/placeholderValues';
 import { statCodeCompletions, statCodeDiagnostics } from './statCodeAnalysis';
 import { statCodeName, statCodeNamed } from './statCodeNames';
-import { placeholderPathAt, placeholderPathLabel, placeholderPathMap } from './statCodePaths';
+import { placeholderPathLabel, placeholderPathMap, walkPlaceholderPath } from './statCodePaths';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { checkStatCode } from './testBench/statCodeCheck';
 import { runStatCodeTurn } from './statCodeTurn';
@@ -251,8 +251,10 @@ const owners: PlaceholderOwners = new Map([
   ['molly-hair', { kind: 'entity', id: 'e-molly', name: 'Molly' }],
   ['shade', { kind: 'entity', id: 'e-molly', name: 'Molly' }],
 ]);
+/** What the editor knows of the cast: Molly, with no traits. */
+const editorOptions = { placeholders: { list: scoped, owners }, entities: [{ id: 'e-molly', name: 'Molly', traits: [], persona: false }] };
 
-/** One stat's `code` run over the scoped fixture, and the pins it left, by placeholder id. */
+/** One stat's `code` run over the scoped fixture, with Molly in the cast, and the pins it left, by placeholder id. */
 async function runScoped(code: string, timing: StatCodeTiming): Promise<Record<string, string | string[] | null>> {
   const only = stat({ id: 's1', name: 'Reader', ...inBox(timing, code) });
   const out = await runStatCodeTurn({
@@ -263,7 +265,7 @@ async function runScoped(code: string, timing: StatCodeTiming): Promise<Record<s
     asks: [],
     regenApplied: {},
     clock: {},
-    traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+    traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, entities: [molly], world: { traits: [], groups: [] } },
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
     placeholders: { placeholders: scoped, owners, rolls: { world: {} } },
@@ -274,7 +276,7 @@ async function runScoped(code: string, timing: StatCodeTiming): Promise<Record<s
 /** The keys the sandbox itself builds, read back through a pin: the top level, then Molly's own. */
 async function pathKeysInSandbox(timing: StatCodeTiming): Promise<string> {
   const pins = await runScoped(
-    'placeholders.Probe.pin(Object.keys(placeholders).join("|") + "/" + Object.keys(placeholders.Molly).join("|"));',
+    'placeholders.Probe.pin(Object.keys(placeholders).join("|") + "/" + Object.keys(entities.Molly.placeholders).join("|"));',
     timing,
   );
   return String(pins['ph-probe']);
@@ -292,48 +294,43 @@ function benchPathFindings(lookup: string, timing: StatCodeTiming): Promise<stri
 }
 
 describe.each(STAT_CODE_TIMINGS)('one placeholder path across the sandbox, the completions, the editor and the bench (%s box)', (timing) => {
-  it('keys the sandbox by the owner node and its placeholders, the world’s own row beside them', async () => {
-    // The world's Hair wins the bare name; Molly's is reached through her node, which lists only what she owns.
-    expect(await pathKeysInSandbox(timing)).toBe('Hair|Probe|Molly|Shade/Hair');
+  it('keys the sandbox by the world’s own rows, and Molly’s entry by what she owns', async () => {
+    expect(await pathKeysInSandbox(timing)).toBe('Hair|Probe/Hair');
   });
 
-  it('offers those same keys in the completions, at the top level and under the owner node', async () => {
-    const top = (await pathKeysInSandbox(timing)).split('/')[0].split('|');
-    const options = { placeholders: { list: scoped, owners } };
-    const offered = statCodeCompletions('return placeholders.', 'return placeholders.'.length, options)
-      ?.options.map((option) => option.label) ?? [];
-    for (const key of top) expect(offered).toContain(key);
-    // The exact path leads, because `Hair` alone reaches only one of the two.
-    expect(offered[0]).toBe('Molly.Hair');
-    const under = 'return placeholders.Molly.';
-    expect(statCodeCompletions(under, under.length, options)?.options.map((option) => option.label)).toEqual(['Hair']);
+  it('offers those same keys in the completions, at the top level and under Molly’s entry', async () => {
+    const [top, own] = (await pathKeysInSandbox(timing)).split('/').map((keys) => keys.split('|'));
+    const offered = (doc: string) => statCodeCompletions(doc, doc.length, editorOptions)?.options.map((option) => option.label) ?? [];
+    expect(offered('return placeholders.')).toEqual(top);
+    expect(offered('return entities.Molly.placeholders.')).toEqual(own);
   });
 
   it('lets the bench find that same path, and report the one no entry answers', async () => {
-    expect(await benchPathFindings('placeholders.Molly.Hair.Shade', timing)).toEqual([]);
-    const [missed] = await benchPathFindings('placeholders.Molly.Hiar', timing);
+    expect(await benchPathFindings('entities.Molly.placeholders.Hair.Shade', timing)).toEqual([]);
+    const [missed] = await benchPathFindings('entities.Molly.placeholders.Hiar', timing);
     expect(missed).toContain('Molly › Hiar');
   });
 
   it('lands a pin through the path on the child alone, by its id', async () => {
-    expect(await runScoped('placeholders.Molly.Hair.Shade.pin("silver");', timing)).toEqual({ shade: 'silver' });
+    expect(await runScoped('entities.Molly.placeholders.Hair.Shade.pin("silver");', timing)).toEqual({ shade: 'silver' });
   });
 
   it('derives every one of those names from the one exported resolver', async () => {
     const map = placeholderPathMap({ list: scoped, owners });
-    const top = (await pathKeysInSandbox(timing)).split('/')[0].split('|');
+    const [top] = (await pathKeysInSandbox(timing)).split('/').map((keys) => keys.split('|'));
     expect([...map.keys.keys()]).toEqual(top);
-    expect(placeholderPathLabel(placeholderPathAt(map, ['Molly', 'Hair', 'Shade'])!.path)).toBe('Molly › Hair › Shade');
+    const { node } = walkPlaceholderPath(map, ['Hair', 'Shade'], map.owners.get('e-molly') ?? null);
+    expect(placeholderPathLabel(node!.path)).toBe('Molly › Hair › Shade');
   });
 });
 
 /** The editor's own reader over the scoped fixture, which is timing-blind: one box's text is all it sees. */
 describe('the editor reads a placeholder path the way the sandbox keys it', () => {
   it('checks that same path, and underlines no other spelling of it', () => {
-    const options = { placeholders: { list: scoped, owners } };
-    const check = (lookup: string) => statCodeDiagnostics(`${lookup}.pin("x");`, options).map((d) => d.message);
-    expect(check('placeholders.Molly.Hair.Shade')).toEqual([]);
-    expect(check('placeholders.Molly.Shade')).toHaveLength(1);
+    const check = (lookup: string) => statCodeDiagnostics(`${lookup}.pin("x");`, editorOptions).map((d) => d.message);
+    expect(check('entities.Molly.placeholders.Hair.Shade')).toEqual([]);
+    expect(check('entities.Molly.placeholders.Shade')).toHaveLength(1);
+    expect(check('placeholders.Molly.Hair.Shade')).toHaveLength(1);
   });
 });
 

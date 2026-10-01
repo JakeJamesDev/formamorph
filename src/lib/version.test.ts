@@ -391,14 +391,60 @@ describe('migrateWorld', () => {
       expect(codeOf(migrateWorld({ worldOverview: { name: 'W' }, stats }))[1]).toBe('const me = self;\nreturn me.value;');
     });
 
-    it('leaves a world already at APP_VERSION as written', () => {
-      expect(codeOf(migrateWorld({ version: APP_VERSION, worldOverview: { name: 'W' }, stats })))
-        .toEqual(stats.map((s) => s.code));
+    // A world saved by v3.1.2 carries APP_VERSION 3.1.2 and may still hold the retired routes.
+    it('rewrites a world already at APP_VERSION', () => {
+      expect(codeOf(migrateWorld({ version: APP_VERSION, worldOverview: { name: 'W' }, stats }))).toEqual([
+        "return stats['Power'].value + self.value;",
+        'const me = self;\nreturn me.value;',
+        undefined,
+      ]);
     });
 
     it('is idempotent', () => {
       const once = migrateWorld({ version: '2.14.0', worldOverview: { name: 'W' }, stats });
       expect(migrateWorld({ ...once, version: '2.14.0' })).toEqual(once);
+    });
+  });
+
+  describe('stat code routes', () => {
+    const ph = (id: string, name: string, over: Partial<Placeholder> = {}) => ({ id, name, values: [], ...over });
+    // The world holds Mood, and Hair › Shade; Molly owns Eyes; the Weather book owns Sky.
+    const world = {
+      version: APP_VERSION,
+      worldOverview: { name: 'W' },
+      placeholders: [
+        ph('mood', 'Mood'),
+        ph('hair', 'Hair', { values: [{ id: 'v1', text: '{{ph:shade:world:p-shade}}' }] }),
+        ph('shade', 'Shade', { ownerId: 'hair' }),
+      ],
+      entities: [{ id: 'molly', name: 'Molly', placeholders: [ph('eyes', 'Eyes')] }],
+      dictionaries: [{ id: 'weather', name: 'Weather', enabled: true, entries: [], placeholders: [ph('sky', 'Sky')] }],
+      stats: [{
+        id: 's1', name: 'Mood Meter',
+        beforeCode: "placeholders.Molly.Eyes.pin('green'); placeholders.Shade.pin('ash');",
+        code: 'return placeholders.Weather.Sky.text.length + deltaHours + startDay + (currentStatId ? 1 : 0)'
+          + " + (placeholders.Eyes.value === 'green' ? 1 : 0);",
+      }],
+    };
+    const boxesOf = (out: unknown) => (out as { stats: { beforeCode?: string; code?: string }[] }).stats[0];
+
+    it('rewrites every retired route in both boxes', () => {
+      expect(boxesOf(migrateWorld(world))).toMatchObject({
+        beforeCode: "entities.Molly.placeholders.Eyes.pin('green'); placeholders.Hair.Shade.pin('ash');",
+        code: 'return dictionaries.Weather.placeholders.Sky.text.length + clock.deltaHours + clock.previous.day'
+          + " + (self.id ? 1 : 0) + (entities.Molly.placeholders.Eyes.value === 'green' ? 1 : 0);",
+      });
+    });
+
+    it('is idempotent', () => {
+      const once = migrateWorld(world);
+      expect(migrateWorld(once)).toEqual(once);
+    });
+
+    it('keeps a stat whose code needs nothing as the same object', () => {
+      const plain = { id: 's2', name: 'Plain', code: 'return clock.day;' };
+      const out = migrateWorld({ ...world, stats: [plain] }) as unknown as { stats: unknown[] };
+      expect(out.stats[0]).toBe(plain);
     });
   });
 

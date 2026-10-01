@@ -20,7 +20,7 @@ import {
   DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
-  isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathDots, placeholderPathLabel, placeholderPathMap,
+  isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
   walkPlaceholderPath, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 
@@ -162,10 +162,10 @@ function statLikeNames(code: string, tree: Tree): Map<string, string> {
   return names;
 }
 
-/** Whether stat-like source reaches the current stat's own entry: `self`, `stats` indexed by its own name,
- *  or an equality lookup by `currentStatId` (a `!==` lookup finds some other stat). */
+/** Whether stat-like source reaches the current stat's own entry: `self`, or `stats` indexed by its own name.
+ *  A `!==` against `self.id` finds some other stat, so it doesn't count. */
 const reachesOwnStat = (text: string, selfName?: string) =>
-  /\bself\b/.test(text) || /(?<![!=])===?\s*currentStatId\b|\bcurrentStatId\s*===?(?!=)/.test(text)
+  /\bself\b/.test(text.replace(/!==?\s*self\.id\b|\bself\.id\s*!==?/g, ''))
   || (selfName !== undefined && indexesStat(text, selfName));
 
 /**
@@ -354,30 +354,6 @@ function nodeEntry(node: PlaceholderPathNode): SurfaceEntry {
   return { name: node.name, detail: 'placeholder', info: `The “${node.name}” placeholder in this world.${held}` };
 }
 
-/**
- * The top level of the map as completions: one per key, then the exact path for every name more than one
- * thing claims. The paths lead, because a bare ambiguous name reaches only one of them.
- */
-function topLevelEntries(map: PlaceholderPathMap): { entries: SurfaceEntry[]; paths: SurfaceEntry[] } {
-  const shared = new Set(
-    map.claims.filter((claim) => placeholderKeyWinner(map, claim.key).count > 1).map((claim) => claim.key),
-  );
-  const paths: SurfaceEntry[] = [];
-  const seen = new Set<string>();
-  for (const claim of map.claims) {
-    if (!shared.has(claim.key) || claim.node.path.length < 2) continue;
-    const label = placeholderPathDots(claim.node.path);
-    if (label === null || seen.has(label)) continue;
-    seen.add(label);
-    paths.push({
-      name: label,
-      detail: claim.node.placeholder ? 'placeholder' : 'owner',
-      info: `“${placeholderPathLabel(claim.node.path)}”: exact path. The bare name resolves to a different placeholder.`,
-    });
-  }
-  const entries = map.top.filter((node) => IDENTIFIER.test(node.name)).map(nodeEntry);
-  return { entries, paths };
-}
 /** One entry of `stats`, the key literal or computed: every key reads a stat, if only a blank one. */
 const STAT_ENTRY_EXPRESSION = /^stats(\??\.[A-Za-z_$][\w$]*|\??\.?\[[^[\]]*\])$/;
 /** One stat picked out of `Object.values(stats)`, the call's arguments captured. `filter` hands back another
@@ -438,10 +414,7 @@ function placeholderMembersAt(
   placeholders: CodePlaceholders, segments: readonly string[], start: PlaceholderPathNode | null,
 ): readonly SurfaceEntry[] | null {
   const map = pathMapOf(placeholders);
-  if (!start && segments.length === 0) {
-    const { entries, paths } = topLevelEntries(map);
-    return [...paths, ...entries];
-  }
+  if (!start && segments.length === 0) return map.top.filter((node) => IDENTIFIER.test(node.name)).map(nodeEntry);
   const { node, rest } = walkPlaceholderPath(map, segments, start);
   if (rest.length === 0 && node) {
     const children = node.children.filter((child) => IDENTIFIER.test(child.name)).map(nodeEntry);
@@ -705,36 +678,15 @@ function checkEntryName(
 
 const checkTraitName = (ref: EntryRef, names: readonly string[]) => checkEntryName(ref, names, 'trait');
 
-/**
- * What is wrong with a bare name several things claim. Which one reads depends on what claims it: a row the
- * world itself holds beats a scoped one, and an owner node beats a placeholder of the same name, so the
- * message names the winner rather than restating one rule.
- */
+/** What is wrong with a name several of the world's own rows share: the last one authored reads. */
 function checkSharedKey(map: PlaceholderPathMap, { name, from, to }: EntryRef): CodeDiagnostic | null {
-  const claims = map.claims.filter((claim) => claim.key === name);
-  const node = map.keys.get(name);
-  if (claims.length < 2 || !node) return null;
-  const warn = (message: string): CodeDiagnostic => ({ from, to, severity: 'warning', message });
-  const count = claims.filter((claim) => claim.node.placeholder).length;
-  // An owner of placeholders takes a top-level key of its own, so one name can mean both kinds of thing.
-  if (count === 0) return warn(`“${name}” names more than one owner of placeholders. This reads the last one authored.`);
-  if (count === 1) {
-    const reads = node.placeholder ? 'the placeholder' : 'the owner';
-    return warn(`“${name}” names both a placeholder and an owner of placeholders. This reads ${reads}.`);
-  }
-  const lead = `${count} placeholders are named “${name}”.`;
-  const exact = 'Write the path to reach another.';
-  if (node.path.length > 1) {
-    return warn(`${lead} This reads “${placeholderPathLabel(node.path)}”, the last one authored. ${exact}`);
-  }
-  // A row the world itself holds beats a scoped or owned one, whatever the authoring order.
-  const elsewhere = claims.some((claim) => claim.node !== node && claim.node.path.length > 1);
-  return warn(elsewhere ? `${lead} This reads the one the world itself holds. ${exact}`
-    : `${lead} This reads the last one authored.`);
+  const { count } = placeholderKeyWinner(map, name);
+  if (count < 2) return null;
+  return { from, to, severity: 'warning', message: `${count} placeholders are named “${name}”. This reads the last one authored.` };
 }
 
 /**
- * What is wrong with a path: a bare name several things claim, a segment no entry answers, or a child whose
+ * What is wrong with a path: a name several world rows share, a segment no entry answers, or a child whose
  * name loses to a member every entry has. Each complaint lands on the segment that carries it.
  */
 function checkPlaceholderPath(refs: readonly EntryRef[], placeholders: CodePlaceholders): CodeDiagnostic[] {
@@ -836,9 +788,7 @@ function checkPlaceholderEntryWrite(
   const refs = chain?.kind === 'world' ? chain.refs : [];
   if (!refs.length) return null;
   const { node, rest } = walkPlaceholderPath(pathMapOf(placeholders), refs.map((ref) => ref.name));
-  if (rest.length > 0 || !node) return null;
-  if (!node.placeholder) return warn(`“${node.name}” owns placeholders. Write to one of them instead.`);
-  return warn(`Write to ${written}.value instead.`);
+  return rest.length === 0 && node ? warn(`Write to ${written}.value instead.`) : null;
 }
 
 /** What is wrong with a write into a trait map: to the entry itself, or to a field other than `enabled`. */

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
+import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
 import type { CodeEntityNames } from '@/lib/statCodeAnalysis';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
@@ -58,6 +59,13 @@ vi.mock('@/components/prompt/CodeArea', () => ({
       />
     );
   },
+}));
+
+/** The author's saved templates, as the template menu lists them. */
+const userTemplates = vi.hoisted((): StatCodeTemplate[] => []);
+vi.mock('@/services/StatTemplateStorageService', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/services/StatTemplateStorageService')>(),
+  listUserTemplates: async () => [...userTemplates],
 }));
 
 const executeStatCode = vi.hoisted(() => vi.fn());
@@ -363,6 +371,7 @@ describe('a box tests itself', () => {
   beforeEach(() => {
     executeStatCode.mockReset();
     updateStat.mockReset();
+    userTemplates.length = 0;
   });
 
   it('runs the box whose button was pressed, on that box’s own code', async () => {
@@ -438,7 +447,7 @@ describe('a box tests itself', () => {
     await user.click(await screen.findByRole('button', { name: 'Opening Turn Value' }));
     await user.click(screen.getByRole('button', { name: 'Insert Code' }));
 
-    const inserted = ['if (elapsedHours > 0) return;', 'return 50;'].join('\n');
+    const inserted = ['if (clock.elapsedHours > 0) return;', 'return 50;'].join('\n');
     await waitFor(() => expect(screen.getByLabelText('Stat Code Before the AI')).toHaveValue(inserted));
     // Into the before box alone: the after box is untouched.
     expect(screen.getByLabelText('Stat Code After the AI')).toHaveValue('');
@@ -447,6 +456,24 @@ describe('a box tests itself', () => {
     await waitFor(() => expect(row('Before the AI')).toHaveTextContent('Result: 50'));
     expect(executeStatCode.mock.calls[0][0]).toBe(inserted);
   });
+
+  // A template saved before the routes moved still holds the old ones; what it inserts runs today.
+  it('inserts a saved template on the current routes', async () => {
+    const user = userEvent.setup();
+    userTemplates.push({
+      id: 'saved-drain', name: 'Saved Drain', description: '', timing: 'after',
+      code: 'return self.value - deltaHours + (currentStatId ? 0 : 1);',
+    });
+    renderCodePanel(stats[0]);
+
+    await user.click(screen.getByRole('button', { name: 'Templates After the AI' }));
+    await user.click(await screen.findByRole('button', { name: 'Saved Drain' }));
+    await user.click(screen.getByRole('button', { name: 'Insert Code' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Stat Code After the AI'))
+      .toHaveValue('return self.value - clock.deltaHours + (self.id ? 0 : 1);'));
+  });
+
   it('offers no run on an empty box', async () => {
     renderCodePanel({ ...stats[0], beforeCode: '   ', code: 'return 1;' } as Stat);
 

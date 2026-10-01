@@ -44,9 +44,9 @@ describe('a rename through owner entries', () => {
       .toBe('dictionaries.Weather.placeholders[\'Cloud Cover\'].pin("gray");');
   });
 
-  it('rewrites a dictionary’s key in dictionaries and in its old path', () => {
+  it('rewrites a dictionary’s key in dictionaries, and leaves the retired owner path under placeholders', () => {
     expect(rename('dictionaries.Weather.placeholders.Sky.value + placeholders.Weather.Sky.value', { kind: 'dictionary', id: 'weather' }, 'Weather', 'Climate'))
-      .toBe('dictionaries.Climate.placeholders.Sky.value + placeholders.Climate.Sky.value');
+      .toBe('dictionaries.Climate.placeholders.Sky.value + placeholders.Weather.Sky.value');
   });
 });
 

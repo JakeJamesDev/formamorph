@@ -127,14 +127,14 @@ const quoted = (name: string, quote: string) =>
   `${quote}${name.replace(/\\/g, '\\\\').replace(new RegExp(quote, 'g'), `\\${quote}`)}${quote}`;
 
 /** One stretch of code and what replaces it. */
-interface CodeSplice {
+export interface CodeSplice {
   from: number;
   to: number;
   insert: string;
 }
 
 /** `code` with every splice applied. Back to front, so an earlier splice keeps a later one's offsets. */
-const spliced = (code: string, edits: readonly CodeSplice[]): string =>
+export const spliced = (code: string, edits: readonly CodeSplice[]): string =>
   [...edits]
     .sort((a, b) => b.from - a.from)
     .reduce((out, edit) => out.slice(0, edit.from) + edit.insert + out.slice(edit.to), code);
@@ -165,9 +165,8 @@ type NameRenames = ReadonlyMap<string, string>;
  * The keys of one chain that a rename moves, resolved against the map as it read before the edit.
  *
  * Resolution rather than name matching is what keeps a rename of Molly's `Hair` off a world-level
- * `placeholders.Hair`, and what carries it onto the bare-name fallback where the world has no `Hair` of its
- * own. More than one key can move at once: an owner named through a chip is renamed by the same edit that
- * renames the placeholder behind the chip. Each prefix goes through the one walk, so a key that lost to a
+ * `placeholders.Hair`. More than one key can move at once: an owner named through a chip is renamed by the
+ * same edit that renames the placeholder behind the chip. Each prefix goes through the one walk, so a key that lost to a
  * member of its holder is left alone here exactly as it is everywhere else.
  */
 function pathSplices(

@@ -217,7 +217,7 @@ export function StatCodeTemplateDialog({
   /** Under their code names: what a slot fills in has to be what the run reaches. */
   stats: Stat[];
   /** Excluded from stat pickers — a stat built from itself is a mistake, and templates reach their own
-   *  value through `currentStatId` rather than by name. */
+   *  value through `self` rather than by name. */
   currentStatId?: string;
   hasExistingCode: boolean;
   /** What a placeholder slot's picker offers. */
@@ -265,8 +265,8 @@ export function StatCodeTemplateDialog({
     trait: traitNames,
   }), [stats, currentStatId, placeholderNames, traitNames]);
   // Every stat, not the pickable ones: a slot picker must not offer the stat being edited (a formula
-  // reading its own value from the list is a loop), but code written by hand reads it through
-  // `currentStatId` all the time, so its name belongs in the completions.
+  // reading its own value from the list is a loop), but code written by hand may read it by name, so its
+  // name belongs in the completions.
   const statNames = useMemo(
     () => stats.map(stat => stat.name).filter((name): name is string => !!name),
     [stats],

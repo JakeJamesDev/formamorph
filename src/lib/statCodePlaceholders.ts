@@ -13,12 +13,9 @@ import { statCodeName } from './statCodeNames';
 /** The placeholders one stat-code run reads, and what they resolve under. */
 export interface StatCodePlaceholderSet {
   placeholders: readonly Placeholder[];
-  /** The entity or dictionary each scoped placeholder belongs to, so the map carries its owner node. Absent,
-   *  every placeholder reads as the world's own: there are no owner nodes and no paths, and a shared bare
-   *  name reaches the last authored rather than the world's own row. Every play and editor site passes it. */
+  /** The entity or dictionary each scoped placeholder belongs to, so its entry carries an owner node. Absent,
+   *  every placeholder reads as the world's own. Every play and editor site passes it. */
   owners?: PlaceholderOwners;
-  /** Placeholder ids `placeholders` never keys: reached only through their owner's entry. */
-  unlisted?: ReadonlySet<string>;
   /** Every dictionary, in authored order. Each is a `dictionaries` entry, its placeholders its owner node. */
   dictionaries?: readonly CodeOwnerName[];
   /** Ids of the authored books in play: the ones left on at Enter World. Absent, every authored book is in play,
@@ -56,7 +53,7 @@ function objectValue(ph: Placeholder, reading: PlaceholderReading, set: StatCode
 }
 
 /** `set` with the library's pools joined as the session's Placeholder Set joins them, the books after the
- *  world's. Their rows are reached only through their owner's entry. */
+ *  world's. */
 export function withLibraryPlaceholders(set: StatCodePlaceholderSet, entities: readonly Entity[]): StatCodePlaceholderSet {
   const books = set.libraryDictionaries ?? [];
   const joined = libraryPlaceholderSet([...set.placeholders], [...entities, ...books]);
@@ -75,7 +72,6 @@ export function withLibraryPlaceholders(set: StatCodePlaceholderSet, entities: r
     owners: new Map([
       ...set.owners ?? [], ...added.flatMap((p) => { const ref = ownerOf.get(p.id); return ref ? [[p.id, ref] as const] : []; }),
     ]),
-    unlisted: new Set([...set.unlisted ?? [], ...added.map((p) => p.id)]),
     dictionaries: [...set.dictionaries ?? [], ...books.map(({ id, name }) => ({ id, name }))],
   };
 }
@@ -102,7 +98,8 @@ export interface SandboxPlaceholderMap {
  * is kept.
  *
  * The structure comes from the one path resolver, so the map code walks is the one the editor completes and
- * checks. A placeholder reachable both by bare name and by path is one node, and so holds one pin state.
+ * checks. A placeholder two entries reach, as `persona` and its `entities` entry do, is one node, and so holds
+ * one pin state.
  */
 export function sandboxPlaceholders(set: StatCodePlaceholderSet): SandboxPlaceholderMap {
   const pick = set.pick ?? weightedPick;
@@ -138,12 +135,12 @@ export function sandboxPlaceholders(set: StatCodePlaceholderSet): SandboxPlaceho
     // Registered before its children are walked, so one node is built per path node whether two keys reach
     // it or a hand-edited world has two placeholders holding each other.
     const made: SandboxPlaceholderNode = {
-      name: node.name, path: node.path, ...(entry ? { entry } : {}), children,
+      name: node.name, path: node.path, ...(node.ownedBy ? { ownedBy: node.ownedBy } : {}), ...(entry ? { entry } : {}), children,
     };
     built.set(node, made);
     for (const child of node.children) children.push(nodeOf(child));
     return made;
   };
-  const map = placeholderPathMap({ list: set.placeholders, owners: set.owners, unlisted: set.unlisted });
+  const map = placeholderPathMap({ list: set.placeholders, owners: set.owners });
   return { top: map.top.map(nodeOf), owners: new Map([...map.owners].map(([id, node]) => [id, nodeOf(node)])) };
 }

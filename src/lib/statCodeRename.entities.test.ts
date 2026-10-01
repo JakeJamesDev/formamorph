@@ -58,12 +58,12 @@ describe('an entity rename in entities', () => {
       root: 'placeholders', oldName: 'Mira', newName: 'Old Mira', otherNames: [],
       subject: { kind: 'entity', id: 'mira' },
       placeholders: { list: [hair], owners: new Map([['h1', { kind: 'entity', id: 'mira', name: 'Mira' }]]) },
-      stats: [stat('a', `entities.Mira.traits.Scarred.enabled + entities['Mira'].name + placeholders.Mira.Hair.text + entities.Ash.name`)],
+      stats: [stat('a', `entities.Mira.traits.Scarred.enabled + entities['Mira'].name + entities.Mira.placeholders.Hair.text + entities.Ash.name`)],
       entities: [mira, ash],
     });
     expect(plan?.references).toBe(3);
     expect(plan?.edits[0].boxes.after)
-      .toBe(`entities['Old Mira'].traits.Scarred.enabled + entities['Old Mira'].name + placeholders['Old Mira'].Hair.text + entities.Ash.name`);
+      .toBe(`entities['Old Mira'].traits.Scarred.enabled + entities['Old Mira'].name + entities['Old Mira'].placeholders.Hair.text + entities.Ash.name`);
   });
 
   it('rewrites an entity that owns no placeholders', () => {

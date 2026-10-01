@@ -496,7 +496,7 @@ describe('CodeArea', () => {
   });
 
   it('marks a warning as a warning, leaving the names it recognizes unflagged', async () => {
-    render(<Harness initial="const total = elapsedHours * 2;" />);
+    render(<Harness initial="const total = clock.elapsedHours * 2;" />);
     const field = await editor();
     await waitFor(
       () => expect(field.querySelector('.cm-lintRange-warning')).toBeTruthy(),
@@ -510,7 +510,7 @@ describe('CodeArea', () => {
   it('leaves code the sandbox can run entirely unmarked', async () => {
     render(
       <>
-        <Harness initial="return elapsedHours;" />
+        <Harness initial="return clock.elapsedHours;" />
         <Harness initial="return nope;" />
       </>,
     );

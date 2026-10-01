@@ -251,7 +251,7 @@ return source {{comparison:choice(>=|<=)=>=}} {{threshold:number=50}} ? self.max
     name: 'Hourly Change',
     description: 'Change by a fixed amount per story hour. A negative rate decreases (hunger, fuel). A positive rate increases. Stacks with Regen, so set one or the other.',
     code: `const ratePerHour = {{ratePerHour:number=-5}};
-return self.value + ratePerHour * deltaHours;`,
+return self.value + ratePerHour * clock.deltaHours;`,
   },
   {
     id: 'builtin-timer',
@@ -259,7 +259,7 @@ return self.value + ratePerHour * deltaHours;`,
     name: 'Timer',
     description: 'Move across this stat’s range over a set number of story hours, up or down.',
     code: `const totalHours = {{totalHours:number=24}};
-const fraction = Math.min(1, Math.max(0, elapsedHours / totalHours));
+const fraction = Math.min(1, Math.max(0, clock.elapsedHours / totalHours));
 const progress = '{{direction:choice(up|down)=up}}' === 'up' ? fraction : 1 - fraction;
 return self.min + (self.max - self.min) * progress;`,
   },
@@ -269,15 +269,15 @@ return self.min + (self.max - self.min) * progress;`,
     name: 'Daypart Modifier',
     description: 'Follow another stat, with a bonus that only applies during one part of the day.',
     code: `const base = stats[{{base:stat}}].value;
-return base + (daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 0);`,
+return base + (clock.daypart === {{when:daypart=night}} ? {{bonus:number=20}} : 0);`,
   },
   {
     id: 'builtin-random-roll',
     timing: 'after',
     name: 'Random Per-Turn Roll',
     description: 'A fresh random value each turn, spread across this stat’s range. Use only one per world. A second draws the same numbers.',
-    code: `// elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
-const roll = (Math.random() * 100 + elapsedHours) % 100;
+    code: `// clock.elapsedHours keeps the roll moving even when the clock seed hasn't changed between turns.
+const roll = (Math.random() * 100 + clock.elapsedHours) % 100;
 return self.min + (self.max - self.min) * (roll / 100);`,
   },
   {
@@ -288,7 +288,7 @@ return self.min + (self.max - self.min) * (roll / 100);`,
     code: `const value = self.value;
 const target = {{target:number=100}};
 const rate = {{rate:number=0.1}};
-return value + (target - value) * rate * deltaHours;`,
+return value + (target - value) * rate * clock.deltaHours;`,
   },
   {
     id: 'builtin-bound-from-stat',
@@ -322,7 +322,7 @@ if (target.values.length) target.pin(target.values[Math.max(0, Math.min(band, ta
     description: 'Set a value on the opening turn only. Later turns do not run it. Use it for a value the first narration must read.',
     // The before box reads the clock at turn start, so the opening turn is the one with no hours behind
     // it. Returning nothing leaves the value where the turn found it.
-    code: `if (elapsedHours > 0) return;
+    code: `if (clock.elapsedHours > 0) return;
 return {{openingValue:number=50}};`,
   },
 ];

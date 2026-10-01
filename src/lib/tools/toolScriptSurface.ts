@@ -82,7 +82,6 @@ export function toolScriptSurface(params: readonly ToolParam[], placeholderNames
       { name: 'placeholders', detail: 'object', info: 'Each shared placeholder’s value by name. Use placeholders["Two Words"] for a name with a space. Read-only.' },
       { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
     ],
-    hiddenGlobals: [],
     builtins: BUILTINS,
     members: new Map([
       ...BUILTIN_MEMBERS, ['Date', DATE_MEMBERS],

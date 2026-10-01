@@ -196,7 +196,7 @@ if (lost > 0 && self.value === self.max) {
 
 ### Placeholders
 
-`placeholders` holds every placeholder in the world, by name. A name with a space needs brackets: `placeholders["Hair Color"]`. Each entry has:
+`placeholders` holds the world's own placeholders, by name. A name with a space needs brackets: `placeholders["Hair Color"]`. An entity's or a dictionary's placeholders are on its entry: `entities.Molly.placeholders`, `persona.placeholders` and `dictionaries.Weather.placeholders`. Each entry has:
 
 | Member | What it is |
 | --- | --- |
@@ -209,22 +209,23 @@ if (lost > 0 && self.value === self.max) {
 
 #### Paths
 
-Code reaches a placeholder the way the editor names it. An entity or a book that owns placeholders is a step of its own, and a placeholder that holds parts carries them as members:
+Code reaches a placeholder the way the editor names it. A placeholder that holds parts carries them as members, to any depth:
 
 ```javascript
-placeholders.Molly.Hair              // the Hair that Molly owns
-placeholders.Molly.Hair.Shade        // the Shade that Hair holds
-placeholders["Old Molly"]["Eye Color"]  // brackets, at any depth
+placeholders.Hair.Shade                          // the Shade that the world's Hair holds
+entities.Molly.placeholders.Hair                 // the Hair that Molly owns
+entities["Old Molly"].placeholders["Eye Color"]  // brackets, at any depth
 ```
 
 | You write | You reach |
 | --- | --- |
-| `placeholders.Hair` | The world's own `Hair`, where it has one |
-| `placeholders.Molly.Hair` | Molly's `Hair`, always |
+| `placeholders.Hair` | The world's own `Hair` |
+| `placeholders.Hair.Shade` | The `Shade` that the world's `Hair` holds |
+| `entities.Molly.placeholders.Hair` | Molly's `Hair` |
 
-A bare name resolves to the world's own row first. Where the world has no row of that name, it resolves to the last one authored, and the editor says so. Write the full path for an exact match.
+Each placeholder has one path. A part's bare name doesn't reach it, and neither does an owner's name under `placeholders`.
 
-An owner segment is not a placeholder. It has none of the six members in the table above, only the placeholders it owns. Every placeholder has all six, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
+Every placeholder has all six members in the table above, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
 
 #### The three words
 
@@ -407,7 +408,7 @@ const randomFactor = 0.8 + (Math.random() * 0.4);
 return baseDamage * skillMultiplier * randomFactor;
 ```
 
-> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn often draw the **same** first value, and a stat whose value you re-check within the same instant can get the same number back. Turns are far enough apart in real play that a once-per-turn roll varies. If you need two independent rolls, or a roll that changes on demand, mix in a clock variable: `(Math.random() * 100 + elapsedHours) % 100` stays evenly spread and advances on its own.
+> ⚠️ **`Math.random()` is reseeded from the clock each time your code runs.** Two stats' code running in the same turn often draw the **same** first value, and a stat whose value you re-check within the same instant can get the same number back. Turns are far enough apart in real play that a once-per-turn roll varies. If you need two independent rolls, or a roll that changes on demand, mix in the clock: `(Math.random() * 100 + clock.elapsedHours) % 100` stays evenly spread and advances on its own.
 
 #### Diminishing Returns
 
