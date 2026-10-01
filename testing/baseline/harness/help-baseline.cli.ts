@@ -1,8 +1,9 @@
 // Help baseline — how well does Formaquestion answer the fixed question set?
 //
-// The set is `help-baseline-cases.json`: task questions in a player's words for every docs page, "here"
-// questions that need the open Surface, follow-up pairs, questions the guide does not cover, and questions
-// with the AI Language set. Each question has keyed facts; `help-baseline-score.ts` scores by text match.
+// The set is `help-baseline-cases.json`: task questions in a player's words for every guide page, "here"
+// questions that need the open Surface, follow-up pairs, changelog questions, questions the guide does not
+// cover, and questions with the AI Language set. Each question has keyed facts, apart from the changelog
+// ones; `help-baseline-score.ts` scores by text match.
 //
 // Each question runs in every arm inside the same batch, so the endpoint's drift hits all of them:
 //   retrieval  the app's help session as it ships: the Docs Index finds the sections, one request
@@ -14,19 +15,22 @@
 // `reasoning_effort: "none"` and turns streaming off to read the token counts.
 //
 // The report, per arm and question kind:
-//   grounded   every keyed fact, no forbidden name, and no general-knowledge flag
-//   keys met   every keyed fact and no forbidden name, flag or no flag. On the control it is the share of
-//              questions a model answers right with no guide, so it shows how far the keys can be guessed
+//   grounded   every keyed fact, no forbidden name, a keyed section among the sources, and no
+//              general-knowledge flag
+//   other source  every keyed fact, no forbidden name and no flag, from sections the key does not list
+//   keys met   every keyed fact and no forbidden name, whatever the sources and the flag. On the control it
+//              is the share of questions a model answers right with no guide, so it shows how far the keys
+//              can be guessed
 //   wrong step the answer holds a forbidden name
 //   invented   the answer holds a bold name that is nowhere in the docs
 //   false flag a covered question, flagged as not from the guide
-//   wrong, no flag  a covered question with an answer that is not grounded and has no flag to warn the player
-//   sources    the right section is among the answer's sources
+//   wrong, no flag  a covered question with an answer that misses its keys and has no flag to warn the player
+//   sources    a keyed section is among the answer's sources
 //   missed flag a question the guide does not cover, with no flag
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--only id,id] [--kinds task,here,followUp,language,uncovered] [--worst 10] [--show]
+//          [--lookup] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -39,7 +43,7 @@ import { askHelp, HELP_MAX_TOKENS, type EarlierExchange } from '@/lib/formaquest
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { RequestMessage } from '@/types';
-import { BASELINE_KINDS, loadBaselineCases, type BaselineCase } from './help-baseline-cases';
+import { BASELINE_KINDS, loadBaselineCases, type BaselineCase, type BaselineKind } from './help-baseline-cases';
 import { inLanguage, scoreAnswer, summarize, worstQuestions, type ScoredRow, type Summary } from './help-baseline-score';
 
 const args = process.argv.slice(2);
@@ -56,26 +60,34 @@ const show = args.includes('--show');
 
 type Arm = 'retrieval' | 'lookup' | 'no-docs';
 
-interface Sample {
+/** Tokens in and out, summed over the requests of one question. */
+interface Usage { promptTokens: number; answerTokens: number; requests: number }
+const noUsage = (): Usage => ({ promptTokens: 0, answerTokens: 0, requests: 0 });
+
+interface Sample extends Usage {
   /** The answer text, with the general-knowledge marker removed. */
   answer: string;
   flagged: boolean;
   /** The ids of the docs sections that reached the model. */
   sources: string[];
-  /** Tokens in and out, summed over the requests of the question. */
-  promptTokens: number;
-  answerTokens: number;
-  requests: number;
 }
 interface Row { caseId: string; arm: Arm; run: number; sample: Sample | null; error?: string }
-interface Batch { endpoint: string; model: string; runs: number; arms: Arm[]; rows: Row[] }
+interface Batch {
+  endpoint: string;
+  model: string;
+  runs: number;
+  arms: Arm[];
+  /** The ids of the questions the batch was run for. A first question that only gives a follow-up its history is not one. */
+  picked?: string[];
+  rows: Row[];
+}
 
 const index = bundledDocsIndex();
 const allCases = loadBaselineCases();
 const caseById = new Map(allCases.map((c) => [c.id, c]));
-const picked = allCases.filter((c) => kinds.includes(c.kind) && (!only || only.split(',').includes(c.id)));
+const asked = allCases.filter((c) => kinds.includes(c.kind) && (!only || only.split(',').includes(c.id)));
 // A follow-up needs its first question in the batch.
-const cases = allCases.filter((c) => picked.includes(c) || picked.some((p) => p.after === c.id));
+const cases = allCases.filter((c) => asked.includes(c) || asked.some((p) => p.after === c.id));
 const allDocs = index.contents()
   .flatMap((page) => index.get(page.sections.map((section) => section.id)))
   .map((section) => section.markdown)
@@ -90,10 +102,12 @@ const NO_DOCS_SYSTEM_PROMPT = [
   '- After the steps, add one or two sentences of detail when the player needs them.',
 ].join('\n');
 
-function snapshotFor(endpoint: string, model: string, token: string, tools: boolean): AiSettingsSnapshot {
+interface Target { endpoint: string; model: string; token: string }
+
+function snapshotFor(target: Target, tools: boolean): AiSettingsSnapshot {
   return {
     resolveTarget: () => ({
-      endpointId: 'probe', url: endpoint, apiToken: token, model, maxTokens: undefined, localEngine: false,
+      endpointId: 'probe', url: target.endpoint, apiToken: target.token, model: target.model, maxTokens: undefined, localEngine: false,
       samplerOverrides: defaultEndpointSamplerOverrides(),
       // The lookup arm says the endpoint takes function calls, so the help session picks lookup mode.
       reasoning: tools ? { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'probe' } } : UNKNOWN_REASONING_CAPABILITY,
@@ -109,8 +123,6 @@ interface Completion {
   choices?: { message?: { content?: string | null; tool_calls?: { id?: string; function: { name: string; arguments: string } }[] }; finish_reason?: string }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 }
-interface Usage { promptTokens: number; answerTokens: number; requests: number }
-
 /** Sends one request body with streaming off and reasoning off, and adds its token counts to `usage`. */
 async function send(url: RequestInfo | URL, init: RequestInit | undefined, usage: Usage): Promise<Completion | Response> {
   const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
@@ -141,15 +153,13 @@ function sessionFetch(usage: Usage): typeof fetch {
   }) as typeof fetch;
 }
 
-interface Target { endpoint: string; model: string; token: string }
-
 /** One question through the app's help session. */
 async function askSession(target: Target, arm: Arm, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
-  const usage: Usage = { promptTokens: 0, answerTokens: 0, requests: 0 };
+  const usage = noUsage();
   const lookup = arm === 'lookup';
   const session = askHelp({
     question: c.question, history, language: c.language, surface: c.surface, index, lookup,
-    snapshot: snapshotFor(target.endpoint, target.model, target.token, lookup), fetchImpl: sessionFetch(usage),
+    snapshot: snapshotFor(target, lookup), fetchImpl: sessionFetch(usage),
   });
   for await (const event of session) {
     if (event.type === 'done') return { answer: event.text, flagged: event.flagged, sources: event.sources.map((section) => section.id), ...usage };
@@ -159,13 +169,13 @@ async function askSession(target: Target, arm: Arm, c: BaselineCase, history: Ea
 
 /** The control: the question with its history, its screen and its language, and no guide text. */
 async function askNoDocs(target: Target, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
-  const usage: Usage = { promptTokens: 0, answerTokens: 0, requests: 0 };
+  const usage = noUsage();
   const where = surfaceHint(c.surface, index)?.where;
   const messages: RequestMessage[] = [
     ...history.flatMap((exchange): RequestMessage[] => [{ role: 'user', content: exchange.question }, { role: 'assistant', content: exchange.answer }]),
     { role: 'user', content: [...(where ? [`The player asks from this screen: ${where}.`] : []), `Question: ${c.question}`].join('\n\n') },
   ];
-  const spec = buildAiRequestSpec(snapshotFor(target.endpoint, target.model, target.token, false), {
+  const spec = buildAiRequestSpec(snapshotFor(target, false), {
     systemPrompt: helpSystemPrompt(c.language ?? '', NO_DOCS_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
@@ -236,17 +246,27 @@ async function runBatch(): Promise<Batch> {
   const started = Date.now();
   const rows = (await pool(jobs, parallel)).flat();
   console.log(`${rows.length} answers in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
-  return { endpoint: target.endpoint, model: target.model, runs, arms, rows };
+  return { endpoint: target.endpoint, model: target.model, runs, arms, picked: asked.map((c) => c.id), rows };
 }
 
 const batch = rescoreFile ? JSON.parse(readFileSync(rescoreFile, 'utf8')) as Batch : await runBatch();
+// A saved batch is scored for the questions it was run for, and for no more than the flags of this run ask.
+const picked = new Set(asked.map((c) => c.id).filter((id) => !batch.picked || batch.picked.includes(id)));
+
+/** A row of the report: a kind of question, with the language questions split by how the player asked. */
+type ReportKind = Exclude<BaselineKind, 'language'> | 'languageSetting' | 'languageAsked';
+const reportKind = (c: BaselineCase): ReportKind => (c.kind !== 'language' ? c.kind : c.asked ? 'languageAsked' : 'languageSetting');
+const KIND_LABELS: Record<ReportKind, string> = {
+  task: 'Task', here: 'Here', followUp: 'Follow-up', languageSetting: 'Language, setting only',
+  languageAsked: 'Language, asked in it', changelog: 'Changelog', uncovered: 'Not covered',
+};
 
 const scored: ScoredRow[] = batch.rows.flatMap((r) => {
   const c = caseById.get(r.caseId);
-  if (!c || !r.sample || !picked.includes(c)) return [];
+  if (!c || !r.sample || !picked.has(c.id)) return [];
   return [{
     caseId: c.id,
-    kind: c.kind === 'language' ? (c.asked ? 'language, asked in it' : 'language, setting only') : c.kind,
+    kind: reportKind(c),
     arm: r.arm,
     run: r.run,
     score: scoreAnswer(c, { text: r.sample.answer, flagged: r.sample.flagged, sources: r.sample.sources }, allDocs),
@@ -259,15 +279,11 @@ const scored: ScoredRow[] = batch.rows.flatMap((r) => {
 const pct = (value: number | null) => (value === null ? '–' : `${Math.round(value * 100)}%`);
 const table = (head: string[], lines: string[][]) =>
   [`| ${head.join(' | ')} |`, `|${head.map(() => '---').join('|')}|`, ...lines.map((cells) => `| ${cells.join(' | ')} |`)].join('\n');
-const KIND_LABELS: Record<string, string> = {
-  task: 'Task', here: 'Here', followUp: 'Follow-up', 'language, setting only': 'Language, setting only',
-  'language, asked in it': 'Language, asked in it', uncovered: 'Not covered',
-};
 // The control gets no section, so its flag and its sources are fixed; those cells stay empty.
 const summaryCells = (s: Summary, arm: Arm) => {
   const session = (value: number | null) => (arm === 'no-docs' ? '–' : pct(value));
   return [
-    String(s.covered + s.uncovered), session(s.groundedCorrect), pct(s.keysMet), pct(s.wrongStep), pct(s.invented), session(s.falseFlag),
+    String(s.covered + s.uncovered), session(s.groundedCorrect), session(s.otherSource), pct(s.keysMet), pct(s.wrongStep), pct(s.invented), session(s.falseFlag),
     session(s.wrongNoFlag), session(s.sourceAccuracy), session(s.missedFlag), pct(s.inLanguage), s.promptTokens === null ? '–' : `${s.promptTokens} / ${s.answerTokens}`,
   ];
 };
@@ -277,9 +293,9 @@ const failed = batch.rows.filter((r) => r.error);
 report.push(`# Help baseline\n\n${batch.endpoint} · model \`${batch.model}\` · ${batch.runs} runs per arm · ${scored.length} answers scored, ${failed.length} failed`);
 for (const arm of batch.arms) {
   const ofArm = scored.filter((r) => r.arm === arm);
-  const kindRows = Object.keys(KIND_LABELS).filter((kind) => ofArm.some((r) => r.kind === kind));
+  const kindRows = (Object.keys(KIND_LABELS) as ReportKind[]).filter((kind) => ofArm.some((r) => r.kind === kind));
   report.push(`## Arm: ${arm}\n\n${table(
-    ['Questions', 'Answers', 'Grounded-correct', 'Keys met', 'Wrong step', 'Invented name', 'False flag', 'Wrong, no flag', 'Right source', 'Missed flag', 'In language', 'Tokens in / out'],
+    ['Questions', 'Answers', 'Grounded-correct', 'Correct, other source', 'Keys met', 'Wrong step', 'Invented name', 'False flag', 'Wrong, no flag', 'Right source', 'Missed flag', 'In language', 'Tokens in / out'],
     [
       ...kindRows.map((kind) => [KIND_LABELS[kind], ...summaryCells(summarize(ofArm.filter((r) => r.kind === kind)), arm)]),
       ['**All**', ...summaryCells(summarize(ofArm), arm)],
@@ -303,7 +319,7 @@ if (failed.length > 0) {
   for (const r of failed.slice(0, 20)) console.log(`  ${r.caseId} · ${r.arm} · run ${r.run}: ${r.error}`);
 }
 if (show) {
-  for (const r of batch.rows.filter((row) => row.run === 1 && picked.some((c) => c.id === row.caseId))) {
+  for (const r of batch.rows.filter((row) => row.run === 1 && picked.has(row.caseId))) {
     console.log(`\n--- ${r.caseId} · ${r.arm} ---\n${r.error ?? `${r.sample?.flagged ? `${GENERAL_KNOWLEDGE_MARKER}\n` : ''}${r.sample?.answer}`}`);
   }
 }
