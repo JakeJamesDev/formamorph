@@ -80,11 +80,8 @@ export interface AnalysisOptions {
   placeholders?: CodePlaceholders;
   /** The world's trait names, in authored order. Absent, trait names are neither offered nor checked. */
   traits?: readonly string[];
-  /** The trait names a persona in this world can hold. Absent, persona trait names are neither offered nor
-   *  checked. A library persona can hold others, so an unknown one is only a warning. */
-  personaTraits?: readonly string[];
-  /** The world's entities, in authored order. Absent, entity names are neither offered nor checked. A library
-   *  entity can carry another name, so an unknown one is only a warning. */
+  /** The world's entities, in authored order. Absent, entity and persona trait names are neither offered nor
+   *  checked. A library entity can carry another name, so an unknown one is only a warning. */
   entities?: readonly CodeEntityNames[];
   /** The world's stat names, in authored order. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
@@ -245,11 +242,15 @@ const entityNamed = (match: RegExpExecArray) => match[1] ?? match[2];
 
 /** One entry per distinct entity name. `dotted` keeps only the names a `.` can reach. */
 const entityNameEntries = (entities: readonly CodeEntityNames[], dotted: boolean): SurfaceEntry[] =>
-  mapNameEntries(entities.map((entity) => entity.name), 'entity', dotted);
+  mapNameEntries(entities.flatMap((entity) => (entity.name ? [entity.name] : [])), 'entity', dotted);
 
-/** The trait names of the last authored entity called `name`, as the sandbox keys it. */
+/** The trait names of the last authored entity called `name`, as the sandbox keys it. An unnamed one is not keyed. */
 const traitsOfEntity = (entities: readonly CodeEntityNames[], name: string): readonly string[] | null =>
-  entities.findLast((entity) => entity.name === name)?.traits ?? null;
+  (name ? entities.findLast((entity) => entity.name === name)?.traits ?? null : null);
+
+/** The trait names a persona in the world can hold, or null when no entities are given. */
+const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined): readonly string[] | null =>
+  (entities ? entities.filter((entity) => entity.persona).flatMap((entity) => entity.traits) : null);
 
 /** One entry per distinct persona trait name. `dotted` keeps only the names a `.` can reach. */
 const personaTraitEntries = (names: readonly string[], dotted: boolean): SurfaceEntry[] =>
@@ -323,11 +324,8 @@ const pathMapOf = (placeholders: CodePlaceholders): PlaceholderPathMap =>
 /** An owner node that holds nothing, for an owner the world knows with no placeholders of its own. */
 const emptyOwner = (name: string): PlaceholderPathNode => ({ name, placeholder: null, path: [name], children: [] });
 
-/**
- * The node a route starts its walk from: null for the world's map, or the owner's node. The persona's is
- * every node a playable entity owns, since the editor can't know which one plays. Undefined where the route
- * names an owner the world has no entry for, or one its surface does not inject.
- */
+/** The node a route starts from: null for the world's map, the owner's node, or every playable entity's node
+ *  for `persona`. Undefined for an owner the world lacks or the surface doesn't inject. */
 function routeStart(
   route: PlaceholderRoute, placeholders: CodePlaceholders, options: AnalysisOptions, rules: StatRules,
 ): PlaceholderPathNode | null | undefined {
@@ -483,7 +481,8 @@ function membersAfterDot(
   if (rules.traits && TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   if (rules.persona && expression === 'persona') return PERSONA_FIELDS;
   if (rules.persona && PERSONA_TRAITS_EXPRESSION.test(expression)) {
-    return options.personaTraits ? personaTraitEntries(options.personaTraits, true) : null;
+    const names = personaTraitsOf(options.entities);
+    return names ? personaTraitEntries(names, true) : null;
   }
   if (rules.persona && PERSONA_TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   if (rules.entities && expression === 'entities') {
@@ -768,11 +767,8 @@ const shadowedChild = (ref: EntryRef, holder: PlaceholderPathNode): CodeDiagnost
     + `The placeholder named “${ref.name}” under “${placeholderPathLabel(holder.path)}” is not reachable from code.`,
 });
 
-/**
- * What is wrong with a path through an owner entry's `placeholders`: a key no placeholder answers, or a child
- * that loses to a member. A miss is only a warning, because a library owner of the same name can carry it.
- * An owner the world has no entry for is the owner check's to name.
- */
+/** What is wrong with a path through an owner's `placeholders`: a key no placeholder answers, or a child that
+ *  loses to a member. A warning, since a library owner can carry it. */
 function checkOwnedPlaceholderPath(
   chain: PlaceholderChain, placeholders: CodePlaceholders, options: AnalysisOptions, rules: StatRules,
 ): CodeDiagnostic | null {
@@ -894,7 +890,7 @@ function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' 
 }
 
 const checkEntityName = (ref: EntryRef, entities: readonly CodeEntityNames[]) =>
-  checkOwnerName(ref, entities.map((entity) => entity.name), 'entity');
+  checkOwnerName(ref, entities.flatMap((entity) => (entity.name ? [entity.name] : [])), 'entity');
 
 /** What is wrong with a trait name on a known entity: its set has no trait called that. A later library
  *  entity can take the name with another set, so this is only a warning. */
@@ -971,7 +967,7 @@ export function codeCompletions(
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
     }
     if (rules.persona && /\bpersona\s*\??\.\s*traits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
-      const names = personaTraitEntries(options.personaTraits ?? [], false);
+      const names = personaTraitEntries(personaTraitsOf(options.entities) ?? [], false);
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
     }
     if (rules.traits && /\btraits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
@@ -1077,6 +1073,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const placeholdersInScope = rules.placeholders && !declared.has('placeholders');
   const traitsInScope = rules.traits && !declared.has('traits');
   const personaInScope = rules.persona && !declared.has('persona');
+  const personaTraits = personaTraitsOf(options.entities);
   const entitiesInScope = rules.entities && !declared.has('entities');
   const dictionariesInScope = rules.dictionaries && !declared.has('dictionaries');
   const statsInScope = rules.stats && !declared.has('stats');
@@ -1164,9 +1161,9 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
       const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkTraitName(ref, options.traits) : null;
       if (problem) diagnostics.push(problem);
     }
-    if (cursor.type.name === 'MemberExpression' && options.personaTraits && personaInScope) {
+    if (cursor.type.name === 'MemberExpression' && personaTraits && personaInScope) {
       const ref = personaTraitRef(cursor.node, code);
-      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPersonaTraitName(ref, options.personaTraits) : null;
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPersonaTraitName(ref, personaTraits) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && options.entities && entitiesInScope) {

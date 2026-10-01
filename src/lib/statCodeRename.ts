@@ -236,7 +236,7 @@ function rewriteCode(code: string, rewrite: CodeRewrite): { code: string; refere
       const movers = owned.persona.map((start) => ({ start, found: pathSplices(map, chain.slice(1), renames, start) }));
       const mover = movers.find(({ found }) => found.length);
       if (!mover) continue;
-      // Another playable entity answering as deep may be the one played, so the path stays (Q27).
+      // Another playable entity answering as deep may be the one played, so the path stays.
       const depth = reach(mover.start);
       if (owned.persona.filter((start) => reach(start) >= depth).length > 1) continue;
       edits.push(...mover.found);

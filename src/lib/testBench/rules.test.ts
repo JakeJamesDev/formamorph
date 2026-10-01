@@ -632,6 +632,19 @@ describe('reachability rules', () => {
     expect(runRules(world([{ id: 'e1', name: 'Farm Visitors' }]))).toEqual([]);
   });
 
+  it('flags an entity with no code name once the world has stat code, and quiets once it is named', () => {
+    const coded = (name: string, code = 'return 1;') => base({
+      entities: [{ id: 'e1', name, locations: ['l1'] }],
+      stats: [stat({ id: 's1', name: 'Vigor', code })],
+    });
+    const found = only(coded(''), 'entity-no-code-name');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    expect(found[0].items.map((i) => i.id)).toEqual(['e1']);
+    expect(only(coded('Maren'), 'entity-no-code-name')).toEqual([]);
+    expect(only(coded('', ''), 'entity-no-code-name')).toEqual([]);
+  });
+
   it('flags a disabled stat no trait ever enables, and quiets when one does', () => {
     const disabled = (toggles: Trait[]) => base({
       stats: [stat({ id: 's1', name: 'Corruption', enabled: false })],
@@ -3617,6 +3630,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'dictionary-secondary-without-primary': 'advanced',
   'entity-long-description-no-summary': 'advanced',
   'entity-name-in-wildcard-pool': 'advanced',
+  'entity-no-code-name': 'advanced',
   'placeholder-dangling-reference': 'advanced',
   'placeholder-duplicate-slot': 'advanced',
   'placeholder-empty-record': 'advanced',

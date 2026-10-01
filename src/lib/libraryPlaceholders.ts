@@ -17,12 +17,8 @@ export const bookTexts = (book: Dictionary): (string | undefined)[] =>
 export const carrierTexts = (item: LibraryCarrier): string[] =>
   (isBook(item) ? bookTexts(item) : entityTexts(item)).filter((t): t is string => !!t);
 
-/**
- * The session's Placeholder Set: the world's list, then each library item's own pool in order. A world
- * persona is never passed, because its placeholders are already in the world's list. The world list is never
- * written, and it comes back as itself when the items add nothing. The first copy of an id wins, so the world
- * copy wins an id both hold.
- */
+/** The session's Placeholder Set: the world's list, then each library item's pool, the first copy of an id
+ *  winning. The world list comes back as itself when the items add nothing. */
 export function libraryPlaceholderSet(world: Placeholder[], items: readonly (LibraryCarrier | null | undefined)[]): Placeholder[] {
   const held = new Set(world.map((p) => p.id));
   const added: Placeholder[] = [];

@@ -36,6 +36,12 @@ describe('entities in stat code', () => {
     expect(labels('return entities.Mira.traits["Night Owl"].|', { entities })).toEqual(TRAIT_ENTRY_FIELDS.map((f) => f.name));
   });
 
+  it('offers no unnamed entity, as the sandbox lists none', () => {
+    const withBlank = [...entities, { id: 'blank', name: '', persona: false, traits: ['Hidden'] }];
+    expect(labels('return entities["|"];', { entities: withBlank })).toEqual(['Mira', 'Old Rook', 'Rook']);
+    expect(labels('return entities[""].traits.|', { entities: withBlank })).toEqual([]);
+  });
+
   it('warns on a shared entity code name, naming the rule that picks one', () => {
     expect(messages('return entities.Rook.traits.Angry.enabled ? 1 : 0;', { entities }))
       .toEqual(['2 entities are named “Rook”. This reads the last one authored.']);

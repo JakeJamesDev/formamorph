@@ -16,7 +16,7 @@ import type { PlaceholderKindNoun } from '@/lib/placeholders';
 /** An object's members as its completion detail: `{ a, b }`. */
 const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
 
-/** The fields on `clock.previous`: the story clock at the start of the turn. Frozen. */
+/** The fields on `clock.previous`: the story clock at the start of the turn. Read-only. */
 export const CLOCK_PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
   { name: 'day', detail: 'number', info: 'Day number at the start of this turn.' },
   { name: 'daypart', detail: 'string', info: 'Daypart at the start of this turn.' },
@@ -40,7 +40,7 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
   { name: 'entities', detail: 'object', info: 'Every entity in play by name, with its own traits and placeholders. Use entities["Two Words"] for a name with a space.' },
   { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits and placeholders. Empty when the player plays no entity.' },
-  { name: 'dictionaries', detail: 'object', info: 'Every dictionary in the world by name, with its own placeholders. Use dictionaries["Two Words"] for a name with a space.' },
+  { name: 'dictionaries', detail: 'object', info: 'Every dictionary in play by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
@@ -74,7 +74,7 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The stat’s code name: the authored name, with each placeholder chip read as that placeholder’s own name.' },
   { name: 'type', detail: 'string', info: 'number, percentage, or whichever type the stat was given.' },
   { name: 'description', detail: 'string', info: 'The stat’s description text.' },
-  { name: 'enabled', detail: 'boolean', info: 'False when a trait switched the stat off, which an unknown name reads as too. Read-only.' },
+  { name: 'enabled', detail: 'boolean', info: 'True when the stat is on. False when a trait switched it off, or for an unknown name. Read-only.' },
   { name: 'min', detail: 'number', info: 'Lower bound. Results are clamped to it. Write self.min to set it.' },
   { name: 'max', detail: 'number', info: 'Upper bound. Results are clamped to it. Write self.max to set it.' },
   { name: 'value', detail: 'number', info: 'Current value, with this turn’s AI change and regen applied. Write self.value to set it.' },
@@ -83,12 +83,11 @@ export const STAT_FIELDS: readonly SurfaceEntry[] = [
   { name: 'delta', detail: shapeOf(DELTA_MEMBERS), info: 'Every change this turn made to the stat, by source. Read-only.' },
 ];
 
-/** The fields on `self` that a write reaches. The host reads these back after the run; writes to any other
- *  field, or to another stat's entry, do nothing. A bound write holds until the code next runs. */
+/** The fields on `self` that a write reaches. A write to any other field, or to another stat's entry, is
+ *  dropped and reported. A bound write holds until the code next runs. */
 export const SELF_WRITABLE_FIELDS: readonly string[] = ['value', ...CODE_BOUND_FIELDS];
 
-/** The fields on a stat's `previous` — the whole stat as it stood at the start of this turn. Frozen, so
- *  a write reaches none of them. */
+/** The fields on a stat's `previous`: the whole stat as it stood at the start of this turn. Read-only. */
 export const PREVIOUS_FIELDS: readonly SurfaceEntry[] = [
   { name: 'id', detail: 'string', info: 'Unique id, at the start of this turn.' },
   { name: 'name', detail: 'string', info: 'The stat’s code name, at the start of this turn.' },
@@ -125,14 +124,14 @@ export function placeholderEntryFields(kind: PlaceholderKindNoun): readonly Surf
 
 /** The members of one entry in `traits` and in an entity's `traits`. */
 export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
-  { name: 'enabled', detail: 'boolean', info: 'Whether the trait is held and on. Write it to switch the trait on or off, after this run.' },
+  { name: 'enabled', detail: 'boolean', info: 'True when the trait is held and on. Write it to switch the trait on or off, after this run.' },
   { name: 'acquired', detail: 'boolean', info: 'True when the trait is held, on or off. Read-only.' },
   { name: 'id', detail: 'string', info: 'The trait’s unique id. Read-only.' },
   { name: 'name', detail: 'string', info: 'The trait’s code name. Read-only.' },
   { name: 'mode', detail: 'string', info: '"optional", "alwaysOn" or "hidden". Read-only.' },
-  { name: 'available', detail: 'boolean', info: 'Whether the trait’s requirements hold for its owner now. Read-only.' },
+  { name: 'available', detail: 'boolean', info: 'True when the trait’s requirements hold for its owner now. Read-only.' },
   { name: 'group', detail: 'string', info: 'The code name of the trait’s group. Empty when it has none. Read-only.' },
-  { name: 'playerToggle', detail: 'boolean', info: 'Whether the player can switch the trait during play. Read-only.' },
+  { name: 'playerToggle', detail: 'boolean', info: 'True when the player can switch the trait during play. Read-only.' },
 ];
 
 /** The one field on a trait entry that a write reaches. */
@@ -144,7 +143,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The persona’s code name. Empty when the player plays no entity. Read-only.' },
   { name: 'type', detail: 'string', info: 'The persona’s type text. Empty when it has none. Read-only.' },
   { name: 'pronouns', detail: 'string', info: 'The persona’s pronouns text. Empty when it has none. Read-only.' },
-  { name: 'inScene', detail: 'boolean', info: 'True while the persona plays. False when the player plays no entity. Read-only.' },
+  { name: 'inScene', detail: 'boolean', info: 'True when the persona plays. False when the player plays no entity. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The persona’s own traits by name, owned or linked. Use persona.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The persona’s own placeholders by name. Empty when the player plays no entity.' },
 ];
@@ -155,7 +154,7 @@ export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The entity’s code name. Read-only.' },
   { name: 'type', detail: 'string', info: 'The entity’s type text. Empty when it has none. Read-only.' },
   { name: 'pronouns', detail: 'string', info: 'The entity’s pronouns text. Empty when it has none. Read-only.' },
-  { name: 'inScene', detail: 'boolean', info: 'Whether the entity is in this turn’s scene. Read-only.' },
+  { name: 'inScene', detail: 'boolean', info: 'True when the entity is in this turn’s scene. Read-only.' },
   { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
   { name: 'placeholders', detail: 'object', info: 'The entity’s own placeholders by name. Use entities.Mira.placeholders["Two Words"] for a name with a space.' },
 ];

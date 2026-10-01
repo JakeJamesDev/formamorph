@@ -225,8 +225,6 @@ export interface CodeSession {
   setPlaceholders: (placeholders: CodePlaceholders | undefined) => void;
   /** The world's trait names, for completions and name checks. Re-lints when the list changes. */
   setTraits: (traits: readonly string[] | undefined) => void;
-  /** The trait names a persona can hold, for completions and name checks. Re-lints when the list changes. */
-  setPersonaTraits: (names: readonly string[] | undefined) => void;
   setEntities: (entities: readonly CodeEntityNames[] | undefined) => void;
   focus: () => void;
   destroy: () => void;
@@ -248,9 +246,7 @@ export interface CodeSessionOptions {
   placeholders?: CodePlaceholders;
   /** The world's trait names. Absent, trait names are neither offered nor checked. */
   traits?: readonly string[];
-  /** The trait names a persona can hold. Absent, persona trait names are neither offered nor checked. */
-  personaTraits?: readonly string[];
-  /** The world's entities and their trait names. Absent, entity names are neither offered nor checked. */
+  /** The world's entities and their trait names. Absent, entity and persona trait names are neither offered nor checked. */
   entities?: readonly CodeEntityNames[];
   onChange: (value: string) => void;
   /** Any update at all, so the toolbar can re-read what undo and redo have to offer. */
@@ -273,7 +269,6 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   let selfName: string | undefined = options.selfName;
   let placeholders: CodePlaceholders | undefined = options.placeholders;
   let traits: readonly string[] | undefined = options.traits;
-  let personaTraits: readonly string[] | undefined = options.personaTraits;
   let entities: readonly CodeEntityNames[] | undefined = options.entities;
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
@@ -281,7 +276,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
     const result = codeCompletions(doc, context.pos, {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits, entities,
+      surface, slots: options.slots, statNames, selfName, placeholders, traits, entities,
     });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
@@ -293,7 +288,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
 
   const codeLinter = linter(
     (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), {
-      surface, slots: options.slots, statNames, selfName, placeholders, traits, personaTraits, entities,
+      surface, slots: options.slots, statNames, selfName, placeholders, traits, entities,
     }),
     {
       delay: 400,
@@ -423,11 +418,6 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     setTraits(next) {
       if (next === traits) return;
       traits = next;
-      relint();
-    },
-    setPersonaTraits(next) {
-      if (next === personaTraits) return;
-      personaTraits = next;
       relint();
     },
     setEntities(next) {

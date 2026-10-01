@@ -41,7 +41,7 @@ export interface StatCodeTurn {
   /** Every stat as the turn's pipeline left it: AI asks and regen applied, code not yet run. Names are the
    *  authored ones, chips and all — code reads each stat's code name, derived here. */
   stats: readonly PlayerStat[];
-  /** The live stat-enabled map. A disabled stat's code never runs and no other code sees it. */
+  /** The live stat-enabled map. A disabled stat's code never runs; other code reads it with `enabled: false`. */
   enabled: Readonly<Record<string, boolean>>;
   /** The stats as they stood at the start of the turn, matched by id. A stat missing here reads its
    *  `previous` as a copy of its own current entry. */
@@ -134,7 +134,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const live = enabledStats([...turn.stats], turn.enabled);
   // Code reaches a stat by its code name, which no roll moves. The log and the panel keep the rolled text.
   const placeholderDefs = turn.placeholders?.placeholders ?? [];
-  const named = statCodeNamed(live, placeholderDefs);
+  const named = statCodeNamed(turn.stats, placeholderDefs);
   const previous = new Map(statCodeNamed(turn.previous, placeholderDefs).map((stat) => [stat.id, stat]));
   const asks = new Map(turn.asks.map((ask) => [ask.id, ask]));
   // Only what this turn knows; the executor reads a missing part as untouched. The before box runs at the
@@ -149,7 +149,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     }];
   }));
 
-  const coded = named.filter((stat) => boxCode(stat, timing).trim());
+  const coded = named.filter((stat) => turn.enabled[stat.id] !== false && boxCode(stat, timing).trim());
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
   const cast = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
@@ -164,7 +164,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const traitWritesByStat = new Map<string, StatTraitWrites>();
   await Promise.all(coded.map(async (stat) => {
     const result = await executeStatCode(boxCode(stat, timing), named, stat, {
-      clock: turn.clock, turn: inputs, placeholders, traits, ...inPlay, dictionaries,
+      clock: turn.clock, turn: inputs, enabled: turn.enabled, placeholders, traits, ...inPlay, dictionaries,
     });
     if (result.error) {
       console.error(`Error executing code for stat ${stat.name}:`, result.error);
@@ -277,7 +277,6 @@ function traitSwitchesInStatOrder(
   statNameOf: (stat: PlayerStat) => string,
 ): CodeTraitSwitch[] {
   const idByName = new Map(traits.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
-  // The empty persona switches nothing, so only named entries matter.
   const entityByName = inPlay ? keyedEntities(inPlay.entities, inPlay.persona) : new Map<string, CodeEntity>();
   const out = new Map<string, CodeTraitSwitch>();
   const setLast = (key: string, at: CodeTraitSwitch) => {
@@ -291,7 +290,8 @@ function traitSwitchesInStatOrder(
       if (traitId !== undefined) setLast(traitId, { traitId, enabled: write.enabled, by: statNameOf(stat) });
     }
     for (const { entity: name, traits: switched = [] } of written?.entities ?? []) {
-      const entity = entityByName.get(name);
+      // An empty name is `persona`, which an unnamed persona entity can still be.
+      const entity = name ? entityByName.get(name) : inPlay?.persona;
       if (!entity?.id) continue;
       const idByTraitName = new Map(entity.traits.map((trait) => [trait.name, trait.id]));
       for (const write of switched) {

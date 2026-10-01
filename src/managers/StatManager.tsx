@@ -18,7 +18,7 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
-import { entityTraitNames, personaTraitNames as personaTraitCodeNames } from "@/lib/statCodeTraits";
+import { entityTraitNames } from "@/lib/statCodeTraits";
 import { codeDictionaries } from "@/lib/statCodePlaceholders";
 import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
@@ -102,10 +102,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     () => statCodeNamed(traits, placeholders).map((trait) => trait.name),
     [traits, placeholders],
   );
-  const personaTraitNames = useMemo(
-    () => personaTraitCodeNames({ traits, traitGroups, entities }, placeholders),
-    [traits, traitGroups, entities, placeholders],
-  );
   const entityNames = useMemo(
     () => entityTraitNames({ traits, traitGroups, entities }, placeholders),
     [traits, traitGroups, entities, placeholders],
@@ -114,8 +110,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
     codeNamedStats, statNames, selfName: selfCodeName,
-    placeholders: codePlaceholders, placeholderNames, traitNames, traits, personaTraitNames, entities: entityNames,
-  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderNames, traitNames, traits, personaTraitNames, entityNames]);
+    placeholders: codePlaceholders, placeholderNames, traitNames, traits, entities: entityNames,
+  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderNames, traitNames, traits, entityNames]);
 
   const handleChange = (field: string, value: unknown) => {
     apply({ [field]: value } as EditingStat);

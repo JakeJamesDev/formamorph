@@ -1106,6 +1106,20 @@ const entityNowhere: Rule = {
     }),
 };
 
+const entityNoCodeName: Rule = {
+  id: 'entity-no-code-name',
+  severity: 'warning',
+  section: 'entities',
+  advanced: true,
+  summary: (count) => `${count} entities have no name, so stat code can’t reach them`,
+  check: (world) => {
+    if (!(world.stats ?? []).some((stat) => filledCodeBoxes(stat).length)) return [];
+    return (world.entities ?? [])
+      .filter((entity) => !statCodeName(entity.name, allPlaceholders(world)))
+      .map((entity) => finding(entityNoCodeName, 'An entity has no name, so stat code can’t reach it through entities — give it a name', [asItem(entity, world)]));
+  },
+};
+
 /** The stats that can be live at some point in a playthrough — everything except a stat that starts disabled
  *  with no trait to switch it on. A stat that is never live never runs its code and never reaches the AI. */
 const everActiveStats = (world: RuleWorld): Stat[] => {
@@ -2928,7 +2942,7 @@ export const RULES: readonly Rule[] = [
   chipUnknownPlaceholder, placeholderUnused, placeholderPinnedUnused, statCodeUnknownStat,
   statCodeBeforeReadsDelta,
   entrySecondaryWithoutPrimary, entryInert, entryRegexInvalid,
-  noStartingLocation, legacyStartLocation, entityNowhere, statDisabledForever,
+  noStartingLocation, legacyStartLocation, entityNowhere, entityNoCodeName, statDisabledForever,
   statStartingOutOfRange, statStartNoDescriptor, statDescriptorDuplicateThreshold, statDescriptorOutOfRange,
   statDescriptorCoverageGap, statPercentageBounds,
   statTraitDeltaClamped, statCodeOverridesTrait, statAiLockFrozen,

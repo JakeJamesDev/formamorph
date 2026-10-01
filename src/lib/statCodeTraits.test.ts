@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { personaTraitNames, sandboxTraits, savedTraits } from './statCodeTraits';
+import { entityTraitNames, sandboxTraits, savedTraits } from './statCodeTraits';
 import { applyCodeTraitSwitches, type TraitWorld } from './traitRuntime';
 import type { Entity, Trait, TraitGroup } from '@/types';
 
@@ -92,7 +92,7 @@ describe('applyCodeTraitSwitches on a bearer’s own trait', () => {
   });
 });
 
-describe('personaTraitNames', () => {
+describe('entityTraitNames', () => {
   const cursed: Trait = { id: 'cursed', name: 'Cursed', statChanges: [] };
   const link = { id: 'l1', originalId: 'cursed', kind: 'trait' as const, originalName: 'Cursed', groupId: null };
   const entities: Entity[] = [
@@ -101,7 +101,11 @@ describe('personaTraitNames', () => {
     { id: 'wanderer', name: 'Wanderer', customPersona: true, traits: [{ id: 'marked', name: 'Marked', statChanges: [] }] },
   ];
 
-  it('lists every trait a persona-capable entity holds, owned or linked, and no cast entity’s', () => {
-    expect(personaTraitNames({ traits: [cursed], traitGroups: [], entities }, [])).toEqual(['Scarred', 'Cursed', 'Marked']);
+  it('lists each entity’s traits, owned or linked, and marks the ones a persona choice can play', () => {
+    expect(entityTraitNames({ traits: [cursed], traitGroups: [], entities }, [])).toEqual([
+      { id: 'mira', name: 'Mira', persona: true, traits: ['Scarred', 'Cursed'] },
+      { id: 'ash', name: 'Ash', persona: false, traits: ['Loyal'] },
+      { id: 'wanderer', name: 'Wanderer', persona: true, traits: ['Marked'] },
+    ]);
   });
 });
