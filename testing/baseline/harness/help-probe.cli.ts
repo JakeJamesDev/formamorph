@@ -8,6 +8,8 @@
 //            compare a search change
 //   lookup   with `--lookup`: the app's help session in lookup mode, on an endpoint that takes function
 //            calls. The model reads the sections it picks, in more than one round
+//   lookup22 with `--lookup22`: the lookup arm with ticket 22's request (lookupControl.ts), the control for a
+//            change to lookup mode
 //   mismatch with `--flag`: the docs arm with the sections of another covered case, so the guide text does
 //            not cover the question. The control for the general-knowledge flag: same question, wrong docs
 //
@@ -42,6 +44,7 @@ import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPro
 import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { askHelpTicket22 } from './lookupControl';
 import { refDocsIndex } from './refDocsIndex';
 
 const args = process.argv.slice(2);
@@ -59,6 +62,7 @@ const show = args.includes('--show');
 const altFile = argVal('--alt', '');
 const beforeRef = argVal('--before', '');
 const withLookup = args.includes('--lookup');
+const withLookup22 = args.includes('--lookup22');
 const withFlag = args.includes('--flag');
 
 interface HelpCase {
@@ -69,10 +73,12 @@ interface HelpCase {
   section?: string;
   facts: string[];
 }
-type Arm = 'docs' | 'no-docs' | 'alt' | 'before' | 'lookup' | 'mismatch';
+type Arm = 'docs' | 'no-docs' | 'alt' | 'before' | 'lookup' | 'lookup22' | 'mismatch';
 const ARMS: Arm[] = [
-  'docs', ...(altFile ? ['alt' as const] : []), ...(beforeRef ? ['before' as const] : []), ...(withLookup ? ['lookup' as const] : []), ...(withFlag ? ['mismatch' as const] : []), 'no-docs',
+  'docs', ...(altFile ? ['alt' as const] : []), ...(beforeRef ? ['before' as const] : []), ...(withLookup ? ['lookup' as const] : []), ...(withLookup22 ? ['lookup22' as const] : []), ...(withFlag ? ['mismatch' as const] : []), 'no-docs',
 ];
+/** An arm that runs a help session with function calls, and reports the sections it reached. */
+const isLookup = (arm: Arm) => arm === 'lookup' || arm === 'lookup22';
 const ALT_SYSTEM_PROMPT = altFile ? readFileSync(altFile, 'utf8').trim() : '';
 
 const BASELINE = path.resolve('testing/baseline');
@@ -156,10 +162,10 @@ const lookupSnapshot: AiSettingsSnapshot = {
 };
 
 /**
- * One question through the app's help session in lookup mode. Each request of the session goes out with
- * streaming off, so the token counts come back, and returns to the session as the stream it expects.
+ * One question through a help session in lookup mode: the app's, or ticket 22's. Each request of the session
+ * goes out with streaming off, so the token counts come back, and returns to the session as the stream it expects.
  */
-async function lookupRequest(c: HelpCase): Promise<Sample> {
+async function lookupRequest(arm: Arm, c: HelpCase): Promise<Sample> {
   let promptTokens = 0;
   let answerTokens = 0;
   let requests = 0;
@@ -189,7 +195,8 @@ async function lookupRequest(c: HelpCase): Promise<Sample> {
   let answer = '';
   let sources: string[] = [];
   let flagged = false;
-  for await (const event of askHelp({ question: c.question, snapshot: lookupSnapshot, index, fetchImpl })) {
+  const session = arm === 'lookup22' ? askHelpTicket22 : askHelp;
+  for await (const event of session({ question: c.question, snapshot: lookupSnapshot, index, fetchImpl })) {
     if (event.type !== 'done') continue;
     answer = event.text;
     sources = event.sources.map((section) => section.id);
@@ -199,7 +206,7 @@ async function lookupRequest(c: HelpCase): Promise<Sample> {
 }
 
 async function request(arm: Arm, c: HelpCase): Promise<Sample> {
-  if (arm === 'lookup') return lookupRequest(c);
+  if (isLookup(arm)) return lookupRequest(arm, c);
   const sections = arm === 'no-docs' ? [] : helpSections(indexOf(arm), (arm === 'mismatch' ? mismatchPartner(c) : c).question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
     ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS }
@@ -335,11 +342,11 @@ for (const c of cases) {
   for (const arm of ARMS) {
     const m = summarize(arm, new Set([c.id]));
     const hit = retrievalByIndex.get(indexOf(arm))?.get(c.id)?.hit;
-    const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : arm === 'lookup' ? m.reached : hit ? 'yes' : ' NO';
+    const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : isLookup(arm) ? m.reached : hit ? 'yes' : ' NO';
     console.log([
       c.id.padEnd(24), arm.padEnd(8), sent.padEnd(4),
       m.facts, m.complete.padStart(8), m.bold, m.steps.padStart(5), m.declined.padStart(8), m.invented.padStart(8), m.flagged.padStart(7), `  ${m.tokens}`,
-      ...(arm === 'lookup' ? [`  ${m.calls} calls, ${m.requests} requests`] : []),
+      ...(isLookup(arm) ? [`  ${m.calls} calls, ${m.requests} requests`] : []),
     ].join(' '));
   }
 }
@@ -352,7 +359,7 @@ function totals(label: string, arm: Arm, keep: (c: HelpCase) => boolean) {
     `${label} · ${arm}`.padEnd(44), `n=${m.n}`.padEnd(6),
     `facts ${m.facts}`, `complete ${m.complete}`, `bold ${m.bold}`, `steps ${m.steps}`,
     `declined ${m.declined}`, `invented ${m.invented}`, `flagged ${m.flagged}`, `first ${m.first}`, `empty ${m.empty}`, `tok ${m.tokens}`,
-    ...(arm === 'lookup' ? [`reached ${m.reached}`, `calls ${m.calls}`, `requests ${m.requests}`] : []),
+    ...(isLookup(arm) ? [`reached ${m.reached}`, `calls ${m.calls}`, `requests ${m.requests}`] : []),
   ].join('  '));
 }
 
