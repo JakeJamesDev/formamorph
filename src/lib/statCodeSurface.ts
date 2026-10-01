@@ -137,7 +137,7 @@ export const PERSONA_FIELDS: readonly SurfaceEntry[] = [
 /** The members of one entry in `entities`. None takes a write; a trait switches through its own `enabled`. */
 export const ENTITY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'name', detail: 'string', info: 'The entity’s code name. Read-only.' },
-  { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use ["Two Words"] for a name with a space.' },
+  { name: 'traits', detail: 'object', info: 'The entity’s own traits by name, owned or linked. Use entities.Mira.traits["Two Words"] for a name with a space.' },
 ];
 
 /** Built-ins the VM already has. Listed so a reference to one isn't flagged, and so completions offer the

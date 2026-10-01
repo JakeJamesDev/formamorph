@@ -5,7 +5,8 @@ import { CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, type CodeBoundFie
 import { codePinText } from "@/lib/placeholderPins";
 import { sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { placeholderPathLabel } from "@/lib/statCodePaths";
-import { sandboxTraits, type EntityTraitNames } from "@/lib/statCodeTraits";
+import { sandboxTraits } from "@/lib/statCodeTraits";
+import type { CodeEntityNames } from "@/lib/statCodeAnalysis";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
 import { STAT_CODE_SURFACE } from "@/lib/statCodeSurface";
@@ -42,7 +43,7 @@ export interface StatCodeBoxContext {
   /** The trait code names a persona in the world can hold: completions and name checks after `persona.traits`. */
   personaTraitNames: string[];
   /** Every authored entity's code name and trait code names: completions, name checks, and the run's entries. */
-  entities: EntityTraitNames[];
+  entities: CodeEntityNames[];
 }
 
 /**

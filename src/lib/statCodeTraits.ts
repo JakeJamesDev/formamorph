@@ -1,8 +1,8 @@
 import type { CascadeOffTraitIds, Entity, GameState, OwnedTraitStates, Placeholder, Trait } from '@/types';
 import { canBePlayer, inCast, playsAs, resolveBearers, type BearerWorld } from './bearers';
 import type { SandboxEntity, SandboxTrait } from './statCodeExecutor';
+import type { CodeEntityNames } from './statCodeAnalysis';
 import { statCodeName } from './statCodeNames';
-import type { TraitHolders } from './statCodeRename';
 import { refreshChosenTraits } from './traitEffects';
 import type { AppliedTraitValues, TraitWorld } from './traitRuntime';
 
@@ -121,15 +121,9 @@ const authoredTraitName = (trait: Trait, entity: Entity | null | undefined, worl
 const withOwnPlaceholders = (placeholders: readonly Placeholder[], entity: Entity | null | undefined): readonly Placeholder[] =>
   (entity?.placeholders?.length ? [...placeholders, ...entity.placeholders] : placeholders);
 
-/** An authored entity's code name and the code names of its trait set, owned or linked. */
-export interface EntityTraitNames {
-  name: string;
-  traits: string[];
-}
-
 /** Every authored entity, persona-only ones included, as the editor reads it: code names only, since the
  *  editor knows no playthrough. */
-export function entityTraitNames(world: BearerWorld, placeholders: readonly Placeholder[]): EntityTraitNames[] {
+export function entityTraitNames(world: BearerWorld, placeholders: readonly Placeholder[]): CodeEntityNames[] {
   const bearers = new Map(resolveBearers(world, undefined).bearers.map((bearer) => [bearer.id, bearer]));
   return world.entities.map((entity) => {
     const named = withOwnPlaceholders(placeholders, entity);
@@ -138,6 +132,13 @@ export function entityTraitNames(world: BearerWorld, placeholders: readonly Plac
       traits: (bearers.get(entity.id)?.traits ?? []).map((trait) => statCodeName(authoredTraitName(trait, entity, world.traits), named)),
     };
   });
+}
+
+/** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */
+export interface TraitHolders {
+  world: boolean;
+  persona: boolean;
+  entities: readonly string[];
 }
 
 /** Whose trait maps hold a trait, as the editor reads the world: the world's own `traits` when it is a world

@@ -58,7 +58,7 @@ export interface CodePlaceholders {
   owners?: PlaceholderOwners;
 }
 
-/** One entity as the editor reads it: its code name and the code names of its trait set. */
+/** One entity as the editor reads it: its code name and the code names of its trait set, owned or linked. */
 export interface CodeEntityNames {
   name: string;
   traits: readonly string[];
@@ -75,7 +75,7 @@ export interface AnalysisOptions {
    *  checked. A library persona can hold others, so an unknown one is only a warning. */
   personaTraits?: readonly string[];
   /** The world's entities, in authored order. Absent, entity names are neither offered nor checked. A library
-   *  character can carry another name, so an unknown one is only a warning. */
+   *  entity can carry another name, so an unknown one is only a warning. */
   entities?: readonly CodeEntityNames[];
   /** The world's stat names, in authored order. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
@@ -219,6 +219,8 @@ const ENTITY_ENTRY_EXPRESSION = entryExpression('entities');
 const KEY_STEP = String.raw`(?:\??\.([A-Za-z_$][\w$]*)|\??\.?\[\s*["']([^"'\\]*)["']\s*\])`;
 const ENTITY_TRAITS_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits$`);
 const ENTITY_TRAIT_ENTRY_EXPRESSION = new RegExp(`^entities${KEY_STEP}\\??\\.traits${KEY_STEP}$`);
+/** Text that ends in `entities[`. */
+const ENTITIES_BRACKET = /\bentities\s*(\?\.)?\[\s*$/;
 /** Text that ends in `entities.Name.traits[`, its entity name captured. */
 const ENTITY_TRAITS_BRACKET = new RegExp(`\\bentities\\s*${KEY_STEP}\\s*\\??\\.\\s*traits\\s*(\\?\\.)?\\[\\s*$`);
 
@@ -727,16 +729,17 @@ function checkEntityWrite(target: SyntaxNode, code: string, assignment: boolean)
 }
 
 /** What is wrong with an entity name: several entities share it, or no authored entity has it. A library
- *  character can still have it, so the miss is only a warning. */
+ *  entity can still have it, so the miss is only a warning. */
 function checkEntityName(ref: EntryRef, entities: readonly CodeEntityNames[]): CodeDiagnostic | null {
   const names = entities.map((entity) => entity.name);
   if (names.includes(ref.name)) return checkEntryName(ref, names, 'entity');
-  const lead = `Unknown entity name “${ref.name}”. A library character can have it.`;
+  const lead = `Unknown entity name “${ref.name}”. A library entity can have it.`;
   const suggestion = nearestName(ref.name, [...new Set(names)]);
   return { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
 }
 
-/** What is wrong with a trait name on a known entity: its set has no trait called that. */
+/** What is wrong with a trait name on a known entity: its set has no trait called that. A later library
+ *  entity can take the name with another set, so this is only a warning. */
 function checkEntityTraitName(
   { entity, trait }: { entity: EntryRef; trait: EntryRef }, entities: readonly CodeEntityNames[],
 ): CodeDiagnostic | null {
@@ -744,7 +747,7 @@ function checkEntityTraitName(
   if (!names || names.includes(trait.name)) return null;
   const suggestion = nearestName(trait.name, [...new Set(names)]);
   const lead = `“${entity.name}” has no trait named “${trait.name}”.`;
-  return { from: trait.from, to: trait.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+  return { from: trait.from, to: trait.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
 }
 
 /** What is wrong with a persona trait name: no persona in the world holds it. A library persona may still
@@ -800,7 +803,7 @@ export function codeCompletions(
       const names = traitsOfEntity(options.entities ?? [], entityNamed(entityBracket)) ?? [];
       return { from: innerFrom, to: innerTo, options: mapNameEntries(names, 'trait', false).map((entry) => asCompletion(entry, 'text')) };
     }
-    if (rules.entities && /\bentities\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
+    if (rules.entities && ENTITIES_BRACKET.test(code.slice(0, node.from))) {
       const names = entityNameEntries(options.entities ?? [], false);
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
     }

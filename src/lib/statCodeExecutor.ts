@@ -445,7 +445,7 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 
 /** The entities as the sandbox keys them: the later of two sharing a name wins, and the played persona
  *  holds its own name whatever comes after it. */
-function keyedEntities(entities: readonly SandboxEntity[], persona: SandboxEntity): Map<string, SandboxEntity> {
+export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], persona: T): Map<string, T> {
   const keyed = new Map(entities.map((entity) => [entity.name, entity]));
   if (persona.name) keyed.set(persona.name, persona);
   return keyed;
