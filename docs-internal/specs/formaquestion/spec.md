@@ -222,7 +222,8 @@ The docs become complete and correct as part of this effort. A test then keeps e
 - The conversation lives in memory at the app root, so it outlives the window and ends with the app (Q6).
 - The answer text streams through the existing streaming markdown renderer, used directly.
 - The fixed button and the floating window are new visual patterns. Both need the user's approval and a design-system entry before adoption.
-- F1 toggles the window. The handler must not fire while the tutorial holds the keyboard.
+- F1 toggles the window (Q36). F1 and the launcher are inactive while the first-run intro animation covers the Main Menu. Tutorial popovers and Authoring Tour steps do not block F1 (ticket 16 ruling).
+- The window is built in slices: ticket 16 ships the Search and Guide tabs, and ticket 20 adds the Ask tab and the conversation. Below the mobile breakpoint, until ticket 17, the launcher hides, F1 does nothing, and an open window hides with its state kept.
 - Send is unavailable while a turn generates (Q16). The window reads that state; it does not join the Turn Pipeline.
 - A failed request shows the standard error toast with Error Details, and the window shows the docs search for the question.
 - "Learn more" in a help topic opens the window's reader at the linked section (Q26). The wiki URL builder stays for links outside the app.
