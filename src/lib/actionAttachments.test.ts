@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ATTACHMENT_MAX_DIM, MAX_ATTACHMENTS, addToPending, attachToTurn, pruneAttachments, removePending, restoreAttachments, turnAttachments,
+  latestTurnAttachments, pageTurnId, setTurnAttachments,
 } from './actionAttachments';
 import type { ChatMessage, ImageAttachment } from '@/types';
 import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
@@ -100,6 +101,24 @@ describe('the turn map', () => {
   it('drops the images of turns no longer in the history', () => {
     const map = attachToTurn(attachToTurn({}, 'kept', [image('a')]), 'rolled-back', [image('b')]);
     expect(Object.keys(pruneAttachments(map, turn('kept')))).toEqual(['kept']);
+  });
+
+  it("reads the latest turn's images, the ones a regenerate sends again", () => {
+    const map = attachToTurn(attachToTurn({}, 'first', [image('a')]), 'second', [image('b'), image('c')]);
+    expect(latestTurnAttachments(map, [...turn('first'), ...turn('second')]).map((a) => a.id)).toEqual(['b', 'c']);
+    expect(latestTurnAttachments(map, [...turn('second'), ...turn('first')]).map((a) => a.id)).toEqual(['a']);
+    expect(latestTurnAttachments(map, [])).toEqual([]);
+  });
+
+  it('names the turn on each page, and none for a page past the history', () => {
+    const history = [...turn('first'), ...turn('second')];
+    expect([1, 2, 3].map((page) => pageTurnId(history, page))).toEqual(['first', 'second', undefined]);
+  });
+
+  it("replaces a turn's images and drops the entry when none are left", () => {
+    const map = attachToTurn(attachToTurn({}, 'other', [image('x')]), 'turn-1', [image('a'), image('b')]);
+    expect(turnAttachments(setTurnAttachments(map, 'turn-1', [image('b')]), 'turn-1').map((a) => a.id)).toEqual(['b']);
+    expect(setTurnAttachments(map, 'turn-1', [])).toEqual({ other: [image('x')] });
   });
 });
 
