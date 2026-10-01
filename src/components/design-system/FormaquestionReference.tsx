@@ -60,7 +60,7 @@ function SampleWindow() {
 function SampleSheet() {
   const [view, changeView] = useGuideView();
   return (
-    <FormaquestionFrame sheet wide={false} onSwapWidth={() => {}} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
+    <FormaquestionFrame sheet onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} />
     </FormaquestionFrame>
   );

@@ -1,6 +1,6 @@
 # 17: Formaquestion on mobile
 
-Status: in-progress
+Status: ready-for-human
 Base: 3b5d9139
 Blocked by: 16
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -48,3 +48,16 @@ Rulings from the spec session (Q46): the sheet takes focus on its frame, so no k
 Each new guard was reinstated as a bug and its test failed. The early focus return and a sheet that ignores `--app-h` fail only in Playwright, because jsdom focuses a hidden element and has no layout.
 
 Not proven: a real phone's on-screen keyboard and the hardware back button on a device. Both rest on the existing `viewportHeight.ts` and `useHardwareBack` paths.
+
+### Review fold-in
+
+The two-axis review of `440fd823` found no correctness bug. Folded in:
+
+- Close on the sheet is a 48px touch target. It stays top right, as in the approved look (spec session).
+- The Help tab stays movable on mobile and keeps its stored place: the "no stored position" line covers only the window (spec session). A Playwright check drags it by touch events and reads `touch-action: none`.
+- The tab fits itself again when the on-screen keyboard changes the visible area.
+- The keyboard check now also scrolls to the last result and finds it above the keyboard.
+- The frame takes `wide` and `onSwapWidth` only where Wide View exists, and the tab edge read from the DOM is checked.
+- Two stale comments.
+
+Declined: the tab tooltip keeps "(F1)" on mobile (tooltips do not show on touch); `hidden` stays as the name ticket 19 builds on.

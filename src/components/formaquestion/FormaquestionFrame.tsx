@@ -9,11 +9,12 @@ type DragHandlers = Pick<HTMLAttributes<HTMLElement>, 'onPointerDown' | 'onPoint
 /**
  * The Formaquestion window's frame: a title bar that moves it, the Wide View and Close controls, the
  * content, and a corner grip that resizes it. The caller places it and owns the moves. As a mobile sheet
- * it has no frame lines, no Wide View and a larger Close.
+ * it has no frame lines and a larger Close.
  */
 export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutRef<'section'> & {
-  wide: boolean;
-  onSwapWidth: () => void;
+  wide?: boolean;
+  /** Shows the Wide View control. */
+  onSwapWidth?: () => void;
   sheet?: boolean;
   onClose: () => void;
   /** Pointer handlers for the title bar. */
@@ -21,7 +22,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
   /** Pointer handlers for the corner grip. */
   resize?: DragHandlers;
   children: ReactNode;
-}>(({ wide, onSwapWidth, sheet = false, onClose, move, resize, className, children, ...props }, ref) => (
+}>(({ wide = false, onSwapWidth, sheet = false, onClose, move, resize, className, children, ...props }, ref) => (
   <section
     ref={ref}
     role="dialog"
@@ -43,7 +44,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
       <CircleHelp aria-hidden className="h-4 w-4 text-muted-foreground" />
       <h2 className="text-label font-semibold">Formaquestion</h2>
       <div className="ml-auto flex items-center gap-1">
-        {!sheet && (
+        {onSwapWidth && (
           <Tip tip="Wide View">
             <Button
               variant="ghost"
@@ -57,7 +58,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
           </Tip>
         )}
         <Tip tip={sheet ? 'Close' : 'Close (F1)'}>
-          <Button variant="ghost" size="icon" aria-label="Close Formaquestion" onClick={onClose} className={sheet ? 'h-10 w-10' : 'h-8 w-8'}>
+          <Button variant="ghost" size="icon" aria-label="Close Formaquestion" onClick={onClose} className={sheet ? 'h-12 w-12' : 'h-8 w-8'}>
             <X className="h-4 w-4" />
           </Button>
         </Tip>

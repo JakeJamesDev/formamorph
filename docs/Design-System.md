@@ -909,7 +909,7 @@ Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge, a sam
 Below the `md` breakpoint the window is a full-screen sheet in the narrow layout.
 
 - The sheet and the tab fill the visible area (`.app-viewport`), so the on-screen keyboard shrinks the sheet and moves the tab up with the app.
-- The sheet has no frame lines, no Wide View, no drag and no resize, and stores no place. Its title bar is 48px, and Close is 40px for a thumb.
+- The sheet has no frame lines, no Wide View, no drag and no resize, and stores no place. Its title bar is 48px, and Close fills that height as a 48px touch target.
 - The sheet pads for the system bars with the safe-area insets.
 - Focus goes to the sheet, not to the search field, so no keyboard opens until the player selects a field.
 - The tab hides while the sheet is open, and focus returns to it on close.
