@@ -24,7 +24,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 13. Type the model identifier that LM Studio shows into **Model Name**.
 
 ## How to Connect Ollama
-<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, ollama_origins, cors -->
+<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors -->
 
 1. Download Ollama from [ollama.com/download](https://ollama.com/download) and install it.
 2. Download a model: `ollama pull <model>`. Use a model name from the Ollama library.
@@ -38,7 +38,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 10. Type the model's name into **Model Name**, exactly as `ollama ls` lists it.
 
 ## How to Connect a Hosted API
-<!-- keywords: openrouter, openai, api key, cloud, paid service, provider, gpt, deepseek, set up, own key, endpoint -->
+<!-- keywords: openrouter, openai, key, cloud, paid service, provider, gpt, deepseek, set up, own key, endpoint -->
 
 1. Make an account with a service that offers an **OpenAI-compatible chat-completions** endpoint.
 2. Get an API token from the service. Some services call it an API key.

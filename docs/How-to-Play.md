@@ -33,7 +33,7 @@ To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on M
 The text is in brackets, so the narrator reads it as a push to keep going, not as something you do. **Settings** → **Output** → **Choices** → **Continue the Story** sets when it shows. See [Choices](Settings#choices).
 
 ## How to Turn Choices Off
-<!-- keywords: disable, hide, remove, options, suggestions, buttons, no choices -->
+<!-- keywords: disable, hide, remove, options, suggestions, buttons -->
 
 1. Select the **?** button beside the action box. The **How to Play** dialog opens.
 2. Open the **Choices** tab.
@@ -53,7 +53,7 @@ The AI reads text in brackets as direction from the author, not as something you
 > 💡 Brackets direct one turn. For a fact the AI should keep in mind every turn, use the [Notes](#notes) tab.
 
 ## How to Attach Images to an Action
-<!-- keywords: picture, photo, screenshot, upload, paste, drop, vision, send image, add image -->
+<!-- keywords: picture, photo, screenshot, upload, paste, drop, vision, send, add -->
 
 1. Open **Settings** → **Output**.
 2. In the **Attachments** section, select the **Image Attachments** checkbox.
@@ -67,7 +67,7 @@ Each action takes up to 4 images. They go with that turn only. Select a thumbnai
 The attach button shows after the game starts, not on the opening turn.
 
 ## How to Re-generate a Turn
-<!-- keywords: redo, retry, reroll, re-roll, regenerate, try again, different answer, last turn, swipe, did not like -->
+<!-- keywords: redo, retry, reroll, try again, different answer, last, swipe, did not like -->
 
 1. Find the latest turn's action row, under its narration.
 2. Select **Re-generate Narration**.
@@ -96,7 +96,7 @@ Saving rewrites the turn's narration. The game reads the edited text for entitie
 Only the action text and its images change. The narration stays as it is.
 
 ## How to Rewind to an Earlier Turn
-<!-- keywords: undo, go back, rollback, roll back, revert, previous, delete turns, restore, reset -->
+<!-- keywords: undo, go back, rollback, roll back, revert, previous, delete, restore, reset -->
 
 1. Go back to the turn you want to keep. In Pages, use the page buttons. In Chat, scroll up.
 2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
@@ -151,7 +151,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 **Stream narration audio** starts speaking each sentence as it arrives. **Highlight while speaking** marks the sentence you hear. **Unload Model** frees the memory the model uses. After the model loads, **Regenerate Audio** is under the turn's **More** button.
 
 ## How to Report an Error
-<!-- keywords: bug, crash, problem, failed, copy error, details, send feedback, broken -->
+<!-- keywords: bug, crash, problem, failed, copy, details, send feedback, broken -->
 
 1. On an error message, select **View Details →**. The **Error Details** dialog opens.
 2. Select **Copy** to copy the full details, or **Report Bug** to send them.

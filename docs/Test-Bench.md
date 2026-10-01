@@ -5,7 +5,7 @@ The Test Bench checks a world before you play it. It lives in the World Editor a
 The bench shows only what the app computes from your world. It never calls the AI, so it works offline, costs nothing and updates as you type. To see what the AI writes, play a turn.
 
 ## How to Check a World for Issues
-<!-- keywords: errors, warnings, problems, bugs, validate, world doctor, broken, debug, fix -->
+<!-- keywords: errors, warnings, problems, bugs, validate, doctor, broken, debug, fix -->
 
 1. In the World Editor, select the **Test Bench** flask button at the right of the header. The **World Doctor** popover opens.
 2. Read the findings. Errors come first, then warnings, then info.

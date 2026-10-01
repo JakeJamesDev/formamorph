@@ -38,7 +38,7 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 See [Persona Rules](#persona-rules) for each choice.
 
 ## How to Put a Name in Your Text
-<!-- keywords: {{user}}, {{char}}, user, char, macro, placeholder, player name, character name, variable -->
+<!-- keywords: {{user}}, {{char}}, user, char, macro, placeholder, player, character, variable -->
 
 1. Select a prose field, such as an entity's **AI-Facing Description** or an opening.
 2. Type `{`. The menu opens with **Built-in** at the top.

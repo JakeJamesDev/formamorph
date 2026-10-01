@@ -5,7 +5,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 > Authoring a world's cast is the [World Editor](WorldEditor)'s job. This page is about the same entities at **runtime**: who the story counts as present, and what it does with an entity it made up itself.
 
 ## How to See Who Is in the Scene
-<!-- keywords: characters, npcs, people, present, list, cast, who is here, nearby -->
+<!-- keywords: characters, npcs, people, present, list, cast, nearby -->
 
 1. During play, open the side panel's **Entities** tab. On desktop, select **Entities** above the panel if the avatar shows.
 2. Read the list. Your persona heads it, marked **(You)**.

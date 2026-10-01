@@ -38,7 +38,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 Set it back to **Stable** for finished releases only.
 
 ## How to Save an Export to a Folder
-<!-- keywords: downloads, file, phone, storage, save as, where, location -->
+<!-- keywords: downloads, file, phone, storage, location -->
 
 1. Export as you would on desktop. Android's **Save As** picker opens.
 2. Choose a folder, such as **Downloads**.

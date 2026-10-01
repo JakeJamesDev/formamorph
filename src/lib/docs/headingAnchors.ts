@@ -29,6 +29,16 @@ export function headingAnchor(text: string): string {
 /** A section's hidden keyword line, `<!-- keywords: … -->`; group 1 is the list. */
 export const KEYWORD_LINE = /^\s{0,3}<!--\s*keywords:(.*?)-->\s*$/i;
 
+/** A heading's source text as a reader sees it. */
+export function plainText(text: string): string {
+  return text.replace(MARKDOWN_LINK, '$1').replace(/[*`]/g, '').trim();
+}
+
+/** Whether a heading's plain text names a task, as in "How to Make a Group". */
+export function isHowToHeading(plain: string): boolean {
+  return plain.startsWith('How to ');
+}
+
 /** A code fence line; group 1 is its marker. */
 export const FENCE = /^\s{0,3}(```|~~~)/;
 const ATX_HEADING = /^\s{0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;

@@ -43,7 +43,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 4. Select **Change**. It turns on when your pick, name or description differs from the current one.
 
 ## How to Import SillyTavern Personas
-<!-- keywords: sillytavern, tavern, st, user avatars, backup, migrate, bring over -->
+<!-- keywords: tavern, st, user avatars, backup, migrate, bring over -->
 
 1. In SillyTavern, open **Persona Management** and select **Backup**. Your browser downloads `personas_<date>.json`.
 2. Find your avatar images in the `User Avatars` folder inside your SillyTavern user folder. On a default install it is `data/default-user/User Avatars`.

@@ -20,7 +20,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 > 💡 With the box empty, the new location is named "New Location". Rename it in **Name**.
 
 ## How to Nest a Location
-<!-- keywords: sub-location, child, inside, parent, hierarchy, room in building, indent -->
+<!-- keywords: sublocation, child, inside, parent, hierarchy, room in building, indent -->
 
 **In the list:**
 
@@ -48,7 +48,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 **On the canvas:** drag from the handle on the right edge of one box (**Drag To Connect**) onto the other box.
 
 ## How to Set a Starting Location
-<!-- keywords: spawn, begin, start point, first place, where players start -->
+<!-- keywords: spawn, begin, point, first place -->
 
 1. Select the location, then open its **Details** tab.
 2. Check **Starting Location**.

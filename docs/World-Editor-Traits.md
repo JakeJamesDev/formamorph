@@ -11,7 +11,7 @@ A trait is a fact about the player that doesn't change. Stats change all the tim
 > 💡 **Only active traits reach the AI.** A trait the player didn't pick is sent nowhere and does nothing.
 
 ## How to Make a Trait
-<!-- keywords: perk, feature, quirk, attribute, ability, background, create, new trait, characteristic -->
+<!-- keywords: perk, feature, quirk, attribute, ability, background, create, new, characteristic -->
 
 1. Open the **Traits** tab.
 2. To name the trait as you add it, type the name in the search box.
@@ -36,7 +36,7 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 To remove a target, select the **×** on its chip.
 
 ## How to Set a Pick Count
-<!-- keywords: limit, how many, choose one, max picks, min picks, exactly one, radio, multiple -->
+<!-- keywords: limit, how many, choose one, max, min, exactly one, radio, multiple -->
 
 1. Select a trait group. To add one, switch to Advanced mode, select **+**, then **Add Group**.
 2. Open the **Pick Count** list and pick **Any**, **Exactly One**, **Up to One** or **Custom**.

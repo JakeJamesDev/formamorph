@@ -20,7 +20,7 @@ import path from 'node:path';
 import { bundledDocsIndex, BUNDLED_DOCS } from '@/lib/docs/bundledDocsIndex';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { createDocsLinkResolver } from '@/lib/docs/docsReader';
-import { docHeadings } from '@/lib/docs/headingAnchors';
+import { docHeadings, isHowToHeading, plainText } from '@/lib/docs/headingAnchors';
 import { helpSections } from '@/lib/formaquestion/helpSession';
 import { refDocsIndex } from './refDocsIndex';
 
@@ -41,9 +41,9 @@ const now = bundledDocsIndex();
 const resolve = createDocsLinkResolver(now);
 const guide: Question[] = Object.entries(BUNDLED_DOCS).flatMap(([page, markdown]) =>
   docHeadings(markdown).flatMap((heading) => {
-    const text = heading.text.replace(/[*`]/g, '').trim();
+    const text = plainText(heading.text);
     const section = resolve(page, `#${heading.anchor}`);
-    if (!text.startsWith('How to ') || !section) return [];
+    if (!isHowToHeading(text) || !section) return [];
     return [{ set: 'guide', id: `${page}#${heading.anchor}`, question: `How do I ${text.slice('How to '.length)}?`, section }];
   }));
 const player: Question[] = readCases<{ id: string; question: string; section: string }>('help-retrieval-cases.json')

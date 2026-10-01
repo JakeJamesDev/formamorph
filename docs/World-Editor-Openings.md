@@ -16,7 +16,7 @@ Each opening has two buttons, **Player Action** and **Narration**. This choice i
 After an Opening Narration, the input box is empty. A written page one works like any other page. Choices, stat changes, the clock, read-aloud and the scene image all run on it.
 
 ## How to Add an Others Opening
-<!-- keywords: first message, greeting, intro, start, starting scene, opening scene -->
+<!-- keywords: first message, greeting, intro, start, starting scene, scene -->
 
 An Others opening is the normal kind. Every opening starts as one.
 
