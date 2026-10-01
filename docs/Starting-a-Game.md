@@ -142,7 +142,7 @@ An author can write an **Introduction** for the world. It opens before the **Ent
 
 ## The Avatar Step
 
-In a world with a 3D model, **Continue to Avatar** opens **Character Customization**. Pick a **Player Avatar**, adjust it, and select **Finalize Character** to start. **Back** returns to the **Enter World** dialog.
+In a world with a 3D model, **Continue to Avatar** opens **Character Customization**. Pick a **Player Avatar**, adjust it, and select **Finalize Character** to start. **Back** returns to the **Enter World** dialog. See [Character Customization](Avatars#character-customization).
 
 ## What Happens at Start
 

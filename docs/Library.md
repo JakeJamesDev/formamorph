@@ -45,6 +45,8 @@ If you import one file that names worlds, a review opens. See [Importing an Enti
 
 An entity exports as a `.webp` card: its portrait with the entity's data inside. An entity with no portrait gets a generated image. A dictionary exports as a `.json` file.
 
+To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-import-an-avatar) and [How to Export an Avatar](Avatars#how-to-export-an-avatar).
+
 ## How to Make a Group
 
 1. Right-click a tile. On a touch screen, press and hold it.

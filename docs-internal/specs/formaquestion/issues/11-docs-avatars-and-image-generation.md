@@ -1,6 +1,7 @@
 # 11: New pages, Avatars and Image Generation
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 748f020c
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
