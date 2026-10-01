@@ -60,12 +60,12 @@ A location where a new game can begin, flagged by its author. When no location i
 _Avoid_: start location, spawn point
 
 **Avatar**:
-A VRM 3D model — in the local Model Library, chosen for a world, or published as a listing. The kind id in code is `model`; "avatar" in code means Profile Picture.
+A VRM 3D model — in the local Model Library, chosen for a world, or published as a listing. The kind id in code is `model`; "avatar" in code means Profile Image.
 _Avoid_: model (in copy), VRM (the file format, not the thing)
 
-**Profile Picture**:
+**Profile Image**:
 The image on an account, shown beside a username. Code calls it an avatar; copy never does.
-_Avoid_: avatar (in copy), user image
+_Avoid_: avatar (in copy), profile picture, user image
 
 **Permissive License**:
 The verdict that a VRM's embedded 1.0 metadata grants every right the community catalog needs — everyone may use it, it may be redistributed, modified copies may be redistributed, and commercial use is allowed. Read from the file, never declared. A gate on publishing, not a badge.

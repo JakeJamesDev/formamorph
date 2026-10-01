@@ -2,7 +2,7 @@
 
 An Avatar is a 3D model of you, the player. It is a VRM file. You keep your Avatars in the library's **Avatars** tab, and you wear one in any world that has a 3D model. In the game, it shows in the left panel and changes shape with the world's stats.
 
-> An Avatar is not an entity's 3D model, and not your Profile Picture. See [Avatars, 3D Models and Profile Pictures](#avatars-3d-models-and-profile-pictures).
+> An Avatar is not an entity's 3D model, and not your Profile Image. See [Avatars, 3D Models and Profile Images](#avatars-3d-models-and-profile-images).
 
 ## How to Import an Avatar
 
@@ -41,12 +41,12 @@ If it shows **Not shareable**, a line under it names what the file does not allo
 
 You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no VRM data.
 
-## How to Change Your Profile Picture
+## How to Change Your Profile Image
 
 You need a Community Creations account.
 
 1. On the main menu, select the round button at the bottom left. **User Profile** opens.
-2. Select your profile picture.
+2. Select your profile image.
 3. Select a `.png`, `.jpg`, `.webp` or `.gif` file, up to 10 MB.
 4. In **Position Your Picture**, drag the image to move it. Scroll, or use the **Zoom** slider, to zoom. The circle shows what everyone sees.
 5. Select **Save**.
@@ -129,9 +129,9 @@ The steps to publish are in [Publishing an Avatar](Community-Creations#publishin
 
 A world author turns on a 3D Avatar with **3D Player Avatar** in the World Editor's **Overview**. In Advanced mode, **Custom Player Avatar** adds a VRM file to the world. That file shows as **World Avatar** in **Player Avatar**. It is stored in the world, not in your library. See [World Editor Overview](World-Editor-Overview).
 
-## Avatars, 3D Models and Profile Pictures
+## Avatars, 3D Models and Profile Images
 
-| | Avatar | Entity 3D model | Profile Picture |
+| | Avatar | Entity 3D model | Profile Image |
 |---|---|---|---|
 | **What it is** | A VRM model of you, the player | A model of one entity | The image on your account |
 | **Where you add it** | The library's **Avatars** tab | The entity's **3D Model** field, in Advanced mode | **User Profile** |
