@@ -100,6 +100,7 @@ F1 does one of three things:
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
+- When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
 - On an endpoint that supports Tools, the request holds the contents list of the guide and only the best match. The AI then reads the other sections it picks, and **Sources** lists those sections first. This is part of Formaquestion, so it works with the **Tools** checkbox clear, and each read adds a request.
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again.

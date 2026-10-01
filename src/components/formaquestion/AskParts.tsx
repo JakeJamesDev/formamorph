@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
-import { ChevronRight, Eraser, SendHorizontal, Square } from 'lucide-react';
+import { ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -41,8 +41,21 @@ function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSect
   );
 }
 
+/** Pattern 5: the line above an answer that did not come from the guide. */
+function GeneralKnowledgeNotice() {
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 px-2 py-1.5 text-helper">
+      <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+      <span>Not from the guide. This answer can be wrong about Formamorph.</span>
+    </div>
+  );
+}
+
 function Answer({ guide, exchange, onOpen }: { guide: Guide; exchange: HelpExchange; onOpen: (id: string) => void }) {
-  const { answer, status, sources, question } = exchange;
+  const { answer, status, sources, question, flagged, nearest } = exchange;
+  // A flagged answer lists the nearest sections in place of its sources.
+  const listed = flagged ? nearest : sources;
+  const listLabel = flagged ? 'Nearest Sections' : 'Sources';
   const components = useMemo(() => readerComponents(onOpen), [onOpen]);
   // A docs link that the model copies from a section opens that section here.
   const text = useMemo(() => withReaderLinks(answer, '', guide.resolve), [answer, guide]);
@@ -53,6 +66,7 @@ function Answer({ guide, exchange, onOpen }: { guide: Guide; exchange: HelpExcha
   );
   return (
     <div className="flex flex-col gap-2 text-label">
+      {flagged && <GeneralKnowledgeNotice />}
       {answer && (
         <div className="[&_:first-child]:mt-0">
           <MarkdownRenderer text={text} animate={status === 'writing'} components={components} />
@@ -67,11 +81,11 @@ function Answer({ guide, exchange, onOpen }: { guide: Guide; exchange: HelpExcha
           {matches.length > 0 && <SectionRows guide={guide} sections={matches} onOpen={onOpen} />}
         </div>
       )}
-      {sources.length > 0 && (
-        <div role="group" aria-label="Sources" className="flex flex-col gap-1">
-          <Meta>Sources</Meta>
+      {listed.length > 0 && (
+        <div role="group" aria-label={listLabel} className="flex flex-col gap-1">
+          <Meta>{listLabel}</Meta>
           <div className="flex flex-wrap gap-1">
-            {sources.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
+            {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
           </div>
         </div>
       )}

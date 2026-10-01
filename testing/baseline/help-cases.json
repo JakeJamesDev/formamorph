@@ -18,6 +18,9 @@
     { "id": "import-docs", "wording": "docs", "question": "How do I import a world?", "section": "Library#how-to-import-a-world", "facts": ["Import World"] },
     { "id": "import-player", "wording": "player", "question": "How do I bring a world file into the game?", "section": "Library#how-to-import-a-world", "facts": ["Import World"] },
     { "id": "trade-uncovered", "wording": "player", "question": "How do I trade items with another player?", "facts": [] },
-    { "id": "achievements-uncovered", "wording": "player", "question": "How do I earn achievements?", "facts": [] }
+    { "id": "achievements-uncovered", "wording": "player", "question": "How do I earn achievements?", "facts": [] },
+    { "id": "lora-uncovered", "wording": "player", "question": "What is a LoRA?", "facts": [] },
+    { "id": "quant-uncovered", "wording": "player", "question": "What does Q4_K_M mean in a model file name?", "facts": [] },
+    { "id": "villain-uncovered", "wording": "player", "question": "How do I write a good villain for my world?", "facts": [] }
   ]
 }

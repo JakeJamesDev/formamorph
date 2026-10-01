@@ -23,6 +23,10 @@ export interface HelpExchange {
   status: HelpStatus;
   /** The docs sections that reached the model. */
   sources: readonly DocSection[];
+  /** The answer did not come from the guide. */
+  flagged: boolean;
+  /** The search's sections for the question, shown under a flagged answer. */
+  nearest: readonly DocSection[];
 }
 
 export interface HelpChat {
@@ -65,7 +69,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
     const change = (fields: Partial<HelpExchange>) => {
       if (mountedRef.current) setExchanges((all) => all.map((entry) => (entry.id === id ? { ...entry, ...fields } : entry)));
     };
-    setExchanges((all) => [...all, { id, question, answer: '', status: 'writing', sources: [] }]);
+    setExchanges((all) => [...all, { id, question, answer: '', status: 'writing', sources: [], flagged: false, nearest: [] }]);
 
     void (async () => {
       try {
@@ -83,8 +87,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
         }
         const { snapshot, language } = aiRef.current;
         for await (const event of askHelp({ question, history, language, snapshot, index, surface, signal: controller.signal })) {
-          if (event.type === 'answer') change({ answer: event.text });
-          else change({ answer: event.text, sources: event.sources, status: event.stopped ? 'stopped' : 'answered' });
+          if (event.type === 'answer') change({ answer: event.text, flagged: event.flagged });
+          else change({ answer: event.text, sources: event.sources, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }
       } catch (error) {
         if (!mountedRef.current) return;

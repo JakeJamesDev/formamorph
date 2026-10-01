@@ -1,13 +1,14 @@
 import type { DocSection } from '@/lib/docs/docsIndex';
 import { languageDirective } from '@/lib/languages';
 import { DOCS_LOOKUP, sectionBlock } from './docsLookup';
+import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 
 /** The answer rules both help prompts share. */
 const ANSWER_RULES = [
   '- When the player asks how to do a task, answer with every step of that task as a numbered list, in the order the guide gives.',
   '- Write each control name as the guide writes it, in bold.',
   '- After the steps, add one or two sentences of detail when the player needs them.',
-  '- When the guide sections do not answer the question, say that the guide does not cover the question.',
+  `- When the guide sections do not cover the question, write ${GENERAL_KNOWLEDGE_MARKER} alone on the first line. Then answer from general knowledge in a few sentences, and name only the controls the guide names.`,
 ];
 
 /** The fixed help prompt. The contract is positive and names no sample value a small model can copy. */

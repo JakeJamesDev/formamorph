@@ -904,7 +904,7 @@ The mobile sheet slides in from the edge that holds the Help tab, with the same 
 | Window place, size and the two widths | [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
 | Narrow and wide layouts | [`GuideBody.tsx`](../src/components/formaquestion/GuideBody.tsx) |
 | Search field, result rows, contents, reader | [`GuideParts.tsx`](../src/components/formaquestion/GuideParts.tsx) |
-| Conversation, question bubble, answer, source link, question field | [`AskParts.tsx`](../src/components/formaquestion/AskParts.tsx) |
+| Conversation, question bubble, answer, not-from-the-guide notice, source link, question field | [`AskParts.tsx`](../src/components/formaquestion/AskParts.tsx) |
 | The one instance, F1, focus and motion | [`Formaquestion.tsx`](../src/components/formaquestion/Formaquestion.tsx) |
 | Isolated reference | [`FormaquestionReference.tsx`](../src/components/design-system/FormaquestionReference.tsx) |
 
@@ -930,6 +930,7 @@ Below the `md` breakpoint the window is a full-screen sheet in the narrow layout
 | No question yet | A centered hint in the conversation. |
 | Answer in progress | A helper line until the first words, then the text as it comes in. **Stop** takes the place of **Send**. |
 | Stopped | The text so far, then a `Meta` line. |
+| Not from the guide | Pattern 5 above the answer: a `warning`-tinted box with a warning `Info` icon and `text-helper` copy. **Nearest Sections** takes the place of **Sources**, with the same source links. It shows from the first words once the answer carries the marker. |
 | Game turn in progress | **Send** is unavailable, with a helper line under the field. The player can still type, search and read. |
 | No AI, or a failed request | One helper line that says why, then the search result rows for the question. With no matching section, the line says so and no rows show. A failed request also shows the standard error toast, and keeps the text that came before the failure. |
 | Loading | A status line in place of the content while the docs load. |
@@ -947,7 +948,7 @@ Below the `md` breakpoint the window is a full-screen sheet in the narrow layout
 | 2 | Floating window with two widths | ✅ |
 | 3 | Full-screen sheet for a non-modal surface, on mobile | ✅ |
 | 4 | Source link: a "Page › Heading" chip under an answer | ✅ |
-| 5 | Not-from-the-guide notice above an answer | Not built |
+| 5 | Not-from-the-guide notice above an answer | ✅ |
 | 6 | Question bubble: the player's question, right-aligned on `muted` | ✅ |
 | 7 | Search result row | ✅ |
 | 8 | Reader with an On This Page list and a Back row | ✅ |
@@ -958,7 +959,7 @@ A pattern that is not built gets its composition and its reference here when its
 
 ### Writing review
 
-**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Clear** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
+**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Nearest Sections**, **Clear** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The not-from-the-guide notice is two sentences, so each has a period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
 
 ## UI and prototype workflow
 

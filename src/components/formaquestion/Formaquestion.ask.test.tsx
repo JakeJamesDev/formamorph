@@ -6,7 +6,8 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { closeErrorDetails } from '@/lib/errorDetails';
 import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 import { turnActivity } from '@/lib/turnActivity';
-import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import type { HelpAi } from './useHelpAi';
 
 // The AI settings and the reachability check come from the app's providers. Each test sets them here.
@@ -378,6 +379,41 @@ describe('a request that fails', () => {
     expect(conversation()).toHaveTextContent('The AI did not answer, and no guide section matches your question');
     expect(within(conversation()).queryByRole('list', { name: 'Search Results' })).toBeNull();
     expect(conversation()).not.toHaveTextContent('These guide sections match');
+  });
+});
+
+describe('an answer that did not come from the guide', () => {
+  const NOTICE = 'Not from the guide. This answer can be wrong about Formamorph.';
+
+  it('shows the notice above the answer and the nearest sections in place of the sources, with no marker', async () => {
+    // Lookup mode sends only the best hit, so the nearest sections are more than the sources.
+    const reasoning = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' as const } };
+    ai.current = { ...ai.current, snapshot: textSnapshot(textTarget({ reasoning })) };
+    stubStream([sseFrame({ content: '[NOT IN' }), ...sseReply(' GUIDE]\nA trait is a tag on an entity.')]);
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait to a stat?');
+
+    const nearest = await within(conversation()).findByRole('group', { name: 'Nearest Sections' });
+    expect(within(nearest).getByRole('button', { name: /How to Add a Trait/ })).toBeInTheDocument();
+    expect(within(nearest).getByRole('button', { name: /How to Add a Stat/ })).toBeInTheDocument();
+    expect(within(conversation()).queryByRole('group', { name: 'Sources' })).toBeNull();
+    const notice = within(conversation()).getByText(NOTICE);
+    const answer = within(conversation()).getByText('A trait is a tag on an entity.');
+    expect(notice.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(conversation()).not.toHaveTextContent('NOT IN');
+
+    await userEvent.click(within(nearest).getByRole('button', { name: /How to Add a Trait/ }));
+    expect(screen.getByRole('article', { name: '🧬 Traits: How to Add a Trait' })).toBeInTheDocument();
+  });
+
+  it('shows no notice on an answer from the guide', async () => {
+    stubStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+
+    await within(conversation()).findByRole('group', { name: 'Sources' });
+    expect(conversation()).not.toHaveTextContent(NOTICE);
+    expect(within(conversation()).queryByRole('group', { name: 'Nearest Sections' })).toBeNull();
   });
 });
 

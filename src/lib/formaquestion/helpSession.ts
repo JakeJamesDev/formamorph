@@ -11,6 +11,7 @@ import { toolsSupported } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { RequestMessage } from '@/types';
 import { createDocsLookup, docsContents, DOCS_LOOKUP } from './docsLookup';
+import { readMarker } from './generalKnowledge';
 import { surfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
@@ -51,10 +52,13 @@ export interface HelpQuestion {
 }
 
 export type HelpEvent =
-  /** The answer so far. */
-  | { type: 'answer'; text: string }
-  /** The end of the answer, with the docs sections that reached the model. */
-  | { type: 'done'; text: string; sources: DocSection[]; stopped: boolean };
+  /** The answer so far. `flagged` once the general-knowledge marker came in. */
+  | { type: 'answer'; text: string; flagged: boolean }
+  /**
+   * The end of the answer, with the docs sections that reached the model. A flagged answer did not come
+   * from the guide, and `nearest` holds the search's sections for the question.
+   */
+  | { type: 'done'; text: string; sources: DocSection[]; stopped: boolean; flagged: boolean; nearest: DocSection[] };
 
 /** The earlier exchanges a request carries: the newest that got answer text, at most the cap. */
 function keptHistory(history: readonly EarlierExchange[]): EarlierExchange[] {
@@ -131,24 +135,29 @@ export async function* askHelp({
     ...(lookup && { tools: [DOCS_LOOKUP] }),
   });
   let text = '';
+  let marked = false;
   for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, ...(lookup && { execute: lookup.execute }) })) {
     if (event.type === 'toolCalls') {
       // What the model wrote before a call is not the answer.
-      if (text) yield { type: 'answer', text: '' };
+      if (text || marked) yield { type: 'answer', text: '', flagged: false };
       text = '';
+      marked = false;
     } else if (event.type === 'delta') {
-      const next = stripReasoningLive(event.content).trimStart();
-      if (next === text) continue;
-      text = next;
-      yield { type: 'answer', text };
+      const next = readMarker(stripReasoningLive(event.content));
+      if (next.text === text && next.marked === marked) continue;
+      ({ text, marked } = next);
+      yield { type: 'answer', text, flagged: marked };
     } else if (event.type === 'done') {
       const sources = [...(lookup?.fetched() ?? []), ...inPrompt];
       const stopped = event.result.finishReason === ABORTED_FINISH_REASON;
-      const answer = stripReasoningLive(event.result.content).trim();
-      if (!answer && !stopped) {
+      const answer = readMarker(stripReasoningLive(event.result.content), { final: true });
+      if (!answer.text && !stopped) {
         throw new Error(`The model sent an empty answer (finish reason: ${event.result.finishReason ?? 'none'})`);
       }
-      yield { type: 'done', text: answer, sources, stopped };
+      // No marker means grounded, unless no section reached the model at all.
+      const flagged = answer.marked || sources.length === 0;
+      const nearest = flagged ? helpSections(index, question, { history }) : [];
+      yield { type: 'done', text: answer.text, sources, stopped, flagged, nearest };
     }
   }
 }
