@@ -67,10 +67,10 @@ If the bundled local engine runs a pass that has images, the pass drops them and
 ## Implementation Decisions
 
 **Attachment model and storage**
-- An attachment is an image record: an id, the MIME type, and the image data as a data URL. The data is the downscaled WebP.
+- An attachment is an image record: an id, the MIME type, and the image data as a data URL. The data is the downscaled JPEG.
 - Attachments live in a side map on the playthrough, keyed by turn id. This follows the scene images pattern. Chat messages stay text-only, so the history, budgeting, the Request Anatomy view, the prompt diff, and the parity recorder do not change.
 - A new attachment store module owns: adding images to a pending set, the four-image cap, the image type check, downscaling, reading the images of a turn, removing an image, and save serialize/restore.
-- Downscale on attach: the long side is at most 1568 px, with no upscale. The image is re-encoded to WebP with the existing image encode helpers.
+- Downscale on attach: the long side is at most 1568 px, with no upscale. The image is re-encoded to JPEG, on a white background, keeping the first frame of an animation. Q7 first ruled WebP; it reopened when LM Studio refused WebP image parts while PNG, JPEG and GIF passed its check.
 
 **Save shape (⚠️ export-shape change, additive)**
 - The save envelope gets an optional attachment map keyed by turn id. It is always written when it has entries. A save without it loads with no attachments.
@@ -128,7 +128,7 @@ A good test drives a public seam and checks what the seam puts out. It never mir
   - earlier history messages stay strings;
   - with the setting off, no pass carries parts.
   Prior art: the turn runner and turn passes tests.
-- **Attachment store module** (the one new seam). Tests cover the four-image cap, refusing a non-image, downscaling to a long side of at most 1568 with no upscale, output as WebP, removal, and a save round trip. Prior art: the scene images tests.
+- **Attachment store module** (the one new seam). Tests cover the four-image cap, refusing a non-image, downscaling to a long side of at most 1568 with no upscale, output as JPEG, removal, and a save round trip. Prior art: the scene images tests.
 - **Preset share** (existing). A preset with the flag set round-trips through the share code and the JSON. An older preset with no flag gets the defaults. Prior art: the prompt presets tests.
 - **Local engine message split** (existing). A content-parts message keeps its text, drops its images, and reports the drop. Prior art: the llm engine tests.
 - **GamePanels harness** (existing). Tests cover attach by picker, paste and drop, pending thumbnails and removal, the refusal toasts, and thumbnails on past actions. With the setting off, no attachment UI renders. Prior art: the GamePanels chat actions tests.

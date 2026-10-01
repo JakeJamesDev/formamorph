@@ -2,8 +2,7 @@
 // never inside a chat message: everything that walks the history parses its messages (see lib/sceneImages).
 
 import type { ChatMessage, ImageAttachment } from '@/types';
-import { fileToDataUrl } from './imageDrop';
-import { dataUrlMime, optimizeToWebpDataUrl } from './imageOptim';
+import { bytesToDataUrl, dataUrlMime, fitWithin } from './imageBytes';
 import { parseTurnContent, pruneTurnMap } from './turnDigest';
 import { pageAssistantIndex } from './turnHistory';
 
@@ -12,6 +11,10 @@ export const MAX_ATTACHMENTS = 4;
 
 /** The long side an attached image is shrunk to. */
 export const ATTACHMENT_MAX_DIM = 1568;
+
+// LM Studio refuses WebP image parts; JPEG passes every server we target.
+const ATTACHMENT_MIME = 'image/jpeg';
+const ATTACHMENT_QUALITY = 0.9;
 
 /** A turn's images by turn id, in attach order. */
 export type AttachmentMap = Record<string, ImageAttachment[]>;
@@ -36,12 +39,26 @@ export function pastedImageFiles(dt: Pick<DataTransfer, 'files' | 'getData'> | n
   return Array.from(dt.files ?? []).filter((file) => file.type.startsWith('image/'));
 }
 
-/** Shrink and re-encode one image file. Null when the browser can't decode it. */
+/** Shrink one image file and re-encode it as JPEG, the format every vision server accepts. Transparency
+ *  turns white; an animation keeps its first frame. Null when the browser can't decode or encode it. */
 async function encodeAttachment(file: File): Promise<ImageAttachment | null> {
-  const source = await fileToDataUrl(file);
-  const dataUrl = await optimizeToWebpDataUrl(source, { maxDim: ATTACHMENT_MAX_DIM, maxBytes: Infinity });
-  // A failed decode hands the source back unchanged.
-  return dataUrl === source ? null : { id: crypto.randomUUID(), mime: dataUrlMime(dataUrl), dataUrl };
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { w, h } = fitWithin(bitmap.width, bitmap.height, ATTACHMENT_MAX_DIM);
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { bitmap.close(); return null; }
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await canvas.convertToBlob({ type: ATTACHMENT_MIME, quality: ATTACHMENT_QUALITY });
+    if (blob.type !== ATTACHMENT_MIME) return null;
+    const dataUrl = bytesToDataUrl(new Uint8Array(await blob.arrayBuffer()), ATTACHMENT_MIME);
+    return { id: crypto.randomUUID(), mime: ATTACHMENT_MIME, dataUrl };
+  } catch {
+    return null;
+  }
 }
 
 /** Encode image files for the pending set, in order. Files past the cap, non-images and unreadable images
