@@ -1,7 +1,7 @@
 # 14: Prototype, the window above dialogs
 
 Status: ready-for-human
-Status note: Prototype built and proven on `prototype/formaquestion-window` (`b09a82e4`). The layering works. The user picked window A with the edge tab, then asked for open and close motion, a movable tab and a minimal variant D; all three are built. Still open: A or D as the window, approval of the layering approach, the eleven new patterns, and decisions D1 to D5. See Answer.
+Status note: Prototype built and proven on `prototype/formaquestion-window` (`f11cfe43`). The layering works. The user picked window A with the edge tab, joined A and C into one design at two widths, and likes variant D for the chat. Motion, the movable tab with a stored place, and D are built. Still open: how A and D fit together, approval of the layering approach, the eleven new patterns, and decisions D1 to D5. See Answer.
 Base: 9edac2fd
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -42,10 +42,10 @@ Recommended model rationale: the inert scope, focus trap and scroll lock of the 
 
 | | |
 |---|---|
-| 🌿 Branch | `prototype/formaquestion-window`, commit `b09a82e4` |
+| 🌿 Branch | `prototype/formaquestion-window`, commit `f11cfe43` |
 | 📁 Worktree | `.claude/worktrees/prototype-formaquestion-window` |
 | ▶️ Run | Launch entry `proto-formaquestion-window` (port 5216). From the worktree: `npx vite --port 5216 --strictPort --force` |
-| ✅ Proof | `npx playwright test -c playwright.prototype.config.ts prototype.spec` → 35 pass |
+| ✅ Proof | `npx playwright test -c playwright.prototype.config.ts prototype.spec` → 39 pass |
 | 🖼️ Frames | `npx playwright test -c playwright.prototype.config.ts frames.spec` → `.scratch/formaquestion-window/review/` in the worktree |
 | 📖 Start here | `src/prototype/formaquestion/README.md`, then `helpLayer.ts` |
 
@@ -115,9 +115,20 @@ All frames are in `.claude/worktrees/prototype-formaquestion-window/.scratch/for
 |---|---|---|---|---|
 | **A** | **Tabs**: Ask · Search · Guide, one part at a time | 400×560 | `window-A-ask`, `-search`, `-reader`, `-contents`, `-above-settings`, `-moved-and-resized` | Smallest and clearest. A source opens the Guide tab, so the conversation leaves the view |
 | **B** | **One Field**: one field asks and searches; matches show above it; the reader stacks on top | 400×560 | `window-B-ask`, `-matches`, `-reader`, `-contents` | Least chrome, and the no-AI state needs no second field. Enter always asks, which can surprise a player who wanted to search |
-| **C** | **Two Panes**: a rail with search and contents, a pane with the conversation or the reader | 720×520 | `window-C-ask`, `-reader`, `-search` | Best for reading the guide. It covers the most of the dialog behind it |
+| ~~C~~ | **Two Panes**: a rail with search and contents, a pane with the conversation or the reader | 720×560 | `window-A-wide-ask`, `-reader`, `-search` | Now the wide layout of A. Best for reading the guide. It covers the most of the dialog behind it |
 
 > ✅ **Picked by the user, 2026-10-01: A.** It is the prototype default.
+>
+> ✅ **Ruled by the user, 2026-10-01: A and C are one design at two widths**, not two designs. A small button swaps them.
+>
+> ✅ **The user, 2026-10-01: "the D variant looks great"** for the chat itself. See Variant D below.
+
+**How narrow and wide work in the prototype**
+
+- The **Wide View** button in the title bar swaps 400px for 720px. The edge nearer the screen side stays put, so the window widens toward the open space.
+- The window's width is the one source of truth. The resize grip crosses the same line at 560px, so the button and the grip agree.
+- The search text, the open section and the conversation carry over. A section open in the wide reader shows on the Guide tab after the swap.
+- The mobile sheet has one width: the narrow layout.
 
 Other frames: `state-turn-running-dark`, `state-no-ai-dark`, `state-no-ai-B-dark`, `switcher-bar-dark`, `mobile-sheet-A-ask`, `mobile-sheet-A-reader`, `mobile-sheet-B-ask-dark`, `mobile-sheet-C-ask-dark`, `mobile-sheet-C-contents-dark`.
 
@@ -162,7 +173,11 @@ The player drags the tab. It stays flat on the nearest screen edge and follows t
 - The move works while a dialog is open.
 - The default window place now leaves room for the tab on the right edge. Before, the window covered it.
 - Frames: `tab-edge-<top|left|bottom|right>-dark`, `tab-edge-top-window-open-dark`.
-- 🔜 For ticket 16: keep the tab's place per device, next to the window's place. Add a keyboard way to move it; the prototype has only the pointer.
+- ✅ The tab's place is stored per device and comes back after a reload (asked for by the user). It is written when a move ends.
+- ✅ **Only the tab snaps** (ruled by the user). The window moves freely inside the screen, stays whole on the screen, and does not follow the tab.
+- 🔜 For ticket 16: add a keyboard way to move the tab; the prototype has only the pointer.
+
+> 🐞 **A lag the user found, and its cause.** The window trailed the pointer on every drag. The motion classes put `duration-200` on the window. That class also sets the transition duration, and a transition with no property named covers every property, so each change of `left` and `top` eased over 200ms. `transition-none` on the window fixes it. The Playwright specs missed it because their box helper waits for running animations, and a transition is one. A test now reads the painted place right after each drag step.
 
 #### Variant D: Minimal (asked for by the user, 2026-10-01)
 
