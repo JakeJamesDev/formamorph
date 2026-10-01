@@ -16,6 +16,7 @@ Fix a play bug that ticket 04 found. Placeholders owned by library characters ad
 
 - `runStatCodeTurn` joins the played library persona's pool through `withLibraryPersonaPlaceholders`. Its rows are marked `unlisted`, so the old `placeholders` route never reaches them. Once play rolls added characters' pools, joining them there is a one-line change.
 - A test pins that an added character's `placeholders` holds no names. Update it when this ticket exposes them.
+- A miss under `dictionaries.X.placeholders` is an editor error today, because the editor knows every authored book. When library dictionaries join, make it a warning, as a miss under an entity is (`checkOwnedPlaceholderPath` in the stat code analysis module).
 
 ## Acceptance criteria
 
