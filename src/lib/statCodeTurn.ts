@@ -5,7 +5,7 @@ import {
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import {
-  codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPersonaPlaceholders, type StatCodePlaceholderSet,
+  codeDictionaries, sandboxDictionaries, sandboxPlaceholders, withLibraryPlaceholders, type StatCodePlaceholderSet,
 } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import {
@@ -147,9 +147,8 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
   const cast = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
-  // The played library persona's pool joins the run as the session's Placeholder Set joins it.
-  const libraryPersona = cast?.persona.id ? turn.traits.library?.find((e) => e.id === cast.persona.id) : undefined;
-  const placeholderSet = turn.placeholders && withLibraryPersonaPlaceholders(turn.placeholders, libraryPersona);
+  // The library's pools join the run as the session's Placeholder Set joins them.
+  const placeholderSet = turn.placeholders && withLibraryPlaceholders(turn.placeholders, turn.traits.library ?? []);
   const sandbox = coded.length && placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
   const placeholders = sandbox?.top ?? [];
   const inPlay = cast && withOwnerNodes(cast, sandbox?.owners);

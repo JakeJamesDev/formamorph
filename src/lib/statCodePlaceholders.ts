@@ -1,6 +1,6 @@
-import type { CodePins, Entity, Placeholder, PlaceholderRolls } from '@/types';
+import type { CodePins, Dictionary, Entity, Placeholder, PlaceholderRolls } from '@/types';
 import type { PlaceholderOwnerRef, PlaceholderOwners } from './placeholderHomes';
-import { personaPlaceholderSet } from './personaPlaceholders';
+import { libraryPlaceholderSet } from './libraryPlaceholders';
 import {
   drawablePlaceholderValues, placeholderKindNoun, readPlaceholders, weightedPick,
   type PlaceholderPick, type PlaceholderReading,
@@ -21,6 +21,8 @@ export interface StatCodePlaceholderSet {
   unlisted?: ReadonlySet<string>;
   /** Every dictionary, in authored order. Each is a `dictionaries` entry, its placeholders its owner node. */
   dictionaries?: readonly CodeOwnerName[];
+  /** The library books picked at Enter World. The run joins their pools and lists them after `dictionaries`. */
+  libraryDictionaries?: readonly Dictionary[];
   /** The playthrough's rolls. Read, never written. */
   rolls: PlaceholderRolls;
   /** Placeholder id → the text every pin in force holds it to. */
@@ -51,20 +53,30 @@ function objectValue(ph: Placeholder, reading: PlaceholderReading, set: StatCode
 }
 
 /**
- * `set` with a library persona's own pool joined, as the session's Placeholder Set joins it. Its rows are
- * reached through its entry only, never through `placeholders`. The world copy wins an id both hold.
+ * `set` with the library's pools joined, as the session's Placeholder Set joins them: each library entity's
+ * in order, then each library book's. Their rows are reached through their owner's entry only, never through
+ * `placeholders`, and the books list after the world's. The world copy wins an id both hold.
  */
-export function withLibraryPersonaPlaceholders(set: StatCodePlaceholderSet, persona: Entity | undefined): StatCodePlaceholderSet {
-  const joined = persona ? personaPlaceholderSet([...set.placeholders], persona) : set.placeholders;
-  if (!persona || joined.length === set.placeholders.length) return set;
+export function withLibraryPlaceholders(set: StatCodePlaceholderSet, entities: readonly Entity[]): StatCodePlaceholderSet {
+  const books = set.libraryDictionaries ?? [];
+  const joined = libraryPlaceholderSet([...set.placeholders], [...entities, ...books]);
+  if (joined.length === set.placeholders.length && !books.length) return set;
   const added = joined.slice(set.placeholders.length);
-  const ref: PlaceholderOwnerRef = { kind: 'entity', id: persona.id, name: persona.name };
-  const own = new Set((persona.placeholders ?? []).map((p) => p.id));
+  // The first owner of an id wins it, as the first copy wins the set.
+  const ownerOf = new Map<string, PlaceholderOwnerRef>();
+  const own = (kind: PlaceholderOwnerRef['kind'], { id, name, placeholders }: Entity | Dictionary) => {
+    for (const p of placeholders ?? []) if (!ownerOf.has(p.id)) ownerOf.set(p.id, { kind, id, name });
+  };
+  for (const e of entities) own('entity', e);
+  for (const b of books) own('dictionary', b);
   return {
     ...set,
     placeholders: joined,
-    owners: new Map([...set.owners ?? [], ...added.filter((p) => own.has(p.id)).map((p) => [p.id, ref] as const)]),
+    owners: new Map([
+      ...set.owners ?? [], ...added.flatMap((p) => { const ref = ownerOf.get(p.id); return ref ? [[p.id, ref] as const] : []; }),
+    ]),
     unlisted: new Set([...set.unlisted ?? [], ...added.map((p) => p.id)]),
+    dictionaries: [...set.dictionaries ?? [], ...books.map(({ id, name }) => ({ id, name }))],
   };
 }
 

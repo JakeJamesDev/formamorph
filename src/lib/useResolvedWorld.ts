@@ -7,7 +7,7 @@ import { activeOwnedTraitIds, addedCharacters, bearerPins, inPlayLibrary, type P
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, withPersonaEntry, type ResolvedPersona } from '@/lib/persona';
 import { customPersonaEntity } from '@/lib/blueprints';
-import { personaPlaceholderSet } from '@/lib/personaPlaceholders';
+import { libraryPlaceholderSet, type LibraryCarrier } from '@/lib/libraryPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
   resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
@@ -104,8 +104,10 @@ export interface OpeningOverrides {
   extraPins?: Record<string, string>;
   /** The persona chosen at entry. Absent, the persona in state is named. */
   persona?: ResolvedPersona | null;
-  /** The rolls drawn for that persona, which state does not hold yet. */
+  /** The rolls drawn for that persona and the added items, which state does not hold yet. */
   rolls?: PlaceholderRolls;
+  /** The characters and library books added at entry, whose placeholders state does not hold yet. */
+  libraryAdditions?: readonly LibraryCarrier[];
   /** The entity whose opening this is, which the Character Name chip names. Absent or null for the world's. */
   owner?: Entity | null;
 }
@@ -162,7 +164,9 @@ export function useResolvedAuthoredWorld(
   );
   const resolveOpening = useCallback((text: string, over: OpeningOverrides = {}) => {
     const withPins = { ...pins, ...over.extraPins };
-    const set = over.persona?.source === 'library' ? personaPlaceholderSet(placeholders, over.persona.entity) : placeholders;
+    const set = libraryPlaceholderSet(placeholders, [
+      over.persona?.source === 'library' ? over.persona.entity : null, ...over.libraryAdditions ?? [],
+    ]);
     const withRolls = over.rolls ?? rolls;
     const name = over.persona === undefined
       ? personaName

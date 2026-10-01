@@ -61,18 +61,21 @@ describe('owner placeholders in stat code', () => {
     expect(messages(code)).toEqual(['2 dictionaries are named “Weather”. This reads the last one authored.']);
   });
 
-  it('flags a placeholder an owner does not have: a warning where a library owner can have it', () => {
+  it('flags a placeholder an owner does not have as a warning, since a library owner can have it', () => {
     expect(messages('return entities.Molly.placeholders.Hiar.value;')).toEqual(['“Molly” has no placeholder named “Hiar”. Did you mean “Hair”?']);
     expect(messages('return persona.placeholders.Hiar.value;'))
       .toEqual(['Unknown persona placeholder name “Hiar”. A library persona can have it. Did you mean “Hair”?']);
     const [inBook] = statCodeDiagnostics('return dictionaries.Lore.placeholders.Sky.value;', world);
-    expect(inBook).toMatchObject({ severity: 'error', message: '“Lore” has no placeholder named “Sky”.' });
+    expect(inBook).toMatchObject({ severity: 'warning', message: '“Lore” has no placeholder named “Sky”.' });
     const [onEntity] = statCodeDiagnostics('return entities.Molly.placeholders.Hiar.value;', world);
     expect(onEntity).toMatchObject({ severity: 'warning' });
   });
 
-  it('flags an unknown dictionary name with a suggestion', () => {
-    expect(messages('return dictionaries.Lord.id;')).toEqual(['No dictionary is named “Lord”. Did you mean “Lore”?']);
+  it('flags an unknown dictionary name as a warning with a suggestion, since a library book can have it', () => {
+    const [unknown] = statCodeDiagnostics('return dictionaries.Lord.id;', world);
+    expect(unknown).toMatchObject({
+      severity: 'warning', message: 'Unknown dictionary name “Lord”. A library dictionary can have it. Did you mean “Lore”?',
+    });
   });
 
   it('flags writes to a dictionary entry and to a whole owned placeholder', () => {

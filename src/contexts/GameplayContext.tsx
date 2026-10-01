@@ -25,6 +25,8 @@ import { registerDevHook } from '../lib/devRouter';
 import { useLibraryEntity } from '../lib/useLibraryEntity';
 import { bindCarriedBlueprints, blueprintBindWorld } from '../lib/blueprintTravel';
 import { useGameData } from './GameDataContext';
+import { addedCharacters } from '../lib/ownedTraitsInPlay';
+import { libraryBooksInPlay } from '../lib/dictionarySelection';
 import type { WorldCalendar } from '../lib/gameClock';
 import type { MemoryPinMap } from '../lib/milestoneMemory';
 import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
@@ -113,7 +115,9 @@ function useProvideGameplay() {
   // Frozen placeholder rolls for this playthrough (see lib/placeholders). Owned by the world session, which
   // opens before this provider mounts so the pre-game pickers share these values; re-exposed here because
   // the save envelope carries them and every gameplay reader already goes through this context.
-  const { rolls: placeholderRolls, setRolls: setPlaceholderRolls, setPersona: setSessionPersona } = usePlaceholderSession();
+  const {
+    rolls: placeholderRolls, setRolls: setPlaceholderRolls, setPersona: setSessionPersona, setLibraryAdditions: setSessionLibraryAdditions,
+  } = usePlaceholderSession();
   // Milestone-memory player pins, keyed by turn id ('keep' resurrects a dropped digest, 'drop' removes a
   // kept one). Persisted in the save envelope.
   const [memoryPins, setMemoryPins] = useState<MemoryPinMap>({});
@@ -131,7 +135,7 @@ function useProvideGameplay() {
   const { entity: storedPersona, pending: personaPending } = useLibraryEntity(
     personaRef?.source === 'library' ? personaRef.entityId : null,
   );
-  const { worldPlaceholders, placeholderGroups } = useGameData();
+  const { worldPlaceholders, placeholderGroups, dictionaries: worldBooks } = useGameData();
   const libraryPersona = useMemo(
     () => storedPersona && bindCarriedBlueprints(storedPersona, blueprintBindWorld({ placeholders: worldPlaceholders, placeholderGroups })).entity,
     [storedPersona, worldPlaceholders, placeholderGroups],
@@ -165,6 +169,10 @@ function useProvideGameplay() {
   const [pendingAttachments, setPendingAttachments] = useState<ImageAttachment[]>([]);
   // Flattened enabled entries fed to the injection pipeline (mirrors GameData's old derived `dictionary`).
   const runtimeDictionary = useMemo(() => flattenEnabledBookEntries(runtimeDictionaries), [runtimeDictionaries]);
+  const libraryDictionaries = useMemo(() => libraryBooksInPlay(runtimeDictionaries, worldBooks), [runtimeDictionaries, worldBooks]);
+  const added = useMemo(() => addedCharacters(discoveredEntities), [discoveredEntities]);
+  // Added characters' and library books' placeholders join the session's set, and their Wildcards are drawn.
+  useEffect(() => { setSessionLibraryAdditions(added, libraryDictionaries); }, [added, libraryDictionaries, setSessionLibraryAdditions]);
   const [recentStatChanges, setRecentStatChanges] = useState<Record<string, number>>({});
   // When true, the lingering delta text (+3/-2) fades out fast because a new turn started before its
   // normal ~10s timeout. Reset when the next turn's changes land.
@@ -717,6 +725,7 @@ function useProvideGameplay() {
     setCodePins,
     runtimeDictionaries,
     setRuntimeDictionaries,
+    libraryDictionaries,
     placeholderRolls,
     setPlaceholderRolls,
     sceneImages,

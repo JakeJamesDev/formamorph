@@ -63,9 +63,9 @@ const loadWorld = async (live: () => Live, entities: Entity[] = [mira, vos]) => 
 describe('the game view renders every opening through resolveOpening', () => {
   const viewer = readFileSync(join(process.cwd(), 'src/views/GameViewer.tsx'), 'utf8');
 
-  it('passes the first draw its persona and owner, and renders no opening any other way', () => {
+  it('passes the first draw its persona, added items and owner, and renders no opening any other way', () => {
     expect(viewer).toMatch(
-      /resolveOpening\(drawn\.opening\.text, \{\s*extraPins: openingPins, persona: drawnPersona, rolls: personaRolls, owner: drawnOwner,\s*\}\)/,
+      /resolveOpening\(drawn\.opening\.text, \{\s*extraPins: openingPins, persona: drawnPersona, rolls: openingRolls, libraryAdditions: \[\.\.\.picked, \.\.\.libraryBooks\], owner: drawnOwner,\s*\}\)/,
     );
     expect(viewer).toMatch(/resolveOpening\(drawn\.opening\.text, \{\s*owner: openingOwner\(drawn\.ownerId, /);
     expect(viewer).toMatch(/const redrawText = redraw \? resolveDrawn\(redraw\)/);

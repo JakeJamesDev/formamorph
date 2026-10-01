@@ -9,7 +9,7 @@ import { inPlayBearers } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import type { PlaceholderOwners } from './placeholderHomes';
 import { phValues } from '@/test/placeholderValues';
-import type { Entity, PersonaRef, Placeholder, PlayerStat } from '@/types';
+import type { Dictionary, Entity, PersonaRef, Placeholder, PlayerStat } from '@/types';
 
 const stat = (over: Partial<PlayerStat>): PlayerStat => ({
   id: 'x', name: 'Stat', type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [],
@@ -96,11 +96,42 @@ describe('runStatCodeTurn owner placeholders', () => {
     expect(out.pinWrites).toEqual({ probe: 'scar' });
   });
 
-  it('reads an added character’s placeholders as blank, since play never rolls them', async () => {
+  it('reads an added character’s placeholder through its entry, and pins it as a Code Pin on its id', async () => {
     const pip: Entity = { id: 'pip', name: 'Pip', placeholders: [ph('pip-tag', 'Tag', ['loyal'])] };
-    const out = await run('return entities.Pip.name === "Pip" && entities.Pip.placeholders.Tag.value === "" ? 1 : 0;',
+    // Pip plays beside a library persona, whose pool joins first.
+    const out = await run('placeholders.Probe.pin(entities.Pip.placeholders.Tag.value); entities.Pip.placeholders.Tag.pin("sly");',
       played(asLyra, [lyra, pip]));
+    expect(out.pinWrites).toEqual({ probe: 'loyal', 'pip-tag': 'sly' });
+  });
+
+  it('reads and pins a library dictionary’s placeholder through its entry, after the authored books', async () => {
+    const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
+    // A library book that shares an authored book's code name wins it, as the later book does.
+    const weather: Dictionary = { id: 'run-weather', name: 'Weather', entries: [], placeholders: [ph('lib-sky', 'Sky', ['hail'])] };
+    const code = 'placeholders.Probe.pin(dictionaries.Tides.placeholders.Tide.value + "/" + dictionaries.Weather.placeholders.Sky.value);'
+      + ' dictionaries.Tides.placeholders.Tide.pin("flood");'
+      + ' return dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "run-weather" ? 1 : 0;';
+    const out = await runStatCodeTurn({
+      stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asLyra, [lyra]),
+      placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides, weather], rolls: { world: {} } },
+      statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    });
+    expect(out.pinWrites).toEqual({ probe: 'ebb/hail', tide: 'flood' });
     expect(valueOf(out)).toBe(1);
+  });
+
+  it('keeps added characters’ and library books’ placeholders out of placeholders', async () => {
+    const pip: Entity = { id: 'pip', name: 'Pip', placeholders: [ph('pip-tag', 'Tag', ['loyal'])] };
+    const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
+    const out = await runStatCodeTurn({
+      stats: [stat({ id: 's0', name: 'S0', value: 0, code: 'placeholders.Tag.pin("x"); placeholders.Tide.pin("y");' })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asMira, [pip]),
+      placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides], rolls: { world: {} } },
+      statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    });
+    expect(out.pinWrites).toEqual({});
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('the world does not have: Tag, Tide'));
   });
 
   it('keeps the library persona’s placeholders out of placeholders', async () => {
