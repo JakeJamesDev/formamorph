@@ -1,0 +1,35 @@
+{
+  "note": "Ticket 30 probe pairs. `first` is a question the guide does not cover, so its answer is flagged. `uncovered` is a follow-up the guide also does not cover; `covered` is one it does, with `section` and keyed `facts` as in help-cases.json.",
+  "cases": [
+    {
+      "id": "quant",
+      "first": "What does Q4_K_M mean in a model file name?",
+      "uncovered": "Is Q5 better than Q4?",
+      "covered": { "question": "How do I connect LM Studio to run it?", "section": "Connect-Your-Own-AI#how-to-connect-lm-studio", "facts": ["Enable CORS", "Endpoints", "Endpoint URL", "Model Name"] }
+    },
+    {
+      "id": "villain",
+      "first": "How do I write a good villain for my world?",
+      "uncovered": "And how do I give them a tragic backstory?",
+      "covered": { "question": "Then how do I publish the world?", "section": "Community-Creations#how-to-publish-a-world", "facts": ["Worlds", "Publish World"] }
+    },
+    {
+      "id": "trade",
+      "first": "How do I trade items with another player?",
+      "uncovered": "Is there an auction house?",
+      "covered": { "question": "OK, then how do I make a backup?", "section": "Saves-and-Backup#how-to-make-a-backup", "facts": ["Backup & Restore", "Save backup"] }
+    },
+    {
+      "id": "achievements",
+      "first": "How do I earn achievements?",
+      "uncovered": "Is there a leaderboard for them?",
+      "covered": { "question": "Fine. How do I redo the last turn?", "section": "How-to-Play#how-to-re-generate-a-turn", "facts": ["Re-generate Narration"] }
+    },
+    {
+      "id": "lora",
+      "first": "What is a LoRA?",
+      "uncovered": "How do I train one?",
+      "covered": { "question": "Unrelated: how do I color quoted speech?", "section": "Settings#how-to-color-quoted-speech", "facts": ["Display", "Quote Color"] }
+    }
+  ]
+}

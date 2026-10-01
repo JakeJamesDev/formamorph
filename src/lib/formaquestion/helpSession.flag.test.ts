@@ -146,3 +146,27 @@ describe('the general-knowledge flag in lookup mode', () => {
     expect(done).toMatchObject({ text: 'Select **Add Trait**.', flagged: false });
   });
 });
+
+describe('the general-knowledge flag in the follow-up history', () => {
+  const historyOf = (fetchImpl: FetchSpy) =>
+    (JSON.parse(fetchImpl.mock.calls[0][1].body as string) as { messages: { role: string; content: string }[] }).messages
+      .filter((message) => message.role === 'assistant')
+      .map((message) => message.content);
+
+  it('gives a flagged earlier answer its marker back, alone on the first line', async () => {
+    const fetchImpl = script(sseReply('Select **Add Trait**.'));
+    await collect(ask('And then?', fetchImpl, { history: [{ question: 'What is a trait?', answer: 'A trait is a tag.', flagged: true }] }));
+
+    expect(historyOf(fetchImpl)).toEqual([`${GENERAL_KNOWLEDGE_MARKER}\nA trait is a tag.`]);
+  });
+
+  it('gives a grounded earlier answer no marker', async () => {
+    const fetchImpl = script(sseReply('Select **Add Trait**.'));
+    await collect(ask('And then?', fetchImpl, { history: [
+      { question: 'How do I add a stat?', answer: 'Select **Add Stat**.', flagged: false },
+      { question: 'What is a trait?', answer: 'A trait is a tag.' },
+    ] }));
+
+    expect(historyOf(fetchImpl)).toEqual(['Select **Add Stat**.', 'A trait is a tag.']);
+  });
+});

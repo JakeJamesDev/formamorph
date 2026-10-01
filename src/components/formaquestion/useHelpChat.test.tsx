@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
+import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { HELP_HISTORY_EXCHANGES } from '@/lib/formaquestion/helpSession';
 import { languageDirective } from '@/lib/languages';
 import { turnActivity } from '@/lib/turnActivity';
@@ -89,6 +90,22 @@ describe('useHelpChat', () => {
       { role: 'user', content: 'How do I add a trait?' },
       { role: 'assistant', content: 'Select **Add Trait**.' },
     ]);
+  });
+
+  it('shows a flagged answer without its marker, and sends the marker back with it on a follow-up', async () => {
+    const fetchSpy = stubStream(sseReply(`${GENERAL_KNOWLEDGE_MARKER}\nLight scatters.`));
+    const { result } = renderHook(() => useHelpChat(index, ai));
+    act(() => { result.current.ask('Why is the sky blue?'); });
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(result.current.exchanges[0]).toMatchObject({ answer: 'Light scatters.', flagged: true });
+
+    act(() => { result.current.ask('and at night?'); });
+    await waitFor(() => expect(result.current.exchanges.at(-1)?.status).toBe('answered'));
+    expect(sentMessages(fetchSpy, 1).slice(1, -1)).toEqual([
+      { role: 'user', content: 'Why is the sky blue?' },
+      { role: 'assistant', content: `${GENERAL_KNOWLEDGE_MARKER}\nLight scatters.` },
+    ]);
+    expect(result.current.exchanges.every((exchange) => !exchange.answer.includes(GENERAL_KNOWLEDGE_MARKER))).toBe(true);
   });
 
   it(`keeps every exchange in view while a request carries only the last ${HELP_HISTORY_EXCHANGES}`, async () => {
