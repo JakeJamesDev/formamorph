@@ -165,6 +165,44 @@ describe('runStatCodeTurn owner placeholders', () => {
     expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in play: Ghost › Hair, Nope › Sky$/));
   });
 
+  it('leaves an authored dictionary turned off at Enter World out of dictionaries, and reports a pin through it', async () => {
+    const code = 'const gone = dictionaries.Lore.id === "" && dictionaries.Weather.id === "later-weather";'
+      + ' dictionaries.Lore.placeholders.Mood.pin("x"); dictionaries.Weather.placeholders.Sky.pin("storm"); return gone ? 1 : 0;';
+    const mood = ph('lore-mood', 'Mood', ['calm']);
+    const withLore = new Map([...owners, ['lore-mood', { kind: 'dictionary' as const, id: 'lore', name: 'Lore' }]]);
+    const out = await runStatCodeTurn({
+      stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asLyra, [lyra]),
+      placeholders: {
+        placeholders: [...list, mood], owners: withLore, dictionaries, rolls: { world: {} },
+        inPlayDictionaryIds: new Set(['first-weather', 'later-weather']),
+      },
+      statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    });
+    expect(valueOf(out)).toBe(1);
+    expect(out.pinWrites).toEqual({ 'later-sky': 'storm' });
+    expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in play: Lore › Mood$/));
+  });
+
+  it('lists every authored dictionary when the run has no Enter World set', async () => {
+    const out = await run('return dictionaries.Lore.id === "lore" && dictionaries.Weather.id === "later-weather" ? 1 : 0;');
+    expect(valueOf(out)).toBe(1);
+  });
+
+  it('lists an authored dictionary left on and every library dictionary beside one turned off', async () => {
+    const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
+    const out = await runStatCodeTurn({
+      stats: [stat({ id: 's0', name: 'S0', value: 0, code: 'return dictionaries.Lore.id === "lore" && dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "" ? 1 : 0;' })],
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asLyra, [lyra]),
+      placeholders: {
+        placeholders: list, owners, dictionaries, libraryDictionaries: [tides], rolls: { world: {} },
+        inPlayDictionaryIds: new Set(['lore']),
+      },
+      statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
+    });
+    expect(valueOf(out)).toBe(1);
+  });
+
   it('reads persona.placeholders as empty when no persona entity plays, and reports a pin through it', async () => {
     const out = await run('const blank = persona.placeholders.Eyes.value === ""; persona.placeholders.Eyes.pin("x"); return blank ? 1 : 0;',
       played({ source: 'none' }));

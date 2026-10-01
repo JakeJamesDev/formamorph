@@ -629,6 +629,7 @@ const GameViewer = ({
     setDiscoveredEntities,
     suppressedCharacterNames,
     setRuntimeDictionaries,
+    runtimeDictionaries,
     libraryDictionaries,
     memoryPins,
     setMemoryPins,
@@ -2709,7 +2710,9 @@ const GameViewer = ({
           },
           placeholders: {
             // The world's list and books. The run joins the library entities' and library books' pools itself.
-            placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, libraryDictionaries, rolls: sessionRolls,
+            placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, libraryDictionaries,
+            inPlayDictionaryIds: new Set(runtimeDictionaries.filter((book) => book.enabled !== false).map((book) => book.id)),
+            rolls: sessionRolls,
             pins: preTurn ? pinsFor(basePins).world : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
@@ -2758,7 +2761,7 @@ const GameViewer = ({
       }
     },
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, dictionaries, sessionRolls,
-      libraryDictionaries, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+      libraryDictionaries, runtimeDictionaries, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 

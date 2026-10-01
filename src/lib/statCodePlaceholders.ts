@@ -21,6 +21,9 @@ export interface StatCodePlaceholderSet {
   unlisted?: ReadonlySet<string>;
   /** Every dictionary, in authored order. Each is a `dictionaries` entry, its placeholders its owner node. */
   dictionaries?: readonly CodeOwnerName[];
+  /** Ids of the authored books in play: the ones left on at Enter World. Absent, every authored book is in play,
+   *  as in the editor run and the Test Bench, which have no Enter World. */
+  inPlayDictionaryIds?: ReadonlySet<string>;
   /** The library books picked at Enter World. The run joins their pools and lists them after `dictionaries`. */
   libraryDictionaries?: readonly Dictionary[];
   /** The playthrough's rolls. Read, never written. */

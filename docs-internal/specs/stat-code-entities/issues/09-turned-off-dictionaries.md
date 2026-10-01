@@ -1,6 +1,7 @@
 # 09: Leave turned-off dictionaries out of stat code
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 847d8be5
 Blocked by: 07
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

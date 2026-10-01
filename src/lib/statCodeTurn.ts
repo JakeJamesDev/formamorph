@@ -121,6 +121,12 @@ export function overlayStatCodeResult(
   });
 }
 
+/** `set` listing only the authored books in play; a book turned off reads as an unknown dictionary. */
+const withBooksInPlay = (set: StatCodePlaceholderSet): StatCodePlaceholderSet => {
+  const { inPlayDictionaryIds: inPlay } = set;
+  return inPlay ? { ...set, dictionaries: set.dictionaries?.filter((book) => inPlay.has(book.id)) } : set;
+};
+
 /** Run every enabled stat's code over one turn in the sandbox, in parallel over one snapshot. A failing
  *  run is logged and leaves its stat unchanged. Empty code clears its stat's code bounds. */
 export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
@@ -148,7 +154,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
   const cast = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
   // The library's pools join the run as the session's Placeholder Set joins them.
-  const placeholderSet = turn.placeholders && withLibraryPlaceholders(turn.placeholders, turn.traits.library ?? []);
+  const placeholderSet = turn.placeholders && withLibraryPlaceholders(withBooksInPlay(turn.placeholders), turn.traits.library ?? []);
   const sandbox = coded.length && placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
   const placeholders = sandbox?.top ?? [];
   const inPlay = cast && withOwnerNodes(cast, sandbox?.owners);
