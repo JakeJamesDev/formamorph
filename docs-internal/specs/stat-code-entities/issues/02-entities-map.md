@@ -23,7 +23,7 @@ Stat code gets an `entities` global. Each entry has `name` and `traits`, in the 
 - [ ] An entity trait write switches that entity's owned trait and cascades as a manual switch does (Q6).
 - [ ] `persona === entities[persona.name]`, so a write through either is one write (Q8).
 - [ ] Entity names reach code under their code name. Of two entities sharing a code name, the later one wins (Q7).
-- [ ] An unknown entity reads as undefined. A write to an unknown entity's trait is warned about and dropped.
+- [ ] An unknown or not-in-play entity reads as a blank entry (Q23, Q25). A write to its trait is warned about and dropped.
 - [ ] Completions and diagnostics offer entity names and their trait names. An entity rename rewrites `entities['Old']`, and a trait rename rewrites `entities['X'].traits['Old']` and `persona.traits['Old']`. Name-drift warns on a shared entity code name.
 - [ ] The editor test run lists authored entities with nothing chosen.
 - [ ] Tests at `runStatCodeTurn` and the rename and name-drift seams, each shown to bite. The changelog line is in In Progress.
