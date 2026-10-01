@@ -1,5 +1,5 @@
-import type { AIRequestType, RequestMessage, Tool, WireMessage } from '@/types';
-import { toolSchema, type ToolFunctionSchema } from '@/lib/tools/toolSchema';
+import type { AIRequestType, RequestMessage, WireMessage } from '@/types';
+import { toolSchema, type OfferedFunction, type ToolFunctionSchema } from '@/lib/tools/toolSchema';
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
@@ -54,14 +54,14 @@ export interface AiSettingsSnapshot {
 }
 
 /** One AI call as the caller states it, before any settings are applied. */
-export interface AiCall {
+export interface AiCall<TTool extends OfferedFunction = OfferedFunction> {
   systemPrompt: string;
   messages: RequestMessage[];
   requestType: AIRequestType;
   /** Overrides the target's own output cap for the answer. */
   maxTokensOverride?: number | null;
   /** The Tools this prompt offers. Sent only where the target's record says it takes them. */
-  tools?: readonly Tool[];
+  tools?: readonly TTool[];
 }
 
 /** The chat-completions body this layer builds. Optional fields are absent, never undefined-valued. The
@@ -84,7 +84,7 @@ export interface AiRequestBody<TMessage extends WireMessage = RequestMessage> ex
 }
 
 /** A complete request, ready for one fetch. */
-export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage> {
+export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage, TTool extends OfferedFunction = OfferedFunction> {
   url: string;
   headers: Record<string, string>;
   body: AiRequestBody<TMessage>;
@@ -93,7 +93,7 @@ export interface AiRequestSpec<TMessage extends WireMessage = RequestMessage> {
   /** The Answer Cap in tokens, which the tool loop enforces on answer text. Absent where nothing caps the output. */
   answerCap?: number;
   /** The Tools the body offers, present exactly when the body carries `tools`. The loop runs calls against these. */
-  tools?: readonly Tool[];
+  tools?: readonly TTool[];
   /** The effort literal this request carried, whichever field the dialect spelled it in. Absent where it
    *  carried none. Read by the observation, which asks what was in force rather than which key held it. */
   reasoningLevel?: ReasoningEffortField;
@@ -274,7 +274,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
 }
 
 /** The Tools the call offers where the target is known to take them; null sends none (ADR-0008). */
-function offeredTools(call: AiCall, target: AiEndpointTarget): readonly Tool[] | null {
+function offeredTools<TTool extends OfferedFunction>(call: AiCall<TTool>, target: AiEndpointTarget): readonly TTool[] | null {
   return call.tools?.length && toolsSupported(target.reasoning) ? call.tools : null;
 }
 
@@ -287,7 +287,10 @@ function buildMessages(snapshot: AiSettingsSnapshot, call: AiCall): RequestMessa
 }
 
 /** Resolves endpoint, samplers and reasoning into one ready-to-send request. */
-export function buildAiRequestSpec(snapshot: AiSettingsSnapshot, call: AiCall): AiRequestSpec {
+export function buildAiRequestSpec<TTool extends OfferedFunction = OfferedFunction>(
+  snapshot: AiSettingsSnapshot,
+  call: AiCall<TTool>,
+): AiRequestSpec<RequestMessage, TTool> {
   const target = snapshot.resolveTarget(call.requestType);
   const samplers = resolveSamplers(snapshot, call.requestType, target);
   const reasoning = resolveReasoning(snapshot, call, target);

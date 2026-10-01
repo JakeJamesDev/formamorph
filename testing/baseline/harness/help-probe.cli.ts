@@ -4,12 +4,16 @@
 //   docs     the app's own request: the help prompt, plus the sections the Docs Index finds for the question
 //   no-docs  the control: the same model and samplers, the question alone, no guide text
 //   alt      with `--alt FILE`: the docs arm with the system prompt from FILE, to compare two wordings
+//   lookup   with `--lookup`: the app's help session in lookup mode, on an endpoint that takes function
+//            calls. The model reads the sections it picks, in more than one round
 //
 // The request body comes from the app's AI Request Spec, so the sampler pins are the app's. The probe adds
 // `reasoning_effort: "none"` and turns streaming off to read the token counts.
 //
 // Checks, all by text match, none by a model:
 //   retrieval   the expected section is among the sections sent (docs arm; the same for every run)
+//   reached     the expected section is among the answer's sources (lookup arm; per run), with the
+//               lookup calls and the requests of the question
 //   facts       share of the keyed control names in the answer; `complete` = all of them
 //   bold        share of the keyed names written in bold, as the guide writes them
 //   steps       the answer has a numbered list
@@ -19,14 +23,14 @@
 //
 // Usage: npx vite-node testing/baseline/harness/help-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--only backup-docs,regen-player]
-//          [--parallel 4] [--alt FILE] [--show]
+//          [--parallel 4] [--alt FILE] [--lookup] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
-import { HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
+import { askHelp, HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
 const args = process.argv.slice(2);
@@ -42,6 +46,7 @@ const parallel = Number(argVal('--parallel', '4'));
 const only = argVal('--only', '');
 const show = args.includes('--show');
 const altFile = argVal('--alt', '');
+const withLookup = args.includes('--lookup');
 
 interface HelpCase {
   id: string;
@@ -51,8 +56,8 @@ interface HelpCase {
   section?: string;
   facts: string[];
 }
-type Arm = 'docs' | 'no-docs' | 'alt';
-const ARMS: Arm[] = altFile ? ['docs', 'alt', 'no-docs'] : ['docs', 'no-docs'];
+type Arm = 'docs' | 'no-docs' | 'alt' | 'lookup';
+const ARMS: Arm[] = ['docs', ...(altFile ? ['alt' as const] : []), ...(withLookup ? ['lookup' as const] : []), 'no-docs'];
 const ALT_SYSTEM_PROMPT = altFile ? readFileSync(altFile, 'utf8').trim() : '';
 
 const BASELINE = path.resolve('testing/baseline');
@@ -88,12 +93,73 @@ const snapshot: AiSettingsSnapshot = {
 
 interface Sample {
   answer: string;
+  /** Tokens in and out, summed over the requests of the question. */
   promptTokens: number | null;
   answerTokens: number | null;
   finish: string | null;
+  /** Lookup arm: the answer's sources, the lookup calls the model made, and the requests sent. */
+  sources?: string[];
+  calls?: string[];
+  requests?: number;
+}
+
+interface Completion {
+  choices?: { message?: { content?: string | null; tool_calls?: { id?: string; function: { name: string; arguments: string } }[] }; finish_reason?: string }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
+/** The same endpoint, with a record that says it takes function calls: the help session picks lookup mode. */
+const lookupSnapshot: AiSettingsSnapshot = {
+  ...snapshot,
+  resolveTarget: (kind) => {
+    const target = snapshot.resolveTarget(kind);
+    return { ...target, reasoning: { ...target.reasoning, tools: true, sources: { tools: 'probe' } } };
+  },
+};
+
+/**
+ * One question through the app's help session in lookup mode. Each request of the session goes out with
+ * streaming off, so the token counts come back, and returns to the session as the stream it expects.
+ */
+async function lookupRequest(c: HelpCase): Promise<Sample> {
+  let promptTokens = 0;
+  let answerTokens = 0;
+  let requests = 0;
+  const calls: string[] = [];
+  const fetchImpl = (async (url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(init?.body as string) as Record<string, unknown>;
+    const response = await fetch(url, { ...init, body: JSON.stringify({ ...body, stream: false, reasoning_effort: 'none' }) });
+    if (!response.ok) return response;
+    requests++;
+    const json = await response.json() as Completion;
+    promptTokens += json.usage?.prompt_tokens ?? 0;
+    answerTokens += json.usage?.completion_tokens ?? 0;
+    const choice = json.choices?.[0];
+    const toolCalls = choice?.message?.tool_calls ?? [];
+    calls.push(...toolCalls.map((call) => call.function.arguments));
+    const frame = (delta: Record<string, unknown>, finish: string | null = null) =>
+      `data: ${JSON.stringify({ choices: [{ delta, finish_reason: finish }] })}\n\n`;
+    const frames = [
+      ...(choice?.message?.content ? [frame({ content: choice.message.content })] : []),
+      ...toolCalls.map((call, at) => frame({ tool_calls: [{ index: at, id: call.id ?? `call-${at}`, type: 'function', function: call.function }] })),
+      frame({}, choice?.finish_reason ?? 'stop'),
+      'data: [DONE]\n\n',
+    ];
+    return new Response(frames.join(''), { headers: { 'Content-Type': 'text/event-stream' } });
+  }) as typeof fetch;
+
+  let answer = '';
+  let sources: string[] = [];
+  for await (const event of askHelp({ question: c.question, snapshot: lookupSnapshot, index, fetchImpl })) {
+    if (event.type !== 'done') continue;
+    answer = event.text;
+    sources = event.sources.map((section) => section.id);
+  }
+  return { answer, promptTokens, answerTokens, finish: null, sources, calls, requests };
 }
 
 async function request(arm: Arm, c: HelpCase): Promise<Sample> {
+  if (arm === 'lookup') return lookupRequest(c);
   const sections = helpSections(index, c.question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
     ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS }
@@ -104,10 +170,7 @@ async function request(arm: Arm, c: HelpCase): Promise<Sample> {
     body: JSON.stringify({ ...spec.body, stream: false, reasoning_effort: 'none' }),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  const json = await response.json() as {
-    choices?: { message?: { content?: string }; finish_reason?: string }[];
-    usage?: { prompt_tokens?: number; completion_tokens?: number };
-  };
+  const json = await response.json() as Completion;
   return {
     answer: json.choices?.[0]?.message?.content ?? '',
     promptTokens: json.usage?.prompt_tokens ?? null,
@@ -207,17 +270,24 @@ function summarize(arm: Arm, caseIds: ReadonlySet<string>) {
     invented: mean(scores.map((s) => s.invented)).toFixed(2),
     empty: scores.filter((s) => s.empty).length,
     tokens: `${Math.round(mean(scored.map((r) => r.sample?.promptTokens ?? 0)))}/${Math.round(mean(scored.map((r) => r.sample?.answerTokens ?? 0)))}`,
+    // Lookup arm: the runs whose sources hold the expected section, then lookup calls and requests per question.
+    reached: pct(scored.filter((r) => { const want = caseById.get(r.caseId)?.section; return !!want && r.sample?.sources?.includes(want); }).length, n),
+    calls: mean(scored.map((r) => r.sample?.calls?.length ?? 0)).toFixed(1),
+    requests: mean(scored.map((r) => r.sample?.requests ?? 1)).toFixed(1),
   };
 }
+const caseById = new Map(cases.map((c) => [c.id, c]));
 
 console.log('\ncase                     arm      hit  facts complete bold steps declined invented  prompt/answer tok');
 for (const c of cases) {
   for (const arm of ARMS) {
     const m = summarize(arm, new Set([c.id]));
     const hit = retrieval.get(c.id)?.hit;
+    const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : arm === 'lookup' ? m.reached : hit ? 'yes' : ' NO';
     console.log([
-      c.id.padEnd(24), arm.padEnd(8), (arm !== 'no-docs' ? (hit === null ? ' –' : hit ? 'yes' : ' NO') : '   ').padEnd(4),
+      c.id.padEnd(24), arm.padEnd(8), sent.padEnd(4),
       m.facts, m.complete.padStart(8), m.bold, m.steps.padStart(5), m.declined.padStart(8), m.invented.padStart(8), `  ${m.tokens}`,
+      ...(arm === 'lookup' ? [`  ${m.calls} calls, ${m.requests} requests`] : []),
     ].join(' '));
   }
 }
@@ -230,6 +300,7 @@ function totals(label: string, arm: Arm, keep: (c: HelpCase) => boolean) {
     `${label} · ${arm}`.padEnd(44), `n=${m.n}`.padEnd(6),
     `facts ${m.facts}`, `complete ${m.complete}`, `bold ${m.bold}`, `steps ${m.steps}`,
     `declined ${m.declined}`, `invented ${m.invented}`, `empty ${m.empty}`, `tok ${m.tokens}`,
+    ...(arm === 'lookup' ? [`reached ${m.reached}`, `calls ${m.calls}`, `requests ${m.requests}`] : []),
   ].join('  '));
 }
 

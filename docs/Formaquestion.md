@@ -101,6 +101,7 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
+- On an endpoint that supports Tools, the AI also gets the contents list of the guide and reads the sections it picks. **Sources** lists those sections first. This is part of Formaquestion, so it works with the **Tools** checkbox clear, and each read adds a request.
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
 - **Clear** removes every question and answer, and ends an answer that is coming in.
