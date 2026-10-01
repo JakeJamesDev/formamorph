@@ -11,7 +11,7 @@ import { toolsSupported } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { withImageParts } from '@/lib/aiRequest/imageParts';
 import type { ImageAttachment, RequestMessage } from '@/types';
-import { createDocsLookup, docsContents, DOCS_LOOKUP } from './docsLookup';
+import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { surfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
@@ -20,10 +20,13 @@ import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, h
 export const HELP_SECTION_LIMIT = 5;
 
 /**
- * The most characters of docs section text one help question holds, so the request fits a small model's
- * context. The contents list of a lookup request is not part of it.
+ * The most characters of docs section text the prompt of one help question holds, so the request fits a
+ * small model's context.
  */
 export const HELP_DOCS_CHAR_BUDGET = 12_000;
+
+/** The most characters of docs section text the lookup calls of one question return together, on top of the prompt's. */
+export const HELP_LOOKUP_CHAR_BUDGET = 12_000;
 
 /** The answer cap in tokens: room for a long list of steps. */
 export const HELP_MAX_TOKENS = 800;
@@ -105,9 +108,11 @@ function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] 
  * Asks one help question, after the earlier exchanges. The endpoint's known capability picks the mode
  * before anything is sent, and a failed request is never sent again in the other mode (ADR-0008).
  *
- * - Lookup mode, where the endpoint is known to take function calls: the prompt holds the contents list and
- *   the best search hit, and the model reads more sections through the docs lookup.
- * - Retrieval mode, everywhere else: the sections that match the question go in the prompt, in one request.
+ * In both modes the sections that match the question go in the prompt.
+ *
+ * - Lookup mode, where the endpoint is known to take function calls: the model reads more sections through
+ *   the docs lookup.
+ * - Retrieval mode, everywhere else: one request.
  *
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
@@ -119,19 +124,15 @@ export async function* askHelp({
   const found = helpSections(index, question, { history, budget: HELP_DOCS_CHAR_BUDGET - (hint?.section.markdown.length ?? 0) })
     .filter((section) => section.id !== hint?.section.id);
   const lookupMode = toolsSupported(snapshot.resolveTarget('help').reasoning);
-  const inPrompt = [...lead, ...(lookupMode ? found.slice(0, 1) : found)];
+  const inPrompt = [...lead, ...found];
   const lookup = lookupMode
-    ? createDocsLookup(index, {
-        budget: HELP_DOCS_CHAR_BUDGET - inPrompt.reduce((size, section) => size + section.markdown.length, 0),
-        searchLimit: HELP_SECTION_LIMIT,
-        held: inPrompt,
-      })
+    ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
   const spec = buildAiRequestSpec(snapshot, {
     systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
     messages: withImageParts([...historyMessages(history), {
       role: 'user',
-      content: lookup ? helpLookupUserMessage(question, docsContents(index), inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where),
+      content: lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where),
     }], images),
     requestType: 'help',
     maxTokensOverride: HELP_MAX_TOKENS,

@@ -6,8 +6,7 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { closeErrorDetails } from '@/lib/errorDetails';
 import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 import { turnActivity } from '@/lib/turnActivity';
-import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
-import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
 import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS } from '@/lib/actionAttachments';
 import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
 import type { HelpAi } from './useHelpAi';
@@ -388,9 +387,6 @@ describe('an answer that did not come from the guide', () => {
   const NOTICE = 'This answer is not from the guide. It can be wrong about Formamorph.';
 
   it('shows the notice above the answer and the nearest sections in place of the sources, with no marker', async () => {
-    // Lookup mode sends only the best hit, so the nearest sections are more than the sources.
-    const reasoning = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' as const } };
-    ai.current = { ...ai.current, snapshot: textSnapshot(textTarget({ reasoning })) };
     stubStream([sseFrame({ content: '[NOT IN' }), ...sseReply(' GUIDE]\nA trait is a tag on an entity.')]);
     const { field } = await openAsk();
     await send(field, 'How do I add a trait to a stat?');

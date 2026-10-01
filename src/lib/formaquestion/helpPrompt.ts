@@ -23,7 +23,7 @@ export const HELP_SYSTEM_PROMPT = [
 export const HELP_LOOKUP_SYSTEM_PROMPT = [
   'You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide.',
   '',
-  `- The message holds the contents list of the guide, and the guide sections that match the words of the question. Read each other section the question needs with ${DOCS_LOOKUP.name}.`,
+  `- The message holds the guide sections that match the words of the question. Find and read each other section the question needs with ${DOCS_LOOKUP.name}.`,
   '- Take each fact, each step and each name from the guide sections you read.',
   ...ANSWER_RULES,
 ].join('\n');
@@ -57,12 +57,11 @@ export function helpUserMessage(question: string, sections: readonly DocSection[
 }
 
 /**
- * The one user message of a lookup request: the contents list, the sections the search found when it
- * found one, then the question and the grounding line.
+ * The one user message of a lookup request: the sections the search found when it found one, then the
+ * question and the grounding line.
  */
-export function helpLookupUserMessage(question: string, contents: string, sections: readonly DocSection[], where?: string): string {
+export function helpLookupUserMessage(question: string, sections: readonly DocSection[], where?: string): string {
   return [
-    `<contents>\n${contents}\n</contents>`,
     ...(sections.length > 0 ? [`<guide>\n${sections.map(sectionBlock).join('\n\n')}\n</guide>`] : []),
     ...(where ? [screenLine(where)] : []),
     `Question: ${question}`,

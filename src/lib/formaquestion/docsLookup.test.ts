@@ -3,7 +3,7 @@ import { createDocsIndex, type DocSection } from '@/lib/docs/docsIndex';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import { toolsOfferedTo } from '@/lib/tools/toolOffer';
 import { toolSchema } from '@/lib/tools/toolSchema';
-import { createDocsLookup, docsContents, DOCS_LOOKUP, type DocsLookupOptions } from './docsLookup';
+import { createDocsLookup, DOCS_LOOKUP, type DocsLookupOptions } from './docsLookup';
 
 /** A paragraph list long enough that the index splits its section into parts. */
 const LONG_STEPS = Array.from({ length: 140 }, (_, n) => `- Folder rule ${n}: a folder holds worlds and saves.`).join('\n');
@@ -41,33 +41,14 @@ describe('the docs lookup function', () => {
   });
 });
 
-describe('the contents list', () => {
-  it('names each page, then each section under it, so page and section join into an id', () => {
-    const contents = docsContents(index);
-    expect(contents).toContain('Traits\n #-traits\n #how-to-add-a-trait\n #-why-it-exists');
-    expect(contents.indexOf('Stats\n')).toBeLessThan(contents.indexOf('Traits\n'));
-  });
-
-  it('lists a split section once', () => {
-    const parts = index.get(['Library#folder-rules']);
-    expect(parts.length).toBeGreaterThan(1);
-    const contents = docsContents(index);
-    expect(contents.match(/#folder-rules/g)).toHaveLength(1);
-    expect(contents).not.toContain('-part-');
-  });
-
-  it('holds only ids the lookup returns', async () => {
-    const lines = docsContents(index).split('\n');
-    let page = '';
-    const listed = lines.flatMap((line) => {
-      if (!line.startsWith(' ')) { page = line; return []; }
-      return [`${page}${line.trim()}`];
-    });
-    expect(listed.length).toBeGreaterThan(6);
-    for (const id of listed) {
+describe('a section id the model has seen', () => {
+  it('returns its section, for every section of the guide', async () => {
+    const shown = index.contents().flatMap((page) => page.sections.map((section) => section.id));
+    expect(shown.length).toBeGreaterThan(6);
+    for (const id of shown) {
       const docs = lookup();
       const result = await call(docs, { sections: id });
-      expect(ids(docs.fetched())[0], id).toBe(id);
+      expect(ids(docs.fetched()), id).toContain(id);
       expect(result.text, id).toContain(`<section id="${id}">`);
     }
   });
