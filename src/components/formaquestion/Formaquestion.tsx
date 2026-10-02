@@ -73,7 +73,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 }) {
   const [layer] = useState(ensureShieldedLayer);
   const sheet = useIsMobile();
-    const mountedRef = useMountedRef();
+  const mountedRef = useMountedRef();
   const windowRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 

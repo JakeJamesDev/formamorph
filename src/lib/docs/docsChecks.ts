@@ -32,17 +32,17 @@ function pageProblem(index: AnchorIndex, page: string): string | null {
 }
 
 /** Why a target does not resolve to a guide heading, or null when it does. */
-function targetProblem(index: AnchorIndex, target: DocTarget): string | null {
+function targetProblem(index: AnchorIndex, target: Required<DocTarget>): string | null {
   const problem = pageProblem(index, target.page);
   if (problem) return problem;
-  if (target.anchor && !index.get(target.page)?.has(target.anchor)) return `heading #${target.anchor} is not on ${target.page}`;
+  if (!index.get(target.page)?.has(target.anchor)) return `heading #${target.anchor} is not on ${target.page}`;
   return null;
 }
 
 export interface SurfaceCoverage {
   /** Every surface id the app has. */
   surfaceIds: readonly string[];
-  map: Partial<Record<string, DocTarget>>;
+  map: Partial<Record<string, Required<DocTarget>>>;
   /** Surfaces players never see, with the reason. */
   exclusions: Partial<Record<string, string>>;
   pages: DocsPages;

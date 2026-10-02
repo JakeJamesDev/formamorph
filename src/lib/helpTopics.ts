@@ -12,9 +12,9 @@ import { docTargetId } from '@/lib/docs/docsLinks';
 
 const WIKI_BASE = 'https://github.com/JakeJamesDev/formamorph/wiki';
 
-/** A wiki page's URL, e.g. `Connect-Your-Own-AI`. */
-export function wikiPageUrl(page: string): string {
-  return `${WIKI_BASE}/${page}`;
+/** The wiki URL of a page or a heading id, e.g. `Connect-Your-Own-AI` or `Settings#display`. */
+export function wikiPageUrl(id: string): string {
+  return `${WIKI_BASE}/${id}`;
 }
 
 export interface HelpTopic {

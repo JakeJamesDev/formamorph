@@ -9,7 +9,7 @@ import type { Surface } from './surfaceRegistry';
  */
 export function surfaceHelpTarget(
   surface: Surface,
-  map: Partial<Record<string, DocTarget>> = SURFACE_MAP,
+  map: Partial<Record<string, Required<DocTarget>>> = SURFACE_MAP,
   exclusions: Partial<Record<string, string>> = SURFACE_EXCLUSIONS,
 ): DocTarget | null {
   for (const id of [...surface.tabs].reverse().concat(surface.dialog ?? [], surface.screen ?? [])) {
