@@ -2,11 +2,13 @@
  * The JSON file worker's operations, kept pure so they run and test without a worker around them.
  */
 import { measurePublishBytes } from './publishLimits';
+import { indexBackup } from './backupIndex';
 
 export type JsonFileOp =
   | { op: 'serialize'; value: unknown; space?: number; mime?: string; splitDepth?: number }
   | { op: 'parse'; text: string }
-  | { op: 'measure'; value: unknown };
+  | { op: 'measure'; value: unknown }
+  | { op: 'indexBackup'; file: Blob };
 
 /** Values `JSON.stringify` drops from an object and writes as `null` in an array. */
 const isDropped = (value: unknown) =>
@@ -46,13 +48,15 @@ export function jsonParts(value: unknown, depth: number, out: string[] = []): st
   return out;
 }
 
-/** Run one request. */
+/** Run one request. Most ops are synchronous; `indexBackup` returns a promise. */
 export function runJsonFileOp(request: JsonFileOp): unknown {
   switch (request.op) {
     case 'parse':
       return JSON.parse(request.text);
     case 'measure':
       return measurePublishBytes(request.value);
+    case 'indexBackup':
+      return indexBackup(request.file);
     case 'serialize': {
       // A Blob is structured-cloneable, so the serialized bytes come back without ever becoming a JS string
       // on the main thread.

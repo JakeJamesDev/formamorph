@@ -26,10 +26,8 @@ import {
   type BackupIndex,
   type BackupItem,
   type CategoryPlan,
-  type IdRecord,
 } from '@/lib/backup';
 import { applyWorldOptimize, applyEntityImagesOptimize, countWorldImages, type OptimizeMode } from '@/lib/imageOptim';
-import { entityImages } from '@/lib/entityImages';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
 import type { World, Entity } from '@/types';
 
@@ -69,14 +67,6 @@ interface Group {
 }
 
 type SelState = Record<BackupCategory, Set<string>>;
-/** Images a backup record holds, counted while the file is indexed. */
-const countImages = (category: BackupCategory, record: IdRecord) =>
-  category === 'worlds'
-    ? countWorldImages(record.data as World)
-    : category === 'entities'
-      ? entityImages(record.data as Entity).length
-      : 0;
-
 const emptySel = (): SelState => ({ worlds: new Set(), saves: new Set(), entities: new Set(), dictionaries: new Set() });
 const emptyFlags = (): Record<BackupCategory, boolean> => ({
   worlds: false,
@@ -245,7 +235,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     if (!file) return;
     setBusy(true);
     try {
-      const read = await readBackupIndex(file, countImages);
+      const read = await readBackupIndex(file);
       const analyzed = await analyzeBackup(read);
       setIndex(read);
       setPlans(analyzed);
