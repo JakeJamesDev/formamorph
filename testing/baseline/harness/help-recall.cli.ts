@@ -16,21 +16,22 @@
 //   pick-old  with `--ai`: shipped, with no earlier answer in the pick request, as before ticket 45
 //   keep-old  with `--ai`: shipped, where a question that points at the open screen keeps every pick, as before
 //             ticket 47
+//   howto-old with `--ai`: shipped, where the open page's how-tos join every question, as before ticket 49
 // The pick prompt, the pick list and the rank merge are the app's.
 //
 // `--screen` asks every task and follow-up over one open screen, as the app does; the "here" questions keep
 // their own. Without it they are asked with no screen open.
 //
 // A follow-up's history is its first question with a stand-in answer and the block that arm sent for it. In
-// the session arms it is the answer the help session gave in that run, with its sources, and the screen rule
-// of keep-old's answer is off as well.
+// the session arms it is the answer the help session gave in that run, with its sources, and the rule an
+// arm turns off is off for its answer as well.
 //
 // The score, per approach, set and kind:
 //   first   a keyed section is the first section of the block
 //   at5     a keyed section is among the block's five sections, with no size budget (recall@5)
 //   sent    a keyed section is in the block that fits the request's size budget
 //
-// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped,pick-old,keep-old] [--sets known,blind] [--text head|full|chunks]
+// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped,pick-old,keep-old,howto-old] [--sets known,blind] [--text head|full|chunks]
 //          [--screen library|stats|game]
 //          [--ai] [--runs 5] [--parallel 4] [--endpoint URL] [--model default] [--token T] [--show]
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -40,7 +41,7 @@ import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { CHANGELOG_PAGE, FAVORED_PAGE_WEIGHT, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { guideSections, type GuideSection } from '@/lib/formaquestion/guideSections';
 import { HELP_PICK_MAX_TOKENS, HELP_PICK_SYSTEM_PROMPT, pickList, pickMessage, readPicks } from '@/lib/formaquestion/helpPicks';
-import { askHelp, HELP_SECTION_LIMIT, helpSearch, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { askHelp, HELP_SECTION_LIMIT, helpSearch, helpSections, type EarlierExchange, type HelpQuestion } from '@/lib/formaquestion/helpSession';
 import { mergeRanks, rankByVector } from '@/lib/formaquestion/rankMerge';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
@@ -54,7 +55,7 @@ const argVal = (flag: string, fallback: string) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : fallback;
 };
-const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old'] as const;
+const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped', 'pick-old', 'keep-old', 'howto-old'] as const;
 type Arm = (typeof ARMS)[number];
 /** The values of a comma list flag, each one of `allowed`. */
 function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
@@ -64,7 +65,7 @@ function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
   return values as T[];
 }
 /** The arms that run the help session's own search. */
-const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old'] as const satisfies readonly Arm[];
+const SESSION_ARMS = ['shipped', 'pick-old', 'keep-old', 'howto-old'] as const satisfies readonly Arm[];
 const isSessionArm = (arm: Arm): arm is (typeof SESSION_ARMS)[number] => (SESSION_ARMS as readonly Arm[]).includes(arm);
 const isAiArm = (arm: Arm) => arm.startsWith('ai') || isSessionArm(arm);
 // The arms that send requests run only with `--ai`.
@@ -108,11 +109,11 @@ const sectionById = new Map(guide.map(({ section }) => [section.id, section]));
 interface Blocks { ranked: DocSection[]; sent: DocSection[] }
 
 /** The docs block the app builds for a question when `search` finds the sections, with and without the size budget. */
-function blocksOf(search: DocsIndex, c: RecallCase, history: EarlierExchange[]): Blocks {
+function blocksOf(search: DocsIndex, c: RecallCase, history: EarlierExchange[], howToRule: boolean): Blocks {
   const lead = surfaceHint(c.surface, index)?.section;
   return {
-    ranked: helpSections(search, c.question, { history, lead, budget: Infinity }),
-    sent: helpSections(search, c.question, { history, lead }),
+    ranked: helpSections(search, c.question, { history, lead, budget: Infinity, howToRule }),
+    sent: helpSections(search, c.question, { history, lead, howToRule }),
   };
 }
 
@@ -132,7 +133,7 @@ function scoreAll(arm: Arm, run: number, searchFor: (c: RecallCase) => DocsIndex
   const sentOf = new Map<string, DocSection[]>();
   const one = (c: RecallCase, history: EarlierExchange[]) => {
     const started = performance.now();
-    const { ranked, sent } = blocksOf(searchFor(c), c, history);
+    const { ranked, sent } = blocksOf(searchFor(c), c, history, arm !== 'howto-old');
     // `blocksOf` builds the block twice; a request builds it once.
     const ms = (performance.now() - started) / 2;
     sentOf.set(c.id, sent);
@@ -149,14 +150,14 @@ function scoreAll(arm: Arm, run: number, searchFor: (c: RecallCase) => DocsIndex
 }
 
 /** The first questions of the follow-ups, each answered once by the help session as it ships, with its sources. */
-async function firstAnswers(target: ProbeTarget, screenRule = true): Promise<{ exchanges: Map<string, EarlierExchange>; failed: number }> {
+async function firstAnswers(target: ProbeTarget, rules: Pick<HelpQuestion, 'screenRule' | 'howToRule'> = {}): Promise<{ exchanges: Map<string, EarlierExchange>; failed: number }> {
   const firsts = cases.filter((c) => cases.some((next) => next.after === c.id));
   const exchanges = new Map<string, EarlierExchange>();
   let failed = 0;
   await pool(firsts.map((c) => async () => {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        for await (const event of askHelp({ question: c.question, snapshot: probeSnapshot(target), index, surface: c.surface, screenRule, fetchImpl: sessionFetch(noUsage()) })) {
+        for await (const event of askHelp({ question: c.question, snapshot: probeSnapshot(target), index, surface: c.surface, ...rules, fetchImpl: sessionFetch(noUsage()) })) {
           if (event.type === 'done') exchanges.set(c.id, { question: c.question, answer: event.text, flagged: event.flagged, sources: event.sources, lead: event.lead });
         }
         return;
@@ -242,7 +243,8 @@ function queriesOf(): string[] {
   const recorder: DocsIndex = { ...index, search: (query) => (queries.add(query), []) };
   for (const c of cases) {
     const first = caseById.get(c.after ?? '');
-    blocksOf(recorder, c, first ? historyOf(first, []) : []);
+    // The how-to rule off, so the page how-to search of every question is recorded too.
+    blocksOf(recorder, c, first ? historyOf(first, []) : [], false);
   }
   return [...queries];
 }
@@ -341,10 +343,11 @@ if (arms.some(isAiArm)) {
   const sessionArms = SESSION_ARMS.filter(wants);
   for (let run = 1; run <= runs; run++) {
     if (sessionArms.length > 0) {
-      const ruled = sessionArms.some((arm) => arm !== 'keep-old') ? await firstAnswers(target) : null;
-      const unruled = sessionArms.includes('keep-old') ? await firstAnswers(target, false) : null;
-      firstFailed += (ruled?.failed ?? 0) + (unruled?.failed ?? 0);
-      const exchangesOf = (arm: (typeof SESSION_ARMS)[number]) => (arm === 'keep-old' ? unruled : ruled)!.exchanges;
+      const ruled = sessionArms.some((arm) => arm !== 'keep-old' && arm !== 'howto-old') ? await firstAnswers(target) : null;
+      const unruled = sessionArms.includes('keep-old') ? await firstAnswers(target, { screenRule: false }) : null;
+      const howToUnruled = sessionArms.includes('howto-old') ? await firstAnswers(target, { howToRule: false }) : null;
+      firstFailed += (ruled?.failed ?? 0) + (unruled?.failed ?? 0) + (howToUnruled?.failed ?? 0);
+      const exchangesOf = (arm: (typeof SESSION_ARMS)[number]) => (arm === 'keep-old' ? unruled : arm === 'howto-old' ? howToUnruled : ruled)!.exchanges;
       // The app's own search for each question, the arms of a question next to each other in time: its pick
       // request goes out once, and a failed one is not sent again.
       const found = new Map<string, { search: DocsIndex; ms: number; usage: Usage }>();
@@ -402,7 +405,7 @@ const table = (head: string[], lines: string[][]) =>
   [`| ${head.join(' | ')} |`, `|${head.map(() => '---').join('|')}|`, ...lines.map((cells) => `| ${cells.join(' | ')} |`)].join('\n');
 const ARM_LABELS: Record<Arm, string> = {
   keyword: 'Keyword', semantic: 'Semantic', hybrid: 'Hybrid', ai: 'AI picks', 'ai+keyword': 'AI picks + keyword', 'ai+keyword+semantic': 'AI picks + keyword + semantic',
-  shipped: 'Shipped switches', 'pick-old': 'Pick with no earlier answer', 'keep-old': 'Every pick over the screen',
+  shipped: 'Shipped switches', 'pick-old': 'Pick with no earlier answer', 'keep-old': 'Every pick over the screen', 'howto-old': 'Page how-tos on every question',
 };
 const KIND_LABELS: Record<RecallKind, string> = { task: 'Task', here: 'Here', followUp: 'Follow-up' };
 const ranArms = ARMS.filter((arm) => rows.some((r) => r.arm === arm));

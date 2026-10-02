@@ -12,6 +12,7 @@
 //   pick-old   with `--pick-old`: retrieval with no earlier answer in the pick request, as before ticket 45
 //   keep-old   with `--keep-old`: retrieval where a question that points at the open screen keeps every pick, as
 //              before ticket 47
+//   howto-old  with `--howto-old`: retrieval where the open page's how-tos join every question, as before ticket 49
 //   lookup     with `--lookup`: the help session in lookup mode, on an endpoint that takes function calls
 //   old        with `--old`: retrieval with the surface section outside the block: its length comes off the
 //              budget before the search, and the 5-section limit covers the search hits only
@@ -44,7 +45,7 @@
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--floor-old] [--floor-alt 0.35] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--howto-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--floor-old] [--floor-alt 0.35] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -74,7 +75,7 @@ const worstCount = Number(argVal('--worst', '10'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
-type Arm = 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'no-docs';
+type Arm = 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'no-docs';
 
 interface Sample extends Usage {
   /** The time from the question to the end of the answer, in milliseconds. A saved batch can have none. */
@@ -153,6 +154,7 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
     snapshot: probeSnapshot(target, lookup), fetchImpl,
     ...(arm === 'keyword-only' && { searchSources: { aiPicks: false } }),
     ...(arm === 'keep-old' && { screenRule: false }),
+    ...(arm === 'howto-old' && { howToRule: false }),
   });
   const idOf = (id: string) => (untiered && id.startsWith(`${UNTIERED_CHANGELOG}#`) ? `Changelog${id.slice(UNTIERED_CHANGELOG.length)}` : id);
   for await (const event of session) {
@@ -225,7 +227,7 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 

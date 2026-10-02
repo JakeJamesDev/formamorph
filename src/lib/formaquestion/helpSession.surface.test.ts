@@ -60,7 +60,7 @@ describe('the surface hint', () => {
     expect(sources[0]).toBe('Settings#display');
   });
 
-  it('sends the how-to of the open page for a question with no keyword of its own', async () => {
+  describe('the how-to of the open page', () => {
     const editor = createDocsIndex({
       pages: {
         ...PAGES,
@@ -68,10 +68,27 @@ describe('the surface hint', () => {
         ...Object.fromEntries(Array.from({ length: 6 }, (_, n) => [`Other${n}`, `## Other ${n}\n\nOne more thing to add here.`])),
       },
     });
-    const { sources } = await ask('How do I add one here?', { surface: surface('worldEditor', null, ['worldEditor.locations']), index: editor });
-    expect(sources[0]).toMatch(/^World-Editor-Locations#.*world-editor-locations$/);
-    expect(sources[0]).not.toContain('how-to');
-    expect(sources).toContain('World-Editor-Locations#how-to-add-a-location');
+    const LOCATIONS = surface('worldEditor', null, ['worldEditor.locations']);
+    const HOW_TO = 'World-Editor-Locations#how-to-add-a-location';
+
+    it('joins a question with no keyword of its own that points at the screen', async () => {
+      const { sources } = await ask('How do I add one here?', { surface: LOCATIONS, index: editor });
+      expect(sources[0]).toMatch(/^World-Editor-Locations#.*world-editor-locations$/);
+      expect(sources[0]).not.toContain('how-to');
+      expect(sources).toContain(HOW_TO);
+    });
+
+    it('stays out of a task question that does not point at the screen, which keeps its own hits', async () => {
+      const { sources } = await ask('How do I add one?', { surface: LOCATIONS, index: editor });
+      expect(sources[0]).toMatch(/^World-Editor-Locations#.*world-editor-locations$/);
+      expect(sources).not.toContain(HOW_TO);
+      expect(sources.filter((id) => id.startsWith('Other'))).toHaveLength(4);
+    });
+
+    it('joins every question with the how-to rule off, for a probe\'s control arm', async () => {
+      const { sources } = await ask('How do I add one?', { surface: LOCATIONS, index: editor, howToRule: false });
+      expect(sources).toContain(HOW_TO);
+    });
   });
 
   it('sends the Locations how-to from the bundled docs for "how do I add one here?"', async () => {
