@@ -15,6 +15,10 @@ export const serializeJsonBlob = (
   mime = 'application/json',
 ): Promise<Blob> => client.run({ op: 'serialize', value, space, mime }) as Promise<Blob>;
 
+/** Serialize `value` to a compact Blob in parts, opening containers down to `splitDepth`. */
+export const serializeJsonBlobSplit = (value: unknown, splitDepth: number): Promise<Blob> =>
+  client.run({ op: 'serialize', value, splitDepth }) as Promise<Blob>;
+
 /** Parse an imported file's text off the main thread. Rejects on malformed JSON. */
 export const parseJsonText = (text: string): Promise<unknown> => client.run({ op: 'parse', text });
 
