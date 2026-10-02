@@ -48,6 +48,8 @@ export interface EarlierExchange {
   flagged?: boolean;
   /** The docs sections that reached the model for this answer. */
   sources?: readonly DocSection[];
+  /** The open screen's section that led those sources. */
+  lead?: DocSection;
 }
 
 export interface HelpQuestion {
@@ -74,13 +76,23 @@ export type HelpEvent =
   | { type: 'answer'; text: string; flagged: boolean }
   /**
    * The end of the answer, with the docs sections that reached the model. A flagged answer did not come
-   * from the guide, and `nearest` holds the search's sections for the question.
+   * from the guide, and `nearest` holds the search's sections for the question. `lead` is the open screen's
+   * section among the sources.
    */
-  | { type: 'done'; text: string; sources: DocSection[]; stopped: boolean; flagged: boolean; nearest: DocSection[] };
+  | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[] };
 
 /** The earlier exchanges a request carries: the newest that got answer text, at most the cap. */
 function keptHistory(history: readonly EarlierExchange[]): EarlierExchange[] {
   return history.filter((exchange) => exchange.answer.trim()).slice(-HELP_HISTORY_EXCHANGES);
+}
+
+/**
+ * The section whose page a follow-up favors: the answer's first source other than the open screen's lead,
+ * else the lead. None for an answer that did not come from the guide.
+ */
+function topicOf({ sources = [], lead, flagged }: EarlierExchange): DocSection | undefined {
+  if (flagged) return undefined;
+  return sources.find((section) => section.id !== lead?.id) ?? sources[0];
 }
 
 /** The most how-to sections of the open page that join the block, after the question's own top hit. */
@@ -93,7 +105,7 @@ const HOW_TO_HEADING = /^how to\b/i;
  * The docs block for a question, best first, while the text stays inside the budget and the section limit.
  * The lead section, when given, goes first and counts once toward both. The top hit is always kept. A
  * follow-up such as "and then?" has few keywords of its own, so its own top hit favors the page of the
- * previous answer's first source, and after it come the hits of the previous question and the follow-up
+ * previous answer's topic, and after it come the hits of the previous question and the follow-up
  * searched together. The lead's page adds its best how-to sections for the question next, so a "here"
  * question reaches them.
  */
@@ -104,7 +116,7 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
 } = {}): DocSection[] {
   const previous = keptHistory(history).at(-1);
   const hits = previous
-    ? [...index.search(question, 1, previous.sources?.[0]), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT)]
+    ? [...index.search(question, 1, topicOf(previous)), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT)]
     : index.search(question, HELP_SECTION_LIMIT);
   const onPage = lead ? index.search(question, Infinity).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
   const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];
@@ -182,7 +194,7 @@ export async function* askHelp({
       }
       const flagged = isGeneralKnowledge(answer.marked, sources.length);
       const nearest = flagged ? helpSections(index, question, { history }) : [];
-      yield { type: 'done', text: answer.text, sources, stopped, flagged, nearest };
+      yield { type: 'done', text: answer.text, sources, lead: hint?.section, stopped, flagged, nearest };
     }
   }
 }
