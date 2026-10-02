@@ -45,7 +45,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Backup & Restore:**
     - **Backup & Restore saves and restores a library backup of any size.** Before, a backup over about 512 MB failed with "Invalid string length". Restore now reads one item at a time in the background, so the app keeps responding, and skips reading an item that already exists unless you choose to overwrite it.
-    - **Backup & Restore stays inside its window when an item has a long name.** The name now shortens with "…". Before, a long world name pushed the list and the buttons past the window's right edge.
+    - **Backup & Restore stays inside its window when an item has a long name.** The name now shortens with "…", and the list uses the app's thin scroll bar. Before, a long world name pushed the list and the buttons past the window's right edge.
   - **In a chip's pop-out, the Label, Header, Prepend and Append fields keep the cursor where you type and keep every key you press.** Before, each key moved the cursor to the end of the field. On a slow machine, fast typing could also close the pop-out and lose the rest of what you typed.
   - **The ⓘ help for Continue the Story in Settings now says the button puts its text in the action box for you to send.** Before, it said the button sends the turn at once.
   - **The wiki's World Format page lists every world file field, with steps to add a stat, trait or entity by hand.** It shows the chip form for hand-written text and which older fields still load. Before, it listed a `list` stat type that was removed, named a **Begin** button that doesn't exist, and left out placeholders, Blueprints, links, persona marks and openings on locations.
