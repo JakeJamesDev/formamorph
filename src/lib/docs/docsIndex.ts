@@ -35,6 +35,11 @@ export interface DocsContentsPage {
   sections: { id: string; label: string; level: number }[];
 }
 
+export interface DocsSearchOptions {
+  /** The question comes from an open screen, so "window", "panel", "dialog", "screen" and "tab" name that screen and the search ignores them. */
+  onSurface?: boolean;
+}
+
 export interface DocsIndex {
   /** Every page with its sections, in sidebar order; pages the sidebar does not list come last. */
   contents(): DocsContentsPage[];
@@ -45,7 +50,7 @@ export interface DocsIndex {
    * twice its match strength. A hub section, one that links to many other pages, scores half unless the query
    * holds its heading as a phrase.
    */
-  search(query: string, limit?: number, favor?: { page: string }): DocSection[];
+  search(query: string, limit?: number, favor?: { page: string }, options?: DocsSearchOptions): DocSection[];
   /**
    * The sections with these ids, in the order asked; unknown ids are skipped. The id of a split section
    * returns all its parts in order.
@@ -151,6 +156,9 @@ const STOP_WORDS = new Set([
 const NO_WORDS: ReadonlySet<string> = new Set();
 
 const FILLER_WORDS: ReadonlySet<string> = new Set(['am', 'here', 'looking', 'there', 'these', 'those']);
+
+/** Words that name the open screen when the player asks about it: "what does this window do?". */
+const SCREEN_WORDS: ReadonlySet<string> = new Set(['window', 'panel', 'dialog', 'screen', 'tab']);
 
 /** A word, a number, or a hyphenated run of them. */
 const WORD = /[\p{L}\p{N}]+(?:\.\p{N}+)*(?:-[\p{L}\p{N}]+)*/gu;
@@ -336,8 +344,9 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
           sections: sections.map(({ id, label, level }) => ({ id, label, level })),
         };
       }),
-    search: (query, limit = DEFAULT_SEARCH_LIMIT, favor) => {
-      const queryTerms = [...new Set(searchTerms(query, filler))];
+    search: (query, limit = DEFAULT_SEARCH_LIMIT, favor, { onSurface = false } = {}) => {
+      const ignored = onSurface && fillerWords ? new Set([...filler, ...SCREEN_WORDS]) : filler;
+      const queryTerms = [...new Set(searchTerms(query, ignored))];
       if (queryTerms.length === 0) return [];
       const asked = wordsOf(query);
       const scored = sectionTerms.map((r) => {

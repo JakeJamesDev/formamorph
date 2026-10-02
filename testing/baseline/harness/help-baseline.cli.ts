@@ -37,14 +37,14 @@
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--lookup] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import sidebar from '../../../docs/_Sidebar.md?raw';
 import { BUNDLED_DOCS, bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import { createDocsIndex } from '@/lib/docs/docsIndex';
+import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { askHelp, HELP_DOCS_CHAR_BUDGET, HELP_MAX_TOKENS, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
@@ -66,7 +66,7 @@ const worstCount = Number(argVal('--worst', '10'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
-type Arm = 'retrieval' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'lookup' | 'no-docs';
+type Arm = 'retrieval' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'lookup' | 'no-docs';
 
 /** Tokens in and out, summed over the requests of one question. */
 interface Usage { promptTokens: number; answerTokens: number; requests: number }
@@ -103,6 +103,8 @@ const untieredIndex = createDocsIndex({
 // The same pages with filler words in the search: the ranking before ticket 36.
 const unfilteredIndex = createDocsIndex({ pages: BUNDLED_DOCS, sidebar, fillerWords: false });
 const hubOldIndex = createDocsIndex({ pages: BUNDLED_DOCS, sidebar, hubDemotion: false });
+/** The index that keeps screen words in a question over an open screen: the search never gets the option. */
+const screenOldIndex: DocsIndex = { ...index, search: (query, limit, favor) => index.search(query, limit, favor) };
 const allCases = loadBaselineCases();
 const caseById = new Map(allCases.map((c) => [c.id, c]));
 const asked = allCases.filter((c) => kinds.includes(c.kind) && (!only || only.split(',').includes(c.id)));
@@ -162,7 +164,7 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
   const lookup = arm === 'lookup';
   const untiered = arm === 'rank-old';
   const session = askHelp({
-    question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : index, lookup,
+    question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : index, lookup,
     snapshot: probeSnapshot(target, lookup), fetchImpl: sessionFetch(usage),
   });
   const idOf = (id: string) => (untiered && id.startsWith(`${UNTIERED_CHANGELOG}#`) ? `Changelog${id.slice(UNTIERED_CHANGELOG.length)}` : id);
@@ -236,7 +238,7 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 
