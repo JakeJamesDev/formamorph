@@ -8,6 +8,7 @@
  * exists, then the controls that aren't self-evident from the UI. Only claim what the code actually
  * does — placement inside the prompt is author-editable, so don't promise an order the chips don't fix.
  */
+import { docTargetId } from '@/lib/docs/docsLinks';
 
 const WIKI_BASE = 'https://github.com/JakeJamesDev/formamorph/wiki';
 
@@ -36,7 +37,7 @@ export interface HelpTopic {
 /** Full "Learn more" target for a topic, or null when no wiki page covers it yet. */
 export function helpWikiUrl(topic: HelpTopic): string | null {
   if (!topic.wikiPage) return null;
-  return `${wikiPageUrl(topic.wikiPage)}${topic.wikiAnchor ? `#${topic.wikiAnchor}` : ''}`;
+  return wikiPageUrl(docTargetId({ page: topic.wikiPage, anchor: topic.wikiAnchor }));
 }
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {

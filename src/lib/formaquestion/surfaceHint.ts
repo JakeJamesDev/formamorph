@@ -1,6 +1,6 @@
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { createDocsLinkResolver, sectionWithId } from '@/lib/docs/docsReader';
-import { surfaceHelpTarget } from '@/lib/surface/surfaceHelp';
+import { surfaceHelpSection } from '@/lib/surface/surfaceHelp';
 import { surfaceLabel } from '@/lib/surface/surfaceLabels';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 
@@ -20,9 +20,8 @@ function surfaceWords(surface: Surface): string {
 
 /** The hint for the Surface open now. Null when a surface players never see is open, or no section explains it. */
 export function surfaceHint(surface: Surface | undefined, index: DocsIndex): SurfaceHint | null {
-  const target = surface && surfaceHelpTarget(surface);
-  if (!surface || !target) return null;
-  const id = createDocsLinkResolver(index)(target.page, `${target.page}#${target.anchor}`);
+  if (!surface) return null;
+  const id = surfaceHelpSection(surface, { resolve: createDocsLinkResolver(index) });
   const section = id && sectionWithId(index, id);
   return section ? { where: surfaceWords(surface), section } : null;
 }

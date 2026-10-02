@@ -7,7 +7,7 @@ import { Hint } from '@/components/ui/typography';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { AskPanel } from './AskParts';
 import {
-  FORMAQUESTION_TABS, isSearchable, type FormaquestionTab, type GuideView, type GuideViewChange,
+  FORMAQUESTION_TABS, isSearchable, openSectionChange, type FormaquestionTab, type GuideView, type GuideViewChange,
 } from './formaquestionTabs';
 import { BackRow, ContentsList, Reader, SearchField, SearchResults } from './GuideParts';
 import { SurfaceHelpRow } from './SurfaceHelpRow';
@@ -31,13 +31,10 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
   wide: boolean;
   chat: HelpChat;
 }) {
-  // The tab follows the reader, so a swap to narrow lands on the section that is open.
-  // Its page opens in the contents list, and stays open until the player closes it.
-  const openSection = useCallback((sectionId: string) => onViewChange((current) => {
-    const page = guide?.section(sectionId)?.page;
-    const openPages = page === undefined || current.openPages.includes(page) ? current.openPages : [...current.openPages, page];
-    return { sectionId, tab: 'guide', reading: true, openPages };
-  }), [guide, onViewChange]);
+  const openSection = useCallback(
+    (sectionId: string) => onViewChange(openSectionChange(sectionId, guide?.section(sectionId)?.page)),
+    [guide, onViewChange],
+  );
   const setQuery = (query: string) => onViewChange({ query });
   const setDraft = useCallback((draft: string) => onViewChange({ draft }), [onViewChange]);
   const setPageOpen = (page: string, open: boolean) => onViewChange((current) => ({
@@ -58,7 +55,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
     );
   }
 
-  const ask = guide && <AskPanel guide={guide} chat={chat} draft={view.draft} onDraftChange={setDraft} onOpen={openSection} />;
+  const ask = <AskPanel guide={guide} chat={chat} draft={view.draft} onDraftChange={setDraft} onOpen={openSection} />;
 
   if (wide) {
     // The pane shows the conversation until a section opens, and again after Back to Conversation.

@@ -689,7 +689,7 @@ test.describe('Formaquestion on a mobile-size screen', () => {
 
   // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.
   test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'The sheet is the phone form');
+    test.skip(testInfo.project.name !== 'mobile', 'The sheet is the mobile form');
   });
 
   const SCREEN = { x: 0, y: 0, width: 375, height: 812 };

@@ -1,15 +1,9 @@
 /** The docs coverage checks: one readable line per problem, over docs passed in as data. */
 import { docHeadings, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText } from './headingAnchors';
-import { docsHrefs, hrefParts } from './docsLinks';
+import { docsHrefs, docTargetId, hrefParts, type DocTarget } from './docsLinks';
 
 /** Docs pages by wiki page name (the file name without `.md`). */
 export type DocsPages = Record<string, string>;
-
-/** A docs page and one heading on it, by its wiki anchor. */
-export interface DocTarget {
-  page: string;
-  anchor: string;
-}
 
 /** The wiki page name of a docs file path: its file name without `.md`. */
 export function pageNameOf(path: string): string {
@@ -30,10 +24,6 @@ function anchorIndex(pages: DocsPages): AnchorIndex {
   return new Map(Object.entries(pages).map(([page, md]) => [page, new Set(docHeadings(md).map((h) => h.anchor))]));
 }
 
-function formatTarget(target: DocTarget): string {
-  return `${target.page}#${target.anchor}`;
-}
-
 /** Why a page is not a guide page, or null when it is. */
 function pageProblem(index: AnchorIndex, page: string): string | null {
   if (!index.has(page)) return `page ${page} does not exist`;
@@ -45,7 +35,7 @@ function pageProblem(index: AnchorIndex, page: string): string | null {
 function targetProblem(index: AnchorIndex, target: DocTarget): string | null {
   const problem = pageProblem(index, target.page);
   if (problem) return problem;
-  if (!index.get(target.page)?.has(target.anchor)) return `heading #${target.anchor} is not on ${target.page}`;
+  if (target.anchor && !index.get(target.page)?.has(target.anchor)) return `heading #${target.anchor} is not on ${target.page}`;
   return null;
 }
 
@@ -69,7 +59,7 @@ export function surfaceCoverageProblems(input: SurfaceCoverage): string[] {
     if (excluded && target) problems.push(`${id} is excluded, so it needs no map entry`);
     if (target) {
       const problem = targetProblem(index, target);
-      if (problem) problems.push(`${id} maps to ${formatTarget(target)}, but ${problem}`);
+      if (problem) problems.push(`${id} maps to ${docTargetId(target)}, but ${problem}`);
     } else if (!excluded) {
       problems.push(`${id} has no docs section: add it to the surface map`);
     }
@@ -97,7 +87,7 @@ export function helpTopicProblems(topics: Record<string, HelpTopicLink>, pages: 
     }
     const target = { page: topic.wikiPage, anchor: topic.wikiAnchor };
     const problem = targetProblem(index, target);
-    if (problem) problems.push(`help topic ${id} links ${formatTarget(target)}, but ${problem}`);
+    if (problem) problems.push(`help topic ${id} links ${docTargetId(target)}, but ${problem}`);
   }
   return problems;
 }

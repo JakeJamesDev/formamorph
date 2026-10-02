@@ -11,11 +11,9 @@
 //          [--endpoint URL] [--model default] [--token T] [--runs 8] [--parallel 4] [--show]
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
-import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { askHelp } from '@/lib/formaquestion/helpSession';
-import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
-import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
+import { factShare, mean, pct, probeSnapshot } from './help-probe-shared';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -47,16 +45,7 @@ const cases: Case[] = [
 ];
 
 const index = bundledDocsIndex();
-const snapshot: AiSettingsSnapshot = {
-  resolveTarget: () => ({
-    endpointId: 'probe', url: endpoint, apiToken: token, model, maxTokens: undefined, localEngine: false,
-    samplerOverrides: defaultEndpointSamplerOverrides(), reasoning: UNKNOWN_REASONING_CAPABILITY,
-  }),
-  thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: false, promptReasoning: {},
-  promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {},
-  genTemperature: 0.9, genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05,
-  paragraphLimit: 'none', disableThinking: false,
-};
+const snapshot = probeSnapshot({ endpoint, model, token });
 
 type Arm = 'hint' | 'no-hint';
 const ARMS: Arm[] = ['hint', 'no-hint'];
@@ -118,11 +107,10 @@ console.log(`help-surface-probe · ${endpoint} · model ${model} · ${cases.leng
 const rows = await pool(jobs, parallel);
 console.log(`${rows.length} requests, ${rows.filter((r) => r.error).length} failed`);
 
-const pct = (n: number, d: number) => (d === 0 ? '  –' : `${Math.round((100 * n) / d).toString().padStart(3)}%`);
 function summarize(arm: Arm, ids: ReadonlySet<string>) {
   const ok = rows.filter((r) => ids.has(r.c.id) && r.arm === arm && r.sample);
   const lower = (r: Row) => r.sample!.answer.toLowerCase();
-  const share = ok.length === 0 ? 0 : ok.reduce((sum, r) => sum + r.c.facts.filter((f) => lower(r).includes(f.toLowerCase())).length / r.c.facts.length, 0) / ok.length;
+  const share = mean(ok.map((r) => factShare(r.c.facts, r.sample!.answer)));
   return {
     n: ok.length,
     facts: pct(share * ok.length, ok.length),

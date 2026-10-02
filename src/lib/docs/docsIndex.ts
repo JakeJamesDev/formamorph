@@ -5,6 +5,7 @@
 import { stemmer } from 'stemmer';
 import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, type DocHeading } from './headingAnchors';
 import type { DocsPages } from './docsChecks';
+import { docTargetId } from './docsLinks';
 import { sectionParts } from './sectionParts';
 
 /** The most characters one section holds, so a few sections fit a small model's context. */
@@ -98,7 +99,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
   };
   const addSection = (heading: DocHeading | null, index: number, source: string) => {
     if (heading === null && source.trim() === '') return;
-    const baseId = heading ? `${page}#${heading.anchor}` : page;
+    const baseId = docTargetId({ page, anchor: heading?.anchor });
     const name = heading ? plainText(heading.text) : page;
     const { text, keywords } = takeKeywordLines(source);
     const parts = sectionParts(text, heading !== null, SECTION_CHAR_LIMIT);

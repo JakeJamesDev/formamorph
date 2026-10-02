@@ -28,7 +28,17 @@ export const INITIAL_GUIDE_VIEW: GuideView = { tab: 'ask', query: '', draft: '',
 /** The fields to change, or a function that reads the view and returns them. */
 export type GuideViewChange = Partial<GuideView> | ((current: GuideView) => Partial<GuideView>);
 
-export function useGuideView(): [GuideView, (change: GuideViewChange) => void] {
+/** Opens a section in the reader, on the Guide tab. Its page opens in the contents list and stays open. */
+export function openSectionChange(sectionId: string, page: string | undefined): GuideViewChange {
+  return (current) => ({
+    sectionId,
+    tab: 'guide',
+    reading: true,
+    openPages: page === undefined || current.openPages.includes(page) ? current.openPages : [...current.openPages, page],
+  });
+}
+
+export function useGuideView():[GuideView, (change: GuideViewChange) => void] {
   const [view, setView] = useState<GuideView>(INITIAL_GUIDE_VIEW);
   const changeView = useCallback((change: GuideViewChange) => setView((current) => ({
     ...current,

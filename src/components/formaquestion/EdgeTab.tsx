@@ -1,6 +1,6 @@
 import {
   forwardRef, useId, useLayoutEffect, useRef, useState,
-  type ComponentPropsWithoutRef, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent,
+  type ComponentPropsWithoutRef, type CSSProperties, type KeyboardEvent, type MouseEvent,
 } from 'react';
 import { CircleHelp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,15 +10,12 @@ import {
 } from '@/lib/formaquestion/tabPlace';
 import { viewportOf } from '@/lib/formaquestion/windowBox';
 import { cn } from '@/lib/utils';
+import { usePointerDrag } from './usePointerDrag';
 
 /** Pointer travel, in pixels, that turns a press into a move. Less than this is a click. */
 const DRAG_THRESHOLD = 4;
 
-/**
- * Shape and label direction per edge. The tab is flat against its edge and round on the inner side. The
- * label reads top to bottom on the right, bottom to top on the left, and left to right on the top and the
- * bottom, so it is never upside down.
- */
+/** Shape and label direction per edge: flat against the edge, and the label never upside down. */
 const EDGE_SHAPE: Record<Edge, { tab: string; label: string; tip: 'left' | 'right' | 'top' | 'bottom' }> = {
   right: { tab: 'flex-col rounded-r-none border-r-0 px-1.5 py-3', label: '[writing-mode:vertical-rl]', tip: 'left' },
   left: { tab: 'flex-col-reverse rounded-l-none border-l-0 px-1.5 py-3', label: 'rotate-180 [writing-mode:vertical-rl]', tip: 'right' },
@@ -44,11 +41,7 @@ export const EdgeTabButton = forwardRef<HTMLButtonElement,
 ));
 EdgeTabButton.displayName = 'EdgeTabButton';
 
-/**
- * The Formaquestion launcher: a tab that stays flat on the nearest screen edge. A press opens or closes
- * the window. A drag, or an arrow key while the tab has focus, moves it, and the device keeps its place.
- * Its edges are those of the visible area, so the on-screen keyboard moves it up with the app.
- */
+/** The Formaquestion launcher: a tab on the nearest edge of the visible area that opens the window and moves by drag or arrow key. */
 export function EdgeTab({ open, concealed = false, controls, onToggle }: {
   open: boolean;
   /** Hides the tab and keeps its place, while the mobile sheet covers the screen. */
@@ -62,7 +55,6 @@ export function EdgeTab({ open, concealed = false, controls, onToggle }: {
   const hintId = useId();
   // The tab owns its place, so a move re-renders the tab only.
   const [place, setPlace] = useState<TabPlace>(readTabPlace);
-  const press = useRef<{ x: number; y: number; moved: boolean; length: number; latest?: TabPlace } | null>(null);
   const lastPressMoved = useRef(false);
 
   /** The tab's long side. It runs along the edge on every edge. */
@@ -79,8 +71,7 @@ export function EdgeTab({ open, concealed = false, controls, onToggle }: {
       : { left: 0, top: 0, viewport: viewportOf(window) };
   };
 
-  // The tab stays whole on the screen when it first shows, when the browser window changes size, and
-  // when the on-screen keyboard changes the visible area.
+  // The tab stays whole on the screen at first show, on a resize, and when the on-screen keyboard shows.
   useLayoutEffect(() => {
     const fit = () => setPlace((current) => {
       const next = wholeOnScreen(current, tabLength(), area().viewport);
@@ -102,28 +93,25 @@ export function EdgeTab({ open, concealed = false, controls, onToggle }: {
     };
   }, []);
 
-  const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    press.current = { x: event.clientX, y: event.clientY, moved: false, length: tabLength() };
-    lastPressMoved.current = false;
-  };
-  const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
-    const current = press.current;
-    if (!current) return;
-    if (!current.moved && Math.hypot(event.clientX - current.x, event.clientY - current.y) < DRAG_THRESHOLD) return;
-    current.moved = true;
-    const { left, top, viewport } = area();
-    current.latest = wholeOnScreen(placeAt(event.clientX - left, event.clientY - top, viewport), current.length, viewport);
-    setPlace(current.latest);
-  };
-  // The device keeps the place the player left the tab at.
-  const onPointerEnd = () => {
-    const ended = press.current;
-    press.current = null;
-    lastPressMoved.current = ended?.moved ?? false;
-    if (ended?.latest) writeTabPlace(ended.latest);
-  };
+  const pressHandlers = usePointerDrag<{ x: number; y: number; moved: boolean; length: number; latest?: TabPlace }>({
+    start: (event) => {
+      if (event.button !== 0) return null;
+      lastPressMoved.current = false;
+      return { x: event.clientX, y: event.clientY, moved: false, length: tabLength() };
+    },
+    move: (press, event) => {
+      if (!press.moved && Math.hypot(event.clientX - press.x, event.clientY - press.y) < DRAG_THRESHOLD) return;
+      press.moved = true;
+      const { left, top, viewport } = area();
+      press.latest = wholeOnScreen(placeAt(event.clientX - left, event.clientY - top, viewport), press.length, viewport);
+      setPlace(press.latest);
+    },
+    // The device keeps the place the player left the tab at.
+    end: (press) => {
+      lastPressMoved.current = press.moved;
+      if (press.latest) writeTabPlace(press.latest);
+    },
+  });
   // A move ends with a click on the tab, which must not open or close the window. A key press has no detail.
   const onClick = (event: MouseEvent<HTMLButtonElement>) => {
     const moved = event.detail > 0 && lastPressMoved.current;
@@ -156,10 +144,7 @@ export function EdgeTab({ open, concealed = false, controls, onToggle }: {
           data-fq-launcher=""
           onClick={onClick}
           onKeyDown={onKeyDown}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerEnd}
-          onPointerCancel={onPointerEnd}
+          {...pressHandlers}
           style={concealed ? { ...style, visibility: 'hidden' } : style}
           className="pointer-events-auto absolute cursor-grab touch-none active:cursor-grabbing"
         />

@@ -3,7 +3,7 @@
  * dev-router registry: a screen or dialog is its bare name (`settings`), a tab is `<ledger key>.<tab>`.
  */
 import { DEV_MODAL_TABS, DEV_MODALS, DEV_VIEWS, type DevModal, type DevView } from '@/lib/devRoutes';
-import type { DocTarget } from './docsChecks';
+import type { DocTarget } from './docsLinks';
 
 type TabLedger = typeof DEV_MODAL_TABS;
 type TabKey = keyof TabLedger;

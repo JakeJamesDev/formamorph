@@ -37,14 +37,13 @@
 //          [--cases FILE]  (a case with no `wording` counts as player wording, no `facts` as none)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
-import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
-import { askHelpTicket22 } from './lookupControl';
+import { mean, pct, probeSnapshot } from './help-probe-shared';
+import { askHelpContentsLookup } from './lookupControl';
 import { refDocsIndex } from './refDocsIndex';
 
 const args = process.argv.slice(2);
@@ -120,16 +119,7 @@ const NO_DOCS_SYSTEM_PROMPT = [
   '- After the steps, add one or two sentences of detail when the player needs them.',
 ].join('\n');
 
-const snapshot: AiSettingsSnapshot = {
-  resolveTarget: () => ({
-    endpointId: 'probe', url: endpoint, apiToken: token, model, maxTokens: undefined, localEngine: false,
-    samplerOverrides: defaultEndpointSamplerOverrides(), reasoning: UNKNOWN_REASONING_CAPABILITY,
-  }),
-  thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: false, promptReasoning: {},
-  promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {},
-  genTemperature: 0.9, genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05,
-  paragraphLimit: 'none', disableThinking: false,
-};
+const snapshot = probeSnapshot({ endpoint, model, token });
 
 interface Sample {
   answer: string;
@@ -153,13 +143,7 @@ interface Completion {
 }
 
 /** The same endpoint, with a record that says it takes function calls: the help session picks lookup mode. */
-const lookupSnapshot: AiSettingsSnapshot = {
-  ...snapshot,
-  resolveTarget: (kind) => {
-    const target = snapshot.resolveTarget(kind);
-    return { ...target, reasoning: { ...target.reasoning, tools: true, sources: { tools: 'probe' } } };
-  },
-};
+const lookupSnapshot = probeSnapshot({ endpoint, model, token }, true);
 
 /**
  * One question through a help session in lookup mode: the app's, or ticket 22's. Each request of the session
@@ -196,7 +180,7 @@ async function lookupRequest(arm: Arm, c: HelpCase): Promise<Sample> {
   let sources: string[] = [];
   let flagged = false;
   const request = { question: c.question, snapshot: lookupSnapshot, index, fetchImpl };
-  const session = arm === 'lookup22' ? askHelpTicket22(request) : askHelp({ ...request, lookup: true });
+  const session = arm === 'lookup22' ? askHelpContentsLookup(request) : askHelp({ ...request, lookup: true });
   for await (const event of session) {
     if (event.type !== 'done') continue;
     answer = event.text;
@@ -309,8 +293,6 @@ const started = Date.now();
 const rows = await pool(jobs, parallel);
 console.log(`${rows.length} requests in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
 
-const pct = (n: number, d: number) => (d === 0 ? '  –' : `${Math.round((100 * n) / d).toString().padStart(3)}%`);
-const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
 
 /** The metrics of one arm over a set of cases, as printable cells. */
 function summarize(arm: Arm, caseIds: ReadonlySet<string>) {

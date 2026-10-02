@@ -4,7 +4,6 @@
  */
 import type { SurfaceReporter } from '@/components/ui/surface';
 import { SURFACE_IDS, type SurfaceId } from '@/lib/docs/surfaceMap';
-import { DEV_VIEWS } from '@/lib/devRoutes';
 
 /** What the player has open. */
 export interface Surface {
@@ -31,7 +30,8 @@ interface Entry {
 }
 
 const KNOWN_IDS: ReadonlySet<string> = new Set(SURFACE_IDS);
-const SCREEN_IDS: ReadonlySet<string> = new Set(DEV_VIEWS);
+/** The surfaces that are screens. Every other place without a layer is a dialog. */
+export const SCREEN_IDS: ReadonlySet<SurfaceId> = new Set<SurfaceId>(['mainMenu', 'gameViewer']);
 
 function isSurfaceId(id: string | null): id is SurfaceId {
   return id !== null && KNOWN_IDS.has(id);
