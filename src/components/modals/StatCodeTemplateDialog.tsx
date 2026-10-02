@@ -86,7 +86,8 @@ const productionRepository: StatTemplateRepository = {
 /** The world's names the name slots pick from, under their code names. */
 interface SlotNames {
   stat: readonly Stat[];
-  placeholder: readonly string[];
+  /** The names `placeholders["X"]` reaches, under their Placeholders-tab folders. */
+  placeholder: readonly CodeTraitPlace[];
   /** The world's own traits, which `traits` keys. */
   trait: readonly CodeTraitPlace[];
   entities: readonly CodeEntityNames[];
@@ -142,7 +143,7 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
     case 'stat':
       return names.stat.map((stat) => ({ key: stat.id, value: stat.name, name: stat.name }));
     case 'placeholder':
-      return plainRows(names.placeholder);
+      return names.placeholder.map((place) => ({ key: place.id, value: place.name, name: place.name, breadcrumb: place.path }));
     case 'entity':
       return entityRows(names.entities);
     case 'trait': {
@@ -287,7 +288,7 @@ export function StatCodeTemplateDialog({
   currentStatId,
   hasExistingCode,
   onInsert,
-  placeholderNames = [],
+  placeholderPlaces = [],
   traitPlaces = [],
   entities = [],
   repository = productionRepository,
@@ -305,7 +306,7 @@ export function StatCodeTemplateDialog({
   currentStatId?: string;
   hasExistingCode: boolean;
   /** What a placeholder slot's picker offers. */
-  placeholderNames?: readonly string[];
+  placeholderPlaces?: readonly CodeTraitPlace[];
   /** What an untied trait slot's picker offers. */
   traitPlaces?: readonly CodeTraitPlace[];
   /** What an entity slot and a tied trait slot offer. */
@@ -347,10 +348,10 @@ export function StatCodeTemplateDialog({
   const selected = all.find(template => template.id === selectedId) ?? all[0];
   const slotNames = useMemo<SlotNames>(() => ({
     stat: stats.filter(stat => stat.id !== currentStatId && stat.name),
-    placeholder: placeholderNames,
+    placeholder: placeholderPlaces,
     trait: traitPlaces,
     entities,
-  }), [stats, currentStatId, placeholderNames, traitPlaces, entities]);
+  }), [stats, currentStatId, placeholderPlaces, traitPlaces, entities]);
   // Every stat, not the pickable ones: a slot picker must not offer the stat being edited (a formula
   // reading its own value from the list is a loop), but code written by hand may read it by name, so its
   // name belongs in the completions.

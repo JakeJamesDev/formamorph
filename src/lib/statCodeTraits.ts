@@ -155,7 +155,7 @@ const withOwnPlaceholders = (placeholders: readonly Placeholder[], entity: Entit
   (entity?.placeholders?.length ? [...placeholders, ...entity.placeholders] : placeholders);
 
 /** Each leaf in its tab's tree order, with its folder names outermost first. */
-function inTreeOrder<G extends TreeGroup, L extends TreeLeaf>(
+export function inTreeOrder<G extends TreeGroup, L extends TreeLeaf>(
   groups: readonly G[], leaves: readonly L[], nameOf: (group: G) => string,
 ): { leaf: L; path: string[] }[] {
   const paths = new Map<string, string[]>();
