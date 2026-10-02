@@ -76,11 +76,11 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       } else if (mailSent) {
         setNote({ kind: 'success', text: `Verification email sent to ${address}. Open the link in it to finish.` });
       } else {
-        setNote({ kind: 'error', text: 'Address saved, but the verification email could not be sent. Try Resend in a moment.' });
+        setNote({ kind: 'error', text: 'Address saved, but the verification email could not be sent. Try Resend Verification Email in a moment.' });
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setNote({ kind: 'error', text: (failure as Error).message || 'Failed to save the email address' });
+      setNote({ kind: 'error', text: failure instanceof Error && failure.message ? failure.message : 'Failed to save the email address' });
     } finally {
       if (mounted.current) setBusy(null);
     }
@@ -103,7 +103,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setNote({ kind: 'error', text: (failure as Error).message || 'Failed to send the verification email' });
+      setNote({ kind: 'error', text: failure instanceof Error && failure.message ? failure.message : 'Failed to send the verification email' });
     } finally {
       if (mounted.current) setBusy(null);
     }
@@ -139,7 +139,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
             value={typed}
             onChange={(event) => setTyped(event.target.value)}
           />
-          <p className="text-helper text-muted-foreground">Changing your address means confirming the new one.</p>
+          <p className="text-helper text-muted-foreground">Confirm the new address by email after you change it.</p>
         </div>
         {note && (
           <p
@@ -170,7 +170,7 @@ function EmailSection({ suspended }: { suspended: boolean }) {
   );
 }
 
-/** Account controls that used to crowd the dialog header: email, password, and ending the account. */
+/** The account controls: email, password, and ending the account. */
 export function AccountSettingsTab({ suspended, onChangePassword }: {
   suspended: boolean;
   onChangePassword: () => void;
@@ -190,7 +190,7 @@ export function AccountSettingsTab({ suspended, onChangePassword }: {
 
       <Section title="Delete Account">
         <p className="text-helper text-muted-foreground">
-          Your account is erased seven days after you ask. Signing in during those seven days calls it off.
+          We erase your account seven days after you ask. Sign in during those days to cancel.
         </p>
         {/* Shown to a suspended account too: the flow's first step is where it learns the team does this one. */}
         <Button variant="destructive" size="sm" onClick={startDeletion}>
