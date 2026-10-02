@@ -1,6 +1,6 @@
 # 10: Document the new routes
 
-Status: ready-for-human
+Status: done
 Base: 2b387d53
 Blocked by: 06
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

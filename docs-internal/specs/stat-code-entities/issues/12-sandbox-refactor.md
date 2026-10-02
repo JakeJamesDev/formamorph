@@ -1,6 +1,6 @@
 # 12: Sandbox refactor
 
-Status: ready-for-human
+Status: done
 Base: 888f11cc
 Blocked by: 06, 11
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -1,6 +1,6 @@
 # Stat Code Entities: `persona` and `entities`
 
-Status: ready-for-agent
+Status: done
 Status note: Tickets 01–06 cut 2026-10-01 under `issues/`; 07 added 2026-10-01 (Q26). Frontier at start: 01, 05.
 Spec session: stat-code-entities — spec
 

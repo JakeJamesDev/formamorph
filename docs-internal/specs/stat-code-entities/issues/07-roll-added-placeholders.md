@@ -1,6 +1,6 @@
 # 07: Roll added characters' and library dictionaries' placeholders
 
-Status: ready-for-human
+Status: done
 Base: 051fd08f
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

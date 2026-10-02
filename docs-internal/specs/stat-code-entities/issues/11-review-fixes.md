@@ -1,6 +1,6 @@
 # 11: Effort review fixes
 
-Status: ready-for-human
+Status: done
 Base: 374c3362
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

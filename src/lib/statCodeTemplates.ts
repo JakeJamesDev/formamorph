@@ -125,8 +125,7 @@ export function parseTemplateSlots(code: string): ParsedTemplate {
     slots.push(slot);
   }
 
-  // A tie to anything but an entity slot or `persona` is no tie: the slot lists the world's traits, as it
-  // did before ties existed, so a saved template with one still inserts.
+  // A tie to anything but an entity slot or `persona` is dropped, so the slot lists the world's traits.
   for (const slot of slots) {
     if (slot.owner === undefined || slot.owner === PERSONA_TRAIT_OWNER || byName.get(slot.owner)?.type === 'entity') continue;
     delete slot.owner;
