@@ -72,6 +72,10 @@ export interface CodeEntityNames extends CodeOwnerName {
   traits: readonly string[];
   /** Whether a persona choice can play it, so `persona.placeholders` can reach its own. */
   persona: boolean;
+  /** Its Entity folder names, outermost first. Absent ⇒ top level. */
+  folder?: readonly string[];
+  /** Its place in the Entities tab. Absent ⇒ authored order. */
+  tabPosition?: number;
 }
 
 export interface AnalysisOptions {

@@ -119,6 +119,10 @@ export interface BreadcrumbPickerProps<V> extends BreadcrumbPickerListProps<V> {
   placeholder?: string;
   id?: string;
   ariaLabel?: string;
+  /** The field trigger's label, problem state and problem text, for a trigger inside a form field. */
+  ariaLabelledBy?: string;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
   disabled?: boolean;
   size?: VariantProps<typeof selectTriggerVariants>['size'];
   className?: string;
@@ -130,7 +134,8 @@ export interface BreadcrumbPickerProps<V> extends BreadcrumbPickerListProps<V> {
  * it lives. Rows keep the order given: the caller passes them in the order of the matching editor tab.
  */
 export function BreadcrumbPicker<V>({
-  trigger, page, open: openProp, onOpenChange, closeOnPick = true, placeholder, id, ariaLabel, disabled, size,
+  trigger, page, open: openProp, onOpenChange, closeOnPick = true, placeholder, id, ariaLabel, ariaLabelledBy, ariaInvalid,
+  ariaDescribedBy, disabled, size,
   className, contentClassName, ...list
 }: BreadcrumbPickerProps<V>) {
   const [openState, setOpenState] = useState(false);
@@ -157,6 +162,9 @@ export function BreadcrumbPicker<V>({
             role="combobox"
             id={id}
             aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+            aria-invalid={ariaInvalid}
+            aria-describedby={ariaDescribedBy}
             disabled={disabled}
             className={cn(selectTriggerVariants({ size }), className)}
           >

@@ -18,7 +18,7 @@ import {
 import { HelpButton } from "@/components/HelpButton";
 import { HintInfo } from "@/components/SettingsRows";
 import { statCodeName, statCodeNamed } from "@/lib/statCodeNames";
-import { entityTraitNames } from "@/lib/statCodeTraits";
+import { entityTraitNames, worldTraitPlaces } from "@/lib/statCodeTraits";
 import { codeDictionaries } from "@/lib/statCodePlaceholders";
 import { useRenameField } from "@/lib/useCodeRename";
 import { StatCodeBox, type StatCodeBoxContext } from "./StatCodeBox";
@@ -61,7 +61,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateStat, stats, placeholders, placeholderOwners, traits, traitGroups, entities, dictionaries } = useGameData();
+  const { updateStat, stats, placeholders, placeholderOwners, traits, traitGroups, entities, entityGroups, dictionaries } = useGameData();
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -103,15 +103,19 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     [traits, placeholders],
   );
   const entityNames = useMemo(
-    () => entityTraitNames({ traits, traitGroups, entities }, placeholders),
-    [traits, traitGroups, entities, placeholders],
+    () => entityTraitNames({ traits, traitGroups, entities, entityGroups }, placeholders),
+    [traits, traitGroups, entities, entityGroups, placeholders],
+  );
+  const traitPlaces = useMemo(
+    () => worldTraitPlaces({ traits, traitGroups }, placeholders),
+    [traits, traitGroups, placeholders],
   );
   const placeholderNames = useMemo(() => placeholders.map((entry) => entry.name), [placeholders]);
   // One surface for both boxes: what completes in either is what runs in either.
   const codeContext = useMemo<StatCodeBoxContext>(() => ({
     codeNamedStats, statNames, selfName: selfCodeName,
-    placeholders: codePlaceholders, placeholderNames, traitNames, traits, entities: entityNames,
-  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderNames, traitNames, traits, entityNames]);
+    placeholders: codePlaceholders, placeholderNames, traitNames, traitPlaces, traits, entities: entityNames,
+  }), [codeNamedStats, statNames, selfCodeName, codePlaceholders, placeholderNames, traitNames, traitPlaces, traits, entityNames]);
 
   const handleChange = (field: string, value: unknown) => {
     apply({ [field]: value } as EditingStat);

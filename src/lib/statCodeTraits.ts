@@ -1,4 +1,5 @@
-import type { CascadeOffTraitIds, Entity, GameState, OwnedTraitStates, Placeholder, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, Entity, EntityGroup, GameState, OwnedTraitStates, Placeholder, Trait, TraitGroup } from '@/types';
+import { buildTree, flattenTree, type TreeGroup, type TreeLeaf } from './groupTree';
 import { canBePlayer, inCast, playsAs, resolveBearers, type BearerWorld } from './bearers';
 import type { SandboxEntity, SandboxPlaceholderNode, SandboxTrait } from './statCodeExecutor';
 import type { CodeEntityNames } from './statCodeAnalysis';
@@ -153,10 +154,28 @@ const authoredTraitName = (trait: Trait, entity: Entity | null | undefined, worl
 const withOwnPlaceholders = (placeholders: readonly Placeholder[], entity: Entity | null | undefined): readonly Placeholder[] =>
   (entity?.placeholders?.length ? [...placeholders, ...entity.placeholders] : placeholders);
 
+/** Each leaf in its tab's tree order, with its folder names outermost first. */
+function inTreeOrder<G extends TreeGroup, L extends TreeLeaf>(
+  groups: readonly G[], leaves: readonly L[], nameOf: (group: G) => string,
+): { leaf: L; path: string[] }[] {
+  const paths = new Map<string, string[]>();
+  const out: { leaf: L; path: string[] }[] = [];
+  for (const node of flattenTree(buildTree(groups, leaves))) {
+    const path = (node.parentId && paths.get(node.parentId)) || [];
+    if (node.group) paths.set(node.id, [...path, nameOf(node.group)]);
+    else if (node.leaf) out.push({ leaf: node.leaf, path });
+  }
+  return out;
+}
+
 /** Every authored entity, persona-only ones included, as the editor reads it: code names only, since the
- *  editor knows no playthrough. */
-export function entityTraitNames(world: BearerWorld, placeholders: readonly Placeholder[]): CodeEntityNames[] {
+ *  editor knows no playthrough. Authored order, which decides who holds a shared name. */
+export function entityTraitNames(
+  world: BearerWorld & { entityGroups?: readonly EntityGroup[] }, placeholders: readonly Placeholder[],
+): CodeEntityNames[] {
   const bearers = new Map(resolveBearers(world, undefined).bearers.map((bearer) => [bearer.id, bearer]));
+  const tab = new Map(inTreeOrder(world.entityGroups ?? [], world.entities, (group) => statCodeName(group.name, placeholders))
+    .map(({ leaf, path }, position) => [leaf.id, { folder: path, tabPosition: position }]));
   return world.entities.map((entity) => {
     const named = withOwnPlaceholders(placeholders, entity);
     return {
@@ -164,9 +183,25 @@ export function entityTraitNames(world: BearerWorld, placeholders: readonly Plac
       persona: canBePlayer(entity),
       name: statCodeName(entity.name, named),
       traits: (bearers.get(entity.id)?.traits ?? []).map((trait) => statCodeName(authoredTraitName(trait, entity, world.traits), named)),
+      ...tab.get(entity.id),
     };
   });
 }
+
+/** One world trait as a template slot lists it: its code name and its group path. */
+export interface CodeTraitPlace {
+  id: string;
+  name: string;
+  /** Group names under their code names, outermost first. Empty at the top level. */
+  path: readonly string[];
+}
+
+/** The world's own traits in Traits-tab order, which `traits` keys. */
+export const worldTraitPlaces = (
+  world: Pick<BearerWorld, 'traits' | 'traitGroups'>, placeholders: readonly Placeholder[],
+): CodeTraitPlace[] =>
+  inTreeOrder(world.traitGroups, world.traits, (group) => statCodeName(group.name, placeholders))
+    .map(({ leaf, path }) => ({ id: leaf.id, name: statCodeName(leaf.name, placeholders), path }));
 
 /** The entries a run with no playthrough reads: every authored entity with nothing chosen, each with its
  *  owner node. No persona plays. */

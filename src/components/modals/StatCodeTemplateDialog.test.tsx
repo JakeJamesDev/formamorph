@@ -2,7 +2,8 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Stat } from '@/types';
+import type { Entity, EntityGroup, Stat, Trait, TraitGroup } from '@/types';
+import { entityTraitNames, worldTraitPlaces } from '@/lib/statCodeTraits';
 import { StatCodeTemplateDialog } from './StatCodeTemplateDialog';
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
 import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
@@ -33,6 +34,28 @@ vi.mock('@/components/prompt/CodeArea', () => ({
   ),
 }));
 
+// Traits tab: Lineage › Storms › Storm Touched, Lineage › Heir, then Cursed at the top level.
+const traitGroups: TraitGroup[] = [
+  { id: 'lineage', name: 'Lineage', parentId: null, order: 0 },
+  { id: 'storms', name: 'Storms', parentId: 'lineage', order: 0 },
+];
+const traits: Trait[] = [
+  { id: 'cursed', name: 'Cursed', statChanges: [], order: 1 },
+  { id: 'heir', name: 'Heir', statChanges: [], groupId: 'lineage', order: 1 },
+  { id: 'storm', name: 'Storm Touched', statChanges: [], groupId: 'storms', order: 0 },
+];
+// Entities tab: Crew › Deck › Mira, Crew › Rook, then Ash. Each owns a trait the world's `traits` never holds.
+const entityGroups: EntityGroup[] = [
+  { id: 'crew', name: 'Crew', parentId: null, order: 0 },
+  { id: 'deck', name: 'Deck', parentId: 'crew', order: 0 },
+];
+const owned = (id: string, name: string): Trait => ({ id, name, statChanges: [] });
+const entities: Entity[] = [
+  { id: 'e1', name: 'Mira', groupId: 'deck', order: 0, traits: [owned('wounded', 'Wounded')] },
+  { id: 'e2', name: 'Ash', order: 1, traits: [owned('loyal', 'Loyal')] },
+  { id: 'e3', name: 'Rook', groupId: 'crew', order: 1, persona: true, traits: [owned('scarred', 'Scarred')] },
+];
+
 const open = (timing: StatCodeTiming = 'after') => render(
   <StatCodeTemplateDialog
     open
@@ -43,14 +66,15 @@ const open = (timing: StatCodeTiming = 'after') => render(
     hasExistingCode={false}
     onInsert={vi.fn()}
     placeholderNames={['Mood', 'Hair Color']}
-    traitNames={['Cursed']}
-    entities={[
-      { id: 'e1', name: 'Mira', traits: ['Wounded'], persona: false },
-      { id: 'e2', name: 'Ash', traits: ['Loyal'], persona: false },
-      { id: 'e3', name: 'Rook', traits: ['Scarred'], persona: true },
-    ]}
+    traitPlaces={worldTraitPlaces({ traits, traitGroups }, [])}
+    entities={entityTraitNames({ traits, traitGroups, entities, entityGroups }, [])}
   />,
 );
+
+/** Each listed row's text: its name, then its breadcrumb. */
+const rows = async () => (await screen.findAllByRole('option')).map((option) => option.textContent);
+// The highlighter splits the code into token spans, so read the whole generated block.
+const generated = () => document.querySelector('pre')?.textContent ?? '';
 
 const localTemplate: StatCodeTemplate = {
   id: 'local-template',
@@ -124,43 +148,78 @@ describe('the form a template presents', () => {
     await user.click(await screen.findByRole('combobox', { name: 'P' }));
     await user.click(await screen.findByRole('option', { name: 'Hair Color' }));
     await user.click(await screen.findByRole('combobox', { name: 'T' }));
-    await user.click(await screen.findByRole('option', { name: 'Cursed' }));
+    await user.click(await screen.findByRole('option', { name: /^Cursed/ }));
 
-    // The highlighter splits the code into token spans, so read the whole generated block.
-    const generated = () => document.querySelector('pre')?.textContent ?? '';
     await waitFor(() => expect(generated()).toContain('placeholders["Hair Color"]'));
     expect(generated()).toContain('traits["Cursed"]');
+  });
+
+  it('lists the other stats in a stat slot, with no breadcrumb', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'return stats.find(s => s.name === {{source:stat}})?.value ?? 0;');
+
+    await user.click(await screen.findByRole('combobox', { name: 'Source' }));
+    expect(await rows()).toEqual(['Damp']);
+    await user.click(screen.getByRole('option', { name: 'Damp' }));
+    await waitFor(() => expect(generated()).toContain('s.name === "Damp"'));
+    expect(screen.getByRole('combobox', { name: 'Source' })).toHaveTextContent('Damp');
+  });
+
+  // The sandbox `traits` map holds world traits only, so an owned trait there would generate a name that never resolves.
+  it('lists only the world’s traits in a plain trait slot, in Traits-tab order under their groups', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'traits[{{t:trait}}].enabled = true;');
+
+    const slot = await screen.findByRole('combobox', { name: 'T' });
+    expect(slot).toHaveTextContent('Pick a trait…');
+    await user.click(slot);
+    expect(await rows()).toEqual(['Storm TouchedLineage › Storms', 'HeirLineage', 'CursedWorld']);
+    await user.click(screen.getByRole('option', { name: /^Storm Touched/ }));
+    await waitFor(() => expect(generated()).toContain('traits["Storm Touched"]'));
+    expect(slot).toHaveTextContent('Storm Touched');
+  });
+
+  it('narrows a trait slot to one group’s rows when the search names that group', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'traits[{{t:trait}}].enabled = true;');
+
+    await user.click(await screen.findByRole('combobox', { name: 'T' }));
+    await user.type(screen.getByPlaceholderText('Search traits'), 'storms');
+    expect(await rows()).toEqual(['Storm TouchedLineage › Storms']);
+    await user.clear(screen.getByPlaceholderText('Search traits'));
+    await user.type(screen.getByPlaceholderText('Search traits'), 'lineage');
+    expect(await rows()).toEqual(['Storm TouchedLineage › Storms', 'HeirLineage']);
   });
 
   it('lists the picked entity’s traits in a tied trait slot, and the persona’s in a persona one', async () => {
     const user = userEvent.setup();
     await authoring(user, 'entities[{{who:entity}}].traits[{{t:trait(who)}}]; persona.traits[{{p:trait(persona)}}];');
-    const options = async () => (await screen.findAllByRole('option')).map((option) => option.textContent);
+    const options = rows;
 
     await user.click(await screen.findByRole('combobox', { name: 'P' }));
     expect(await options()).toEqual(['Scarred']);
     await user.click(await screen.findByRole('option', { name: 'Scarred' }));
+    // Entities-tab order, each under its Entity folders.
     await user.click(await screen.findByRole('combobox', { name: 'Who' }));
-    expect(await options()).toEqual(['Mira', 'Ash', 'Rook']);
+    expect(await options()).toEqual(['MiraCrew › Deck', 'RookCrew', 'Ash']);
     await user.click(await screen.findByRole('option', { name: 'Ash' }));
     await user.click(await screen.findByRole('combobox', { name: 'T' }));
     expect(await options()).toEqual(['Loyal']);
     await user.click(await screen.findByRole('option', { name: 'Loyal' }));
 
-    const generated = () => document.querySelector('pre')?.textContent ?? '';
     await waitFor(() => expect(generated()).toContain('entities["Ash"].traits["Loyal"]'));
     expect(generated()).toContain('persona.traits["Scarred"]');
 
     // Another entity clears the trait picked from the last one's list.
     await user.click(await screen.findByRole('combobox', { name: 'Who' }));
-    await user.click(await screen.findByRole('option', { name: 'Mira' }));
+    await user.click(await screen.findByRole('option', { name: /^Mira/ }));
     await waitFor(() => expect(generated()).toContain('entities["Mira"].traits[""]'));
   });
 
   it('lets a declared entity slot named persona win over the persona tie, and lists the world’s traits for a loose tie', async () => {
     const user = userEvent.setup();
     await authoring(user, 'entities[{{persona:entity}}].traits[{{t:trait(persona)}}]; traits[{{w:trait(nobody)}}];');
-    const options = async () => (await screen.findAllByRole('option')).map((option) => option.textContent);
+    const options = rows;
 
     await user.click(await screen.findByRole('combobox', { name: 'Persona' }));
     await user.click(await screen.findByRole('option', { name: 'Ash' }));
@@ -168,7 +227,25 @@ describe('the form a template presents', () => {
     expect(await options()).toEqual(['Loyal']);
     await user.click(await screen.findByRole('option', { name: 'Loyal' }));
     await user.click(await screen.findByRole('combobox', { name: 'W' }));
-    expect(await options()).toEqual(['Cursed']);
+    expect(await options()).toEqual(['Storm TouchedLineage › Storms', 'HeirLineage', 'CursedWorld']);
+  });
+
+  it('fills a picked template’s stat, entity and tied trait slots from their pickers', async () => {
+    const user = userEvent.setup();
+    open();
+    await user.click(await screen.findByText('Penalty From Entity Trait'));
+
+    await user.click(await screen.findByRole('combobox', { name: 'Base' }));
+    await user.click(await screen.findByRole('option', { name: 'Damp' }));
+    await user.click(screen.getByRole('combobox', { name: 'Entity' }));
+    await user.click(await screen.findByRole('option', { name: /^Rook/ }));
+    await user.click(screen.getByRole('combobox', { name: 'Trait' }));
+    expect(await rows()).toEqual(['Scarred']);
+    await user.click(screen.getByRole('option', { name: 'Scarred' }));
+
+    await waitFor(() => expect(generated()).toContain('stats["Damp"]'));
+    expect(generated()).toContain('entities["Rook"].traits["Scarred"]');
+    expect(screen.getByRole('combobox', { name: 'Entity' })).toHaveTextContent('Rook');
   });
 
   it('prefills the defaults of a template picked from the list', async () => {
