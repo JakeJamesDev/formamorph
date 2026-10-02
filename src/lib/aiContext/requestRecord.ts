@@ -17,7 +17,7 @@ export interface AiRequestRecord {
   response?: string;
   /** The native reasoning field as streamed; inline `<think>` stays in `response`. Never sent back in history. */
   reasoning?: string;
-  /** The tool rounds this request ran before its reply. */
+  /** The tool rounds this request ran before its reply. The game captures them only with Show Silent Requests on. */
   toolRounds?: AiToolRound[];
   /** Which endpoint served this request. Absent on turns captured before routing existed. */
   endpoint?: DebugEndpointInfo;

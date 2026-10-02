@@ -9,14 +9,6 @@ import { MaxTokensChip } from '@/components/game/MaxTokensChip';
 import { toAnatomyBlocks } from '@/lib/requestAnatomy';
 import type { AiRequestRecord } from '@/lib/aiContext/requestRecord';
 
-/**
- * One request of an AI Context viewer: the header with its endpoint chips, then the Raw Input drawn as its
- * Request Anatomy, the Tool Rounds, the Raw Reasoning and the Raw Output, each a collapsible of its own.
- *
- * Shared by the game view and Formaquestion. The caller owns every open state, so a find bar can open the
- * section that hides a hit, and `renderText` is the caller's highlighter; the card draws plain text without it.
- */
-
 /** The collapsibles of one card. `group` is the whole card. */
 export type AiContextCardSection = 'group' | 'input' | 'tools' | 'reasoning' | 'output';
 
@@ -63,6 +55,13 @@ function Section({ title, open, onOpenChange, children }: { title: string; open:
   );
 }
 
+/**
+ * One request of an AI Context viewer: the header with its endpoint chips, then the Raw Input drawn as its
+ * Request Anatomy, the Tool Rounds, the Raw Reasoning and the Raw Output, each a collapsible of its own.
+ *
+ * Shared by the game view and Formaquestion. The caller owns every open state, so a find bar can open the
+ * section that hides a hit, and `renderText` is the caller's highlighter; the card draws plain text without it.
+ */
 export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChange, renderText }: AiContextRequestCardProps) {
   const text = (value: string, slot: AiContextTextSlot) => (renderText ? renderText(value, slot) : value);
   const groupOpen = isOpen('group');
@@ -78,22 +77,20 @@ export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChan
             {/* Which endpoint served it. A routed prompt is called out; one following the active preset
                 is shown quietly, since that is the norm. */}
             {record.endpoint && (
-              <Tip tip={`${record.endpoint.model} · ${record.endpoint.url}`} labelsChild={false}>
-                <span
-                  // The routed chip is marked by a tinted border + the arrow, not by colored text:
-                  // `primary` is a pale accent that all but vanishes as text on a light surface.
-                  className={`rounded px-1.5 py-0.5 text-meta font-normal ${
-                    record.endpoint.routed
-                      ? 'border border-primary/60 bg-primary/15 text-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {record.endpoint.routed ? '→ ' : ''}{record.endpoint.preset} · {record.endpoint.model}
-                </span>
-              </Tip>
-            )}
-            {record.endpoint && (
               <>
+                <Tip tip={`${record.endpoint.model} · ${record.endpoint.url}`} labelsChild={false}>
+                  <span
+                    // The routed chip is marked by a tinted border + the arrow, not by colored text:
+                    // `primary` is a pale accent that all but vanishes as text on a light surface.
+                    className={`rounded px-1.5 py-0.5 text-meta font-normal ${
+                      record.endpoint.routed
+                        ? 'border border-primary/60 bg-primary/15 text-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {record.endpoint.routed ? '→ ' : ''}{record.endpoint.preset} · {record.endpoint.model}
+                  </span>
+                </Tip>
                 <ReasoningChip endpoint={record.endpoint} />
                 <MaxTokensChip endpoint={record.endpoint} />
               </>

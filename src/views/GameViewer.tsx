@@ -216,9 +216,9 @@ interface GameViewerProps {
   onExitToMenu: () => void;
 }
 
-// One AI sub-request captured per turn for the AI-context viewer (lib/aiContext/requestRecord). The
-// dictionary activation captured for a turn's narration request lets the viewer mark real matches, and
-// only real matches, even on historical turns whose live state has moved on.
+// One turn of the AI-context viewer: the action and every request captured for it (lib/aiContext/requestRecord).
+// A narration request carries its dictionary activation, so the viewer marks real matches, and only real
+// matches, even on historical turns whose live state has moved on.
 interface DebugTurn {
   action: string;
   requests: AiRequestRecord[];
