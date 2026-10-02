@@ -100,6 +100,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q62 | The changelog ranks in a hard tier: for any question that does not ask what's new, every matching guide section ranks above every matching changelog section, with no tuned weight. A what's-new question puts the released changelog sections first, newest first, even without a word match. One ranking serves the Search tab, the help session and the lookup (ticket 34 ruling) |
 | Q63 | A what's-new question leads with the newest release's sections that hold text, in page order; heading-only sections are skipped. A question that names a version leads with that release instead. Guide hits follow, then older-release hits in the changelog tier. Refines Q62 (ticket 34 ruling) |
 | Q64 | A follow-up's own search multiplies the score of sections on the previous answer's first-source page by 2. It is a weight, not a tier, so a real topic change still wins. The combined previous-plus-follow-up search gets no weight. The help history carries each answer's sources (ticket 35 ruling) |
+| Q65 | A follow-up after a what's-new question keeps the release lead through the combined search, for now. No baseline case covers it, so it stays an open finding. Ticket 37 keeps ticket 26's set unchanged; a later ticket adds the case and decides on numbers (ticket 35 ruling) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
