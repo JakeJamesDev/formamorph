@@ -12,11 +12,14 @@ function labels(doc: string, options?: Parameters<typeof statCodeCompletions>[2]
 const messages = (code: string, options?: Parameters<typeof statCodeDiagnostics>[1]) =>
   statCodeDiagnostics(code, options).map((diagnostic) => diagnostic.message);
 
+/** Top-level traits under these names. */
+const topLevel = (...names: string[]) => names.map((name) => ({ id: name, name, path: [] }));
+
 // Two entities a persona choice can play, and one it can't, whose trait is no persona trait.
 const entities: CodeEntityNames[] = [
-  { id: 'e1', name: 'Mira', persona: true, traits: ['Scarred', 'Night Owl'] },
-  { id: 'e2', name: 'Lyra', persona: true, traits: ['Scarred'] },
-  { id: 'e3', name: 'Ash', persona: false, traits: ['Loyal'] },
+  { id: 'e1', name: 'Mira', persona: true, traits: topLevel('Scarred', 'Night Owl') },
+  { id: 'e2', name: 'Lyra', persona: true, traits: topLevel('Scarred') },
+  { id: 'e3', name: 'Ash', persona: false, traits: topLevel('Loyal') },
 ];
 const personaOptions = { entities };
 

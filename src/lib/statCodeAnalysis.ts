@@ -67,9 +67,17 @@ export interface CodePlaceholders {
   dictionaries?: readonly CodeOwnerName[];
 }
 
-/** One entity as the editor reads it: its code name and the code names of its trait set, owned or linked. */
+/** One trait as a template slot lists it: its code name and its group path in its holder's tree. */
+export interface CodeTraitPlace {
+  id: string;
+  name: string;
+  /** Group names under their code names, outermost first. Empty at the top level. */
+  path: readonly string[];
+}
+
+/** One entity as the editor reads it: its code name and its trait set, owned or linked, in its own tree order. */
 export interface CodeEntityNames extends CodeOwnerName {
-  traits: readonly string[];
+  traits: readonly CodeTraitPlace[];
   /** Whether a persona choice can play it, so `persona.placeholders` can reach its own. */
   persona: boolean;
   /** Its Entity folder names, outermost first. Absent ⇒ top level. */
@@ -255,11 +263,15 @@ export const keyedEntityNames = (entities: readonly CodeEntityNames[]): string[]
 
 /** The trait names of the last authored entity called `name`, as the sandbox keys it. An unnamed one is not keyed. */
 export const traitsOfEntity = (entities: readonly CodeEntityNames[], name: string): readonly string[] | null =>
-  (hasEntityKey(name) ? entities.findLast((entity) => entity.name === name)?.traits ?? null : null);
+  keyedEntity(entities, name)?.traits.map((trait) => trait.name) ?? null;
+
+/** The last authored entity called `name`, which the sandbox keys. An unnamed one is not keyed. */
+export const keyedEntity = (entities: readonly CodeEntityNames[], name: string): CodeEntityNames | undefined =>
+  (hasEntityKey(name) ? entities.findLast((entity) => entity.name === name) : undefined);
 
 /** The trait names a persona in the world can hold, or null when no entities are given. */
 export const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined): readonly string[] | null =>
-  (entities ? entities.filter((entity) => entity.persona).flatMap((entity) => entity.traits) : null);
+  (entities ? entities.filter((entity) => entity.persona).flatMap((entity) => entity.traits.map((trait) => trait.name)) : null);
 
 /** One entry per distinct persona trait name. `dotted` keeps only the names a `.` can reach. */
 const personaTraitEntries = (names: readonly string[], dotted: boolean): SurfaceEntry[] =>
