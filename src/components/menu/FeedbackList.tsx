@@ -54,8 +54,6 @@ export function FeedbackList({
   // Read through a ref so a caller's inline handler does not rebuild the load and refetch every render.
   const onPageChangeRef = useRef(onPageChange);
   onPageChangeRef.current = onPageChange;
-  // Set when a multi-status page came back short, so the list can say so instead of looking complete.
-  const [truncated, setTruncated] = useState(false);
   // Ids with a vote in flight, so a double click can't send two of the same request.
   const [voting, setVoting] = useState<Set<string>>(new Set());
 
@@ -98,7 +96,6 @@ export function FeedbackList({
       }
       setThreads(result.threads);
       setTotal(result.total);
-      setTruncated(result.truncated ?? false);
     } catch (error) {
       if (!isCurrent()) return;
       toastError(error, 'Failed to load these');
@@ -153,13 +150,6 @@ export function FeedbackList({
 
   return (
     <>
-      {truncated && (
-        <p role="status" className="mb-2 rounded-md bg-warning/10 px-3 py-2 text-meta text-warning">
-          This page is incomplete — the server returned fewer rows than were asked for. Filter by a single
-          status to see all of them.
-        </p>
-      )}
-
       <div
         className={`space-y-2 min-w-0 transition-opacity${isRefreshing ? ' opacity-50 pointer-events-none' : ''}`}
         aria-busy={isLoading}
