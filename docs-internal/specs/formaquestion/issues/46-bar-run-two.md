@@ -1,13 +1,13 @@
 # 46: Help baseline against the bar, second run
 
 Status: ready-for-agent
-Blocked by: 43, 44, 45, 47
+Blocked by: 43, 44, 45, 47, 49
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
 ## What to build
 
-The user learns whether Formaquestion now meets the 80% bar (Q59, kept in Q72). Run ticket 37's measurement again on the build with tickets 43, 44, 45 and 47 and the shipped source defaults.
+The user learns whether Formaquestion now meets the 80% bar (Q59, kept in Q72). Run ticket 37's measurement again on the build with tickets 43, 44, 45, 47 and 49 and the shipped source defaults.
 
 - Default cloud model, ticket 26's 125 questions, both arms, 5 runs, the same keys. Change no key.
 - The bar: 80% grounded-correct over the English task, "here" and follow-up questions together. Report each kind next to tickets 26 and 37.
