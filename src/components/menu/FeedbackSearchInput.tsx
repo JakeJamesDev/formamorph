@@ -62,7 +62,8 @@ export function FeedbackSearchInput({ value, onSearch, label }: FeedbackSearchIn
   };
 
   return (
-    <div className="relative w-56">
+    // Takes the row's free width, and wraps to its own row below 12rem.
+    <div className="relative flex-1 min-w-[12rem]">
       <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={inputRef}
@@ -79,7 +80,7 @@ export function FeedbackSearchInput({ value, onSearch, label }: FeedbackSearchIn
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 border-transparent"
           aria-label="Clear Search"
           onClick={clear}
         >
