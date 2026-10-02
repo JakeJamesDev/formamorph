@@ -342,6 +342,19 @@ describe('what Test Code reports', () => {
     expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: Brave.');
   });
 
+  it('names every read-only write by its path', async () => {
+    const user = userEvent.setup();
+    executeStatCode.mockResolvedValue({
+      value: null, error: null, readOnlyWrites: ['clock.hour', 'stats.Health.max', 'entities.Ash.traits.Brave.mode'],
+    });
+    renderCodePanel(stats[0]);
+
+    await testCode(user, 'clock.hour = 3; stats.Health.max = 9; entities.Ash.traits.Brave.mode = "x";');
+
+    await waitFor(() => expect(row())
+      .toHaveTextContent('Read-only fields. Writes ignored: clock.hour, stats.Health.max, entities.Ash.traits.Brave.mode.'));
+  });
+
   it('still counts the problems when the run itself threw', async () => {
     const user = userEvent.setup();
     executeStatCode.mockResolvedValue({ value: null, error: "Error: 'nope' is not defined" });

@@ -358,7 +358,7 @@ entities.Mira.traits.Calm.enabled = self.value > 50;
 if (entities.Mira.inScene) self.value += 1;
 ```
 
-- `persona` is the played persona's entry, so `persona === entities[persona.name]` whenever a persona entity plays.
+- `persona` is the played persona's entry, so `persona === entities[persona.name]` when the persona entity has a code name. A persona entity with no code name still plays as `persona`, but it isn't in `entities`.
 - An entity's `traits` lists only that entity's own set. A name outside it reads as a blank entry: `enabled` and `acquired` are false, and a switch through it is ignored and reported.
 - An entity the narrator invents in play is not listed. Neither is a persona-only entity the player didn't pick, the **Custom Persona** entity under a world persona, or an entity with no code name.
 - Of two entities that share a code name, the later one is the entry. The played persona always keeps its own name.

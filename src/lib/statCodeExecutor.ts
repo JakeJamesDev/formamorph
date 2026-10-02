@@ -304,6 +304,9 @@ const blankOf = (entry: unknown): unknown => {
   return Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, blankOf(value)]));
 };
 
+/** JS source of `(list, path) => void`: adds a reported path to `list` unless it is already there. */
+const ADD_ONCE = `(list, path) => { if (!list.includes(path)) list.push(path); }`;
+
 /** JS source of `(target, fields, prefix, note) => target`: each field becomes a getter of its value whose
  *  setter calls `note(prefix + field)`. */
 const LOCK_FIELDS = `(target, fields, prefix, note) => {
@@ -333,7 +336,7 @@ const statsPrelude = (entries: readonly { name: string }[], blank: unknown, self
   data: Object.fromEntries(entries.map((entry) => [entry.name, entry])),
   track: `(name, entry, state) => {
     state.written = [];
-    (${LOCK_STAT})(entry, name === ${JSON.stringify(selfName)}, (path) => { if (!state.written.includes(path)) state.written.push(path); });
+    (${LOCK_STAT})(entry, name === ${JSON.stringify(selfName)}, (path) => (${ADD_ONCE})(state.written, path));
   }`,
   blank: JSON.stringify(blank),
   row: `(name, state) => state.written.length ? [name, state.written] : null`,
@@ -412,7 +415,7 @@ const placeholdersPrelude = ({ top, nodes, indexOf }: FlatPlaceholderMap): strin
     `    target.pin = set;`,
     `    target.unpin = () => { state.unpinned = true; };`,
     `    for (const [field, held] of [['id', id], ['name', name]]) {`,
-    `      define(target, field, { enumerable: true, get: () => held, set: () => { if (!state.readOnly.includes(field)) state.readOnly.push(field); } });`,
+    `      define(target, field, { enumerable: true, get: () => held, set: () => (${ADD_ONCE})(state.readOnly, field) });`,
     `    }`,
     `  };`,
     `  const strayAt = (path, key, absent) => {`,
@@ -518,7 +521,7 @@ const TRAIT_MAP: TrackedMapKind = {
     Object.defineProperty(entry, 'acquired', { enumerable: true, get: () => state.acquired, set: () => { state.acquiredWritten = true; } });
     for (const field of ${JSON.stringify(TRAIT_READ_ONLY_FIELDS)}) {
       const value = entry[field];
-      Object.defineProperty(entry, field, { enumerable: true, get: () => value, set: () => { if (!state.readOnly.includes(field)) state.readOnly.push(field); } });
+      Object.defineProperty(entry, field, { enumerable: true, get: () => value, set: () => (${ADD_ONCE})(state.readOnly, field) });
     }
   }`,
   blank: `{ enabled: false, acquired: false, id: '', name: '', mode: '', available: false, group: '', playerToggle: false }`,
@@ -539,11 +542,14 @@ export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
   persona: T;
 }
 
+/** Whether `entities` keys this entity: only a named one gets a key. */
+export const hasEntityKey = (entity: { name: string }): boolean => entity.name !== '';
+
 /** The entities as the sandbox keys them: an unnamed one is left out, the later of two sharing a name wins,
  *  and the played persona holds its own name whatever comes after it. */
 export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], persona: T): KeyedEntities<T> {
-  const byName = new Map(entities.filter((entity) => entity.name).map((entity) => [entity.name, entity]));
-  if (persona.name) byName.set(persona.name, persona);
+  const byName = new Map(entities.filter(hasEntityKey).map((entity) => [entity.name, entity]));
+  if (hasEntityKey(persona)) byName.set(persona.name, persona);
   return { byName, persona };
 }
 
@@ -557,7 +563,7 @@ const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build) => {
     readers.push([key, unknown, rows, written]);
     const out = {};
     for (const field of fields) {
-      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });
+      define(out, field, { enumerable: true, get: () => values[field], set: () => (${ADD_ONCE})(written, field) });
     }
     return freeze(out);
   };
@@ -590,7 +596,7 @@ const entitiesPrelude = ({ byName, persona }: KeyedEntities, { indexOf }: FlatPl
     ({ id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders) });
   const spec = {
     entities: [...byName].map(([name, entity]) => [name, data(entity)]),
-    persona: persona.name ? null : data(persona),
+    persona: hasEntityKey(persona) ? null : data(persona),
   };
   return readOnlyEntryMapPrelude(`entities, persona, ${ENTITY_WRITES}`, spec, [
     `const traitMap = ((keys) => ${trackedMapFactory(TRAIT_MAP)})(Object.keys);`,
@@ -626,7 +632,7 @@ const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], { index
 interface EntryWriteRow {
   name: string;
   unknown: boolean;
-  traitRows: unknown;
+  mapRows: unknown;
   fields: unknown;
 }
 
@@ -634,7 +640,7 @@ interface EntryWriteRow {
 function readEntryWriteRows(dump: string): EntryWriteRow[] {
   const parsed: unknown = JSON.parse(dump);
   return (Array.isArray(parsed) ? parsed : []).flatMap((row) => (Array.isArray(row) && typeof row[0] === 'string'
-    ? [{ name: row[0], unknown: row[1] === true, traitRows: row[2], fields: row[3] }] : []));
+    ? [{ name: row[0], unknown: row[1] === true, mapRows: row[2], fields: row[3] }] : []));
 }
 
 /** The read-only fields the run wrote on `dictionaries` entries, as code spelled them. */
@@ -699,7 +705,7 @@ function readEntityWrites(
   const writes: EntityTraitWrites[] = [];
   const unknown: string[] = [];
   const readOnly: string[] = [];
-  for (const { name, unknown: isUnknown, traitRows: rows, fields } of readEntryWriteRows(dump)) {
+  for (const { name, unknown: isUnknown, mapRows: rows, fields } of readEntryWriteRows(dump)) {
     readOnly.push(...readOnlyPaths(isUnknown ? memberPath('entities', name) : entityPath(name), fields));
     // A blank entry has no traits, so any trait row through it is a switch on an entity that is not there.
     if (isUnknown) {
@@ -917,7 +923,7 @@ export const executeStatCode = async (
       const program = [
         statsPrelude(keyedStats, { ...(blankOf(selfData) as object), enabled: false }, selfIsEntry ? selfData.name : null),
         `const ${LOOSE_WRITES} = [];`,
-        `const ${LOOSE_NOTE} = (path) => { if (!${LOOSE_WRITES}.includes(path)) ${LOOSE_WRITES}.push(path); };`,
+        `const ${LOOSE_NOTE} = (path) => (${ADD_ONCE})(${LOOSE_WRITES}, path);`,
         `const self = ${selfIsEntry ? `stats[${JSON.stringify(selfData.name)}]` : JSON.stringify(selfData)};`,
         ...(selfIsEntry ? [] : [`(${LOCK_STAT})(self, true, (path) => ${LOOSE_NOTE}('self.' + path));`]),
         `const clock = ((lock) => {`,

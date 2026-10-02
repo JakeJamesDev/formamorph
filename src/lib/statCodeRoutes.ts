@@ -63,7 +63,7 @@ interface Reached {
 }
 
 /**
- * The top-level keys the v3.1.2 `placeholders` map answered: a row the world holds, an owner by its code
+ * The top-level keys the retired `placeholders` map answered: a row the world holds, an owner by its code
  * name, and else any row by its bare name. Of two claims of one rank, the later wins.
  */
 function retiredTopKeys(source: PlaceholderPathSource, map: PlaceholderPathMap): Map<string, Reached> {

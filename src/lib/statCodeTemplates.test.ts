@@ -67,6 +67,24 @@ describe('parseTemplateSlots', () => {
       'Slot "a" is a choice but lists no options.',
     ]);
   });
+
+  it('ties a trait slot to the persona or to an entity slot, and reports a tie to anything else', () => {
+    const { slots, errors } = parseTemplateSlots('{{who:entity}} {{a:trait(who)}} {{b:trait(persona)}} {{c:trait}}');
+    expect(errors).toEqual([]);
+    expect(slots).toEqual([
+      { name: 'who', type: 'entity' },
+      { name: 'a', type: 'trait', owner: 'who' },
+      { name: 'b', type: 'trait', owner: 'persona' },
+      { name: 'c', type: 'trait' },
+    ]);
+    const bad = parseTemplateSlots('{{n:number}} {{a:trait(n)}} {{b:trait(nobody)}}');
+    expect(bad.errors).toEqual([
+      'Slot "a" lists the traits of "n", which is not an entity slot.',
+      'Slot "b" lists the traits of "nobody", which is not an entity slot.',
+    ]);
+    // A broken tie falls back to the world's traits.
+    expect(bad.slots.find((slot) => slot.name === 'a')).toEqual({ name: 'a', type: 'trait' });
+  });
 });
 
 describe('humanizeSlotName', () => {
@@ -162,6 +180,16 @@ describe('fillTemplate', () => {
     expect(filled).toBe('s.name === "Health" && daypart === "dawn" && x >= 7');
   });
 
+  // Saved author templates count on this: a text slot carried code fragments, not strings, in v3.1.2.
+  it('pastes a text slot as typed', () => {
+    expect(fillTemplate('stats.{{field:text=value}} + {{expr:text}}', { expr: 'self.max / 2' }))
+      .toBe('stats.value + self.max / 2');
+  });
+
+  it('quotes an entity slot like the other name slots', () => {
+    expect(fillTemplate('entities[{{who:entity}}]', { who: 'Old "Mira"' })).toBe('entities["Old \\"Mira\\""]');
+  });
+
   it('escapes a stat name containing a quote instead of breaking the literal', () => {
     expect(fillTemplate('{{who:stat}}', { who: 'Ka"os' })).toBe('"Ka\\"os"');
   });
@@ -198,7 +226,7 @@ describe('built-in templates', () => {
       // A name slot has no sensible shipped default (world-specific), so fill it here the way the form will.
       const values = { ...defaultSlotValues(slots) };
       for (const slot of slots) {
-        if (isNameSlotType(slot.type)) values[slot.name] = { stat: 'Health', placeholder: 'Mood', trait: 'Cursed' }[slot.type];
+        if (isNameSlotType(slot.type)) values[slot.name] = { stat: 'Health', placeholder: 'Mood', trait: 'Cursed', entity: 'Mira' }[slot.type];
       }
       expect(validateSlotValues(slots, values), template.name).toEqual({});
     }
@@ -229,7 +257,8 @@ describe('built-in templates', () => {
     switch (slot.type) {
       case 'stat': return slot.name === 'secondStat' ? 'Strength' : 'Health';
       case 'placeholder': return placeholders[0].name;
-      case 'trait': return traits[0].name;
+      case 'trait': return slot.owner === 'persona' ? scarred.name : slot.owner ? wounded.name : traits[0].name;
+      case 'entity': return mira.name;
       default: return undefined;
     }
   };
@@ -350,6 +379,12 @@ describe('built-in templates', () => {
       const values = { base: 'Health', trait: `Scar's "mark"`, bonus: '10' };
       const options = { ...castOptions, persona: { ...rook, traits: [{ name: `Scar's "mark"`, enabled: true, acquired: true }] } };
       expect((await run('builtin-persona-trait-bonus', values, options)).value).toBe(90);
+    });
+
+    it('keeps an entity name and its trait name with quotes inside their strings', async () => {
+      const values = { base: 'Health', entity: `Old "Mira"`, trait: `Mira's wound`, penalty: '15' };
+      const quoted: SandboxEntity = { name: `Old "Mira"`, traits: [{ name: `Mira's wound`, enabled: true, acquired: true }] };
+      expect((await run('builtin-entity-trait-penalty', values, { ...castOptions, entities: [quoted] })).value).toBe(65);
     });
 
     it('subtracts the penalty while the named entity has the trait on, and not when it is out of play', async () => {
