@@ -98,6 +98,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q60 | Follow-ups from the baseline: "here" questions also search the surface's page (ticket 32), guide sections rank above the changelog (34), follow-ups weight the earlier answer's page (35), filler words do not match (36) |
 | Q61 | Questions written in another language get no ticket now and stay out of the bar. The lookup arm on a local model waits until after the search fixes |
 | Q62 | The changelog ranks in a hard tier: for any question that does not ask what's new, every matching guide section ranks above every matching changelog section, with no tuned weight. A what's-new question puts the released changelog sections first, newest first, even without a word match. One ranking serves the Search tab, the help session and the lookup (ticket 34 ruling) |
+| Q63 | A what's-new question leads with the newest release's sections that hold text, in page order; heading-only sections are skipped. A question that names a version leads with that release instead. Guide hits follow, then older-release hits in the changelog tier. Refines Q62 (ticket 34 ruling) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
