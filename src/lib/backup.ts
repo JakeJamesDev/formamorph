@@ -9,8 +9,8 @@
  */
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { indexBackupInWorker, serializeJsonBlobSplit } from '@/lib/jsonFileWorkerUtils';
-import { getAllSaveRecords, putSaveRecord } from '@/components/modals/dbUtils';
+import { indexBackupInWorker, restoreBackupInWorker, serializeJsonBlobSplit } from '@/lib/jsonFileWorkerUtils';
+import { getAllSaveRecords } from '@/components/modals/dbUtils';
 import { APP_VERSION } from '@/lib/version';
 import {
   BACKUP_CATEGORIES,
@@ -21,14 +21,15 @@ import {
   type BackupIndex,
   type IdRecord,
 } from '@/lib/backupIndex';
-import type { SaveRecord } from '@/types';
+import { STORE_TARGETS, applyBackup, type CategoryPlan, type RestoreCounts, type RestoreRequest } from '@/lib/backupRestore';
 
 /** Bumped only if the bundle's shape changes incompatibly; readers warn on a newer value but still try. */
 export const BACKUP_FORMAT = 1;
 
-// Re-exported so importers keep one `@/lib/backup` path; the worker-safe part lives in `backupIndex`.
-export { BACKUP_CATEGORIES, itemLabel, readBackupRecord };
-export type { BackupCategory, BackupEntry, BackupIndex, IdRecord };
+// Re-exported so importers keep one `@/lib/backup` path; the worker-safe parts live in `backupIndex`
+// and `backupRestore`.
+export { BACKUP_CATEGORIES, itemLabel, readBackupRecord, applyBackup };
+export type { BackupCategory, BackupEntry, BackupIndex, IdRecord, CategoryPlan, RestoreCounts, RestoreRequest };
 
 export interface BackupBundle {
   formamorphBackup: number;
@@ -44,30 +45,12 @@ export const CATEGORY_LABELS: Record<BackupCategory, string> = {
   dictionaries: 'Dictionaries',
 };
 
-/** IndexedDB location of each id-keyed store (saves are handled via dbUtils, which owns the v2 schema). */
-const STORE_TARGETS: Record<Exclude<BackupCategory, 'saves'>, { db: string; store: string }> = {
-  worlds: { db: 'worldsDB', store: 'worlds' },
-  entities: { db: 'entitiesDB', store: 'entities' },
-  dictionaries: { db: 'dictionariesDB', store: 'dictionaries' },
-};
-
 async function readStore(target: { db: string; store: string }): Promise<IdRecord[]> {
   const db = await openDatabase(target.db, 1, [{ name: target.store, keyPath: 'id' }]);
   try {
     return await promisifyRequest<IdRecord[]>(
       db.transaction([target.store], 'readonly').objectStore(target.store).getAll(),
     );
-  } finally {
-    db.close();
-  }
-}
-
-async function writeStore(target: { db: string; store: string }, records: IdRecord[]): Promise<void> {
-  if (!records.length) return;
-  const db = await openDatabase(target.db, 1, [{ name: target.store, keyPath: 'id' }]);
-  try {
-    const store = db.transaction([target.store], 'readwrite').objectStore(target.store);
-    await Promise.all(records.map((r) => promisifyRequest(store.put(r))));
   } finally {
     db.close();
   }
@@ -122,13 +105,6 @@ export async function buildBackup(selection: BackupSelection): Promise<BackupBun
 /** Index a backup file for restore in the JSON file worker. Throws on a file that is not a backup. */
 export const readBackupIndex = (file: Blob): Promise<BackupIndex> => indexBackupInWorker(file);
 
-/** Per-category split of a backup against what's already stored: `fresh` ids are new, `conflicts` collide. */
-export interface CategoryPlan {
-  category: BackupCategory;
-  fresh: BackupEntry[];
-  conflicts: BackupEntry[];
-}
-
 /** Pure conflict split — separates incoming items into new vs. already-present by id. */
 export function splitByConflict<T extends { id: string }>(
   incoming: T[],
@@ -154,40 +130,9 @@ export async function analyzeBackup(index: BackupIndex): Promise<CategoryPlan[]>
   );
 }
 
-/** Write records for one category back into its store (saves route through the dbUtils helper). */
-async function restoreCategory(category: BackupCategory, records: IdRecord[]): Promise<void> {
-  if (category === 'saves') {
-    for (const rec of records) await putSaveRecord(rec as unknown as SaveRecord);
-    return;
-  }
-  await writeStore(STORE_TARGETS[category], records);
-}
-
-/**
- * Apply the plans: always write `fresh` records; write `conflicts` only for categories the user chose to
- * overwrite. Each record is read, passed through `transform`, and written before the next is read, so
- * only one is held at a time. Returns per-category counts of what was written vs. skipped.
- */
-export async function applyBackup(
-  index: BackupIndex,
-  plans: CategoryPlan[],
-  overwrite: Record<BackupCategory, boolean>,
-  transform: (category: BackupCategory, record: IdRecord) => Promise<IdRecord> = async (_, r) => r,
-): Promise<Record<BackupCategory, { added: number; overwritten: number; skipped: number }>> {
-  const result = {} as Record<BackupCategory, { added: number; overwritten: number; skipped: number }>;
-  for (const plan of plans) {
-    const conflictsToWrite = overwrite[plan.category] ? plan.conflicts : [];
-    for (const entry of [...plan.fresh, ...conflictsToWrite]) {
-      await restoreCategory(plan.category, [await transform(plan.category, await readBackupRecord(index, entry))]);
-    }
-    result[plan.category] = {
-      added: plan.fresh.length,
-      overwritten: conflictsToWrite.length,
-      skipped: overwrite[plan.category] ? 0 : plan.conflicts.length,
-    };
-  }
-  return result;
-}
+/** Restore the ticked records in the JSON file worker. `onProgress(done)` counts optimized images. */
+export const restoreBackup = (request: RestoreRequest, onProgress?: (done: number) => void): Promise<RestoreCounts> =>
+  restoreBackupInWorker(request, onProgress);
 
 /** The `.json` filename a backup saves under, dated from the bundle. */
 function backupFilename(bundle: BackupBundle): string {

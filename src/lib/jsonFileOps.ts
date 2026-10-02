@@ -3,12 +3,14 @@
  */
 import { measurePublishBytes } from './publishLimits';
 import { indexBackup } from './backupIndex';
+import { restoreBackup, type RestoreRequest } from './backupRestore';
 
 export type JsonFileOp =
   | { op: 'serialize'; value: unknown; space?: number; mime?: string; splitDepth?: number }
   | { op: 'parse'; text: string }
   | { op: 'measure'; value: unknown }
-  | { op: 'indexBackup'; file: Blob };
+  | { op: 'indexBackup'; file: Blob }
+  | { op: 'restoreBackup'; request: RestoreRequest };
 
 /** Values `JSON.stringify` drops from an object and writes as `null` in an array. */
 const isDropped = (value: unknown) =>
@@ -48,8 +50,9 @@ export function jsonParts(value: unknown, depth: number, out: string[] = []): st
   return out;
 }
 
-/** Run one request. Most ops are synchronous; `indexBackup` returns a promise. */
-export function runJsonFileOp(request: JsonFileOp): unknown {
+/** Run one request. Most ops are synchronous; the backup ops return a promise, and `restoreBackup`
+ *  reports image progress through `onProgress`. */
+export function runJsonFileOp(request: JsonFileOp, onProgress?: (progress: unknown) => void): unknown {
   switch (request.op) {
     case 'parse':
       return JSON.parse(request.text);
@@ -57,6 +60,8 @@ export function runJsonFileOp(request: JsonFileOp): unknown {
       return measurePublishBytes(request.value);
     case 'indexBackup':
       return indexBackup(request.file);
+    case 'restoreBackup':
+      return restoreBackup(request.request, onProgress);
     case 'serialize': {
       // A Blob is structured-cloneable, so the serialized bytes come back without ever becoming a JS string
       // on the main thread.

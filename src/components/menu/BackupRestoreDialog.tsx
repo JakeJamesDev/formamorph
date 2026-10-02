@@ -19,7 +19,7 @@ import {
   listBackupItems,
   readBackupIndex,
   analyzeBackup,
-  applyBackup,
+  restoreBackup,
   BACKUP_CATEGORIES,
   CATEGORY_LABELS,
   type BackupCategory,
@@ -27,9 +27,9 @@ import {
   type BackupItem,
   type CategoryPlan,
 } from '@/lib/backup';
-import { applyWorldOptimize, applyEntityImagesOptimize, countWorldImages, type OptimizeMode } from '@/lib/imageOptim';
+import type { OptimizeMode } from '@/lib/imageOptim';
+import { supportsWebp } from '@/lib/imageOptimWorkerClient';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
-import type { World, Entity } from '@/types';
 
 const OPTIMIZE_MODES: { value: OptimizeMode; label: string }[] = [
   { value: 'off', label: 'Keep as-is' },
@@ -281,27 +281,17 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
         return n + written.reduce((m, r) => m + r.images, 0);
       }, 0);
 
-      // Records are read and written one at a time; sequential so the progress ticks stay monotonic.
-      const restore = async (tick: (done: number) => void) => {
-        let done = 0;
-        // Optimize/downscale a world or entity record's images in place before it's written (no-op for 'off').
-        const optimize = async (category: BackupCategory, rec: { id: string; [k: string]: unknown }) => {
-          if (category === 'worlds' && worldOpt !== 'off') {
-            const world = rec.data as World;
-            const data = await applyWorldOptimize(world, worldOpt, (d) => tick(done + d));
-            done += countWorldImages(world);
-            return { ...rec, data, thumbnail: data.worldOverview?.thumbnail ?? (rec as { thumbnail?: string }).thumbnail };
-          }
-          if (category === 'entities' && entityOpt !== 'off') {
-            const data = await applyEntityImagesOptimize(rec.data as Entity, entityOpt, () => tick(++done));
-            return { ...rec, data };
-          }
-          return rec;
-        };
-        await applyBackup(index, ticked, overwrite, optimize);
+      // The worker reads, optimizes and writes each record in turn; the WebP probe needs this thread's DOM.
+      const request = {
+        index,
+        plans: ticked,
+        overwrite,
+        worldMode: worldOpt,
+        entityMode: entityOpt,
+        webpSupported: supportsWebp(),
       };
-      if (totalImages) await withOptimizeProgress(totalImages, restore);
-      else await restore(() => {});
+      if (totalImages) await withOptimizeProgress(totalImages, (tick) => restoreBackup(request, tick));
+      else await restoreBackup(request);
       setStep('restore-done');
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
