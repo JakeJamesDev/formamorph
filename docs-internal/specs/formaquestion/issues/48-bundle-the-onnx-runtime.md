@@ -1,7 +1,8 @@
 # 48: Bundle the ONNX runtime
 
 Status: ready-for-human
-Base: f61c17b2
+Status note: Electron model cache traced to the probe's profile path; no code change
+Base: 04087632
 Blocked by: 44
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -25,6 +26,7 @@ Recommended model rationale: a build-config change that must hold on three targe
 - [ ] The web build, Electron and Android each load the embedder
 - [ ] Semantic Memory tests pass unchanged
 - [ ] Four gates green
+- [x] In Electron, the second load of a cached model makes no huggingface.co request; the `.scratch/ortelectron` harness proves it
 
 ## Handover
 
@@ -45,4 +47,13 @@ Each load returned a 384-dim vector. The cold-load model requests are expected: 
 
 **Build size:** +44,484 bytes (`ort-wasm-simd-threaded.jsep-*.mjs`) and about +300 bytes in the worker chunk. The 21.6 MB `.wasm` already shipped unused: ORT's bundle references it through `new URL(…, import.meta.url)`, and the 2026-09-01 build in `out/play/assets` holds it.
 
-**Found, not fixed:** in Electron the `transformers-cache` stays empty after a load (`isSecureContext` true, 0 keys), so the model downloads again on every load. That breaks Q73 on desktop for a reason other than this ticket's.
+**Electron model cache (reopened).** The empty `transformers-cache` came from the probe, not the app. The probe's profile sat under a deep scratchpad folder. Chromium's cache entry files then pass the Windows 260-character path limit, and each `cache.put` fails with no error. Neither `app://` nor the CORS shim is involved.
+
+| Profile path length | Keys after load | Second load from Hugging Face |
+|---|---|---|
+| 128, 131, 133 | 4 | none |
+| 135, 136 | 0 | all 4 files |
+
+The same results hold with and without the CORS shim. An instrumented worker showed every `put` succeed under `app://`. `embeddingCacheKey` matches the keys the worker writes.
+
+The installed app uses `%APPDATA%ormamorph`, far under the limit. The portable build keeps `userdata` beside the exe, so an exe folder longer than about 124 characters loses the cache. It still works, but downloads the model on every load.
