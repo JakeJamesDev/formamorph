@@ -1,4 +1,5 @@
 # 📜 Prompts
+<!-- keywords: prompt engineering, templates, instructions sent, where is the tab, tab missing, ai behavior, writing style rules -->
 
 The **Prompts** tab in Settings holds the text the app sends to the AI for each request. A **prompt preset** is one full set of that text, with its per-prompt options. The app sends the prompts of the active preset.
 
@@ -7,7 +8,7 @@ The **Prompts** tab shows in **Advanced** mode only. To open it, open **Settings
 > A prompt sends only what it holds. Text you delete is gone from the request, and a chip you delete sends nothing. See [The Chip Editor](#the-chip-editor).
 
 ## How to Make a Prompt Preset
-<!-- keywords: create, new, copy, duplicate, custom, own, system, jailbreak -->
+<!-- keywords: create, new, copy, duplicate, custom, own, system, jailbreak, template, read only, locked, editing blocked, clone, fork, my version -->
 
 The built-in presets are read-only. To change a prompt, make your own preset first.
 
@@ -19,7 +20,7 @@ The built-in presets are read-only. To change a prompt, make your own preset fir
 The new preset is a copy of the preset that was active, and it is now the active preset. To copy a built-in preset in one step, select **Duplicate & Edit** on its read-only notice. The copy is named "*preset name* (copy)".
 
 ## How to Edit a Prompt
-<!-- keywords: change, rewrite, customize, system, instructions, tweak, modify -->
+<!-- keywords: change, rewrite, customize, system, instructions, tweak, modify, writing style, tone, longer responses, ai behavior, rules, restore shipped text, preview result, second person, narrator personality -->
 
 1. Select your own preset in the **Preset** list.
 2. In the list of prompts, select the prompt, such as **Choices**.
@@ -30,7 +31,7 @@ The new preset is a copy of the preset that was active, and it is now the active
 The app saves each change at once. To go back to the shipped text, select **Reset *name* Prompt** under the editor, then confirm.
 
 ## How to Route a Prompt to Another Endpoint
-<!-- keywords: different model, second model, small model, faster, separate api -->
+<!-- keywords: different model, second model, small model, faster, separate api, two models, per task, cheaper, multiple backends, mix providers, assign, split work, reachable, dual setup -->
 
 You can send one prompt to a different text endpoint, such as a small fast model for **Choices**. First add the endpoint as a preset on the **Endpoints** tab. See [Text](Settings#text).
 
@@ -42,7 +43,7 @@ You can send one prompt to a different text endpoint, such as a small fast model
 To send the prompt to the active endpoint again, select **Use Active Endpoint**. A prompt route stays on this device. It is never in an exported or published preset.
 
 ## How to Share a Prompt Preset
-<!-- keywords: export, import, copy code, send, file, json, friend -->
+<!-- keywords: export, import, copy code, send, file, json, friend, paste, transfer, give, load someone elses, string, another device -->
 
 1. Select the preset in the **Preset** list.
 2. Select the **Export** button.
@@ -58,7 +59,7 @@ To add a preset that someone shared:
 See [Sharing a Preset](#sharing-a-preset) for what a shared preset holds.
 
 ## How to Publish a Prompt Preset
-<!-- keywords: upload, community, share online, post -->
+<!-- keywords: upload, community, share online, post, public, listing, workshop, submit, models required, tags, publish blocked -->
 
 You must log in to Community Creations to publish. See [Login and Register](Community-Creations#login-and-register).
 
@@ -71,7 +72,7 @@ You must log in to Community Creations to publish. See [Login and Register](Comm
 Without a model in **Models**, **Publish** opens **Add a Model**. Select **Open Overview** to go to the field.
 
 ## How to Use a Preset for One World
-<!-- keywords: different prompts, specific, override -->
+<!-- keywords: different prompts, specific, override, per world, only this scenario, assign, individual, folder wide, just one game, exception, global again -->
 
 1. On the main menu, select the world.
 2. In the world dialog, open the **Prompts** list.
@@ -84,6 +85,7 @@ While you play a world with its own preset, the **Prompts** tab edits that world
 ---
 
 ## Prompt Presets
+<!-- keywords: xml, experimental, which to choose, difference between, rename, delete, reset all, built in list, what is included, script warning -->
 
 The **Preset** list holds four built-in presets, then your own presets.
 
@@ -146,6 +148,7 @@ The **Import Preset** dialog shows warnings before you import. A preset with a S
 | **Models** | The models the preset works well with. Publishing needs at least one, because players filter prompts by model. |
 
 ## The Prompts
+<!-- keywords: what each does, pipeline, missing from list, not showing, director, storyboard, diary, scene tags, order of requests, which runs when -->
 
 The list on the left groups the prompts by the job they do. A prompt shows only while its feature is on. When you turn a feature off, its prompt is not in the list, and the app sends nothing for it.
 
@@ -170,6 +173,7 @@ The list on the left groups the prompts by the job they do. A prompt shows only 
 The settings in the last column are in Settings → **Output**, and **Enable Image Generation** is in Settings → **Endpoints** → **Image**. See [Settings](Settings). A line above each editor repeats what the prompt does.
 
 ## The Surfaces of a Prompt
+<!-- keywords: anatomy, per prompt temperature, max length, history length, how many turns, reasoning budget, recap message, full request map, attachments option, thinking effort -->
 
 Select a prompt to open its **Anatomy**. The rows under the prompt open its other surfaces. On a narrow screen, one list at the top holds the prompts and the surfaces.
 
@@ -233,6 +237,7 @@ A field shows only while its feature can send it.
 **Reasoning Budget** needs **Max Output Tokens** on the prompt's endpoint. Without it, the slider is off, and a note tells you to set it. A model that always reasons keeps the **Native Reasoning** checkbox on, with a note.
 
 ## The Chip Editor
+<!-- keywords: variables, macros, template tags, insert stats, curly braces, dynamic values, pill, pop out, blocks, fill in -->
 
 Each prompt editor is a chip editor. A **chip** is a box in the text. When the app sends the request, it puts a value in each chip, such as the world description, the stats or your action.
 
@@ -244,6 +249,7 @@ Each prompt editor is a chip editor. A **chip** is a box in the text. When the a
 The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the editor in a large window. For the chips that carry the persona and names, see [Personas for Authors](Persona-Authoring).
 
 ## World Prompts and the Diff Viewer
+<!-- keywords: custom prompt notice, compare, green and red, what changed, authors instructions, ignore, use mine instead, overrides my preset, raw, side by side -->
 
 A world can bring its own **Narration**, **Choices** or **Stats** prompt. An author writes them under **Custom Prompts** in the World Editor's **Overview** tab. See [World Editor Overview](World-Editor-Overview). A world prompt takes the place of your preset's prompt for that pass.
 

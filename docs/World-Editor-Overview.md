@@ -1,11 +1,12 @@
 # 🌍 World Editor: Overview
+<!-- keywords: general info, metadata, main tab, world properties, basic details, two columns -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
 The **Overview** tab holds the world's own details: its name, its library card, and the text the AI reads on every turn. It has two columns. On mobile, the left column shows first. The **?** button at the top of the tab has a short version of this page.
 
 ## How to Set the World's Images
-<!-- keywords: thumbnail, cover, picture, banner, art, upload, icon -->
+<!-- keywords: thumbnail, cover, picture, banner, art, upload, icon, photo, logo, card artwork, drag and drop, illustration, paste a url, ai made artwork, preview graphic -->
 
 1. Open the **Overview** tab.
 2. Under **Thumbnail**, select the frame (**Click to upload image**) and pick a file. You can also drop a file on the frame.
@@ -16,13 +17,14 @@ The **Overview** tab holds the world's own details: its name, its library card, 
 Each location's background is on its **Media** tab. See [World Editor: Locations](World-Editor-Locations#media). Each entity's image is on its **Profile** tab.
 
 ## How to Add Background Music
-<!-- keywords: sound, audio, song, mp3, soundtrack, ambient, bgm -->
+<!-- keywords: sound, audio, song, mp3, soundtrack, ambient, bgm, tune, playlist, ost, wav ogg, melody, jukebox -->
 
 1. Open the **Overview** tab.
 2. Under **Background Music**, select **Add Sound** and pick an audio file.
 3. Select **Save** at the bottom of the editor.
 
 ## The left column: how your world is listed
+<!-- keywords: rename my world, title, creator credit, byline, genre labels, categories, 3d body model, vrm glb, restrict who player is, default hero -->
 
 | Field | What it does |
 |---|---|
@@ -37,6 +39,7 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 | **Background Music** | The track the world plays. Select **Add Sound** to pick a file. **Remove sound** clears it. |
 
 ## The right column: what you write
+<!-- keywords: blurb, synopsis, system prompt, setting lore, welcome text, instructions page, rules for narrator, markdown intro, override narration prompt -->
 
 | Field | What it does |
 |---|---|
@@ -46,6 +49,7 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 | **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Openings** item holds the world's [Openings](World-Editor-Openings). |
 
 ## Upload or link
+<!-- keywords: hotlink, external hosting, imgur, discord image broken, image not loading, dead url, shrink file size, embed vs host, works without internet -->
 
 Every image field in the World Editor takes an uploaded file or a web address. Paste the address into the **Or paste an image URL** box.
 

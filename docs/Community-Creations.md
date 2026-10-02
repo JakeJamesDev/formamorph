@@ -1,11 +1,12 @@
 # 🌐 Community Creations
+<!-- keywords: user made content, mod hub, marketplace, is signup needed, shared creations hub, fan made stuff -->
 
 Community Creations is where players share what they make. You can download worlds, entities, dictionaries, avatars and prompt presets, like them, and comment on them. With an account, you can publish your own work and enter contests.
 
 > Browsing and downloading need no account. Comments, follows, Reports and publishing need you to log in.
 
 ## How to Download a World
-<!-- keywords: get, find, browse, install, community, workshop, online, add to library -->
+<!-- keywords: get, find, browse, install, community, workshop, online, add to library, more scenarios, other players worlds, new stories to play, grab a game, get mods, player made adventures, fetch from server -->
 
 1. On the main menu, select **Community Creations**.
 2. If the **Adult Content Ahead** dialog opens, read it and select **Accept**.
@@ -16,7 +17,7 @@ Community Creations is where players share what they make. You can download worl
 The world goes into your library. To play it, see [How to Start a Game](Starting-a-Game#how-to-start-a-game). To download from the card, select the cloud button on its image.
 
 ## How to Publish a World
-<!-- keywords: share, upload, post, put online, community page, release, make public -->
+<!-- keywords: share, upload, post, put online, community page, release, make public, submit my world, let others play it, go live, list my scenario, distribute, contribute my creation, show it to everyone -->
 
 1. Log in. See [Login and Register](#login-and-register).
 2. On the main menu, open the library's **Worlds** tab and select your world. The world dialog opens.
@@ -28,7 +29,7 @@ The world goes into your library. To play it, see [How to Start a Game](Starting
 The listing takes its name, description, image and tags from the world itself. Set them in the World Editor before you publish. See [What a Listing Shows](#what-a-listing-shows).
 
 ## How to Update a Listing
-<!-- keywords: new version, republish, upload again, change, edit published world, push, changelog -->
+<!-- keywords: new version, republish, upload again, change, edit published world, push, changelog, patch, replace my upload, overwrite old upload, revise, fix after publishing -->
 
 1. Open the item's publish dialog. For a world, select **Publish World** in the world dialog. For other kinds, see [Where to Publish Each Kind](#where-to-publish-each-kind).
 2. Under **Or update existing world:**, select your listing.
@@ -38,7 +39,7 @@ The listing takes its name, description, image and tags from the world itself. S
 The listing gets your current version. Players who downloaded it see that an update is available. To add an entry to the [Listing Changelog](#the-listing-changelog) without a new version, open your listing and select **Add Entry**.
 
 ## How to Enter a Contest
-<!-- keywords: competition, jam, event, submit, join, compete -->
+<!-- keywords: competition, jam, event, submit, join, compete, tournament, participate, take part, challenge, enroll, win prizes, pull out, swap my entry -->
 
 1. While a contest runs, start [How to Publish a World](#how-to-publish-a-world).
 2. In the **Publish World** dialog, find the contest card. Select **Contest Rules** to read the rules.
@@ -48,7 +49,7 @@ The listing gets your current version. Players who downloaded it see that an upd
 You can enter one world per contest. Only a world can enter. To enter a world you already published, select it under **Or update existing world:** and turn on the switch. To enter a different world, select **Withdraw Entry** on the contest card first.
 
 ## How to Report a Listing
-<!-- keywords: flag, abuse, inappropriate, complain, offensive, rule break, moderation -->
+<!-- keywords: flag, abuse, inappropriate, complain, offensive, rule break, moderation, plagiarism, copied my world, tell the admins, bad content, troll, harasser, stolen work, notify staff -->
 
 1. Log in.
 2. Open the listing's details window.
@@ -60,7 +61,7 @@ You can enter one world per contest. Only a world can enter. To enter a world yo
 To report a comment, select its **Report comment** button. To report a person, open their profile and select **Report Profile**.
 
 ## How to Delete Your Account
-<!-- keywords: remove, close, erase, cancel, deactivate, my data, profile, gdpr -->
+<!-- keywords: remove, close, erase, cancel, deactivate, my data, profile, gdpr, unregister, terminate membership, wipe my info, leave for good, right to erasure, undo deletion, privacy request -->
 
 1. On the main menu, select the round **User Profile** button at the bottom left.
 2. Select **Delete Account**.
@@ -71,7 +72,7 @@ To report a comment, select its **Report comment** button. To report a person, o
 You are logged out immediately. The account is erased seven days later. To cancel, log in before that day. See [Account Deletion](#account-deletion).
 
 ## How to Report a Bug or Suggest Something
-<!-- keywords: feedback, issue, problem, error, broken, crash, idea, feature request, contact, developer -->
+<!-- keywords: feedback, issue, problem, error, broken, crash, idea, feature request, contact, developer, glitch, support ticket, tell the devs, wishlist, send a complaint, propose improvement, get support, something went wrong -->
 
 1. Log in.
 2. On the main menu, select the round **Feedback** button at the bottom left.
@@ -83,6 +84,7 @@ You are logged out immediately. The account is erased seven days later. To cance
 In a game, **Send Feedback** in the menu opens the form directly. See [Bugs and Suggestions](#bugs-and-suggestions).
 
 ## Opening Community Creations
+<!-- keywords: age check, nsfw warning, 18 plus, age verification, mature popup, age gate, keeps asking my age, disclaimer, logged out after declining -->
 
 Select **Community Creations** on the main menu. The window opens on the **Worlds** tab. The **Back** button closes it.
 
@@ -98,6 +100,7 @@ The **Adult Content Ahead** dialog opens first, every time until you accept it.
 The dialog has no close button. After **Decline**, the app asks again the next time you open Community Creations. It also opens before **Login**, and again when the warning's text changes.
 
 ## Browsing
+<!-- keywords: block a creator, blacklist tags, mute an uploader, most popular, top rated, newest first, genre categories, look up by name, unhide, version history of world -->
 
 ### The Tabs
 
@@ -166,6 +169,7 @@ The Listing Changelog is the author's update history for a listing. It lists ent
 On your own listing, select **Add Entry**. Fill in **Title**, **Date** and **What Changed**, and select **Add Entry**. Set the date back to log an earlier update. Each entry has edit and delete buttons. A Listing Changelog holds 100 entries.
 
 ## Downloading and Updating
+<!-- keywords: upgrade to latest, outdated copy, overwrite my edits, keep both versions, where it ends up, redownload, colored outline on card, website saves a file -->
 
 ### What a Download Does
 
@@ -196,6 +200,7 @@ When the world has linked content, **Update This World** opens next. See [Update
 For an entity, a dictionary or a prompt preset you edited, the app asks first. Downloading again replaces your copy, and your changes are lost.
 
 ## Likes
+<!-- keywords: upvote, favorite, thumbs up, rate a world, star rating, vote for entry, take back my vote, number shows a dash, kudos -->
 
 Select the heart on a card or in the details window to like a listing. Select it again to take the Like back. **Likes** sorts by them, and the **Liked** filter finds what you liked.
 
@@ -214,6 +219,7 @@ On formamorph.ai, the heart asks you to log in.
 A contest entry shows its count as **—** until staff announce the winners. The tooltip says *You'll see likes after staff announce the winners*. The heart still likes and unlikes the entry. The author and staff see the number.
 
 ## Comments
+<!-- keywords: write a review, discussion thread, reply to someone, message the creator, remove my post, chat under world, length limit -->
 
 The details window's **Comments** view lists the newest comment first.
 
@@ -227,6 +233,7 @@ The details window's **Comments** view lists the newest comment first.
 Comments have no replies. **Load more** shows older comments. You must log in to comment. On formamorph.ai, comments are read-only.
 
 ## Profiles and Following
+<!-- keywords: subscribe to creator, alerts for uploads, watch a user, user page, everything by one person, stop subscribing, who i subscribe to, fans count -->
 
 ### An Author's Profile
 
@@ -241,6 +248,7 @@ The **Notifications** tab of your **User Profile** dialog is the follow feed. It
 **Following** lists the people you follow, with an unfollow button for each.
 
 ## Publishing
+<!-- keywords: unpublish, take down my upload, upload size cap, too big to upload, tos agreement, share a character, wrong title shown, remove from store, discord picture warning -->
 
 ### Where to Publish Each Kind
 
@@ -305,6 +313,7 @@ Select the trash button on your own card in Community Creations. Then select **C
 Deleting a world from your library does not delete its listing.
 
 ## Contests
+<!-- keywords: leaderboard, final standings, deadline, voting period, trophy, medal, event popup, hide event notice, ranking, who came first -->
 
 The **Contest** tab lists the entries of one contest. When several contests exist, pick one in the **Contest** menu. **Rules** opens the contest's rules.
 
@@ -340,6 +349,7 @@ Select **Got It** to close it. A contest poster also has **View Entries**, or **
 The main menu also shows a banner for each running event. **Dismiss** shrinks it to a chip in the top bar. The banner comes back when the event ends.
 
 ## Reports and Outcomes
+<!-- keywords: verdict, anonymous complaint, who sees it, was it handled, moderator decision, takedown result, piracy, flag categories -->
 
 A Report tells staff that a listing, a comment or a profile breaks the rules. You must log in to send one. You can't report your own work.
 
@@ -357,6 +367,7 @@ Only staff see a Report. The author never learns who sent it. You can send one R
 Each Report ends in one Outcome: staff took action, or staff dismissed it. A message in the **Messages** tab of your **User Profile** tells you the Outcome. It can carry a note from staff. It doesn't say which action staff took.
 
 ## Your Account
+<!-- keywords: sign in, sign up, signup, lost my password, new user, inbox, unread counter, join the site, credentials, data policy -->
 
 ### Login and Register
 
@@ -412,6 +423,7 @@ To cancel, log in before that date. The **Deletion Cancelled** notice opens and 
 A suspended account can't be deleted from here. Select **Open Feedback** to ask the team.
 
 ## Bugs and Suggestions
+<!-- keywords: ticket status, track my ticket, known issues, roadmap, upvote an idea, dev response, planned features, what data is sent -->
 
 Select the round **Feedback** button at the bottom left of the main menu. It shows when you are logged in. The steps to send one are in [How to Report a Bug or Suggest Something](#how-to-report-a-bug-or-suggest-something).
 

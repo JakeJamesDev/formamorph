@@ -1,17 +1,19 @@
 # 📊 World Editor: Stats
+<!-- keywords: gauges, meters, hit points, mana, gold, score, resource bars, numbers -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
 Stats are the numbers that describe your player: health, coin, reputation, or anything your world needs. Each stat has a value between a **Min** and a **Max**. The AI reads your stats on every turn.
 
 ## Why it exists
+<!-- keywords: point of meters, do numbers affect story, narrator ignores values, consequences, low energy effects, narrator lists numbers -->
 
 Prose alone changes from turn to turn. A stat is a fact the AI must write around. It can't narrate a sprint across a rooftop while your Stamina reads 4/100, because the number contradicts it.
 
 The narrator's prompt tells it to let stats change how an action turns out. A low stat shows as effort and cost. A high stat shows as ease. The prompt also tells the narrator not to list the stats or report their changes. A separate step changes the numbers.
 
 ## How to Add a Stat
-<!-- keywords: attribute, health, hp, meter, number, bar, create, new, variable -->
+<!-- keywords: attribute, health, hp, meter, number, bar, create, new, variable, gauge, mana, counter, currency, gold, score, hunger, resource, skill level, track money -->
 
 1. Open the **Stats** tab.
 2. Type the stat's name in the **Search or add new stats** box.
@@ -23,14 +25,14 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 > 💡 With the box empty, the new stat is named "New Stat". A new stat starts at 0 on a 0–100 range, with three descriptors: low, medium and high.
 
 ## How to Make a Stat a Percentage
-<!-- keywords: percent, 0 to 100, ratio -->
+<!-- keywords: percent, 0 to 100, ratio, show as %, fraction, out of hundred, completion meter, locked range -->
 
 1. Select the stat.
 2. On the **Details** tab, set **Type** to **Percentage**.
 3. Set **Initial Value (%)**. **Min** and **Max** lock at 0 and 100.
 
 ## How to Hide a Stat
-<!-- keywords: secret, invisible, hidden from player, ai only, conceal -->
+<!-- keywords: secret, invisible, hidden from player, ai only, conceal, behind the scenes, private, dont show bar, internal counter, gm only, background tracker, remove from sidebar -->
 
 **Advanced mode only.**
 
@@ -40,7 +42,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 The player no longer sees the stat. The AI still reads it, and its Regen and code still run.
 
 ## How to Add a Stat Descriptor
-<!-- keywords: label, band, threshold, level, word, text for value, range -->
+<!-- keywords: label, band, threshold, level, word, text for value, range, status, tier, stage, bracket, adjective, name for low health, state names, milestone -->
 
 **Advanced mode only.**
 
@@ -50,6 +52,7 @@ The player no longer sees the stat. The AI still reads it, and its Regen and cod
 4. Select the **+** button (**Add Descriptor**).
 
 ## What the AI sees
+<!-- keywords: what gets sent, ai sees exact number, send only words, too many meters, context budget, token cost, hide numbers from ai -->
 
 Each stat's **Name** is always sent. The Stats chip in your [prompt](Prompts#the-chip-editor) decides what is sent with it:
 
@@ -64,6 +67,7 @@ Each piece is a checkbox on the chip. At least one stays checked.
 > ⚠️ **Every active stat is sent on every turn.** Stats use your context budget all the time. Three stats that matter are better than twelve that don't.
 
 ## The panel
+<!-- keywords: code tab missing, cant find descriptors, no tabs showing, three tabs -->
 
 Select a stat to open its panel. In Advanced mode the panel has three tabs.
 
@@ -76,6 +80,7 @@ Select a stat to open its panel. In Advanced mode the panel has three tabs.
 In Simple mode the panel shows the basic fields with no tabs.
 
 ## The fields
+<!-- keywords: minimum maximum, starting amount, regeneration, heal over time, decay per hour, hunger drain, avatar body changes, stop ai raising, freeze value, off until unlocked -->
 
 | Field | What it does |
 |---|---|
@@ -110,6 +115,7 @@ In Simple mode the panel shows the basic fields with no tabs.
 A percentage stat shows only the first two, because its Max is always 100.
 
 ## Stat Descriptors
+<!-- keywords: no status red, gap in coverage, which band wins, raw or percent, scales with max, above top tier, label missing, coverage bar -->
 
 A descriptor turns a number into a word, such as `Winded` or `Exhausted`. The AI gets that word when the chip's **Descriptor** piece is on. A descriptor takes placeholder chips, so a band can name the rolled town or the rolled rival.
 
@@ -134,6 +140,7 @@ When you switch, your numbers convert, so no band moves. The choice only changes
 **Advanced mode only.** Each descriptor row has a pin button. A pin keeps a [placeholder](World-Editor-Placeholders) at one value while the stat is in that band.
 
 ## Dynamic Value Calculation
+<!-- keywords: javascript, script, formula, derived from another, automatic math, custom logic, programming, ai change overwritten, code box, computed -->
 
 The **Code** tab holds two code boxes. Each box takes JavaScript, and each has its own **Test Code** and **Templates** buttons. **Templates** opens a list of code shapes to insert.
 

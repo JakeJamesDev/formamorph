@@ -1,4 +1,5 @@
 # 🧬 Formamorph Wiki
+<!-- keywords: what is this app, adults only, age restriction, nsfw content, privacy policy, try in browser, about the project -->
 
 > A browser-based, AI-driven text RPG framework — **play**, **create**, and **share** interactive worlds powered by your own LLM.
 
@@ -64,6 +65,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 📝 **[Changelog](Changelog)** | What's changed, release by release |
 
 ## 🚀 Getting started
+<!-- keywords: run from source, build it myself, developer setup, clone repository, compile -->
 
 Prerequisites: **Node.js 20.19+** and npm.
 
@@ -75,6 +77,7 @@ npm run dev      # serves at http://localhost:5173
 Open the app, go to **Settings**, and point it at your AI endpoint. Full setup, configuration, and the optional VRAM monitor are documented in the [repository README](https://github.com/JakeJamesDev/formamorph#readme).
 
 ## 🧱 Tech stack
+<!-- keywords: built with, framework, technology used, programming language, open source code -->
 
 **React 18** · **TypeScript** (strict) · **Vite 5** · **Tailwind CSS** + **shadcn/ui** (Radix) · **three.js** + **@pixiv/three-vrm** · **Kokoro** (TTS) · **QuickJS** (sandboxed stat code)
 

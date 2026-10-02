@@ -126,13 +126,29 @@ export function indexProblems(pages: DocsPages, indexPage: string): string[] {
     .map((page) => `${indexPage} does not list ${page}`);
 }
 
-/** Guide-page "How to…" headings whose next non-blank line is not a keyword line with words in it. */
+/**
+ * Guide-page "How to…" headings whose next non-blank line is not a keyword line with words in it, and keyword
+ * lines that are not the first line under a heading or hold an empty or repeated phrase.
+ */
 export function keywordLineProblems(pages: DocsPages): string[] {
   const problems: string[] = [];
   for (const [page, markdown] of Object.entries(pages)) {
     if (NON_GUIDE_PAGES.includes(page)) continue;
     const lines = markdown.split(/\r?\n/);
-    for (const heading of docHeadings(markdown)) {
+    const headings = docHeadings(markdown);
+    const headingLines = new Set(headings.map((heading) => heading.line));
+    forEachProseLine(markdown, (source, line) => {
+      const list = KEYWORD_LINE.exec(source)?.[1];
+      if (list === undefined) return;
+      let above = line - 1;
+      while (above >= 0 && lines[above].trim() === '') above--;
+      if (!headingLines.has(above)) problems.push(`${page}:${line + 1} keyword line is not the first line under a heading`);
+      const phrases = list.split(',').map((phrase) => phrase.trim().toLowerCase());
+      if (phrases.includes('')) problems.push(`${page}:${line + 1} keyword line has an empty phrase`);
+      const repeated = phrases.find((phrase, i) => phrase !== '' && phrases.indexOf(phrase) !== i);
+      if (repeated !== undefined) problems.push(`${page}:${line + 1} keyword line repeats "${repeated}"`);
+    });
+    for (const heading of headings) {
       const text = plainText(heading.text);
       if (!isHowToHeading(text)) continue;
       const next = lines.slice(heading.line + 1).find((line) => line.trim() !== '') ?? '';

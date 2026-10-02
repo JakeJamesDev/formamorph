@@ -1,11 +1,12 @@
 # 📚 Library
+<!-- keywords: home screen, my collection, world list, dashboard, start screen, installed content -->
 
 The library is the main menu's board of everything on this device: your worlds, entities, dictionaries and avatars. Each one is a tile. You can size tiles, move them and put them in Groups.
 
 > A world's own copy of a library entity or dictionary is a linked copy. See [Linked Content](LinkedContent).
 
 ## How to Import a World
-<!-- keywords: load, open, add, bring in, json file, upload, install, file, downloaded -->
+<!-- keywords: load, open, add, bring in, json file, upload, install, file, downloaded, scenario, adventure file, story pack, from discord, received from friend, sideload content, custom game -->
 
 1. On the **Worlds** tab, select **Import World**.
 2. Select one or more world `.json` files.
@@ -14,7 +15,7 @@ The library is the main menu's board of everything on this device: your worlds, 
 One file opens its world dialog. More files add their tiles. If the world brings entities or dictionaries you do not have, see [Importing a World File](LinkedContent#importing-a-world-file).
 
 ## How to Export a World
-<!-- keywords: save to file, download, back up, json, share file, copy, send to friend -->
+<!-- keywords: save to file, download, back up, json, share file, copy, send to friend, scenario file, give to someone, embed images, smaller filesize, transfer to other pc, extract, distribute -->
 
 1. On the **Worlds** tab, select the world.
 2. Select **Export World**.
@@ -24,7 +25,7 @@ One file opens its world dialog. More files add their tiles. If the world brings
 You get a `.json` file with the world's name.
 
 ## How to Import an Entity
-<!-- keywords: character card, png card, chub, load character, add character, upload -->
+<!-- keywords: character card, png card, chub, load character, add character, upload, tavern card, npc file, bot, janitorai, v2 spec, companion, risu -->
 
 1. On the **Entities** tab, select **Import Entity**.
 2. Select one or more files. These work:
@@ -35,7 +36,7 @@ You get a `.json` file with the world's name.
 A lorebook inside a SillyTavern card also comes in, as a dictionary. If you import one file that names worlds, a review opens. See [Importing an Entity or Dictionary File](LinkedContent#importing-an-entity-or-dictionary-file).
 
 ## How to Import a Dictionary
-<!-- keywords: lorebook, sillytavern, load, add, upload, json -->
+<!-- keywords: lorebook, sillytavern, load, add, upload, json, world info, worldbook, lore file, codex, knowledge base, encyclopedia -->
 
 1. On the **Dictionaries** tab, select **Import Dictionary**.
 2. Select one or more `.json` files. A Formamorph dictionary and a SillyTavern World Info lorebook both work.
@@ -43,7 +44,7 @@ A lorebook inside a SillyTavern card also comes in, as a dictionary. If you impo
 If you import one file that names worlds, a review opens. See [Importing an Entity or Dictionary File](LinkedContent#importing-an-entity-or-dictionary-file).
 
 ## How to Export an Entity or a Dictionary
-<!-- keywords: character card, lorebook, save to file, download, share, webp, json -->
+<!-- keywords: character card, lorebook, save to file, download, share, webp, json, send to friend, extract, bot, portrait image, single item backup, lore pack -->
 
 1. Select the tile. Its editor opens.
 2. Select **Export** at the bottom of the editor.
@@ -53,7 +54,7 @@ An entity exports as a `.webp` card: its portrait with the entity's data inside.
 To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-import-an-avatar) and [How to Export an Avatar](Avatars#how-to-export-an-avatar).
 
 ## How to Make a Group
-<!-- keywords: folder, create folder, organize, sort, collection, category, new folder -->
+<!-- keywords: folder, create folder, organize, sort, collection, category, new folder, stack, bundle, tidy up, declutter, directory, drawer, drag onto another, combine -->
 
 1. Right-click a tile. On a touch screen, press and hold it.
 2. Select **Create New Group…**.
@@ -64,7 +65,7 @@ The Group goes where the tile was, at the same size, and the tile goes into it.
 You can also drag one tile onto the near half of another tile and hold it there. Release it, and both tiles go into a new Group named *New Group*.
 
 ## How to Add a Tile to a Group
-<!-- keywords: folder, put in, move into, organize, sort, collection -->
+<!-- keywords: folder, put in, move into, organize, sort, collection, drop onto, file away, assign, include in, place inside -->
 
 1. Right-click the tile.
 2. Under **Add To Group**, select a Group. Only three Groups show there. To see all of them, select **Add To Group…** and find the Group by name.
@@ -72,7 +73,7 @@ You can also drag one tile onto the near half of another tile and hold it there.
 You can also drag the tile onto the near half of a Group's tile, hold it, and release it.
 
 ## How to Remove a Tile from a Group
-<!-- keywords: folder, take out, move out, ungroup -->
+<!-- keywords: folder, take out, move out, ungroup, pull out, back to main, separate, unassign, eject -->
 
 1. Open the Group.
 2. Right-click the tile, then select **Remove From Group**.
@@ -80,7 +81,7 @@ You can also drag the tile onto the near half of a Group's tile, hold it, and re
 The tile goes to the end of the board. Formamorph removes a Group that has no tiles left.
 
 ## How to Move a Tile
-<!-- keywords: drag, reorder, rearrange, sort, organize, swap, position -->
+<!-- keywords: drag, reorder, rearrange, sort, organize, swap, position, change order, arrange, shuffle, relocate, red ring, put first, icon placement -->
 
 1. Drag the tile. On a touch screen, press and hold it first.
 2. Hold it over the far half of another tile. The tiles show where the tile will go.
@@ -89,7 +90,7 @@ The tile goes to the end of the board. Formamorph removes a Group that has no ti
 A tile that shares a row or a column with the target pushes the tiles between them. Otherwise the two tiles swap. A red ring means the tile cannot go there.
 
 ## How to Change a Tile's Size
-<!-- keywords: bigger, smaller, resize, large, small, medium, grid -->
+<!-- keywords: bigger, smaller, resize, large, small, medium, grid, enlarge, shrink, thumbnail, icon, compact, name hidden, scale -->
 
 1. Right-click the tile.
 2. Under **Tile Size**, select **Small**, **Medium** or **Large**.
@@ -97,14 +98,14 @@ A tile that shares a row or a column with the target pushes the tiles between th
 A **Small** tile hides its name. Point to it to see the name. **Tile Size** shows only in the grid view.
 
 ## How to Rename a Group
-<!-- keywords: folder, name, change name, title -->
+<!-- keywords: folder, name, change name, title, relabel, label, retitle, call it something -->
 
 1. Select the Group to open it.
 2. Select its name at the top, and type a new one.
 3. Press Enter to keep the name, or Escape to cancel.
 
 ## How to Delete a Group
-<!-- keywords: folder, remove, ungroup, get rid of -->
+<!-- keywords: folder, remove, ungroup, get rid of, disband, dissolve, erase, break apart, trash, lose contents -->
 
 1. Right-click the Group.
 2. Select **Delete Group**.
@@ -114,6 +115,7 @@ The Group's tiles go back to the board. In the grid view, each tile goes to the 
 ---
 
 ## The Library Tabs
+<!-- keywords: categories, sections, create new world, new button, personas switch, bottom bar, switch between lists -->
 
 | Tab | What it holds | Select a tile to… |
 |---|---|---|
@@ -129,6 +131,7 @@ Each tab has a **New** button, such as **New World**, and an **Import** button, 
 The **Entities** tab also has an **All** and **Personas** switch. **Personas** shows only the entities you can play as. See [Personas](Personas). While **Personas** is on, you cannot move tiles, change their size or change Groups.
 
 ## The Board
+<!-- keywords: list view, alphabetical, filter, find a world, layout, compact view, order lost -->
 
 **Grid view** and **Detailed view** are the two buttons at the top right. Each tab keeps its own view.
 
@@ -140,6 +143,7 @@ The board keeps the place of each tile on this device. A narrow screen and a wid
 The board has no sort or search.
 
 ## Groups
+<!-- keywords: folders, subfolder, nested, open folder, zoom out, preset for folder, how many inside -->
 
 A Group holds tiles of one tab. Its tile shows a small image of its board, and a count of its tiles.
 
@@ -155,6 +159,7 @@ A Group holds tiles of one tab. Its tile shows a small image of its board, and a
 **Create New Group** asks for a **Group Name**. Each Group needs its own name. **Create Group** makes the Group and adds the tile to it.
 
 ## The Card Menu
+<!-- keywords: context menu, long press, delete world, uninstall, trash, erase character, options popup, thumbnail -->
 
 Right-click a tile, or press and hold it on a touch screen. With the keyboard, press Shift+F10.
 
@@ -184,6 +189,7 @@ World actions such as **Edit World** and **Publish World** are in the world dial
 - When worlds use a deleted entity or dictionary, see [Removing a Library Item](LinkedContent#removing-a-library-item).
 
 ## The Library Editors
+<!-- keywords: edit npc, create character, edit lorebook, discard edits, close without saving, standalone, make new lore -->
 
 **New Entity** and an entity tile open the entity editor. **New Dictionary** and a dictionary tile open the dictionary editor. Their tabs are the same as in the World Editor. See [In the library](World-Editor-Entities#in-the-library) for entities and [In the library](World-Editor-Dictionary#in-the-library) for dictionaries.
 

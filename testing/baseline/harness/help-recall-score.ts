@@ -1,6 +1,4 @@
 // The recall score of the help search probes, and the pure parts of the approaches `help-recall.cli.ts` compares.
-import type { DocsPages } from '@/lib/docs/docsChecks';
-import { docHeadings } from '@/lib/docs/headingAnchors';
 import { HELP_SECTION_LIMIT } from '@/lib/formaquestion/helpSession';
 
 /** The id of the whole section: part N of a split section counts as that section. */
@@ -100,30 +98,4 @@ export function chunksOf(markdown: string, limit: number): string[] {
   }
   if (current) chunks.push(current);
   return chunks;
-}
-
-/**
- * The pages with a keyword line added under each heading the map names, by section id. `unknown` lists the
- * ids that name no heading.
- */
-export function withKeywords(pages: DocsPages, map: Readonly<Record<string, readonly string[]>>): { pages: DocsPages; unknown: string[] } {
-  const unknown: string[] = [];
-  const added = new Map<string, Map<number, string>>();
-  for (const [id, phrases] of Object.entries(map)) {
-    if (phrases.length === 0) continue;
-    const [page, anchor] = id.split('#');
-    const line = pages[page] === undefined ? undefined : docHeadings(pages[page]).find((heading) => heading.anchor === anchor)?.line;
-    if (line === undefined) {
-      unknown.push(id);
-      continue;
-    }
-    if (!added.has(page)) added.set(page, new Map());
-    added.get(page)!.set(line, `<!-- keywords: ${phrases.join(', ')} -->`);
-  }
-  const grown = Object.fromEntries(Object.entries(pages).map(([page, markdown]) => {
-    const lines = added.get(page);
-    if (!lines) return [page, markdown];
-    return [page, markdown.split('\n').flatMap((source, at) => (lines.has(at) ? [source, '', lines.get(at)!] : [source])).join('\n')];
-  }));
-  return { pages: grown, unknown };
 }

@@ -1,17 +1,19 @@
 # 🎭 World Editor: Entities
+<!-- keywords: characters, npcs, monsters, companions, cast list, items objects, bots -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
 Entities are the people, creatures and things in your world: a ferryman, an eel-smoker, a barred door. An entity belongs to one or more **Locations**. The AI reads the entities that can show up where the player is.
 
 ## Why it exists
+<!-- keywords: ai forgets characters, narrator invents people, recurring character, persistent npc, keeps renaming -->
 
 Without entities, the narrator invents a stranger, names them, and forgets both by the next turn. An entity is a fixed person or thing the story can come back to. The AI reads about it again each time the player is at one of its locations.
 
 The default prompt introduces entities as "Characters and things that **may** appear in this location". That wording is a hint to the AI. The game doesn't enforce it, and the narrator can use anyone on the list. You can change the wording in the [prompt editor](Prompts#how-to-edit-a-prompt).
 
 ## How to Add an Entity
-<!-- keywords: character, npc, create, new character, make, person -->
+<!-- keywords: character, npc, create, new character, make, person, monster, companion, creature, bot, villain, love interest, pet, party member, enemy, add someone -->
 
 1. Open the **Entities** tab.
 2. Type the entity's name in the **Search or add new entities** box.
@@ -25,7 +27,7 @@ The default prompt introduces entities as "Characters and things that **may** ap
 To add a copy of an entity from your library, select **Add Entity** at the bottom of the editor.
 
 ## How to Import a SillyTavern Card
-<!-- keywords: character, tavern, png, chub, st, bring in, load character -->
+<!-- keywords: character, tavern, png, chub, st, bring in, load character, character card, janitor, v2 card, tavernai, bot file, convert card, risu, upload card, lorebook comes along -->
 
 1. On the Main Menu, open the library's **Entities** tab.
 2. Select **Import Entity**.
@@ -39,7 +41,7 @@ You can also import a card directly into a world. On the **Entities** tab, selec
 See [SillyTavern cards](#sillytavern-cards) for what each part of the card becomes.
 
 ## How to Give an Entity an Opening
-<!-- keywords: first message, greeting, intro, start, character start -->
+<!-- keywords: first message, greeting, intro, start, character start, npc speaks first, opener, hello line, begins the scene, initial dialogue, welcome line -->
 
 **Advanced mode only** in the World Editor.
 
@@ -52,6 +54,7 @@ See [SillyTavern cards](#sillytavern-cards) for what each part of the card becom
 The world's **Openings** checkbox turns on by itself once an opening has text, unless you unchecked it. See [Entity Openings](World-Editor-Openings#entity-openings).
 
 ## The panel
+<!-- keywords: pronouns, gender, profile tab, cast or playable, category, can player be them, five tabs -->
 
 Select an entity to open its panel.
 
@@ -66,6 +69,7 @@ Select an entity to open its panel.
 The **Persona** control has four choices: **Cast**, **Playable**, **Persona-Only** and **Custom Persona**. It decides whether the player can play as the entity. See [Personas for Authors](Persona-Authoring#how-to-make-an-entity-playable). An entity marked **Playable**, **Persona-Only** or **Custom Persona** also shows a **Starting Location** picker: where the player starts as this persona.
 
 ## What reaches the AI
+<!-- keywords: npc secret, hidden motive, character ignored, npc never appears, spoilers, does ai see image, private notes -->
 
 An entity reaches the AI only through a location. An entity in no location never reaches the AI.
 
@@ -85,6 +89,7 @@ An entity reaches the AI only through a location. An entity in no location never
 > 💡 **The player reads only the Player-Facing Description, and the AI reads only the AI-Facing fields.** Put a secret in the **AI-Facing Description**. The narrator can act on it, and the player doesn't see it. The default prompt also asks the narrator not to use a name until the player can know it. That is a request to the AI, and the game doesn't enforce it.
 
 ## Descriptions and summaries
+<!-- keywords: bio, backstory, personality, appearance, short version, auto generate text, sparkle button, condensed -->
 
 | Field | Who reads it | Notes |
 |---|---|---|
@@ -97,6 +102,7 @@ The default prompt uses summaries for entities in *reachable* locations. It uses
 The **✨ toolbar** beside **AI-Facing Summary** can write a draft from your AI-Facing Description.
 
 ## Names and aliases
+<!-- keywords: nickname, aka, other names, surname, not detected, wrong npc joins, false match, capitalization, name recognition -->
 
 The game reads each page of narration to find which entities are present. It matches names and aliases.
 
@@ -124,6 +130,7 @@ Two more rules:
 - **Don't use a role the story gives to someone absent.** Quoted dialogue is ignored, but plain narration isn't. If the prose says *"she was sent by the Warchief"*, the alias `Warchief` marks the Warchief as present.
 
 ## Locations
+<!-- keywords: where npc lives, assign to place, put in room, vanished after delete, several places, too many npcs, crowded scene, orphaned -->
 
 Each entity stores its own locations in one field. The location's **Entities** picker shows the same link from the other side. Set it from either side.
 
@@ -138,16 +145,19 @@ The default prompt sends entities from three places, as separate blocks: the pla
 An entity can have its own openings, so it can start the scene in its own voice. A playable entity can also have [Self Openings](World-Editor-Openings#self-openings), which start the game for a player who plays it. See [Entity Openings](World-Editor-Openings#entity-openings).
 
 ## Groups
+<!-- keywords: folder for npcs, organize characters, sort cast, faction folders, nest folders -->
 
 **Advanced mode only.** In Advanced mode, the **+** button's menu also has **Add Group**. Groups are folders for you. Nesting and order are for the editor only and **never reach the AI**. A group can't change the story.
 
 ## Images and models
+<!-- keywords: portrait, character art, sprite, danbooru, stable diffusion prompt, mesh, face picture, png metadata -->
 
 The image and the 3D model are for the player's screen. **Image Tags** are booru tags for AI [image generation](Image-Generation#scene-images) only. The ✨ toolbar can write a draft of the tags from the description. When you upload an image that has a prompt in its file, the editor offers to use that prompt. The narrator reads none of this.
 
 An image field takes an uploaded file or a web address. See [Upload or link](World-Editor-Overview#upload-or-link).
 
 ## SillyTavern cards
+<!-- keywords: field mapping, what converts, card fields, alternate greetings, example dialogue, v2 spec, user tag, char tag -->
 
 Import a SillyTavern PNG or JSON card, and it becomes an entity. The card's description, personality and scenario become the **AI-Facing Description**. The card's greetings become [Entity Openings](World-Editor-Openings#entity-openings):
 
@@ -165,6 +175,7 @@ When these openings are in the draw, **Re-generate** on page one shows another g
 > 💡 **`{{user}}` stays in the stored text, as the Player Name chip.** The shown page says the persona's name, or "you" with no persona. The entity's descriptions and the card's lorebook keep the chip too, and there it reads "the player" with no persona.
 
 ## In the library
+<!-- keywords: standalone character, edit outside world, reusable npc, my characters list, saved character editor, credit and labels -->
 
 Open an entity in the library's **Entities** tab, and its editor has three tabs.
 

@@ -7,40 +7,37 @@
 //
 // Every approach goes through the shipped block builder, `helpSections`, with its own search in place of the
 // keyword search. So the open screen's section, the follow-up rule and the size budget are the same for all.
-//   keyword   the shipped Docs Index search: the control
-//   wordmap   the same search over the docs with the keyword lines of help-word-map.json added
+//   keyword   the shipped Docs Index search, with the docs' keyword lines (the word map, ticket 43)
 //   semantic  sections ranked by the dot product of MiniLM vectors, the model semantic memory ships
 //   hybrid    the keyword and the semantic rankings merged by reciprocal rank fusion
 //   ai        with `--ai`: a first request lists every section heading, and the model copies the lines it picks
-// The mixes fuse the rankings of the approaches they name the same way: wordmap+semantic, ai+wordmap,
-// ai+wordmap+semantic.
+// The mixes fuse the rankings of the approaches they name the same way: ai+keyword, ai+keyword+semantic.
 //
 // The score, per approach, set and kind:
 //   first   a keyed section is the first section of the block
 //   at5     a keyed section is among the block's five sections, with no size budget (recall@5)
 //   sent    a keyed section is in the block that fits the request's size budget
 //
-// Usage: npm run probe:help-recall -- [--arms keyword,wordmap,semantic,hybrid,wordmap+semantic,ai,ai+wordmap,ai+wordmap+semantic] [--sets known,blind] [--text head|full|chunks]
+// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic] [--sets known,blind] [--text head|full|chunks]
 //          [--ai] [--runs 5] [--parallel 4] [--endpoint URL] [--model default] [--token T] [--show]
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
-import sidebar from '../../../docs/_Sidebar.md?raw';
-import { BUNDLED_DOCS, bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
+import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
+import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { HELP_SECTION_LIMIT, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import { mean, probeSnapshot, type ProbeTarget } from './help-probe-shared';
 import { loadBlindCases, loadKnownCases, RECALL_KINDS, RECALL_SETS, type RecallCase, type RecallKind, type RecallSet } from './help-recall-cases';
-import { baseSectionId, chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, withKeywords, type RecallScore } from './help-recall-score';
+import { baseSectionId, chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, type RecallScore } from './help-recall-score';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : fallback;
 };
-const ARMS = ['keyword', 'wordmap', 'semantic', 'hybrid', 'wordmap+semantic', 'ai', 'ai+wordmap', 'ai+wordmap+semantic'] as const;
+const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic'] as const;
 type Arm = (typeof ARMS)[number];
 /** The values of a comma list flag, each one of `allowed`. */
 function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
@@ -60,7 +57,6 @@ const runs = Number(argVal('--runs', '5'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
-const WORD_MAP_FILE = path.resolve('testing/baseline/help-word-map.json');
 const CHANGELOG_PAGE = 'Changelog';
 /** The fewest sections of each ranking a fused arm merges; a search that asks for more gets more. */
 const FUSION_DEPTH = 50;
@@ -285,18 +281,6 @@ const fused = (...searches: DocsIndex[]): DocsIndex => ({
 
 if (wants('keyword')) rows.push(...scoreAll('keyword', 1, () => index, noCost));
 
-let wordmap: DocsIndex | null = null;
-if (arms.some((arm) => arm.includes('wordmap'))) {
-  if (!existsSync(WORD_MAP_FILE)) throw new Error(`the wordmap arms need ${path.relative(process.cwd(), WORD_MAP_FILE)}`);
-  const map = (JSON.parse(readFileSync(WORD_MAP_FILE, 'utf8')) as { sections: Record<string, string[]> }).sections;
-  const { pages, unknown } = withKeywords(BUNDLED_DOCS, map);
-  if (unknown.length > 0) throw new Error(`the word map names sections the guide does not have: ${unknown.join(', ')}`);
-  const phrases = Object.values(map).flat();
-  notes.push(`Word map: ${phrases.length} phrases on ${Object.keys(map).length} sections, ${phrases.join(', ').length} characters.`);
-  wordmap = createDocsIndex({ pages, sidebar });
-  if (wants('wordmap')) rows.push(...scoreAll('wordmap', 1, () => wordmap!, noCost));
-}
-
 let semantic: DocsIndex | null = null;
 if (arms.some((arm) => arm.includes('semantic') || arm === 'hybrid')) {
   const loaded = await loadSemantic(queriesOf());
@@ -311,7 +295,6 @@ if (arms.some((arm) => arm.includes('semantic') || arm === 'hybrid')) {
   };
   if (wants('semantic')) rows.push(...scoreAll('semantic', 1, () => semantic!, embedCost));
   if (wants('hybrid')) rows.push(...scoreAll('hybrid', 1, () => fused(index, semantic!), embedCost));
-  if (wants('wordmap+semantic')) rows.push(...scoreAll('wordmap+semantic', 1, () => fused(wordmap!, semantic!), embedCost));
 }
 
 let failed = 0;
@@ -342,8 +325,8 @@ if (arms.some(isAiArm)) {
       return { ms: pick?.ms ?? 0, promptTokens: pick?.promptTokens ?? 0, answerTokens: pick?.answerTokens ?? 0 };
     };
     if (wants('ai')) rows.push(...scoreAll('ai', run, picked, pickCost));
-    if (wants('ai+wordmap')) rows.push(...scoreAll('ai+wordmap', run, (c) => fused(picked(c), wordmap!), pickCost));
-    if (wants('ai+wordmap+semantic')) rows.push(...scoreAll('ai+wordmap+semantic', run, (c) => fused(picked(c), wordmap!, semantic!), pickCost));
+    if (wants('ai+keyword')) rows.push(...scoreAll('ai+keyword', run, (c) => fused(picked(c), index), pickCost));
+    if (wants('ai+keyword+semantic')) rows.push(...scoreAll('ai+keyword+semantic', run, (c) => fused(picked(c), index, semantic!), pickCost));
     if (show && run === 1) for (const c of cases) console.log(`  ${c.id}: ${picks.get(c.id)?.reply.replace(/\s+/g, ' ').slice(0, 80)}`);
   }
   notes.push(`AI picks: ${target.endpoint}, model \`${target.model}\`, ${runs} runs, ${pickable.length} headings in each request, ${failed} failed requests and ${empty} replies with no line of the list, in ${((Date.now() - started) / 1000).toFixed(0)} s.`);
@@ -355,8 +338,7 @@ const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
 const table = (head: string[], lines: string[][]) =>
   [`| ${head.join(' | ')} |`, `|${head.map(() => '---').join('|')}|`, ...lines.map((cells) => `| ${cells.join(' | ')} |`)].join('\n');
 const ARM_LABELS: Record<Arm, string> = {
-  keyword: 'Keyword (control)', wordmap: 'Bigger word map', semantic: 'Semantic', hybrid: 'Hybrid', 'wordmap+semantic': 'Word map + semantic',
-  ai: 'AI picks', 'ai+wordmap': 'AI picks + word map', 'ai+wordmap+semantic': 'AI picks + word map + semantic',
+  keyword: 'Keyword', semantic: 'Semantic', hybrid: 'Hybrid', ai: 'AI picks', 'ai+keyword': 'AI picks + keyword', 'ai+keyword+semantic': 'AI picks + keyword + semantic',
 };
 const KIND_LABELS: Record<RecallKind, string> = { task: 'Task', here: 'Here', followUp: 'Follow-up' };
 const ranArms = ARMS.filter((arm) => rows.some((r) => r.arm === arm));

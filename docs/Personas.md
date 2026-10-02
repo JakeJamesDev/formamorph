@@ -1,11 +1,12 @@
 # 🪪 Personas
+<!-- keywords: protagonist, my identity, who am i, hero -->
 
 A persona is who you are in the story. It gives the AI your name, your pronouns and your description.
 
 > A persona is an [entity](Entities) with **Persona** set to **Playable**. It uses the same editor as every other entity. Authors who want players to play as a world's own entities should read [Personas for Authors](Persona-Authoring).
 
 ## How to Make a Persona
-<!-- keywords: create, player character, play as, my character, user character, self, profile -->
+<!-- keywords: create, player character, play as, my character, user character, self, profile, original character, oc, describe myself, character sheet, my backstory, new identity, roleplay identity, build a hero -->
 
 1. Open the library's **Entities** tab.
 2. Select **New Entity**, or open an entity you already have.
@@ -16,7 +17,7 @@ A persona is who you are in the story. It gives the AI your name, your pronouns 
 No copy is made. The entity is now one of your personas, and you can still add it to a world as an entity.
 
 ## How to Set a Default Persona
-<!-- keywords: always, main character, preferred, usual, favorite, automatic -->
+<!-- keywords: always, main character, preferred, usual, favorite, automatic, preselected, primary, go to identity, remember my choice, unset, standard pick, same one each game -->
 
 1. Open the library's **Entities** tab.
 2. Right-click a persona tile.
@@ -25,7 +26,7 @@ No copy is made. The entity is now one of your personas, and you can still add i
 A **Default** badge marks it. To remove it, right-click the tile and select **Clear Default Persona**.
 
 ## How to Pick a Persona
-<!-- keywords: choose, select, play as, character select, who to play, which character -->
+<!-- keywords: choose, select, play as, character select, who to play, which character, roster, at game start, type my name, name myself, nameless, playing as nobody, before the story -->
 
 1. On the main menu, select a world.
 2. Select **Enter World**.
@@ -35,7 +36,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
 
 ## How to Change Persona During Play
-<!-- keywords: switch, swap, mid-game, different character, edit name, rename -->
+<!-- keywords: switch, swap, mid-game, different character, edit name, rename, already started, ongoing story, become someone else, wrong name fix, replace protagonist, halfway through, body swap -->
 
 1. In the side panel, find the persona row above the **Stats**, **Traits** and **Location** tabs.
 2. Select **Change**. The **Change Persona** dialog opens.
@@ -43,7 +44,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 4. Select **Change**. It turns on when your pick, name or description differs from the current one.
 
 ## How to Import SillyTavern Personas
-<!-- keywords: tavern, st, user avatars, backup, migrate, bring over -->
+<!-- keywords: tavern, st, user avatars, backup, migrate, bring over, convert from other app, transfer profiles, old frontend, portraits folder, carry across, switching apps, existing profiles -->
 
 1. In SillyTavern, open **Persona Management** and select **Backup**. Your browser downloads `personas_<date>.json`.
 2. Find your avatar images in the `User Avatars` folder inside your SillyTavern user folder. On a default install it is `data/default-user/User Avatars`.
@@ -54,6 +55,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 ---
 
 ## What the AI Reads
+<!-- keywords: gender, he she they, nickname, bio text, what narrator knows, my appearance, still says you, show only mine -->
 
 | Field | Where | What the AI gets from it |
 |---|---|---|
@@ -67,10 +69,12 @@ The **All | Personas** switch above the grid shows only your personas. That view
 > 💡 Narration still says "you". Entities use your name only after they learn it in the story.
 
 ## The Default Persona
+<!-- keywords: fallback identity, used automatically, not synced, this device only, auto picked -->
 
 The default persona is the one Enter World and **Quick Start** pick when nothing else decides. The default stays on this device. It never goes into an export.
 
 ## Pick at Enter World
+<!-- keywords: preselection priority, why this one chosen, forced character, my own missing, restricted list, last used remembered, one role per game -->
 
 Enter World opens on a **Persona** category when at least one persona is available.
 
@@ -95,6 +99,7 @@ A pick the world doesn't offer is skipped. **Quick Start** uses the same order a
 Some authors limit the choice. A world can start you on **None**, or offer only its own personas with no **None**. A pick you made in that world before still wins, when the world offers it.
 
 ## Play a World's Own Entity
+<!-- keywords: be an npc, premade hero, canon character, pregenerated, take over cast member, meeting myself, story already knows me -->
 
 Pick an entity under **From This World**, and you play it:
 
@@ -107,6 +112,7 @@ Pick an entity under **From This World**, and you play it:
 A persona from your library can bring its own Self openings. They draw in any world you play it in. If it has none, the world's Custom Persona Self openings apply. See [Self Openings](World-Editor-Openings#self-openings).
 
 ## Create Your Own
+<!-- keywords: self insert, blank slate, fill in my details, enter my name, race and class picks, replaces none option, author portrait shown -->
 
 Some worlds have a **Custom Persona**. It takes **None**'s place in the list, with the author's portrait and name. Pick it, and **Name** and **Description** fields open under it.
 
@@ -118,6 +124,7 @@ Some worlds have a **Custom Persona**. It takes **None**'s place in the list, wi
 **Change Persona** during play has the same entry.
 
 ## Change It in Game
+<!-- keywords: memories use wrong name, legacy save identity, deleted identity warning, edits reach old saves, returns next turn, side panel row -->
 
 A row above **Stats**, **Traits** and **Location** shows your persona's portrait and name, or **None**. Select **Change** to open **Change Persona** and pick again.
 
@@ -133,10 +140,12 @@ A library persona is read from your library each time. Edit its description once
 > ⚠️ A save whose persona was deleted plays with none. It warns you one time when it loads.
 
 ## Persona Placeholders
+<!-- keywords: random values on me, randomized details, variables, reroll on switch, rolls kept in save -->
 
 A library persona can have its own [placeholders](World-Editor-Placeholders). Its Wildcards roll one time when you pick the persona, and the save keeps the values. Switch to another persona and back, and the first one reads the same values.
 
 ## Import from SillyTavern
+<!-- keywords: macros converted, what carries over, portraits not attached, lost fields, mapping, filename mismatch, import summary, skipped entries -->
 
 One import brings every SillyTavern persona over. The backup holds no images, so you pick the avatar files beside it.
 

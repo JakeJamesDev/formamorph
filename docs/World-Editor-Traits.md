@@ -1,17 +1,19 @@
 # 🧬 World Editor: Traits
+<!-- keywords: character creation, feats, flaws, classes races, starting options, boons, talents -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
 Traits are the choices that make each playthrough different: *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks traits before the story starts. The AI reads the picked traits on every turn.
 
 ## Why it exists
+<!-- keywords: versus numbers, permanent facts, when to use which, difference between, unpicked ignored -->
 
 A trait is a fact about the player that doesn't change. Stats change all the time, and the story changes with them. A trait reads the same on turn one and on turn ninety. A stat says *how much*. A trait says *who you are*.
 
 > 💡 **Only active traits reach the AI.** A trait the player didn't pick is sent nowhere and does nothing.
 
 ## How to Make a Trait
-<!-- keywords: perk, feature, quirk, attribute, ability, background, create, new, characteristic -->
+<!-- keywords: perk, feature, quirk, attribute, ability, background, create, new, characteristic, feat, flaw, talent, skill, class, race, species, boon, disadvantage, starting option -->
 
 1. Open the **Traits** tab.
 2. To name the trait as you add it, type the name in the search box.
@@ -24,7 +26,7 @@ A trait is a fact about the player that doesn't change. Stats change all the tim
 A new trait goes to the top level of the list. Drag it to put it in a group.
 
 ## How to Require Another Trait
-<!-- keywords: prerequisite, depends on, needs, only if, condition, unlock, gate -->
+<!-- keywords: prerequisite, depends on, needs, only if, condition, unlock, gate, locked until, skill tree, subclass, chain, tied to, restrict, exclusive to class -->
 
 1. Select the trait.
 2. Open the **Availability** tab.
@@ -36,7 +38,7 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 To remove a target, select the **×** on its chip.
 
 ## How to Set a Pick Count
-<!-- keywords: limit, cap, how many, choose one, max, min, exactly one, radio, multiple -->
+<!-- keywords: limit, cap, how many, choose one, max, min, exactly one, radio, multiple, mutually exclusive, single choice, one of, at least two, force selection, mandatory, slots, required choice -->
 
 1. Select a trait group. To add one, switch to Advanced mode, select **+**, then **Add Group**.
 2. Open the **Pick Count** list and pick **Any**, **Exactly One**, **Up to One** or **Custom**.
@@ -44,7 +46,7 @@ To remove a target, select the **×** on its chip.
 4. For **Exactly One**, select a trait in the group, open its **Availability** tab, and check **Enabled by Default**. A new game then starts with a valid pick.
 
 ## How to Make a Blueprint
-<!-- keywords: template, reusable, shared trait, base, prototype, copy for entities -->
+<!-- keywords: template, reusable, shared trait, base, prototype, copy for entities, npc only, not for player, master version, common pool, define once, library of classes -->
 
 **Advanced mode only.**
 
@@ -55,7 +57,7 @@ To remove a target, select the **×** on its chip.
 The item is now a blueprint. The player never picks it directly. Entities get it only through [links](#links).
 
 ## How to Link to a Blueprint
-<!-- keywords: give to entity, assign, share, attach, reuse, template -->
+<!-- keywords: give to entity, assign, share, attach, reuse, template, npc class, apply to characters, same perk several npcs, hand out, drag onto character, tick boxes -->
 
 **Advanced mode only.**
 
@@ -66,7 +68,7 @@ The item is now a blueprint. The player never picks it directly. Entities get it
 Or drag the item from **Blueprints** onto an entity's node in the tree. The original stays in **Blueprints**.
 
 ## How to Override a Linked Trait
-<!-- keywords: change for one entity, per entity, customize, template, exception -->
+<!-- keywords: change for one entity, per entity, customize, template, exception, adjust for one npc, different for one npc, undo my edits, reset, restore original, edit master, local change -->
 
 1. In the **Traits** tab, open the entity's node and select the link row. It shows a link icon.
 2. Open the tab that holds the field: **Availability**, **Stats** or **Pins**.
@@ -76,6 +78,7 @@ Or drag the item from **Blueprints** onto an entity's node in the tree. The orig
 To change the trait for every entity that links it, select **Edit Blueprint** in the footer and edit the original.
 
 ## What the AI sees
+<!-- keywords: does ai know bonus, narrator ignores perk, wording tips, blank text ok, numbers not shown, rule vs fact -->
 
 | Field | Sent? |
 |---|---|
@@ -89,6 +92,7 @@ A blank **AI-Facing Description** is fine for a name that explains itself, such 
 > 💡 **The AI doesn't see Stat Changes.** It reads that the player is *Sickly*. It doesn't read that the trait cost 20 Vigor. The stat carries the number. So write the description as a fact the narrator can use: *"Flinches at open water"*, not *"-20 swimming"*.
 
 ## The Panel
+<!-- keywords: pins tab missing, stats tab missing, owned by line, details tab, four tabs -->
 
 Select a trait to open its panel.
 
@@ -102,6 +106,7 @@ Select a trait to open its panel.
 On an entity's own trait, the **Details** tab starts with the line **Owned by** and the entity's name. The **Stats** tab shows only when the entity can [own stat traits](#entity-traits).
 
 ## Availability
+<!-- keywords: curse, cursed item, passive, forced on, secret bonus, preselected, switch mid game, innate, cant turn off -->
 
 The **Availability** tab sets who controls the trait and when it can be active.
 
@@ -135,6 +140,7 @@ A **Hidden** trait can carry **Stat Changes**, and visible stat bars move. Use i
 > ⚠️ **Stat code never switches an Always On or Hidden trait.** Its requirements alone decide.
 
 ## Stat Changes
+<!-- keywords: bonus, buff, debuff, modifier, penalty, extra hp, raise cap, boost, adds not sets -->
 
 Each row changes one stat while the trait is active. A row has a stat, a number, and the field to change. Select **Add Stat Change** to add a row.
 
@@ -150,22 +156,26 @@ Each row changes one stat while the trait is active. A row has a stat, a number,
 Min and Max follow different rules on purpose. A trait can put the Max anywhere. A trait can never put a stat below the range you designed.
 
 ## Stat Availability
+<!-- keywords: unlock a meter, mana for mages, class specific bar, show bar only if, turn on gauge, conditional meter -->
 
 **Advanced mode only.** Select **Add Stat Availability** to add a row. Each row names a stat and picks **Enable** or **Disable**. The row overrides the stat's own [**Enabled** checkbox](World-Editor-Stats#availability) while the trait is active.
 
 A disabled stat isn't shown to the player or sent to the AI. Its Regen and code don't run.
 
 ## Placeholder Pins
+<!-- keywords: appearance from choice, force a word, lock random text, returns when off, type custom text, hair by perk -->
 
 **Advanced mode only.** A pin keeps a [placeholder](World-Editor-Placeholders#pins) at one value while the trait is active. For example, a *Redhead* trait pins Hair Color to *copper*. The playthrough keeps its own roll, and the roll comes back when the trait is switched off.
 
 You can type a value that isn't in the placeholder's list. The game uses it as written.
 
 ## When two traits conflict
+<!-- keywords: clash, priority, which wins, overlap, contradiction, order matters, tie -->
 
 When two active traits change the availability of the same stat, or pin the same placeholder, the trait lower in the trait list wins. The row tells you when this applies, and it links to the other trait.
 
 ## Groups
+<!-- keywords: category, start button disabled, choose more message, cant begin game, none of these, swap mid game, over the limit, folders -->
 
 Groups organize the list. A trait group also has text of its own:
 
@@ -206,6 +216,7 @@ In play:
 > 💡 **Give an Exactly One group a default.** Check **Enabled by Default** on one trait, so a new game starts with a valid answer. With two defaults in an **Up to One** group, the first in the list wins.
 
 ## Requirements
+<!-- keywords: who must have it, either or, any of, depends on player class, npc needs player choice, owner check, relationship perk, holder -->
 
 **Requires** on the **Availability** tab makes a trait available only when one of its targets holds. A target is a trait, any trait in a group, or a persona the player plays as. With two targets, either one is enough.
 
@@ -230,6 +241,7 @@ For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squi
 A requirement that names an entity describes a relationship to someone else. When the player plays that entity, the requirement falls away. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second target, such as *Paladin* on the same bearer, stays and uses the other target. An entity's own traits keep every requirement, so Albus can still gate his own trait on *Albus: Paladin*.
 
 ## Entity Traits
+<!-- keywords: npc perks, npc abilities, give character a class, companion skills, name the holder, can npcs have stats, move to character -->
 
 An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.
 
@@ -247,6 +259,7 @@ To give a world trait or group to one entity, drag it onto the entity's node. It
 > 💡 **Only a persona's traits can have Stat Changes or Stat Availability.** Only the player has stats. A **Playable**, **Persona-Only** or [Custom Persona](#custom-persona) entity can own stat traits, and they apply when the player plays as it. Any other entity refuses them. Remove an entity's persona mark, and its stat traits stay, but their stats do nothing.
 
 ## Links
+<!-- keywords: sync across npcs, live reference, unlink, make independent, break connection, stale warning, inherit, instance, detach, carry to another world -->
 
 **Advanced mode only.** A link gives a [Blueprints](#blueprints) trait to an entity without a copy. Write *Paladin* one time under Blueprints, then link it to every entity that can be a Paladin. The trait a link points to is its **original**.
 
@@ -313,6 +326,7 @@ With no match, or two, the link is dropped. A top-level trait never matches. A l
 The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **Reset**, **Remove Link** and **Detach**, and you can still remove a link that world lacks. Opened from the library, it shows them by name only.
 
 ## Blueprints
+<!-- keywords: template folder, npc only options, hide from player list, master copies, special folder, delete the folder, class definitions -->
 
 **Advanced mode only.** Select **+**, then **Add Blueprints Group**. A blueprint is an item that exists to be linked or copied. A link or a copy reads its blueprint live until you edit it. Traits under Blueprints are never offered to the player. They reach play only through links. Keep originals there that only some entities get, such as classes and races.
 
@@ -324,6 +338,7 @@ The library entity editor shows links but never makes them. Opened from a world,
 Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of their own, with the same rule.
 
 ## Custom Persona
+<!-- keywords: own character, self insert, blank slate hero, oc, no premade hero, library character perks, fourth choice, generic player -->
 
 **Advanced mode only.** Custom Persona is a mark on one entity. The marked entity is a normal entity: it owns traits, links and [copies](World-Editor-Placeholders#copies). Its traits are the player's when the player has no world persona: **None**, or a persona from their own library. Use it to give a race and a class to a player who brings their own persona.
 
@@ -339,6 +354,7 @@ Set the mark on the entity's **Profile** tab. **Custom Persona** is the fourth c
 > 💡 With Advanced mode off, links, Blueprints and the Custom Persona entity still show when they hold something, and you can still edit them. Only making new ones needs Advanced mode.
 
 ## Pins by Blueprint
+<!-- keywords: outfit per class, each holder own value, npc wording leaks, who is affected, per character variation, precedence of text -->
 
 **Advanced mode only.** A trait pin can pin a [blueprint placeholder](World-Editor-Placeholders#blueprints). In the pin's placeholder list, pick the blueprint, then pick its value. You set the value one time, on the original.
 
@@ -359,6 +375,7 @@ A pin that names a value the copy removed pins nothing.
 An entity's own trait pins never reach anyone else's text. Albus's class never changes the player's description.
 
 ## Test Bench Checks
+<!-- keywords: validation, errors warnings, can never unlock, impossible setup, broken reference, problems found, redundant, unused, debug my perks -->
 
 The **Test Bench** checks every bearer as if the player picked it. That includes **Playable** and **Persona-Only** entities and the Custom Persona entity.
 
@@ -387,6 +404,7 @@ It shows a note when:
 - A group with a maximum of one has one trait or none, so it offers no real choice.
 
 ## Example: RPG Classes
+<!-- keywords: class system, dnd, job system, spells per class, worked sample, walkthrough, fantasy roles, step by step build, emberwatch -->
 
 A world where the player and some entities have a class.
 

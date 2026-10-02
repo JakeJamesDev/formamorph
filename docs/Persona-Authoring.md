@@ -1,4 +1,5 @@
 # 🪪 Personas for Authors
+<!-- keywords: world creator side, player identity setup, who players become, designing the protagonist -->
 
 How your world meets the player's persona: playable entities, the **Allowed Personas** and **Starts On** controls, the **Persona** chip, and the two Built-in chips that carry names into your text.
 
@@ -7,7 +8,7 @@ How your world meets the player's persona: playable entities, the **Allowed Pers
 ---
 
 ## How to Make an Entity Playable
-<!-- keywords: play as, character, player character, pov, selectable -->
+<!-- keywords: play as, character, player character, pov, selectable, let players be npc, premade heroes, pregens, controllable, protagonist option, roster of heroes, only when chosen -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and select the entity.
@@ -18,7 +19,7 @@ How your world meets the player's persona: playable entities, the **Allowed Pers
 For an entity that exists only when the player picks it, select **Persona-Only** in step 3.
 
 ## How to Make a Custom Persona
-<!-- keywords: player character, create your own, own character, name yourself, blank character, self insert -->
+<!-- keywords: player character, create your own, own character, name yourself, blank character, self insert, character creation, generic hero, give player a race, class for protagonist, builder at start, nameless template, player gets perks -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and add or select the entity. Name it, such as *Wanderer*.
@@ -28,7 +29,7 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 6. Optional: give the entity [Self Openings](World-Editor-Openings#self-openings). They draw for a player with no world persona.
 
 ## How to Choose Who the Player Can Be
-<!-- keywords: allowed, restrict, limit, character select, play as, starting character, allowed personas -->
+<!-- keywords: allowed, restrict, limit, character select, play as, starting character, allowed personas, force a protagonist, lock choices, ban outside characters, only my cast, whitelist, fixed hero, preselect for newcomers -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Overview** tab.
@@ -38,7 +39,7 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 See [Persona Rules](#persona-rules) for each choice.
 
 ## How to Put a Name in Your Text
-<!-- keywords: {{user}}, {{char}}, user, char, macro, placeholder, player, character, variable -->
+<!-- keywords: {{user}}, {{char}}, user, char, macro, placeholder, player, character, variable, insert token, curly braces, address reader directly, dynamic, auto fill, double brackets, mention the hero -->
 
 1. Select a prose field, such as an entity's **AI-Facing Description** or an opening.
 2. Type `{`. The menu opens with **Built-in** at the top.
@@ -47,6 +48,7 @@ See [Persona Rules](#persona-rules) for each choice.
 The menu offers **Character Name** only in an entity's own fields. You can also type `{{user}}` or `{{char}}` in any prose field, and the field turns it into the chip.
 
 ## The Short Version
+<!-- keywords: cheat sheet, quick reference, tldr, which option fits -->
 
 | You want | Use |
 |---|---|
@@ -59,6 +61,7 @@ The menu offers **Character Name** only in an entity's own fields. You can also 
 | An entity's text to say its own name | The **Character Name** chip |
 
 ## Playable Entities
+<!-- keywords: role options, role modes, what changes when chosen, text contradicts itself, proofread from hero view, dot on mode switch, leaves and returns -->
 
 **Persona** on the entity's **Profile** tab is a control with four choices:
 
@@ -88,6 +91,7 @@ Only entities you select are playable. The setting is your statement that the en
 In Simple mode, a **Playable** or **Persona-Only** entity puts a dot on the **Advanced** side of the mode switch, so you know the world uses Advanced features.
 
 ## Persona-Only Entities
+<!-- keywords: hidden unless chosen, never in the world, reserved for player, invisible character, exclusive hero, not offered in library -->
 
 Some entities exist only as a player slot, such as a "Custom Character" with no story of their own. Set **Persona** to **Persona-Only** to keep one out of the world unless the player picks it.
 
@@ -101,6 +105,7 @@ Some entities exist only as a player slot, such as a "Custom Character" with no 
 - **The choice is in the World Editor only.** A library entity is never in a cast, so the library editor doesn't offer it.
 
 ## Custom Persona
+<!-- keywords: greyed out choice, only one allowed, fallback traits, inherit race and class, unmark consequences, refuses group drop, duplicate loses role, replaces empty option -->
 
 A player who picks a persona from their own library has no world entity's traits. A player who picks **None** has none either. The **Custom Persona** entity gives them traits anyway, such as a race and a class. It also stands in **None**'s place at Enter World.
 
@@ -130,6 +135,7 @@ A world with no marked entity keeps **None** as before. A blueprint chip then re
 See [Custom Persona](World-Editor-Traits#custom-persona) for how its links and pins work in the **Traits** tab.
 
 ## Persona Rules
+<!-- keywords: block imported characters, permissions, enforce my cast, legacy setting converted, restriction ignored, returning player override -->
 
 Two controls on the **Overview** tab decide who the player can be. Both are **Advanced mode only**.
 
@@ -157,6 +163,7 @@ Use **Starts On: None** when your world already defines the player. Use **World 
 - **Worlds saved with the older Persona Choice control load as the same rules.** Fixed becomes **Starts On: None**. Cast becomes **World Only**, and also **Starts On: None** when no entity was playable.
 
 ## The Persona Chip
+<!-- keywords: ai forgets my name, inject player info, prompt variable, missing from custom prompt, shows not available, where to place it, detail level, cache friendly order -->
 
 The **Persona** chip sends the persona to the AI. The built-in prompt presets already carry it.
 
@@ -181,6 +188,7 @@ Select the placed chip to open its pop-out and set **Content**:
 Narration stays in second person, and entities say the player's name only after they learn it. Your prompt can state otherwise, for example that one entity already knows the player.
 
 ## The Player Name Chip
+<!-- keywords: nameless reader wording, says the player, substitute word, grammar and capitals, not offered in field, older imports plain text, user macro -->
 
 Type `{` in a prose field and pick **Player Name** under **Built-in**. It needs no placeholder of its own.
 
@@ -198,6 +206,7 @@ Both fallbacks take a capital at the start of a sentence. A possessive follows: 
 > 💡 For what the chip does to page one, see [Openings](World-Editor-Openings).
 
 ## The Character Name Chip
+<!-- keywords: self reference, name token, survives renaming, bot name macro, not in menu, inside trait text, owner of text -->
 
 Type `{` in one of an entity's own fields and pick **Character Name** under **Built-in**. It reads as the name of the entity that owns the text. Write one description that names its owner, and it stays right after a rename.
 

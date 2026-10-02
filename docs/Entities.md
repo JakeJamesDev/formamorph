@@ -1,18 +1,19 @@
 # 🎭 Entities in Play
+<!-- keywords: companions, party members, side characters, who counts as there, supporting roles -->
 
 Who the story counts as present with you: the cast the author wrote, the entities you add from your library, and the ones the story invents as it goes.
 
 > Authoring a world's cast is the [World Editor](WorldEditor)'s job. This page is about the same entities at **runtime**: who the story counts as present, and what it does with an entity it made up itself.
 
 ## How to See Who Is in the Scene
-<!-- keywords: characters, npcs, people, present, list, cast, nearby -->
+<!-- keywords: characters, npcs, people, present, list, cast, nearby, who is here, around me, in the room, party roster, look someone up, view their bio, current company -->
 
 1. During play, open the side panel's **Entities** tab. On desktop, select **Entities** above the panel if the avatar shows.
 2. Read the list. Your persona heads it, marked **(You)**.
 3. Select an entry to open its details.
 
 ## How to Add Your Own Entities to a Game
-<!-- keywords: characters, npcs, bring, include, library, custom characters, extra, import -->
+<!-- keywords: characters, npcs, bring, include, library, custom characters, extra, import, my oc, bring a companion, guest star, crossover, insert into any world, keep picks next time, extra lorebooks -->
 
 1. On the main menu, select a world.
 2. Select **Enter World**.
@@ -22,7 +23,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 6. Select **Start game**. In a world with a 3D model, the button reads **Continue to Avatar**.
 
 ## How to Remove a Cast Member
-<!-- keywords: delete, character, npc, get rid of, kick out, drop -->
+<!-- keywords: delete, character, npc, get rid of, kick out, drop, wrong name listed, not a real person, clean up list, false positive, dismiss, bogus entry, trash button missing -->
 
 1. During play, open the side panel's **Entities** tab.
 2. Find the entry and select its trash button, **Remove** followed by its name.
@@ -31,7 +32,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 Only story-invented entities and Library Additions have the button. See [Removing One](#removing-one).
 
 ## How to Get Descriptions for New Entities
-<!-- keywords: characters, npcs, invented, auto describe, profile, details, generate -->
+<!-- keywords: characters, npcs, invented, auto describe, profile, details, generate, blank bio, empty entry, who is this person, made up people, auto backstory, write up strangers, nothing to read -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
@@ -41,6 +42,7 @@ Only story-invented entities and Library Additions have the button. See [Removin
 ---
 
 ## Three Kinds of Entity
+<!-- keywords: types compared, difference between, categories, carry into next game, which can i edit, which can be deleted, origin -->
 
 | | **Authored** | **Library Addition** | **Story-invented** |
 |---|---|---|---|
@@ -53,6 +55,7 @@ Only story-invented entities and Library Additions have the button. See [Removin
 All of them appear in the **Entities** tab during play. All of them count the same way when the story works out who is present and what you can do next.
 
 ## Entities the Story Invents
+<!-- keywords: ai made someone up, improvised npc, auto added names, name detection, why was he skipped, only talked about, random stranger appears, place listed as person, on the fly -->
 
 Ask a shopkeeper for directions, and the story might answer with a name nobody wrote. The game reads names straight out of the narration, so an invented entity joins the scene the moment the story names it. It then counts as present, and the story considers it when it offers you choices.
 
@@ -77,6 +80,7 @@ Someone your companion only *talks about*, such as an absent neighbor, is not ad
 That keeps your **Entities** tab to the ones actually in the room with you.
 
 ## Descriptions
+<!-- keywords: extra api calls, token cost, bio generation, unable to open entry, slower turns, tied to diaries, advanced only setting -->
 
 [Settings](Settings#characters) → **Output** → **Characters** → **Describe New Characters**. The **Characters** section shows in **Advanced** mode only.
 
@@ -93,6 +97,7 @@ Turn this on, and each invented entity also gets a written description. You can 
 Only the description costs a request, so only the description is a setting. It starts on the first time if **Character Diaries** was already on. After that, the two settings are separate.
 
 ## Removing One
+<!-- keywords: keeps coming back, stays gone, ignore list, why no button, does it rewrite story, only this save, author characters stuck -->
 
 The game reads names out of the prose, so the story sometimes capitalizes something that isn't a person, and the game adds it anyway.
 
@@ -108,12 +113,14 @@ The world's authored cast has no remove button. It belongs to the world, and the
 > A removal applies to one playthrough and travels with your save. A new game starts clean.
 
 ## When It's Quiet
+<!-- keywords: list is empty, nobody detected, missing people, unnamed strangers, not picking anyone up, depends on model -->
 
 Some AI models rarely name anyone. They write *"she"* and *"the woman in the white coat"* for a whole scene. Then there is no name to catch. If your **Entities** tab stays short while the prose is full of people, that's the model's style, not a setting you missed.
 
 The game picks up entities written with **names**. It can't pick up entities written with **pronouns** only.
 
 ## How a Game Opens
+<!-- keywords: first message, intro scene, alternate greetings, random beginning, reroll the start, same start every time, why this beginning, starts with filled input -->
 
 At **Start game**, the game draws one opening. **Quick Start** draws the same way. The [World Editor](World-Editor-Openings) page explains how authors write them.
 

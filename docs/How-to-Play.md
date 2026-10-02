@@ -1,11 +1,12 @@
 # 🎮 How to Play
+<!-- keywords: basics, tutorial, beginner, gameplay loop, controls, what do i do, rules -->
 
 You play by writing what you do. The AI narrator writes what happens next. The story moves one turn at a time.
 
 > New to a world? [Starting a Game](Starting-a-Game) covers everything before page one.
 
 ## How to Take an Action
-<!-- keywords: play, type, write, do something, move, respond, reply, input, send, enter, talk, say -->
+<!-- keywords: play, type, write, do something, move, respond, reply, input, send, enter, talk, say, message box, text field, submit, stop generating, cancel response, interrupt, new line, chat with npc, command -->
 
 1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
 2. Write what you do, in the first person: *I ask her where the road leads.*
@@ -16,7 +17,7 @@ While the AI writes, the **Send** button turns red and becomes **Stop generating
 > 💡 Success isn't guaranteed. The narrator decides how your attempt goes, and your stats shape it.
 
 ## How to Use a Choice
-<!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine -->
+<!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine, suggested actions, multiple choice, quick replies, prewritten, ctrl click, append, long press, tap answer -->
 
 1. Read the choices under the story. Each one is a ready-made action.
 2. Select a choice. Its text replaces what is in the action box.
@@ -25,7 +26,7 @@ While the AI writes, the **Send** button turns red and becomes **Stop generating
 To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on Mac). On a touch screen, press and hold it. The choice joins the box as a new sentence, so you can stack two choices.
 
 ## How to Continue the Story
-<!-- keywords: keep going, go on, next, more, proceed, advance, wait, skip turn -->
+<!-- keywords: keep going, go on, next, more, proceed, advance, wait, skip turn, do nothing, pass, idle, empty message, nudge, let it play out, auto advance, without acting -->
 
 1. Select **[Continue the Story]** under the choices. It shows once page one is on screen and the AI is done.
 2. Send the action.
@@ -33,7 +34,7 @@ To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on M
 The text is in brackets, so the narrator reads it as a push to keep going, not as something you do. **Settings** → **Output** → **Choices** → **Continue the Story** sets when it shows. See [Choices](Settings#choices).
 
 ## How to Turn Choices Off
-<!-- keywords: disable, hide, remove, options, suggestions, buttons -->
+<!-- keywords: disable, hide, remove, options, suggestions, buttons, stop suggesting, free text only, no multiple choice, get rid of, write everything myself, re-enable, fewer requests -->
 
 1. Select the **?** button beside the action box. The **How to Play** dialog opens.
 2. Open the **Choices** tab.
@@ -42,7 +43,7 @@ The text is in brackets, so the narrator reads it as a push to keep going, not a
 The same checkbox is in **Settings** → **Output** → **Turn Extras**. With choices off, you write every action yourself.
 
 ## How to Direct the Story
-<!-- keywords: brackets, ooc, out of character, author, control, steer, force, outcome, tell the ai, square brackets -->
+<!-- keywords: brackets, ooc, out of character, author, control, steer, force, outcome, tell the ai, square brackets, god mode, meta command, guarantee success, time skip, set tone, override, system note, make npc do, instruct narrator, plot -->
 
 1. In the action box, write your action as usual.
 2. Add what should happen in square brackets: *I climb on behind her. [She agrees, and they ride off.]*
@@ -53,7 +54,7 @@ The AI reads text in brackets as direction from the author, not as something you
 > 💡 Brackets direct one turn. For a fact the AI should keep in mind every turn, use the [Notes](#notes) tab.
 
 ## How to Attach Images to an Action
-<!-- keywords: picture, photo, screenshot, upload, paste, drop, vision, send, add -->
+<!-- keywords: picture, photo, screenshot, upload, paste, drop, vision, send, add, multimodal, show the ai, clipboard, paperclip, jpg png, how many allowed, model is blind, reference art -->
 
 1. Open **Settings** → **Output**.
 2. In the **Attachments** section, select the **Image Attachments** checkbox.
@@ -67,7 +68,7 @@ Each action takes up to 4 images. They go with that turn only. Select a thumbnai
 The attach button shows after the game starts, not on the opening turn.
 
 ## How to Re-generate a Turn
-<!-- keywords: redo, retry, reroll, try again, different answer, last, swipe, did not like -->
+<!-- keywords: redo, retry, reroll, try again, different answer, last, swipe, did not like, regen, new response, another version, bad output, refresh, alternate, new options, do over -->
 
 1. Find the latest turn's action row, under its narration.
 2. Select **Re-generate Narration**.
@@ -77,7 +78,7 @@ The game goes back to the state before the turn and sends the same action again,
 To re-roll only the choices, select **Re-generate Choices** beside them.
 
 ## How to Edit Narration
-<!-- keywords: change, fix, rewrite, correct, ai text, response, reply, typo -->
+<!-- keywords: change, fix, rewrite, correct, ai text, response, reply, typo, modify story text, alter output, retcon, amend, wrong detail, what ai wrote, bot message, manually adjust -->
 
 1. On a turn's action row, select **Edit**.
 2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
@@ -86,7 +87,7 @@ To re-roll only the choices, select **Re-generate Choices** beside them.
 Saving rewrites the turn's narration. The game reads the edited text for entities again. It also clears that turn's memory and diary entries, and your own edit to that memory. The story then writes them again from your version.
 
 ## How to Edit Your Action
-<!-- keywords: change, fix, typo, rewrite, my message, input, correct -->
+<!-- keywords: change, fix, typo, rewrite, my message, input, correct, what i typed, my post, sent by mistake, amend, own line, user turn, remove picture, after sending -->
 
 1. Right-click your action line, or press and hold it on a touch screen.
 2. Select **Edit**.
@@ -96,7 +97,7 @@ Saving rewrites the turn's narration. The game reads the edited text for entitie
 Only the action text and its images change. The narration stays as it is.
 
 ## How to Rewind to an Earlier Turn
-<!-- keywords: undo, go back, rollback, roll back, revert, previous, delete, restore, reset -->
+<!-- keywords: undo, go back, rollback, roll back, revert, previous, delete, restore, reset, take back, backtrack, erase turns, remove last messages, start over from, branch, mistake, time travel, wipe later -->
 
 1. Go back to the turn you want to keep. In Pages, use the page buttons. In Chat, scroll up.
 2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
@@ -105,7 +106,7 @@ Only the action text and its images change. The narration stays as it is.
 > ⚠️ You can't undo a rewind. It removes every later turn, with its stats, its location, the entities the story invented in it, and its scene images. Your notes go back to that turn's notes.
 
 ## How to Read Earlier Turns
-<!-- keywords: history, scroll back, previous pages, past, log, look back, page number -->
+<!-- keywords: history, scroll back, previous pages, past, log, look back, page number, reread, old messages, what happened before, review, backlog, first turn, browse story -->
 
 1. In Pages, select **Previous**, or a page number under the story.
 2. To jump far back, select the current page number, type a page in the box, and select **Go**.
@@ -114,7 +115,7 @@ Only the action text and its images change. The narration stays as it is.
 An earlier page is read-only. The side panel shows a banner, *Viewing turn n of total*, and the turn's notes, stats and location. In Chat, scroll up. **Jump to Latest** takes you back down.
 
 ## How to Change Location
-<!-- keywords: travel, move, go somewhere, map, place, teleport, walk, leave -->
+<!-- keywords: travel, move, go somewhere, map, place, teleport, walk, leave, fast travel, navigate, room, area, zone, relocate, wrong scene, visit -->
 
 1. In the right panel, open the **Location** tab.
 2. Select **Current Location**. The **Change Location** dialog opens.
@@ -123,7 +124,7 @@ An earlier page is read-only. The side panel shows a banner, *Viewing turn n of 
 You move at once. Travel costs no turn and writes no narration. The narrator can also suggest a move: select **Go** in the *Move to …?* bar, or **Dismiss**.
 
 ## How to Export the Story
-<!-- keywords: save as text, download, txt, markdown, copy, transcript, share, print, log -->
+<!-- keywords: save as text, download, txt, markdown, copy, transcript, share, print, log, novel, archive, read later, ebook, document, pdf, keep the text, post online -->
 
 1. Select the **More narration options** button at the top right of the story.
 2. Select **Export Story**.
@@ -132,7 +133,7 @@ You move at once. Travel costs no turn and writes no narration. The narrator can
 The file holds every turn's narration. Markdown keeps the formatting; plain text doesn't. To keep your progress, use **Save Game** in the game menu instead.
 
 ## How to See What the AI Read
-<!-- keywords: context, prompt, debug, inspector, raw, request, sent, tokens, log -->
+<!-- keywords: context, prompt, debug, inspector, raw, request, sent, tokens, log, behind the scenes, payload, full input, troubleshoot, what model saw, why did it, under the hood, api call -->
 
 1. Select the **Show the full AI context sent each turn** button at the top left. On mobile, open the **Menu** and select **AI Context**.
 2. Use the turn pager to pick a turn.
@@ -141,7 +142,7 @@ The file holds every turn's narration. Markdown keeps the formatting; plain text
 See [The AI Context Inspector](#the-ai-context-inspector) for the search and the highlights.
 
 ## How to Read a Turn Aloud
-<!-- keywords: tts, text to speech, voice, speak, audio, narrator voice, listen, kokoro, sound -->
+<!-- keywords: tts, text to speech, voice, speak, audio, narrator voice, listen, kokoro, sound, narrate, spoken, hear, audiobook, out loud, voice acting, webgpu, playback speed, blind -->
 
 1. On the latest turn's action row, select **Text to Speech**. The **Text to Speech** dialog opens.
 2. Select **Load Model**. The voice model runs in your browser and needs WebGPU.
@@ -151,7 +152,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 **Stream narration audio** starts speaking each sentence as it arrives. **Highlight while speaking** marks the sentence you hear. **Unload Model** frees the memory the model uses. After the model loads, **Regenerate Audio** is under the turn's **More** button.
 
 ## How to Report an Error
-<!-- keywords: bug, crash, problem, failed, copy, details, send feedback, broken -->
+<!-- keywords: bug, crash, problem, failed, copy, details, send feedback, broken, something went wrong, issue, not working, glitch, support, tell developers, stack trace, contact -->
 
 1. On an error message, select **View Details →**. The **Error Details** dialog opens.
 2. Select **Copy** to copy the full details, or **Report Bug** to send them.
@@ -163,6 +164,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 ---
 
 ## The Game Screen
+<!-- keywords: interface, hud, ui overview, hide panels, distraction free, mute music, status line, where is everything, immersive -->
 
 | Area | What it holds |
 |---|---|
@@ -176,6 +178,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 On mobile, three tabs at the top switch between **Character** (the left panel), **Game** (the story) and **Status** (the right panel). The **Character** tab also has an **Avatar** tab for the 3D model. **Edit World** and **AI Context** move into the **Menu**. **Hide UI** and the music button don't show.
 
 ## Turn Actions
+<!-- keywords: buttons under text, more menu, copy to clipboard, message options, toolbar, icons below, three dots, long press -->
 
 Each turn has an action row under its narration. Some actions sit under its **More** button. Right-click the turn, or press and hold it on a touch screen, for the full list.
 
@@ -194,6 +197,7 @@ Each turn has an action row under its narration. Some actions sit under its **Mo
 No actions show while the AI writes a turn.
 
 ## The Side Panel Tabs
+<!-- keywords: author note, inventory, reminder for ai, event history, edit my stats, cheat stats, toggle trait, always tell ai, sidebar, standing facts -->
 
 | Tab | What it is |
 |---|---|
@@ -232,6 +236,7 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 | **Location** | Where you are, its description and the places it connects to |
 
 ## The Entity Dialog
+<!-- keywords: npc profile, character sheet, portrait, bio, unknown name, who is this, click a name, cast details -->
 
 Select a name in the **Entities** tab to open it. On desktop with the avatar showing, the first select shows that entity's picture in the panel.
 
@@ -240,6 +245,7 @@ The dialog shows the entity's image or 3D model, its player-facing description, 
 An entity the story hasn't revealed yet shows as its alias or *Unknown*, and doesn't open.
 
 ## The Change Location Dialog
+<!-- keywords: world map, zoom, pan, places tree, sub areas, pin marker, minimap, overview of places -->
 
 | Tab | What it shows |
 |---|---|
@@ -249,6 +255,7 @@ An entity the story hasn't revealed yet shows as its alias or *Unknown*, and doe
 The dialog opens on the tab you used last.
 
 ## The Game Menu
+<!-- keywords: pause menu, quit, leave, hamburger, back to title, options, exit without saving, suggestion -->
 
 Select the **Menu** button at the top right.
 
@@ -263,6 +270,7 @@ Select the **Menu** button at the top right.
 | **Exit to Main Menu** | Leaves the game. Unsaved progress is lost. |
 
 ## Narration Layout
+<!-- keywords: difference between, paginated, continuous, scrolling feed, what each shows, jump to newest, dashed bubbles -->
 
 | Layout | How the story reads |
 |---|---|
@@ -274,6 +282,7 @@ Both layouts have the same turn actions and the same choices.
 The layout, the quote color and the narration font are in **Settings** → **Display**. See [How to Change the Narration Layout](Settings#how-to-change-the-narration-layout).
 
 ## The AI Context Inspector
+<!-- keywords: which lore triggered, raw reasoning, tool calls, export log json, find in prompt, debug window, request list, legend -->
 
 The inspector shows exactly what the game sent to the AI each turn, and what came back. Use it to learn why the story did something.
 
@@ -288,6 +297,7 @@ The inspector shows exactly what the game sent to the AI each turn, and what cam
 Each request lists its **Raw Input**, **Tool Rounds**, **Raw Reasoning** and **Raw Output** where it has them. Before your first action it has nothing to show.
 
 ## Error Details
+<!-- keywords: diagnostics, toast, error code, what went wrong, red popup, failure info, paste in discord, technical info -->
 
 Most error messages have a **View Details →** link. The **Error Details** dialog shows the error and the full diagnostics behind it.
 
@@ -297,6 +307,7 @@ Most error messages have a **View Details →** link. The **Error Details** dial
 | **Report Bug** | Opens **Send Feedback** with the error as its title and the details as its text |
 
 ## The Demo AI Notice
+<!-- keywords: free model, badge, trial, default narrator, popup at start, weak ai, upgrade, no setup -->
 
 In the browser and on Android, Formamorph starts on the **Demo AI**, a small free model that needs no setup. The first time you start a game on it, **You're Playing on the Demo AI** opens. A **Demo AI** badge at the top right of the story opens it again.
 
@@ -309,6 +320,7 @@ In the browser and on Android, Formamorph starts on the **Demo AI**, a small fre
 A stronger model writes better narration and keeps each entity consistent. See [Connect Your Own AI](Connect-Your-Own-AI).
 
 ## The Like Prompt
+<!-- keywords: enjoying popup, heart, rate this world, thumbs up, upvote, stop asking, favorite, review -->
 
 After 15 turns in a world you downloaded from Community Creations, a card under the story asks *Enjoying …?*
 
