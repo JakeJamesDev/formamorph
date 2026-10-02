@@ -104,30 +104,39 @@ describe('entityTraitNames', () => {
   it('lists each entity’s traits, owned or linked, and marks the ones a persona choice can play', () => {
     expect(entityTraitNames({ traits: [cursed], traitGroups: [], entities }, [])).toEqual([
       { id: 'mira', name: 'Mira', persona: true, folder: [], tabPosition: 0, traits: [
-        { id: 'scarred', name: 'Scarred', path: [] }, { id: 'cursed', name: 'Cursed', path: [] },
+        { id: 'scarred', name: 'Scarred', path: [], tabPosition: 0 }, { id: 'cursed', name: 'Cursed', path: [], tabPosition: 1 },
       ] },
-      { id: 'ash', name: 'Ash', persona: false, traits: [{ id: 'loyal', name: 'Loyal', path: [] }], folder: [], tabPosition: 1 },
-      { id: 'wanderer', name: 'Wanderer', persona: true, traits: [{ id: 'marked', name: 'Marked', path: [] }], folder: [], tabPosition: 2 },
+      { id: 'ash', name: 'Ash', persona: false, traits: [{ id: 'loyal', name: 'Loyal', path: [], tabPosition: 0 }], folder: [], tabPosition: 1 },
+      { id: 'wanderer', name: 'Wanderer', persona: true, traits: [{ id: 'marked', name: 'Marked', path: [], tabPosition: 0 }], folder: [], tabPosition: 2 },
     ]);
   });
 
-  it('lists an entity’s traits in its own tree order, each under its own group names', () => {
+  // Play reads the set in its own order, so only the tab position follows the tree.
+  it('places each of an entity’s traits, owned or linked, in its own tree under its group names', () => {
     const groups: TraitGroup[] = [
       { id: 'marks', name: 'Marks', parentId: null, order: 0 },
       { id: 'old', name: '{{ph:ph-sky:world:p1}} Scars', parentId: 'marks', order: 0 },
     ];
-    const sky: Placeholder = { id: 'ph-sky', name: 'Sky', values: [{ id: 'v-grey', text: 'Grey' }] };
+    const sky: Placeholder = { id: 'ph-sky', name: 'Sky', values: [{ id: 'v-gray', text: 'Gray' }] };
+    const omens: TraitGroup = { id: 'omens', name: 'Omens', parentId: null, order: 0 };
+    const portent: Trait = { id: 'portent', name: 'Portent', statChanges: [], groupId: 'omens' };
     const vale: Entity = {
-      id: 'vale', name: 'Vale', traitGroups: groups, traitLinks: [{ ...link, groupId: 'marks' }],
+      id: 'vale', name: 'Vale', traitGroups: groups,
+      traitLinks: [
+        { ...link, groupId: 'marks', order: 1 },
+        { id: 'l2', originalId: 'omens', kind: 'group', originalName: 'Omens', groupId: null, order: 1 },
+      ],
       traits: [
         { id: 'keen', name: 'Keen', statChanges: [], order: 2 },
         { id: 'scarred', name: 'Scarred', statChanges: [], groupId: 'old', order: 0 },
       ],
     };
-    expect(entityTraitNames({ traits: [cursed], traitGroups: [], entities: [vale] }, [sky])[0].traits).toEqual([
-      { id: 'scarred', name: 'Scarred', path: ['Marks', 'Sky Scars'] },
-      { id: 'cursed', name: 'Cursed', path: ['Marks'] },
-      { id: 'keen', name: 'Keen', path: [] },
+    const world = { traits: [cursed, portent], traitGroups: [omens], entities: [vale] };
+    expect(entityTraitNames(world, [sky])[0].traits).toEqual([
+      { id: 'keen', name: 'Keen', path: [], tabPosition: 3 },
+      { id: 'scarred', name: 'Scarred', path: ['Marks', 'Sky Scars'], tabPosition: 0 },
+      { id: 'cursed', name: 'Cursed', path: ['Marks'], tabPosition: 1 },
+      { id: 'portent', name: 'Portent', path: ['Omens'], tabPosition: 2 },
     ]);
   });
 
