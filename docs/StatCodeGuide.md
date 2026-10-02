@@ -138,7 +138,7 @@ Each stat in the `stats` map, `self` included, exposes the following properties:
 | `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
 | `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
 
-A stat that a trait switched off still reads as a real entry. Its name, value and bounds read as usual, with `enabled` false. A write to it is dropped and reported. A live stat wins a code name over a switched-off one. Between stats in the same state, the later one wins.
+A stat that a trait switched off still reads as a real entry. Its name, value and bounds read as usual, with `enabled` false. A write to it is ignored and reported. A live stat wins a code name over a switched-off one. Between stats in the same state, the later one wins.
 
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
 
@@ -161,7 +161,7 @@ const level = stats.Level.value;
 self.max = 50 + level * 10;
 ```
 
-A bound your code sets overrides the authored bound, trait changes, and the AI's max changes for that field. It persists on runs that do not write it. Code-set bounds clear only when both boxes are empty. A write equal to the bound's current number counts as no write. Only `self` accepts writes. A write to another stat's fields is dropped and reported by its path, and the editor underlines it.
+A bound your code sets overrides the authored bound, trait changes, and the AI's max changes for that field. It persists on runs that do not write it. Code-set bounds clear only when both boxes are empty. A write equal to the bound's current number counts as no write. Only `self` accepts writes. A write to another stat's fields is ignored and reported by its path, and the editor underlines it.
 
 ### Reading This Turn
 
@@ -176,7 +176,7 @@ Every stat carries the turn's state before the code ran. `previous` holds the fu
 | `delta.total` | Every source added up: what the turn asked of the stat, before flags and the range |
 | `delta.actual` | Current values minus `previous`. A bound a trait changed since the turn started shows here |
 
-`previous` and `delta` are read-only. A write to them is dropped and reported. Together they let a script clamp or scale an ask:
+`previous` and `delta` are read-only. A write to them is ignored and reported. Together they let a script clamp or scale an ask:
 
 ```javascript
 // The AI may lower Sanity by at most 10 per turn, and never raise it.
@@ -232,7 +232,7 @@ entities["Old Molly"].placeholders["Eye Color"]  // brackets, at any depth
 
 Each placeholder has one path. A part's bare name doesn't reach it, and neither does an owner's name under `placeholders`.
 
-Every placeholder has every member in the table above, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
+Each placeholder has all the members above, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
 
 #### Owned Placeholders
 
@@ -327,7 +327,7 @@ if (persona.placeholders.Hair.text.includes('gray')) self.value -= 1;
 
 `persona.traits` and `traits` are separate. A world trait and a persona trait can share a name, and each map reads its own.
 
-When the player plays no entity, `persona` is an empty entry. Its `name` is `''`, every trait reads as off, and a switch through it is ignored. Code that reads `persona.traits.X.enabled` never throws. **Test Code** runs with no persona, so it reports each persona trait write as ignored.
+When the player plays no entity, `persona` is an empty entry. Its `name` is `''`, every trait reads as off, and a switch through it is ignored and reported. Code that reads `persona.traits.X.enabled` never throws. **Test Code** runs with no persona, so it reports each persona trait write as ignored.
 
 > ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits and placeholders the world doesn't have, so an unknown name after `persona.traits` or `persona.placeholders` is a warning, not an error.
 
@@ -359,12 +359,12 @@ if (entities.Mira.inScene) self.value += 1;
 ```
 
 - `persona` is the played persona's entry, so `persona === entities[persona.name]` whenever a persona entity plays.
-- An entity's `traits` lists only that entity's own set. A name outside it reads as a blank entry: `enabled` and `acquired` are false, and a switch through it is ignored.
+- An entity's `traits` lists only that entity's own set. A name outside it reads as a blank entry: `enabled` and `acquired` are false, and a switch through it is ignored and reported.
 - An entity the narrator invents in play is not listed. Neither is a persona-only entity the player didn't pick, the **Custom Persona** entity under a world persona, or an entity with no code name.
 - Of two entities that share a code name, the later one is the entry. The played persona always keeps its own name.
 - An entity's descriptions, aliases, locations and media are not in the entry.
 
-A name no entity in play has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch through it is ignored. Check `entities.Mira.name` to test whether Mira is in play.
+A name no entity in play has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch through it is ignored and reported. Check `entities.Mira.name` to test whether Mira is in play.
 
 **Test Code** lists every authored entity, with no trait chosen. A switch it makes is reported and never applied.
 
@@ -396,7 +396,7 @@ The two runs are ordered against each other, though: everything the before box w
 
 ### The Story Clock
 
-`clock` is a read-only object that describes the story time. A write to any of its fields is dropped and reported.
+`clock` is a read-only object that describes the story time. A write to any of its fields is ignored and reported.
 
 | Field | What it is |
 | --- | --- |

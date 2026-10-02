@@ -163,9 +163,8 @@ function renderSlot(slot: TemplateSlot, raw: string): string {
   if (isNameSlotType(slot.type)) return JSON.stringify(value);
   switch (slot.type) {
     case 'daypart':
-      return JSON.stringify(value);
     case 'text':
-      return value;
+      return JSON.stringify(value);
     case 'number': {
       const parsed = Number(value);
       // A blank or unparseable number would generate code that throws at run time; 0 keeps it valid and
@@ -304,16 +303,16 @@ self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2
     name: 'Bonus From Persona Trait',
     description: 'Follow another stat, with a bonus while the played persona has a trait on. A persona with no such trait gets no bonus.',
     code: `const base = stats[{{base:stat}}].value;
-const active = persona.traits['{{trait:text=Scarred}}'].enabled;
+const active = persona.traits[{{trait:text=Scarred}}].enabled;
 return base + (active ? {{bonus:number=10}} : 0);`,
   },
   {
     id: 'builtin-entity-trait-penalty',
     timing: 'after',
     name: 'Penalty From Entity Trait',
-    description: 'Follow another stat, with a penalty while one entity has a trait on. An entity that isn’t in the game adds no penalty.',
+    description: 'Follow another stat, with a penalty while one entity has a trait on. An entity that isn’t in play adds no penalty.',
     code: `const base = stats[{{base:stat}}].value;
-const active = entities['{{entity:text=Mira}}'].traits['{{trait:text=Wounded}}'].enabled;
+const active = entities[{{entity:text=Mira}}].traits[{{trait:text=Wounded}}].enabled;
 return base - (active ? {{penalty:number=10}} : 0);`,
   },
   {
