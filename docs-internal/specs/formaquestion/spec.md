@@ -113,6 +113,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q75 | The embedding worker loads with no request to a third-party host: the ONNX runtime binary is bundled for Semantic Memory and Formaquestion alike (ticket 48) |
 | Q76 | The pick request carries the newest earlier answer's text, flagged or not, with no mark: it reads the answer only to learn what a follow-up points to. Q64's no-page rule for flagged answers is about sources, not the pick (ticket 45 ruling) |
 | Q77 | The "here" rule may use the question's own words: picks count only on the screen's page when the question says "here", "this" or "these". Words that point at the screen are a stated signal, like the filler and screen words of tickets 36 and 42. In the app every question has an open screen, so the recall probe gains a screen option and ticket 46 reports task recall over an open screen beside the bar (ticket 47 ruling) |
+| Q78 | Over an open screen, task recall@5 fell to 54–62% against 79% with none. The screen's page how-tos join only when the question says here/this/these; the screen's section still leads (ticket 49). The bar stays as Q59 defines it, with open-screen numbers reported beside it |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
