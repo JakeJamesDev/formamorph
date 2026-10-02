@@ -104,9 +104,10 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
     case 'entity':
       return [...new Set(keyedEntityNames(names.entities))];
     case 'trait': {
-      if (slot.owner === PERSONA_TRAIT_OWNER) return [...new Set(personaTraitsOf(names.entities))];
-      const owner = slots.find((other) => other.name === slot.owner);
-      if (!owner) return names.trait;
+      const owner = slots.find((other) => other.name === slot.owner && other.type === 'entity');
+      if (!owner) {
+        return slot.owner === PERSONA_TRAIT_OWNER ? [...new Set(personaTraitsOf(names.entities))] : names.trait;
+      }
       return [...new Set(traitsOfEntity(names.entities, resolveSlotValue(owner, values)))];
     }
     case 'daypart':

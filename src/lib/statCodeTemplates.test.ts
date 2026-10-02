@@ -69,7 +69,7 @@ describe('parseTemplateSlots', () => {
     ]);
   });
 
-  it('ties a trait slot to the persona or to an entity slot, and reports a tie to anything else', () => {
+  it('ties a trait slot to the persona or to an entity slot, and drops a tie to anything else without an error', () => {
     const { slots, errors } = parseTemplateSlots('{{who:entity}} {{a:trait(who)}} {{b:trait(persona)}} {{c:trait}}');
     expect(errors).toEqual([]);
     expect(slots).toEqual([
@@ -78,13 +78,11 @@ describe('parseTemplateSlots', () => {
       { name: 'b', type: 'trait', owner: 'persona' },
       { name: 'c', type: 'trait' },
     ]);
-    const bad = parseTemplateSlots('{{n:number}} {{a:trait(n)}} {{b:trait(nobody)}}');
-    expect(bad.errors).toEqual([
-      'Slot "a" lists the traits of "n", which is not an entity slot.',
-      'Slot "b" lists the traits of "nobody", which is not an entity slot.',
-    ]);
-    // A broken tie falls back to the world's traits.
-    expect(bad.slots.find((slot) => slot.name === 'a')).toEqual({ name: 'a', type: 'trait' });
+    // A tie to anything but an entity slot is no tie: no error, and the world's traits, as on v3.1.2.
+    const loose = parseTemplateSlots('{{n:number}} {{a:trait(n)}} {{b:trait(nobody)}}');
+    expect(loose.errors).toEqual([]);
+    expect(loose.slots.find((slot) => slot.name === 'a')).toEqual({ name: 'a', type: 'trait' });
+    expect(loose.slots.find((slot) => slot.name === 'b')).toEqual({ name: 'b', type: 'trait' });
     // A list was never a tie, so a saved template that wrote one still parses clean.
     expect(parseTemplateSlots('{{t:trait(a|b)}}')).toEqual({ slots: [{ name: 't', type: 'trait', options: ['a', 'b'] }], errors: [] });
   });
