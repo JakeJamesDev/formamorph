@@ -346,6 +346,12 @@ describe('built-in templates', () => {
       expect(none).toEqual({ value: 80, error: null });
     });
 
+    it('keeps a trait name with a quote inside its string', async () => {
+      const values = { base: 'Health', trait: `Scar's "mark"`, bonus: '10' };
+      const options = { ...castOptions, persona: { ...rook, traits: [{ name: `Scar's "mark"`, enabled: true, acquired: true }] } };
+      expect((await run('builtin-persona-trait-bonus', values, options)).value).toBe(90);
+    });
+
     it('subtracts the penalty while the named entity has the trait on, and not when it is out of play', async () => {
       const values = { base: 'Health', entity: 'Mira', trait: 'Wounded', penalty: '15' };
       expect((await run('builtin-entity-trait-penalty', values, castOptions)).value).toBe(65);
