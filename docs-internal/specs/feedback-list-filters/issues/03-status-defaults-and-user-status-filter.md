@@ -1,6 +1,7 @@
 # 03: Status Defaults and User Status Filter
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 773f369a
 Blocked by: 01, 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -13,10 +14,10 @@ Reasoning effort: medium
 
 The control sits in the filter row for now. Ticket 07 moves it into the hidden filters. The staff Suggestions comment that justifies opening on All goes away with that default.
 
-- [ ] Staff Bugs and Suggestions open on Unresolved and Still Open
-- [ ] User Bugs and Suggestions open on Unresolved and Still Open in both scopes
-- [ ] The user status filter offers the staff options and reaches the request
-- [ ] Picking All shows closed threads again
-- [ ] The status options and defaults come from the presentation module, one source for both tabs
-- [ ] Tests at the tab seam with `FeedbackService.list` mocked
-- [ ] Changelog line under In Progress
+- [x] Staff Bugs and Suggestions open on Unresolved and Still Open
+- [x] User Bugs and Suggestions open on Unresolved and Still Open in both scopes
+- [x] The user status filter offers the staff options and reaches the request
+- [x] Picking All shows closed threads again
+- [x] The status options and defaults come from the presentation module, one source for both tabs
+- [x] Tests at the tab seam with `FeedbackService.list` mocked
+- [x] Changelog line under In Progress

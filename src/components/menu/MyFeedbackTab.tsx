@@ -6,11 +6,12 @@ import { FeedbackList } from "@/components/menu/FeedbackList";
 import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { useFeedbackListPlace } from "@/components/menu/useFeedbackListPlace";
+import { FeedbackStatusSelect } from "@/components/menu/FeedbackStatusSelect";
 import {
-  ANY_CATEGORY, CATEGORY_OPTIONS, FEEDBACK_SCOPES, FEEDBACK_SORTS, SCOPE_LABELS, SORT_LABELS,
-  categoryFilterValue, scopeFilterValue,
+  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, FEEDBACK_SCOPES, SCOPE_LABELS, SORT_LABELS,
+  categoryFilterValue, scopeFilterValue, sortsFor, statusFilterValue,
 } from "@/lib/feedbackPresentation";
-import type { FeedbackScope, FeedbackSort } from "@/lib/feedbackPresentation";
+import type { FeedbackScope, FeedbackSort, StatusFilter } from "@/lib/feedbackPresentation";
 import AuthService from "@/services/AuthService";
 import { isStaff } from "@/lib/roles";
 import type { FeedbackCategory, FeedbackType } from "@/types";
@@ -56,6 +57,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
   const { page, setPage, openId, open, back, nonce, refresh, listRef, refilter } = useFeedbackListPlace();
   const [filing, setFiling] = useState(false);
   const [scope, setScope] = useState<FeedbackScope>(COPY[type].initialScope);
+  const [status, setStatus] = useState<StatusFilter>(DEFAULT_STATUS_FILTER[type]);
   const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
   const [sort, setSort] = useState<FeedbackSort>('newest');
 
@@ -86,17 +88,14 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
         {/* The controls carry the whole row: a sentence saying what the tab is would leave no room for
             them, and the tab's own label already says it. */}
         <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-            {/* Ranking only means something over everyone's; one person's own list is short. */}
-            {type === 'suggestion' && scope === 'all' && (
-              <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
-                <SelectTrigger className="w-36" aria-label="Sort by"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {FEEDBACK_SORTS.map((value) => (
-                    <SelectItem key={value} value={value}>{SORT_LABELS[value]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
+              <SelectTrigger className="w-40" aria-label="Sort by"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {sortsFor(type).map((value) => (
+                  <SelectItem key={value} value={value}>{SORT_LABELS[value]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select value={category} onValueChange={refilter((value) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY))}>
               <SelectTrigger className="w-44" aria-label="Filter by category"><SelectValue /></SelectTrigger>
@@ -107,6 +106,8 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
                 ))}
               </SelectContent>
             </Select>
+
+            <FeedbackStatusSelect type={type} value={status} onValueChange={refilter((value) => setStatus(value as StatusFilter))} />
 
             <Select value={scope} onValueChange={refilter((value) => setScope(value as FeedbackScope))}>
               <SelectTrigger className="w-36" aria-label="Which threads"><SelectValue /></SelectTrigger>
@@ -127,6 +128,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
           active={active}
           type={type}
           scope={scopeFilterValue(scope)}
+          status={statusFilterValue(status, type)}
           category={categoryFilterValue(category)}
           sort={sort}
           page={page}
