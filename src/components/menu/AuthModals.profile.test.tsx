@@ -79,16 +79,18 @@ describe('the profile shell', () => {
     expect(screen.queryByRole('tab', { name: 'Manage' })).toBeNull();
   });
 
-  it('puts both account actions in the header', async () => {
+  it('keeps only Log Out in the header', async () => {
     renderProfile();
 
-    expect(await screen.findByRole('button', { name: /Change Password/ })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Logout/ })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /Log Out/ })).toBeTruthy();
+    // The other account controls live in the Settings tab, which is not open.
+    expect(screen.queryByRole('button', { name: /Change Password/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Delete Account/ })).toBeNull();
   });
 
-  it('opens the deletion flow from the header, without sending anything', async () => {
+  it('opens the deletion flow from the Settings tab, without sending anything', async () => {
     const sent = vi.spyOn(AuthService, 'requestAccountDeletion');
-    renderProfile();
+    renderProfile({ initialTab: 'settings' });
 
     fireEvent.click(await screen.findByRole('button', { name: /Delete Account/ }));
 
@@ -103,7 +105,7 @@ describe('the profile shell', () => {
     // The flow stands above this dialog and reads the session rather than the dialog's own prop, so
     // the suspension has to be on the session for it to see one.
     AuthService.currentUser = { username: 'finder', status: 'suspended' };
-    renderProfile({ currentUser: user({ status: 'suspended' }) });
+    renderProfile({ currentUser: user({ status: 'suspended' }), initialTab: 'settings' });
 
     fireEvent.click(await screen.findByRole('button', { name: /Delete Account/ }));
 
@@ -116,7 +118,7 @@ describe('the profile shell', () => {
     const onLogout = vi.fn();
     renderProfile({ onLogout });
 
-    fireEvent.click(await screen.findByRole('button', { name: /Logout/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Log Out/ }));
 
     expect(onLogout).toHaveBeenCalled();
   });
@@ -232,11 +234,13 @@ describe('landing on a tab while already open', () => {
 
 describe('the password popup', () => {
   const openPopup = async () => {
+    // Radix selects a tab on mouse-down, not click.
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Settings' }));
     fireEvent.click(await screen.findByRole('button', { name: /Change Password/ }));
     return screen.findByLabelText('Current Password');
   };
 
-  it('opens from the header with the old flow', async () => {
+  it('opens from the Settings tab with the old flow', async () => {
     renderProfile();
 
     await openPopup();
@@ -278,7 +282,7 @@ describe('the password popup', () => {
 
     await openPopup();
 
-    expect(screen.getByText(/can’t be changed while your account is suspended/)).toBeTruthy();
+    expect(screen.getByText(/Your password can’t be changed while your account is suspended/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Update Password' }).hasAttribute('disabled')).toBe(true);
   });
 });
@@ -327,5 +331,97 @@ describe('Member since', () => {
 
     await screen.findByText('me');
     await waitFor(() => expect(screen.queryByText(/Member since/)).toBeNull());
+  });
+});
+
+describe('the settings tab', () => {
+  const openSettings = () => renderProfile({ initialTab: 'settings' });
+
+  it('is a tab beside the others, and can be landed on', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    openSettings();
+
+    expect(await screen.findByRole('tab', { name: 'Settings' })).toBeTruthy();
+    expect(await screen.findByLabelText('Email Address')).toBeTruthy();
+  });
+
+  it('shows the address on file and its state', async () => {
+    AuthService.currentUser = { username: 'finder', email: 'me@example.com', emailVerified: false };
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    openSettings();
+
+    expect(await screen.findByText('me@example.com')).toBeTruthy();
+    expect(screen.getByText(/Not verified yet/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Resend Verification Email' })).toBeTruthy();
+  });
+
+  it('saves a new address and says the mail was sent', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue({ email: null, emailVerified: false });
+    const set = vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: false, mailSent: true });
+    openSettings();
+
+    fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
+
+    await waitFor(() => expect(set).toHaveBeenCalledWith('new@example.com'));
+    expect(await screen.findByText(/Verification email sent to new@example.com/)).toBeTruthy();
+  });
+
+  it('refuses an invalid address before calling the server', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    const set = vi.spyOn(AuthService, 'setEmail');
+    openSettings();
+
+    fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'nope' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
+
+    expect(await screen.findByText('Enter a valid email address')).toBeTruthy();
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('shows the server refusal', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    vi.spyOn(AuthService, 'setEmail').mockRejectedValue(new Error('Email already in use'));
+    openSettings();
+
+    fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'taken@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
+
+    expect(await screen.findByText('Email already in use')).toBeTruthy();
+  });
+
+  it('resends the verification mail', async () => {
+    AuthService.currentUser = { username: 'finder', email: 'me@example.com', emailVerified: false };
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    const resend = vi.spyOn(AuthService, 'resendVerification').mockResolvedValue({ emailVerified: false, mailSent: true });
+    openSettings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Resend Verification Email' }));
+
+    await waitFor(() => expect(resend).toHaveBeenCalled());
+    expect(await screen.findByText('Verification email sent. Open the link in it to finish.')).toBeTruthy();
+  });
+
+  it('locks the email box for a suspended account', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    renderProfile({ currentUser: user({ status: 'suspended' }), initialTab: 'settings' });
+
+    expect((await screen.findByLabelText('Email Address')).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Save Email' }).hasAttribute('disabled')).toBe(true);
+  });
+
+  it('drops a late answer after the dialog unmounts', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    let release: (value: { emailVerified: boolean; mailSent: boolean }) => void = () => {};
+    vi.spyOn(AuthService, 'setEmail').mockReturnValue(new Promise((resolve) => { release = resolve; }));
+    const { unmount } = openSettings();
+
+    fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'late@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
+    unmount();
+    release({ emailVerified: false, mailSent: true });
+    await Promise.resolve();
+
+    expect(console.error).not.toHaveBeenCalled();
   });
 });

@@ -112,6 +112,7 @@ const ENTRIES: [string, string][] = [
   ['profile.messages', 'Messages'],
   ['profile.notifications', 'Notifications'],
   ['profile.terms', 'Terms'],
+  ['profile.settings', 'Settings'],
   ['eventAck.start', 'Event Start'],
   ['eventAck.end', 'Event End'],
   ['gameViewer.entities', 'Entities'],

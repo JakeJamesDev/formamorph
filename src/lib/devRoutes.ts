@@ -109,9 +109,9 @@ export const DEV_MODAL_TABS = {
   community: ['world', 'entity', 'dictionary', 'model', 'prompt', 'contest'],
   // The publish dialog's canned payload: a world by default, or a prompt with `tab=prompt`.
   publish: ['world', 'prompt'],
-  // The account dialog: admin messages, the follow feed, and the terms. Password and logout are header
-  // buttons rather than tabs, so neither is routable.
-  profile: ['messages', 'notifications', 'terms'],
+  // The account dialog: admin messages, the follow feed, the terms, and the account settings. Log Out is a
+  // header button rather than a tab, so it is not routable.
+  profile: ['messages', 'notifications', 'terms', 'settings'],
   // The reader's side of feedback, behind the main menu's Feedback button; one tab per branch.
   feedbackHub: ['bugs', 'suggestions'],
   // The admin tools: accounts, broadcasts, the publish policies, the events calendar, the feedback

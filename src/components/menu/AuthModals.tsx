@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { AlertTriangle, Key, LogOut, Trash2 } from "lucide-react";
+import { AlertTriangle, Key, LogOut } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import { ProfileAvatarEditor } from "@/components/menu/ProfileAvatarEditor";
 import { type ProfileTab } from "@/components/menu/profileTabs";
 import { NotificationsTab } from "@/components/menu/NotificationsTab";
 import { TermsTab } from "@/components/menu/TermsTab";
-import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
+import { AccountSettingsTab } from "@/components/menu/AccountSettingsTab";
 import PolicyService from "@/services/PolicyService";
 import AuthService from "@/services/AuthService";
 import UserService from "@/services/UserService";
@@ -123,10 +123,6 @@ export function AuthModals({
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // Ending the account. It lives above the menu, because the privacy prompt raises the same flow from
-  // over the top of every screen.
-  const { startDeletion } = useAccountDeletion();
-
   const resetPasswordForm = () => {
     setCurrentPassword('');
     setNewPassword('');
@@ -192,16 +188,8 @@ export function AuthModals({
               </div>
 
               <div className="ml-auto flex flex-wrap justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowPasswordDialog(true)}>
-                  <Key className="mr-2 h-4 w-4" /> Change Password
-                </Button>
                 <Button variant="destructive" size="sm" onClick={onLogout}>
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-                </Button>
-                {/* Shown to a suspended account too: the flow's first step is where it learns that the
-                    team does this one, rather than a control that is missing without explanation. */}
-                <Button variant="ghost" size="sm" className="text-destructive" onClick={startDeletion}>
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                  <LogOut className="mr-2 h-4 w-4" /> Log Out
                 </Button>
               </div>
             </div>
@@ -226,11 +214,12 @@ export function AuthModals({
             onValueChange={(value) => setProfileTab(value as ProfileTab)}
             className="w-full min-w-0 flex flex-col flex-1 min-h-0"
           >
-            {/* The terms tab is absent until an admin has authored a gate, so most installs see two. */}
-            <TabsList className={`grid w-full flex-shrink-0 ${hasTerms ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {/* The terms tab is absent until an admin has authored a gate, so most installs see three. */}
+            <TabsList className={`grid w-full flex-shrink-0 ${hasTerms ? 'grid-cols-4' : 'grid-cols-3'}`}>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               {hasTerms && <TabsTrigger value="terms">Terms</TabsTrigger>}
+              <TabsTrigger value="settings">Settings</TabsTrigger>
             </TabsList>
 
             {/* Only the panel scrolls; the identity, actions and tab strip stay put. */}
@@ -259,11 +248,17 @@ export function AuthModals({
                 </ScrollArea>
               </TabsContent>
             )}
+
+            <TabsContent value="settings" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <AccountSettingsTab suspended={isSuspended} onChangePassword={() => setShowPasswordDialog(true)} />
+              </ScrollArea>
+            </TabsContent>
           </Tabs>
         </DialogContent>
       </Dialog>
 
-      {/* Change Password: the flow that used to be the Manage tab, now behind the header button. */}
+      {/* Change Password: opened from the Settings tab. */}
       <Dialog
         open={showPasswordDialog}
         onOpenChange={(open) => { setShowPasswordDialog(open); if (!open) resetPasswordForm(); }}

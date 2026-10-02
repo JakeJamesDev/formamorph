@@ -140,6 +140,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'profile.messages': USER_PROFILE,
   'profile.notifications': community('the-follow-feed'),
   'profile.terms': community('publishing-terms'),
+  'profile.settings': USER_PROFILE,
   deleteAccount: ACCOUNT_DELETION,
   deletionCancelled: ACCOUNT_DELETION,
   feedbackHub: BUGS_AND_SUGGESTIONS,
