@@ -40,24 +40,24 @@ export const SURFACE_EXCLUSIONS: Partial<Record<SurfaceId, SurfaceExclusionReaso
   ...excludeAll(['designSystem', ...tabsOf('gameViewerAttach')], 'dev'),
 };
 
-const ENTITY_OWNED_PLACEHOLDERS: DocTarget = {
+const ENTITY_OWNED_PLACEHOLDERS: Required<DocTarget> = {
   page: 'World-Editor-Placeholders',
   anchor: 'placeholders-that-belong-to-an-entity-or-a-dictionary',
 };
-const ENTITY_OPENINGS: DocTarget = { page: 'World-Editor-Openings', anchor: 'entity-openings' };
+const ENTITY_OPENINGS: Required<DocTarget> = { page: 'World-Editor-Openings', anchor: 'entity-openings' };
 // One table row per prompt says what it does in a turn and when it shows.
-const THE_PROMPTS: DocTarget = { page: 'Prompts', anchor: 'the-prompts' };
-const community = (anchor: string): DocTarget => ({ page: 'Community-Creations', anchor });
+const THE_PROMPTS: Required<DocTarget> = { page: 'Prompts', anchor: 'the-prompts' };
+const community = (anchor: string): Required<DocTarget> => ({ page: 'Community-Creations', anchor });
 const PUBLISH_DIALOG = community('the-publish-dialog');
 const EVENT_POSTERS = community('event-posters-and-banners');
 const USER_PROFILE = community('the-user-profile-dialog');
 const ACCOUNT_DELETION = community('account-deletion');
 const BUGS_AND_SUGGESTIONS = community('bugs-and-suggestions');
-const THE_LIBRARY_TABS: DocTarget = { page: 'Library', anchor: 'the-library-tabs' };
-const THE_GROUP_DIALOGS: DocTarget = { page: 'Library', anchor: 'the-group-dialogs' };
+const THE_LIBRARY_TABS: Required<DocTarget> = { page: 'Library', anchor: 'the-library-tabs' };
+const THE_GROUP_DIALOGS: Required<DocTarget> = { page: 'Library', anchor: 'the-group-dialogs' };
 
 /** The docs heading for each player-facing surface. */
-export const SURFACE_MAP: Partial<Record<SurfaceId, DocTarget>> = {
+export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   aiSetup: { page: 'Connect-Your-Own-AI', anchor: 'the-set-up-your-ai-dialog' },
   componentUpdates: { page: 'LinkedContent', anchor: 'update-available' },
   connectReferences: { page: 'LinkedContent', anchor: 'connect-world-references' },

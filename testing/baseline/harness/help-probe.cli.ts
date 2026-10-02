@@ -293,7 +293,6 @@ const started = Date.now();
 const rows = await pool(jobs, parallel);
 console.log(`${rows.length} requests in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
 
-
 /** The metrics of one arm over a set of cases, as printable cells. */
 function summarize(arm: Arm, caseIds: ReadonlySet<string>) {
   const scored = rows.filter((r) => caseIds.has(r.caseId) && r.arm === arm && r.score && r.sample);

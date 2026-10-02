@@ -78,7 +78,6 @@ type Kind = (typeof KINDS)[number];
 interface Row { id: string; run: number; arm: Arm; kind: Kind; sample?: Sample; error?: string }
 interface First { id: string; run: number; flagged: boolean; error?: string }
 
-
 const firsts: First[] = [];
 const jobs: (() => Promise<Row[]>)[] = [];
 for (let run = 1; run <= runs; run++) {

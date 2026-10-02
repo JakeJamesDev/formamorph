@@ -38,7 +38,7 @@ export function openSectionChange(sectionId: string, page: string | undefined): 
   });
 }
 
-export function useGuideView():[GuideView, (change: GuideViewChange) => void] {
+export function useGuideView(): [GuideView, (change: GuideViewChange) => void] {
   const [view, setView] = useState<GuideView>(INITIAL_GUIDE_VIEW);
   const changeView = useCallback((change: GuideViewChange) => setView((current) => ({
     ...current,
