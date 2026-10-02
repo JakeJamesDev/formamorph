@@ -43,8 +43,7 @@ const same = (text: string) => text;
 const filterRows = (_value: string, search: string, keywords: string[] = []) =>
   (keywords.join(' ').toLowerCase().includes(search.trim().toLowerCase()) ? 1 : 0);
 
-/** A row's right-aligned location. Three or more segments collapse to `First › … › Last`. */
-export function Breadcrumb({ segments, render = same }: { segments: readonly string[]; render?: (text: string) => ReactNode }) {
+function Breadcrumb({ segments, render }: { segments: readonly string[]; render: (text: string) => ReactNode }) {
   const collapsed = segments.length >= 3;
   const shown = collapsed ? [segments[0], '…', segments[segments.length - 1]] : segments;
   return (
@@ -54,6 +53,36 @@ export function Breadcrumb({ segments, render = same }: { segments: readonly str
       ))}
     </span>
   );
+}
+
+/** The full path a row's tooltip shows and its search reads; undefined with no breadcrumb. */
+const breadcrumbPath = (breadcrumb?: readonly string[], plainText: (text: string) => string = same) =>
+  breadcrumb?.length ? plainText(breadcrumb.join(SEPARATOR)) : undefined;
+
+/** A row's name and, right-aligned, where it lives. Render inside a flex row. */
+export function BreadcrumbLabel({ name, breadcrumb, render = same }: {
+  name: string;
+  breadcrumb?: readonly string[];
+  render?: (text: string) => ReactNode;
+}) {
+  const crumbs = breadcrumb?.length ? breadcrumb : undefined;
+  return (
+    <>
+      {/* Beside a breadcrumb the name keeps its natural width up to 65% of the row, so it always reads. */}
+      <span className={cn('min-w-0 truncate', crumbs ? 'max-w-[65%] shrink-0' : 'flex-1')}>{render(name)}</span>
+      {crumbs && <Breadcrumb segments={crumbs} render={render} />}
+    </>
+  );
+}
+
+/** Wraps a breadcrumb row in a tooltip of its full path, which a collapsed or truncated breadcrumb hides. */
+export function BreadcrumbTip({ breadcrumb, plainText, children }: {
+  breadcrumb?: readonly string[];
+  plainText?: (text: string) => string;
+  children: ReactElement;
+}) {
+  const path = breadcrumbPath(breadcrumb, plainText);
+  return path ? <Tip tip={path} labelsChild={false}>{children}</Tip> : children;
 }
 
 /**
@@ -67,8 +96,7 @@ export function BreadcrumbPickerList<V>({
   const empty = sections.every((s) => s.rows.length === 0);
 
   const row = (r: BreadcrumbPickerRow<V>) => {
-    const crumbs = r.breadcrumb?.length ? r.breadcrumb : undefined;
-    const path = crumbs && plainText(crumbs.join(SEPARATOR));
+    const path = breadcrumbPath(r.breadcrumb, plainText);
     const checked = checks && Object.is(r.value, value);
     const item = (
       <CommandItem
@@ -85,13 +113,11 @@ export function BreadcrumbPickerList<V>({
             {checked && <Check className="h-4 w-4" aria-hidden />}
           </span>
         )}
-        {/* Beside a breadcrumb the name keeps its natural width up to 65% of the row, so it always reads. */}
-        <span className={cn('min-w-0 truncate', crumbs ? 'max-w-[65%] shrink-0' : 'flex-1')}>{renderText(r.name)}</span>
-        {crumbs && <Breadcrumb segments={crumbs} render={renderText} />}
+        <BreadcrumbLabel name={r.name} breadcrumb={r.breadcrumb} render={renderText} />
         {r.hint && <span className="shrink-0 text-meta text-muted-foreground">{renderText(r.hint)}</span>}
       </CommandItem>
     );
-    return path ? <Tip key={r.key} tip={path} labelsChild={false}>{item}</Tip> : item;
+    return <BreadcrumbTip key={r.key} breadcrumb={r.breadcrumb} plainText={plainText}>{item}</BreadcrumbTip>;
   };
 
   return (
