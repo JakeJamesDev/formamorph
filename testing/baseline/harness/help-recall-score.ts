@@ -1,9 +1,7 @@
 // The recall score of the help search probes, and the pure parts of the approaches `help-recall.cli.ts` compares.
 import type { DocsPages } from '@/lib/docs/docsChecks';
 import { docHeadings } from '@/lib/docs/headingAnchors';
-
-/** The number of sections one help request holds at most: recall is counted over this many. */
-export const RECALL_LIMIT = 5;
+import { HELP_SECTION_LIMIT } from '@/lib/formaquestion/helpSession';
 
 /** The id of the whole section: part N of a split section counts as that section. */
 export const baseSectionId = (id: string) => id.replace(/-part-\d+$/, '');
@@ -12,7 +10,7 @@ export const baseSectionId = (id: string) => id.replace(/-part-\d+$/, '');
 export interface RecallScore {
   /** A keyed section is the first section of the block. */
   first: boolean;
-  /** A keyed section is among the first five, with no size budget. */
+  /** A keyed section is among the sections one request holds at most, with no size budget. */
   at5: boolean;
   /** A keyed section is in the block that fits the request's size budget, so it reaches the model. */
   sent: boolean;
@@ -24,7 +22,7 @@ export function scoreRecall(right: readonly string[], block: readonly string[], 
   const isRight = (id: string) => keyed.has(baseSectionId(id));
   return {
     first: block.length > 0 && isRight(block[0]),
-    at5: block.slice(0, RECALL_LIMIT).some(isRight),
+    at5: block.slice(0, HELP_SECTION_LIMIT).some(isRight),
     sent: sentBlock.some(isRight),
   };
 }
@@ -46,10 +44,10 @@ export function summarizeRecall(scores: readonly RecallScore[]): RecallSummary {
 const FUSION_K = 60;
 
 /** Merges ranked id lists by reciprocal rank fusion: an id scores 1 / (k + rank) in each list that holds it. */
-export function mergeRanks(lists: readonly (readonly string[])[], k = FUSION_K): string[] {
+export function mergeRanks(lists: readonly (readonly string[])[]): string[] {
   const scores = new Map<string, number>();
   for (const list of lists) {
-    list.forEach((id, at) => scores.set(id, (scores.get(id) ?? 0) + 1 / (k + at + 1)));
+    list.forEach((id, at) => scores.set(id, (scores.get(id) ?? 0) + 1 / (FUSION_K + at + 1)));
   }
   return [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
 }
@@ -84,9 +82,24 @@ export function readPicks(reply: string, lines: readonly string[]): number[] {
       at = ending.length === 1 ? ending[0] : -1;
     }
     if (at >= 0 && !picks.includes(at)) picks.push(at);
-    if (picks.length === RECALL_LIMIT) break;
+    if (picks.length === HELP_SECTION_LIMIT) break;
   }
   return picks;
+}
+
+/** A section's text packed into chunks of whole blocks, each under `limit` characters where one block allows it. */
+export function chunksOf(markdown: string, limit: number): string[] {
+  const chunks: string[] = [];
+  let current = '';
+  for (const block of markdown.split(/\n{2,}/)) {
+    if (current && current.length + block.length + 2 > limit) {
+      chunks.push(current);
+      current = '';
+    }
+    current = current ? `${current}\n\n${block}` : block;
+  }
+  if (current) chunks.push(current);
+  return chunks;
 }
 
 /**

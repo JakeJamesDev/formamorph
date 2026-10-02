@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, withKeywords } from './help-recall-score';
+import { chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, withKeywords } from './help-recall-score';
 
 describe('scoreRecall', () => {
   const right = ['Library#how-to-make-a-group', 'Library#groups'];
@@ -50,7 +50,7 @@ describe('summarizeRecall', () => {
 });
 
 describe('mergeRanks', () => {
-  it('puts a section that both lists rank high above one that a single list ranks first', () => {
+  it('orders the sections by their places in every list', () => {
     expect(mergeRanks([['a', 'b', 'c'], ['b', 'd', 'a']])).toEqual(['b', 'a', 'd', 'c']);
   });
 
@@ -103,6 +103,20 @@ describe('readPicks', () => {
 
   it('reads no pick from a reply that copies no line', () => {
     expect(readPicks('None of the sections answer it.', lines)).toEqual([]);
+  });
+});
+
+describe('chunksOf', () => {
+  it('packs whole blocks into chunks under the limit', () => {
+    expect(chunksOf('aaaa\n\nbbbb\n\ncccc\n\ndddd', 11)).toEqual(['aaaa\n\nbbbb', 'cccc\n\ndddd']);
+  });
+
+  it('keeps a block that is over the limit whole, in a chunk of its own', () => {
+    expect(chunksOf('aa\n\nbbbbbbbbbbbbbbbb\n\ncc', 6)).toEqual(['aa', 'bbbbbbbbbbbbbbbb', 'cc']);
+  });
+
+  it('gives no chunk for no text', () => {
+    expect(chunksOf('', 10)).toEqual([]);
   });
 });
 

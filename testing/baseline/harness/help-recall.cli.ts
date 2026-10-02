@@ -28,12 +28,12 @@ import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import sidebar from '../../../docs/_Sidebar.md?raw';
 import { BUNDLED_DOCS, bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
-import { helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { HELP_SECTION_LIMIT, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import { mean, probeSnapshot, type ProbeTarget } from './help-probe-shared';
 import { loadBlindCases, loadKnownCases, RECALL_KINDS, RECALL_SETS, type RecallCase, type RecallKind, type RecallSet } from './help-recall-cases';
-import { baseSectionId, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, withKeywords, type RecallScore } from './help-recall-score';
+import { baseSectionId, chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, withKeywords, type RecallScore } from './help-recall-score';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -42,21 +42,27 @@ const argVal = (flag: string, fallback: string) => {
 };
 const ARMS = ['keyword', 'wordmap', 'semantic', 'hybrid', 'wordmap+semantic', 'ai', 'ai+wordmap', 'ai+wordmap+semantic'] as const;
 type Arm = (typeof ARMS)[number];
-const withAi = args.includes('--ai');
-const arms = argVal('--arms', ARMS.join(',')).split(',').filter((arm): arm is Arm => (ARMS as readonly string[]).includes(arm) && (withAi || !arm.startsWith('ai')));
-const sets = argVal('--sets', RECALL_SETS.join(',')).split(',');
+/** The values of a comma list flag, each one of `allowed`. */
+function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
+  const values = argVal(flag, allowed.join(',')).split(',');
+  const unknown = values.filter((value) => !(allowed as readonly string[]).includes(value));
+  if (unknown.length > 0) throw new Error(`${flag} takes ${allowed.join(', ')}, not ${unknown.join(', ')}`);
+  return values as T[];
+}
+const isAiArm = (arm: Arm) => arm.startsWith('ai');
+// The arms that send requests run only with `--ai`.
+const arms = listArg('--arms', ARMS).filter((arm) => args.includes('--ai') || !isAiArm(arm));
+const sets = listArg('--sets', RECALL_SETS);
 const SECTION_TEXTS = ['head', 'full', 'chunks'] as const;
-type SectionText = (typeof SECTION_TEXTS)[number];
-// `full` scored best on the known set; the blind set had no part in the choice.
-const sectionText = argVal('--text', 'full') as SectionText;
-if (!SECTION_TEXTS.includes(sectionText)) throw new Error(`--text takes ${SECTION_TEXTS.join(', ')}, not ${sectionText}`);
-const runs =Number(argVal('--runs', '5'));
+// `full` is the best text on the known set; the blind set has no part in the choice.
+const sectionText = args.includes('--text') ? listArg('--text', SECTION_TEXTS)[0] : 'full';
+const runs = Number(argVal('--runs', '5'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
 const WORD_MAP_FILE = path.resolve('testing/baseline/help-word-map.json');
 const CHANGELOG_PAGE = 'Changelog';
-/** The most sections of each ranking a fused arm merges. */
+/** The fewest sections of each ranking a fused arm merges; a search that asks for more gets more. */
 const FUSION_DEPTH = 50;
 /** How much a section of the favored page outweighs another, as in the keyword search. */
 const FAVORED_PAGE_WEIGHT = 2;
@@ -103,6 +109,7 @@ function scoreAll(arm: Arm, run: number, searchFor: (c: RecallCase) => DocsIndex
   const one = (c: RecallCase, history: EarlierExchange[]) => {
     const started = performance.now();
     const { ranked, sent } = blocksOf(searchFor(c), c, history);
+    // `blocksOf` builds the block twice; a request builds it once.
     const ms = (performance.now() - started) / 2;
     sentOf.set(c.id, sent);
     rows.push({ arm, run, caseId: c.id, score: scoreRecall(c.right, ranked.map((s) => s.id), sent.map((s) => s.id)), ranked: ranked.map((s) => s.id), ...(costOf(c) ?? { ms, promptTokens: 0, answerTokens: 0 }) });
@@ -121,27 +128,15 @@ function scoreAll(arm: Arm, run: number, searchFor: (c: RecallCase) => DocsIndex
 type Extractor = (texts: string[], options: { pooling: 'mean'; normalize: true }) => Promise<{ dims: number[]; data: Float32Array; dispose(): void }>;
 interface SemanticCost { loadMs: number; loadRssMb: number; vectors: number; vectorBytes: number; queryMs: number }
 
-/** Body text packed into chunks of whole blocks, each under the limit where a block allows it. */
-function chunksOf(markdown: string): string[] {
-  const chunks: string[] = [];
-  let current = '';
-  for (const block of markdown.split(/\n{2,}/)) {
-    if (current && current.length + block.length + 2 > CHUNK_CHARS) {
-      chunks.push(current);
-      current = '';
-    }
-    current = current ? `${current}\n\n${block}` : block;
-  }
-  if (current) chunks.push(current);
-  return chunks;
-}
-
-/** The texts one section is embedded as. `chunks` scores a section by its best chunk, so a long section is read whole. */
+/**
+ * The texts one section is embedded as. The model reads the first 512 tokens of a text, so `full` covers the
+ * start of a long section. `chunks` scores a section by its best chunk, so a long section is read whole.
+ */
 function textsOf(section: DocSection): string[] {
   const head = headingLine(section);
   if (sectionText === 'head') return [head];
   if (sectionText === 'full') return [`${head}\n\n${section.markdown}`];
-  return [head, ...chunksOf(section.markdown).map((chunk) => `${head}\n\n${chunk}`)];
+  return [head, ...chunksOf(section.markdown, CHUNK_CHARS).map((chunk) => `${head}\n\n${chunk}`)];
 }
 
 async function loadSemantic(queries: string[]): Promise<{ search: DocsIndex; cost: SemanticCost; queryMs: Map<string, number> }> {
@@ -149,6 +144,7 @@ async function loadSemantic(queries: string[]): Promise<{ search: DocsIndex; cos
   const loadStarted = performance.now();
   // The app's worker loads the same model and weights (`embeddingWorker.ts`); it runs them on WASM, this on the Node runtime.
   const { pipeline } = await import('@huggingface/transformers');
+  // The pipeline's own type is a union too large for tsc to resolve; `Extractor` is the one call this probe makes.
   const extractor = await pipeline('feature-extraction', EMBEDDING_MODEL_ID, { dtype: 'q8' }) as unknown as Extractor;
   const embed = async (texts: string[]): Promise<Float32Array[]> => {
     const vectors: Float32Array[] = [];
@@ -179,11 +175,11 @@ async function loadSemantic(queries: string[]): Promise<{ search: DocsIndex; cos
 
   const search: DocsIndex = {
     ...index,
-    search: (query, limit = 5, favor) => {
+    search: (query, limit = HELP_SECTION_LIMIT, favor) => {
       const vector = queryVectors.get(query);
       if (!vector) throw new Error(`no vector for the query: ${query}`);
       return rankByVector(vector, entries)
-        .map((hit) => ({ ...hit, score: hit.score * (sectionById.get(hit.id)?.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) }))
+        .map((hit) => ({ ...hit, score: hit.score * (hit.score > 0 && sectionById.get(hit.id)?.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) }))
         .sort((a, b) => b.score - a.score)
         .slice(0, limit)
         .flatMap((hit) => sectionById.get(hit.id) ?? []);
@@ -238,6 +234,7 @@ async function askPicks(target: ProbeTarget, c: RecallCase): Promise<PickReply> 
   const spec = buildAiRequestSpec(probeSnapshot(target), {
     systemPrompt: PICK_SYSTEM_PROMPT,
     messages: [{ role: 'user', content: pickMessage(c, caseById.get(c.after ?? '')) }],
+    // The pins of a help request: temperature 0.2 and no repetition penalty, so a copied line stays exact.
     requestType: 'help',
     maxTokensOverride: PICK_MAX_TOKENS,
   });
@@ -280,8 +277,8 @@ const noCost = () => null;
 /** One search that merges the rankings of several by reciprocal rank fusion. The score floor does not apply to it. */
 const fused = (...searches: DocsIndex[]): DocsIndex => ({
   ...index,
-  search: (query, limit = 5, favor, options) =>
-    mergeRanks(searches.map((search) => search.search(query, FUSION_DEPTH, favor, { onSurface: options?.onSurface }).filter((hit) => hit.page !== CHANGELOG_PAGE).map((hit) => hit.id)))
+  search: (query, limit = HELP_SECTION_LIMIT, favor, options) =>
+    mergeRanks(searches.map((search) => search.search(query, Math.max(limit, FUSION_DEPTH), favor, { onSurface: options?.onSurface }).filter((hit) => hit.page !== CHANGELOG_PAGE).map((hit) => hit.id)))
       .slice(0, limit)
       .flatMap((id) => sectionById.get(id) ?? []),
 });
@@ -318,7 +315,7 @@ if (arms.some((arm) => arm.includes('semantic') || arm === 'hybrid')) {
 }
 
 let failed = 0;
-if (withAi) {
+if (arms.some(isAiArm)) {
   const target: ProbeTarget = {
     endpoint: argVal('--endpoint', 'https://api.lyonade.net/v1/chat/completions'),
     model: argVal('--model', 'default'),
@@ -326,6 +323,7 @@ if (withAi) {
   };
   console.log(`ai picks · ${target.endpoint} · model ${target.model} · ${cases.length} questions × ${runs} runs · ${pickable.length} headings`);
   const started = Date.now();
+  let empty = 0;
   for (let run = 1; run <= runs; run++) {
     const picks = new Map<string, PickReply>();
     await pool(cases.map((c) => async () => {
@@ -336,8 +334,9 @@ if (withAi) {
         console.log(`  failed · ${c.id} · run ${run}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }), parallel);
+    empty += [...picks.values()].filter((pick) => pick.sections.length === 0).length;
     // A failed request picks nothing, so it scores as a miss.
-    const picked = (c: RecallCase): DocsIndex => ({ ...index, search: (_query, limit = 5) => (picks.get(c.id)?.sections ?? []).slice(0, limit) });
+    const picked = (c: RecallCase): DocsIndex => ({ ...index, search: (_query, limit = HELP_SECTION_LIMIT) => (picks.get(c.id)?.sections ?? []).slice(0, limit) });
     const pickCost = (c: RecallCase) => {
       const pick = picks.get(c.id);
       return { ms: pick?.ms ?? 0, promptTokens: pick?.promptTokens ?? 0, answerTokens: pick?.answerTokens ?? 0 };
@@ -347,7 +346,7 @@ if (withAi) {
     if (wants('ai+wordmap+semantic')) rows.push(...scoreAll('ai+wordmap+semantic', run, (c) => fused(picked(c), wordmap!, semantic!), pickCost));
     if (show && run === 1) for (const c of cases) console.log(`  ${c.id}: ${picks.get(c.id)?.reply.replace(/\s+/g, ' ').slice(0, 80)}`);
   }
-  notes.push(`AI picks: ${target.endpoint}, model \`${target.model}\`, ${runs} runs, ${pickable.length} headings in each request, ${failed} failed requests in ${((Date.now() - started) / 1000).toFixed(0)} s.`);
+  notes.push(`AI picks: ${target.endpoint}, model \`${target.model}\`, ${runs} runs, ${pickable.length} headings in each request, ${failed} failed requests and ${empty} replies with no line of the list, in ${((Date.now() - started) / 1000).toFixed(0)} s.`);
 }
 
 // ── Report ───────────────────────────────────────────────────────────────────
@@ -374,7 +373,7 @@ for (const set of RECALL_SETS.filter((s) => sets.includes(s))) {
     const kindCells = RECALL_KINDS.filter((kind) => cases.some((c) => c.set === set && c.kind === kind))
       .map((kind) => pct(summarizeRecall(ofArm.filter((r) => inScope(r, set, kind)).map((r) => r.score)).at5));
     const tokens = mean(ofArm.map((r) => r.promptTokens + r.answerTokens));
-    return [[ARM_LABELS[arm], String(all.questions / runIds.length), `${pct(all.at5)}${spread}`, pct(all.first), pct(all.sent), ...kindCells, `${mean(ofArm.map((r) => r.ms)).toFixed(1)} ms`, tokens ? tokens.toFixed(0) : '0']];
+    return [[ARM_LABELS[arm], String(all.questions / runIds.length), `${pct(all.at5)}${spread}`, pct(all.first), pct(all.sent), ...kindCells, `${mean(ofArm.map((r) => r.ms)).toFixed(1)} ms`, tokens.toFixed(0)]];
   });
   const kindHead = RECALL_KINDS.filter((kind) => cases.some((c) => c.set === set && c.kind === kind)).map((kind) => `${KIND_LABELS[kind]} @5`);
   report.push(`## Set: ${set}\n\n${table(['Approach', 'Questions', 'Recall@5', 'First', 'Sent', ...kindHead, 'Added time', 'Added tokens'], lines)}`);
@@ -383,7 +382,7 @@ const text = report.join('\n\n');
 console.log(`\n${text}`);
 
 if (show) {
-  for (const arm of ranArms.filter((a) => !a.startsWith('ai'))) {
+  for (const arm of ranArms.filter((a) => !isAiArm(a))) {
     console.log(`\nmisses · ${arm}`);
     for (const r of rows.filter((row) => row.arm === arm && !row.score.at5)) {
       const c = caseById.get(r.caseId)!;
