@@ -315,7 +315,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
 
         <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFile} />
 
-        <div className="py-2">
+        <div className="min-w-0 py-2">
           {step === 'home' && (
             <div className="flex flex-col gap-3">
               <Button onClick={() => setStep('backup-what')}>Backup</Button>
