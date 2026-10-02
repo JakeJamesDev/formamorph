@@ -13,7 +13,8 @@ import { toast } from 'react-toastify';
 import { toastTexts } from '@/test/toastText';
 import { readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona } from '@/lib/personaPick';
 import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
-import type { PersonaRef, WorldOverview } from '@/types';
+import { buildInitialSelection } from '@/lib/dictionarySelection';
+import type { Dictionary, PersonaRef, WorldOverview } from '@/types';
 
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -23,6 +24,17 @@ vi.mock('react-toastify', () => ({
 vi.mock('./VRMViewer', async () => {
   const { forwardRef } = await import('react');
   return { default: forwardRef(() => null) };
+});
+// The library grid sits behind the entry dialog and takes nothing from the draft, so it counts menu renders.
+const gridRenders = vi.hoisted(() => ({ count: 0 }));
+vi.mock('@/components/library/LibraryTileGrid', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/components/library/LibraryTileGrid')>();
+  const { createElement } = await import('react');
+  const LibraryTileGrid = ((props: Parameters<typeof real.LibraryTileGrid>[0]) => {
+    gridRenders.count++;
+    return createElement(real.LibraryTileGrid, props);
+  }) as typeof real.LibraryTileGrid;
+  return { ...real, LibraryTileGrid };
 });
 
 const world = (avatar = false): StoredWorldRecord => ({
@@ -78,10 +90,22 @@ async function enter() {
 }
 
 describe('the retained entry draft', () => {
-  it('remembers explicitly saved additions after cancel and remount, with independent runtime copies', async () => {
-    const original = await WorldStorageService.getWorldData('entry-world');
-    const onStartGame = vi.fn();
-    renderMainMenu({ onStartGame });
+  it('renders draft picks in the entry dialog without rendering the menu behind it', async () => {
+    renderMainMenu();
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    const before = gridRenders.count;
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Starting Location' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Hill' }));
+    expect(screen.getByRole('radio', { name: 'Hill' })).toBeChecked();
+    expect(before).toBeGreaterThan(0);
+    expect(gridRenders.count).toBe(before);
+  });
+
+  it('remembers explicitly saved additions after cancel and remount', async () => {
+    renderMainMenu();
     await enter();
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
@@ -93,12 +117,28 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('button', { name: 'Remembered' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     cleanup();
-    renderMainMenu({ onStartGame });
+    renderMainMenu();
     await enter();
     fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).toBeChecked();
     expect(within(screen.getByRole('list', { name: 'Dictionary Order' })).getAllByRole('listitem')[0]).toHaveTextContent('Library book');
+  });
+
+  it('starts remembered additions as independent runtime copies, leaving the library and the world as stored', async () => {
+    const original = await WorldStorageService.getWorldData('entry-world');
+    // The choices the test above saves through the step: the Companion, and the library book enabled and first.
+    const items = buildInitialSelection(
+      world().data.dictionaries as Dictionary[], await DictionaryStorageService.getDictionaryMetadata(),
+    );
+    const library = items.find((item) => item.source === 'library')!;
+    saveWorldAdditionDefaults('entry-world', {
+      entityIds: new Set(['companion']),
+      dictionaryItems: [{ ...library, enabled: true }, ...items.filter((item) => item !== library)],
+    });
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][4]).toEqual([
@@ -377,7 +417,7 @@ describe('the retained entry draft', () => {
     });
   });
 
-  it('retains dictionary order and explicit none through Avatar, then resets on cancel and re-entry', async () => {
+  it('retains dictionary order and explicit none through Avatar', async () => {
     await WorldStorageService.storeWorld(world(true));
     const onStartGame = vi.fn();
     const user = userEvent.setup();
@@ -411,6 +451,25 @@ describe('the retained entry draft', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
     expect(onStartGame).toHaveBeenCalledWith(['default'], expect.any(Object), true, 'hill', [],
       [expect.objectContaining({ name: 'Companion' })], NO_PERSONA, {});
+  });
+
+  it('starts the next visit fresh after an Avatar handoff, and resets it on cancel and re-entry', async () => {
+    await WorldStorageService.storeWorld(world(true));
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    // A handed-off draft that would show through: the Companion added, and the library book first.
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Companion' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Enable Library book from Library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Library book from Library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Move Library book from Library Up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
+    expect(onStartGame).toHaveBeenCalledOnce();
+    const order = () => within(screen.getByRole('list', { name: 'Dictionary Order' }))
+      .getAllByRole('listitem').map((item) => item.textContent);
     // The harness keeps MainMenu mounted after handoff; start another ordinary visit.
     await enter();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
