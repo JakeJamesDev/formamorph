@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   buildBackup,
   saveBackup,
@@ -95,49 +96,51 @@ function CategoryTree({
   onToggleOverwrite?: (c: BackupCategory, on: boolean) => void;
 }) {
   return (
-    <div className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto pr-1">
-      {groups.map(({ category, rows }) => {
-        const sel = selected[category];
-        const onCount = rows.filter((r) => sel.has(r.id)).length;
-        const parent = onCount === 0 ? false : onCount === rows.length ? true : 'indeterminate';
-        const hasConflicts = rows.some((r) => r.exists);
-        return (
-          <div key={category} className="rounded-md border">
-            <div className="flex items-center justify-between gap-2 border-b p-2">
-              <label className="flex items-center gap-2 text-label font-medium">
-                <Checkbox checked={parent} onCheckedChange={(v) => onToggleAll(category, v === true)} />
-                {CATEGORY_LABELS[category]}
-                <span className="font-normal text-muted-foreground">
-                  ({onCount}/{rows.length})
-                </span>
-              </label>
-              {overwrite && onToggleOverwrite && hasConflicts && (
-                <label className="flex items-center gap-1.5 text-meta">
-                  <Checkbox
-                    checked={overwrite[category]}
-                    onCheckedChange={(v) => onToggleOverwrite(category, v === true)}
-                  />
-                  Overwrite existing
+    <ScrollArea className="max-h-[55dvh]">
+      <div className="flex flex-col gap-2">
+        {groups.map(({ category, rows }) => {
+          const sel = selected[category];
+          const onCount = rows.filter((r) => sel.has(r.id)).length;
+          const parent = onCount === 0 ? false : onCount === rows.length ? true : 'indeterminate';
+          const hasConflicts = rows.some((r) => r.exists);
+          return (
+            <div key={category} className="rounded-md border">
+              <div className="flex items-center justify-between gap-2 border-b p-2">
+                <label className="flex items-center gap-2 text-label font-medium">
+                  <Checkbox checked={parent} onCheckedChange={(v) => onToggleAll(category, v === true)} />
+                  {CATEGORY_LABELS[category]}
+                  <span className="font-normal text-muted-foreground">
+                    ({onCount}/{rows.length})
+                  </span>
                 </label>
-              )}
+                {overwrite && onToggleOverwrite && hasConflicts && (
+                  <label className="flex items-center gap-1.5 text-meta">
+                    <Checkbox
+                      checked={overwrite[category]}
+                      onCheckedChange={(v) => onToggleOverwrite(category, v === true)}
+                    />
+                    Overwrite existing
+                  </label>
+                )}
+              </div>
+              <div className="flex flex-col p-1">
+                {rows.map((r) => (
+                  <label key={r.id} className="flex items-center gap-2 rounded px-2 py-1 text-label hover:bg-muted/50">
+                    <Checkbox checked={sel.has(r.id)} onCheckedChange={(v) => onToggleItem(category, r.id, v === true)} />
+                    <span className="truncate">{r.label}</span>
+                    {r.exists && (
+                      <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        exists
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-col p-1">
-              {rows.map((r) => (
-                <label key={r.id} className="flex items-center gap-2 rounded px-2 py-1 text-label hover:bg-muted/50">
-                  <Checkbox checked={sel.has(r.id)} onCheckedChange={(v) => onToggleItem(category, r.id, v === true)} />
-                  <span className="truncate">{r.label}</span>
-                  {r.exists && (
-                    <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
-                      exists
-                    </span>
-                  )}
-                </label>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </ScrollArea>
   );
 }
 
@@ -312,7 +315,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
 
         <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={handleFile} />
 
-        <div className="min-w-0 py-2">
+        <div className="py-2">
           {step === 'home' && (
             <div className="flex flex-col gap-3">
               <Button onClick={() => setStep('backup-what')}>Backup</Button>

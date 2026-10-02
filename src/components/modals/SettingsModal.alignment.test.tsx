@@ -25,7 +25,7 @@ vi.mock('@/lib/embeddingWorkerClient', () => ({
 }));
 
 /** A `Row`'s grid: two columns at `sm`, and the label cell first. `CheckRow` shares the shape. */
-const ROW_SELECTOR = '[class*="minmax(0,1fr)"]';
+const ROW_SELECTOR = '[class*="minmax(0,1fr)_minmax(0,3fr)"]';
 
 /**
  * Which rows legitimately pin their label to the first line instead of centering it: a control taller than
