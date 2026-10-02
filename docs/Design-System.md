@@ -1015,6 +1015,62 @@ A pattern that is not built gets its composition and its reference here when its
 
 **Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Nearest Sections**, **Clear** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The not-from-the-guide notice is two sentences, so each has a period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
 
+## Pattern: Filter Row With Filters Popover
+
+**Purpose:** Search and filter a paged list with only the controls a reader uses most on the row.
+
+**Density:** Compact. One row holds search, the main filters, and a **Filters** button. Less-used filters wait in a popover.
+
+### Composition
+
+- 🔎 **Search first.** The search bar grows to fill the row. Its clear button returns the full list at once.
+- 🎛️ **Main filters next.** Each viewer keeps its most-used filters on the row at fixed widths.
+- 🧰 **Filters last.** An outline button with a filter-list icon, the **Filters** label, and a count badge. Actions such as a file button follow it.
+- 🔢 **Badge.** It counts the hidden filters that differ from their defaults. No badge shows when all are at their defaults. A changed filter on the row never counts.
+- 📋 **Popover.** It aligns to the button's end and renders inline, not portaled. The hidden filters sit in it as labeled selects. A divider follows, then a ghost **Reset Filters** button with a rotate icon at the left.
+- ↩️ **Reset.** It returns every filter to its default, the ones on the row included, and goes back to page 1. It keeps the search text. It is disabled when every filter is at its default.
+- ♿ **Accessible name.** The button is **More Filters**, or **More Filters, N changed** while the badge shows.
+
+| Viewer | On the row | In Filters |
+| --- | --- | --- |
+| Staff queue | Search, Status, Sort | Category |
+| User tab | Search, scope, then the file button after Filters | Status, Category, Sort |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Rows, Filters button, popover, Reset | `StaffFilterRow` and `UserFilterRow` in [`FeedbackFilterRow.tsx`](../src/components/menu/FeedbackFilterRow.tsx) |
+| Filter state, badge count, Reset | `useFeedbackFilters` in [`useFeedbackFilters.ts`](../src/components/menu/useFeedbackFilters.ts) |
+| Defaults per viewer and branch | `staffFilterDefaults` and `userFilterDefaults` in [`feedbackPresentation.ts`](../src/lib/feedbackPresentation.ts) |
+| Search bar | [`FeedbackSearchInput.tsx`](../src/components/menu/FeedbackSearchInput.tsx) |
+| Production hosts | [`FeedbackQueueTab.tsx`](../src/components/menu/FeedbackQueueTab.tsx) and [`MyFeedbackTab.tsx`](../src/components/menu/MyFeedbackTab.tsx) |
+| Isolated reference | [`FeedbackFilterRowReference.tsx`](../src/components/design-system/FeedbackFilterRowReference.tsx) |
+
+### Responsive behavior
+
+At `sm` and wider, everything shares one row. Below `sm`:
+
+- Search takes its own row.
+- The staff Status and Sort share two equal columns.
+- **Filters** shows its icon only, with the badge on its top-right corner.
+- The file button shows its icon only. Its label stays for screen readers.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Defaults | No badge. **Reset Filters** is disabled. |
+| Row filter changed | No badge. **Reset Filters** is enabled. |
+| Hidden filter changed | The badge shows the count. The name adds "N changed". |
+| After Reset | Every filter is at its default, the list is on page 1, and the search text stays. |
+
+Open `#dev?modal=designSystem&tab=filter-row` for the staff and user rows in local state.
+
+### Writing review
+
+The labels follow AP title case: **Filters**, **More Filters**, and **Reset Filters**. The count in the accessible name changes with the state, so it is status text, not a lecture. The select names keep their production wording.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

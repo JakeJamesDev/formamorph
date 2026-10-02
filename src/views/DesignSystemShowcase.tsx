@@ -4,6 +4,7 @@ import { BearerFlyoutReference } from '@/components/design-system/BearerFlyoutRe
 import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
+import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -346,6 +347,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Formaquestion',
     description: 'Help tab, floating window, search results, and reader',
     Component: FormaquestionReference,
+  },
+  {
+    id: 'filter-row',
+    label: 'Filter Row',
+    description: 'Search, the main filters, and a Filters popover',
+    Component: FeedbackFilterRowReference,
   },
 ];
 
