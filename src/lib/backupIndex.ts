@@ -26,10 +26,18 @@ export function itemLabel(record: IdRecord): string {
   return typeof record.name === 'string' && record.name ? record.name : record.id;
 }
 
+/** Where a record lives, for the checklist's breadcrumb: a save's world. */
+export function itemBreadcrumb(category: BackupCategory, record: IdRecord): string[] | undefined {
+  if (category !== 'saves') return undefined;
+  const state = record.currentState as { worldName?: unknown } | null | undefined;
+  return typeof state?.worldName === 'string' && state.worldName ? [state.worldName] : undefined;
+}
+
 /** One record in a backup file: where it is, and what the checklist shows for it. */
 export interface BackupEntry {
   id: string;
   label: string;
+  breadcrumb?: string[];
   /** Byte range of the record in the file. */
   start: number;
   end: number;
@@ -121,6 +129,7 @@ export async function indexBackup(file: Blob): Promise<BackupIndex> {
     data[category].push({
       id: record.id,
       label: itemLabel(record),
+      breadcrumb: itemBreadcrumb(category, record),
       start: span.start,
       end: span.end,
       images: countImages(category, record),

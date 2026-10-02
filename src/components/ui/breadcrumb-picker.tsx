@@ -43,7 +43,8 @@ const same = (text: string) => text;
 const filterRows = (_value: string, search: string, keywords: string[] = []) =>
   (keywords.join(' ').toLowerCase().includes(search.trim().toLowerCase()) ? 1 : 0);
 
-function Breadcrumb({ segments, render }: { segments: readonly string[]; render: (text: string) => ReactNode }) {
+/** A row's right-aligned location. Three or more segments collapse to `First › … › Last`. */
+export function Breadcrumb({ segments, render = same }: { segments: readonly string[]; render?: (text: string) => ReactNode }) {
   const collapsed = segments.length >= 3;
   const shown = collapsed ? [segments[0], '…', segments[segments.length - 1]] : segments;
   return (

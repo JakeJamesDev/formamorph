@@ -94,6 +94,21 @@ describe('readBackupIndex', () => {
     expect(index.data.dictionaries[0].images).toBe(0);
   });
 
+  it('gives a save its world as a breadcrumb, and no other record one', async () => {
+    const index = await indexOf({
+      formamorphBackup: 1,
+      data: {
+        saves: [
+          { id: 's1', name: 'Turn 8', currentState: { worldName: 'Sedge Landing' } },
+          { id: 's2', name: 'Orphan', currentState: { worldName: null } },
+        ],
+        worlds: [{ id: 'w1', name: 'Sedge Landing', currentState: { worldName: 'Elsewhere' } }],
+      },
+    });
+    expect(index.data.saves.map((r) => r.breadcrumb)).toEqual([['Sedge Landing'], undefined]);
+    expect(index.data.worlds[0].breadcrumb).toBeUndefined();
+  });
+
   it('keeps reading a bundle written by a newer app version', async () => {
     // Readers warn on a newer format but still try — a backup must not become unreadable.
     const index = await indexOf({ formamorphBackup: 99, data: { worlds: [{ id: 'w1' }] } });

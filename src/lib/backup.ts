@@ -15,6 +15,7 @@ import { APP_VERSION } from '@/lib/version';
 import {
   BACKUP_CATEGORIES,
   itemLabel,
+  itemBreadcrumb,
   type BackupCategory,
   type BackupEntry,
   type BackupIndex,
@@ -66,6 +67,7 @@ async function readCategory(category: BackupCategory): Promise<IdRecord[]> {
 export interface BackupItem {
   id: string;
   label: string;
+  breadcrumb?: string[];
 }
 
 /** List every store's items (id + display label) so the UI can offer per-item selection, grouped by category. */
@@ -73,7 +75,11 @@ export async function listBackupItems(): Promise<Record<BackupCategory, BackupIt
   const out = { worlds: [], saves: [], entities: [], dictionaries: [] } as Record<BackupCategory, BackupItem[]>;
   await Promise.all(
     BACKUP_CATEGORIES.map(async (category) => {
-      out[category] = (await readCategory(category)).map((r) => ({ id: r.id, label: itemLabel(r) }));
+      out[category] = (await readCategory(category)).map((r) => ({
+        id: r.id,
+        label: itemLabel(r),
+        breadcrumb: itemBreadcrumb(category, r),
+      }));
     }),
   );
   return out;
