@@ -64,7 +64,7 @@ To report a comment, select its **Report comment** button. To report a person, o
 <!-- keywords: remove, close, erase, cancel, deactivate, my data, profile, gdpr, unregister, terminate membership, wipe my info, leave for good, right to erasure, undo deletion, privacy request -->
 
 1. On the main menu, select the round **User Profile** button at the bottom left.
-2. Select **Delete Account**.
+2. Select the **Settings** tab, then select **Delete Account**.
 3. Read what happens, and select **Continue**.
 4. Select **Delete My Work** or **Keep My Work**, and select **Continue**.
 5. Type your password and select **Delete My Account**.
@@ -398,13 +398,14 @@ Read the policy any time at [formamorph.ai/privacy](https://formamorph.ai/privac
 
 Select the round button at the bottom left of the main menu. Its badge counts unread messages. The dialog shows your profile image, **Member since** and your stats. Select your profile image to change it. See [How to Change Your Profile Image](Avatars#how-to-change-your-profile-image).
 
-The header has **Change Password**, **Logout** and **Delete Account**.
+The header has **Log Out**. Your email, **Change Password** and **Delete Account** are on the **Settings** tab.
 
 | Tab | What it holds |
 |---|---|
 | **Messages** | Messages from the Formamorph team, such as Report Outcomes. Dismiss a message with its button. |
 | **Notifications** | The [follow feed](#the-follow-feed). |
 | **Terms** | The [publishing terms](#publishing-terms). **Accept** or **Decline** them here. Shows only when terms exist. |
+| **Settings** | Your account email, with **Resend Verification Email**. **Change Password** and **Delete Account** are here too. |
 
 ### Account Deletion
 
