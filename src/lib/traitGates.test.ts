@@ -711,7 +711,7 @@ describe('requirement options', () => {
     owners: [{ id: WORLD_OWNER, name: '', traits, groups }, wolf],
     entities: [{ id: 'aldric', name: 'Sir Aldric', persona: true }, { id: 'odd', name: 'Odd Wick' }],
   };
-  const rows = (list: { label: string; where: string }[]) => list.map((o) => `${o.label} @ ${o.where}`);
+  const rows = (list: { label: string; breadcrumb: string[] }[]) => list.map((o) => `${o.label} @ ${o.breadcrumb.join(' › ')}`);
 
   it('lists every trait in tree order with where it lives, leaving out the trait itself', () => {
     expect(rows(requirementOptions(input, 'Plate Armor').traits)).toEqual([
@@ -764,7 +764,7 @@ describe('requirement options', () => {
 
   it('lists only the world personas under playing as', () => {
     expect(requirementOptions(input, 'Loose').personas).toEqual([
-      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'playing as Sir Aldric', where: 'Persona', bearers: [] },
+      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'playing as Sir Aldric', breadcrumb: ['Persona'], bearers: [] },
     ]);
   });
 

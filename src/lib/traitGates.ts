@@ -622,8 +622,8 @@ export interface RequirementBearerOption {
 export interface RequirementOption {
   requirement: TraitRequirement;
   label: string;
-  /** "Ash › Bond": the owner, when not the world, then the group path. "World" for a top-level world item. */
-  where: string;
+  /** The owner, when not the world, then the group path. `World` for a top-level world item. */
+  breadcrumb: string[];
   /** The bearers the row can name instead of the same bearer: You, then every entity that bears the target. */
   bearers: RequirementBearerOption[];
 }
@@ -653,7 +653,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
     const ids = idx.traitsBelow(everyOwner, groupId);
     return ids.length > 0 && ids.every((id) => skip.has(id));
   };
-  const where = (owner: GateOwner, groupId: string | null | undefined) => {
+  const breadcrumbOf = (owner: GateOwner, groupId: string | null | undefined): string[] => {
     const path: string[] = [];
     for (let id = groupId ?? null, seen = 0; id && seen < owner.groups.length; seen++) {
       const group = owner.groups.find((g) => g.id === id);
@@ -662,7 +662,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       id = group.parentId;
     }
     if (owner.id !== WORLD_OWNER) path.unshift(owner.name);
-    return path.join(' › ') || 'World';
+    return path.length > 0 ? path : ['World'];
   };
   const bearersOf = (id: string, kind: 'trait' | 'group'): RequirementBearerOption[] => [
     { bearer: { kind: 'you' }, name: 'You' },
@@ -670,8 +670,8 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       .filter((o) => o.id !== WORLD_OWNER && (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
       .map((o): RequirementBearerOption => ({ bearer: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),
   ];
-  const option = (requirement: TraitRequirement, whereText: string, bearers: RequirementBearerOption[] = []): RequirementOption =>
-    ({ requirement, label: requirementText(requirement, idx).text, where: whereText, bearers });
+  const option = (requirement: TraitRequirement, breadcrumb: string[], bearers: RequirementBearerOption[] = []): RequirementOption =>
+    ({ requirement, label: requirementText(requirement, idx).text, breadcrumb, bearers });
 
   const seen = new Set<string>();
   const traits: RequirementOption[] = [];
@@ -681,11 +681,11 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       const id = node.leaf?.id ?? node.group?.id;
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      if (node.leaf && !skip.has(id)) traits.push(option({ kind: 'trait', id }, where(owner, node.leaf.groupId), bearersOf(id, 'trait')));
-      if (node.group && !deadGroup(id)) groups.push(option({ kind: 'group', id }, where(owner, node.group.parentId), bearersOf(id, 'group')));
+      if (node.leaf && !skip.has(id)) traits.push(option({ kind: 'trait', id }, breadcrumbOf(owner, node.leaf.groupId), bearersOf(id, 'trait')));
+      if (node.group && !deadGroup(id)) groups.push(option({ kind: 'group', id }, breadcrumbOf(owner, node.group.parentId), bearersOf(id, 'group')));
     }
   }
-  const personas = input.entities.filter((e) => e.persona).map((e) => option({ kind: 'playingAs', id: e.id }, 'Persona'));
+  const personas = input.entities.filter((e) => e.persona).map((e) => option({ kind: 'playingAs', id: e.id }, ['Persona']));
   return { traits, groups, personas };
 }
 
