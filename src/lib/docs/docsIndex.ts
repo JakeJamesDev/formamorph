@@ -37,7 +37,11 @@ export interface DocsContentsPage {
 export interface DocsIndex {
   /** Every page with its sections, in sidebar order; pages the sidebar does not list come last. */
   contents(): DocsContentsPage[];
-  /** Sections ranked by keyword match, best first; empty when no word of the query matches. */
+  /**
+   * Sections ranked by keyword match, best first, with every guide hit above every changelog hit; empty when
+   * no word of the query matches. A question about what is new gets the released changelog sections first,
+   * newest first, then the guide hits.
+   */
   search(query: string, limit?: number): DocSection[];
   /**
    * The sections with these ids, in the order asked; unknown ids are skipped. The id of a split section
@@ -161,6 +165,21 @@ const BM25_K1 = 1.2;
 const BM25_B = 0.75;
 const DEFAULT_SEARCH_LIMIT = 5;
 
+/** The page that holds the released changelog sections, newest first (see `changelogSlice.ts`). */
+const CHANGELOG_PAGE = 'Changelog';
+
+/** Phrases that ask what is new, changed or fixed. */
+const WHATS_NEW = [
+  /\bchangelog\b|\b(?:patch|release) notes\b/,
+  /\bwhat(?:'s|\s+is|\s+are|\s+was|\s+were|\s+got|\s+has|\s+have)?(?:\s+been)?\s+(?:new|changed|different|fixed|added|removed)\b/,
+  /\b(?:new|changed|fixed|added|removed)\s+(?:in|with|since)\s+(?:the\s+|this\s+)?(?:latest|newest|last|recent)\s+(?:update|version|release|patch)\b/,
+];
+
+function asksWhatsNew(query: string): boolean {
+  const text = query.toLowerCase().replace(/[’‘]/g, "'");
+  return WHATS_NEW.some((pattern) => pattern.test(text));
+}
+
 /** One section's search terms, by where they appear. */
 interface SectionTerms {
   section: SplitSection;
@@ -196,6 +215,8 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
   const byPage = new Map(pageNames.map((page) => [page, splitPage(page, pages[page])]));
   const all = [...byPage.values()].flat();
   const byId = new Map(all.map((section) => [section.id, section]));
+  const released = (byPage.get(CHANGELOG_PAGE) ?? []).filter((section) => section.level >= 2);
+  const isChangelog = (section: SplitSection) => section.page === CHANGELOG_PAGE;
 
   const sectionTerms: SectionTerms[] = all.map((section) => {
     const lines = section.markdown.split('\n');
@@ -247,11 +268,12 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
         // A section that matches more of the query's words ranks above one that repeats a single word.
         return { section: r.section, score: score * (matched / terms.length) ** 2 };
       });
-      return scored
-        .filter((s) => s.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, limit)
-        .map((s) => publicSection(s.section));
+      const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).map((s) => s.section);
+      // A what's-new question leads with every released section; any other question puts the guide first.
+      const ranked = asksWhatsNew(query)
+        ? [...released, ...hits.filter((section) => !isChangelog(section))]
+        : [...hits.filter((section) => !isChangelog(section)), ...hits.filter(isChangelog)];
+      return ranked.slice(0, limit).map(publicSection);
     },
     get: (ids) => ids.flatMap((id) => {
       const section = byId.get(id);
