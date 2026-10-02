@@ -46,6 +46,8 @@ export interface EarlierExchange {
   answer: string;
   /** The answer did not come from the guide. */
   flagged?: boolean;
+  /** The docs sections that reached the model for this answer. */
+  sources?: readonly DocSection[];
 }
 
 export interface HelpQuestion {
@@ -90,9 +92,10 @@ const HOW_TO_HEADING = /^how to\b/i;
 /**
  * The docs block for a question, best first, while the text stays inside the budget and the section limit.
  * The lead section, when given, goes first and counts once toward both. The top hit is always kept. A
- * follow-up such as "and then?" has few keywords of its own, so after the question's own top hit come the
- * hits of the previous question and the follow-up searched together. The lead's page adds its best how-to
- * sections for the question next, so a "here" question reaches them.
+ * follow-up such as "and then?" has few keywords of its own, so its own top hit favors the page of the
+ * previous answer's first source, and after it come the hits of the previous question and the follow-up
+ * searched together. The lead's page adds its best how-to sections for the question next, so a "here"
+ * question reaches them.
  */
 export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead }: {
   history?: readonly EarlierExchange[];
@@ -101,7 +104,7 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
 } = {}): DocSection[] {
   const previous = keptHistory(history).at(-1);
   const hits = previous
-    ? [...index.search(question, 1), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT)]
+    ? [...index.search(question, 1, previous.sources?.[0]), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT)]
     : index.search(question, HELP_SECTION_LIMIT);
   const onPage = lead ? index.search(question, Infinity).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
   const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];

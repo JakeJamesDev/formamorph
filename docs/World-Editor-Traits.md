@@ -36,7 +36,7 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 To remove a target, select the **×** on its chip.
 
 ## How to Set a Pick Count
-<!-- keywords: limit, how many, choose one, max, min, exactly one, radio, multiple -->
+<!-- keywords: limit, cap, how many, choose one, max, min, exactly one, radio, multiple -->
 
 1. Select a trait group. To add one, switch to Advanced mode, select **+**, then **Add Group**.
 2. Open the **Pick Count** list and pick **Any**, **Exactly One**, **Up to One** or **Custom**.
