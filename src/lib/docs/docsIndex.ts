@@ -40,9 +40,10 @@ export interface DocsIndex {
   /**
    * Sections ranked by keyword match, best first, with every guide hit above every changelog hit. A question
    * about what is new leads with the newest release's sections, or those of the release it names, matched or
-   * not. Empty when the query asks nothing new and no word of it matches.
+   * not. Empty when the query asks nothing new and no word of it matches. The sections of `favor.page` rank
+   * above other matches of the same strength.
    */
-  search(query: string, limit?: number): DocSection[];
+  search(query: string, limit?: number, favor?: { page: string }): DocSection[];
   /**
    * The sections with these ids, in the order asked; unknown ids are skipped. The id of a split section
    * returns all its parts in order.
@@ -160,6 +161,8 @@ function searchTerms(text: string): string[] {
 const HEADING_WEIGHT = 4;
 /** How much a query term in a heading above the section counts. */
 const TRAIL_WEIGHT = 1;
+/** How much a section of the favored page outweighs a match of the same strength on another page. */
+const FAVORED_PAGE_WEIGHT = 2;
 /** BM25's term-frequency saturation and length normalization for body text. */
 const BM25_K1 = 1.2;
 const BM25_B = 0.75;
@@ -283,7 +286,7 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
           sections: sections.map(({ id, label, level }) => ({ id, label, level })),
         };
       }),
-    search: (query, limit = DEFAULT_SEARCH_LIMIT) => {
+    search: (query, limit = DEFAULT_SEARCH_LIMIT, favor) => {
       const terms = [...new Set(searchTerms(query))];
       if (terms.length === 0) return [];
       const scored = sectionTerms.map((r) => {
@@ -301,7 +304,8 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
           score += idf * (body + (inHeading ? HEADING_WEIGHT : 0) + (inTrail ? TRAIL_WEIGHT : 0));
         }
         // A section that matches more of the query's words ranks above one that repeats a single word.
-        return { section: r.section, score: score * (matched / terms.length) ** 2 };
+        const weight = r.section.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1;
+        return { section: r.section, score: score * (matched / terms.length) ** 2 * weight };
       });
       const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).map((s) => s.section);
       const whatsNew = readWhatsNew(query);

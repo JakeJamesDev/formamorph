@@ -11,6 +11,8 @@
 //   old        with `--old`: retrieval with the surface section outside the block: its length comes off the
 //              budget before the search, and the 5-section limit covers the search hits only
 //   rank-old   with `--rank-old`: retrieval with the changelog ranked like a guide page, as before ticket 34
+//   follow-old with `--follow-old`: retrieval with no sources on the history, so a follow-up favors no page, as
+//              before ticket 35
 //   no-docs    the control: the same model, samplers, screen line and language, with no guide text
 //
 // A follow-up runs after its first question in the same arm and run, with that answer as the history.
@@ -33,7 +35,7 @@
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--old] [--rank-old] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--lookup] [--old] [--rank-old] [--follow-old] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -63,7 +65,7 @@ const worstCount = Number(argVal('--worst', '10'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
-type Arm = 'retrieval' | 'old' | 'rank-old' | 'lookup' | 'no-docs';
+type Arm = 'retrieval' | 'old' | 'rank-old' | 'follow-old' | 'lookup' | 'no-docs';
 
 /** Tokens in and out, summed over the requests of one question. */
 interface Usage { promptTokens: number; answerTokens: number; requests: number }
@@ -171,7 +173,7 @@ async function askSession(target: Target, arm: Arm, c: BaselineCase, history: Ea
   const lookup = arm === 'lookup';
   const untiered = arm === 'rank-old';
   const session = askHelp({
-    question: c.question, history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : index, lookup,
+    question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : index, lookup,
     snapshot: snapshotFor(target, lookup), fetchImpl: sessionFetch(usage),
   });
   const idOf = (id: string) => (untiered && id.startsWith(`${UNTIERED_CHANGELOG}#`) ? `Changelog${id.slice(UNTIERED_CHANGELOG.length)}` : id);
@@ -245,7 +247,7 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 
@@ -272,7 +274,7 @@ async function runBatch(): Promise<Batch> {
           if (followUps.length === 0) return [first];
           if (!first.sample) return [first, ...followUps.map((next): Row => ({ caseId: next.id, arm, run, sample: null, error: `the first question failed: ${first.error}` }))];
           // The control keeps the marker off its history, as its answers never carry one.
-          const history = [{ question: c.question, answer: first.sample.answer, flagged: arm !== 'no-docs' && first.sample.flagged }];
+          const history = [{ question: c.question, answer: first.sample.answer, flagged: arm !== 'no-docs' && first.sample.flagged, sources: index.get(first.sample.sources) }];
           const rest: Row[] = [];
           for (const next of followUps) rest.push(await row(arm, next, run, history));
           return [first, ...rest];

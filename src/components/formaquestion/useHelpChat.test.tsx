@@ -92,6 +92,24 @@ describe('useHelpChat', () => {
     ]);
   });
 
+  it('keeps a vague follow-up on the page of the earlier answer', async () => {
+    const tools = createDocsIndex({
+      pages: {
+        Bench: '# Bench\n\n## Checks\n\nTest with **Check**.\n',
+        Tools: '# Tools\n\n## How to Make a Tool\n\nSelect **Add Tool**.\n\n## How to Try a Tool\n\nTest the tool with **Try It**.\n',
+      },
+      sidebar: '- [Bench](Bench)\n- [Tools](Tools)\n',
+    });
+    stubStream(sseReply('Select **Add Tool**.'));
+    const { result } = renderHook(() => useHelpChat(tools, ai));
+    act(() => { result.current.ask('How do I make a tool?'); });
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    act(() => { result.current.ask('how do I test it?'); });
+    await waitFor(() => expect(result.current.exchanges.at(-1)?.status).toBe('answered'));
+
+    expect(result.current.exchanges.at(-1)?.sources[0].id).toBe('Tools#how-to-try-a-tool');
+  });
+
   it('shows a flagged answer without its marker, and sends the marker back with it on a follow-up', async () => {
     const fetchSpy = stubStream(sseReply(`${GENERAL_KNOWLEDGE_MARKER}\nLight scatters.`));
     const { result } = renderHook(() => useHelpChat(index, ai));
