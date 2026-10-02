@@ -38,9 +38,9 @@ export interface DocsIndex {
   /** Every page with its sections, in sidebar order; pages the sidebar does not list come last. */
   contents(): DocsContentsPage[];
   /**
-   * Sections ranked by keyword match, best first, with every guide hit above every changelog hit; empty when
-   * no word of the query matches. A question about what is new gets the released changelog sections first,
-   * newest first, then the guide hits.
+   * Sections ranked by keyword match, best first, with every guide hit above every changelog hit. A question
+   * about what is new leads with the newest release's sections, or those of the release it names, matched or
+   * not. Empty when the query asks nothing new and no word of it matches.
    */
   search(query: string, limit?: number): DocSection[];
   /**
@@ -168,16 +168,48 @@ const DEFAULT_SEARCH_LIMIT = 5;
 /** The page that holds the released changelog sections, newest first (see `changelogSlice.ts`). */
 const CHANGELOG_PAGE = 'Changelog';
 
-/** Phrases that ask what is new, changed or fixed. */
+/** A version number such as 3.1 or 3.1.2. */
+const VERSION = /\d+\.\d+(?:\.\d+)?/;
+
+const RELEASE_WORD = String.raw`(?:updates?|versions?|releases?|patch(?:es)?|builds?|formamorph|(?:the|this) (?:app|game)|v?\d+\.\d+(?:\.\d+)?)`;
+const RECENT_WORD = String.raw`(?:latest|newest|last|recent|new|current)`;
+const WHAT_NEW = String.raw`what(?:'?s| is| are)? new`;
+const WHAT_CHANGED = String.raw`what(?:'?s| has| have| was| were| got| did)?(?: been| get)? (?:changed|fixed|added|removed|different|change|fix|add|remove)`;
+
+/**
+ * Questions that ask what is new, changed or fixed. A "what changed" phrase needs a release word after it or
+ * nothing else, so "what is different between two stats?" is a guide question.
+ */
 const WHATS_NEW = [
-  /\bchangelog\b|\b(?:patch|release) notes\b/,
-  /\bwhat(?:'s|\s+is|\s+are|\s+was|\s+were|\s+got|\s+has|\s+have)?(?:\s+been)?\s+(?:new|changed|different|fixed|added|removed)\b/,
-  /\b(?:new|changed|fixed|added|removed)\s+(?:in|with|since)\s+(?:the\s+|this\s+)?(?:latest|newest|last|recent)\s+(?:update|version|release|patch)\b/,
+  new RegExp(String.raw`^(?:so |ok |okay |hey |hi )?(?:${WHAT_NEW}|${WHAT_CHANGED}|anything new|any new features|new features|recent changes|(?:patch|release|update) notes)$`),
+  new RegExp(String.raw`\b(?:${WHAT_NEW}|${WHAT_CHANGED})\b.*\b(?:in|with|since|for) (?:the |this |that )?(?:${RECENT_WORD} )?${RELEASE_WORD}\b`),
+  new RegExp(String.raw`^(?!.*\b(?:how|install|download|get)\b).*\bwhat\b.*\b(?:latest|newest|last|recent) (?:update|version|release|patch)\b`),
+  new RegExp(String.raw`\b(?:patch|release|update) notes\b|\b(?:recent )?changes in (?:the )?${RECENT_WORD} ${RELEASE_WORD}\b`),
+  // A listing's or a world's changelog is a guide topic.
+  /^(?!.*\b(?:listings?|worlds?|publish\w*|creations?)\b).*\bchangelog\b/,
 ];
 
-function asksWhatsNew(query: string): boolean {
-  const text = query.toLowerCase().replace(/[’‘]/g, "'");
-  return WHATS_NEW.some((pattern) => pattern.test(text));
+/** Whether the query asks what is new, and the version it names, if any. */
+function readWhatsNew(query: string): { version: string | null } | null {
+  const text = query.toLowerCase().replace(/[’‘]/g, "'").replace(/[^\p{L}\p{N}'.\s]+/gu, ' ').replace(/\.(?!\d)/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!WHATS_NEW.some((pattern) => pattern.test(text))) return null;
+  return { version: VERSION.exec(text)?.[0] ?? null };
+}
+
+/** One released version and its changelog sections that hold text, in page order. */
+interface Release {
+  version: string;
+  sections: SplitSection[];
+}
+
+/** The changelog's releases, newest first: each `##` section and the sections under it, heading-only ones left out. */
+function releasesOf(changelog: readonly SplitSection[]): Release[] {
+  const releases: Release[] = [];
+  for (const section of changelog) {
+    if (section.level === 2) releases.push({ version: VERSION.exec(section.heading)?.[0] ?? '', sections: [] });
+    if (section.level >= 2 && section.markdown.replace(/^#{1,6}\s.*(?:\n|$)/, '').trim()) releases.at(-1)?.sections.push(section);
+  }
+  return releases;
 }
 
 /** One section's search terms, by where they appear. */
@@ -215,8 +247,11 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
   const byPage = new Map(pageNames.map((page) => [page, splitPage(page, pages[page])]));
   const all = [...byPage.values()].flat();
   const byId = new Map(all.map((section) => [section.id, section]));
-  const released = (byPage.get(CHANGELOG_PAGE) ?? []).filter((section) => section.level >= 2);
+  const releases = releasesOf(byPage.get(CHANGELOG_PAGE) ?? []);
   const isChangelog = (section: SplitSection) => section.page === CHANGELOG_PAGE;
+  /** The sections a what's-new question leads with: the named release's, or else the newest one's. */
+  const releaseLead = ({ version }: { version: string | null }): SplitSection[] =>
+    (version ? releases.find((release) => release.version === version || release.version.startsWith(`${version}.`)) : releases[0])?.sections ?? [];
 
   const sectionTerms: SectionTerms[] = all.map((section) => {
     const lines = section.markdown.split('\n');
@@ -269,10 +304,9 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
         return { section: r.section, score: score * (matched / terms.length) ** 2 };
       });
       const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).map((s) => s.section);
-      // A what's-new question leads with every released section; any other question puts the guide first.
-      const ranked = asksWhatsNew(query)
-        ? [...released, ...hits.filter((section) => !isChangelog(section))]
-        : [...hits.filter((section) => !isChangelog(section)), ...hits.filter(isChangelog)];
+      const whatsNew = readWhatsNew(query);
+      const lead = whatsNew ? releaseLead(whatsNew) : [];
+      const ranked = [...lead, ...hits.filter((section) => !isChangelog(section)), ...hits.filter((section) => isChangelog(section) && !lead.includes(section))];
       return ranked.slice(0, limit).map(publicSection);
     },
     get: (ids) => ids.flatMap((id) => {

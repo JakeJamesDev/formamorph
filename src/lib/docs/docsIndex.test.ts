@@ -134,13 +134,23 @@ describe('Docs Index search', () => {
 });
 
 describe('Docs Index search: guide above the changelog', () => {
-  // The shape `releasedMinorChangelog` gives the index: a title, then released sections newest first.
+  // The shape `releasedMinorChangelog` gives the index: a title, then released sections newest first. The
+  // newest is over the size limit, so it splits at its sub-headings, and "Minor Changes" keeps only a heading.
+  const filler = Array.from({ length: Math.ceil(SECTION_CHAR_LIMIT / 30) }, (_, i) => `- **Entry ${i}:** a tile moves.`);
   const CHANGELOG = [
     '# 📝 Changelog',
     '',
     '## ✅ 3.1.2 — Released 2026-09-30',
     '',
     'This version fixes the profile image.',
+    '',
+    '### Minor Changes',
+    '',
+    '#### ➕ Added',
+    '',
+    ...filler,
+    '',
+    '#### 🔧 Fixed',
     '',
     '- **Profile Image:** a change to the profile image keeps its position. Changing the profile image again saves.',
     '',
@@ -155,21 +165,42 @@ describe('Docs Index search: guide above the changelog', () => {
   const UPDATES = ['# Updates', '', '## How to Update the App', '', 'The latest version installs when you restart.'].join('\n');
   const index = () => createDocsIndex({ pages: { Avatars: AVATARS, Updates: UPDATES, Changelog: CHANGELOG } });
 
+  const NEWEST_RELEASE = ['Changelog#-312--released-2026-09-30', 'Changelog#-added', 'Changelog#-added-part-2', 'Changelog#-fixed'];
+
   it('ranks every matching guide section above every matching changelog section', () => {
-    const ids = index().search('change the profile image').map((s) => s.id);
-    expect(ids).toEqual(['Avatars#user-profile', 'Changelog#-312--released-2026-09-30']);
+    const ids = index().search('change the profile image', 20).map((s) => s.id);
+    expect(ids[0]).toBe('Avatars#user-profile');
+    expect(ids.slice(1).every((id) => id.startsWith('Changelog#'))).toBe(true);
+    expect(ids).toContain('Changelog#-fixed');
   });
 
-  it('leads a what-is-new question with the released changelog sections, newest first, then guide hits', () => {
-    for (const question of ["what's new in the latest update?", 'what changed in the newest version of the app?', 'show me the patch notes']) {
-      const ids = index().search(question).map((s) => s.id);
-      expect(ids.slice(0, 2), question).toEqual(['Changelog#-312--released-2026-09-30', 'Changelog#-311--released-2026-09-20']);
-    }
-    expect(index().search('what is new in the latest version').slice(2).map((s) => s.id)).toEqual(['Updates#how-to-update-the-app']);
+  it('leads a what-is-new question with the newest release sections that hold text, then guide hits', () => {
+    const ids = index().search("what's new in the latest update?", 20).map((s) => s.id);
+    expect(ids.slice(0, NEWEST_RELEASE.length)).toEqual(NEWEST_RELEASE);
+    expect(ids[NEWEST_RELEASE.length]).toBe('Updates#how-to-update-the-app');
+    expect(ids).not.toContain('Changelog#minor-changes');
   });
 
-  it('keeps a how-to question about updating on the guide', () => {
-    expect(index().search('how do I update to the latest version?')[0]?.id).toBe('Updates#how-to-update-the-app');
+  it('leads with the release a question names, and with none when the index lacks it', () => {
+    expect(index().search('what was fixed in 3.1.1?')[0]?.id).toBe('Changelog#-311--released-2026-09-20');
+    expect(index().search('what changed in 3.0?').map((s) => s.id)).not.toContain('Changelog#-312--released-2026-09-30');
+  });
+
+  it.each([
+    'whats new', "What's new?", 'what changed in the newest version of the app?', 'anything new?', "what's in the latest update?",
+    'recent changes', 'changes in the latest version', 'patch notes', 'new features?', 'what did the last update add?',
+    'show me the changelog', "what's changed?", 'what is new in Formamorph?',
+  ])('reads "%s" as a what-is-new question', (question) => {
+    expect(index().search(question).map((s) => s.id).slice(0, NEWEST_RELEASE.length)).toEqual(NEWEST_RELEASE);
+  });
+
+  it.each([
+    'what does the Listing Changelog do?', 'how do I edit the changelog of my listing?', 'what is different between a Group and a folder?',
+    'what was added to the AI context?', 'what are fixed stats?', 'what is new game plus', 'what changed my stat?',
+    "what's new with the stat code?", "what's added to the prompt each turn?", 'how do I update to the latest version?',
+    'how do I turn on new features',
+  ])('reads "%s" as a guide question', (question) => {
+    expect(index().search(question).map((s) => s.id).slice(0, NEWEST_RELEASE.length)).not.toEqual(NEWEST_RELEASE);
   });
 });
 
