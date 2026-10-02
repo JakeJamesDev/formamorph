@@ -39,6 +39,9 @@ const pick = (option: HTMLElement) => {
   fireEvent.click(option);
 };
 
+/** Opens the Filters popover, where the user tab keeps Sort. */
+const openFilters = async () => fireEvent.click(await screen.findByRole('button', { name: /^More Filters/ }));
+
 /** Opens the Sort dropdown by keyboard (Radix ignores jsdom's missing pointer events) and reads its options. */
 const openSort = async () => {
   fireEvent.keyDown(await screen.findByLabelText('Sort by'), { key: 'Enter' });
@@ -99,6 +102,7 @@ describe('the sort control on the user tab', () => {
     ['suggestion', ['Newest', 'Oldest', 'Recently Active', 'Most Voted']],
   ] as const)('lists the %s sorts', async (type, labels) => {
     render(<MyFeedbackTab active type={type} />);
+    await openFilters();
 
     expect((await openSort()).map((option) => option.textContent)).toEqual(labels);
   });
@@ -117,18 +121,19 @@ describe('the sort control on the user tab', () => {
     ['suggestion', 'mine'],
   ] as const)('keeps Sort on %s after switching to %s', async (type, scope) => {
     render(<MyFeedbackTab active type={type} />);
-    await screen.findByLabelText('Sort by');
 
-    fireEvent.keyDown(screen.getByLabelText('Which threads'), { key: 'Enter' });
+    fireEvent.keyDown(await screen.findByLabelText('Which threads'), { key: 'Enter' });
     const scopes = await screen.findAllByRole('option');
     pick(scopes[scope === 'all' ? 1 : 0]);
 
     await waitFor(() => expect(lastQuery()).toMatchObject({ scope: scope === 'all' ? 'all' : undefined }));
+    await openFilters();
     expect(screen.getByLabelText('Sort by')).toBeTruthy();
   });
 
   it('sends the pick from the caller’s own scope', async () => {
     render(<MyFeedbackTab active type="bug" />);
+    await openFilters();
     const options = await openSort();
 
     pick(options.find((option) => option.textContent === 'Oldest') as HTMLElement);

@@ -288,3 +288,22 @@ describe('breadcrumb picker reference', () => {
     expect(screen.getByRole('combobox', { name: 'Unavailable' })).toBeDisabled();
   });
 });
+
+describe('filter row reference', () => {
+  it('shows the staff and user rows with the Filters button at its default', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Filter Row' }));
+
+    const staff = screen.getByRole('region', { name: 'Staff Queue' });
+    expect(within(staff).getByLabelText('Filter by status')).toBeInTheDocument();
+    expect(within(staff).getByLabelText('Sort by')).toBeInTheDocument();
+    expect(within(staff).getByRole('button', { name: 'More Filters' })).toBeInTheDocument();
+
+    const userTab = screen.getByRole('region', { name: 'User Tab' });
+    expect(within(userTab).getByLabelText('Which threads')).toBeInTheDocument();
+    expect(within(userTab).getByRole('button', { name: 'Report a Bug' })).toBeInTheDocument();
+    await user.click(within(userTab).getByRole('button', { name: 'More Filters' }));
+    expect(within(userTab).getByRole('button', { name: 'Reset Filters' })).toBeDisabled();
+  });
+});

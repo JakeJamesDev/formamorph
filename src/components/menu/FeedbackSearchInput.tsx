@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** How long typing must pause before the list searches. */
 export const FEEDBACK_SEARCH_DELAY_MS = 300;
@@ -15,10 +16,12 @@ interface FeedbackSearchInputProps {
   onSearch: (text: string) => void;
   /** Accessible name and placeholder. */
   label: string;
+  /** Classes for the wrapper, which grows to the row's free width unless these say otherwise. */
+  className?: string;
 }
 
 /** A feedback list's search bar: searches after a pause in typing, and clears at once. */
-export function FeedbackSearchInput({ value, onSearch, label }: FeedbackSearchInputProps) {
+export function FeedbackSearchInput({ value, onSearch, label, className }: FeedbackSearchInputProps) {
   const [text, setText] = useState(value);
   const lastSent = useRef(value);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,8 +65,7 @@ export function FeedbackSearchInput({ value, onSearch, label }: FeedbackSearchIn
   };
 
   return (
-    // Takes the row's free width, and wraps to its own row below 12rem.
-    <div className="relative flex-1 min-w-[12rem]">
+    <div className={cn('relative flex-1 min-w-[12rem]', className)}>
       <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={inputRef}

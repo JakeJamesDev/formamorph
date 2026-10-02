@@ -48,6 +48,9 @@ const stubList = (over: Partial<FeedbackThread> = {}) =>
 /** What the list was asked for on its first fetch. */
 const firstQuery = () => vi.mocked(FeedbackService.list).mock.calls[0][0];
 
+/** Status, Category and Sort sit behind the Filters button on this tab. */
+const openFilters = async () => fireEvent.click(await screen.findByRole('button', { name: /^More Filters/ }));
+
 beforeEach(() => {
   threadProps.last = null;
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -118,11 +121,13 @@ describe('the category filter', () => {
     stubList();
 
     render(<MyFeedbackTab active type="bug" />);
+    await openFilters();
     expect(await screen.findByLabelText('Filter by category')).toBeTruthy();
 
     cleanup();
     stubList();
     render(<MyFeedbackTab active type="suggestion" />);
+    await openFilters();
     expect(await screen.findByLabelText('Filter by category')).toBeTruthy();
   });
 
@@ -199,6 +204,7 @@ describe('the status filter', () => {
     stubList();
     render(<MyFeedbackTab active type="bug" />);
     await waitFor(() => expect(FeedbackService.list).toHaveBeenCalled());
+    await openFilters();
 
     fireEvent.keyDown(screen.getByLabelText('Filter by status'), { key: 'Enter' });
     const labels = (await screen.findAllByRole('option')).map((o) => o.textContent);
@@ -234,6 +240,7 @@ describe('what the tab says when nothing shows', () => {
     empty();
     render(<MyFeedbackTab active type="bug" />);
     await screen.findByText('No reports match this filter.');
+    await openFilters();
 
     fireEvent.keyDown(screen.getByLabelText('Filter by status'), { key: 'Enter' });
     const all = await screen.findByRole('option', { name: 'All statuses' });

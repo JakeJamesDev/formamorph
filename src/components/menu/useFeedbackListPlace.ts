@@ -38,11 +38,5 @@ export function useFeedbackListPlace() {
     savedScroll.current = null;
   }, [openId]);
 
-  /** Wraps a filter's setter so a change starts the list on page 1. */
-  const refilter = (set: (value: string) => void) => (value: string) => {
-    set(value);
-    setPage(1);
-  };
-
-  return { page, setPage, openId, open, back, nonce, refresh, listRef, refilter };
+  return { page, setPage, openId, open, back, nonce, refresh, listRef };
 }

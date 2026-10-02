@@ -74,6 +74,7 @@ describe('the category filter', () => {
   it('offers the categories of its own branch', async () => {
     // 'Crash or freeze' is not a thing to suggest, and 'Interface' is not a thing to crash.
     render(<FeedbackQueueTab active type="bug" />);
+    fireEvent.click(await screen.findByRole('button', { name: /^More Filters/ }));
 
     expect(await screen.findByLabelText('Filter by category')).toBeTruthy();
     expect(CATEGORY_OPTIONS.bug.map((o) => o.value)).toContain('crash');

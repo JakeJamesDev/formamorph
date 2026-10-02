@@ -191,16 +191,17 @@ describe.each(TABS)('Back in $name', ({ renderTab }) => {
 describe('a filter change', () => {
   const CASES = [
     { name: 'status', label: 'Filter by status', tab: <FeedbackQueueTab active type="bug" />, pick: ANY_STATUS },
-    { name: 'category on the queue', label: 'Filter by category', tab: <FeedbackQueueTab active type="bug" />, pick: CATEGORY_OPTIONS.bug[1].value },
+    { name: 'category on the queue', label: 'Filter by category', tab: <FeedbackQueueTab active type="bug" />, pick: CATEGORY_OPTIONS.bug[1].value, hidden: true },
     { name: 'sort on the queue', label: 'Sort by', tab: <FeedbackQueueTab active type="suggestion" />, pick: 'newest' },
     { name: 'scope', label: 'Which threads', tab: <MyFeedbackTab active type="bug" />, pick: 'all' },
-    { name: 'category on the user tab', label: 'Filter by category', tab: <MyFeedbackTab active type="bug" />, pick: CATEGORY_OPTIONS.bug[1].value },
-    { name: 'sort on the user tab', label: 'Sort by', tab: <MyFeedbackTab active type="suggestion" />, pick: 'votes' },
+    { name: 'category on the user tab', label: 'Filter by category', tab: <MyFeedbackTab active type="bug" />, pick: CATEGORY_OPTIONS.bug[1].value, hidden: true },
+    { name: 'sort on the user tab', label: 'Sort by', tab: <MyFeedbackTab active type="suggestion" />, pick: 'votes', hidden: true },
   ];
 
-  it.each(CASES)('resets to page 1: $name', async ({ label, tab, pick }) => {
+  it.each(CASES)('resets to page 1: $name', async ({ label, tab, pick, hidden }) => {
     render(tab);
     await pageTo(3);
+    if (hidden) fireEvent.click(screen.getByRole('button', { name: /^More Filters/ }));
 
     fireEvent.change(screen.getByLabelText(label), { target: { value: pick } });
 

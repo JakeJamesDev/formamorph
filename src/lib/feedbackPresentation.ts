@@ -96,6 +96,9 @@ export const DEFAULT_STATUS_FILTER: Record<FeedbackType, StatusFilter> = {
 /** The category filter's "no filter" value, for the same reason. */
 export const ANY_CATEGORY = 'any';
 
+/** Everything the category filter can hold: one category, or every category. */
+export type CategoryFilter = FeedbackCategory | typeof ANY_CATEGORY;
+
 /**
  * The status filter as the list wants it: one real status, the set that is still open, or nothing at all.
  *
@@ -118,7 +121,7 @@ export const statusFilterValue = (
  * @param value - The dropdown's current value
  * @returns The category to filter by, or undefined for every category
  */
-export const categoryFilterValue = (value: FeedbackCategory | typeof ANY_CATEGORY): FeedbackCategory | undefined =>
+export const categoryFilterValue = (value: CategoryFilter): FeedbackCategory | undefined =>
   (value === ANY_CATEGORY ? undefined : value);
 
 /** Which threads a profile tab is showing. */
@@ -166,6 +169,49 @@ export const SORT_LABELS: Record<FeedbackSort, string> = {
  */
 export const sortsFor = (type: FeedbackType): FeedbackSort[] =>
   (type === 'suggestion' ? [...FEEDBACK_SORTS] : FEEDBACK_SORTS.filter((value) => value !== 'votes'));
+
+/** Which scope each profile tab opens on. */
+export const DEFAULT_SCOPE: Record<FeedbackType, FeedbackScope> = {
+  // Their own: this is where their replies are, and the badge counts their threads.
+  bug: 'mine',
+  // Everyone's: a board is for browsing and voting, and mine-first buries the point.
+  suggestion: 'all',
+};
+
+/** The staff queue's filters. */
+export type StaffFilterValues = { status: StatusFilter; category: CategoryFilter; sort: FeedbackSort };
+/** A profile tab's filters: the staff set plus whose threads to show. */
+export type UserFilterValues = StaffFilterValues & { scope: FeedbackScope };
+
+/** The staff queue's filters behind the Filters button. */
+export const STAFF_HIDDEN_FILTERS = ['category'] as const satisfies readonly (keyof StaffFilterValues)[];
+/** A profile tab's filters behind the Filters button. */
+export const USER_HIDDEN_FILTERS = ['status', 'category', 'sort'] as const satisfies readonly (keyof UserFilterValues)[];
+
+/**
+ * What the staff queue opens on and resets to. Staff triage suggestions by demand, so they open on votes.
+ *
+ * @param type - Which branch the queue shows
+ * @returns The queue's default filters
+ */
+export const staffFilterDefaults = (type: FeedbackType): StaffFilterValues => ({
+  status: DEFAULT_STATUS_FILTER[type],
+  category: ANY_CATEGORY,
+  sort: type === 'suggestion' ? 'votes' : 'newest',
+});
+
+/**
+ * What a profile tab opens on and resets to. Users see the newest first, to find what is new to vote on.
+ *
+ * @param type - Which branch the tab shows
+ * @returns The tab's default filters
+ */
+export const userFilterDefaults = (type: FeedbackType): UserFilterValues => ({
+  status: DEFAULT_STATUS_FILTER[type],
+  category: ANY_CATEGORY,
+  sort: 'newest',
+  scope: DEFAULT_SCOPE[type],
+});
 
 // A thread timestamp is a server timestamp like any other — see `lib/serverDate`.
 export { formatServerDateTime as formatFeedbackDate } from './serverDate';
