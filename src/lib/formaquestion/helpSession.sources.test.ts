@@ -169,6 +169,15 @@ describe('the pick request', () => {
     expect(message).not.toContain('and the note?');
   });
 
+  it('carries an earlier answer that is not from the guide, with no marker', async () => {
+    const server = endpoint();
+    await ask('and then?', { fetchImpl: server.fetchImpl, history: [{ question: 'How do I fly?', answer: 'Flap your arms.', flagged: true }] });
+
+    const message = String(bodyOf(server.picks).messages[1].content);
+    expect(message).toContain('The earlier answer:\nFlap your arms.\n\nQuestion: and then?');
+    expect(message).not.toContain(GENERAL_KNOWLEDGE_MARKER);
+  });
+
   it('finds the new feature a follow-up names, though the pick names the earlier topic alone', async () => {
     const server = endpoint();
     const { sources } = await ask('how do I import a world?', {
