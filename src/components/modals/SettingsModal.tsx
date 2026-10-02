@@ -62,6 +62,7 @@ import { numInput } from '@/lib/numInput';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import { EndpointRouteField } from './EndpointRouteField';
 import { TextEndpointEditor } from './TextEndpointEditor';
+import { activePresetEditor } from './textEndpointEditorModel';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { ATTACHMENT_PROMPTS, includesAttachments } from '@/lib/promptAttachments';
 import { useImageAttachments } from '@/lib/useImageAttachments';
@@ -1046,7 +1047,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const endpointControl = {
     label: SETTINGS_COPY.promptEndpoint.label,
     description: SETTINGS_COPY.promptEndpoint.description,
-    // Which endpoint this prompt is actually pinned to varies; the description above it does not.
+    // The ⓘ names the current target; the fixed description does not.
     info: pinnedEndpoint
       ? `Always goes to ${pinnedEndpoint.name}, even when you switch endpoints elsewhere`
       : 'Follows the endpoint picked on the **AI Endpoints** tab. Switch endpoints there and this prompt follows.',
@@ -1236,7 +1237,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 {visibleEndpointTabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-                <TextEndpointEditor source={settings} advanced={advanced} onOpenConnectionGuide={() => setConnectionGuideOpen(true)} />
+                <TextEndpointEditor model={activePresetEditor(settings)} advanced={advanced} onOpenConnectionGuide={() => setConnectionGuideOpen(true)} />
               </TabsContent>
               <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-3">
             {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}

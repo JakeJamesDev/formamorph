@@ -2,9 +2,6 @@ import { HintInfo } from '@/components/SettingsRows';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 
-/** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
- *  shows the resolved endpoint state while off when the sampler is omitted (a non-pinned prompt on a custom endpoint).
- *  On reveals the stored custom value, which persists across toggling and is sent to any endpoint. */
 export interface SamplerControlProps {
   id: string;
   label: string;
@@ -20,12 +17,15 @@ export interface SamplerControlProps {
   min: number;
   max: number;
   step: number;
-  /** When true the whole control is read-only (a built-in prompt preset) — checkbox and slider both locked. */
+  /** Locks the checkbox and the slider both. */
   disabled?: boolean;
   onCustomChange: (custom: boolean) => void;
   onValueChange: (value: number) => void;
 }
 
+/** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
+ *  shows the resolved endpoint state while off when the sampler is omitted. On reveals the stored custom value,
+ *  which persists across toggling. */
 export function SamplerControl({ id, label, hint, info, custom, value, defaultValue, fallbackLabel = 'Endpoint Default', min, max, step, disabled, onCustomChange, onValueChange }: SamplerControlProps) {
   const omitsWhenOff = defaultValue === undefined;
   const shown = custom ? value : (defaultValue ?? value);
@@ -37,9 +37,8 @@ export function SamplerControl({ id, label, hint, info, custom, value, defaultVa
         <span className="hidden sm:inline text-helper text-muted-foreground">{hint}</span>
         {info && <HintInfo>{info}</HintInfo>}
       </div>
-      {/* pl-2.5 is the thumb's own overhang: it centers on the value, so at `min` it reaches 10px left of
-          the track and would be clipped by the scroll frame. Only the left needs it — the readout and its
-          gap already clear the right — so everything else in the panel stays flush with the editor. */}
+      {/* pl-2.5 is the thumb's own overhang: at `min` it reaches 10px left of the track and a scroll frame
+          would clip it. The readout and its gap already clear the right, so the row needs no other padding. */}
       <div className="flex items-center gap-3 pl-2.5">
         <Slider
           className={`flex-grow${custom && !disabled ? '' : ' opacity-60'}`}

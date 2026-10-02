@@ -8,9 +8,9 @@ vi.mock('@/lib/useEndpointReachable', () => ({ useEndpointReachable: vi.fn() }))
 vi.mocked(useEndpointReachable).mockReturnValue({ status: 'ok', checking: false, recheck: vi.fn() });
 
 const presets = [{ id: 'default', name: 'Default' }, { id: 'llama', name: 'Llama' }];
-const target = { url: 'http://llama.test/v1', apiToken: '', model: 'gemma', enabled: false };
+const target = { url: 'http://llama.test/v1', apiToken: '', model: 'gemma', enabled: true };
 
-const renderField = (value: string | null, onChange = vi.fn()) => {
+const renderField = (value: string | null, onChange = vi.fn(), enabled = true) => {
   render(
     <EndpointRouteField
       label="Endpoint"
@@ -20,7 +20,7 @@ const renderField = (value: string | null, onChange = vi.fn()) => {
       activeName="Default"
       presets={presets}
       onChange={onChange}
-      target={{ ...target, enabled: value !== null }}
+      target={{ ...target, enabled }}
     />,
   );
   return onChange;
@@ -43,15 +43,24 @@ describe('EndpointRouteField', () => {
     expect(onChange).toHaveBeenCalledWith(null);
   });
 
-  it('shows the badge only while pinned', () => {
+  it('shows Follow Active for a null value', () => {
     renderField(null);
     expect(screen.getByRole('combobox')).toHaveTextContent('Use Active Endpoint (Default)');
-    expect(screen.queryByText('Reachable')).toBeNull();
   });
 
-  it('shows the pinned preset and its badge', () => {
+  it('shows the pinned preset', () => {
     renderField('llama');
     expect(screen.getByRole('combobox')).toHaveTextContent('Llama');
+  });
+
+  it('probes the target it is given and shows its badge', () => {
+    renderField('llama');
+    expect(useEndpointReachable).toHaveBeenLastCalledWith('http://llama.test/v1', '', 'gemma', true);
     expect(screen.getByText('Reachable')).toBeInTheDocument();
+  });
+
+  it('draws no badge for a target that is off', () => {
+    renderField('llama', vi.fn(), false);
+    expect(screen.queryByText('Reachable')).toBeNull();
   });
 });
