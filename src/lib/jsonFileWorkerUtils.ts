@@ -27,7 +27,7 @@ export const indexBackupInWorker = (file: Blob): Promise<BackupIndex> =>
 
 /** Restore a backup's ticked records off the main thread; `onProgress(done)` counts optimized images. */
 export const restoreBackupInWorker = (request: RestoreRequest, onProgress?: (done: number) => void): Promise<RestoreCounts> =>
-  client.run({ op: 'restoreBackup', request }, onProgress as ((progress: unknown) => void) | undefined) as Promise<RestoreCounts>;
+  client.run({ op: 'restoreBackup', request }, (done) => typeof done === 'number' && onProgress?.(done)) as Promise<RestoreCounts>;
 
 /** Parse an imported file's text off the main thread. Rejects on malformed JSON. */
 export const parseJsonText = (text: string): Promise<unknown> => client.run({ op: 'parse', text });

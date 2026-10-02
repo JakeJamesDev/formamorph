@@ -6,6 +6,10 @@ import type { Entity, World } from '@/types';
 import { BackupShapeError, BackupSyntaxError, scanBackupSpans, type Span } from './backupScan';
 import { countWorldImages } from './imageSlots';
 import { entityImages } from './entityImages';
+import { applyEntityImagesOptimize, applyWorldOptimize, type ImageCodec, type OptimizeMode } from './imageOptimCore';
+
+const NOT_JSON = 'Not a valid JSON file.';
+const NOT_BACKUP = 'This file is not a Formamorph backup.';
 
 /** The category keys, in a stable display order. */
 export const BACKUP_CATEGORIES = ['worlds', 'saves', 'entities', 'dictionaries'] as const;
@@ -42,21 +46,51 @@ export interface BackupIndex {
   data: Record<BackupCategory, BackupEntry[]>;
 }
 
-/** Images a backup record holds; only worlds and entities carry any. */
-const countImages = (category: BackupCategory, record: IdRecord): number =>
-  typeof record.data !== 'object' || record.data === null
-    ? 0
-    : category === 'worlds'
-    ? countWorldImages(record.data as World)
-    : category === 'entities'
-      ? entityImages(record.data as Entity).length
-      : 0;
+/** How one category's records hold images: worlds and entities keep theirs in `data`. */
+export interface RecordImages {
+  count: (data: object) => number;
+  /** Re-encode the record's images per `mode`; `onImage(done)` counts this record's finished images. */
+  optimize: (
+    codec: ImageCodec,
+    record: IdRecord & { data: object },
+    mode: OptimizeMode,
+    onImage: (done: number) => void,
+  ) => Promise<IdRecord>;
+}
+
+export const RECORD_IMAGES: Partial<Record<BackupCategory, RecordImages>> = {
+  worlds: {
+    count: (data) => countWorldImages(data as World),
+    optimize: async (codec, record, mode, onImage) => {
+      const data = await applyWorldOptimize(codec, record.data as World, mode, onImage);
+      // The library card keeps its own copy of the thumbnail.
+      return { ...record, data, thumbnail: data.worldOverview?.thumbnail ?? record.thumbnail };
+    },
+  },
+  entities: {
+    count: (data) => entityImages(data as Entity).length,
+    optimize: async (codec, record, mode, onImage) => {
+      let done = 0;
+      return { ...record, data: await applyEntityImagesOptimize(codec, record.data as Entity, mode, () => onImage(++done)) };
+    },
+  },
+};
+
+/** The record's `data` when it is an object, the only shape that can hold images. */
+export const recordData = (record: IdRecord): object | null =>
+  typeof record.data === 'object' && record.data !== null ? record.data : null;
+
+/** Images a backup record holds. */
+const countImages = (category: BackupCategory, record: IdRecord): number => {
+  const data = recordData(record);
+  return data ? (RECORD_IMAGES[category]?.count(data) ?? 0) : 0;
+};
 
 const parseSpan = async (file: Blob, span: Span): Promise<unknown> => {
   try {
     return JSON.parse(await file.slice(span.start, span.end).text());
   } catch {
-    throw new Error('Not a valid JSON file.');
+    throw new Error(NOT_JSON);
   }
 };
 
@@ -69,19 +103,19 @@ export async function indexBackup(file: Blob): Promise<BackupIndex> {
   try {
     spans = await scanBackupSpans(file, BACKUP_CATEGORIES);
   } catch (err) {
-    if (err instanceof BackupShapeError) throw new Error('This file is not a Formamorph backup.');
-    if (err instanceof BackupSyntaxError) throw new Error('Not a valid JSON file.');
+    if (err instanceof BackupShapeError) throw new Error(NOT_BACKUP);
+    if (err instanceof BackupSyntaxError) throw new Error(NOT_JSON);
     throw err;
   }
   const header = async (key: string) => (spans.header[key] ? parseSpan(file, spans.header[key]) : undefined);
   const format = await header('formamorphBackup');
-  if (typeof format !== 'number' || !spans.hasData) throw new Error('This file is not a Formamorph backup.');
+  if (typeof format !== 'number' || !spans.hasData) throw new Error(NOT_BACKUP);
   const appVersion = await header('appVersion');
   const exportedAt = await header('exportedAt');
 
   const data: Record<BackupCategory, BackupEntry[]> = { worlds: [], saves: [], entities: [], dictionaries: [] };
   for (const span of spans.records) {
-    const category = span.category as BackupCategory;
+    const { category } = span;
     const record = (await parseSpan(file, span)) as IdRecord | null;
     if (!record || typeof record.id !== 'string') continue;
     data[category].push({

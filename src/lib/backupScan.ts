@@ -10,30 +10,35 @@ export interface Span {
   end: number;
 }
 
-export interface BackupSpans {
+export interface BackupSpans<C extends string> {
   /** Top-level values other than `data`, by key. */
   header: Record<string, Span>;
   /** Each element of a `data.<category>` array. */
-  records: (Span & { category: string })[];
+  records: (Span & { category: C })[];
   /** Whether the top level has a `data` object. */
   hasData: boolean;
 }
 
-/** The file breaks JSON structure. */
+/** The file breaks JSON syntax. */
 export class BackupSyntaxError extends Error {}
 /** The file is JSON but its top level is not an object. */
 export class BackupShapeError extends Error {}
 
 type Role = 'root' | 'data' | 'category' | 'record' | 'header' | 'other';
 
-interface Frame {
+/** What the next significant byte may be. */
+type Expect = 'value' | 'key' | 'colon' | 'commaOrClose' | 'keyOrClose' | 'valueOrClose' | 'end';
+
+interface Frame<C> {
   kind: 'obj' | 'arr';
   role: Role;
   start: number;
   /** The current member's key, in an object. */
   key: string | null;
-  /** The span's label: a header key or a category. */
-  label?: string;
+  /** A header frame's key. */
+  header?: string;
+  /** A category or record frame's category. */
+  category?: C;
 }
 
 const Q = 0x22;
@@ -46,82 +51,98 @@ const COLON = 0x3a;
 const COMMA = 0x2c;
 /** Keys longer than this are never a header key or category, so they aren't kept. */
 const MAX_KEY_BYTES = 64;
+/** Longer than any valid `true`/`false`/`null` or any number a backup writes. */
+const MAX_SCALAR_BYTES = 64;
+const SCALAR = /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/;
 
 const isSpace = (b: number) => b === 0x20 || b === 0x0a || b === 0x0d || b === 0x09;
 /** A UTF-8 byte order mark, which `Blob.text()` also drops. */
 const isBom = (b: number) => b === 0xef || b === 0xbb || b === 0xbf;
+/** A byte that can start a JSON value. */
+const startsValue = (b: number) =>
+  b === LB || b === LS || b === Q || b === 0x2d || (b >= 0x30 && b <= 0x39) || b === 0x74 || b === 0x66 || b === 0x6e;
 
 /**
- * Scan `blob` in chunks of `chunkSize` bytes. Throws `BackupSyntaxError` on broken structure and
- * `BackupShapeError` when the top level is not an object. Values are not checked here; parsing a span does that.
+ * Scan `blob` in chunks of `chunkSize` bytes. Throws `BackupSyntaxError` on broken JSON and
+ * `BackupShapeError` when the top level is JSON but not an object. A repeated key keeps its last value,
+ * as `JSON.parse` does. Strings inside a value are not checked here; parsing its span does that.
  */
-export async function scanBackupSpans(
+export async function scanBackupSpans<C extends string>(
   blob: Blob,
-  categories: readonly string[],
+  categories: readonly C[],
   chunkSize = 4 * 2 ** 20,
-): Promise<BackupSpans> {
-  const spans: BackupSpans = { header: {}, records: [], hasData: false };
-  const stack: Frame[] = [];
-  let started = false;
-  let done = false;
+): Promise<BackupSpans<C>> {
+  const spans: BackupSpans<C> = { header: {}, records: [], hasData: false };
+  const stack: Frame<C>[] = [];
+  // Typed by assertion: closures assign `expect`, `pending` and `scalarBytes`, which plain initializers would
+  // hide from narrowing.
+  let expect = 'value' as Expect;
   let inString = false;
   let escape = false;
-  let expectKey = false;
   // The string being read is an object key; its bytes are kept while short.
   let keyBytes: number[] | null = null;
-  // A string or scalar value in progress, and its span label.
-  // Typed by assertion: closures assign it, which a plain `= null` would hide from narrowing.
-  let pending = null as { role: Role; label?: string; start: number } | null;
-  let scalarOpen = false;
+  // A string or scalar value in progress, and where its span goes.
+  let pending = null as { role: Role; header?: string; category?: C; start: number } | null;
+  let scalarBytes = null as number[] | null;
   const decoder = new TextDecoder();
+  const isCategory = (key: string | null): key is C => key !== null && (categories as readonly string[]).includes(key);
 
-  const emit = (role: Role, label: string | undefined, start: number, end: number) => {
-    if (role === 'header' && label !== undefined) spans.header[label] = { start, end };
-    else if (role === 'record' && label !== undefined) spans.records.push({ category: label, start, end });
+  const emit = (role: Role, header: string | undefined, category: C | undefined, start: number, end: number) => {
+    if (role === 'header' && header !== undefined) spans.header[header] = { start, end };
+    else if (role === 'record' && category !== undefined) spans.records.push({ category, start, end });
+  };
+
+  /** A value just ended: the next byte closes its container, adds a sibling, or ends the file. */
+  const valueDone = () => {
+    expect = stack.length ? 'commaOrClose' : 'end';
   };
 
   const endScalar = (pos: number) => {
-    if (!scalarOpen || !pending) return;
-    emit(pending.role, pending.label, pending.start, pos);
+    if (!scalarBytes || !pending) return;
+    if (scalarBytes.length > MAX_SCALAR_BYTES || !SCALAR.test(String.fromCharCode(...scalarBytes))) {
+      throw new BackupSyntaxError('Unknown word.');
+    }
+    emit(pending.role, pending.header, pending.category, pending.start, pos);
     pending = null;
-    scalarOpen = false;
+    scalarBytes = null;
+    valueDone();
   };
 
-  /** The role and label of a value that starts now, with `kind` its container type or null for a scalar. */
-  const roleFor = (kind: 'obj' | 'arr' | null): { role: Role; label?: string } => {
+  /** The role of a value that starts now, with `kind` its container type or null for a scalar. */
+  const roleFor = (kind: 'obj' | 'arr' | null): { role: Role; header?: string; category?: C } => {
     const top = stack[stack.length - 1];
     if (top.role === 'root') {
       if (top.key === 'data' && kind === 'obj') return { role: 'data' };
-      return top.key === null || top.key === 'data' ? { role: 'other' } : { role: 'header', label: top.key };
+      return top.key === null || top.key === 'data' ? { role: 'other' } : { role: 'header', header: top.key };
     }
     if (top.role === 'data') {
-      return kind === 'arr' && top.key !== null && categories.includes(top.key)
-        ? { role: 'category', label: top.key }
-        : { role: 'other' };
+      return kind === 'arr' && isCategory(top.key) ? { role: 'category', category: top.key } : { role: 'other' };
     }
-    if (top.role === 'category') return { role: 'record', label: top.label };
+    if (top.role === 'category') return { role: 'record', category: top.category };
     return { role: 'other' };
   };
 
   /** Called at the first byte of any value. */
   const startValue = (pos: number, kind: 'obj' | 'arr' | null) => {
-    if (done) throw new BackupSyntaxError('Text after the end of the file.');
-    if (!started) {
+    if (!stack.length) {
       if (kind !== 'obj') throw new BackupShapeError('The top level is not an object.');
-      started = true;
       stack.push({ kind, role: 'root', start: pos, key: null });
-      expectKey = true;
+      expect = 'keyOrClose';
       return;
     }
-    const top = stack[stack.length - 1];
-    if (top.kind === 'obj' && expectKey) throw new BackupSyntaxError('Expected a key.');
-    const { role, label } = roleFor(kind);
+    const { role, header, category } = roleFor(kind);
     if (kind) {
-      if (role === 'data') spans.hasData = true;
-      stack.push({ kind, role, start: pos, key: null, label });
-      expectKey = kind === 'obj';
+      // A repeated key keeps its last value, so a later `data` or category replaces the records found so far.
+      if (role === 'data') {
+        spans.hasData = true;
+        spans.records = [];
+      } else if (role === 'category') {
+        spans.records = spans.records.filter((r) => r.category !== category);
+      }
+      stack.push({ kind, role, start: pos, key: null, header, category });
+      expect = kind === 'obj' ? 'keyOrClose' : 'valueOrClose';
     } else {
-      pending = { role, label, start: pos };
+      pending = { role, header, category, start: pos };
     }
   };
 
@@ -158,10 +179,11 @@ export async function scanBackupSpans(
         if (keyBytes) {
           stack[stack.length - 1].key = decoder.decode(new Uint8Array(keyBytes));
           keyBytes = null;
-          expectKey = false;
+          expect = 'colon';
         } else if (pending) {
-          emit(pending.role, pending.label, pending.start, pos + 1);
+          emit(pending.role, pending.header, pending.category, pending.start, pos + 1);
           pending = null;
+          valueDone();
         }
         i = stop + 1;
         continue;
@@ -170,47 +192,59 @@ export async function scanBackupSpans(
       const b = chunk[i];
       const pos = offset + i;
       i++;
-      if (isSpace(b) || (!started && isBom(b))) {
-        endScalar(pos);
-      } else if (b === Q) {
-        endScalar(pos);
-        const top = stack[stack.length - 1];
-        if (top && top.kind === 'obj' && expectKey) {
+      if (scalarBytes) {
+        if (isSpace(b) || b === COMMA || b === RB || b === RS || b === COLON) endScalar(pos);
+        else {
+          scalarBytes.push(b);
+          if (scalarBytes.length > MAX_SCALAR_BYTES) throw new BackupSyntaxError('Unknown word.');
+          continue;
+        }
+      }
+      if (isSpace(b) || (expect === 'value' && !stack.length && isBom(b))) continue;
+      if (expect === 'end') throw new BackupSyntaxError('Text after the end of the file.');
+
+      if (b === Q) {
+        if (expect === 'key' || expect === 'keyOrClose') {
           keyBytes = [];
-        } else {
+        } else if (expect === 'value' || expect === 'valueOrClose') {
           startValue(pos, null);
+        } else {
+          throw new BackupSyntaxError('Unexpected string.');
         }
         inString = true;
         // The cached search positions were found before this string opened.
         nextQ = -1;
         nextBs = -1;
-      } else if (b === LB || b === LS) {
-        endScalar(pos);
-        startValue(pos, b === LB ? 'obj' : 'arr');
-      } else if (b === RB || b === RS) {
-        endScalar(pos);
-        const frame = stack.pop();
-        if (!frame || frame.kind !== (b === RB ? 'obj' : 'arr')) throw new BackupSyntaxError('Unmatched bracket.');
-        emit(frame.role, frame.label, frame.start, pos + 1);
-        expectKey = false;
-        if (stack.length === 0) done = true;
-      } else if (b === COMMA) {
-        endScalar(pos);
-        const top = stack[stack.length - 1];
-        if (!top) throw new BackupSyntaxError('Comma outside a value.');
-        if (top.kind === 'obj') {
-          top.key = null;
-          expectKey = true;
-        }
       } else if (b === COLON) {
-        endScalar(pos);
-      } else if (!scalarOpen) {
-        startValue(pos, null);
-        scalarOpen = true;
+        if (expect !== 'colon') throw new BackupSyntaxError('Unexpected colon.');
+        expect = 'value';
+      } else if (b === COMMA) {
+        if (expect !== 'commaOrClose') throw new BackupSyntaxError('Unexpected comma.');
+        const top = stack[stack.length - 1];
+        if (top.kind === 'obj') top.key = null;
+        expect = top.kind === 'obj' ? 'key' : 'value';
+      } else if (b === RB || b === RS) {
+        const top = stack[stack.length - 1];
+        const kind = b === RB ? 'obj' : 'arr';
+        const canClose = expect === 'commaOrClose' || expect === (kind === 'obj' ? 'keyOrClose' : 'valueOrClose');
+        if (!top || top.kind !== kind || !canClose) throw new BackupSyntaxError('Unexpected bracket.');
+        stack.pop();
+        emit(top.role, top.header, top.category, top.start, pos + 1);
+        valueDone();
+      } else if (expect === 'value' || expect === 'valueOrClose') {
+        if (!startsValue(b)) throw new BackupSyntaxError('Unexpected character.');
+        if (b === LB || b === LS) {
+          startValue(pos, b === LB ? 'obj' : 'arr');
+        } else {
+          startValue(pos, null);
+          scalarBytes = [b];
+        }
+      } else {
+        throw new BackupSyntaxError('Unexpected character.');
       }
     }
   }
   endScalar(blob.size);
-  if (inString || !done) throw new BackupSyntaxError('The file ends early.');
+  if (inString || expect !== 'end') throw new BackupSyntaxError('The file ends early.');
   return spans;
 }

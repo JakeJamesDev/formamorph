@@ -9,7 +9,8 @@ import { IMAGE_CAPS, countWorldImages, type ImageCap } from './imageSlots';
 
 /** Encodes and measures image data-URLs. `encode` never throws; it returns the source on failure. */
 export interface ImageCodec {
-  encode: (url: string, maxDim: number, lossless?: boolean, allowGrow?: boolean) => Promise<string>;
+  /** `lossless` keeps every pixel; `allowGrow` keeps a result larger than the source. */
+  encode: (url: string, maxDim: number, options?: { lossless?: boolean; allowGrow?: boolean }) => Promise<string>;
   measure: (url: string) => Promise<{ w: number; h: number; bytes: number }>;
 }
 
@@ -58,14 +59,14 @@ export interface DownscaleDeps {
 
 /** Downscale cares about large files: only images over their budget are touched. */
 export const downscaleDeps = (codec: ImageCodec): DownscaleDeps => ({
-  optimize: (url, cap) => codec.encode(url, cap.maxDim, false),
+  optimize: (url, cap) => codec.encode(url, cap.maxDim),
   shouldEncode: async (url, cap) => (await scanItem(codec, url, cap, ''))?.oversized ?? false,
 });
 
 /** Deps for the "Optimize" (WebP, keep resolution) world pass: every losslessly convertible image at any
  *  size — Optimize is about total world size, not display budgets. */
 export const reencodeDeps = (codec: ImageCodec): DownscaleDeps => ({
-  optimize: (url) => codec.encode(url, Infinity, true),
+  optimize: (url) => codec.encode(url, Infinity, { lossless: true }),
   shouldEncode: (url) => Promise.resolve(isConvertibleImage(url) && reencodeKeepsAnimation(url)),
 });
 

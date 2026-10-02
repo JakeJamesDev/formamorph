@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
 import { Archive } from 'lucide-react';
@@ -20,6 +21,7 @@ import {
   readBackupIndex,
   analyzeBackup,
   restoreBackup,
+  optimizes,
   BACKUP_CATEGORIES,
   CATEGORY_LABELS,
   type BackupCategory,
@@ -149,6 +151,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>('home');
   const [busy, setBusy] = useState(false);
+  const mounted = useMountedRef();
 
   // Backup state
   const [items, setItems] = useState<Record<BackupCategory, BackupItem[]> | null>(null);
@@ -237,6 +240,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     try {
       const read = await readBackupIndex(file);
       const analyzed = await analyzeBackup(read);
+      if (!mounted.current) return;
       setIndex(read);
       setPlans(analyzed);
       const sel = emptySel();
@@ -247,7 +251,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     } catch (err) {
       toastError(err, 'Failed to read the backup');
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
 
@@ -255,11 +259,11 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     setBusy(true);
     try {
       await saveBackup(await buildBackup(exportSel));
-      setStep('backup-done');
+      if (mounted.current) setStep('backup-done');
     } catch (err) {
       toastError(err, { headline: `Backup failed: ${(err as Error).message}` });
     } finally {
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
 
@@ -272,31 +276,24 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
         const keep = (r: CategoryPlan['fresh'][number]) => restoreSel[p.category].has(r.id);
         return { category: p.category, fresh: p.fresh.filter(keep), conflicts: p.conflicts.filter(keep) };
       });
+      const modes = { worlds: worldOpt, entities: entityOpt };
       // How many images the chosen modes will touch, for the progress dialog.
-      const optimizing = (c: BackupCategory) =>
-        (c === 'worlds' && worldOpt !== 'off') || (c === 'entities' && entityOpt !== 'off');
       const totalImages = ticked.reduce((n, p) => {
-        if (!optimizing(p.category)) return n;
+        if (!optimizes(modes, p.category)) return n;
         const written = [...p.fresh, ...(overwrite[p.category] ? p.conflicts : [])];
         return n + written.reduce((m, r) => m + r.images, 0);
       }, 0);
 
       // The worker reads, optimizes and writes each record in turn; the WebP probe needs this thread's DOM.
-      const request = {
-        index,
-        plans: ticked,
-        overwrite,
-        worldMode: worldOpt,
-        entityMode: entityOpt,
-        webpSupported: supportsWebp(),
-      };
+      // It runs to the end even if the dialog closes: stopping midway would leave half a restore.
+      const request = { index, plans: ticked, overwrite, modes, webpSupported: supportsWebp() };
       if (totalImages) await withOptimizeProgress(totalImages, (tick) => restoreBackup(request, tick));
       else await restoreBackup(request);
-      setStep('restore-done');
+      if (mounted.current) setStep('restore-done');
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
       toastError(err, { headline: `Restore failed: ${(err as Error).message}` });
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   };
 

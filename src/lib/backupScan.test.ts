@@ -51,8 +51,34 @@ describe('scanBackupSpans', () => {
     ['an open string', '{"a": "b'],
     ['text after the end', '{"a": 1} 2'],
     ['a mismatched bracket', '{"a": [1}'],
-  ])('rejects %s as broken JSON', async (_, text) => {
-    await expect(scanBackupSpans(new Blob([text]), CATEGORIES)).rejects.toBeInstanceOf(BackupSyntaxError);
+    ['a web page', '<!doctype html><html></html>'],
+    ['plain text', 'hello'],
+    ['a trailing comma', '{"a": 1,}'],
+    ['a missing colon', '{"a" 1}'],
+    ['a double comma', '{"a": 1,, "b": 2}'],
+    ['a leading comma in an array', '{"a": [,1]}'],
+    ['a missing comma between values', '{"formamorphBackup": 1 "x": 2}'],
+    ['a missing comma between records', '{"data": {"worlds": [{"id": "a"} {"id": "b"}]}}'],
+    ['an unknown word', '{"a": nul}'],
+    ['a key with no value', '{"a":}'],
+  ])('rejects %s as broken JSON at any chunk size', async (_, text) => {
+    expect(() => JSON.parse(text)).toThrow();
+    for (const chunkSize of [1, 3, 4096]) {
+      await expect(scanBackupSpans(new Blob([text]), CATEGORIES, chunkSize)).rejects.toBeInstanceOf(BackupSyntaxError);
+    }
+  });
+
+  it('keeps the last value of a repeated key, as JSON.parse does', async () => {
+    const text =
+      // The first `data` holds a category the second lacks, and the second repeats one of its own.
+      '{"formamorphBackup": 1, "data": {"saves": [{"id": "old"}]}, "formamorphBackup": 2,' +
+      ' "data": {"worlds": [{"id": "a"}], "worlds": [{"id": "b"}]}}';
+    const blob = new Blob([text]);
+    const spans = await scanBackupSpans(blob, CATEGORIES);
+    const parsed = JSON.parse(text);
+    expect(parsed.data).toEqual({ worlds: [{ id: 'b' }] });
+    expect(await read(blob, spans.header.formamorphBackup)).toBe(parsed.formamorphBackup);
+    expect(await Promise.all(spans.records.map((r) => read(blob, r)))).toEqual(parsed.data.worlds);
   });
 
   it.each([['an array', '[1, 2]'], ['a string', '"x"'], ['a number', '5']])(
