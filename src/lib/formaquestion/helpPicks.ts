@@ -34,16 +34,19 @@ export interface PickQuestion {
   question: string;
   /** The question before this one, for a follow-up. */
   earlier?: string;
+  /** The answer the earlier question got, so the model reads what "it" or "that one" means. */
+  earlierAnswer?: string;
   /** The open screen, as the answer request names it. */
   where?: string;
 }
 
 /** The one user message of a pick request: the section list, then the question. */
-export function pickMessage(lines: readonly string[], { question, earlier, where }: PickQuestion): string {
+export function pickMessage(lines: readonly string[], { question, earlier, earlierAnswer, where }: PickQuestion): string {
   return [
     `<sections>\n${lines.join('\n')}\n</sections>`,
     ...(where ? [`The player asks from this screen: ${where}.`] : []),
     ...(earlier ? [`The player's earlier question: ${earlier}`] : []),
+    ...(earlierAnswer ? [`The earlier answer:\n${earlierAnswer}`] : []),
     `Question: ${question}`,
     'Reply with the lines of the sections that answer the question, the best one first.',
   ].join('\n\n');
