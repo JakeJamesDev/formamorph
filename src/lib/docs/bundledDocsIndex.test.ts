@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import fullChangelog from '../../../docs/Changelog.md?raw';
 import { BUNDLED_DOCS, bundledDocsIndex } from './bundledDocsIndex';
 import { NON_GUIDE_PAGES, pageNameOf } from './docsChecks';
-import { SECTION_CHAR_LIMIT } from './docsIndex';
+import { otherPagesLinked, SECTION_CHAR_LIMIT } from './docsIndex';
 import { SECTION_CUT_MARKER } from './sectionParts';
 
 const DOCS_FOLDER = Object.keys(import.meta.glob('../../../docs/*.md')).map(pageNameOf);
@@ -67,5 +67,35 @@ describe('the bundled Docs Index', () => {
     expect(expected.length).toBeGreaterThan(0);
     expect(versions).toEqual(expected);
     expect(BUNDLED_DOCS.Changelog).not.toContain('In Progress');
+  });
+});
+
+describe('hub sections in the bundled docs', () => {
+  const hubIds = sections.filter((section) => otherPagesLinked(section) >= 5).map((section) => section.id);
+
+  it('marks the two sections ticket 37 found as hubs', () => {
+    expect(hubIds).toContain('Settings#output');
+    expect(hubIds.filter((id) => id.startsWith('Glossary#') && id.endsWith('building-a-world'))).toHaveLength(1);
+  });
+
+  it('ranks a specific section above a hub for a task question that matches both', () => {
+    const ids = index.search('how do I put a cover picture on my world so it looks nice when people browse?', 50).map((s) => s.id);
+    const hub = ids.findIndex((id) => id.startsWith('WorldEditor#'));
+    expect(ids.indexOf('Community-Creations#how-to-download-a-world')).toBeLessThan(hub < 0 ? Infinity : hub);
+    expect(ids[0]).toBe('World-Editor-Overview#how-to-set-the-worlds-images');
+  });
+
+  it('does not lead with a hub for a question that holds its heading words apart', () => {
+    const question = 'I finished building my world, how do I upload it so other people online can play it?';
+    expect(index.search(question)[0]?.id).toBe('Community-Creations#how-to-publish-a-world');
+  });
+
+  it('still finds the Glossary hub for its own term', () => {
+    const ids = index.search('what is Building a World in the glossary?', 3).map((s) => s.id);
+    expect(ids.some((id) => id.startsWith('Glossary#') && id.endsWith('building-a-world'))).toBe(true);
+  });
+
+  it('still finds Settings#output for a question about what it holds', () => {
+    expect(index.search('What does Settings → Output hold?', 3).map((s) => s.id)).toContain('Settings#output');
   });
 });

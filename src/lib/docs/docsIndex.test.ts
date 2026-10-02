@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDocsIndex, SECTION_CHAR_LIMIT } from './docsIndex';
+import { createDocsIndex, HUB_PAGE_COUNT, otherPagesLinked, SECTION_CHAR_LIMIT } from './docsIndex';
 import { SECTION_CUT_MARKER } from './sectionParts';
 
 const SIDEBAR = ['- [Home](Home)', '**Playing**', '- [Library](Library)', '- [Traits](Traits)', '- [↗ Repo](https://example.com)'].join('\n');
@@ -368,5 +368,35 @@ describe('Docs Index search: filler words', () => {
 
   it('keeps a topic word beside a filler word', () => {
     expect(index().search('how do I pin a place here?')[0]?.id).toBe('Map#pin-a-place');
+  });
+});
+
+describe('Docs Index search: hub sections', () => {
+  const links = Array.from({ length: HUB_PAGE_COUNT }, (_, i) => `[Page ${i}](Page${i})`).join(', ');
+  const PAGES = {
+    Overview: `# Overview\n\n## Stat Overview\n\nStats link to ${links}. Add a stat to track hunger. A stat tracks hunger when you add a stat. Add a stat, add a stat.\n`,
+    Stats: '# Stats\n\n## Tracking\n\nTrack a stat for hunger.\n',
+  };
+  const index = createDocsIndex({ pages: PAGES });
+
+  it('marks a section that links to enough other pages, and not one that links to fewer', () => {
+    const section = (id: string) => index.get([id])[0];
+    expect(otherPagesLinked(section('Overview#stat-overview'))).toBe(HUB_PAGE_COUNT);
+    expect(otherPagesLinked(section('Stats#tracking'))).toBe(0);
+  });
+
+  it('counts each page once and skips its own page and same-page links', () => {
+    const markdown = '[a](Other), [b](Other#x), [c](Own), [d](#here), [e](https://example.com), `[f](Code)`';
+    expect(otherPagesLinked({ page: 'Own', markdown })).toBe(1);
+  });
+
+  it('ranks a specific section above a hub for a task question that matches both', () => {
+    const ids = index.search('how do I add a stat to track hunger?').map((s) => s.id);
+    expect(ids.indexOf('Stats#tracking')).toBeLessThan(ids.indexOf('Overview#stat-overview'));
+    expect(ids).toContain('Overview#stat-overview');
+  });
+
+  it('finds a hub when the question holds its heading as a phrase', () => {
+    expect(index.search('stat overview')[0]?.id).toBe('Overview#stat-overview');
   });
 });

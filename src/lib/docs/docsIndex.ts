@@ -5,7 +5,7 @@
 import { stemmer } from 'stemmer';
 import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, type DocHeading } from './headingAnchors';
 import type { DocsPages } from './docsChecks';
-import { docTargetId } from './docsLinks';
+import { docsHrefs, docTargetId, hrefParts } from './docsLinks';
 import { sectionParts } from './sectionParts';
 
 /** The most characters one section holds, so a few sections fit a small model's context. */
@@ -42,7 +42,8 @@ export interface DocsIndex {
    * Sections ranked by keyword match, best first, with every guide hit above every changelog hit. A question
    * about what is new leads with the newest release's sections, or those of the release it names, matched or
    * not. Empty when the query asks nothing new and no word of it matches. A section of `favor.page` scores
-   * twice its match strength.
+   * twice its match strength. A hub section, one that links to many other pages, scores half unless the query
+   * holds its heading as a phrase.
    */
   search(query: string, limit?: number, favor?: { page: string }): DocSection[];
   /**
@@ -181,6 +182,10 @@ const FAVORED_PAGE_WEIGHT = 2;
 const BM25_K1 = 1.2;
 const BM25_B = 0.75;
 const DEFAULT_SEARCH_LIMIT = 5;
+/** A section that links to this many other pages is a hub: it names many features in passing. */
+export const HUB_PAGE_COUNT = 5;
+/** How much a hub section's score is multiplied, unless the query holds its heading as a phrase. */
+const HUB_WEIGHT = 0.5;
 
 /** The page that holds the released changelog sections, newest first (see `changelogSlice.ts`). */
 const CHANGELOG_PAGE = 'Changelog';
@@ -229,11 +234,26 @@ function releasesOf(changelog: readonly SplitSection[]): Release[] {
   return releases;
 }
 
+/** The number of other docs pages the section's prose links to. */
+export function otherPagesLinked(section: Pick<DocSection, 'page' | 'markdown'>): number {
+  const pages = new Set<string>();
+  forEachProseLine(section.markdown, (source) => {
+    for (const href of docsHrefs(source)) pages.add(hrefParts(href).page);
+  });
+  pages.delete('');
+  pages.delete(section.page);
+  return pages.size;
+}
+
 /** One section's search terms, by where they appear. */
 interface SectionTerms {
   section: SplitSection;
   /** Terms of the section's heading and keyword lines, filler words included. */
   heading: Set<string>;
+  /** The section's own heading as space-padded words, so a whole-phrase test is `includes`. */
+  ownHeading: string;
+  /** Whether the section is a hub; see {@link HUB_PAGE_COUNT}. */
+  hub: boolean;
   /** The heading and keyword phrases that hold a filler word, with their terms. A query that holds one whole counts its terms. */
   fillerPhrases: { phrase: string; terms: string[] }[];
   trail: Set<string>;
@@ -258,10 +278,12 @@ export interface DocsIndexInput {
   sidebar?: string;
   /** Whether the search ignores filler words such as "here" in a question. On unless `false`. */
   fillerWords?: boolean;
+  /** Whether hub sections rank below specific ones. On unless `false`; the help probe sets it off for its control. */
+  hubDemotion?: boolean;
 }
 
 /** Builds a Docs Index over the given pages. */
-export function createDocsIndex({ pages, sidebar = '', fillerWords = true }: DocsIndexInput): DocsIndex {
+export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDemotion = true }: DocsIndexInput): DocsIndex {
   const filler = fillerWords ? FILLER_WORDS : NO_WORDS;
   const order = sidebarOrder(sidebar);
   const rank = (page: string) => (order.includes(page) ? order.indexOf(page) : order.length);
@@ -285,6 +307,8 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true }: Doc
       section,
       // A heading keeps its filler words, so a control named "Here" still matches itself.
       heading: new Set(phrases.flatMap((phrase) => searchTerms(phrase, NO_WORDS))),
+      ownHeading: section.level > 0 ? wordsOf(section.heading) : '',
+      hub: hubDemotion && otherPagesLinked(section) >= HUB_PAGE_COUNT,
       fillerPhrases: phrases
         .filter((phrase) => (phrase.match(WORD) ?? []).some((word) => filler.has(word)))
         .map((phrase) => ({ phrase, terms: searchTerms(phrase, NO_WORDS) })),
@@ -334,7 +358,9 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true }: Doc
           score += idf * (body + (inHeading ? HEADING_WEIGHT : 0) + (inTrail ? TRAIL_WEIGHT : 0));
         }
         // A section that matches more of the query's words ranks above one that repeats a single word.
-        const weight = r.section.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1;
+        // A hub ranks below a specific section of the same strength, unless the query holds its heading as a phrase.
+        const asksHub = r.ownHeading.trim() !== '' && asked.includes(r.ownHeading);
+        const weight = (r.section.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) * (r.hub && !asksHub ? HUB_WEIGHT : 1);
         return { section: r.section, score: score * (matched / terms.length) ** 2 * weight };
       });
       const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).map((s) => s.section);
