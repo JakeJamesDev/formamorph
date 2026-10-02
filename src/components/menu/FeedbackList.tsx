@@ -28,6 +28,10 @@ interface FeedbackListProps {
   category?: FeedbackCategory;
   /** How to order the list. The server's default is newest first. */
   sort?: string;
+  /** The page on screen, 1-based. The parent owns it, so it outlives an open thread. */
+  page: number;
+  /** Asks the parent for another page: the pager, or a page past the end after a reload. */
+  onPageChange: (page: number) => void;
   /** Bumped by the parent after something changes a thread, to pull the change in. */
   refreshNonce?: number;
   /** Open one thread. */
@@ -41,12 +45,15 @@ interface FeedbackListProps {
  * public suggestion board and the Admin Panel's queues — which differ only in what they ask for.
  */
 export function FeedbackList({
-  active, type, scope, status, category, sort, refreshNonce = 0, onOpen, emptyLabel = 'Nothing here yet.',
+  active, type, scope, status, category, sort, page, onPageChange, refreshNonce = 0, onOpen,
+  emptyLabel = 'Nothing here yet.',
 }: FeedbackListProps) {
   const [threads, setThreads] = useState<FeedbackThread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  // Read through a ref so a caller's inline handler does not rebuild the load and refetch every render.
+  const onPageChangeRef = useRef(onPageChange);
+  onPageChangeRef.current = onPageChange;
   // Set when a multi-status page came back short, so the list can say so instead of looking complete.
   const [truncated, setTruncated] = useState(false);
   // Ids with a vote in flight, so a double click can't send two of the same request.
@@ -85,6 +92,9 @@ export function FeedbackList({
       setThreads(result.threads);
       setTotal(result.total);
       setTruncated(result.truncated ?? false);
+      // Triage can move the last rows out from under the page; land on the last page that remains.
+      const lastPage = Math.max(Math.ceil(result.total / PAGE_SIZE), 1);
+      if (page > lastPage) onPageChangeRef.current(lastPage);
     } catch (error) {
       if (!isCurrent()) return;
       toastError(error, 'Failed to load these');
@@ -99,9 +109,6 @@ export function FeedbackList({
     load(() => current);
     return () => { current = false; };
   }, [load, refreshNonce]);
-
-  // A filter change would otherwise land on whatever page the previous list was showing.
-  useEffect(() => { setPage(1); }, [type, statusKey, category, scope, sort]);
 
   // A vote outlives no filter change, only the list itself, so it needs the mount and not a per-load flag.
   const mountedRef = useRef(true);
@@ -250,14 +257,14 @@ export function FeedbackList({
             isRefreshing ? ' opacity-50 pointer-events-none' : ''
           }`}
         >
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1}>
+          <Button variant="outline" size="sm" onClick={() => onPageChange(Math.max(page - 1, 1))} disabled={page <= 1}>
             Previous
           </Button>
           <span className="px-2 text-label">Page {page} of {totalPages}</span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            onClick={() => onPageChange(Math.min(page + 1, totalPages))}
             disabled={page >= totalPages}
           >
             Next

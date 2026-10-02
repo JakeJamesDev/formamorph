@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FeedbackList } from "@/components/menu/FeedbackList";
 import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
+import { useFeedbackListPlace } from "@/components/menu/useFeedbackListPlace";
 import {
   ANY_CATEGORY, CATEGORY_OPTIONS, FEEDBACK_SCOPES, FEEDBACK_SORTS, SCOPE_LABELS, SORT_LABELS,
   categoryFilterValue, scopeFilterValue,
@@ -52,7 +53,7 @@ const COPY: Record<FeedbackType, {
  * when the reader happens to be on the team.
  */
 export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const { page, setPage, openId, open, back, listRef, refilter } = useFeedbackListPlace();
   const [filing, setFiling] = useState(false);
   const [scope, setScope] = useState<FeedbackScope>(COPY[type].initialScope);
   const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
@@ -69,73 +70,76 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
     onChanged?.();
   };
 
-  if (openId) {
-    return (
-      <FeedbackThreadView
-        threadId={openId}
-        isAdmin={viewerIsStaff}
-        onBack={() => setOpenId(null)}
-        onChanged={changed}
-      />
-    );
-  }
-
   const copy = COPY[type];
 
   return (
-    <div className="py-4 min-w-0">
-      {/* The controls carry the whole row: a sentence saying what the tab is would leave no room for
-          them, and the tab's own label already says it. */}
-      <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-          {/* Ranking only means something over everyone's; one person's own list is short. */}
-          {type === 'suggestion' && scope === 'all' && (
-            <Select value={sort} onValueChange={(value) => setSort(value as FeedbackSort)}>
-              <SelectTrigger className="w-36" aria-label="Sort by"><SelectValue /></SelectTrigger>
+    <>
+      {openId && (
+        <FeedbackThreadView
+          threadId={openId}
+          isAdmin={viewerIsStaff}
+          onBack={back}
+          onChanged={changed}
+        />
+      )}
+
+      {/* Hidden, not unmounted, under an open thread: Back returns to the same rows. */}
+      <div ref={listRef} hidden={openId !== null} className="py-4 min-w-0">
+        {/* The controls carry the whole row: a sentence saying what the tab is would leave no room for
+            them, and the tab's own label already says it. */}
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+            {/* Ranking only means something over everyone's; one person's own list is short. */}
+            {type === 'suggestion' && scope === 'all' && (
+              <Select value={sort} onValueChange={refilter((value: string) => setSort(value as FeedbackSort))}>
+                <SelectTrigger className="w-36" aria-label="Sort by"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FEEDBACK_SORTS.map((value) => (
+                    <SelectItem key={value} value={value}>{SORT_LABELS[value]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <Select value={category} onValueChange={refilter((value: string) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY))}>
+              <SelectTrigger className="w-44" aria-label="Filter by category"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {FEEDBACK_SORTS.map((value) => (
-                  <SelectItem key={value} value={value}>{SORT_LABELS[value]}</SelectItem>
+                <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
+                {CATEGORY_OPTIONS[type].map((option) => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          )}
 
-          <Select value={category} onValueChange={(value) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY)}>
-            <SelectTrigger className="w-44" aria-label="Filter by category"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
-              {CATEGORY_OPTIONS[type].map((option) => (
-                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select value={scope} onValueChange={refilter((value: string) => setScope(value as FeedbackScope))}>
+              <SelectTrigger className="w-36" aria-label="Which threads"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {FEEDBACK_SCOPES.map((value) => (
+                  <SelectItem key={value} value={value}>{SCOPE_LABELS[type][value]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select value={scope} onValueChange={(value) => setScope(value as FeedbackScope)}>
-            <SelectTrigger className="w-36" aria-label="Which threads"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {FEEDBACK_SCOPES.map((value) => (
-                <SelectItem key={value} value={value}>{SCOPE_LABELS[type][value]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Button size="sm" onClick={() => setFiling(true)}>
+              {type === 'bug' ? <Bug className="mr-2 h-4 w-4" /> : <Lightbulb className="mr-2 h-4 w-4" />}
+              {copy.button}
+            </Button>
+        </div>
 
-          <Button size="sm" onClick={() => setFiling(true)}>
-            {type === 'bug' ? <Bug className="mr-2 h-4 w-4" /> : <Lightbulb className="mr-2 h-4 w-4" />}
-            {copy.button}
-          </Button>
+        <FeedbackList
+          active={active}
+          type={type}
+          scope={scopeFilterValue(scope)}
+          category={categoryFilterValue(category)}
+          sort={sort}
+          page={page}
+          onPageChange={setPage}
+          refreshNonce={nonce}
+          onOpen={open}
+          emptyLabel={scope === 'mine' ? copy.emptyMine : copy.emptyAll}
+        />
+
+        <FeedbackDialog open={filing} onOpenChange={setFiling} initialType={type} onFiled={changed} />
       </div>
-
-      <FeedbackList
-        active={active}
-        type={type}
-        scope={scopeFilterValue(scope)}
-        category={categoryFilterValue(category)}
-        sort={sort}
-        refreshNonce={nonce}
-        onOpen={setOpenId}
-        emptyLabel={scope === 'mine' ? copy.emptyMine : copy.emptyAll}
-      />
-
-      <FeedbackDialog open={filing} onOpenChange={setFiling} initialType={type} onFiled={changed} />
-    </div>
+    </>
   );
 }
