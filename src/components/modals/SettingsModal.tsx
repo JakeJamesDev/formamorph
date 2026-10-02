@@ -1,9 +1,7 @@
 import { PromptNavigationRail } from './PromptNavigationRail';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
-import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { SurfaceTab } from '@/components/ui/surface';
@@ -32,7 +30,6 @@ import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/Pres
 import { usePresetPublish } from '@/components/modals/usePresetPublish';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
-import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { PresetOverviewPanel } from './PresetOverviewPanel';
 import { useEndpointModelSuggestions } from './useEndpointModelSuggestions';
@@ -61,7 +58,10 @@ import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
-import { useEndpointReachable } from '@/lib/useEndpointReachable';
+import { numInput } from '@/lib/numInput';
+import { SamplerControl, type SamplerControlProps } from './SamplerControl';
+import { EndpointRouteField } from './EndpointRouteField';
+import { TextEndpointEditor } from './TextEndpointEditor';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { ATTACHMENT_PROMPTS, includesAttachments } from '@/lib/promptAttachments';
 import { useImageAttachments } from '@/lib/useImageAttachments';
@@ -96,13 +96,6 @@ const novelaiDefaultLabel = NOVELAI_MODELS.find((m) => m.id === NOVELAI_DEFAULTS
 const UNCATEGORIZED_BOARD = '__uncategorized__';
 
 
-/** Parse a numeric `<input>` value, falling back to `min` when it's empty or invalid. Without this a cleared
- *  field yields `Number('') === 0`, which would persist a zero (a 0-token request, a 0px image) to settings. */
-const numInput = (raw: string, min: number): number => {
-  const n = Number(raw);
-  return Number.isFinite(n) && n >= min ? n : min;
-};
-
 /** Per-prompt control: how many recent turns this prompt receives verbatim (the rest are summarized). */
 function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; value: number; onChange: (n: number) => void; disabled?: boolean }) {
   const c = SETTINGS_COPY.verbatimTurns;
@@ -120,61 +113,6 @@ function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; val
       />
       <span className="hidden sm:inline text-helper text-muted-foreground">{c.description}</span>
       <HintInfo>{c.info}</HintInfo>
-    </div>
-  );
-}
-
-/** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
- *  shows the resolved endpoint state while off when the sampler is omitted (a non-pinned prompt on a custom endpoint).
- *  On reveals the stored custom value, which persists across toggling and is sent to any endpoint. */
-interface SamplerControlProps {
-  id: string;
-  label: string;
-  hint: string;
-  /** Markdown for the row's `ⓘ`, when the setting has a cost or mechanism worth stating. */
-  info?: string;
-  custom: boolean;
-  value: number;
-  /** The value shown when off, or undefined when the prompt omits the sampler (endpoint decides). */
-  defaultValue: number | undefined;
-  /** The endpoint state to show when an omitted sampler has no prompt or local-engine value. */
-  fallbackLabel?: 'Endpoint Default' | 'Endpoint Override';
-  min: number;
-  max: number;
-  step: number;
-  /** When true the whole control is read-only (a built-in prompt preset) — checkbox and slider both locked. */
-  disabled?: boolean;
-  onCustomChange: (custom: boolean) => void;
-  onValueChange: (value: number) => void;
-}
-function SamplerControl({ id, label, hint, info, custom, value, defaultValue, fallbackLabel = 'Endpoint Default', min, max, step, disabled, onCustomChange, onValueChange }: SamplerControlProps) {
-  const omitsWhenOff = defaultValue === undefined;
-  const shown = custom ? value : (defaultValue ?? value);
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Checkbox id={id} checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
-        <label htmlFor={id} className="text-label">{label}</label>
-        <span className="hidden sm:inline text-helper text-muted-foreground">{hint}</span>
-        {info && <HintInfo>{info}</HintInfo>}
-      </div>
-      {/* pl-2.5 is the thumb's own overhang: it centers on the value, so at `min` it reaches 10px left of
-          the track and would be clipped by the scroll frame. Only the left needs it — the readout and its
-          gap already clear the right — so everything else in the panel stays flush with the editor. */}
-      <div className="flex items-center gap-3 pl-2.5">
-        <Slider
-          className={`flex-grow${custom && !disabled ? '' : ' opacity-60'}`}
-          value={[shown]}
-          min={min}
-          max={max}
-          step={step}
-          disabled={disabled || !custom}
-          onValueChange={(v) => onValueChange(v[0])}
-        />
-        <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">
-          {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">{fallbackLabel}</span>}
-        </span>
-      </div>
     </div>
   );
 }
@@ -227,92 +165,6 @@ function AttachmentsControl({ checked, disabled, onChange }: AttachmentsControlP
       <Checkbox id="promptAttachments" checked={checked} disabled={disabled} onCheckedChange={(c) => onChange(c === true)} />
       <label htmlFor="promptAttachments" className="text-label">{SETTINGS_COPY.promptAttachments.label}</label>
       <span className="hidden sm:inline text-helper text-muted-foreground">{SETTINGS_COPY.promptAttachments.description}</span>
-    </div>
-  );
-}
-
-/** Sentinel for the Use Active Endpoint row — Radix Select cannot hold an empty-string value, and "unpinned" is
- *  stored as an absent map entry rather than an id. */
-const FOLLOW_ACTIVE = '__follow__';
-
-/**
- * Which endpoint preset this prompt sends to. Use Active Endpoint (the default) means the prompt goes wherever the
- * globally-selected preset points, as it did before routing existed; any other choice pins this prompt alone.
- * Unlike the rest of this panel it is NOT preset-scoped — endpoint routing is global, so it stays editable
- * under a built-in prompt preset and is never carried by a shared one.
- */
-/**
- * Whether a routed prompt's endpoint is actually answering. Only rendered for a pinned prompt: an unpinned
- * one uses the active endpoint, whose reachability the setup gate already reports. `unknownModel` is a
- * reachable server that can't serve the configured model, so it reads as a warning rather than an outage.
- */
-function EndpointReachabilityBadge({ target }: { target: { url: string; apiToken: string; model: string; enabled: boolean } }) {
-  const { status, checking, recheck } = useEndpointReachable(target.url, target.apiToken, target.model, target.enabled);
-  if (!target.enabled) return null;
-
-  const state = checking
-    ? { dot: 'bg-muted-foreground animate-pulse', text: 'Checking…', tone: 'text-muted-foreground' }
-    : status === 'ok'
-      ? { dot: 'bg-success', text: 'Reachable', tone: 'text-muted-foreground' }
-      : status === 'unknownModel'
-        ? { dot: 'bg-warning', text: `Reachable, but no "${target.model}"`, tone: 'text-warning' }
-        : status === 'unreachable'
-          ? { dot: 'bg-destructive', text: "Didn't answer", tone: 'text-destructive' }
-          : { dot: 'bg-muted-foreground', text: 'Not checked', tone: 'text-muted-foreground' };
-
-  return (
-    <div className="flex items-center gap-2 text-meta">
-      <span aria-hidden className={cn('size-2 shrink-0 rounded-full', state.dot)} />
-      <span className={state.tone}>{state.text}</span>
-      <button
-        type="button"
-        onClick={recheck}
-        disabled={checking}
-        className="text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
-      >
-        Recheck
-      </button>
-    </div>
-  );
-}
-
-function PromptEndpointField({ value, activeName, presets, onChange, target, disabled }: {
-  value: string | null;
-  activeName: string;
-  presets: { id: string; name: string }[];
-  onChange: (id: string | null) => void;
-  /** The routed target to probe. `enabled` is false for an unpinned prompt, which shows no badge. */
-  target: { url: string; apiToken: string; model: string; enabled: boolean };
-  /** Read-only under a built-in prompt preset, which carries no routing (same rule as the tuning below). */
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
-        <label className="text-label">{SETTINGS_COPY.promptEndpoint.label}</label>
-        {/* Which endpoint this prompt is actually pinned to varies; the description above it does not. */}
-        <HintInfo>{value === null
-          ? 'Follows the endpoint picked on the **AI Endpoints** tab. Switch endpoints there and this prompt follows.'
-          : `Always goes to ${presets.find((p) => p.id === value)?.name ?? 'this endpoint'}, even when you switch endpoints elsewhere`}</HintInfo>
-      </div>
-      <span className="text-helper text-muted-foreground">{SETTINGS_COPY.promptEndpoint.description}</span>
-      <Select
-        value={value ?? FOLLOW_ACTIVE}
-        onValueChange={(v) => onChange(v === FOLLOW_ACTIVE ? null : v)}
-        disabled={disabled}
-      >
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value={FOLLOW_ACTIVE}>Use Active Endpoint ({activeName})</SelectItem>
-          {/* A bare divider rather than a group heading: the two halves still read apart, without a row
-              that looks selectable and isn't. */}
-          <SelectSeparator />
-          {presets.map((p) => (
-            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <EndpointReachabilityBadge target={target} />
     </div>
   );
 }
@@ -395,7 +247,8 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
  *  on the local engine), plus one override row per tunable sampler.
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
 function PromptOptionsPanel({ endpoint, attachments, maxOutput, verbatim, reasoning, samplers, disabled, readOnlyReason, onRequestEdit }: {
-  endpoint: React.ComponentProps<typeof PromptEndpointField>;
+  /** Read-only under a built-in prompt preset, like the rest of the panel. */
+  endpoint: React.ComponentProps<typeof EndpointRouteField>;
   /** Absent while Image Attachments is off. */
   attachments: Omit<AttachmentsControlProps, 'disabled'> | null;
   /** Absent on a prompt without a Max Output row. */
@@ -420,7 +273,7 @@ function PromptOptionsPanel({ endpoint, attachments, maxOutput, verbatim, reason
       {/* Flush with the editor beside it. The slider thumb's clearance is on the slider rows themselves, so
           it no longer narrows the whole panel; the scroll frame supplies the right-hand gutter. */}
       <div className="space-y-5 py-3">
-        <PromptEndpointField {...endpoint} disabled={disabled} />
+        <EndpointRouteField {...endpoint} disabled={disabled} />
         {attachments && <AttachmentsControl {...attachments} disabled={disabled} />}
         {maxOutput && <MaxOutputControl {...maxOutput} disabled={disabled} />}
         {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
@@ -585,36 +438,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const {
     language,
     endpointUrl,
-    setEndpointUrl,
-    apiToken,
-    setApiToken,
-    modelName,
-    setModelName,
     maxTokens,
-    setMaxTokens,
-    maxOutputOverrideEnabled,
-    setMaxOutputOverrideEnabled,
-    endpointSamplerOverrides,
-    setEndpointSamplerEnabled,
-    setEndpointSamplerValue,
-    contextWindow,
-    contextWindowOverride,
-    setContextWindowOverride,
-    detectedContextWindow,
-    detectStatus,
-    detectContextWindow,
-    localModelActive,
     builtinTextEndpointPresets,
     textEndpointPresets,
-    activeTextEndpointPresetId,
-    activeTextEndpointPresetIsBuiltIn,
     activeTextEndpointPresetName,
-    activeTextEndpointIsDemoAI,
-    selectTextEndpointPreset,
-    addTextEndpointPreset,
-    renameTextEndpointPreset,
-    deleteTextEndpointPreset,
-    resetTextEndpointPreset,
     systemPrompt,
     setSystemPrompt,
     choicesPrompt,
@@ -794,40 +621,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     imageTagPrompt,
     setImageTagPrompt,
   } = settings;
-  const sharedEndpointActive = activeTextEndpointPresetIsBuiltIn && !localModelActive;
   const themeState = useTheme();
   const desktop = isDesktop();
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
   const embeddingModel = useEmbeddingDownload(loadEmbeddingModel, disposeEmbeddingModel);
   const settingsSource: SettingsSource = { ...settings, ...themeState, embeddingModel };
-  const handleResetEndpointSettings = () => {
-    setEndpointUrl(DEFAULT_ENDPOINT);
-    setModelName(DEFAULT_MODEL_NAME);
-    setApiToken(DEFAULT_API_TOKEN);
-    setContextWindowOverride(null);
-    setMaxTokens(DEFAULT_MAX_TOKENS);
-  };
-
-  // Single status line under the Context Window field: red for over-limit or a failed manual detect,
-  // gray for detecting / detected / the idle helper.
-  const contextOverLimit =
-    contextWindowOverride != null && detectedContextWindow != null && contextWindowOverride > detectedContextWindow;
-  const contextStatus = activeTextEndpointPresetIsBuiltIn
-    ? {
-        red: false,
-        text: activeTextEndpointIsDemoAI
-          ? "You're on the Demo AI. Add or pick a preset to set or detect the context window."
-          : 'Add or pick a preset to set or detect the context window',
-      }
-    : contextOverLimit
-    ? { red: true, text: `Above the detected limit (${detectedContextWindow?.toLocaleString()} tok) — the server may truncate requests.` }
-    : detectStatus === 'error'
-      ? { red: true, text: "Couldn't detect context length from this endpoint." }
-      : detectStatus === 'detecting'
-        ? { red: false, text: 'Detecting context length…' }
-        : detectStatus === 'success'
-          ? { red: false, text: `Detected ${(detectedContextWindow ?? contextWindow).toLocaleString()} tok from the endpoint.` }
-          : { red: false, text: 'Auto-detected from your endpoint; lower it if the model feels constantly full.' };
 
   // Preset name dialog (Add / Rename); the "Add New Preset…" select option opens it in add mode.
   const [presetDialog, setPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
@@ -885,18 +683,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // AI Endpoints → Image preset name dialog (mirrors the prompt preset one; all presets editable).
   const [imagePresetDialog, setImagePresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const IMG_ADD_PRESET_SENTINEL = '__add_image_preset__';
-
-  // AI Endpoints → Text preset name dialog (immutable Default + editable user presets, like the prompts tab).
-  const [textPresetDialog, setTextPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
-  const TEXT_ADD_PRESET_SENTINEL = '__add_text_preset__';
-  const handleTextPresetSelect = (v: string) => {
-    if (v === TEXT_ADD_PRESET_SENTINEL) setTextPresetDialog({ mode: 'add' });
-    else selectTextEndpointPreset(v);
-  };
-  const handleTextPresetNameSubmit = (name: string) => {
-    if (textPresetDialog?.mode === 'add') addTextEndpointPreset(name);
-    else if (textPresetDialog?.mode === 'rename') renameTextEndpointPreset(activeTextEndpointPresetId, name);
-  };
 
   // ComfyUI checkpoint/sampler lists that back the Model/Sampler autocompletes. Auto-fetched from
   // /object_info whenever ComfyUI is the active provider (debounced on endpoint edits); fails silently
@@ -1256,8 +1042,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const promptTarget = resolveEndpointForKind(activeKind);
   const promptLocalEngine = promptTarget.localEngine;
   const promptReasoningCapability = promptTarget.reasoning;
+  const pinnedEndpoint = routableEndpoints.find((p) => p.id === pinnedEndpointId);
   const endpointControl = {
-    value: pinnedEndpointId && routableEndpoints.some((p) => p.id === pinnedEndpointId) ? pinnedEndpointId : null,
+    label: SETTINGS_COPY.promptEndpoint.label,
+    description: SETTINGS_COPY.promptEndpoint.description,
+    // Which endpoint this prompt is actually pinned to varies; the description above it does not.
+    info: pinnedEndpoint
+      ? `Always goes to ${pinnedEndpoint.name}, even when you switch endpoints elsewhere`
+      : 'Follows the endpoint picked on the **AI Endpoints** tab. Switch endpoints there and this prompt follows.',
+    value: pinnedEndpoint ? pinnedEndpoint.id : null,
     activeName: activeTextEndpointPresetName,
     presets: routableEndpoints,
     onChange: (id: string | null) => setPromptEndpoint(activeKind, id),
@@ -1317,29 +1110,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'repetitionPenalty', v),
     },
   ];
-  const endpointSamplerControls: SamplerControlProps[] = ([
-    ['Temperature', 'endpointTemperature', 'temperature', 0, 2, 0.05],
-    ['Repetition Penalty', 'endpointRepetitionPenalty', 'repetitionPenalty', 1, 1.5, 0.02],
-    ['Top-p', 'endpointTopP', 'topP', 0, 1, 0.05],
-    ['Top-k', 'endpointTopK', 'topK', 0, 100, 1],
-    ['Min-p', 'endpointMinP', 'minP', 0, 0.5, 0.01],
-  ] as const).map(([_label, id, sampler, min, max, step]) => {
-    const key = sampler as keyof typeof endpointSamplerOverrides;
-    const copy = SETTINGS_COPY[id as keyof typeof SETTINGS_COPY];
-    return {
-      id,
-      label: copy.label,
-      hint: copy.description ?? '',
-      min,
-      max,
-      step,
-      custom: endpointSamplerOverrides[key].enabled,
-      value: endpointSamplerOverrides[key].value,
-      defaultValue: undefined,
-      onCustomChange: (enabled: boolean) => setEndpointSamplerEnabled(key, enabled),
-      onValueChange: (value: number) => setEndpointSamplerValue(key, value),
-    };
-  });
   // Per-prompt Native Reasoning control, hidden where the call is force-suppressed (Inline narration) and on
   // an endpoint probed as non-reasoning. Its switch is shared by every target; the strength beside it is the
   // token budget wherever the record says the target takes one, and the coarse effort level elsewhere. The
@@ -1466,177 +1236,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 {visibleEndpointTabs.map((t) => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
               </TabsList>
               <TabsContent value="text-endpoint" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-              {/* Preset selector: swaps the whole endpoint field set. The read-only built-ins are the shared
-                  endpoint ("Default") and, on desktop, the bundled engine — which is a preset rather than a
-                  mode precisely so a single prompt can be routed to it while the rest go elsewhere. The
-                  selector stays visible for every preset, including the engine, or there'd be no way back. */}
-              <div className="flex items-center gap-2 flex-shrink-0 pt-4">
-                <span className="text-helper text-muted-foreground">{SETTINGS_COPY.textPreset.label}</span>
-                {!activeTextEndpointPresetIsBuiltIn && (
-                  <ConfirmDialog
-                    title="Delete Preset"
-                    description={`Delete the "${activeTextEndpointPresetName}" preset? This can't be undone.`}
-                    onConfirm={() => deleteTextEndpointPreset(activeTextEndpointPresetId)}
-                  >
-                    <Button variant="outline" size="sm">Delete</Button>
-                  </ConfirmDialog>
-                )}
-                {!activeTextEndpointPresetIsBuiltIn && (
-                  <ConfirmDialog
-                    title="Reset Preset"
-                    description={`Reset the "${activeTextEndpointPresetName}" preset to its default values? This can't be undone.`}
-                    onConfirm={() => resetTextEndpointPreset(activeTextEndpointPresetId)}
-                  >
-                    <Button variant="outline" size="sm">Reset</Button>
-                  </ConfirmDialog>
-                )}
-                <Select value={activeTextEndpointPresetId} onValueChange={handleTextPresetSelect}>
-                  <SelectTrigger className="flex-1 min-w-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {builtinTextEndpointPresets.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                    {textEndpointPresets.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                    <SelectSeparator />
-                    <SelectItem value={TEXT_ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
-                  </SelectContent>
-                </Select>
-                {!activeTextEndpointPresetIsBuiltIn && (
-                  <Button variant="outline" size="sm" onClick={() => setTextPresetDialog({ mode: 'rename' })}>Rename</Button>
-                )}
-              </div>
-              <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{SETTINGS_COPY.textPreset.description}</p>
-              {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
-              {localModelActive ? <LocalModelPanel /> : (
-              <>
-              <ScrollArea className="flex-1 min-h-0">
-                <div className="grid gap-4 py-4">
-              <Row top htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
-                <div className="grid gap-1" data-row-stacked>
-                  <Input
-                    id="endpointUrl"
-                    value={endpointUrl}
-                    onChange={(e) => setEndpointUrl(e.target.value)}
-                    readOnly={activeTextEndpointPresetIsBuiltIn}
-                    className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
-                  />
-                  {endpointUrlWasCompleted(endpointUrl) && (
-                    <p className="text-helper text-muted-foreground">
-                      Requests go to <span className="font-mono break-all">{normalizeEndpointUrl(endpointUrl)}</span>
-                    </p>
-                  )}
-                </div>
-              </Row>
-              <Row>
-                <button
-                  type="button"
-                  className="justify-self-start text-helper text-muted-foreground underline hover:text-foreground"
-                  onClick={() => setConnectionGuideOpen(true)}
-                >
-                  {SETTINGS_BUTTONS.troubleConnecting}
-                </button>
-              </Row>
-              <Row htmlFor="apiToken" {...rowCopy('apiToken')}>
-                <Input
-                  id="apiToken"
-                  type="password"
-                  value={apiToken}
-                  onChange={(e) => setApiToken(e.target.value)}
-                  readOnly={activeTextEndpointPresetIsBuiltIn}
-                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
-                />
-              </Row>
-              <Row htmlFor="modelName" {...rowCopy('modelName')}>
-                <Input
-                  id="modelName"
-                  value={modelName}
-                  onChange={(e) => setModelName(e.target.value)}
-                  readOnly={activeTextEndpointPresetIsBuiltIn}
-                  className={activeTextEndpointPresetIsBuiltIn ? 'opacity-60 cursor-not-allowed' : undefined}
-                />
-              </Row>
-              {advanced && (<>
-              <Row htmlFor="contextWindow" {...rowCopy('contextWindow')}>
-                <div className="flex items-start gap-2">
-                  <Input
-                    id="contextWindow"
-                    type="number"
-                    className={activeTextEndpointPresetIsBuiltIn ? 'flex-grow opacity-60 cursor-not-allowed' : 'flex-grow'}
-                    value={contextWindow}
-                    onChange={(e) => setContextWindowOverride(e.target.value === '' ? null : Number(e.target.value))}
-                    readOnly={activeTextEndpointPresetIsBuiltIn}
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={() => detectContextWindow(true)}
-                    disabled={activeTextEndpointPresetIsBuiltIn || detectStatus === 'detecting'}
-                  >
-                    Detect
-                  </Button>
-                </div>
-              </Row>
-              <Row>
-                <div className={contextStatus.red ? 'text-helper text-destructive' : 'text-helper text-muted-foreground'}>
-                  {contextStatus.text}
-                </div>
-              </Row>
-              <Row htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="maxTokensEnabled"
-                      checked={maxOutputOverrideEnabled}
-                      disabled={sharedEndpointActive}
-                      onCheckedChange={(checked) => setMaxOutputOverrideEnabled(checked === true)}
-                    />
-                    <label htmlFor="maxTokensEnabled" className="text-label">Override endpoint limit</label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Input
-                      id="maxTokens"
-                      type="number"
-                      value={maxTokens}
-                      onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
-                      disabled={sharedEndpointActive || !maxOutputOverrideEnabled}
-                    />
-                    {!maxOutputOverrideEnabled && <span className="text-helper text-muted-foreground">No Limit</span>}
-                  </div>
-                </div>
-              </Row>
-              <Section title="Sampling">
-                <p className="text-helper text-muted-foreground">
-                  Per-prompt settings and built-in prompt values take priority over Temperature and Repetition Penalty. Leave a switch off to send no endpoint override.
-                </p>
-                <div className="grid gap-4 pt-3">
-                  {endpointSamplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
-                </div>
-              </Section>
-              </>)}
-              <div className="flex justify-start">
-                <ConfirmDialog
-                  {...SETTINGS_CONFIRMS.resetAiEndpoint}
-                  onConfirm={handleResetEndpointSettings}
-                >
-                  <Button variant="outline" className="flex items-center gap-2" disabled={activeTextEndpointPresetIsBuiltIn}>
-                    {SETTINGS_BUTTONS.resetAiEndpoint}
-                  </Button>
-                </ConfirmDialog>
-              </div>
-                </div>
-              </ScrollArea>
-              </>
-            )}
-            <PresetNameDialog
-              open={textPresetDialog !== null}
-              mode={textPresetDialog?.mode ?? 'add'}
-              initialName={textPresetDialog?.mode === 'rename' ? activeTextEndpointPresetName : ''}
-              onOpenChange={(o) => { if (!o) setTextPresetDialog(null); }}
-              onSubmit={handleTextPresetNameSubmit}
-            />
+                <TextEndpointEditor source={settings} advanced={advanced} onOpenConnectionGuide={() => setConnectionGuideOpen(true)} />
               </TabsContent>
               <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-3">
             {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}
