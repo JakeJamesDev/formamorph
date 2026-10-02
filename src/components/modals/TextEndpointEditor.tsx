@@ -12,55 +12,53 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { numInput } from '@/lib/numInput';
+import { cn } from '@/lib/utils';
 import { PresetNameDialog } from './PresetNameDialog';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
-import type { TextEndpointSource } from './settingsSource';
+import type { TextEndpointEditorModel } from './textEndpointEditorModel';
 
 const ADD_PRESET_SENTINEL = '__add_text_preset__';
 
 const ENDPOINT_SAMPLERS = [
-  ['endpointTemperature', 'temperature', 0, 2, 0.05],
-  ['endpointRepetitionPenalty', 'repetitionPenalty', 1, 1.5, 0.02],
-  ['endpointTopP', 'topP', 0, 1, 0.05],
-  ['endpointTopK', 'topK', 0, 100, 1],
-  ['endpointMinP', 'minP', 0, 0.5, 0.01],
+  { id: 'endpointTemperature', key: 'temperature', min: 0, max: 2, step: 0.05 },
+  { id: 'endpointRepetitionPenalty', key: 'repetitionPenalty', min: 1, max: 1.5, step: 0.02 },
+  { id: 'endpointTopP', key: 'topP', min: 0, max: 1, step: 0.05 },
+  { id: 'endpointTopK', key: 'topK', min: 0, max: 100, step: 1 },
+  { id: 'endpointMinP', key: 'minP', min: 0, max: 0.5, step: 0.01 },
 ] as const;
 
 /**
- * The text-endpoint editor: the preset select with add, rename, delete and reset, then the active preset's
+ * The text-endpoint editor: the preset select with add, rename, delete and reset, then the edited preset's
  * fields. It renders as siblings so the caller's flex column lays it out. The read-only built-ins are the
  * shared endpoint ("Default") and, on desktop, the bundled engine — a preset rather than a mode so a single
  * prompt can be routed to it. The select stays visible for every preset, including the engine, or there'd be
  * no way back.
  */
-export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: {
-  source: TextEndpointSource;
+export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
+  model: TextEndpointEditorModel;
   advanced: boolean;
   onOpenConnectionGuide: () => void;
 }) {
+  const { presets, edited, fields, edit, onSelect, onAdd, onRename, onDelete, onReset } = model;
   const {
-    endpointUrl, setEndpointUrl, apiToken, setApiToken, modelName, setModelName,
-    maxTokens, setMaxTokens, maxOutputOverrideEnabled, setMaxOutputOverrideEnabled,
-    endpointSamplerOverrides, setEndpointSamplerEnabled, setEndpointSamplerValue,
-    contextWindow, contextWindowOverride, setContextWindowOverride,
-    detectedContextWindow, detectStatus, detectContextWindow,
-    localModelActive, builtinTextEndpointPresets, textEndpointPresets,
-    activeTextEndpointPresetId, activeTextEndpointPresetIsBuiltIn, activeTextEndpointPresetName,
-    activeTextEndpointIsDemoAI,
-    selectTextEndpointPreset, addTextEndpointPreset, renameTextEndpointPreset,
-    deleteTextEndpointPreset, resetTextEndpointPreset,
-  } = source;
-  const builtIn = activeTextEndpointPresetIsBuiltIn;
-  const sharedEndpointActive = builtIn && !localModelActive;
+    endpointUrl, apiToken, modelName, maxTokens, maxOutputOverrideEnabled, samplerOverrides,
+    contextWindow, contextWindowOverride, detectedContextWindow, detectStatus,
+  } = fields;
+  const {
+    setEndpointUrl, setApiToken, setModelName, setMaxTokens, setMaxOutputOverrideEnabled,
+    setContextWindowOverride, detectContextWindow, setSamplerEnabled, setSamplerValue,
+  } = edit;
+  const builtIn = edited.builtIn;
+  const sharedEndpointActive = builtIn && !edited.engine;
 
   const [presetDialog, setPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const handlePresetSelect = (v: string) => {
     if (v === ADD_PRESET_SENTINEL) setPresetDialog({ mode: 'add' });
-    else selectTextEndpointPreset(v);
+    else onSelect(v);
   };
   const handlePresetNameSubmit = (name: string) => {
-    if (presetDialog?.mode === 'add') addTextEndpointPreset(name);
-    else if (presetDialog?.mode === 'rename') renameTextEndpointPreset(activeTextEndpointPresetId, name);
+    if (presetDialog?.mode === 'add') onAdd(name);
+    else if (presetDialog?.mode === 'rename') onRename(edited.id, name);
   };
 
   const handleResetEndpoint = () => {
@@ -78,7 +76,7 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
   const contextStatus = builtIn
     ? {
         red: false,
-        text: activeTextEndpointIsDemoAI
+        text: edited.demoAI
           ? "You're on the Demo AI. Add or pick a preset to set or detect the context window."
           : 'Add or pick a preset to set or detect the context window',
       }
@@ -92,7 +90,7 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
           ? { red: false, text: `Detected ${(detectedContextWindow ?? contextWindow).toLocaleString()} tok from the endpoint.` }
           : { red: false, text: 'Auto-detected from your endpoint; lower it if the model feels constantly full.' };
 
-  const samplerControls: SamplerControlProps[] = ENDPOINT_SAMPLERS.map(([id, key, min, max, step]) => {
+  const samplerControls: SamplerControlProps[] = ENDPOINT_SAMPLERS.map(({ id, key, min, max, step }) => {
     const copy = SETTINGS_COPY[id];
     return {
       id,
@@ -101,11 +99,11 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
       min,
       max,
       step,
-      custom: endpointSamplerOverrides[key].enabled,
-      value: endpointSamplerOverrides[key].value,
+      custom: samplerOverrides[key].enabled,
+      value: samplerOverrides[key].value,
       defaultValue: undefined,
-      onCustomChange: (enabled: boolean) => setEndpointSamplerEnabled(key, enabled),
-      onValueChange: (value: number) => setEndpointSamplerValue(key, value),
+      onCustomChange: (enabled: boolean) => setSamplerEnabled(key, enabled),
+      onValueChange: (value: number) => setSamplerValue(key, value),
     };
   });
 
@@ -118,8 +116,8 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
         {!builtIn && (
           <ConfirmDialog
             title="Delete Preset"
-            description={`Delete the "${activeTextEndpointPresetName}" preset? This can't be undone.`}
-            onConfirm={() => deleteTextEndpointPreset(activeTextEndpointPresetId)}
+            description={`Delete the "${edited.name}" preset? This can't be undone.`}
+            onConfirm={() => onDelete(edited.id)}
           >
             <Button variant="outline" size="sm">Delete</Button>
           </ConfirmDialog>
@@ -127,21 +125,21 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
         {!builtIn && (
           <ConfirmDialog
             title="Reset Preset"
-            description={`Reset the "${activeTextEndpointPresetName}" preset to its default values? This can't be undone.`}
-            onConfirm={() => resetTextEndpointPreset(activeTextEndpointPresetId)}
+            description={`Reset the "${edited.name}" preset to its default values? This can't be undone.`}
+            onConfirm={() => onReset(edited.id)}
           >
             <Button variant="outline" size="sm">Reset</Button>
           </ConfirmDialog>
         )}
-        <Select value={activeTextEndpointPresetId} onValueChange={handlePresetSelect}>
+        <Select value={edited.id} onValueChange={handlePresetSelect}>
           <SelectTrigger className="flex-1 min-w-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {builtinTextEndpointPresets.map((p) => (
+            {presets.builtIn.map((p) => (
               <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
             ))}
-            {textEndpointPresets.map((p) => (
+            {presets.user.map((p) => (
               <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
             ))}
             <SelectSeparator />
@@ -154,7 +152,7 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
       </div>
       <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{SETTINGS_COPY.textPreset.description}</p>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
-      {localModelActive ? <LocalModelPanel /> : (
+      {edited.engine ? <LocalModelPanel /> : (
         <ScrollArea className="flex-1 min-h-0">
           <div className="grid gap-4 py-4">
             <Row top htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
@@ -207,7 +205,7 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
                   <Input
                     id="contextWindow"
                     type="number"
-                    className={builtIn ? 'flex-grow opacity-60 cursor-not-allowed' : 'flex-grow'}
+                    className={cn('flex-grow', readOnlyField)}
                     value={contextWindow}
                     onChange={(e) => setContextWindowOverride(e.target.value === '' ? null : Number(e.target.value))}
                     readOnly={builtIn}
@@ -274,7 +272,7 @@ export function TextEndpointEditor({ source, advanced, onOpenConnectionGuide }: 
       <PresetNameDialog
         open={presetDialog !== null}
         mode={presetDialog?.mode ?? 'add'}
-        initialName={presetDialog?.mode === 'rename' ? activeTextEndpointPresetName : ''}
+        initialName={presetDialog?.mode === 'rename' ? edited.name : ''}
         onOpenChange={(o) => { if (!o) setPresetDialog(null); }}
         onSubmit={handlePresetNameSubmit}
       />

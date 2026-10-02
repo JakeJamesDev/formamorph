@@ -1,6 +1,6 @@
 # 01: Shared text-endpoint editor
 
-Status: in-progress
+Status: ready-for-human
 Base: 8bbbfaa2
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
