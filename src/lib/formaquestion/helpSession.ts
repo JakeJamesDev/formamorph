@@ -16,7 +16,7 @@ import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './gene
 import { requestPicks } from './helpPicks';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 import { mergeRanks } from './rankMerge';
-import { surfaceHint } from './surfaceHint';
+import { surfaceHint, type SurfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /**
@@ -93,6 +93,8 @@ export interface HelpQuestion {
   lookup?: boolean;
   /** Overrides the search source switches for this question: tests and a probe's arm. */
   searchSources?: Partial<HelpSources>;
+  /** Off lets every pick count on a question that points at the open screen: tests and a probe's control arm. */
+  screenRule?: boolean;
   /** The embedder of the semantic source, in place of the device's: tests. */
   embedder?: HelpEmbedder;
   /** Stop: the stream ends and the answer so far is kept. */
@@ -201,27 +203,40 @@ function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] 
   ]);
 }
 
-export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'snapshot' | 'index' | 'searchSources' | 'embedder' | 'signal' | 'fetchImpl'> {
-  /** The open screen, as the answer request names it. */
-  where?: string;
+export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'snapshot' | 'index' | 'searchSources' | 'screenRule' | 'embedder' | 'signal' | 'fetchImpl'> {
+  /** The open screen and its section. */
+  hint?: SurfaceHint | null;
+}
+
+/** The words with which a question points at the open screen. */
+const POINTS_AT_SCREEN = /\b(?:here|this|these)\b/i;
+
+/**
+ * The picks a question keeps. A question that points at the open screen keeps only the picks on the screen's
+ * page: a pick from another page reads as an answer about another screen.
+ */
+function screenPicks(question: string, picks: DocSection[], lead: DocSection | undefined): DocSection[] {
+  return lead && POINTS_AT_SCREEN.test(question) ? picks.filter((section) => section.page === lead.page) : picks;
 }
 
 /**
  * The search of one question: the rankings of the sources that are on, merged into one. AI picks sends its
- * one request here. A source that gives no ranking is left out: a failed or unusable pick, or a semantic
- * source with no model on the device. The keyword search alone is the index's own search, with its score floor.
+ * one request here. A source that gives no ranking is left out: a failed or unusable pick, a pick list the
+ * screen rule empties, or a semantic source with no model on the device. The keyword search alone is the
+ * index's own search, with its score floor.
  */
-export async function helpSearch({ question, history = [], snapshot, index, where, searchSources, embedder, signal, fetchImpl }: HelpSearchQuestion): Promise<DocsIndex> {
+export async function helpSearch({ question, history = [], snapshot, index, hint, searchSources, screenRule = true, embedder, signal, fetchImpl }: HelpSearchQuestion): Promise<DocsIndex> {
   const on: HelpSources = { keyword: HELP_KEYWORD_SOURCE, aiPicks: HELP_AI_PICKS_SOURCE, semantic: HELP_SEMANTIC_SOURCE, ...searchSources };
   // The embedder takes no stop signal, so Stop ends the wait for it here.
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
   const previous = keptHistory(history).at(-1);
-  const [picks, semantic] = await Promise.all([
+  const [allPicks, semantic] = await Promise.all([
     on.aiPicks
-      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where }, snapshot, { signal, fetchImpl }).catch(() => [])
+      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, snapshot, { signal, fetchImpl }).catch(() => [])
       : [],
     on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, history), embedder), stopped]) : null,
   ]);
+  const picks = screenRule ? screenPicks(question, allPicks, hint?.section) : allPicks;
   const keyword: SectionRanking = (query, limit, favor, onSurface) => index.search(query, limit, favor, { onSurface });
   const picked: SectionRanking = (_query, limit) => picks.slice(0, limit);
   const rankings = [...(on.keyword ? [keyword] : []), ...(picks.length > 0 ? [picked] : []), ...(semantic ? [semantic] : [])];
@@ -243,10 +258,10 @@ export async function helpSearch({ question, history = [], snapshot, index, wher
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', snapshot, index, surface, images = [], lookup: lookupOn = HELP_LOOKUP_MODE, searchSources, embedder, signal, fetchImpl,
+  question, history = [], language = '', snapshot, index, surface, images = [], lookup: lookupOn = HELP_LOOKUP_MODE, searchSources, screenRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = surfaceHint(surface, index);
-  const search = await helpSearch({ question, history, snapshot, index, where: hint?.where, searchSources, embedder, signal, fetchImpl });
+  const search = await helpSearch({ question, history, snapshot, index, hint, searchSources, screenRule, embedder, signal, fetchImpl });
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [] };
     return;
