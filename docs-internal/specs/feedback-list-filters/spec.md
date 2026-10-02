@@ -104,7 +104,7 @@ Rulings from the grilling session:
 - **Clamp.** When a reload returns a page past the end, the list moves to the last page.
 - **Reset on change.** A change to search, status, category, scope, or sort sets page 1, as a filter change does today.
 - **Debounce.** The search input updates the request after a short pause. Clearing the input applies at once.
-- **Lifetime.** Each tab owns its own search, filters, and page. The tabs stay mounted while the dialog or Admin Panel is open, so a tab switch keeps them. Closing unmounts them, so the next open starts on defaults.
+- **Lifetime.** Each tab owns its own search, filters, and page. The tabs stay mounted while the dialog or Admin Panel is open, so a tab switch keeps them. This includes the Admin Panel's outer tabs: Feedback → Reports → Feedback keeps the staff queue's state, and a hidden queue sends no requests. Closing unmounts them, so the next open starts on defaults.
 - **Staff queue tab.** Defaults: Unresolved or Still Open, any category, Newest on Bugs, Most voted on Suggestions. Visible: search, Status, Sort. Hidden: Category.
 - **User tab.** Defaults: the current scope default, Unresolved or Still Open, any category, Newest. Visible: search, scope, file button. Hidden: Status, Category, Sort.
 - **Empty labels.** On the user tab, a set search shows a "No reports match this search." style label. Without a search, a status filter other than All shows the "No reports match this filter." style label. At All, the tab keeps its "nothing yet" labels. The staff queue keeps its "match this filter" labels.
