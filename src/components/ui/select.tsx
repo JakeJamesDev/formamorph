@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Check, ChevronDown } from "lucide-react"
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils"
@@ -37,41 +37,6 @@ const SelectTrigger = React.forwardRef<
 ))
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
-// Radix mounts each scroll button only while there is somewhere to scroll in that direction. In normal
-// flow that made the list resize the instant you reached either end — the button vanished, every item
-// jumped, and reaching the top or bottom shoved the option under the cursor out from under it. Overlaying
-// them takes them out of the layout entirely, so the list never moves; the gradient is what says "more
-// below" once the chevron is no longer occupying a row of its own.
-const SCROLL_BUTTON_BASE =
-  "absolute inset-x-0 z-10 flex h-6 cursor-default items-center justify-center text-muted-foreground"
-
-const SelectScrollUpButton = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.ScrollUpButton
-    ref={ref}
-    className={cn(SCROLL_BUTTON_BASE, "top-0 bg-gradient-to-b from-popover via-popover to-transparent", className)}
-    {...props}>
-    <ChevronUp className="h-4 w-4" />
-  </SelectPrimitive.ScrollUpButton>
-))
-SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
-
-const SelectScrollDownButton = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.ScrollDownButton
-    ref={ref}
-    className={cn(SCROLL_BUTTON_BASE, "bottom-0 bg-gradient-to-t from-popover via-popover to-transparent", className)}
-    {...props}>
-    <ChevronDown className="h-4 w-4" />
-  </SelectPrimitive.ScrollDownButton>
-))
-SelectScrollDownButton.displayName =
-  SelectPrimitive.ScrollDownButton.displayName
-
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
@@ -88,13 +53,12 @@ const SelectContent = React.forwardRef<
       )}
       position={position}
       {...props}>
-      <SelectScrollUpButton />
       <SelectPrimitive.Viewport
-        className={cn("p-1", position === "popper" &&
+        // Radix injects scrollbar-width:none and a hidden ::-webkit-scrollbar; both are undone so the global thumb shows.
+        className={cn("p-1 ![scrollbar-width:thin] [&::-webkit-scrollbar]:!block", position === "popper" &&
           "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]")}>
         {children}
       </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ))
@@ -153,6 +117,4 @@ export {
   SelectLabel,
   SelectItem,
   SelectSeparator,
-  SelectScrollUpButton,
-  SelectScrollDownButton,
 }
