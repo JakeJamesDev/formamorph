@@ -12,6 +12,7 @@ import {
   fillTemplate,
   isBuiltInTemplate,
   isNameSlotType,
+  PERSONA_TRAIT_OWNER,
   BUILT_IN_TEMPLATES,
   DAYPART_OPTIONS,
   timingOf,
@@ -84,6 +85,8 @@ describe('parseTemplateSlots', () => {
     ]);
     // A broken tie falls back to the world's traits.
     expect(bad.slots.find((slot) => slot.name === 'a')).toEqual({ name: 'a', type: 'trait' });
+    // A list was never a tie, so a saved template that wrote one still parses clean.
+    expect(parseTemplateSlots('{{t:trait(a|b)}}')).toEqual({ slots: [{ name: 't', type: 'trait', options: ['a', 'b'] }], errors: [] });
   });
 });
 
@@ -180,7 +183,7 @@ describe('fillTemplate', () => {
     expect(filled).toBe('s.name === "Health" && daypart === "dawn" && x >= 7');
   });
 
-  // Saved author templates count on this: a text slot carried code fragments, not strings, in v3.1.2.
+  // A saved author template's text slot holds code, not a string.
   it('pastes a text slot as typed', () => {
     expect(fillTemplate('stats.{{field:text=value}} + {{expr:text}}', { expr: 'self.max / 2' }))
       .toBe('stats.value + self.max / 2');
@@ -257,7 +260,7 @@ describe('built-in templates', () => {
     switch (slot.type) {
       case 'stat': return slot.name === 'secondStat' ? 'Strength' : 'Health';
       case 'placeholder': return placeholders[0].name;
-      case 'trait': return slot.owner === 'persona' ? scarred.name : slot.owner ? wounded.name : traits[0].name;
+      case 'trait': return slot.owner === PERSONA_TRAIT_OWNER ? scarred.name : slot.owner ? wounded.name : traits[0].name;
       case 'entity': return mira.name;
       default: return undefined;
     }
