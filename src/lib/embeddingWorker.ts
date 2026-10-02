@@ -5,11 +5,20 @@
  * during model download so the Settings toggle can show a real progress bar.
  */
 import { pipeline, env, type FeatureExtractionPipeline, type ProgressInfo } from '@huggingface/transformers';
+import ortMjsUrl from 'onnxruntime-web-dist/ort-wasm-simd-threaded.jsep.mjs?url';
+import ortWasmUrl from 'onnxruntime-web-dist/ort-wasm-simd-threaded.jsep.wasm?url';
 import { EMBEDDING_MODEL_ID } from './memoryRelevance';
 
 // The page sends no COOP/COEP headers, so it is not cross-origin-isolated and multithreaded WASM
 // (SharedArrayBuffer) is unavailable — pin to one thread rather than let the runtime probe and warn.
-if (env.backends.onnx.wasm) env.backends.onnx.wasm.numThreads = 1;
+if (env.backends.onnx.wasm) {
+  env.backends.onnx.wasm.numThreads = 1;
+  // The bundled runtime files, as absolute URLs because the runtime's XHR rejects root-relative ones.
+  env.backends.onnx.wasm.wasmPaths = {
+    mjs: new URL(ortMjsUrl, import.meta.url).href,
+    wasm: new URL(ortWasmUrl, import.meta.url).href,
+  };
+}
 
 let extractor: FeatureExtractionPipeline | null = null;
 let loading: Promise<FeatureExtractionPipeline> | null = null;
