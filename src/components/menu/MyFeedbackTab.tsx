@@ -9,7 +9,8 @@ import { useFeedbackListPlace } from "@/components/menu/useFeedbackListPlace";
 import { FeedbackStatusSelect } from "@/components/menu/FeedbackStatusSelect";
 import { FeedbackSearchInput } from "@/components/menu/FeedbackSearchInput";
 import {
-  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, FEEDBACK_SCOPES, SCOPE_LABELS, SEARCH_LABELS, SORT_LABELS,
+  ANY_CATEGORY, ANY_STATUS, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, FEEDBACK_SCOPES, FILTERED_EMPTY_LABELS,
+  SCOPE_LABELS, SEARCH_LABELS, SORT_LABELS,
   categoryFilterValue, scopeFilterValue, sortsFor, statusFilterValue,
 } from "@/lib/feedbackPresentation";
 import type { FeedbackScope, FeedbackSort, StatusFilter } from "@/lib/feedbackPresentation";
@@ -76,6 +77,12 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
   };
 
   const copy = COPY[type];
+  // A search names itself, a narrowed status says the filter hid the threads, and only the widest view can say none exist.
+  const emptyLabel = search
+    ? copy.emptySearch
+    : status !== ANY_STATUS
+      ? FILTERED_EMPTY_LABELS[type]
+      : scope === 'mine' ? copy.emptyMine : copy.emptyAll;
 
   return (
     <>
@@ -143,7 +150,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
           onPageChange={setPage}
           refreshNonce={nonce}
           onOpen={open}
-          emptyLabel={search ? copy.emptySearch : scope === 'mine' ? copy.emptyMine : copy.emptyAll}
+          emptyLabel={emptyLabel}
         />
 
         <FeedbackDialog open={filing} onOpenChange={setFiling} initialType={type} onFiled={changed} />
