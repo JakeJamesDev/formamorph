@@ -85,4 +85,9 @@ describe('pickMessage', () => {
     const message = pickMessage(['A › One'], { question: 'and then?', earlier: 'How do I add one?', where: 'World Editor, Traits tab' });
     expect(message).toContain('\n\nThe player asks from this screen: World Editor, Traits tab.\n\nThe player\'s earlier question: How do I add one?\n\nQuestion: and then?\n\n');
   });
+
+  it('holds the earlier answer after the earlier question', () => {
+    const message = pickMessage(['A › One'], { question: 'can I undo it?', earlier: 'How do I add one?', earlierAnswer: '1. Select **Add**.\n2. Name it.' });
+    expect(message).toContain('\n\nThe player\'s earlier question: How do I add one?\n\nThe earlier answer:\n1. Select **Add**.\n2. Name it.\n\nQuestion: can I undo it?\n\n');
+  });
 });

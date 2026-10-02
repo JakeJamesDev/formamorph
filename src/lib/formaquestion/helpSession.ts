@@ -215,9 +215,10 @@ export async function helpSearch({ question, history = [], snapshot, index, wher
   const on: HelpSources = { keyword: HELP_KEYWORD_SOURCE, aiPicks: HELP_AI_PICKS_SOURCE, semantic: HELP_SEMANTIC_SOURCE, ...searchSources };
   // The embedder takes no stop signal, so Stop ends the wait for it here.
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
+  const previous = keptHistory(history).at(-1);
   const [picks, semantic] = await Promise.all([
     on.aiPicks
-      ? requestPicks(index, { question, earlier: keptHistory(history).at(-1)?.question, where }, snapshot, { signal, fetchImpl }).catch(() => [])
+      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where }, snapshot, { signal, fetchImpl }).catch(() => [])
       : [],
     on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, history), embedder), stopped]) : null,
   ]);

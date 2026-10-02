@@ -129,7 +129,7 @@ describe('the pick request', () => {
     );
   });
 
-  it('names the open screen and the earlier question, and carries no image and no earlier answer', async () => {
+  it('names the open screen, the earlier question and its answer, and carries no image', async () => {
     const server = endpoint();
     const image: ImageAttachment = { id: 'a', mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,AAAA' };
     await ask('and then?', {
@@ -144,12 +144,41 @@ describe('the pick request', () => {
     expect(messages).toHaveLength(2);
     expect(typeof messages[1].content).toBe('string');
     expect(messages[1].content).toContain(
-      "</sections>\n\nThe player asks from this screen: Settings dialog, Display tab.\n\nThe player's earlier question: How do I rewind?\n\nQuestion: and then?",
+      "</sections>\n\nThe player asks from this screen: Settings dialog, Display tab.\n\nThe player's earlier question: How do I rewind?\n\nThe earlier answer:\nSelect **Rewind**.\n\nQuestion: and then?",
     );
     expect(JSON.stringify(messages)).not.toContain('AAAA');
-    expect(JSON.stringify(messages)).not.toContain('Select **Rewind**.');
     // The image still goes with the answer request.
     expect(JSON.stringify(bodyOf(server.answers).messages)).toContain('AAAA');
+  });
+
+  it('carries the newest exchange that got an answer, and no older one', async () => {
+    const server = endpoint();
+    await ask('can I undo it?', {
+      fetchImpl: server.fetchImpl,
+      history: [
+        { question: 'How do I import?', answer: 'Select **Import**.' },
+        { question: 'How do I rewind?', answer: 'Select **Rewind**.' },
+        { question: 'and the note?', answer: '' },
+      ],
+    });
+
+    const message = String(bodyOf(server.picks).messages[1].content);
+    expect(message).toContain("The player's earlier question: How do I rewind?\n\nThe earlier answer:\nSelect **Rewind**.\n\nQuestion: can I undo it?");
+    expect(message).not.toContain('How do I import?');
+    expect(message).not.toContain('Select **Import**.');
+    expect(message).not.toContain('and the note?');
+  });
+
+  it('finds the new feature a follow-up names, though the pick names the earlier topic alone', async () => {
+    const server = endpoint();
+    const { sources } = await ask('how do I import a world?', {
+      fetchImpl: server.fetchImpl,
+      history: [{ question: 'How do I rewind?', answer: 'Select **Rewind**.', sources: index.get([PICKED]) }],
+    });
+
+    expect(String(bodyOf(server.picks).messages[1].content)).toContain('The earlier answer:\nSelect **Rewind**.');
+    expect(sources[0]).toBe(KEYWORD_HIT);
+    expect(sources).toContain(PICKED);
   });
 
   it('brings a section the keyword search ranks under its floor into the block, and the keyword search alone leaves it out', async () => {
