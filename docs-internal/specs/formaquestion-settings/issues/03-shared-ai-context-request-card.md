@@ -1,6 +1,7 @@
 # 03: Shared AI Context request card
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 44724f1d
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
