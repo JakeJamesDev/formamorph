@@ -110,6 +110,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q72 | The 80% bar stays. The best measured mix projects to about 75%, so pronoun follow-ups get the next fix (ticket 45), then the bar runs again (ticket 46) |
 | Q73 | Ticket 44 rulings. The floor applies only when keyword is the one source on; a merged ranking has none, as ticket 39 measured. A what's-new question keeps the release lead ahead of the merged ranking, still makes its one pick request, and the pick list stays guide-only. Section vectors are a committed generated file from a script, loaded only when semantic runs; a gate test fails on a model mismatch, while a section whose text changed is left out of the semantic ranking and does not fail the gates. "On the device" means the model files are in the browser cache: a help question loads them from there and never downloads |
 | Q74 | Ticket 44 shipped the sources: 73% grounded-correct against 61% keyword-only, but "here" questions fell 98% → 82%. A pick that fails or gives nothing leaves keyword as the one ranking, so the floor applies. Ticket 47 finds a rule that keeps "here" questions on the screen. The vector script runs before each release, a step the user owns |
+| Q75 | The embedding worker loads with no request to a third-party host: the ONNX runtime binary is bundled for Semantic Memory and Formaquestion alike (ticket 48) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
