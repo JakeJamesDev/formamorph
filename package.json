@@ -42,6 +42,7 @@
     "baseline": "node testing/baseline/harness/run.mjs",
     "probe:narration-tools": "vite-node testing/baseline/harness/narration-tool-call-probe.cli.ts",
     "probe:help": "vite-node testing/baseline/harness/help-baseline.cli.ts --",
+    "probe:help-recall": "vite-node testing/baseline/harness/help-recall.cli.ts --",
     "screen": "node testing/baseline/harness/screen.mjs",
     "title-card": "node scripts/captureTitleCard.mjs"
   },
