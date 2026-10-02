@@ -410,18 +410,44 @@ describe('the settings tab', () => {
     expect(screen.getByRole('button', { name: 'Save Email' }).hasAttribute('disabled')).toBe(true);
   });
 
-  it('drops a late answer after the dialog unmounts', async () => {
+  it('asks for an address when the box is empty', async () => {
     vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
-    let release: (value: { emailVerified: boolean; mailSent: boolean }) => void = () => {};
-    vi.spyOn(AuthService, 'setEmail').mockReturnValue(new Promise((resolve) => { release = resolve; }));
-    const { unmount } = openSettings();
+    const set = vi.spyOn(AuthService, 'setEmail');
+    openSettings();
 
-    fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'late@example.com' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Email' }));
+
+    expect(await screen.findByText('Enter an email address')).toBeTruthy();
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('says so when the saved address is already verified', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: true, mailSent: false });
+    openSettings();
+
+    fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'same@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
-    unmount();
-    release({ emailVerified: false, mailSent: true });
-    await Promise.resolve();
 
-    expect(console.error).not.toHaveBeenCalled();
+    expect(await screen.findByText('That address is already saved and verified.')).toBeTruthy();
+  });
+
+  it('names the Resend button when the mail could not be sent', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue(null);
+    vi.spyOn(AuthService, 'setEmail').mockResolvedValue({ emailVerified: false, mailSent: false });
+    openSettings();
+
+    fireEvent.change(await screen.findByLabelText('Email Address'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Email' }));
+
+    expect(await screen.findByText(/Try Resend Verification Email in a moment/)).toBeTruthy();
+  });
+
+  it('fills the address from the server read when the cached account has none', async () => {
+    vi.spyOn(AuthService, 'fetchEmailState').mockResolvedValue({ email: 'server@example.com', emailVerified: true });
+    openSettings();
+
+    expect(await screen.findByText('server@example.com')).toBeTruthy();
+    expect(screen.getByText(/Verified\./)).toBeTruthy();
   });
 });
