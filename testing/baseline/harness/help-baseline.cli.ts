@@ -8,6 +8,8 @@
 // Each question runs in every arm inside the same batch, so the endpoint's drift hits all of them:
 //   retrieval  the app's help session as it ships: the Docs Index finds the sections, one request
 //   lookup     with `--lookup`: the help session in lookup mode, on an endpoint that takes function calls
+//   old        with `--old`: retrieval with ticket 32's old block: the surface section's length comes off the
+//              budget before the search, and the 5-section limit covers the search hits only
 //   no-docs    the control: the same model, samplers, screen line and language, with no guide text
 //
 // A follow-up runs after its first question in the same arm and run, with that answer as the history.
@@ -30,16 +32,16 @@
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--lookup] [--old] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
-import { GENERAL_KNOWLEDGE_MARKER, readMarker } from '@/lib/formaquestion/generalKnowledge';
-import { helpSystemPrompt } from '@/lib/formaquestion/helpPrompt';
-import { askHelp, HELP_MAX_TOKENS, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
+import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
+import { askHelp, HELP_DOCS_CHAR_BUDGET, HELP_MAX_TOKENS, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { RequestMessage } from '@/types';
@@ -58,7 +60,7 @@ const worstCount = Number(argVal('--worst', '10'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
-type Arm = 'retrieval' | 'lookup' | 'no-docs';
+type Arm = 'retrieval' | 'old' | 'lookup' | 'no-docs';
 
 /** Tokens in and out, summed over the requests of one question. */
 interface Usage { promptTokens: number; answerTokens: number; requests: number }
@@ -167,6 +169,31 @@ async function askSession(target: Target, arm: Arm, c: BaselineCase, history: Ea
   throw new Error('the help session ended with no answer');
 }
 
+/** The block as it was before ticket 32: the budget loses the surface section's length twice, and the cap skips it. */
+async function askOld(target: Target, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
+  const usage = noUsage();
+  const hint = surfaceHint(c.surface, index);
+  const found = helpSections(index, c.question, { history, budget: HELP_DOCS_CHAR_BUDGET - (hint?.section.markdown.length ?? 0) })
+    .filter((section) => section.id !== hint?.section.id);
+  const sections = [...(hint ? [hint.section] : []), ...found];
+  const messages: RequestMessage[] = [
+    ...history.flatMap((exchange): RequestMessage[] => [
+      { role: 'user', content: exchange.question },
+      { role: 'assistant', content: exchange.flagged ? `${GENERAL_KNOWLEDGE_MARKER}
+${exchange.answer}` : exchange.answer },
+    ]),
+    { role: 'user', content: helpUserMessage(c.question, sections, hint?.where) },
+  ];
+  const spec = buildAiRequestSpec(snapshotFor(target, false), {
+    systemPrompt: helpSystemPrompt(c.language ?? '', HELP_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS,
+  });
+  const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
+  if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);
+  const answer = readMarker(result.choices?.[0]?.message?.content ?? '', { final: true });
+  if (!answer.text) throw new Error('the model sent an empty answer');
+  return { answer: answer.text, flagged: isGeneralKnowledge(answer.marked, sections.length), sources: sections.map((section) => section.id), ...usage };
+}
+
 /** The control: the question with its history, its screen and its language, and no guide text. */
 async function askNoDocs(target: Target, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
   const usage = noUsage();
@@ -206,9 +233,9 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
-    (arm === 'no-docs' ? askNoDocs(target, c, history) : askSession(target, arm, c, history));
+    (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 
   /** One question, sent once more after a failed request. */
   async function row(arm: Arm, c: BaselineCase, run: number, history: EarlierExchange[]): Promise<Row> {

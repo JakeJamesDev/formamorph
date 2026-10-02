@@ -123,7 +123,7 @@ const ENTRIES: [string, string][] = [
 /** The label for each surface id the player can have open. */
 export const SURFACE_LABELS: Partial<Record<SurfaceId, string>> = Object.fromEntries(ENTRIES);
 
-/** The label for an id, or the id itself when none is listed. */
+/** The label for an id. The coverage test fails for an id without one. */
 export function surfaceLabel(id: SurfaceId): string {
-  return SURFACE_LABELS[id] ?? id;
+  return SURFACE_LABELS[id] as string;
 }
