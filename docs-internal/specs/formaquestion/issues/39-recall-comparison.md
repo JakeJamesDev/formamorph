@@ -1,6 +1,8 @@
 # 39: Search recall comparison
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: The numbers and a recommendation are in the Handover. The user picks the approach (Q67).
+Base: 62ef56e0
 Blocked by: 38, 41, 42
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -39,8 +41,109 @@ Recommended model rationale: the blind set and a fair comparison decide whether 
 
 ## Acceptance criteria
 
-- [ ] A blind set of at least 60 questions covers every guide page, each written from headings only and keyed to its right sections
-- [ ] Every approach is measured on both sets with the same recall scorer, and the cloud one has 5 runs
-- [ ] The report table holds recall@5, top-1, latency, tokens, download size and endpoint reach per approach
-- [ ] No shipped behavior changes, and no approach was tuned on the blind set
-- [ ] A recommendation is in the handover, and the status moves to `ready-for-human` for the user's pick
+- [x] A blind set of at least 60 questions covers every guide page, each written from headings only and keyed to its right sections
+- [x] Every approach is measured on both sets with the same recall scorer, and the cloud one has 5 runs
+- [x] The report table holds recall@5, top-1, latency, tokens, download size and endpoint reach per approach
+- [x] No shipped behavior changes, and no approach was tuned on the blind set
+- [x] A recommendation is in the handover, and the status moves to `ready-for-human` for the user's pick
+
+## Handover
+
+**Result: no approach reaches 93%.** The best single approach finds the right section for 72% of the blind questions. The best mix finds it for 87%. The shipped keyword search finds it for 52%.
+
+**Built.** `npm run probe:help-recall -- --ai --runs 5` scores every approach on both sets. It changes no shipped code.
+
+| File | What it is |
+|---|---|
+| `testing/baseline/help-recall-blind-cases.json` | The blind set: 84 task questions and 10 follow-ups, 2 or more for each of the 33 guide pages |
+| `testing/baseline/help-word-map.json` | The bigger word map: 3,529 phrases on 466 sections. Only the probe reads it |
+| `testing/baseline/harness/help-recall.cli.ts` | The probe: the approaches, the cloud requests, the report |
+| `testing/baseline/harness/help-recall-score.ts` | The recall score, the rank merge, the pick reader, the keyword-line injector |
+| `testing/baseline/harness/help-recall-cases.ts` | Reads both sets |
+| `help-recall-score.test.ts`, `help-recall-cases.test.ts` | 30 tests. The second runs the blind set against the real docs |
+
+**How each approach is scored.** Every approach goes through the shipped block builder, `helpSections`, with its own search in place of the keyword search. The open screen's section, the follow-up rule and the 12,000-character budget are the same for all.
+
+- **Recall@5:** a keyed section is among the five sections of the block, with no size budget.
+- **First:** a keyed section is the first section of the block.
+- **Sent:** a keyed section is in the block that fits the budget. This is the "right source" of tickets 26 and 37.
+
+**Batch.** 2026-10-02, at 62ef56e0 plus this ticket's files. Default cloud endpoint, model `default`. 191 questions × 5 runs = 955 pick requests in 212 s, 0 failed. The offline approaches give the same result on every run. Raw rows: `testing/baseline/runs/help-recall-2026-10-02T15-57-36-513Z.json` (not tracked).
+
+**Blind set, 94 questions.**
+
+| Approach | Recall@5 | First | Sent | Task @5 | Follow-up @5 |
+|---|---|---|---|---|---|
+| Keyword (control) | 52.1% | 36.2% | 52.1% | 51.2% | 60% |
+| Bigger word map | 72.3% | 41.5% | 71.3% | 75.0% | 50% |
+| Semantic | 63.8% | 40.4% | 63.8% | 65.5% | 50% |
+| Hybrid (keyword + semantic) | 68.1% | 45.7% | 68.1% | 67.9% | 70% |
+| AI picks, 5 runs | 69.4% (68.1–71.3) | 43.6% | 69.4% | 69.3% | 70% |
+| Mix: word map + semantic | 73.4% | 53.2% | 73.4% | 73.8% | 70% |
+| Mix: AI picks + word map | 83.8% (83.0–85.1) | 60.9% | 83.8% | 85.5% | 70% |
+| Mix: AI picks + word map + semantic | **86.6%** (85.1–88.3) | 67.0% | 86.6% | 88.6% | 70% |
+
+**Known set, 97 questions** (ticket 26's English task, "here" and follow-up questions).
+
+| Approach | Recall@5 | First | Sent | Task @5 | Here @5 | Follow-up @5 |
+|---|---|---|---|---|---|---|
+| Keyword (control) | 63.9% | 35.1% | 62.9% | 60.0% | 100% | 50% |
+| Bigger word map | 71.1% | 35.1% | 71.1% | 69.3% | 100% | 50% |
+| Semantic | 68.0% | 37.1% | 68.0% | 64.0% | 91.7% | 70% |
+| Hybrid (keyword + semantic) | 71.1% | 45.4% | 71.1% | 68.0% | 91.7% | 70% |
+| AI picks, 5 runs | 65.4% (63.9–68.0) | 45.2% | 65.4% | 60.5% | 98.3% | 62% |
+| Mix: word map + semantic | 77.3% | 47.4% | 77.3% | 76.0% | 91.7% | 70% |
+| Mix: AI picks + word map | 79.0% (78.4–80.4) | 45.4% | 79.0% | 77.9% | 100% | 62% |
+| Mix: AI picks + word map + semantic | **81.4%** (80.4–83.5) | 49.7% | 81.4% | 81.1% | 100% | 62% |
+
+- The control's 62.9% sent on the known set agrees with ticket 37's 60% plus tickets 38, 41 and 42.
+- The keyword search scores 12 points lower on the blind set. Tickets 27 to 42 fixed the known questions, so the known set flatters it.
+- A mix merges the rankings by reciprocal rank fusion, with the constant of the method's paper (60). No number of it was tuned.
+
+**Cost of each approach.**
+
+| Approach | Added time per question | Added tokens | Download and memory | Every endpoint | No network |
+|---|---|---|---|---|---|
+| Keyword | 0.5 ms | 0 | None | Yes | Yes |
+| Bigger word map | 0.5 ms | 0 | None. 51 KB of hidden keyword lines in the docs | Yes | Yes |
+| Semantic, hybrid | 2 ms to embed, in Node | 0 | 22.6 MB model, once (`Xenova/all-MiniLM-L6-v2` q8: 21.9 MB weights, 0.7 MB tokenizer). +77 MB resident in Node. 738 KB of section vectors in the build | Yes | Yes after the download. Semantic Memory is off by default, so most players do not have the model |
+| AI picks | 870 ms mean, 1,302 ms at the 90th percentile, on the cloud | 4,454 in, 43 out | None | Yes. It is one plain chat request, with no function call | Only with a local model |
+
+- The embed time is from the Node runtime. **UNVERIFIED — not measured on the app's single-thread WASM worker**, which is slower.
+- The pick request holds 491 heading lines. The cloud model's window is 10,750 tokens, so it fits. On a local model the time depends on prompt speed; I did not measure one.
+
+**What still misses.** On the blind set, 8 of 94 questions are found by no approach and no mix in any run, so the ceiling of what was measured is 91%. I read the 12 questions the best mix misses in 3 or more of 5 runs:
+
+- **Follow-ups with a pronoun** (3 of the 10 follow-ups): "and how do I send it back to them after I change it?". Every approach stays at 50–70% on follow-ups.
+- **A player word with two meanings**: "something I made a long time ago" goes to saves, not to world file versions. "a file of the setting they made" goes to Import a Save.
+- **A term question**: "what do you mean by a 'listing'?" goes to the listing how-tos, not to the glossary.
+- **Two possible docs gaps**, from the key check: no section says what a new player does first after an install (`Home#-getting-started` is the run-from-source setup), and `World-Editor-Locations#delete-a-location` names no control.
+
+**What this means for the bar (Q59).** Answers were 86% correct when the section arrived (ticket 37). At that rate the best mix gives about 0.87 × 0.86 = 74% on the blind set and 70% on the known set. The 80% bar needs more than search: the 86% must rise too, or the bar moves.
+
+**Recommendation: the word map first, then AI picks on top.**
+
+1. **Grow the keyword lines.** It gives the largest gain of any single approach (+20 points on the blind set) at no cost at runtime, on every endpoint and offline. The cost is authoring: the map needs a review by a person before it goes into the docs, and each new section needs its line.
+2. **Add the AI pick request, fused with the keyword ranking.** It adds 11.5 points on the blind set (72.3% → 83.8%) and 7.9 on the known set, for one request of about 4,500 tokens and 0.9 s.
+3. **Leave semantic search out for now.** On top of the two it adds 2.8 points for a 22.6 MB download that most players do not have. Look again if Semantic Memory becomes on by default.
+4. **Follow-ups need their own fix.** No approach here moves them.
+
+The user picks. No product ticket is written here.
+
+**How the comparison stayed fair.**
+
+- **Blind set.** I wrote each question from the heading list alone (`index.contents()`, ids and labels), before any section text. Before that I had seen the ticket 26 questions that tickets 26 and 37 quote, and a cut-off print of its "here" and follow-up entries. A test fails when a blind question repeats a known one.
+- **Keys.** I keyed from the headings. A second agent then read the section text and proposed 74 key changes. I applied the 34 it marked sure (28 added sections, 6 removed) and none of the 40 it marked unsure. This was fixed before the first blind measurement.
+- **Word map.** Three agents wrote it from the guide pages alone. Their brief forbade `testing/`, `docs-internal/` and any search run. No person has reviewed the phrases.
+- **Choices made on the known set only.** Semantic section text: heading alone 62.9%, heading and body 63.9%, body chunks 55.7%; heading and body is used. AI pick reply: numbers of a numbered list 52.6% (1 run), copied heading lines 64.9% (1 run); copied lines are used.
+- **One choice made after the first blind result.** The first full run had the five approaches of this ticket. I then added the three mixes, because the ticket asks for "one approach, or a mix". The merge rule has no tuned number.
+- **Not applied to the new approaches:** the score floor of ticket 41. It trims extra sections; it does not find one.
+
+**Tests.** `help-recall-score.ts` and `help-recall-cases.ts`: 100% lines, 96.9% branches. 13 mutations of the scorer each turned the expected test red. The probe script itself has no unit test; its block builder is the shipped `helpSections`.
+
+**Gates.** typecheck exit 0 (19 s), lint exit 0 (18 s), test exit 0 (16,411 passed, 125 s), build exit 0 (20 s).
+
+**Seen, not fixed.**
+
+- `testing/` is outside the `tsconfig.json` include, so `npm run typecheck` does not check a probe harness. I checked the new files with a scratch config.
+- Every `vite-node` probe that loads the bundled docs takes about 27 s to start on this machine.
