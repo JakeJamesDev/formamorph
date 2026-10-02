@@ -122,6 +122,7 @@ Settled in the grilling session on 2026-10-02. A ruling reopens on new evidence,
   - `entity`: keyed entities in Entities-tab order, breadcrumb from Entity folders (Q4).
   - `placeholder`: the placeholder path map's top-level keys only, breadcrumb from Placeholder folders (Q4, Q5).
 - Names stay code names, as today: the picked value is what the sandbox keys.
+- All four name slots move onto the Breadcrumb Picker together, in ticket 03 (Q11). Slots whose sources land later show their current flat rows until then. Tickets 04 and 05 change row sources only (settled for ticket 03).
 - The entity data the dialog receives today carries trait names only. It needs each trait's group path and each entity's folder path. Extend the editor-side entity name builder so the template dialog and the code completions keep reading one source.
 - Daypart, choice, number and text slots don't change. Daypart and choice keep the plain Select (Q11: short fixed sets).
 - The dialog's mobile template selector keeps the plain Select. Templates are not world content.
