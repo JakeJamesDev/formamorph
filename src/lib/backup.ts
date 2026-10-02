@@ -12,6 +12,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { serializeJsonBlobSplit } from '@/lib/jsonFileWorkerUtils';
 import { getAllSaveRecords, putSaveRecord } from '@/components/modals/dbUtils';
 import { APP_VERSION } from '@/lib/version';
+import { BackupShapeError, BackupSyntaxError, scanBackupSpans, type Span } from '@/lib/backupScan';
 import type { SaveRecord } from '@/types';
 
 /** Bumped only if the bundle's shape changes incompatibly; readers warn on a newer value but still try. */
@@ -22,7 +23,7 @@ export const BACKUP_CATEGORIES = ['worlds', 'saves', 'entities', 'dictionaries']
 export type BackupCategory = (typeof BACKUP_CATEGORIES)[number];
 
 /** Any stored record carrying a string `id` primary key (all four stores use `keyPath: 'id'`). */
-interface IdRecord {
+export interface IdRecord {
   id: string;
   [key: string]: unknown;
 }
@@ -121,42 +122,97 @@ export async function buildBackup(selection: BackupSelection): Promise<BackupBun
   };
 }
 
-/** Validate and parse bundle text, normalizing missing category arrays to `[]`. Throws on a non-bundle. */
-export function parseBackup(text: string): BackupBundle {
-  let raw: unknown;
+/** One record in a backup file: where it is, and what the checklist shows for it. */
+export interface BackupEntry {
+  id: string;
+  label: string;
+  /** Byte range of the record in the file. */
+  start: number;
+  end: number;
+  /** Images the record holds, for restore progress. */
+  images: number;
+}
+
+/** A backup file read for restore. Records stay in the file until `readBackupRecord` reads one. */
+export interface BackupIndex {
+  formamorphBackup: number;
+  appVersion: string;
+  exportedAt: string;
+  file: Blob;
+  data: Record<BackupCategory, BackupEntry[]>;
+}
+
+const parseSpan = async (file: Blob, span: Span): Promise<unknown> => {
   try {
-    raw = JSON.parse(text);
+    return JSON.parse(await file.slice(span.start, span.end).text());
   } catch {
     throw new Error('Not a valid JSON file.');
   }
-  const obj = raw as Partial<BackupBundle> & { data?: Partial<Record<BackupCategory, unknown>> };
-  if (!obj || typeof obj.formamorphBackup !== 'number' || !obj.data) {
-    throw new Error('This file is not a Formamorph backup.');
+};
+
+/**
+ * Index a backup file one record at a time, so no string holds the whole file. Missing categories become
+ * `[]` and records without a string id are dropped. Throws on a file that is not a backup.
+ */
+export async function readBackupIndex(
+  file: Blob,
+  countImages: (category: BackupCategory, record: IdRecord) => number = () => 0,
+): Promise<BackupIndex> {
+  let spans;
+  try {
+    spans = await scanBackupSpans(file, BACKUP_CATEGORIES);
+  } catch (err) {
+    if (err instanceof BackupShapeError) throw new Error('This file is not a Formamorph backup.');
+    if (err instanceof BackupSyntaxError) throw new Error('Not a valid JSON file.');
+    throw err;
   }
-  const data = {} as Record<BackupCategory, IdRecord[]>;
-  for (const cat of BACKUP_CATEGORIES) {
-    const arr = obj.data[cat];
-    data[cat] = Array.isArray(arr) ? (arr as IdRecord[]).filter((r) => r && typeof r.id === 'string') : [];
+  const header = async (key: string) => (spans.header[key] ? parseSpan(file, spans.header[key]) : undefined);
+  const format = await header('formamorphBackup');
+  if (typeof format !== 'number' || !spans.hasData) throw new Error('This file is not a Formamorph backup.');
+  const appVersion = await header('appVersion');
+  const exportedAt = await header('exportedAt');
+
+  const data: Record<BackupCategory, BackupEntry[]> = { worlds: [], saves: [], entities: [], dictionaries: [] };
+  for (const span of spans.records) {
+    const category = span.category as BackupCategory;
+    const record = (await parseSpan(file, span)) as IdRecord | null;
+    if (!record || typeof record.id !== 'string') continue;
+    data[category].push({
+      id: record.id,
+      label: itemLabel(record),
+      start: span.start,
+      end: span.end,
+      images: countImages(category, record),
+    });
   }
   return {
-    formamorphBackup: obj.formamorphBackup,
-    appVersion: typeof obj.appVersion === 'string' ? obj.appVersion : 'unknown',
-    exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : '',
+    formamorphBackup: format,
+    appVersion: typeof appVersion === 'string' ? appVersion : 'unknown',
+    exportedAt: typeof exportedAt === 'string' ? exportedAt : '',
+    file,
     data,
   };
 }
 
-/** Per-category split of a bundle against what's already stored: `fresh` ids are new, `conflicts` collide. */
-export interface CategoryPlan {
-  category: BackupCategory;
-  fresh: IdRecord[];
-  conflicts: IdRecord[];
+/** Read one record from the file the index came from. */
+export async function readBackupRecord(index: BackupIndex, entry: BackupEntry): Promise<IdRecord> {
+  return (await parseSpan(index.file, entry)) as IdRecord;
 }
 
-/** Pure conflict split — separates incoming records into new vs. already-present by id. */
-export function splitByConflict(incoming: IdRecord[], existingIds: Set<string>): Omit<CategoryPlan, 'category'> {
-  const fresh: IdRecord[] = [];
-  const conflicts: IdRecord[] = [];
+/** Per-category split of a backup against what's already stored: `fresh` ids are new, `conflicts` collide. */
+export interface CategoryPlan {
+  category: BackupCategory;
+  fresh: BackupEntry[];
+  conflicts: BackupEntry[];
+}
+
+/** Pure conflict split — separates incoming items into new vs. already-present by id. */
+export function splitByConflict<T extends { id: string }>(
+  incoming: T[],
+  existingIds: Set<string>,
+): { fresh: T[]; conflicts: T[] } {
+  const fresh: T[] = [];
+  const conflicts: T[] = [];
   for (const rec of incoming) (existingIds.has(rec.id) ? conflicts : fresh).push(rec);
   return { fresh, conflicts };
 }
@@ -165,12 +221,12 @@ async function existingIdsFor(category: BackupCategory): Promise<Set<string>> {
   return new Set((await readCategory(category)).map((r) => r.id));
 }
 
-/** Compare a bundle against current storage, yielding one plan per category (for the import summary). */
-export async function analyzeBackup(bundle: BackupBundle): Promise<CategoryPlan[]> {
+/** Compare a backup against current storage, yielding one plan per category (for the import summary). */
+export async function analyzeBackup(index: BackupIndex): Promise<CategoryPlan[]> {
   return Promise.all(
     BACKUP_CATEGORIES.map(async (category) => ({
       category,
-      ...splitByConflict(bundle.data[category], await existingIdsFor(category)),
+      ...splitByConflict(index.data[category], await existingIdsFor(category)),
     })),
   );
 }
@@ -186,16 +242,21 @@ async function restoreCategory(category: BackupCategory, records: IdRecord[]): P
 
 /**
  * Apply the plans: always write `fresh` records; write `conflicts` only for categories the user chose to
- * overwrite. Returns per-category counts of what was written vs. skipped.
+ * overwrite. Each record is read, passed through `transform`, and written before the next is read, so
+ * only one is held at a time. Returns per-category counts of what was written vs. skipped.
  */
 export async function applyBackup(
+  index: BackupIndex,
   plans: CategoryPlan[],
   overwrite: Record<BackupCategory, boolean>,
+  transform: (category: BackupCategory, record: IdRecord) => Promise<IdRecord> = async (_, r) => r,
 ): Promise<Record<BackupCategory, { added: number; overwritten: number; skipped: number }>> {
   const result = {} as Record<BackupCategory, { added: number; overwritten: number; skipped: number }>;
   for (const plan of plans) {
     const conflictsToWrite = overwrite[plan.category] ? plan.conflicts : [];
-    await restoreCategory(plan.category, [...plan.fresh, ...conflictsToWrite]);
+    for (const entry of [...plan.fresh, ...conflictsToWrite]) {
+      await restoreCategory(plan.category, [await transform(plan.category, await readBackupRecord(index, entry))]);
+    }
     result[plan.category] = {
       added: plan.fresh.length,
       overwritten: conflictsToWrite.length,
@@ -219,23 +280,5 @@ function backupFilename(bundle: BackupBundle): string {
 export async function saveBackup(bundle: BackupBundle): Promise<void> {
   // Off-thread: a bundle is every selected world and save, the largest payload the app ever serializes.
   // Depth 3 (bundle → data → category → record) writes each record as its own part.
-  const blob = await serializeJsonBlobSplit(bundle, 3);
-  if (blob.size > MAX_RESTORE_BYTES) throw new BackupTooLargeError(blob.size);
-  downloadBlob(blob, backupFilename(bundle));
+  downloadBlob(await serializeJsonBlobSplit(bundle, 3), backupFilename(bundle));
 }
-
-/** Restore reads the file into one string, so a backup can't pass V8's maximum string length. */
-export const MAX_RESTORE_BYTES = 2 ** 29 - 24;
-
-/** A backup that restore can't read. Bytes are an upper bound on characters, so this errs early. */
-export class BackupTooLargeError extends Error {
-  constructor(readonly bytes: number) {
-    super(
-      `This backup is ${formatMB(bytes)}. Restore can't read a file over ${formatMB(MAX_RESTORE_BYTES)}. ` +
-        'Select fewer items and save more than one backup.',
-    );
-    this.name = 'BackupTooLargeError';
-  }
-}
-
-const formatMB = (bytes: number) => `${Math.round(bytes / 2 ** 20)} MB`;

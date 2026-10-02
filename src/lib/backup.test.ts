@@ -2,10 +2,26 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  parseBackup, splitByConflict, BACKUP_CATEGORIES, itemLabel,
-  buildBackup, listBackupItems, analyzeBackup, applyBackup, type CategoryPlan,
+  readBackupIndex, splitByConflict, BACKUP_CATEGORIES, itemLabel,
+  buildBackup, listBackupItems, analyzeBackup, applyBackup, type BackupBundle, type BackupIndex,
 } from '@/lib/backup';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { jsonParts } from '@/lib/jsonFileOps';
+
+/** The file `saveBackup` writes for a bundle. */
+const backupFile = (bundle: unknown) => new Blob(jsonParts(bundle, 3));
+const indexOf = (value: unknown) => readBackupIndex(new Blob([JSON.stringify(value)]));
+
+/** A Blob whose `text()` fails past `max` bytes, as V8 does past its maximum string length. */
+const limitedBlob = (blob: Blob, max: number): Blob =>
+  ({
+    size: blob.size,
+    slice: (start?: number, end?: number) => limitedBlob(blob.slice(start, end), max),
+    arrayBuffer: () => blob.arrayBuffer(),
+    text: () => (blob.size > max ? Promise.reject(new RangeError('Invalid string length')) : blob.text()),
+  }) as unknown as Blob;
+
+const NO_OVERWRITE = { worlds: false, saves: false, entities: false, dictionaries: false };
 
 describe('splitByConflict', () => {
   it('separates fresh ids from ones already present', () => {
@@ -22,38 +38,49 @@ describe('splitByConflict', () => {
   });
 });
 
-describe('parseBackup', () => {
-  it('rejects non-JSON', () => {
-    expect(() => parseBackup('{ not json')).toThrow(/valid JSON/);
+describe('readBackupIndex', () => {
+  it('rejects non-JSON', async () => {
+    await expect(readBackupIndex(new Blob(['{ not json']))).rejects.toThrow(/valid JSON/);
   });
 
-  it('rejects JSON that is not a Formamorph backup', () => {
-    expect(() => parseBackup(JSON.stringify({ hello: 'world' }))).toThrow(/not a Formamorph backup/);
+  it('rejects a record that is not valid JSON', async () => {
+    await expect(
+      readBackupIndex(new Blob(['{"formamorphBackup":1,"data":{"worlds":[{"id":"w1",}]}}'])),
+    ).rejects.toThrow(/valid JSON/);
   });
 
-  it('normalizes missing categories to empty arrays and drops id-less records', () => {
-    const bundle = parseBackup(
-      JSON.stringify({
-        formamorphBackup: 1,
-        data: { worlds: [{ id: 'w1' }, { name: 'no id' }] },
-      }),
+  it('rejects JSON that is not a Formamorph backup', async () => {
+    await expect(indexOf({ hello: 'world' })).rejects.toThrow(/not a Formamorph backup/);
+    await expect(indexOf({ formamorphBackup: 1 })).rejects.toThrow(/not a Formamorph backup/);
+    await expect(indexOf([1])).rejects.toThrow(/not a Formamorph backup/);
+  });
+
+  it('normalizes missing categories to empty arrays and drops id-less records', async () => {
+    const index = await indexOf({ formamorphBackup: 1, data: { worlds: [{ id: 'w1' }, { name: 'no id' }, null] } });
+    expect(index.data.worlds.map((r) => r.id)).toEqual(['w1']);
+    for (const cat of BACKUP_CATEGORIES) expect(Array.isArray(index.data[cat])).toBe(true);
+    expect(index.data.saves).toEqual([]);
+  });
+
+  it('labels each record and counts its images', async () => {
+    const index = await readBackupIndex(
+      new Blob([JSON.stringify({ formamorphBackup: 1, data: { worlds: [{ id: 'w1', name: 'Sedge Landing' }] } })]),
+      (category, record) => (category === 'worlds' && record.id === 'w1' ? 3 : 0),
     );
-    expect(bundle.data.worlds.map((r) => r.id)).toEqual(['w1']);
-    for (const cat of BACKUP_CATEGORIES) expect(Array.isArray(bundle.data[cat])).toBe(true);
-    expect(bundle.data.saves).toEqual([]);
+    expect(index.data.worlds[0]).toMatchObject({ id: 'w1', label: 'Sedge Landing', images: 3 });
   });
 
-  it('keeps reading a bundle written by a newer app version', () => {
+  it('keeps reading a bundle written by a newer app version', async () => {
     // Readers warn on a newer format but still try — a backup must not become unreadable.
-    const bundle = parseBackup(JSON.stringify({ formamorphBackup: 99, data: { worlds: [{ id: 'w1' }] } }));
-    expect(bundle.formamorphBackup).toBe(99);
-    expect(bundle.data.worlds).toHaveLength(1);
+    const index = await indexOf({ formamorphBackup: 99, data: { worlds: [{ id: 'w1' }] } });
+    expect(index.formamorphBackup).toBe(99);
+    expect(index.data.worlds).toHaveLength(1);
   });
 
-  it('defaults a bundle missing its metadata rather than throwing', () => {
-    const bundle = parseBackup(JSON.stringify({ formamorphBackup: 1, data: {} }));
-    expect(bundle.appVersion).toBe('unknown');
-    expect(bundle.exportedAt).toBe('');
+  it('defaults a bundle missing its metadata rather than throwing', async () => {
+    const index = await indexOf({ formamorphBackup: 1, data: {} });
+    expect(index.appVersion).toBe('unknown');
+    expect(index.exportedAt).toBe('');
   });
 });
 
@@ -102,6 +129,19 @@ const STORES: [string, string][] = [
   ['dictionariesDB', 'dictionaries'],
 ];
 
+const worldsIndex = (worlds: { id: string; name: string }[]): Promise<BackupIndex> =>
+  indexOf({ formamorphBackup: 1, data: { worlds } });
+
+/** Run `applyBackup` and record which records it read. */
+async function applyRecording(index: BackupIndex, overwrite = NO_OVERWRITE) {
+  const read: string[] = [];
+  const result = await applyBackup(index, await analyzeBackup(index), overwrite, async (_, record) => {
+    read.push(record.id);
+    return record;
+  });
+  return { result, read };
+}
+
 describe('backup round trip (IndexedDB)', () => {
   beforeEach(async () => {
     for (const [db, store] of STORES) await wipe(db, store);
@@ -144,10 +184,8 @@ describe('backup round trip (IndexedDB)', () => {
     await wipe('worldsDB', 'worlds');
     await wipe('dictionariesDB', 'dictionaries');
 
-    const plans = await analyzeBackup(bundle);
-    const result = await applyBackup(plans, {
-      worlds: false, saves: false, entities: false, dictionaries: false,
-    });
+    const index = await readBackupIndex(backupFile(bundle));
+    const result = await applyBackup(index, await analyzeBackup(index), NO_OVERWRITE);
 
     expect(result.worlds).toEqual({ added: 1, overwritten: 0, skipped: 0 });
     expect(await readAll('worldsDB', 'worlds')).toEqual([{ id: 'w1', name: 'Sedge Landing' }]);
@@ -156,27 +194,21 @@ describe('backup round trip (IndexedDB)', () => {
 
   it('splits fresh from conflicting ids against what is already stored', async () => {
     await seed('worldsDB', 'worlds', [{ id: 'w1', name: 'Mine' }]);
-    const bundle = parseBackup(JSON.stringify({
-      formamorphBackup: 1,
-      data: { worlds: [{ id: 'w1', name: 'Theirs' }, { id: 'w2', name: 'New' }] },
-    }));
+    const index = await worldsIndex([{ id: 'w1', name: 'Theirs' }, { id: 'w2', name: 'New' }]);
 
-    const worlds = (await analyzeBackup(bundle)).find((p) => p.category === 'worlds')!;
+    const worlds = (await analyzeBackup(index)).find((p) => p.category === 'worlds')!;
     expect(worlds.fresh.map((r) => r.id)).toEqual(['w2']);
     expect(worlds.conflicts.map((r) => r.id)).toEqual(['w1']);
   });
 
-  it('keeps the stored copy when a conflicting category is not set to overwrite', async () => {
+  it('keeps the stored copy, unread, when a conflicting category is not set to overwrite', async () => {
     await seed('worldsDB', 'worlds', [{ id: 'w1', name: 'Mine' }]);
-    const plans: CategoryPlan[] = [
-      { category: 'worlds', fresh: [{ id: 'w2', name: 'New' }], conflicts: [{ id: 'w1', name: 'Theirs' }] },
-    ];
+    const index = await worldsIndex([{ id: 'w2', name: 'New' }, { id: 'w1', name: 'Theirs' }]);
 
-    const result = await applyBackup(plans, {
-      worlds: false, saves: false, entities: false, dictionaries: false,
-    });
+    const { result, read } = await applyRecording(index);
 
     expect(result.worlds).toEqual({ added: 1, overwritten: 0, skipped: 1 });
+    expect(read).toEqual(['w2']);
     const stored = await readAll('worldsDB', 'worlds');
     expect(stored.find((r) => r.id === 'w1')?.name).toBe('Mine'); // not clobbered
     expect(stored.find((r) => r.id === 'w2')?.name).toBe('New'); // fresh still lands
@@ -184,15 +216,34 @@ describe('backup round trip (IndexedDB)', () => {
 
   it('replaces the stored copy when the category is set to overwrite', async () => {
     await seed('worldsDB', 'worlds', [{ id: 'w1', name: 'Mine' }]);
-    const plans: CategoryPlan[] = [
-      { category: 'worlds', fresh: [], conflicts: [{ id: 'w1', name: 'Theirs' }] },
-    ];
+    const index = await worldsIndex([{ id: 'w1', name: 'Theirs' }]);
 
-    const result = await applyBackup(plans, {
-      worlds: true, saves: false, entities: false, dictionaries: false,
-    });
+    const result = await applyBackup(index, await analyzeBackup(index), { ...NO_OVERWRITE, worlds: true });
 
     expect(result.worlds).toEqual({ added: 0, overwritten: 1, skipped: 0 });
     expect((await readAll('worldsDB', 'worlds')).find((r) => r.id === 'w1')?.name).toBe('Theirs');
+  });
+
+  it('restores a file too large to read as one string, one record at a time', async () => {
+    const bundle: BackupBundle = {
+      formamorphBackup: 1,
+      appVersion: 'test',
+      exportedAt: '',
+      data: {
+        worlds: [1, 2, 3].map((n) => ({ id: `w${n}`, name: `World ${n}`, data: 'x'.repeat(200) })),
+        saves: [],
+        entities: [],
+        dictionaries: [],
+      },
+    };
+    const whole = backupFile(bundle);
+    // Every record fits under the limit; the file as a whole does not.
+    expect(whole.size).toBeGreaterThan(400);
+
+    const { result, read } = await applyRecording(await readBackupIndex(limitedBlob(whole, 400)));
+
+    expect(result.worlds).toEqual({ added: 3, overwritten: 0, skipped: 0 });
+    expect(read).toEqual(['w1', 'w2', 'w3']);
+    expect(await readAll('worldsDB', 'worlds')).toEqual(bundle.data.worlds);
   });
 });
