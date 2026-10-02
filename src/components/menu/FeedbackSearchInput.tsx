@@ -20,7 +20,7 @@ interface FeedbackSearchInputProps {
 /** A feedback list's search bar: searches after a pause in typing, and clears at once. */
 export function FeedbackSearchInput({ value, onSearch, label }: FeedbackSearchInputProps) {
   const [text, setText] = useState(value);
-  const applied = useRef(value);
+  const lastSent = useRef(value);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -32,17 +32,17 @@ export function FeedbackSearchInput({ value, onSearch, label }: FeedbackSearchIn
   useEffect(() => cancel, []);
 
   useEffect(() => {
-    if (value === applied.current) return;
+    if (value === lastSent.current) return;
     cancel();
-    applied.current = value;
+    lastSent.current = value;
     setText(value);
   }, [value]);
 
   const apply = (next: string) => {
     cancel();
     const term = next.trim();
-    if (term === applied.current) return;
-    applied.current = term;
+    if (term === lastSent.current) return;
+    lastSent.current = term;
     onSearch(term);
   };
 

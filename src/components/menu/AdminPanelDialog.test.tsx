@@ -1,4 +1,4 @@
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AdminPanelDialog } from './AdminPanelDialog';
 
@@ -18,7 +18,9 @@ vi.mock('./AuditLogTab', () => ({ AuditLogTab: () => <div data-testid="log" /> }
 vi.mock('./EventsTab', () => ({ EventsTab: () => <div data-testid="events" /> }));
 vi.mock('./ServerSettingsTab', () => ({ ServerSettingsTab: () => <div data-testid="server-settings" /> }));
 vi.mock('./FeedbackQueueTab', () => ({
-  FeedbackQueueTab: ({ type }: { type: string }) => <div data-testid={`queue-${type}`} />,
+  FeedbackQueueTab: ({ type, active }: { type: string; active: boolean }) => (
+    <div data-testid={`queue-${type}`} data-active={String(active)} />
+  ),
 }));
 
 /** The top strip's active tab. Its triggers come first in the DOM, ahead of any sub-strip's. */
@@ -38,10 +40,12 @@ describe('the tab strip', () => {
   it('carries one tab for the whole feedback tree, not one per branch', () => {
     // Both branches used to sit on the top strip and cost it two of six slots.
     render(<AdminPanelDialog open onOpenChange={() => {}} />);
+    // The first strip is the top one; the Feedback panel's own strip stays mounted below it.
+    const strip = within(screen.getAllByRole('tablist')[0]);
 
-    expect(screen.getByRole('tab', { name: 'Feedback' })).toBeTruthy();
-    expect(screen.queryByRole('tab', { name: 'Bugs' })).toBeNull();
-    expect(screen.queryByRole('tab', { name: 'Suggestions' })).toBeNull();
+    expect(strip.getByRole('tab', { name: 'Feedback' })).toBeTruthy();
+    expect(strip.queryByRole('tab', { name: 'Bugs' })).toBeNull();
+    expect(strip.queryByRole('tab', { name: 'Suggestions' })).toBeNull();
   });
 
   it('puts both branches under it', () => {
@@ -158,5 +162,32 @@ describe('landing on a tab while already open', () => {
     rerender(<AdminPanelDialog open onOpenChange={() => {}} initialTab="feedback" />);
 
     expect(activeTab()).toBe('Users');
+  });
+});
+
+describe('leaving the Feedback tab', () => {
+  it('keeps the queue mounted, and fetching only while it shows', () => {
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="feedback" />);
+    const queue = screen.getByTestId('queue-bug');
+    expect(queue.getAttribute('data-active')).toBe('true');
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Events' }));
+    expect(activeTab()).toBe('Events');
+    expect(screen.getByTestId('queue-bug').getAttribute('data-active')).toBe('false');
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Feedback' }));
+    // The same node: its search, filters, and page were never reset.
+    expect(screen.getByTestId('queue-bug')).toBe(queue);
+    expect(queue.getAttribute('data-active')).toBe('true');
+  });
+
+  it('starts the queue over when the panel closes', () => {
+    const { rerender } = render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="feedback" />);
+    const queue = screen.getByTestId('queue-bug');
+
+    rerender(<AdminPanelDialog open={false} onOpenChange={() => {}} initialTab="feedback" />);
+    rerender(<AdminPanelDialog open onOpenChange={() => {}} initialTab="feedback" />);
+
+    expect(screen.getByTestId('queue-bug')).not.toBe(queue);
   });
 });

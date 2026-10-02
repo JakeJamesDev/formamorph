@@ -1,6 +1,6 @@
 # 04: Search Bar
 
-Status: in-progress
+Status: ready-for-human
 Base: 773f369a
 Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -16,11 +16,11 @@ The server adds an optional search parameter to the list endpoint. It matches ti
 
 The bar sits in the filter row for now. Ticket 07 settles its final place. Copy follows the writing guide.
 
-- [ ] Server: hits title, hits body, misses, ignores case, treats `%` and `_` literally, ignores blank text, caps length
-- [ ] Server: search combines with status list, category, and scope
-- [ ] Client: `FeedbackService.list` sends the search text
-- [ ] Client: typing searches after a pause and resets to page 1; clear applies at once
-- [ ] Client: search survives Back and a tab switch; reopening the dialog starts empty (Q12)
-- [ ] Both tabs, both types
-- [ ] Server tests over supertest; client tests at the tab and service seams
-- [ ] Changelog line under In Progress (client); the deploy log is the user's
+- [x] Server: hits title, hits body, misses, ignores case, treats `%` and `_` literally, ignores blank text, caps length
+- [x] Server: search combines with status list, category, and scope
+- [x] Client: `FeedbackService.list` sends the search text
+- [x] Client: typing searches after a pause and resets to page 1; clear applies at once
+- [x] Client: search survives Back and a tab switch; reopening the dialog starts empty (Q12)
+- [x] Both tabs, both types
+- [x] Server tests over supertest; client tests at the tab and service seams
+- [x] Changelog line under In Progress (client); the deploy log is the user's
