@@ -1,6 +1,7 @@
 # 06: Breadcrumb Picker in the Design System
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3a36f880
 Blocked by: 01, 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -19,10 +20,10 @@ The Design System documents the **Breadcrumb Picker** as a pattern, with a live 
 
 ## Acceptance criteria
 
-- [ ] The showcase entry opens from its dev route and renders every listed state with production components.
-- [ ] The copy passes a copy sweep (Writing Guide roles, STE for non-creative text).
-- [ ] verify-ui frames of the showcase in both themes.
-- [ ] The four gates are green.
+- [x] The showcase entry opens from its dev route and renders every listed state with production components.
+- [x] The copy passes a copy sweep (Writing Guide roles, STE for non-creative text).
+- [x] verify-ui frames of the showcase in both themes.
+- [x] The four gates are green.
 
 ## Notes from ticket 03
 
