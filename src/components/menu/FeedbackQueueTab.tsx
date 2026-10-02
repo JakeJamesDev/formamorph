@@ -6,7 +6,7 @@ import { useFeedbackListPlace } from "@/components/menu/useFeedbackListPlace";
 import { FeedbackStatusSelect } from "@/components/menu/FeedbackStatusSelect";
 import { FeedbackSearchInput } from "@/components/menu/FeedbackSearchInput";
 import {
-  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, SEARCH_LABELS, SORT_LABELS,
+  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, FILTERED_EMPTY_LABELS, SEARCH_LABELS, SORT_LABELS,
   categoryFilterValue, sortsFor, statusFilterValue,
 } from "@/lib/feedbackPresentation";
 import type { FeedbackSort, StatusFilter } from "@/lib/feedbackPresentation";
@@ -18,12 +18,6 @@ interface FeedbackQueueTabProps {
   /** Which branch this queue is for. */
   type: FeedbackType;
 }
-
-/** What each queue says when nothing matches. */
-const EMPTY: Record<FeedbackType, string> = {
-  bug: 'No reports match this filter.',
-  suggestion: 'No suggestions match this filter.',
-};
 
 /**
  * Admin Panel → Bugs / Suggestions. The whole queue for one branch: filter by state, sort, open a
@@ -90,7 +84,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
           onPageChange={setPage}
           refreshNonce={nonce}
           onOpen={open}
-          emptyLabel={EMPTY[type]}
+          emptyLabel={FILTERED_EMPTY_LABELS[type]}
         />
       </div>
     </>

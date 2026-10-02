@@ -212,3 +212,35 @@ describe('the status filter', () => {
     expect(vi.mocked(FeedbackService.list).mock.calls.length).toBeGreaterThan(1);
   });
 });
+
+describe('what the tab says when nothing shows', () => {
+  const empty = () => vi.spyOn(FeedbackService, 'list').mockResolvedValue({ threads: [], total: 0 });
+
+  it('blames the status filter while it narrows the list', async () => {
+    // The default hides closed threads, so "You haven't reported anything yet." would be false.
+    empty();
+    render(<MyFeedbackTab active type="bug" />);
+    expect(await screen.findByText('No reports match this filter.')).toBeTruthy();
+    expect(screen.queryByText('You haven’t reported anything yet.')).toBeNull();
+  });
+
+  it('words it for suggestions', async () => {
+    empty();
+    render(<MyFeedbackTab active type="suggestion" />);
+    expect(await screen.findByText('No suggestions match this filter.')).toBeTruthy();
+  });
+
+  it('keeps the scope label once the status filter is All', async () => {
+    empty();
+    render(<MyFeedbackTab active type="bug" />);
+    await screen.findByText('No reports match this filter.');
+
+    fireEvent.keyDown(screen.getByLabelText('Filter by status'), { key: 'Enter' });
+    const all = await screen.findByRole('option', { name: 'All statuses' });
+    fireEvent.pointerDown(all, { pointerType: 'mouse' });
+    fireEvent.pointerUp(all, { pointerType: 'mouse' });
+    fireEvent.click(all);
+
+    expect(await screen.findByText('You haven’t reported anything yet.')).toBeTruthy();
+  });
+});

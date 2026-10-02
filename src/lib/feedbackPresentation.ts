@@ -81,6 +81,12 @@ export const UNRESOLVED_LABELS: Record<FeedbackType, string> = {
 /** Everything the status filter can hold: one state, every state, or every state still needing work. */
 export type StatusFilter = FeedbackStatus | typeof ANY_STATUS | typeof UNRESOLVED_STATUS;
 
+/** What a list says when its filters leave nothing to show. */
+export const FILTERED_EMPTY_LABELS: Record<FeedbackType, string> = {
+  bug: 'No reports match this filter.',
+  suggestion: 'No suggestions match this filter.',
+};
+
 /** What every feedback list opens on: the threads that still need work. */
 export const DEFAULT_STATUS_FILTER: Record<FeedbackType, StatusFilter> = {
   bug: UNRESOLVED_STATUS,
