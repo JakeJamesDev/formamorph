@@ -115,8 +115,8 @@ describe('what each box completes and checks against', () => {
     expect(optionsOf('Before the AI').selfName).toBe('Warmth');
     expect(optionsOf('Before the AI').traits).toEqual(['Brave', 'Night Owl', 'Beast Fury']);
     expect(optionsOf('Before the AI').entities).toEqual([
-      { id: 'e1', name: 'Mira', persona: true, traits: ['Scarred'], folder: [], tabPosition: 0 },
-      { id: 'e2', name: 'Ash', persona: false, traits: ['Loyal'], folder: [], tabPosition: 1 },
+      { id: 'e1', name: 'Mira', persona: true, traits: [{ id: 't4', name: 'Scarred', path: [] }], folder: [], tabPosition: 0 },
+      { id: 'e2', name: 'Ash', persona: false, traits: [{ id: 't5', name: 'Loyal', path: [] }], folder: [], tabPosition: 1 },
     ]);
   });
 

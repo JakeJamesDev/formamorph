@@ -103,9 +103,31 @@ describe('entityTraitNames', () => {
 
   it('lists each entity’s traits, owned or linked, and marks the ones a persona choice can play', () => {
     expect(entityTraitNames({ traits: [cursed], traitGroups: [], entities }, [])).toEqual([
-      { id: 'mira', name: 'Mira', persona: true, traits: ['Scarred', 'Cursed'], folder: [], tabPosition: 0 },
-      { id: 'ash', name: 'Ash', persona: false, traits: ['Loyal'], folder: [], tabPosition: 1 },
-      { id: 'wanderer', name: 'Wanderer', persona: true, traits: ['Marked'], folder: [], tabPosition: 2 },
+      { id: 'mira', name: 'Mira', persona: true, folder: [], tabPosition: 0, traits: [
+        { id: 'scarred', name: 'Scarred', path: [] }, { id: 'cursed', name: 'Cursed', path: [] },
+      ] },
+      { id: 'ash', name: 'Ash', persona: false, traits: [{ id: 'loyal', name: 'Loyal', path: [] }], folder: [], tabPosition: 1 },
+      { id: 'wanderer', name: 'Wanderer', persona: true, traits: [{ id: 'marked', name: 'Marked', path: [] }], folder: [], tabPosition: 2 },
+    ]);
+  });
+
+  it('lists an entity’s traits in its own tree order, each under its own group names', () => {
+    const groups: TraitGroup[] = [
+      { id: 'marks', name: 'Marks', parentId: null, order: 0 },
+      { id: 'old', name: '{{ph:ph-sky:world:p1}} Scars', parentId: 'marks', order: 0 },
+    ];
+    const sky: Placeholder = { id: 'ph-sky', name: 'Sky', values: [{ id: 'v-grey', text: 'Grey' }] };
+    const vale: Entity = {
+      id: 'vale', name: 'Vale', traitGroups: groups, traitLinks: [{ ...link, groupId: 'marks' }],
+      traits: [
+        { id: 'keen', name: 'Keen', statChanges: [], order: 2 },
+        { id: 'scarred', name: 'Scarred', statChanges: [], groupId: 'old', order: 0 },
+      ],
+    };
+    expect(entityTraitNames({ traits: [cursed], traitGroups: [], entities: [vale] }, [sky])[0].traits).toEqual([
+      { id: 'scarred', name: 'Scarred', path: ['Marks', 'Sky Scars'] },
+      { id: 'cursed', name: 'Cursed', path: ['Marks'] },
+      { id: 'keen', name: 'Keen', path: [] },
     ]);
   });
 

@@ -1,8 +1,8 @@
 import type { CascadeOffTraitIds, Entity, EntityGroup, GameState, OwnedTraitStates, Placeholder, Trait, TraitGroup } from '@/types';
 import { buildTree, flattenTree, type TreeGroup, type TreeLeaf } from './groupTree';
-import { canBePlayer, inCast, playsAs, resolveBearers, type BearerWorld } from './bearers';
+import { canBePlayer, inCast, playsAs, resolveBearers, type Bearer, type BearerWorld } from './bearers';
 import type { SandboxEntity, SandboxPlaceholderNode, SandboxTrait } from './statCodeExecutor';
-import type { CodeEntityNames } from './statCodeAnalysis';
+import type { CodeEntityNames, CodeTraitPlace } from './statCodeAnalysis';
 import { statCodeName } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
 import { traitGates, traitUnlocked, type AppliedTraitValues, type TraitWorld } from './traitRuntime';
@@ -169,7 +169,8 @@ function inTreeOrder<G extends TreeGroup, L extends TreeLeaf>(
 }
 
 /** Every authored entity, persona-only ones included, as the editor reads it: code names only, since the
- *  editor knows no playthrough. Authored order, which decides who holds a shared name. */
+ *  editor knows no playthrough. Authored order, which decides who holds a shared name. Each trait set comes
+ *  in the entity's own tree order. */
 export function entityTraitNames(
   world: BearerWorld & { entityGroups?: readonly EntityGroup[] }, placeholders: readonly Placeholder[],
 ): CodeEntityNames[] {
@@ -182,19 +183,18 @@ export function entityTraitNames(
       id: entity.id,
       persona: canBePlayer(entity),
       name: statCodeName(entity.name, named),
-      traits: (bearers.get(entity.id)?.traits ?? []).map((trait) => statCodeName(authoredTraitName(trait, entity, world.traits), named)),
+      traits: traitPlaces(bearers.get(entity.id), entity, world.traits, named),
       ...tab.get(entity.id),
     };
   });
 }
 
-/** One world trait as a template slot lists it: its code name and its group path. */
-export interface CodeTraitPlace {
-  id: string;
-  name: string;
-  /** Group names under their code names, outermost first. Empty at the top level. */
-  path: readonly string[];
-}
+/** A bearer's traits, owned or linked, in its tree order under their authored code names. */
+const traitPlaces = (
+  bearer: Bearer | undefined, entity: Entity, worldTraits: readonly Trait[], named: readonly Placeholder[],
+): CodeTraitPlace[] =>
+  inTreeOrder(bearer?.groups ?? [], bearer?.traits ?? [], (group) => statCodeName(group.name, named))
+    .map(({ leaf, path }) => ({ id: leaf.id, name: statCodeName(authoredTraitName(leaf, entity, worldTraits), named), path }));
 
 /** The world's own traits in Traits-tab order, which `traits` keys. */
 export const worldTraitPlaces = (
@@ -208,7 +208,7 @@ export const worldTraitPlaces = (
 export const unplayedEntities = (
   entities: readonly CodeEntityNames[], owners: ReadonlyMap<string, SandboxPlaceholderNode>,
 ): SandboxEntity[] => entities.map(({ id, name, traits }) => ({
-  id, name, traits: traits.map((trait) => ({ name: trait, enabled: false, acquired: false })), placeholders: owners.get(id),
+  id, name, traits: traits.map((trait) => ({ name: trait.name, enabled: false, acquired: false })), placeholders: owners.get(id),
 }));
 
 /** Whose trait maps hold one trait: the world's `traits`, the persona's, and each entity's by code name. */

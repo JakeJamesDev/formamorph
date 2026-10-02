@@ -49,9 +49,14 @@ const entityGroups: EntityGroup[] = [
   { id: 'crew', name: 'Crew', parentId: null, order: 0 },
   { id: 'deck', name: 'Deck', parentId: 'crew', order: 0 },
 ];
-const owned = (id: string, name: string): Trait => ({ id, name, statChanges: [] });
+const owned = (id: string, name: string, groupId?: string): Trait => ({ id, name, statChanges: [], groupId });
+// Mira's own Traits tree: Scars › Wounded, then Calm at the top level.
 const entities: Entity[] = [
-  { id: 'e1', name: 'Mira', groupId: 'deck', order: 0, traits: [owned('wounded', 'Wounded')] },
+  {
+    id: 'e1', name: 'Mira', groupId: 'deck', order: 0,
+    traitGroups: [{ id: 'scars', name: 'Scars', parentId: null, order: 0 }],
+    traits: [{ ...owned('calm', 'Calm'), order: 1 }, owned('wounded', 'Wounded', 'scars')],
+  },
   { id: 'e2', name: 'Ash', order: 1, traits: [owned('loyal', 'Loyal')] },
   { id: 'e3', name: 'Rook', groupId: 'crew', order: 1, persona: true, traits: [owned('scarred', 'Scarred')] },
 ];
@@ -195,8 +200,8 @@ describe('the form a template presents', () => {
     const user = userEvent.setup();
     await authoring(user, 'entities[{{who:entity}}].traits[{{t:trait(who)}}]; persona.traits[{{p:trait(persona)}}];');
     await user.click(await screen.findByRole('combobox', { name: 'P' }));
-    expect(await rows()).toEqual(['Scarred']);
-    await user.click(await screen.findByRole('option', { name: 'Scarred' }));
+    expect(await rows()).toEqual(['ScarredRook']);
+    await user.click(await screen.findByRole('option', { name: /^Scarred/ }));
     // Entities-tab order, each under its Entity folders.
     await user.click(await screen.findByRole('combobox', { name: 'Who' }));
     expect(await rows()).toEqual(['MiraCrew › Deck', 'RookCrew', 'Ash']);
@@ -212,6 +217,52 @@ describe('the form a template presents', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Who' }));
     await user.click(await screen.findByRole('option', { name: /^Mira/ }));
     await waitFor(() => expect(generated()).toContain('entities["Mira"].traits[""]'));
+  });
+
+  it('lists the picked entity’s traits in its own tree order under its own groups, and follows the pick', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'entities[{{who:entity}}].traits[{{t:trait(who)}}];');
+
+    await user.click(await screen.findByRole('combobox', { name: 'Who' }));
+    await user.click(await screen.findByRole('option', { name: /^Mira/ }));
+    await user.click(screen.getByRole('combobox', { name: 'T' }));
+    expect(await rows()).toEqual(['WoundedScars', 'Calm']);
+    await user.click(screen.getByRole('option', { name: /^Wounded/ }));
+    await waitFor(() => expect(generated()).toContain('entities["Mira"].traits["Wounded"]'));
+
+    await user.click(screen.getByRole('combobox', { name: 'Who' }));
+    await user.click(await screen.findByRole('option', { name: /^Rook/ }));
+    await user.click(screen.getByRole('combobox', { name: 'T' }));
+    expect(await rows()).toEqual(['Scarred']);
+  });
+
+  // `persona.traits` reads by name, so a name two personas share is one value under either holder.
+  it('lists each persona entity’s traits under its name and groups, a shared name under both', async () => {
+    const user = userEvent.setup();
+    const vale: Entity = {
+      id: 'e4', name: 'Vale', order: 2, persona: true,
+      traitGroups: [{ id: 'marks', name: 'Marks', parentId: null, order: 0 }],
+      traits: [{ ...owned('keen', 'Keen'), order: 1 }, owned('vale-scarred', 'Scarred', 'marks')],
+    };
+    await authoring(user, 'persona.traits[{{p:trait(persona)}}];', 'after', [...entities, vale]);
+
+    const slot = await screen.findByRole('combobox', { name: 'P' });
+    await user.click(slot);
+    expect(await rows()).toEqual(['ScarredRook', 'ScarredVale › Marks', 'KeenVale']);
+    await user.click(screen.getAllByRole('option')[0]);
+    await waitFor(() => expect(generated()).toContain('persona.traits["Scarred"]'));
+
+    // Both rows hold the picked value, and the other row writes the same code.
+    await user.click(slot);
+    const shared = (await screen.findAllByRole('option')).filter((option) => option.textContent?.startsWith('Scarred'));
+    expect(shared.map((option) => option.getAttribute('data-state'))).toEqual(['checked', 'checked']);
+    await user.click(shared[1]);
+    await waitFor(() => expect(generated()).toContain('persona.traits["Scarred"]'));
+    expect(slot).toHaveTextContent('Scarred');
+
+    await user.click(slot);
+    await user.type(screen.getByPlaceholderText('Search traits'), 'vale');
+    expect(await rows()).toEqual(['ScarredVale › Marks', 'KeenVale']);
   });
 
   // The sandbox keys a shared name to the last authored entity, so its row and its traits are that one's.

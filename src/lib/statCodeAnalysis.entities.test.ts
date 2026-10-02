@@ -12,12 +12,15 @@ function labels(doc: string, options?: Parameters<typeof statCodeCompletions>[2]
 const messages = (code: string, options?: Parameters<typeof statCodeDiagnostics>[1]) =>
   statCodeDiagnostics(code, options).map((diagnostic) => diagnostic.message);
 
+/** Top-level traits under these names. */
+const topLevel = (...names: string[]) => names.map((name) => ({ id: name, name, path: [] }));
+
 // Two entities share the code name Rook; the later one's set is what code reads.
 const entities = [
-  { id: 'mira', name: 'Mira', persona: true, traits: ['Scarred', 'Night Owl'] },
-  { id: 'old-rook', name: 'Old Rook', persona: false, traits: ['Calm'] },
-  { id: 'rook', name: 'Rook', persona: false, traits: ['Calm'] },
-  { id: 'later-rook', name: 'Rook', persona: false, traits: ['Angry', 'Loyal'] },
+  { id: 'mira', name: 'Mira', persona: true, traits: topLevel('Scarred', 'Night Owl') },
+  { id: 'old-rook', name: 'Old Rook', persona: false, traits: topLevel('Calm') },
+  { id: 'rook', name: 'Rook', persona: false, traits: topLevel('Calm') },
+  { id: 'later-rook', name: 'Rook', persona: false, traits: topLevel('Angry', 'Loyal') },
 ];
 
 describe('entities in stat code', () => {
@@ -37,7 +40,7 @@ describe('entities in stat code', () => {
   });
 
   it('offers no unnamed entity, as the sandbox lists none', () => {
-    const withBlank = [...entities, { id: 'blank', name: '', persona: false, traits: ['Hidden'] }];
+    const withBlank = [...entities, { id: 'blank', name: '', persona: false, traits: topLevel('Hidden') }];
     expect(labels('return entities["|"];', { entities: withBlank })).toEqual(['Mira', 'Old Rook', 'Rook']);
     expect(labels('return entities[""].traits.|', { entities: withBlank })).toEqual([]);
   });

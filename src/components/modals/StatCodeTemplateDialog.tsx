@@ -39,8 +39,7 @@ import {
 } from '@/lib/statCodeTemplates';
 import { STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
-import { keyedEntityNames, personaTraitsOf, traitsOfEntity, type CodeEntityNames } from '@/lib/statCodeAnalysis';
-import type { CodeTraitPlace } from '@/lib/statCodeTraits';
+import { keyedEntity, keyedEntityNames, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { BreadcrumbPicker, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
 import { WORLD_BREADCRUMB } from '@/lib/traitGates';
 import {
@@ -107,15 +106,29 @@ const PROMPTS: Record<NameSlotType, { pick: string; search: string }> = {
 const plainRows = (names: readonly string[] | null): SlotRow[] =>
   [...new Set(names)].map((name) => ({ key: name, value: name, name }));
 
+/** The entities in Entities-tab order. */
+const inTabOrder = (entities: readonly CodeEntityNames[]): CodeEntityNames[] => entities
+  .map((entity, authored) => ({ entity, authored }))
+  .sort((a, b) => (a.entity.tabPosition ?? a.authored) - (b.entity.tabPosition ?? b.authored))
+  .map(({ entity }) => entity);
+
 /** The keyed entities in Entities-tab order, each under its folders. A shared name lists the entity the sandbox keys. */
 const entityRows = (entities: readonly CodeEntityNames[]): SlotRow[] => {
   const keyed = new Set(keyedEntityNames(entities));
-  return entities
-    .map((entity, authored) => ({ entity, authored }))
-    .filter(({ entity }) => keyed.has(entity.name) && entities.findLast((e) => e.name === entity.name) === entity)
-    .sort((a, b) => (a.entity.tabPosition ?? a.authored) - (b.entity.tabPosition ?? b.authored))
-    .map(({ entity }) => ({ key: entity.id, value: entity.name, name: entity.name, breadcrumb: entity.folder }));
+  return inTabOrder(entities)
+    .filter((entity) => keyed.has(entity.name) && entities.findLast((e) => e.name === entity.name) === entity)
+    .map((entity) => ({ key: entity.id, value: entity.name, name: entity.name, breadcrumb: entity.folder }));
 };
+
+/** One entity's traits in its own tree order, each under `lead` and then its own groups. */
+const traitRows = (entity: CodeEntityNames, lead: readonly string[]): SlotRow[] =>
+  entity.traits.map((trait) => ({
+    key: `${entity.id}:${trait.id}`, value: trait.name, name: trait.name, breadcrumb: [...lead, ...trait.path],
+  }));
+
+/** Each persona entity's traits under its name, in Entities-tab order. A name two of them hold lists under both. */
+const personaTraitRows = (entities: readonly CodeEntityNames[]): SlotRow[] =>
+  inTabOrder(entities).filter((entity) => entity.persona).flatMap((entity) => traitRows(entity, [entity.name]));
 
 /** The answers with `slot` set to `value`. The trait slots tied to it clear, since they held the old entity's traits. */
 const withAnswer = (answers: Record<string, string>, slots: readonly TemplateSlot[], slot: TemplateSlot, value: string) => ({
@@ -135,8 +148,11 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
       return entityRows(names.entities);
     case 'trait': {
       const owner = slots.find((other) => other.name === slot.owner && other.type === 'entity');
-      if (owner) return plainRows(traitsOfEntity(names.entities, resolveSlotValue(owner, values)));
-      if (slot.owner === PERSONA_TRAIT_OWNER) return plainRows(personaTraitsOf(names.entities));
+      if (owner) {
+        const entity = keyedEntity(names.entities, resolveSlotValue(owner, values));
+        return entity ? traitRows(entity, []) : [];
+      }
+      if (slot.owner === PERSONA_TRAIT_OWNER) return personaTraitRows(names.entities);
       return names.trait.map((trait) => ({
         key: trait.id, value: trait.name, name: trait.name, breadcrumb: trait.path.length > 0 ? trait.path : WORLD_BREADCRUMB,
       }));
