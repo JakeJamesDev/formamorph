@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeTraits } from './statCodeTraits';
+import type { StatCodeBearers } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import type { PlaceholderOwners } from './placeholderHomes';
@@ -42,7 +42,7 @@ const owners: PlaceholderOwners = new Map([
 const dictionaries = [{ id: 'first-weather', name: 'Weather' }, { id: 'later-weather', name: 'Weather' }, { id: 'lore', name: 'Lore' }];
 
 /** The trait state of a playthrough under `persona`, the library persona among its library entities. */
-function played(persona: PersonaRef, library: Entity[] = []): StatCodeTraits {
+function played(persona: PersonaRef, library: Entity[] = []): StatCodeBearers {
   const entities = [molly, rook, mira];
   const entered = [...withPersonaEntry(entities, persona, library[0]?.name)];
   return {
@@ -57,9 +57,9 @@ function played(persona: PersonaRef, library: Entity[] = []): StatCodeTraits {
 const asLyra: PersonaRef = { source: 'library', entityId: 'lyra' };
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 
-const run = (code: string, traits: StatCodeTraits = played(asLyra, [lyra])) => runStatCodeTurn({
+const run = (code: string, traits: StatCodeBearers = played(asLyra, [lyra])) => runStatCodeTurn({
   stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
-  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits,
+  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: traits,
   placeholders: { placeholders: list, owners, dictionaries, rolls: { world: {} } },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
 } satisfies StatCodeTurn);
@@ -131,7 +131,7 @@ describe('runStatCodeTurn owner placeholders', () => {
       + ' return dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "run-weather" ? 1 : 0;';
     const out = await runStatCodeTurn({
       stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asLyra, [lyra]),
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asLyra, [lyra]),
       placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides, weather], rolls: { world: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
@@ -144,7 +144,7 @@ describe('runStatCodeTurn owner placeholders', () => {
     const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
     const out = await runStatCodeTurn({
       stats: [stat({ id: 's0', name: 'S0', value: 0, code: 'placeholders.Tag.pin("x"); placeholders.Tide.pin("y");' })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asMira, [pip]),
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asMira, [pip]),
       placeholders: { placeholders: list, owners, dictionaries, libraryDictionaries: [tides], rolls: { world: {} } },
       statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
     });
@@ -190,7 +190,7 @@ describe('runStatCodeTurn owner placeholders', () => {
     const withLore = new Map([...owners, ['lore-mood', { kind: 'dictionary' as const, id: 'lore', name: 'Lore' }]]);
     const out = await runStatCodeTurn({
       stats: [stat({ id: 's0', name: 'S0', value: 0, code })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asLyra, [lyra]),
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asLyra, [lyra]),
       placeholders: {
         placeholders: [...list, mood], owners: withLore, dictionaries, rolls: { world: {} },
         inPlayDictionaryIds: new Set(['first-weather', 'later-weather']),
@@ -211,7 +211,7 @@ describe('runStatCodeTurn owner placeholders', () => {
     const tides: Dictionary = { id: 'run-tides', name: 'Tides', entries: [], placeholders: [ph('tide', 'Tide', ['ebb'])] };
     const out = await runStatCodeTurn({
       stats: [stat({ id: 's0', name: 'S0', value: 0, code: 'return dictionaries.Lore.id === "lore" && dictionaries.Tides.id === "run-tides" && dictionaries.Weather.id === "" ? 1 : 0;' })],
-      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits: played(asLyra, [lyra]),
+      enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: played(asLyra, [lyra]),
       placeholders: {
         placeholders: list, owners, dictionaries, libraryDictionaries: [tides], rolls: { world: {} },
         inPlayDictionaryIds: new Set(['lore']),

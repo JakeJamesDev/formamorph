@@ -1,7 +1,7 @@
-import type { CascadeOffTraitIds, CodeBounds, CodePins, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
+import type { CascadeOffTraitIds, CodeBounds, CodePins, Dictionary, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
 import {
-  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type PlaceholderWrite,
-  type SandboxPlaceholderNode, type StatClock, type StatTurnInputs, type TraitWrite, type ValueAndMax,
+  CODE_BOUND_FIELDS, executeStatCode, keyedEntities, type EntityTraitWrites, type KeyedEntities, type PlaceholderWrite,
+  type SandboxPlaceholderNode, type StatClock, type StatCodeResult, type StatTurnInputs, type TraitWrite, type ValueAndMax,
 } from './statCodeExecutor';
 import { statCodeName, statCodeNamed } from './statCodeNames';
 import {
@@ -9,7 +9,7 @@ import {
 } from './statCodePlaceholders';
 import { recordKey } from './ownedTraitState';
 import {
-  codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeTraits,
+  codeEntities, sandboxTraits, type CodeEntities, type CodeEntity, type StatCodeBearers,
 } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
@@ -52,7 +52,7 @@ export interface StatCodeTurn {
   regenApplied: Readonly<Record<string, number>>;
   clock: StatClock;
   /** What `traits`, `entities` and `persona` read and switch. Bounds re-derive under the ones in force. */
-  traits: StatCodeTraits;
+  bearers: StatCodeBearers;
   /** What `placeholders`, each owner entry's `placeholders` and `dictionaries` read. Absent, all are empty. */
   placeholders?: StatCodePlaceholderSet;
   /** A stat's name as the player reads it, for the turn log. Required, not defaulted: a caller that left
@@ -127,6 +127,45 @@ const withBooksInPlay = (set: StatCodePlaceholderSet): StatCodePlaceholderSet =>
   return inPlay ? { ...set, dictionaries: set.dictionaries?.filter((book) => inPlay.has(book.id)) } : set;
 };
 
+/** A playthrough's placeholder set, short of the pins each run reads at its own base. The authored books in
+ *  play are the ones `runtimeDictionaries` leaves on. */
+export function playthroughPlaceholderSet({ runtimeDictionaries, ...set }: Omit<StatCodePlaceholderSet, 'inPlayDictionaryIds'> & {
+  runtimeDictionaries: readonly Dictionary[];
+}): StatCodePlaceholderSet {
+  return { ...set, inPlayDictionaryIds: new Set(runtimeDictionaries.filter((book) => book.enabled !== false).map((book) => book.id)) };
+}
+
+/** Each result field that lists dropped writes, and how the turn's warning describes it. */
+const RESULT_WARNINGS = {
+  unknownPlaceholders: 'wrote placeholders the world does not have',
+  unknownOwnerPlaceholders: 'wrote placeholders of owners not in play',
+  unknownTraits: 'switched traits the world does not have',
+  acquiredWrites: 'wrote acquired on',
+  readOnlyWrites: 'wrote read-only fields',
+  unknownEntities: 'switched traits of entities not in play',
+} as const satisfies Partial<Record<keyof StatCodeResult, string>>;
+
+/** Each entity row field that lists dropped writes, and how the warning describes it for `whose` traits. */
+const ENTITY_WARNINGS = {
+  unknownTraits: (whose: string) => `switched traits ${whose} does not have`,
+  acquiredWrites: (whose: string) => `wrote acquired on traits of ${whose}`,
+} as const satisfies Partial<Record<keyof EntityTraitWrites, (whose: string) => string>>;
+
+/** Warn of every write a run dropped, one line per result field that lists any. */
+function warnDroppedWrites(statName: string, result: StatCodeResult): void {
+  const warn = (message: string, names: readonly string[] | undefined) => {
+    if (names) console.warn(`Stat ${statName} ${message}: ${names.join(', ')}`);
+  };
+  for (const [field, message] of Object.entries(RESULT_WARNINGS) as [keyof typeof RESULT_WARNINGS, string][]) {
+    warn(message, result[field]);
+  }
+  for (const row of result.entities ?? []) {
+    for (const [field, message] of Object.entries(ENTITY_WARNINGS) as [keyof typeof ENTITY_WARNINGS, (whose: string) => string][]) {
+      warn(message(row.entity || 'the persona'), row[field]);
+    }
+  }
+}
+
 /** Run every enabled stat's code over one turn in the sandbox, in parallel over one snapshot. A failing
  *  run is logged and leaves its stat unchanged. Empty code clears its stat's code bounds. */
 export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnResult> {
@@ -151,10 +190,10 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
 
   const coded = named.filter((stat) => turn.enabled[stat.id] !== false && boxCode(stat, timing).trim());
   // Resolved once, so every stat's code reads the same placeholders and the same traits.
-  const traits = coded.length ? sandboxTraits(turn.traits, placeholderDefs) : [];
-  const cast = coded.length ? codeEntities(turn.traits, placeholderDefs) : null;
+  const traits = coded.length ? sandboxTraits(turn.bearers, placeholderDefs) : [];
+  const cast = coded.length ? codeEntities(turn.bearers, placeholderDefs) : null;
   // The library's pools join the run as the session's Placeholder Set joins them.
-  const placeholderSet = turn.placeholders && withLibraryPlaceholders(withBooksInPlay(turn.placeholders), turn.traits.library ?? []);
+  const placeholderSet = turn.placeholders && withLibraryPlaceholders(withBooksInPlay(turn.placeholders), turn.bearers.library ?? []);
   const sandbox = coded.length && placeholderSet ? sandboxPlaceholders(placeholderSet) : null;
   const placeholders = sandbox?.top ?? [];
   const inPlay = cast && withOwnerNodes(cast, sandbox?.owners);
@@ -177,29 +216,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     if (result.traits || result.entities) {
       traitWritesByStat.set(stat.id, { world: result.traits ?? [], entities: result.entities ?? [] });
     }
-    if (result.unknownPlaceholders) {
-      console.warn(`Stat ${stat.name} wrote placeholders the world does not have: ${result.unknownPlaceholders.join(', ')}`);
-    }
-    if (result.unknownOwnerPlaceholders) {
-      console.warn(`Stat ${stat.name} wrote placeholders of owners not in play: ${result.unknownOwnerPlaceholders.join(', ')}`);
-    }
-    if (result.unknownTraits) {
-      console.warn(`Stat ${stat.name} switched traits the world does not have: ${result.unknownTraits.join(', ')}`);
-    }
-    if (result.acquiredWrites) {
-      console.warn(`Stat ${stat.name} wrote acquired on: ${result.acquiredWrites.join(', ')}`);
-    }
-    if (result.readOnlyWrites) {
-      console.warn(`Stat ${stat.name} wrote read-only fields: ${result.readOnlyWrites.join(', ')}`);
-    }
-    if (result.unknownEntities) {
-      console.warn(`Stat ${stat.name} switched traits of entities not in play: ${result.unknownEntities.join(', ')}`);
-    }
-    for (const { entity, unknownTraits, acquiredWrites } of result.entities ?? []) {
-      const whose = entity || 'the persona';
-      if (unknownTraits) console.warn(`Stat ${stat.name} switched traits ${whose} does not have: ${unknownTraits.join(', ')}`);
-      if (acquiredWrites) console.warn(`Stat ${stat.name} wrote acquired on traits of ${whose}: ${acquiredWrites.join(', ')}`);
-    }
+    warnDroppedWrites(stat.name, result);
   }));
   const pinWrites = pinWritesInStatOrder(live, placeholderWritesByStat);
   for (const stat of live) {
@@ -210,18 +227,19 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
   // Trait switches first, so bounds re-derive under them; the code's own bounds and values then go on top.
   const before: TraitRuntimeState = {
     stats: [...turn.stats],
-    traits: [...turn.traits.acquired],
-    disabledTraitIds: [...turn.traits.disabledTraitIds],
-    appliedValues: turn.traits.appliedValues,
-    cascadeOffTraitIds: turn.traits.cascadeOffTraitIds,
-    ownedTraits: turn.traits.ownedTraits,
+    traits: [...turn.bearers.acquired],
+    disabledTraitIds: [...turn.bearers.disabledTraitIds],
+    appliedValues: turn.bearers.appliedValues,
+    cascadeOffTraitIds: turn.bearers.cascadeOffTraitIds,
+    ownedTraits: turn.bearers.ownedTraits,
   };
+  const keyed = inPlay && keyedEntities(inPlay.entities, inPlay.persona);
   const switched = applyCodeTraitSwitches(
     before,
-    traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, inPlay, placeholderDefs, turn.statNameOf),
-    turn.traits.world, turn.traitNameOf,
+    traitSwitchesInStatOrder(live, traitWritesByStat, turn.bearers, keyed, placeholderDefs, turn.statNameOf),
+    turn.bearers.world, turn.traitNameOf,
   );
-  const active = statTraitsInForce(switched.state, turn.traits.world);
+  const active = statTraitsInForce(switched.state, turn.bearers.world);
   const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
     acquired: switched.state.traits,
     disabledTraitIds: switched.state.disabledTraitIds,
@@ -264,20 +282,18 @@ interface StatTraitWrites {
   entities: readonly EntityTraitWrites[];
 }
 
-
 /** Each stat's trait switches keyed by bearer and trait, in stat order: the later stat wins, and its switch
  *  applies at that stat's position. A name resolves to the last trait with it, as the sandbox map does. */
 function traitSwitchesInStatOrder(
   stats: readonly PlayerStat[],
   writesByStat: ReadonlyMap<string, StatTraitWrites>,
-  traits: StatCodeTraits,
-  inPlay: CodeEntities | null,
+  bearers: StatCodeBearers,
+  inPlay: KeyedEntities<CodeEntity> | null,
   placeholders: readonly Placeholder[],
   /** The switching stat's name as the player reads it — the log line names it. */
   statNameOf: (stat: PlayerStat) => string,
 ): CodeTraitSwitch[] {
-  const idByName = new Map(traits.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
-  const entityByName = inPlay ? keyedEntities(inPlay.entities, inPlay.persona) : new Map<string, CodeEntity>();
+  const idByName = new Map(bearers.world.traits.map((trait) => [statCodeName(trait.name, placeholders), trait.id]));
   const out = new Map<string, CodeTraitSwitch>();
   const setLast = (key: string, at: CodeTraitSwitch) => {
     out.delete(key);
@@ -291,7 +307,7 @@ function traitSwitchesInStatOrder(
     }
     for (const { entity: name, traits: switched = [] } of written?.entities ?? []) {
       // An empty name is `persona`, which an unnamed persona entity can still be.
-      const entity = name ? entityByName.get(name) : inPlay?.persona;
+      const entity = name ? inPlay?.byName.get(name) : inPlay?.persona;
       if (!entity?.id) continue;
       const idByTraitName = new Map(entity.traits.map((trait) => [trait.name, trait.id]));
       for (const write of switched) {
