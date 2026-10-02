@@ -59,6 +59,7 @@ import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { numInput } from '@/lib/numInput';
+import { Hint, FieldError } from '@/components/ui/typography';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import { EndpointRouteField } from './EndpointRouteField';
 import { TextEndpointEditor } from './TextEndpointEditor';
@@ -1242,7 +1243,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-3">
             {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-helper text-muted-foreground">Preset</span>
+              <Hint as="span">Preset</Hint>
               {imageEndpointPresets.length > 1 && (
                 <ConfirmDialog
                   title="Delete Preset"
@@ -1298,7 +1299,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     <SelectItem value="a1111">Automatic1111 / Forge (local)</SelectItem>
                     <SelectItem value="novelai">NovelAI (cloud)</SelectItem>
                     <SelectItem value="openai" disabled={!desktop}>
-                      OpenAI-compatible (cloud){desktop ? '' : ' — desktop app only'}
+                      {desktop ? 'OpenAI-compatible (cloud)' : 'OpenAI-compatible (cloud, desktop app only)'}
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -1356,7 +1357,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                       placeholder="Pick an installed model"
                     />
                     {invokeMetaError && (
-                      <p className="text-helper text-destructive">{invokeMetaError}</p>
+                      <FieldError>{invokeMetaError}</FieldError>
                     )}
                   </div>
                 ) : (
@@ -1379,29 +1380,29 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   value={imageNegativePrompt}
                   onChange={setImageNegativePrompt}
                   ariaLabel="Negative Prompt"
-                  placeholder="tags to avoid…"
+                  placeholder="e.g. lowres, blurry"
                 />
               </Row>
               {advanced && (<>
               <Row {...rowCopy('portraitSize')}>
                 <div className="flex items-center gap-2">
-                  <Input aria-label="Portrait width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
+                  <Input aria-label="Portrait Width" type="number" min={64} step={64} value={imagePortraitWidth} onChange={(e) => setImagePortraitWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
-                  <Input aria-label="Portrait height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(numInput(e.target.value, 64))} className="w-28" />
+                  <Input aria-label="Portrait Height" type="number" min={64} step={64} value={imagePortraitHeight} onChange={(e) => setImagePortraitHeight(numInput(e.target.value, 64))} className="w-28" />
                 </div>
               </Row>
               <Row {...rowCopy('landscapeSize')}>
                 <div className="flex items-center gap-2">
-                  <Input aria-label="Landscape width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(numInput(e.target.value, 64))} className="w-28" />
+                  <Input aria-label="Landscape Width" type="number" min={64} step={64} value={imageLandscapeWidth} onChange={(e) => setImageLandscapeWidth(numInput(e.target.value, 64))} className="w-28" />
                   <span className="text-muted-foreground">×</span>
-                  <Input aria-label="Landscape height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(numInput(e.target.value, 64))} className="w-28" />
+                  <Input aria-label="Landscape Height" type="number" min={64} step={64} value={imageLandscapeHeight} onChange={(e) => setImageLandscapeHeight(numInput(e.target.value, 64))} className="w-28" />
                 </div>
               </Row>
               </>)}
               <Row {...rowCopy('stepsCfg')}>
                 <div className="flex items-center gap-2">
                   <Input aria-label="Steps" type="number" min={1} value={imageSteps} onChange={(e) => setImageSteps(numInput(e.target.value, 1))} className="w-28" />
-                  <Input aria-label="CFG scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(numInput(e.target.value, 0))} className="w-28" />
+                  <Input aria-label="CFG Scale" type="number" min={0} step={0.5} value={imageCfg} onChange={(e) => setImageCfg(numInput(e.target.value, 0))} className="w-28" />
                 </div>
               </Row>
               <Row htmlFor="imageSampler" {...rowCopy('imageSampler')}>
@@ -1427,7 +1428,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   // The description holds still across providers; only what it costs you differs.
                   info={<HintInfo>{imageProvider === 'a1111'
                     ? 'Fixes faces and hands. Requires the **ADetailer** extension installed on your A1111/Forge server.'
-                    : 'Re-renders the face at full resolution. Roughly **doubles** generation time; SDXL and SD1.5 only.'}</HintInfo>}
+                    : 'Re-renders the face at full resolution. Roughly **doubles** generation time. Works with SDXL and SD1.5 only.'}</HintInfo>}
                 />
               )}
               {advanced && imageProvider === 'comfyui' && (
@@ -1510,7 +1511,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     htmlFor="imageInvokeVae"
                     {...rowCopy(invokeSubmodelBase === 'anima' ? 'invokeVaeAnima' : 'invokeVaeZImage')}
                     info={<HintInfo>{invokeSubmodelBase === 'anima'
-                      ? 'Anima needs a **QwenImage/Wan 2.1** VAE — a FLUX VAE also works. Leave blank to auto-pick.'
+                      ? 'Anima needs a **QwenImage/Wan 2.1** VAE. A FLUX VAE also works. Leave blank to auto-pick.'
                       : 'Z-Image needs a **FLUX-type** VAE, such as the FLUX.1-schnell VAE. Leave blank to auto-pick.'}</HintInfo>}
                   >
                     <TokenAutocomplete
