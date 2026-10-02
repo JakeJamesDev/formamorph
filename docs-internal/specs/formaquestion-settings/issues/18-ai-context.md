@@ -29,6 +29,11 @@ The window keeps the traces in memory with the conversation. They are recorded a
 - The Search block shows, for each source that was on, its top sections in order, then the merged order, with the sections that reached the model marked.
 - On mobile it opens full screen.
 
+**What ticket 03 left for this ticket.**
+
+- The shared request card takes the record, its index, the folded state, the section open state and its handler, and a text renderer. The caller owns the collapse state.
+- The card has no place yet for the samplers or for a custom-prompt mark. The record's endpoint details carry no sampler values. Extend the shared card with an optional slot for header chips, or widen the endpoint details; do not fork the card. The game view's AI Context must look the same after the change.
+
 The dialog reports to the surface registry and has a dev-route entry. The General docs section gains the switch, and the Formaquestion docs page gains an AI Context section.
 
 Recommended model rationale: a new event through the help session, a record per request across two request kinds and tool rounds, and a second caller of the request card.
