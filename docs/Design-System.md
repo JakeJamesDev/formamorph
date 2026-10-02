@@ -481,9 +481,11 @@ It differs from the Searchable Group Picker. That pattern is a Dialog for an unb
 
 ### Composition
 
-- **Trigger.** A field that looks like a Select trigger. It shows the picked name, or the slot's prompt such as "Pick a trait…". A caller can supply its own trigger, such as an outline button.
+- **Trigger.** A field that looks like a Select trigger. It shows the picked name, or the slot's prompt such as "Pick a trait…". A caller can supply its own trigger, such as an outline button. That popover has a fixed width of 20rem.
 - **Search.** The search field always shows. It matches a row's name and its full breadcrumb, with no sorting.
 - **Rows.** Rows keep the order of the matching editor tab. A group is never a row. It shows only as a breadcrumb segment.
+- **Hint.** A row can carry a right-aligned hint that is not a location. A hint never collapses and has no tooltip.
+- **Caller page.** A caller can replace the list with its own page, such as Add Requirement's bearer page.
 - **Check column.** A picker with a value reserves a check column. Every row that holds the value shows a check.
 
 ### Row layout and collapse
@@ -506,7 +508,7 @@ It differs from the Searchable Group Picker. That pattern is a Dialog for an unb
 
 ### Keyboard and responsive behavior
 
-Arrow keys move through rows, Enter picks the row, and Escape closes the picker with no change. The popover matches the trigger width and stays inside the viewport, so it fits a phone. Long lists scroll inside the popover.
+Arrow keys move through rows, Enter picks the row, and Escape closes the picker with no change. A field trigger's popover matches the trigger width, with a minimum of 16rem, and stays inside the viewport. Long lists scroll inside the popover.
 
 ### Production mapping
 
@@ -521,7 +523,7 @@ Open `#dev?modal=designSystem&tab=breadcrumb-picker`. The reference uses sample 
 
 ### Writing review
 
-Prompts such as "Pick a trait…" and the "Nothing to pick" and "No matches" lines are functional copy with no period. Sample names are authored content and keep their own voice. This review is local; it does not certify STE compliance.
+Prompts such as "Pick a trait…" and the "Nothing to pick" and "No matches" lines are functional copy with no period. Sample names are authored content and keep their own voice. This review is local. It does not certify STE compliance.
 
 ## Pattern: Lists With Controls or Metadata
 

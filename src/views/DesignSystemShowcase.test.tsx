@@ -271,12 +271,18 @@ describe('breadcrumb picker reference', () => {
     await user.keyboard('{Escape}');
 
     await user.click(screen.getByRole('combobox', { name: 'Picked' }));
-    expect(await screen.findAllByRole('option', { selected: false })).not.toHaveLength(0);
-    expect(document.querySelectorAll('[data-state="checked"]')).toHaveLength(2);
+    const listbox = await screen.findByRole('listbox');
+    expect(within(listbox).getAllByRole('option')).toHaveLength(4);
+    expect(listbox.querySelectorAll('[data-state="checked"]')).toHaveLength(2);
     await user.keyboard('{Escape}');
 
     await user.click(screen.getByRole('combobox', { name: 'Empty' }));
     expect(await screen.findByText('Nothing to pick')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('combobox', { name: 'Disabled Row' }));
+    const disabledRow = await screen.findByRole('option', { name: /Fatigue/ });
+    expect(disabledRow).toHaveAttribute('aria-disabled', 'true');
     await user.keyboard('{Escape}');
 
     expect(screen.getByRole('combobox', { name: 'Unavailable' })).toBeDisabled();
