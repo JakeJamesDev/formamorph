@@ -1,6 +1,6 @@
 # 02: Entities map
 
-Status: ready-for-human
+Status: done
 Base: 8fa13c68
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

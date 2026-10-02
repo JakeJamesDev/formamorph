@@ -1,6 +1,6 @@
 # 06: Remove old routes
 
-Status: ready-for-human
+Status: done
 Base: 788e5fdf
 Blocked by: 04, 05, 11
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

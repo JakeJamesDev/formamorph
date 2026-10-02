@@ -1,6 +1,6 @@
 # 04: Owner placeholders
 
-Status: ready-for-human
+Status: done
 Base: 4f85effe
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
