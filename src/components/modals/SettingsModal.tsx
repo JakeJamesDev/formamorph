@@ -19,8 +19,8 @@ import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS } from '@/components
 import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningRuledOut, toolsSupported, defaultPromptReasoningSetting, resolveReasoningBudgetPct, nativeReasoningSuppressed, type PromptReasoningSetting } from '@/lib/reasoningEffort';
-import { MaxOutputControl, PromptReasoningField, type MaxOutputControlProps, type PromptReasoningFieldProps } from './PromptOptionFields';
-import { promptReasoningFieldProps } from './promptReasoningField';
+import { MaxOutputControl, PromptReasoningField, type MaxOutputControlProps } from './PromptOptionFields';
+import { promptReasoningFieldProps, type PromptReasoningFieldProps } from './promptReasoningField';
 import { DisplaySettingsSection } from './DisplaySettingsSection';
 import { OutputSettingsSection } from './OutputSettingsSection';
 import type { SettingsSource } from './settingsSource';
@@ -998,9 +998,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // the active model is ruled out entirely.
   const activeNoNativeReasoning = reasoningRuledOut(reasoningCapability);
   const activeToolsSupported = toolsSupported(reasoningCapability);
-  // Per-prompt Native Reasoning control. Its switch is shared by every target; the strength beside it is the
-  // token budget wherever the record says the target takes one, and the coarse effort level elsewhere. The
-  // effort still goes out beside a budget, from the stored level — the Output row is its visible control.
+  // Beside a budget, the stored level still goes out; the Output row is its visible control.
   const reasoningControl = promptReasoningFieldProps({
     target: promptTarget,
     kind: activeKind,

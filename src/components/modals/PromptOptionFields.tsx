@@ -7,8 +7,6 @@ import { MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMax
 import { ReasoningSwitch, type ReasoningStrength } from './ReasoningSwitch';
 import type { PromptReasoningFieldProps } from './promptReasoningField';
 
-export type { PromptReasoningFieldProps } from './promptReasoningField';
-
 /** A prompt's Max Output row. Off reads Auto with the shipped cap; on, the slider sets the cap in tokens. */
 export interface MaxOutputControlProps {
   custom: boolean;

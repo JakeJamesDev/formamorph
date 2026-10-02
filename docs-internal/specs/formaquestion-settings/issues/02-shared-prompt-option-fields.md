@@ -1,6 +1,7 @@
 # 02: Shared prompt option fields
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 4e55abce
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -21,7 +22,7 @@ Recommended model rationale: a small extraction, but the reasoning states (ruled
 
 ## Acceptance criteria
 
-- [ ] The fields are exported and take props only.
-- [ ] One function builds the reasoning field's props from a resolved endpoint and a setting, with a pure test for each state: no reasoning support, levels, budget, locked on, off refused.
-- [ ] Settings → Prompts → Options looks and works as before, and the existing tests pass with no edit to an assertion.
-- [ ] The four gates are green.
+- [x] The fields are exported and take props only.
+- [x] One function builds the reasoning field's props from a resolved endpoint and a setting, with a pure test for each state: no reasoning support, levels, budget, locked on, off refused.
+- [x] Settings → Prompts → Options looks and works as before, and the existing tests pass with no edit to an assertion.
+- [x] The four gates are green.

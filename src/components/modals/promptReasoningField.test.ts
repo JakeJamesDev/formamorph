@@ -65,6 +65,11 @@ describe('promptReasoningFieldProps', () => {
     expect(props?.budget).toMatchObject({ disabled: true, tokens: undefined });
   });
 
+  it('still reads the dialect floor with no Max Output to scale from', () => {
+    const props = promptReasoningFieldProps(input({ reasoning: { dialect: 'anthropic-budget', budget: true }, maxTokens: undefined }));
+    expect(props?.budget).toMatchObject({ disabled: true, tokens: 1024 });
+  });
+
   it('draws no slider where the record says the endpoint takes no budget', () => {
     expect(promptReasoningFieldProps(input({ reasoning: { dialect: 'lmstudio', budget: false } }))?.budget).toBeNull();
   });

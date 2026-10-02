@@ -44,15 +44,11 @@ export interface PromptReasoningFieldInput {
 export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omit<PromptReasoningFieldProps, 'disabled'> | null {
   const { target, kind, setting, budgetPct, suppressed, onChange, onBudgetChange } = input;
   const capability = target.reasoning;
-  // A record rules reasoning out when the model is known not to reason, or when the endpoint accepts no
-  // reasoning_effort literal at all (not even `none`). An unanswered record keeps the field showing. A
-  // dialect that publishes nothing about its own reasoning, such as a vLLM server, has nothing worth drawing
-  // until one reply proves it separates its reasoning.
+  // An unanswered record keeps the field; a proof-needing dialect (vLLM) waits for its first reply.
   const applicable = !suppressed
     && (target.localEngine || (!reasoningRuledOut(capability) && !reasoningAwaitingProof(capability)));
   if (!applicable) return null;
-  // The readout's tokens come from the routed endpoint's Max Output, the same base the request reads. With
-  // no base, a floor dialect still sends its floor.
+  // The same base the request reads; with none, a floor dialect still sends its floor.
   const tokens = reasoningBudget({
     effort: 'auto', kind, budgets: { [kind]: budgetPct }, base: target.maxTokens, answerCap: undefined,
     floor: reasoningDialectBudgetFloor(capability.dialect),
@@ -62,9 +58,7 @@ export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omi
     onChange,
     options: promptReasoningLevelOptions(capability, setting.level),
     lockedOn: reasoningOffRefused(capability),
-    // Both halves follow the dialect's row: the slider where it names a budget field and the record says the
-    // endpoint takes one, the dropdown where it carries an effort literal and the record lists a strength to
-    // pick. The built-in engine's row names no level field, so its dropdown would be inert and is not drawn.
+    // Each half follows the dialect's row and the record; the engine names no level field, so no dropdown.
     budget: capability.budget && reasoningDialectTakesBudget(capability.dialect)
       ? { value: budgetPct, set: onBudgetChange, tokens, disabled: target.maxTokens === undefined }
       : null,
