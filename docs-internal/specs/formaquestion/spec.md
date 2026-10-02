@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: formaquestion — spec
-Status note: 33 tickets in issues/. 32 and 33 are follow-ups from the effort review and wait for 26. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
+Status note: 37 tickets in issues/. 32 and 33 are follow-ups from the effort review; 32 and 34–36 fix the search misses from ticket 26's baseline, and 37 measures the result against the bar (Q59). 33 runs after the search tickets. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
 
 ## Problem Statement
 
@@ -94,6 +94,9 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q56 | The review's standards smells go in one refactor ticket with no behavior change, after ticket 26 (ticket 33) |
 | Q57 | The probe's two-per-page rule covers the guide pages only. Two "what's new" questions cover the changelog, scored on source and flag, with no keyed facts (ticket 26 ruling) |
 | Q58 | Grounded-correct needs all four checks: keyed facts present, forbidden facts absent, the right section among the sources, flag correct. A key may list several acceptable sections; an answer correct from an unlisted section is reported in its own column (ticket 26 ruling) |
+| Q59 | The pass bar: 80% grounded-correct on the default cloud model, over English task, "here" and follow-up questions together. Ticket 26 measured 44–50%; 92% when the right section reaches the model (ticket 37) |
+| Q60 | Follow-ups from the baseline: "here" questions also search the surface's page (ticket 32), guide sections rank above the changelog (34), follow-ups weight the earlier answer's page (35), filler words do not match (36) |
+| Q61 | Questions written in another language get no ticket now and stay out of the bar. The lookup arm on a local model waits until after the search fixes |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
