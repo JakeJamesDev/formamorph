@@ -1,0 +1,98 @@
+/**
+ * The AI picks search source: one plain chat request lists every guide section heading, and the model copies
+ * the lines of the sections that answer the question. It offers no function, so every endpoint takes it.
+ */
+import { requestAiText } from '@/lib/aiRequest/aiText';
+import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
+import { guideSections } from './guideSections';
+
+/** The most sections one pick reply names. */
+export const HELP_PICK_LIMIT = 5;
+
+/** The cap of a pick reply in tokens: room for the copied lines. */
+export const HELP_PICK_MAX_TOKENS = 150;
+
+/** The fixed pick prompt. The contract is positive and names no sample line a small model can copy. */
+export const HELP_PICK_SYSTEM_PROMPT = [
+  'You are the librarian of the Formamorph player guide. Formamorph is a text adventure app. A player asks a question, and you pick the guide sections that answer it.',
+  '',
+  'The message lists every section of the guide, one on each line: the page, then the headings down to the section.',
+  '',
+  '- Pick the sections whose text answers the question, the best one first.',
+  `- Pick ${HELP_PICK_LIMIT} sections at most.`,
+  '- Reply with the lines of your picks alone, one on each line, each copied as the list writes it.',
+].join('\n');
+
+/** The sections a model picks from: one line for each whole guide section. */
+export function pickList(index: DocsIndex): { lines: string[]; sections: DocSection[][] } {
+  const whole = guideSections(index).filter((entry) => !entry.laterPart);
+  return { lines: whole.map((entry) => entry.line), sections: whole.map((entry) => entry.parts) };
+}
+
+export interface PickQuestion {
+  question: string;
+  /** The question before this one, for a follow-up. */
+  earlier?: string;
+  /** The open screen, as the answer request names it. */
+  where?: string;
+}
+
+/** The one user message of a pick request: the section list, then the question. */
+export function pickMessage(lines: readonly string[], { question, earlier, where }: PickQuestion): string {
+  return [
+    `<sections>\n${lines.join('\n')}\n</sections>`,
+    ...(where ? [`The player asks from this screen: ${where}.`] : []),
+    ...(earlier ? [`The player's earlier question: ${earlier}`] : []),
+    `Question: ${question}`,
+    'Reply with the lines of the sections that answer the question, the best one first.',
+  ].join('\n\n');
+}
+
+/** A line's letters and numbers as lowercase words, so a copy matches through markers, case and punctuation. */
+const lineWords = (line: string) => (line.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(' ');
+
+/**
+ * The list positions a model picked: each line of its reply that copies a line of the list, as an index
+ * into `lines`. An exact copy wins, so two lines with the same words stay apart. A reply line with no page
+ * matches when one line alone ends with it.
+ */
+export function readPicks(reply: string, lines: readonly string[]): number[] {
+  const listed = lines.map(lineWords);
+  const picks: number[] = [];
+  for (const source of reply.split('\n')) {
+    const copied = source.replace(/^\s*(?:\d+[.)]\s*|[-*•]\s+)/, '');
+    const words = lineWords(copied);
+    if (!words) continue;
+    let at = lines.indexOf(copied.replace(/\*\*/g, '').trim());
+    if (at < 0) at = listed.indexOf(words);
+    if (at < 0) {
+      const ending = listed.flatMap((line, i) => (line.endsWith(` ${words}`) ? [i] : []));
+      at = ending.length === 1 ? ending[0] : -1;
+    }
+    if (at >= 0 && !picks.includes(at)) picks.push(at);
+    if (picks.length === HELP_PICK_LIMIT) break;
+  }
+  return picks;
+}
+
+/**
+ * Asks the model which guide sections answer the question, best first; none when the reply copies no line.
+ * It sends as the help kind, so its temperature and penalty are pinned and reasoning is off. Throws the
+ * request pipeline's errors, and an `AbortError` when stopped.
+ */
+export async function requestPicks(
+  index: DocsIndex,
+  ask: PickQuestion,
+  snapshot: AiSettingsSnapshot,
+  options: { signal?: AbortSignal; fetchImpl?: typeof fetch } = {},
+): Promise<DocSection[]> {
+  const { lines, sections } = pickList(index);
+  const reply = await requestAiText(snapshot, {
+    systemPrompt: HELP_PICK_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: pickMessage(lines, ask) }],
+    requestType: 'help',
+    maxTokensOverride: HELP_PICK_MAX_TOKENS,
+  }, options);
+  return readPicks(reply, lines).flatMap((at) => sections[at]);
+}

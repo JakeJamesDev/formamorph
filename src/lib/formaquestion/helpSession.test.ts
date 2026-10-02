@@ -3,6 +3,7 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { reasoningCapabilityFromLevels } from '@/lib/reasoningEffort';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { pastPicks } from '@/test/helpFixtures';
 import { AiStreamError } from '@/lib/aiRequest/aiStream';
 import type { AIRequestType, ImageAttachment } from '@/types';
 import { languageDirective } from '@/lib/languages';
@@ -27,9 +28,9 @@ const bodyOf = (spy: FetchSpy, call = 0) => JSON.parse(spy.mock.calls[call][1].b
   messages: { role: string; content: string }[];
 } & Record<string, unknown>;
 
-/** One help question against the fixture docs, sent through the fake fetch. */
+/** One help question against the fixture docs. The fake fetch gets the answer request; the pick request picks nothing. */
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, snapshot: textSnapshot(), index, fetchImpl: fetchImpl as unknown as typeof fetch, ...over });
+  askHelp({ question, snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];

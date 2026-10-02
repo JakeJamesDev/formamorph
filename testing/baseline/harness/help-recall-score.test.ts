@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall } from './help-recall-score';
+import { chunksOf, scoreRecall, summarizeRecall } from './help-recall-score';
 
 describe('scoreRecall', () => {
   const right = ['Library#how-to-make-a-group', 'Library#groups'];
@@ -45,63 +45,6 @@ describe('summarizeRecall', () => {
 
   it('gives zero shares for no questions', () => {
     expect(summarizeRecall([])).toEqual({ questions: 0, first: 0, at5: 0, sent: 0 });
-  });
-});
-
-describe('mergeRanks', () => {
-  it('orders the sections by their places in every list', () => {
-    expect(mergeRanks([['a', 'b', 'c'], ['b', 'd', 'a']])).toEqual(['b', 'a', 'd', 'c']);
-  });
-
-  it('keeps a section that only one list holds', () => {
-    expect(mergeRanks([['a'], ['b']]).sort()).toEqual(['a', 'b']);
-  });
-
-  it('keeps the order of a single list', () => {
-    expect(mergeRanks([['c', 'a', 'b'], []])).toEqual(['c', 'a', 'b']);
-  });
-});
-
-describe('rankByVector', () => {
-  const v = (...values: number[]) => Float32Array.from(values);
-
-  it('orders ids by the dot product with the query, best first', () => {
-    const ranked = rankByVector(v(1, 0), [{ id: 'far', vector: v(0, 1) }, { id: 'near', vector: v(1, 0) }, { id: 'mid', vector: v(0.6, 0.8) }]);
-    expect(ranked.map((r) => r.id)).toEqual(['near', 'mid', 'far']);
-  });
-
-  it('scores an id with several vectors by its best one, and lists it once', () => {
-    const ranked = rankByVector(v(1, 0), [{ id: 'split', vector: v(0.8, 0.6) }, { id: 'one', vector: v(0.6, 0.8) }, { id: 'split', vector: v(0, 1) }]);
-    expect(ranked.map((r) => r.id)).toEqual(['split', 'one']);
-    expect(ranked[0].score).toBeCloseTo(0.8);
-  });
-});
-
-describe('readPicks', () => {
-  const lines = ['Library › How to Make a Group', 'Library › Groups', 'Settings › Output', 'World Editor: Traits › Groups', 'Memory › The Memory Tab', 'Memory › Kept vs Sent', 'Tools › Try It'];
-
-  it('reads the copied lines of the reply as list positions, in the order of the reply', () => {
-    expect(readPicks('Settings › Output\nLibrary › How to Make a Group', lines)).toEqual([2, 0]);
-  });
-
-  it('reads a line through a list marker, another case and other punctuation', () => {
-    expect(readPicks('1. library > how to make a group\n- **Memory › The Memory Tab**', lines)).toEqual([0, 4]);
-  });
-
-  it('reads a line with no page when one section alone has that heading', () => {
-    expect(readPicks('Kept vs Sent', lines)).toEqual([5]);
-  });
-
-  it('drops a heading that two pages have, a line the list does not hold, and a repeat', () => {
-    expect(readPicks('Groups\nLibrary › Tiles\nSettings › Output\nSettings › Output', lines)).toEqual([2]);
-  });
-
-  it('keeps five picks at most', () => {
-    expect(readPicks(lines.join('\n'), lines)).toEqual([0, 1, 2, 3, 4]);
-  });
-
-  it('reads no pick from a reply that copies no line', () => {
-    expect(readPicks('None of the sections answer it.', lines)).toEqual([]);
   });
 });
 

@@ -6,7 +6,9 @@
 // ones; `help-baseline-score.ts` scores by text match.
 //
 // Each question runs in every arm inside the same batch, so the endpoint's drift hits all of them:
-//   retrieval  the app's help session as it ships: the Docs Index finds the sections, one request
+//   retrieval  the app's help session as it ships: the search sources that are on find the sections (one pick
+//              request), then one answer request
+//   keyword-only with `--keyword-only`: retrieval with the AI picks source off, as before ticket 44
 //   lookup     with `--lookup`: the help session in lookup mode, on an endpoint that takes function calls
 //   old        with `--old`: retrieval with the surface section outside the block: its length comes off the
 //              budget before the search, and the 5-section limit covers the search hits only
@@ -39,7 +41,7 @@
 // Then the worst questions of each docs arm with a first cause. Read the answers before you name a cause.
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
-//          [--lookup] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--floor-old] [--floor-alt 0.35] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--lookup] [--keyword-only] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--floor-old] [--floor-alt 0.35] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -52,7 +54,7 @@ import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/for
 import { askHelp, HELP_DOCS_CHAR_BUDGET, HELP_MAX_TOKENS, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
-import { probeSnapshot, type ProbeTarget } from './help-probe-shared';
+import { mean, noUsage, probeSnapshot, send, sessionFetch, type ProbeTarget, type Usage } from './help-probe-shared';
 import { BASELINE_KINDS, loadBaselineCases, type BaselineCase, type BaselineKind } from './help-baseline-cases';
 import { inLanguage, scoreAnswer, summarize, worstQuestions, type ScoredRow, type Summary } from './help-baseline-score';
 
@@ -68,13 +70,11 @@ const worstCount = Number(argVal('--worst', '10'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
-type Arm = 'retrieval' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'no-docs';
-
-/** Tokens in and out, summed over the requests of one question. */
-interface Usage { promptTokens: number; answerTokens: number; requests: number }
-const noUsage = (): Usage => ({ promptTokens: 0, answerTokens: 0, requests: 0 });
+type Arm = 'retrieval' | 'keyword-only' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'no-docs';
 
 interface Sample extends Usage {
+  /** The time from the question to the end of the answer, in milliseconds. A saved batch can have none. */
+  ms?: number;
   /** The answer text, with the general-knowledge marker removed. */
   answer: string;
   flagged: boolean;
@@ -132,52 +132,20 @@ const NO_DOCS_SYSTEM_PROMPT = [
   '- After the steps, add one or two sentences of detail when the player needs them.',
 ].join('\n');
 
-interface Completion {
-  choices?: { message?: { content?: string | null; tool_calls?: { id?: string; function: { name: string; arguments: string } }[] }; finish_reason?: string }[];
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
-}
-/** Sends one request body with streaming off and reasoning off, and adds its token counts to `usage`. */
-async function send(url: RequestInfo | URL, init: RequestInit | undefined, usage: Usage): Promise<Completion | Response> {
-  const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-  const response = await fetch(url, { ...init, body: JSON.stringify({ ...body, stream: false, reasoning_effort: 'none' }) });
-  if (!response.ok) return response;
-  const json = await response.json() as Completion;
-  usage.requests++;
-  usage.promptTokens += json.usage?.prompt_tokens ?? 0;
-  usage.answerTokens += json.usage?.completion_tokens ?? 0;
-  return json;
-}
-
-/** A fetch for the help session: each request goes out through `send` and comes back as the stream the session reads. */
-function sessionFetch(usage: Usage): typeof fetch {
-  return (async (url: RequestInfo | URL, init?: RequestInit) => {
-    const result = await send(url, init, usage);
-    if (result instanceof Response) return result;
-    const choice = result.choices?.[0];
-    const frame = (delta: Record<string, unknown>, finish: string | null = null) =>
-      `data: ${JSON.stringify({ choices: [{ delta, finish_reason: finish }] })}\n\n`;
-    const frames = [
-      ...(choice?.message?.content ? [frame({ content: choice.message.content })] : []),
-      ...(choice?.message?.tool_calls ?? []).map((call, at) => frame({ tool_calls: [{ index: at, id: call.id ?? `call-${at}`, type: 'function', function: call.function }] })),
-      frame({}, choice?.finish_reason ?? 'stop'),
-      'data: [DONE]\n\n',
-    ];
-    return new Response(frames.join(''), { headers: { 'Content-Type': 'text/event-stream' } });
-  }) as typeof fetch;
-}
-
 /** One question through the app's help session. */
 async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
   const usage = noUsage();
   const lookup = arm === 'lookup';
   const untiered = arm === 'rank-old';
+  const started = performance.now();
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index, lookup,
     snapshot: probeSnapshot(target, lookup), fetchImpl: sessionFetch(usage),
+    ...(arm === 'keyword-only' && { searchSources: { aiPicks: false } }),
   });
   const idOf = (id: string) => (untiered && id.startsWith(`${UNTIERED_CHANGELOG}#`) ? `Changelog${id.slice(UNTIERED_CHANGELOG.length)}` : id);
   for await (const event of session) {
-    if (event.type === 'done') return { answer: event.text, flagged: event.flagged, sources: event.sources.map((section) => idOf(section.id)), lead: event.lead?.id, ...usage };
+    if (event.type === 'done') return { answer: event.text, flagged: event.flagged, sources: event.sources.map((section) => idOf(section.id)), lead: event.lead?.id, ms: performance.now() - started, ...usage };
   }
   throw new Error('the help session ended with no answer');
 }
@@ -246,7 +214,7 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 
@@ -342,6 +310,18 @@ for (const arm of batch.arms) {
     ],
   )}`);
 }
+// What one question costs in each arm: the requests it sends, their tokens, its time and its sections.
+report.push(`## Cost per question\n\n${table(
+  ['Arm', 'Requests', 'Tokens in', 'Tokens out', 'Time', 'Sections sent'],
+  batch.arms.map((arm) => {
+    const samples = batch.rows.flatMap((r) => (r.arm === arm && r.sample && picked.has(r.caseId) ? [r.sample] : []));
+    const timed = samples.flatMap((s) => (s.ms === undefined ? [] : [s.ms]));
+    return [
+      arm, mean(samples.map((s) => s.requests)).toFixed(2), mean(samples.map((s) => s.promptTokens)).toFixed(0), mean(samples.map((s) => s.answerTokens)).toFixed(0),
+      timed.length ? `${(mean(timed) / 1000).toFixed(2)} s` : '–', mean(samples.map((s) => s.sources.length)).toFixed(2),
+    ];
+  }),
+)}`);
 for (const arm of batch.arms.filter((a) => a !== 'no-docs')) {
   const failing = worstQuestions(scored.filter((r) => r.arm === arm), Infinity);
   const worst = failing.slice(0, worstCount);
