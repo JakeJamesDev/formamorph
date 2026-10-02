@@ -18,6 +18,7 @@ The answer prompt gets an Options panel on the Prompts tab, with the shared fiel
 - The values are device settings that apply to every help preset (Q10). The panel says so, because gameplay Options belong to a preset.
 - The Default preset does not lock them.
 - The answer request reads them. The pick request keeps its pinned values and its own cap.
+- Today both requests send as the `help` kind and take the same sampler pin, and an AI call has a cap override but no sampler override. This ticket adds the samplers to the help settings value and a call-level sampler override, which the answer request uses. The `help` pin stays for the pick request (Q50).
 
 The Prompts docs section gains the panel.
 

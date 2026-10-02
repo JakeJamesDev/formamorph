@@ -92,6 +92,7 @@ Settled with the user on 2026-10-02. A later ruling that refines an earlier one 
 | Q47 | The catalog Tools are worded for narration: they name an entity list, a scene and a story that a help request does not have. The Tools tab lists the guide lookup, a help-worded dice roll that is off by default, and the player's own Tools. The four lookups (entity, location, dictionary entry, recall) are not listed. Replaces Q35 |
 | Q48 | The Formaquestion endpoint editor never changes the game's active endpoint. Its preset select chooses the preset to edit, as view state of the tab, and it starts on the preset that answers resolve to. Add New Preset adds to the shared list and opens the new preset in the editor; it changes no route. The Answer Endpoint and Pick Endpoint selects are the only controls that change where help requests go. An edit to a preset's fields still applies everywhere that preset is used, the game included. From the ticket 01 session; follows from Q3 and story 18 |
 | Q49 | The "Same as Answer" row of the Pick Endpoint select is built in ticket 07. Ticket 01 changes no behavior and adds no row |
+| Q50 | The answer samplers join the help settings value in ticket 13, not ticket 04. They are a request-kind pin today that the pick request shares, so they need a call-level sampler override; ticket 13 adds the field, the override and the controls together, and the pick request keeps the pin. From the ticket 04 session |
 
 ### Rulings of the Formaquestion spec that this effort replaces
 
