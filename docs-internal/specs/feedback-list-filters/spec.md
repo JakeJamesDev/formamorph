@@ -86,6 +86,7 @@ Rulings from the grilling session:
 | Q15 | Users get Sort on every tab and scope. |
 | Q16 | Server tickets land and deploy before client tickets. |
 | Q17 | Default sorts stay: staff Suggestions on Most voted, users on Newest, Bugs on Newest. |
+| Q18 | The user picked layout A, "One Row, Filters Popover", from the ticket 06 prototype. See Layout. |
 
 ### Server
 
@@ -109,7 +110,12 @@ Rulings from the grilling session:
 - **User tab.** Defaults: the current scope default, Unresolved or Still Open, any category, Newest. Visible: search, scope, file button. Hidden: Status, Category, Sort.
 - **Empty labels.** On the user tab, a set search shows a "No reports match this search." style label. Without a search, a status filter other than All shows the "No reports match this filter." style label. At All, the tab keeps its "nothing yet" labels. The staff queue keeps its "match this filter" labels.
 - **Hidden filters.** One control per tab holds the hidden filters. A badge shows the number of hidden filters that differ from their defaults. Reset returns every filter to its default, the visible ones included: Status, Category, Sort, and the user's scope. Reset leaves the search text alone; the search bar has its own clear button.
-- **Layout prototype.** Two or three layouts on the dev route, in both themes, at a realistic dialog width. The user picks one. The pick is a new visual pattern, so it needs the user's approval before adoption under the design system.
+- **Layout (Q18, layout A from the ticket 06 prototype).** The user approved it as a new pattern.
+  - One row: the search bar grows to fill it, then the visible controls, then a **Filters** button (filter-list icon, "Filters" label, count badge). The user row is search, scope, **Filters**, then the file button.
+  - **Filters** opens a popover, aligned to the end and not portaled. It holds the hidden filters as labeled selects, then a divider and a ghost **Reset Filters** button (rotate icon), aligned left. Reset is disabled when every filter is at its default.
+  - Below the `sm` breakpoint: search takes its own row. Staff Status and Sort share two equal grid columns. **Filters** becomes icon-only, with the badge on its top-right corner. The user's file button becomes icon-only with a screen-reader label.
+  - **Filters** has the accessible name "More Filters", or "More Filters, N changed" when the badge shows.
+  - Reference build: branch `prototype/filter-row-layout`, commit `41b8a13a`, the filter row prototype component.
 - Copy for the search placeholder, the hidden-filters label, Reset, and the new sort labels follows the writing guide and is AP title case.
 
 ## Testing Decisions
