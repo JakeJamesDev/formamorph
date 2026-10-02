@@ -115,10 +115,11 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   lead?: DocSection;
 } = {}): DocSection[] {
   const previous = keptHistory(history).at(-1);
+  const options = { onSurface: lead !== undefined };
   const hits = previous
-    ? [...index.search(question, 1, topicOf(previous)), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT)]
-    : index.search(question, HELP_SECTION_LIMIT);
-  const onPage = lead ? index.search(question, Infinity).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
+    ? [...index.search(question, 1, topicOf(previous), options), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT, undefined, options)]
+    : index.search(question, HELP_SECTION_LIMIT, undefined, options);
+  const onPage = lead ? index.search(question, Infinity, undefined, options).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
   const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];
   const kept: DocSection[] = lead ? [lead] : [];
   let size = lead?.markdown.length ?? 0;
