@@ -145,7 +145,7 @@ The **Search** tab finds sections by the words you type. It needs no network and
 - A section that has more of your words is higher in the list than a section that repeats one word.
 - A plural finds the singular: "blueprints" finds **Blueprint**.
 - Guide sections are higher in the list than changelog sections.
-- A question such as "what's new?" or "what changed?" lists the newest releases first.
+- A question such as "what's new?" or "what changed?" lists the newest release first. Name a version, such as "what changed in 3.1.1?", to see that release first.
 - **No sections match** shows when no word matches.
 
 The search reads each page of this guide, the [Glossary](Glossary), the [World Format](WorldFormat) page and the newest releases in the [Changelog](Changelog).
