@@ -31,6 +31,9 @@ export const HELP_SECTION_LIMIT = 5;
  */
 export const HELP_DOCS_CHAR_BUDGET = 12_000;
 
+/** The least share of a search's top hit score another of its hits needs to join the docs block of a help question. */
+export const HELP_SCORE_FLOOR = 0.2;
+
 /** The most characters of docs section text the lookup calls of one question return together, in addition to the prompt's. */
 export const HELP_LOOKUP_CHAR_BUDGET = 12_000;
 
@@ -107,7 +110,7 @@ const HOW_TO_HEADING = /^how to\b/i;
  * follow-up such as "and then?" has few keywords of its own, so its own top hit favors the page of the
  * previous answer's topic, and after it come the hits of the previous question and the follow-up
  * searched together. The lead's page adds its best how-to sections for the question next, so a "here"
- * question reaches them.
+ * question reaches them. Any other hit under the score floor of its own search stays out.
  */
 export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead }: {
   history?: readonly EarlierExchange[];
@@ -115,11 +118,12 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   lead?: DocSection;
 } = {}): DocSection[] {
   const previous = keptHistory(history).at(-1);
-  const options = { onSurface: lead !== undefined };
+  const options = { onSurface: lead !== undefined, floor: HELP_SCORE_FLOOR };
   const hits = previous
     ? [...index.search(question, 1, topicOf(previous), options), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT, undefined, options)]
     : index.search(question, HELP_SECTION_LIMIT, undefined, options);
-  const onPage = lead ? index.search(question, Infinity, undefined, options).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
+  // The open page's how-tos skip the floor: a "here" question's key often scores far below its top hit.
+  const onPage = lead ? index.search(question, Infinity, undefined, { onSurface: true }).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
   const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];
   const kept: DocSection[] = lead ? [lead] : [];
   let size = lead?.markdown.length ?? 0;

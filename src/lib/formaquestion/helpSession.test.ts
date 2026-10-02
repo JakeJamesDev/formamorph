@@ -8,7 +8,7 @@ import type { AIRequestType, ImageAttachment } from '@/types';
 import { languageDirective } from '@/lib/languages';
 import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import {
-  askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_HISTORY_EXCHANGES, type EarlierExchange, type HelpEvent, type HelpQuestion,
+  askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_HISTORY_EXCHANGES, HELP_SCORE_FLOOR, type EarlierExchange, type HelpEvent, type HelpQuestion,
 } from './helpSession';
 
 const PAGES = {
@@ -194,6 +194,43 @@ ${'x'.repeat(7000)}` };
     expect(sections.reduce((sum, section) => sum + section.markdown.length, 0)).toBeLessThanOrEqual(HELP_DOCS_CHAR_BUDGET);
   });
 
+  it('leaves out a hit under the score floor, which the search without a floor still finds', () => {
+    const docs = createDocsIndex({
+      pages: {
+        Editor: '# Editor\n\n## Find and Replace\n\nRename the villain everywhere in the world with **Find and Replace**.\n',
+        Library: '# Library\n\n## Groups\n\nRename a group from its menu.\n',
+      },
+    });
+    const question = 'rename the villain everywhere in the world';
+    expect(docs.search(question).map((section) => section.id)).toContain('Library#groups');
+    expect(helpSections(docs, question).map((section) => section.id)).toEqual(['Editor#find-and-replace']);
+  });
+
+  it('leaves out a hit under the score floor of the search with the previous question too', () => {
+    const docs = createDocsIndex({
+      pages: {
+        Paint: '# Paint\n\n## Paint Zebra Stripes\n\nPaint zebra stripes with a brush.\n',
+        Library: '# Library\n\n## Groups\n\nPaint a group.\n',
+      },
+    });
+    const history = [{ question: 'how do I paint zebra stripes', answer: 'Use a brush.' }];
+    expect(docs.search('how do I paint zebra stripes and then?').map((section) => section.id)).toContain('Library#groups');
+    expect(helpSections(docs, 'and then?', { history }).map((section) => section.id)).toEqual(['Paint#paint-zebra-stripes']);
+  });
+
+  it('keeps the surface section and the how-tos of its page under the score floor', () => {
+    const docs = createDocsIndex({
+      pages: {
+        Mine: '# Mine\n\nIntro.\n\n## How to Add One\n\n1. Select **Add**.\n',
+        Zebra: '# Zebra\n\n## Zebra Stripes\n\nAdd a zebra stripe to the zebra. Each zebra stripe is black.\n',
+      },
+    });
+    const question = 'add a zebra stripe';
+    const lead = docs.get(['Mine#mine'])[0];
+    expect(docs.search(question, 5, undefined, { floor: HELP_SCORE_FLOOR }).map((section) => section.id)).toEqual(['Zebra#zebra-stripes']);
+    expect(helpSections(docs, question, { lead }).map((section) => section.id)).toEqual(['Mine#mine', 'Zebra#zebra-stripes', 'Mine#how-to-add-one']);
+  });
+
   it('always holds the best match, even when it is over the budget alone', () => {
     const big = zebraIndex(3, 5000);
     expect(helpSections(big, 'zebra', { budget: 1000 }).map((section) => section.id)).toEqual([big.search('zebra')[0].id]);
@@ -337,7 +374,7 @@ describe('a follow-up', () => {
   });
 
   it('searches with the question alone when nothing came before', () => {
-    expect(sectionIds('How do I add a trait?', [])).toEqual(index.search('How do I add a trait?', 5).map((section) => section.id));
+    expect(sectionIds('How do I add a trait?', [])).toEqual(index.search('How do I add a trait?', 5, undefined, { floor: HELP_SCORE_FLOOR }).map((section) => section.id));
   });
 });
 

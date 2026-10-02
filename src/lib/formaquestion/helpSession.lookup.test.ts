@@ -62,6 +62,8 @@ const sourcesOf = (events: HelpEvent[]) => {
 };
 
 const TRAIT = 'How do I add a trait?';
+/** A question with more than one section over the score floor. */
+const TRAIT_ON_STAT = 'How do I add a trait to a stat?';
 /** The ids of the sections the search puts in the prompt for a question. */
 const hitIds = (question: string, over: Parameters<typeof helpSections>[2] = {}) => helpSections(index, question, over).map((section) => section.id);
 /** The ids of the guide's sections in the order the reader lists them. */
@@ -82,19 +84,19 @@ describe('lookup mode, as shipped', () => {
 describe('lookup mode, on an endpoint known to take function calls', () => {
   it('offers the lookup function with every search hit under the retrieval budget, as retrieval mode sends them', async () => {
     const lookupFetch = script(sseReply('Select **Add Trait**.'));
-    const events = await collect(ask(TRAIT, lookupFetch));
+    const events = await collect(ask(TRAIT_ON_STAT, lookupFetch));
     const retrievalFetch = script(sseReply('Select **Add Trait**.'));
-    const retrieval = await collect(ask(TRAIT, retrievalFetch, { snapshot: endpoint(false) }));
+    const retrieval = await collect(ask(TRAIT_ON_STAT, retrievalFetch, { snapshot: endpoint(false) }));
 
     const body = bodyOf(lookupFetch);
     expect(body.tools).toEqual([toolSchema(DOCS_LOOKUP)]);
     expect(body.tool_choice).toBe('auto');
     const user = lastUser(body);
-    const hits = hitIds(TRAIT);
+    const hits = hitIds(TRAIT_ON_STAT);
     expect(hits.length).toBeGreaterThan(1);
     expect([...user.matchAll(/<section id="([^"]+)">/g)].map((match) => match[1])).toEqual(hits);
     expect(user).toContain('<section id="Traits#how-to-add-a-trait">\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.\n</section>');
-    expect(user).toContain(`Question: ${TRAIT}`);
+    expect(user).toContain(`Question: ${TRAIT_ON_STAT}`);
     expect(body.messages[0].content).toContain(DOCS_LOOKUP.name);
     expect(sourcesOf(events)).toEqual(hits);
     expect(sourcesOf(retrieval)).toEqual(hits);
@@ -190,7 +192,7 @@ describe('retrieval mode, on an endpoint not known to take function calls', () =
     ['has not answered', null],
   ])('offers no function and sends the matching sections when the endpoint %s', async (_name, tools) => {
     const fetchImpl = script(sseReply('Select **Add Trait**.'));
-    const events = await collect(ask(TRAIT, fetchImpl, { snapshot: endpoint(tools) }));
+    const events = await collect(ask(TRAIT_ON_STAT, fetchImpl, { snapshot: endpoint(tools) }));
 
     const body = bodyOf(fetchImpl);
     expect(body).not.toHaveProperty('tools');

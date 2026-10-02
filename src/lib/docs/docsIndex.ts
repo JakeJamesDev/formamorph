@@ -38,6 +38,8 @@ export interface DocsContentsPage {
 export interface DocsSearchOptions {
   /** The question comes from an open screen, so "window", "panel", "dialog", "screen" and "tab" name that screen and the search ignores them. */
   onSurface?: boolean;
+  /** The least share of the first ranked hit's score another hit needs, from 0 to 1; that hit and what's-new lead sections stay. */
+  floor?: number;
 }
 
 export interface DocsIndex {
@@ -344,7 +346,7 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
           sections: sections.map(({ id, label, level }) => ({ id, label, level })),
         };
       }),
-    search: (query, limit = DEFAULT_SEARCH_LIMIT, favor, { onSurface = false } = {}) => {
+    search: (query, limit = DEFAULT_SEARCH_LIMIT, favor, { onSurface = false, floor = 0 } = {}) => {
       const ignored = onSurface && fillerWords ? new Set([...filler, ...SCREEN_WORDS]) : filler;
       const queryTerms = [...new Set(searchTerms(query, ignored))];
       if (queryTerms.length === 0) return [];
@@ -372,11 +374,13 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
         const weight = (r.section.page === favor?.page ? FAVORED_PAGE_WEIGHT : 1) * (r.hub && !asksHub ? HUB_WEIGHT : 1);
         return { section: r.section, score: score * (matched / terms.length) ** 2 * weight };
       });
-      const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score).map((s) => s.section);
+      const hits = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
       const whatsNew = readWhatsNew(query);
       const lead = whatsNew ? releaseLead(whatsNew) : [];
-      const ranked = [...lead, ...hits.filter((section) => !isChangelog(section)), ...hits.filter((section) => isChangelog(section) && !lead.includes(section))];
-      return ranked.slice(0, limit).map(publicSection);
+      const ranked = [...hits.filter((s) => !isChangelog(s.section)), ...hits.filter((s) => isChangelog(s.section) && !lead.includes(s.section))];
+      const least = (ranked[0]?.score ?? 0) * floor;
+      const kept = ranked.filter((s, i) => i === 0 || s.score >= least).map((s) => s.section);
+      return [...lead, ...kept].slice(0, limit).map(publicSection);
     },
     get: (ids) => ids.flatMap((id) => {
       const section = byId.get(id);

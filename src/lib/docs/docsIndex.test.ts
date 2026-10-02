@@ -202,6 +202,16 @@ describe('Docs Index search: guide above the changelog', () => {
   ])('reads "%s" as a guide question', (question) => {
     expect(index().search(question).map((s) => s.id).slice(0, NEWEST_RELEASE.length)).not.toEqual(NEWEST_RELEASE);
   });
+
+  it('keeps the first guide hit under a full floor when a changelog hit scores higher', () => {
+    expect(index().search('change the profile image', 20, undefined, { floor: 1 })[0]?.id).toBe('Avatars#user-profile');
+  });
+
+  it('keeps the sections a what-is-new question leads with, and the top hit after them, under a full floor', () => {
+    const question = "what's new in the latest update?";
+    expect(index().search(question, 20).length).toBeGreaterThan(NEWEST_RELEASE.length + 1);
+    expect(index().search(question, 20, undefined, { floor: 1 }).map((s) => s.id)).toEqual([...NEWEST_RELEASE, 'Updates#how-to-update-the-app']);
+  });
 });
 
 describe('Docs Index keyword line', () => {
@@ -398,5 +408,28 @@ describe('Docs Index search: hub sections', () => {
 
   it('finds a hub when the question holds its heading as a phrase', () => {
     expect(index.search('stat overview')[0]?.id).toBe('Overview#stat-overview');
+  });
+});
+
+describe('Docs Index search: score floor', () => {
+  const index = createDocsIndex({
+    pages: {
+      Editor: '# Editor\n\n## Find and Replace\n\nRename the villain everywhere in the world with **Find and Replace**.\n',
+      Library: '# Library\n\n## Groups\n\nRename a group from its menu.\n',
+    },
+  });
+  const question = 'rename the villain everywhere in the world';
+
+  it('keeps every hit with no floor', () => {
+    expect(index.search(question).map((s) => s.id)).toEqual(['Editor#find-and-replace', 'Library#groups']);
+  });
+
+  it('leaves out a hit under the share of the top hit', () => {
+    expect(index.search(question, 5, undefined, { floor: 0.5 }).map((s) => s.id)).toEqual(['Editor#find-and-replace']);
+  });
+
+  it('keeps the top hit under a full floor', () => {
+    expect(index.search(question, 5, undefined, { floor: 1 }).map((s) => s.id)).toEqual(['Editor#find-and-replace']);
+    expect(index.search('rename a group', 5, undefined, { floor: 1 })[0]?.id).toBe('Library#groups');
   });
 });
