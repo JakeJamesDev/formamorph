@@ -336,3 +336,37 @@ describe('Docs Index section size', () => {
     expect(wall.markdown.endsWith(SECTION_CUT_MARKER)).toBe(true);
   });
 });
+
+describe('Docs Index search: filler words', () => {
+  const PAGES = {
+    Help: '# Help\n\n## Help for This Screen\n\nOpen **Help for This Screen** to read about the screen.\n',
+    Map: '# Map\n\n## Pin a Place\n\nDrag a pin here to mark a place.\n',
+    Tour: '# Tour\n\n## Here\n\nPress **Here** to begin the tour.\n',
+  };
+  const index = (fillerWords?: boolean) => createDocsIndex({ pages: PAGES, fillerWords });
+
+  it('does not match a section on "here" in the question or its body', () => {
+    expect(index().search('what am I looking at here?')).toEqual([]);
+    expect(index(false).search('what am I looking at here?').length).toBeGreaterThan(0);
+  });
+
+  it('matches a section by its own name when the name holds a filler word', () => {
+    expect(index().search('how do I use Here?')[0]?.id).toBe('Tour#here');
+    expect(index().search('how do I use Help for This Screen?')[0]?.id).toBe('Help#help-for-this-screen');
+  });
+
+  it('matches a section by a keyword-line phrase that holds a filler word', () => {
+    const keyed = createDocsIndex({ pages: { Tour: '# Tour\n\n## Start\n<!-- keywords: start here -->\nPress **Go**.\n' } });
+    expect(keyed.search('where do I start here')[0]?.id).toBe('Tour#start');
+    expect(keyed.search('what am I looking at here?')).toEqual([]);
+  });
+
+  it('counts a name only as whole words of the question', () => {
+    expect(index().search('how do I use there?')).toEqual([]);
+    expect(index().search('how do I use here?').map((s) => s.id)).toEqual(['Tour#here']);
+  });
+
+  it('keeps a topic word beside a filler word', () => {
+    expect(index().search('how do I pin a place here?')[0]?.id).toBe('Map#pin-a-place');
+  });
+});
