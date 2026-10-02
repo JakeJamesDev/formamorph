@@ -669,7 +669,10 @@ function checkEntryName(
   if (count > 1) {
     const display = winner(names.lastIndexOf(name));
     const reads = display === name ? 'the last one authored' : `“${display}”, the last one authored`;
-    return { from, to, severity: 'warning', message: `${count} ${PLURAL[noun]} are named “${name}”. This reads ${reads}.` };
+    const rule = noun === 'stat'
+      ? `A stat that is on wins the name over a switched-off one. Otherwise this reads ${reads}.`
+      : `This reads ${reads}.`;
+    return { from, to, severity: 'warning', message: `${count} ${PLURAL[noun]} are named “${name}”. ${rule}` };
   }
   const suggestion = nearestName(name, [...new Set(names)]);
   const message = suggestion ? `No ${noun} is named “${name}”. Did you mean “${suggestion}”?` : `No ${noun} is named “${name}”.`;
