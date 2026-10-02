@@ -15,12 +15,12 @@ import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAd
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, REASONING_NOTES } from '@/components/modals/settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS } from '@/components/modals/settingsCopy';
 import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, resolveReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout, reasoningBudget, type PromptReasoningSetting } from '@/lib/reasoningEffort';
-import { reasoningDialectTakesBudget, reasoningDialectBudgetFloor } from '@/lib/reasoningDialect';
-import { ReasoningSwitch, type ReasoningStrength } from './ReasoningSwitch';
+import { reasoningRuledOut, toolsSupported, defaultPromptReasoningSetting, resolveReasoningBudgetPct, nativeReasoningSuppressed, type PromptReasoningSetting } from '@/lib/reasoningEffort';
+import { MaxOutputControl, PromptReasoningField, type MaxOutputControlProps, type PromptReasoningFieldProps } from './PromptOptionFields';
+import { promptReasoningFieldProps } from './promptReasoningField';
 import { DisplaySettingsSection } from './DisplaySettingsSection';
 import { OutputSettingsSection } from './OutputSettingsSection';
 import type { SettingsSource } from './settingsSource';
@@ -54,7 +54,6 @@ import { loadEmbeddingModel, disposeEmbeddingModel } from '@/lib/embeddingWorker
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
@@ -67,7 +66,7 @@ import { activePresetEditor } from './textEndpointEditorModel';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { ATTACHMENT_PROMPTS, includesAttachments } from '@/lib/promptAttachments';
 import { useImageAttachments } from '@/lib/useImageAttachments';
-import { isMaxOutputKind, shippedMaxOutput, MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
+import { isMaxOutputKind, shippedMaxOutput } from '@/lib/promptMaxOutput';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
@@ -119,42 +118,6 @@ function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; val
   );
 }
 
-/** A prompt's Max Output row. Off reads Auto with the shipped cap; on, the slider sets the cap in tokens. */
-interface MaxOutputControlProps {
-  custom: boolean;
-  value: number;
-  shipped: number;
-  disabled?: boolean;
-  onCustomChange: (custom: boolean) => void;
-  onValueChange: (value: number) => void;
-}
-function MaxOutputControl({ custom, value, shipped, disabled, onCustomChange, onValueChange }: MaxOutputControlProps) {
-  const shown = custom ? value : shipped;
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Checkbox id="promptMaxOutput" checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
-        <label htmlFor="promptMaxOutput" className="text-label">{SETTINGS_COPY.promptMaxOutput.label}</label>
-        <span className="hidden sm:inline text-helper text-muted-foreground">{SETTINGS_COPY.promptMaxOutput.description}</span>
-      </div>
-      {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
-      <div className="flex items-center gap-3 pl-2.5">
-        <Slider
-          className={`flex-grow${custom && !disabled ? '' : ' opacity-60'}`}
-          value={[shown]}
-          min={MAX_OUTPUT_MIN}
-          max={MAX_OUTPUT_MAX}
-          step={MAX_OUTPUT_STEP}
-          disabled={disabled || !custom}
-          onValueChange={(v) => onValueChange(v[0])}
-          aria-label={SETTINGS_COPY.promptMaxOutput.label}
-        />
-        <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{custom ? `${shown} tok` : `Auto · ${shown} tok`}</span>
-      </div>
-    </div>
-  );
-}
-
 /** A prompt's Include Attachments row. On sends the turn's attached images with this prompt's request. */
 interface AttachmentsControlProps {
   checked: boolean;
@@ -171,79 +134,6 @@ function AttachmentsControl({ checked, disabled, onChange }: AttachmentsControlP
   );
 }
 
-/**
- * A prompt's Native Reasoning control: its switch, then Global or its own level, and on a target that takes a
- * token budget the Reasoning Budget slider under it. Both go out on the wire there, so both are shown; the one
- * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
- * engine ignores the effort field, so it shows the slider alone (`level` false).
- */
-function PromptReasoningField({ setting, onChange, options, budget, level, lockedOn, disabled }: {
-  setting: PromptReasoningSetting;
-  onChange: (v: PromptReasoningSetting) => void;
-  options: { value: PromptReasoningSetting['level']; label: string }[];
-  /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise. */
-  budget: { value: number; set: (v: number) => void; tokens?: number; disabled: boolean } | null;
-  /** Whether the target honors the effort level, so the dropdown is worth showing. */
-  level: boolean;
-  /** The endpoint refuses to switch reasoning off, so the switch reads checked and locked. */
-  lockedOn?: boolean;
-  disabled?: boolean;
-}) {
-  const inert = disabled || !(setting.enabled || lockedOn);
-  const sliderInert = inert || budget?.disabled === true;
-  const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
-    kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
-  };
-  const budgetStrength: ReasoningStrength<PromptReasoningSetting['level']> | null = budget
-    ? { kind: 'budget', value: budget.value, tokens: budget.tokens, onChange: budget.set, disabled: budget.disabled }
-    : null;
-  // The field is named for what it actually offers: the budget where that is the only strength, and the
-  // switch's own name where the target takes a level, or takes neither and the switch stands alone.
-  const lead = level || !budgetStrength ? SETTINGS_COPY.promptNativeReasoning : SETTINGS_COPY.reasoningBudget;
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
-        <label htmlFor="promptReasoning" className="text-label">{lead.label}</label>
-        {'info' in lead && <HintInfo>{lead.info}</HintInfo>}
-      </div>
-      <span className="text-helper text-muted-foreground">{lead.description}</span>
-      <ReasoningSwitch
-        id="promptReasoning"
-        enabled={setting.enabled}
-        onEnabledChange={(enabled) => onChange({ ...setting, enabled })}
-        disabled={disabled}
-        lockedOn={lockedOn}
-        strength={level ? levelStrength : budgetStrength}
-      />
-      {lockedOn && <p className="text-helper text-muted-foreground">{REASONING_NOTES.always}</p>}
-      {level && budgetStrength && (
-        <div className="mt-2 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-label">{SETTINGS_COPY.reasoningBudget.label}</span>
-            <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
-          </div>
-          <span className="text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
-          {/* Same switch as above: the row only carries the slider, flush with every other track. */}
-          <div className="flex items-center gap-3 pl-2.5">
-            <Slider
-              className={`flex-grow${sliderInert ? ' opacity-60' : ''}`}
-              value={[budgetStrength.value]}
-              min={MIN_REASONING_BUDGET_PCT}
-              max={MAX_REASONING_BUDGET_PCT}
-              step={5}
-              disabled={sliderInert}
-              onValueChange={(v) => budgetStrength.onChange(v[0])}
-              aria-label={SETTINGS_COPY.reasoningBudget.label}
-            />
-            <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{budgetReadout(budgetStrength.value, budgetStrength.tokens)}</span>
-          </div>
-        </div>
-      )}
-      {budget?.disabled && <p className="text-helper text-muted-foreground">{REASONING_NOTES.noBudgetBase}</p>}
-    </div>
-  );
-}
-
 /** The per-prompt Options sub-tab: the verbatim-turns control (only when digests are on and the prompt uses
  *  them), the per-prompt Native Reasoning override (the effort level on external endpoints, or the token budget
  *  on the local engine), plus one override row per tunable sampler.
@@ -256,7 +146,7 @@ function PromptOptionsPanel({ endpoint, attachments, maxOutput, verbatim, reason
   /** Absent on a prompt without a Max Output row. */
   maxOutput: Omit<MaxOutputControlProps, 'disabled'> | null;
   verbatim: { value: number; set: (n: number) => void } | null;
-  reasoning: Omit<React.ComponentProps<typeof PromptReasoningField>, 'disabled'> | null;
+  reasoning: Omit<PromptReasoningFieldProps, 'disabled'> | null;
   samplers: SamplerControlProps[];
   disabled: boolean;
   /** What is read-only, named in the notice. Absent on an editable preset. */
@@ -1043,7 +933,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // controls even while the engine is running, and vice versa.
   const promptTarget = resolveEndpointForKind(activeKind);
   const promptLocalEngine = promptTarget.localEngine;
-  const promptReasoningCapability = promptTarget.reasoning;
   const pinnedEndpoint = routableEndpoints.find((p) => p.id === pinnedEndpointId);
   const endpointControl = {
     label: SETTINGS_COPY.promptEndpoint.label,
@@ -1078,14 +967,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         onValueChange: (v: number) => setPromptMaxOutputValue(activeKind, v),
       }
     : null;
-  // The readout's tokens come from the routed endpoint's Max Output, the same base the request reads. With no
-  // base, a floor dialect still sends its floor.
-  const budgetBase = promptTarget.maxTokens;
-  const budgetTokens = reasoningBudget({
-    effort: 'auto', kind: activeKind, budgets: promptReasoningBudget, base: budgetBase, answerCap: undefined,
-    floor: reasoningDialectBudgetFloor(promptReasoningCapability.dialect),
-  }).budget ?? undefined;
-  const budgetPct = resolveReasoningBudgetPct(activeKind, promptReasoningBudget);
   const samplerControls: SamplerControlProps[] = [
     {
       id: 'customTemp',
@@ -1112,45 +993,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       onValueChange: (v) => setPromptSamplerValue(activeKind, 'repetitionPenalty', v),
     },
   ];
-  // Per-prompt Native Reasoning control, hidden where the call is force-suppressed (Inline narration) and on
-  // an endpoint probed as non-reasoning. Its switch is shared by every target; the strength beside it is the
-  // token budget wherever the record says the target takes one, and the coarse effort level elsewhere. The
-  // effort still goes out beside a budget, from the stored level — the Output row is its visible control.
-  // A record rules reasoning out when the model is known not to reason, or when the endpoint accepts no
-  // reasoning_effort literal at all (not even `none`). An unanswered record keeps the controls showing.
-  const noNativeReasoning = reasoningRuledOut(promptReasoningCapability);
   // The Output row reads the ACTIVE endpoint's record, not the selected prompt's routed target. It is the
   // endpoint-wide strength every Global prompt follows, routed ones included, so it gives way only where
   // the active model is ruled out entirely.
   const activeNoNativeReasoning = reasoningRuledOut(reasoningCapability);
   const activeToolsSupported = toolsSupported(reasoningCapability);
-  // A dialect that publishes nothing about its own reasoning, such as a vLLM server, has no per-prompt
-  // control worth drawing until one reply proves it separates its reasoning: no budget to send, and no
-  // literal the wire guard would pass. The Output row is not gated on this.
-  const promptAwaitingProof = reasoningAwaitingProof(promptReasoningCapability);
-  const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind)
-    && (promptLocalEngine || (!noNativeReasoning && !promptAwaitingProof));
-  const reasoningControl = reasoningApplicable
-    ? {
-        setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
-        onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
-        options: promptReasoningLevelOptions(promptReasoningCapability, (promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind)).level),
-        lockedOn: reasoningOffRefused(promptReasoningCapability),
-        // Both halves follow the dialect's row: the slider where it names a budget field and the record says
-        // the endpoint takes one, the dropdown where it carries an effort literal and the record lists a
-        // strength to pick. The built-in engine's row names no level field, so its dropdown would be inert
-        // and is not drawn.
-        budget: promptReasoningCapability.budget && reasoningDialectTakesBudget(promptReasoningCapability.dialect)
-          ? {
-              value: budgetPct,
-              set: (v: number) => setPromptReasoningBudget(activeKind, v),
-              tokens: budgetTokens,
-              disabled: budgetBase === undefined,
-            }
-          : null,
-        level: reasoningLevelControl(promptReasoningCapability),
-      }
-    : null;
+  // Per-prompt Native Reasoning control. Its switch is shared by every target; the strength beside it is the
+  // token budget wherever the record says the target takes one, and the coarse effort level elsewhere. The
+  // effort still goes out beside a budget, from the stored level — the Output row is its visible control.
+  const reasoningControl = promptReasoningFieldProps({
+    target: promptTarget,
+    kind: activeKind,
+    setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
+    budgetPct: resolveReasoningBudgetPct(activeKind, promptReasoningBudget),
+    suppressed: nativeReasoningSuppressed(thinkingMode, activeKind),
+    onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
+    onBudgetChange: (v: number) => setPromptReasoningBudget(activeKind, v),
+  });
 
   // Only meaningful in Simple mode, where the settings it reports on are the ones out of sight. Most hidden
   // rows sit behind a switch Simple still shows (Thinking, the image Provider), so Advanced can always reach
