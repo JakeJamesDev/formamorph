@@ -118,7 +118,7 @@ export function parseTemplateSlots(code: string): ParsedTemplate {
 
     const slot: TemplateSlot = { name, type };
     if (rawDefault !== undefined && rawDefault !== '') slot.defaultValue = rawDefault;
-    if (type === 'trait' && rawOptions?.trim()) slot.owner = rawOptions.trim();
+    if (type === 'trait' && options?.length === 1) slot.owner = options[0];
     else if (options && options.length > 0) slot.options = options;
 
     byName.set(name, slot);
