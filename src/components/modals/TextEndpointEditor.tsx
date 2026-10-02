@@ -13,6 +13,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSe
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { numInput } from '@/lib/numInput';
 import { cn } from '@/lib/utils';
+import { Hint, FieldError } from '@/components/ui/typography';
 import { PresetNameDialog } from './PresetNameDialog';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import type { TextEndpointEditorModel } from './textEndpointEditorModel';
@@ -81,14 +82,14 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
           : 'Add or pick a preset to set or detect the context window',
       }
     : contextOverLimit
-    ? { red: true, text: `Above the detected limit (${detectedContextWindow?.toLocaleString()} tok) — the server may truncate requests.` }
+    ? { red: true, text: `Above the detected limit of ${detectedContextWindow?.toLocaleString()} tok. The server may truncate requests.` }
     : detectStatus === 'error'
-      ? { red: true, text: "Couldn't detect context length from this endpoint." }
+      ? { red: true, text: "Couldn't detect the context length from this endpoint" }
       : detectStatus === 'detecting'
         ? { red: false, text: 'Detecting context length…' }
         : detectStatus === 'success'
-          ? { red: false, text: `Detected ${(detectedContextWindow ?? contextWindow).toLocaleString()} tok from the endpoint.` }
-          : { red: false, text: 'Auto-detected from your endpoint; lower it if the model feels constantly full.' };
+          ? { red: false, text: `Detected ${(detectedContextWindow ?? contextWindow).toLocaleString()} tok from the endpoint` }
+          : { red: false, text: 'Auto-detected from your endpoint. Lower it if the context is often full.' };
 
   const samplerControls: SamplerControlProps[] = ENDPOINT_SAMPLERS.map(({ id, key, min, max, step }) => {
     const copy = SETTINGS_COPY[id];
@@ -112,7 +113,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
   return (
     <>
       <div className="flex items-center gap-2 flex-shrink-0 pt-4">
-        <span className="text-helper text-muted-foreground">{SETTINGS_COPY.textPreset.label}</span>
+        <Hint as="span">{SETTINGS_COPY.textPreset.label}</Hint>
         {!builtIn && (
           <ConfirmDialog
             title="Delete Preset"
@@ -150,7 +151,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
           <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
         )}
       </div>
-      <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{SETTINGS_COPY.textPreset.description}</p>
+      <Hint className="flex-shrink-0 pt-1">{SETTINGS_COPY.textPreset.description}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
       {edited.engine ? <LocalModelPanel /> : (
         <ScrollArea className="flex-1 min-h-0">
@@ -165,9 +166,9 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
                   className={readOnlyField}
                 />
                 {endpointUrlWasCompleted(endpointUrl) && (
-                  <p className="text-helper text-muted-foreground">
+                  <Hint>
                     Requests go to <span className="font-mono break-all">{normalizeEndpointUrl(endpointUrl)}</span>
-                  </p>
+                  </Hint>
                 )}
               </div>
             </Row>
@@ -220,9 +221,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
                 </div>
               </Row>
               <Row>
-                <div className={contextStatus.red ? 'text-helper text-destructive' : 'text-helper text-muted-foreground'}>
-                  {contextStatus.text}
-                </div>
+                {contextStatus.red ? <FieldError>{contextStatus.text}</FieldError> : <Hint>{contextStatus.text}</Hint>}
               </Row>
               <Row htmlFor="maxTokens" {...rowCopy('maxOutputTokens')}>
                 <div className="space-y-2">
@@ -233,7 +232,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
                       disabled={sharedEndpointActive}
                       onCheckedChange={(checked) => setMaxOutputOverrideEnabled(checked === true)}
                     />
-                    <label htmlFor="maxTokensEnabled" className="text-label">Override endpoint limit</label>
+                    <label htmlFor="maxTokensEnabled" className="text-label">Override Endpoint Limit</label>
                   </div>
                   <div className="flex items-center gap-3">
                     <Input
@@ -243,31 +242,33 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
                       onChange={(e) => setMaxTokens(numInput(e.target.value, 1))}
                       disabled={sharedEndpointActive || !maxOutputOverrideEnabled}
                     />
-                    {!maxOutputOverrideEnabled && <span className="text-helper text-muted-foreground">No Limit</span>}
+                    {!maxOutputOverrideEnabled && <Hint as="span">No Limit</Hint>}
                   </div>
                 </div>
               </Row>
               <Section title="Sampling">
-                <p className="text-helper text-muted-foreground">
-                  Per-prompt settings and built-in prompt values take priority over Temperature and Repetition Penalty. Leave a switch off to send no endpoint override.
-                </p>
+                <Hint>
+                  Your per-prompt settings and built-in prompt values take priority over “Temperature” and “Repetition Penalty”. Leave a checkbox unchecked to send no override.
+                </Hint>
                 <div className="grid gap-4 pt-3">
                   {samplerControls.map((control) => <SamplerControl key={control.id} {...control} />)}
                 </div>
               </Section>
             </>)}
-            <div className="flex justify-start">
-              <ConfirmDialog
-                {...SETTINGS_CONFIRMS.resetAiEndpoint}
-                onConfirm={handleResetEndpoint}
-              >
-                <Button variant="outline" className="flex items-center gap-2" disabled={builtIn}>
-                  {SETTINGS_BUTTONS.resetAiEndpoint}
-                </Button>
-              </ConfirmDialog>
-            </div>
           </div>
         </ScrollArea>
+      )}
+      {!edited.engine && (
+        <div className="flex flex-wrap justify-start items-center gap-2 flex-shrink-0 pt-4">
+          <ConfirmDialog
+            {...SETTINGS_CONFIRMS.resetAiEndpoint}
+            onConfirm={handleResetEndpoint}
+          >
+            <Button variant="outline" className="flex items-center gap-2" disabled={builtIn}>
+              {SETTINGS_BUTTONS.resetAiEndpoint}
+            </Button>
+          </ConfirmDialog>
+        </div>
       )}
       <PresetNameDialog
         open={presetDialog !== null}

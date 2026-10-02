@@ -230,10 +230,10 @@ The **Preset** list holds your saved endpoints. **Demo AI** is the shared cloud 
 | **API Token** | The token for a hosted service. Leave it empty for a local server. |
 | **Model Name** | The model the endpoint uses, exactly as the server names it |
 | **Context Window (tokens)** | **Advanced.** How much the model keeps in context. **Detect** asks the server. |
-| **Max Output Tokens** | **Advanced.** Caps how long each answer can be. It does not cap reasoning. Select **Override endpoint limit** to set it; without it, there is **No Limit**. |
-| **Sampling** | **Advanced.** A section of five rows: **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a switch. A switch that is off sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
+| **Max Output Tokens** | **Advanced.** Caps how long each answer can be. It does not cap reasoning. Select **Override Endpoint Limit** to set it; without it, there is **No Limit**. |
+| **Sampling** | **Advanced.** A section of five rows: **Temperature**, **Repetition Penalty**, **Top-p**, **Top-k** and **Min-p**. Each has a checkbox. An unchecked row sends nothing. Per-prompt values and built-in prompt values come before **Temperature** and **Repetition Penalty**. |
 
-**Reset AI Endpoint** sets the URL, model name, token and limits back to their defaults.
+**Reset AI Endpoint**, at the bottom of the tab, sets the URL, model name, token and limits back to their defaults.
 
 ### Built-In Engine
 
