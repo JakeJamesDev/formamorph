@@ -1,7 +1,8 @@
 # Spec: Patreon Supporters
 
 Status: ready-for-agent
-Status note: No tickets yet. The work spans both repos, and the server part lands first.
+Spec session: patreon-supporters — spec
+Status note: 12 tickets in issues/. 01 and 02 are prefactors. 01, 02, 03, and 07 can start now. 07 ends at the user's design approval, and 12 is the user's live check. The work spans both repos, and the server part lands first.
 
 A Patreon member links their Patreon account to their Formamorph account and gets **Supporter Flair**: a badge, a name color, a Profile Image ring, and a place on the Supporters wall. Designed in a grilling session on 2026-10-02 against the client code, the server code, and the Patreon API v2 documentation.
 
