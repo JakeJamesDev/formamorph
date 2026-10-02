@@ -7,8 +7,8 @@
  * reuses the first occurrence's declaration. Substitution is textual, so a template controls its own
  * quoting: a `stat`, `placeholder`, `trait`, `entity` or `daypart` slot emits a quoted string, while
  * `number`, `choice` and `text` emit their value as typed (which is what lets a choice supply a comparison
- * operator). `trait(persona)` lists the persona's traits, and `trait(slot)` lists the traits of the entity
- * that `entity` slot picked.
+ * operator). `trait(slot)` lists the traits of the entity that `entity` slot picked, and `trait(persona)` lists the
+ * persona's traits unless the template declares an `entity` slot named `persona`.
  */
 
 import type { StatCodeTiming } from './statCodeTiming';
@@ -125,9 +125,10 @@ export function parseTemplateSlots(code: string): ParsedTemplate {
     slots.push(slot);
   }
 
+  // A tie to anything but an entity slot or `persona` is no tie: the slot lists the world's traits, as it
+  // did before ties existed, so a saved template with one still inserts.
   for (const slot of slots) {
     if (slot.owner === undefined || slot.owner === PERSONA_TRAIT_OWNER || byName.get(slot.owner)?.type === 'entity') continue;
-    errors.push(`Slot "${slot.name}" lists the traits of "${slot.owner}", which is not an entity slot.`);
     delete slot.owner;
   }
 

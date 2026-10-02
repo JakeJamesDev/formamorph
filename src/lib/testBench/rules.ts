@@ -1111,7 +1111,7 @@ const entityNoCodeName: Rule = {
   severity: 'warning',
   section: 'entities',
   advanced: true,
-  summary: (count) => `${count} entities have no name, so stat code can’t reach them`,
+  summary: (count) => `${count} entities have no code name, so stat code can’t reach them`,
   check: (world) => {
     if (!(world.stats ?? []).some((stat) => filledCodeBoxes(stat).length)) return [];
     return (world.entities ?? [])

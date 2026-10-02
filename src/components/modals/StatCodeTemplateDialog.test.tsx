@@ -157,6 +157,20 @@ describe('the form a template presents', () => {
     await waitFor(() => expect(generated()).toContain('entities["Mira"].traits[""]'));
   });
 
+  it('lets a declared entity slot named persona win over the persona tie, and lists the world’s traits for a loose tie', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'entities[{{persona:entity}}].traits[{{t:trait(persona)}}]; traits[{{w:trait(nobody)}}];');
+    const options = async () => (await screen.findAllByRole('option')).map((option) => option.textContent);
+
+    await user.click(await screen.findByRole('combobox', { name: 'Persona' }));
+    await user.click(await screen.findByRole('option', { name: 'Ash' }));
+    await user.click(await screen.findByRole('combobox', { name: 'T' }));
+    expect(await options()).toEqual(['Loyal']);
+    await user.click(await screen.findByRole('option', { name: 'Loyal' }));
+    await user.click(await screen.findByRole('combobox', { name: 'W' }));
+    expect(await options()).toEqual(['Cursed']);
+  });
+
   it('prefills the defaults of a template picked from the list', async () => {
     const user = userEvent.setup();
     open();
