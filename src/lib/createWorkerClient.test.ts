@@ -29,6 +29,19 @@ describe('createWorkerClient', () => {
     await expect(pending).resolves.toBe(42);
   });
 
+  it('passes progress messages to their request and still resolves after them', async () => {
+    let worker: FakeWorker | null = null;
+    const client = createWorkerClient(() => (worker = new FakeWorker()) as unknown as Worker);
+    const seen: unknown[] = [];
+    const pending = client.run({ foo: 1 }, (p) => seen.push(p));
+    const id = worker!.lastMessage!.id;
+    worker!.emit({ type: 'progress', id, progress: 1 });
+    worker!.emit({ type: 'progress', id, progress: 2 });
+    worker!.emit({ type: 'success', id, result: 'done' });
+    await expect(pending).resolves.toBe('done');
+    expect(seen).toEqual([1, 2]);
+  });
+
   it('rejects pending requests when terminated before a response', async () => {
     const client = createWorkerClient(() => new FakeWorker() as unknown as Worker);
     const pending = client.run({ foo: 1 });

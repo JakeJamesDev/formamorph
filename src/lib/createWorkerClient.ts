@@ -10,6 +10,7 @@ import { randomUUID } from "@/lib/uuid";
 type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
+  onProgress?: (progress: unknown) => void;
 };
 
 export function createWorkerClient(createWorker: () => Worker) {
@@ -20,10 +21,14 @@ export function createWorkerClient(createWorker: () => Worker) {
     if (!workerInstance) {
       workerInstance = createWorker();
       workerInstance.addEventListener('message', (event) => {
-        const { type, id, result, error } = event.data;
+        const { type, id, result, error, progress } = event.data;
         const pendingRequest = pendingRequests.get(id);
         if (!pendingRequest) {
           console.warn(`Received response for unknown request ID: ${id}`);
+          return;
+        }
+        if (type === 'progress') {
+          pendingRequest.onProgress?.(progress);
           return;
         }
         if (type === 'success') {
@@ -53,13 +58,14 @@ export function createWorkerClient(createWorker: () => Worker) {
     return workerInstance;
   };
 
-  /** Send `payload` (plus a generated `id`) to the worker; resolves with its `result`. */
-  const run = (payload: Record<string, unknown>): Promise<unknown> =>
+  /** Send `payload` (plus a generated `id`) to the worker; resolves with its `result`. `onProgress` receives
+   *  each `{ type: 'progress' }` message the worker posts for this request. */
+  const run = (payload: Record<string, unknown>, onProgress?: (progress: unknown) => void): Promise<unknown> =>
     new Promise((resolve, reject) => {
       try {
         const worker = getWorker();
         const id = randomUUID();
-        pendingRequests.set(id, { resolve, reject });
+        pendingRequests.set(id, { resolve, reject, onProgress });
         worker.postMessage({ ...payload, id });
       } catch (error) {
         reject(error as Error);

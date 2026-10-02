@@ -5,11 +5,17 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // The worker's own op, run in-process: jsdom and node have no Worker.
 vi.mock('@/lib/jsonFileWorkerUtils', async () => {
   const { runJsonFileOp } = await import('@/lib/jsonFileOps');
-  return { indexBackupInWorker: (file: Blob) => runJsonFileOp({ op: 'indexBackup', file }), serializeJsonBlobSplit: vi.fn() };
+  return {
+    indexBackupInWorker: (file: Blob) => runJsonFileOp({ op: 'indexBackup', file }),
+    restoreBackupInWorker: (request: RestoreRequest, onProgress?: (done: number) => void) =>
+      runJsonFileOp({ op: 'restoreBackup', request }, onProgress as (p: unknown) => void),
+    serializeJsonBlobSplit: vi.fn(),
+  };
 });
 import {
   readBackupIndex, splitByConflict, BACKUP_CATEGORIES, itemLabel,
-  buildBackup, listBackupItems, analyzeBackup, applyBackup, type BackupBundle, type BackupIndex,
+  buildBackup, listBackupItems, analyzeBackup, applyBackup, restoreBackup,
+  type BackupBundle, type BackupIndex, type RestoreRequest,
 } from '@/lib/backup';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { jsonParts } from '@/lib/jsonFileOps';
@@ -262,5 +268,53 @@ describe('backup round trip (IndexedDB)', () => {
     expect(result.worlds).toEqual({ added: 3, overwritten: 0, skipped: 0 });
     expect(read).toEqual(['w1', 'w2', 'w3']);
     expect(await readAll('worldsDB', 'worlds')).toEqual(bundle.data.worlds);
+  });
+
+  it('restores only the ticked entries through the worker op', async () => {
+    const index = await worldsIndex([{ id: 'w1', name: 'Keep' }, { id: 'w2', name: 'Skip' }]);
+    const plans = (await analyzeBackup(index)).map((p) => ({ ...p, fresh: p.fresh.filter((e) => e.id === 'w1') }));
+    const request: RestoreRequest = {
+      index, plans, overwrite: NO_OVERWRITE, worldMode: 'off', entityMode: 'off', webpSupported: false,
+    };
+
+    const result = await restoreBackup(request);
+
+    expect(result.worlds).toEqual({ added: 1, overwritten: 0, skipped: 0 });
+    expect(await readAll('worldsDB', 'worlds')).toEqual([{ id: 'w1', name: 'Keep' }]);
+  });
+
+  it('reports image progress across records while it optimizes', async () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    const world = {
+      worldOverview: { thumbnail: png },
+      entities: [{ id: 'e1', images: [png] }],
+      locations: [{ id: 'l1', backgroundImage: png }],
+    };
+    const index = await indexOf({
+      formamorphBackup: 1,
+      data: {
+        worlds: [{ id: 'w1', name: 'One', data: world }, { id: 'w2', name: 'Two', data: world }],
+        entities: [{ id: 'e1', name: 'Mara', data: { images: [png, png] } }],
+      },
+    });
+    const progress: number[] = [];
+    const request: RestoreRequest = {
+      index,
+      plans: await analyzeBackup(index),
+      overwrite: NO_OVERWRITE,
+      worldMode: 'optimize',
+      entityMode: 'optimize',
+      webpSupported: true,
+    };
+
+    await restoreBackup(request, (done) => progress.push(done));
+
+    const total = [...index.data.worlds, ...index.data.entities].reduce((n, e) => n + e.images, 0);
+    expect(total).toBe(8);
+    expect(progress.at(-1)).toBe(total);
+    expect(progress).toEqual([...progress].sort((a, b) => a - b));
+    // The encoder can't run here, so it hands back each source; the records still land whole.
+    expect((await readAll('worldsDB', 'worlds')).map((r) => r.id)).toEqual(['w1', 'w2']);
+    expect(await readAll('entitiesDB', 'entities')).toEqual([{ id: 'e1', name: 'Mara', data: { images: [png, png] } }]);
   });
 });
