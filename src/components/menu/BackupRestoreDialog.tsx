@@ -15,6 +15,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Breadcrumb } from '@/components/ui/breadcrumb-picker';
+import { Tip } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import {
   buildBackup,
   saveBackup,
@@ -124,17 +127,23 @@ function CategoryTree({
                 )}
               </div>
               <div className="flex flex-col p-1">
-                {rows.map((r) => (
-                  <label key={r.id} className="flex items-center gap-2 rounded px-2 py-1 text-label hover:bg-muted/50">
-                    <Checkbox checked={sel.has(r.id)} onCheckedChange={(v) => onToggleItem(category, r.id, v === true)} />
-                    <span className="truncate">{r.label}</span>
-                    {r.exists && (
-                      <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
-                        exists
-                      </span>
-                    )}
-                  </label>
-                ))}
+                {rows.map((r) => {
+                  const crumbs = r.breadcrumb?.length ? r.breadcrumb : undefined;
+                  const row = (
+                    <label key={r.id} className="flex items-center gap-2 rounded px-2 py-1 text-label hover:bg-muted/50">
+                      <Checkbox checked={sel.has(r.id)} onCheckedChange={(v) => onToggleItem(category, r.id, v === true)} />
+                      {/* Beside a breadcrumb the name keeps its natural width up to 65% of the row, as in the picker. */}
+                      <span className={cn('min-w-0 truncate', crumbs && 'max-w-[65%] shrink-0')}>{r.label}</span>
+                      {crumbs && <Breadcrumb segments={crumbs} />}
+                      {r.exists && (
+                        <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          exists
+                        </span>
+                      )}
+                    </label>
+                  );
+                  return crumbs ? <Tip key={r.id} tip={crumbs.join(' › ')} labelsChild={false}>{row}</Tip> : row;
+                })}
               </div>
             </div>
           );
@@ -228,8 +237,8 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     .map((p) => ({
       category: p.category,
       rows: [
-        ...p.fresh.map((r) => ({ id: r.id, label: r.label })),
-        ...p.conflicts.map((r) => ({ id: r.id, label: r.label, exists: true })),
+        ...p.fresh.map((r) => ({ id: r.id, label: r.label, breadcrumb: r.breadcrumb })),
+        ...p.conflicts.map((r) => ({ id: r.id, label: r.label, breadcrumb: r.breadcrumb, exists: true })),
       ],
     }));
   const restoreCount = BACKUP_CATEGORIES.reduce((n, c) => n + restoreSel[c].size, 0);
