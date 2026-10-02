@@ -2,6 +2,7 @@ import type { CodeBounds, Stat } from '@/types';
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSWASMModule } from 'quickjs-emscripten';
 import { clamp } from './utils';
 import { VALUE_JOIN } from './placeholders';
+import { hasEntityKey } from './statCodeNames';
 import {
   PLACEHOLDER_ENTRY_MEMBERS, placeholderPathExpression, placeholderPathLabel, type PlaceholderPathRoot,
 } from './statCodePaths';
@@ -542,14 +543,11 @@ export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
   persona: T;
 }
 
-/** Whether `entities` keys this entity: only a named one gets a key. */
-export const hasEntityKey = (entity: { name: string }): boolean => entity.name !== '';
-
 /** The entities as the sandbox keys them: an unnamed one is left out, the later of two sharing a name wins,
  *  and the played persona holds its own name whatever comes after it. */
 export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], persona: T): KeyedEntities<T> {
-  const byName = new Map(entities.filter(hasEntityKey).map((entity) => [entity.name, entity]));
-  if (hasEntityKey(persona)) byName.set(persona.name, persona);
+  const byName = new Map(entities.filter((entity) => hasEntityKey(entity.name)).map((entity) => [entity.name, entity]));
+  if (hasEntityKey(persona.name)) byName.set(persona.name, persona);
   return { byName, persona };
 }
 
@@ -596,7 +594,7 @@ const entitiesPrelude = ({ byName, persona }: KeyedEntities, { indexOf }: FlatPl
     ({ id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders) });
   const spec = {
     entities: [...byName].map(([name, entity]) => [name, data(entity)]),
-    persona: hasEntityKey(persona) ? null : data(persona),
+    persona: hasEntityKey(persona.name) ? null : data(persona),
   };
   return readOnlyEntryMapPrelude(`entities, persona, ${ENTITY_WRITES}`, spec, [
     `const traitMap = ((keys) => ${trackedMapFactory(TRAIT_MAP)})(Object.keys);`,

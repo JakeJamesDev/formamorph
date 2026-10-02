@@ -10,7 +10,7 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import { placeholderKindNoun } from '@/lib/placeholders';
-import { hasEntityKey } from '@/lib/statCodeExecutor';
+import { hasEntityKey } from '@/lib/statCodeNames';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
@@ -247,11 +247,11 @@ const entityNameEntries = (entities: readonly CodeEntityNames[], dotted: boolean
 
 /** The entity names the sandbox keys. */
 export const keyedEntityNames = (entities: readonly CodeEntityNames[]): string[] =>
-  entities.filter(hasEntityKey).map((entity) => entity.name);
+  entities.map((entity) => entity.name).filter(hasEntityKey);
 
 /** The trait names of the last authored entity called `name`, as the sandbox keys it. An unnamed one is not keyed. */
 export const traitsOfEntity = (entities: readonly CodeEntityNames[], name: string): readonly string[] | null =>
-  (hasEntityKey({ name }) ? entities.findLast((entity) => entity.name === name)?.traits ?? null : null);
+  (hasEntityKey(name) ? entities.findLast((entity) => entity.name === name)?.traits ?? null : null);
 
 /** The trait names a persona in the world can hold, or null when no entities are given. */
 export const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined): readonly string[] | null =>
