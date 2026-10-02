@@ -71,7 +71,7 @@ class FeedbackService {
     sort?: string;
   }): Promise<FeedbackPage> {
     const query = new URLSearchParams({ type, page: String(page), limit: String(limit) });
-    const statuses = [status ?? []].flat();
+    const statuses = status ? [status].flat() : [];
     if (statuses.length) query.set('status', statuses.join(','));
     if (category) query.set('category', category);
     if (scope) query.set('scope', scope);
