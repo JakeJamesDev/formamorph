@@ -9,7 +9,7 @@ import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
-import { overlayStatCodeResult, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
+import { overlayStatCodeResult, playthroughPlaceholderSet, runStatCodeTurn, withPinWrites, type StatCodeTurn } from "@/lib/statCodeTurn";
 import type { StatCodeTiming } from "@/lib/statCodeTiming";
 import { Button } from "@/components/ui/button";
 import {
@@ -2672,6 +2672,11 @@ const GameViewer = ({
     }
   }, [heldStatChanges, recentStatChanges, setHeldStatChanges, setDrainingStatChanges, setRecentStatChanges, setRecentStatFading]);
 
+  // The world's list and books; the run joins the library entities' and library books' pools itself.
+  const statCodePlaceholders = useMemo(() => playthroughPlaceholderSet({
+    placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, libraryDictionaries, runtimeDictionaries, rolls: sessionRolls,
+  }), [worldPlaceholders, placeholderOwners, dictionaries, libraryDictionaries, runtimeDictionaries, sessionRolls]);
+
   // Run one of a stat's two code boxes over this turn, regen included, and fold what it moved into the live
   // delta feedback. Its own callback because a turn with no stat response runs it directly. A re-roll passes
   // the pre-turn state, so code reads placeholders and traits as the turn it replaces did. Hands back what
@@ -2704,15 +2709,12 @@ const GameViewer = ({
         const result = await runStatCodeTurn({
           timing,
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
-          traits: {
+          bearers: {
             ...held, world: gatedWorld(), entities: codeEntities.world, library: codeEntities.library,
             inSceneIds: liveScene().inSceneIds,
           },
           placeholders: {
-            // The world's list and books. The run joins the library entities' and library books' pools itself.
-            placeholders: worldPlaceholders, owners: placeholderOwners, dictionaries, libraryDictionaries,
-            inPlayDictionaryIds: new Set(runtimeDictionaries.filter((book) => book.enabled !== false).map((book) => book.id)),
-            rolls: sessionRolls,
+            ...statCodePlaceholders,
             pins: preTurn ? pinsFor(basePins).world : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
@@ -2760,8 +2762,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, dictionaries, sessionRolls,
-      libraryDictionaries, runtimeDictionaries, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, statCodePlaceholders, pinsFor, traits, authoredStats, resolveTraitText, gatedWorld, codeEntities, inForceOn, liveScene,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 

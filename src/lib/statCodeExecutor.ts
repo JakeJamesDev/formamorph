@@ -533,56 +533,75 @@ const traitData = (entries: readonly SandboxTrait[]) =>
 /** The fields on an entity entry that a write never reaches. */
 const ENTITY_READ_ONLY_FIELDS = ['id', 'name', 'type', 'pronouns', 'inScene', 'traits', 'placeholders'] as const;
 
-/** The entities as the sandbox keys them: an unnamed one is left out, the later of two sharing a name wins,
- *  and the played persona holds its own name whatever comes after it. */
-export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], persona: T): Map<string, T> {
-  const keyed = new Map(entities.filter((entity) => entity.name).map((entity) => [entity.name, entity]));
-  if (persona.name) keyed.set(persona.name, persona);
-  return keyed;
+/** The entities in play keyed by code name, and the played persona, which may be one of them. */
+export interface KeyedEntities<T extends SandboxEntity = SandboxEntity> {
+  byName: ReadonlyMap<string, T>;
+  persona: T;
 }
 
-/** The `entities` and `persona` prelude: frozen entries, each with its own trait map and owner view. Rows
- *  are `[name, unknownEntity, traitRows, writtenFields]`, one per entry the run wrote into. */
-const entitiesPrelude = (
-  keyed: ReadonlyMap<string, SandboxEntity>, persona: SandboxEntity, indexOf: FlatPlaceholderMap['indexOf'],
-): string => {
+/** The entities as the sandbox keys them: an unnamed one is left out, the later of two sharing a name wins,
+ *  and the played persona holds its own name whatever comes after it. */
+export function keyedEntities<T extends SandboxEntity>(entities: readonly T[], persona: T): KeyedEntities<T> {
+  const byName = new Map(entities.filter((entity) => entity.name).map((entity) => [entity.name, entity]));
+  if (persona.name) byName.set(persona.name, persona);
+  return { byName, persona };
+}
+
+/** JS source of `(fields, entries, blank, build) => [map, readWrites, entry]`: frozen entries with read-only
+ *  `fields`, built by `build(key, data, unknown) => [values, rows]`; an unknown name builds from `blank`. */
+const READ_ONLY_ENTRY_MAP = `(fields, entries, blank, build) => {
+  const readers = [];
+  const entry = (key, data, unknown) => {
+    const [values, rows] = build(key, data, unknown);
+    const written = [];
+    readers.push([key, unknown, rows, written]);
+    const out = {};
+    for (const field of fields) {
+      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });
+    }
+    return freeze(out);
+  };
+  const map = Object.create(null);
+  for (const [name, data] of entries) map[name] = entry(name, data, false);
+  const strays = Object.create(null);
+  const proxy = new Proxy(freeze(map), {
+    get: (target, key) => typeof key !== 'string' || key in target ? target[key]
+      : strays[key] || (strays[key] = entry(key, blank, true)),
+  });
+  const readWrites = () => stringify(readers
+    .map(([key, unknown, rows, written]) => [key, unknown, rows(), written])
+    .filter((row) => row[2].length || row[3].length));
+  return [proxy, readWrites, entry];
+}`;
+
+/** The prelude that binds `names` to what `body` returns, with the read-only entry-map factory in scope as
+ *  `entryMap` and the spec as `spec`. */
+const readOnlyEntryMapPrelude = (names: string, spec: unknown, body: readonly string[]): string => [
+  `const [${names}] = ((stringify, freeze, define) => {`,
+  `  const entryMap = ${READ_ONLY_ENTRY_MAP};`,
+  `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
+  ...body.map((line) => `  ${line}`),
+  `})(JSON.stringify, Object.freeze, Object.defineProperty);`,
+].join('\n');
+
+/** The `entities` and `persona` prelude: each entry with its own trait map and owner view. */
+const entitiesPrelude = ({ byName, persona }: KeyedEntities, { indexOf }: FlatPlaceholderMap): string => {
   const data = ({ id = '', type = '', pronouns = '', inScene = false, traits, placeholders }: SandboxEntity) =>
     ({ id, type, pronouns, inScene, traits: traitData(traits), ph: ownerIndex(indexOf, placeholders) });
   const spec = {
-    entities: [...keyed].map(([name, entity]) => [name, data(entity)]),
+    entities: [...byName].map(([name, entity]) => [name, data(entity)]),
     persona: persona.name ? null : data(persona),
   };
-  return [
-    `const [entities, persona, ${ENTITY_WRITES}] = ((stringify, keys, freeze, define) => {`,
-    `  const traitMap = ${trackedMapFactory(TRAIT_MAP)};`,
-    `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
-    `  const readers = [];`,
-    `  const entry = (key, data, unknown) => {`,
-    `    const [traits, rows] = traitMap(data.traits || {});`,
-    `    const written = [];`,
-    `    readers.push([key, unknown, rows, written]);`,
-    `    const placeholders = ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
-    `    const values = { id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits, placeholders };`,
-    `    const out = {};`,
-    `    for (const field of ${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}) {`,
-    `      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });`,
-    `    }`,
-    `    return freeze(out);`,
-    `  };`,
-    `  const map = Object.create(null);`,
-    `  for (const [name, data] of spec.entities) map[name] = entry(name, data, false);`,
-    `  const persona = spec.persona ? entry('', spec.persona, false) : map[${JSON.stringify(persona.name)}];`,
-    `  const strays = Object.create(null);`,
-    `  const entities = new Proxy(freeze(map), {`,
-    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
-    `      : strays[key] || (strays[key] = entry(key, {}, true)),`,
-    `  });`,
-    `  const readWrites = () => stringify(readers`,
-    `    .map(([key, unknown, rows, written]) => [key, unknown, rows(), written])`,
-    `    .filter((row) => row[2].length || row[3].length));`,
-    `  return [entities, persona, readWrites];`,
-    `})(JSON.stringify, Object.keys, Object.freeze, Object.defineProperty);`,
-  ].join('\n');
+  return readOnlyEntryMapPrelude(`entities, persona, ${ENTITY_WRITES}`, spec, [
+    `const traitMap = ((keys) => ${trackedMapFactory(TRAIT_MAP)})(Object.keys);`,
+    `const [entities, readWrites, entry] = entryMap(${JSON.stringify(ENTITY_READ_ONLY_FIELDS)}, spec.entities, {}, (key, data, unknown) => {`,
+    `  const [traits, rows] = traitMap(data.traits || {});`,
+    `  const placeholders = ${OWNER_VIEW}(data.ph ?? -1, key ? ['entity', key] : ['persona', 'persona'], unknown || !key);`,
+    `  return [{ id: '', type: '', pronouns: '', inScene: false, ...data, name: unknown ? '' : key, traits, placeholders }, rows];`,
+    `});`,
+    `const persona = spec.persona ? entry('', spec.persona, false) : entities[${JSON.stringify(persona.name)}];`,
+    `return [entities, persona, readWrites];`,
+  ]);
 };
 
 /** The index of an owner node in the flattened map, or -1 where the owner has none. */
@@ -592,42 +611,35 @@ const ownerIndex = (indexOf: FlatPlaceholderMap['indexOf'], node: SandboxPlaceho
 /** The fields on a dictionary entry. None takes a write. */
 const DICTIONARY_READ_ONLY_FIELDS = ['id', 'name', 'placeholders'] as const;
 
-/** The `dictionaries` prelude: frozen entries, the later of two sharing a name winning. Rows are
- *  `[name, writtenFields]`, one per entry the run wrote a field of. */
-const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], indexOf: FlatPlaceholderMap['indexOf']): string => {
+/** The `dictionaries` prelude, the later of two books sharing a name winning. */
+const dictionariesPrelude = (dictionaries: readonly SandboxDictionary[], { indexOf }: FlatPlaceholderMap): string => {
   const spec = [...new Map(dictionaries.map((book) => [book.name, { id: book.id ?? '', ph: ownerIndex(indexOf, book.placeholders) }]))];
-  return [
-    `const [dictionaries, ${DICTIONARY_WRITES}] = ((stringify, freeze, define) => {`,
-    `  const spec = JSON.parse(${JSON.stringify(JSON.stringify(spec))});`,
-    `  const readers = [];`,
-    `  const entry = (key, data, unknown) => {`,
-    `    const written = [];`,
-    `    readers.push([key, written]);`,
-    `    const values = { id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) };`,
-    `    const out = {};`,
-    `    for (const field of ${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}) {`,
-    `      define(out, field, { enumerable: true, get: () => values[field], set: () => { if (!written.includes(field)) written.push(field); } });`,
-    `    }`,
-    `    return freeze(out);`,
-    `  };`,
-    `  const map = Object.create(null);`,
-    `  for (const [name, data] of spec) map[name] = entry(name, data, false);`,
-    `  const strays = Object.create(null);`,
-    `  const dictionaries = new Proxy(freeze(map), {`,
-    `    get: (target, key) => typeof key !== 'string' || key in target ? target[key]`,
-    `      : strays[key] || (strays[key] = entry(key, { id: '', ph: -1 }, true)),`,
-    `  });`,
-    `  return [dictionaries, () => stringify(readers.filter((row) => row[1].length))];`,
-    `})(JSON.stringify, Object.freeze, Object.defineProperty);`,
-  ].join('\n');
+  return readOnlyEntryMapPrelude(`dictionaries, ${DICTIONARY_WRITES}`, spec, [
+    `const [dictionaries, readWrites] = entryMap(${JSON.stringify(DICTIONARY_READ_ONLY_FIELDS)}, spec, { id: '', ph: -1 }, (key, data, unknown) =>`,
+    `  [{ id: data.id, name: unknown ? '' : key, placeholders: ${OWNER_VIEW}(data.ph, ['dictionary', key], unknown) }, () => []]);`,
+    `return [dictionaries, readWrites];`,
+  ]);
 };
 
-/** The read-only fields the run wrote on `dictionaries` entries, as code spelled them. */
-function readDictionaryWrites(dump: string): string[] {
-  const parsed: unknown = JSON.parse(dump);
-  return (Array.isArray(parsed) ? parsed : []).flatMap((row) =>
-    (Array.isArray(row) && typeof row[0] === 'string' ? readOnlyPaths(memberPath('dictionaries', row[0]), row[1]) : []));
+/** One row of a read-only entry map's reader: the name code used, whether no entry has it, what the entry's
+ *  own map reported, and the read-only fields the run wrote. */
+interface EntryWriteRow {
+  name: string;
+  unknown: boolean;
+  traitRows: unknown;
+  fields: unknown;
 }
+
+/** The rows in a read-only entry map's dump; a malformed row is skipped. */
+function readEntryWriteRows(dump: string): EntryWriteRow[] {
+  const parsed: unknown = JSON.parse(dump);
+  return (Array.isArray(parsed) ? parsed : []).flatMap((row) => (Array.isArray(row) && typeof row[0] === 'string'
+    ? [{ name: row[0], unknown: row[1] === true, traitRows: row[2], fields: row[3] }] : []));
+}
+
+/** The read-only fields the run wrote on `dictionaries` entries, as code spelled them. */
+const readDictionaryWrites = (dump: string): string[] =>
+  readEntryWriteRows(dump).flatMap(({ name, fields }) => readOnlyPaths(memberPath('dictionaries', name), fields));
 
 /** How code names an entry of `root`: dot syntax for an identifier, brackets otherwise. */
 const memberPath = (root: string, name: string) =>
@@ -682,23 +694,19 @@ function readTraitWrites(
  *  entity names the entity, not its traits. */
 function readEntityWrites(
   dump: string,
-  keyed: ReadonlyMap<string, SandboxEntity>,
-  persona: SandboxEntity,
+  { byName, persona }: KeyedEntities,
 ): { writes: EntityTraitWrites[]; unknown: string[]; readOnly: string[] } | { error: string } {
-  const parsed: unknown = JSON.parse(dump);
   const writes: EntityTraitWrites[] = [];
   const unknown: string[] = [];
   const readOnly: string[] = [];
-  for (const row of Array.isArray(parsed) ? parsed : []) {
-    if (!Array.isArray(row) || typeof row[0] !== 'string') continue;
-    const [name, isUnknown, rows, fields] = row as [string, unknown, unknown, unknown];
-    readOnly.push(...readOnlyPaths(isUnknown === true ? memberPath('entities', name) : entityPath(name), fields));
+  for (const { name, unknown: isUnknown, traitRows: rows, fields } of readEntryWriteRows(dump)) {
+    readOnly.push(...readOnlyPaths(isUnknown ? memberPath('entities', name) : entityPath(name), fields));
     // A blank entry has no traits, so any trait row through it is a switch on an entity that is not there.
-    if (isUnknown === true) {
+    if (isUnknown) {
       if (Array.isArray(rows) && rows.length) unknown.push(name);
       continue;
     }
-    const entity = name ? keyed.get(name) : persona;
+    const entity = name ? byName.get(name) : persona;
     if (!entity) continue;
     const read = readTraitWrites(rows, entity.traits, entityTraitsPath(name));
     if ('error' in read) return read;
@@ -919,8 +927,8 @@ export const executeStatCode = async (
         `})(${LOCK_FIELDS});`,
         placeholdersPrelude(placeholderMap),
         trackedMapPrelude({ ...TRAIT_MAP, root: 'traits', reader: TRAIT_WRITES, data: traitData(traits) }),
-        entitiesPrelude(keyed, persona, placeholderMap.indexOf),
-        dictionariesPrelude(dictionaries, placeholderMap.indexOf),
+        entitiesPrelude(keyed, placeholderMap),
+        dictionariesPrelude(dictionaries, placeholderMap),
         `[(function(${PLACEHOLDER_WRITES}, ${TRAIT_WRITES}, ${ENTITY_WRITES}, ${STAT_WRITES}, ${LOOSE_WRITES}, ${LOOSE_NOTE}, ${DICTIONARY_WRITES}, ${OWNER_VIEW}) {`,
         code,
         `})(), self.value, ${CODE_BOUND_FIELDS.map((field) => `self.${field}`).join(', ')}, ${PLACEHOLDER_WRITES}(), ${TRAIT_WRITES}(), ${ENTITY_WRITES}(),`,
@@ -994,7 +1002,7 @@ export const executeStatCode = async (
       if ('error' in placeholderWrites) return failure(placeholderWrites.error, 'bad-write');
       const traitWrites = readTraitWrites(JSON.parse(traitsDump), traits, 'traits');
       if ('error' in traitWrites) return failure(traitWrites.error, 'bad-write');
-      const entityWrites = readEntityWrites(entitiesDump, keyed, persona);
+      const entityWrites = readEntityWrites(entitiesDump, keyed);
       if ('error' in entityWrites) return failure(entityWrites.error, 'bad-write');
       const readOnlyWrites = [
         ...readStatReadOnlyWrites(statsDump),

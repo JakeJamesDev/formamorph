@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { migrateWorld } from './version';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeTraits } from './statCodeTraits';
+import type { StatCodeBearers } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { allPlaceholders, placeholderOwners } from './placeholderHomes';
 import { phValues } from '@/test/placeholderValues';
@@ -62,7 +62,7 @@ const NO_PERSONA: PersonaRef = { source: 'none' };
 
 /** One turn of the loaded world, run as play runs it. */
 function playTurn(world: World) {
-  const traits: StatCodeTraits = {
+  const traits: StatCodeBearers = {
     acquired: [], disabledTraitIds: [], appliedValues: {}, ownedTraits: {}, entities: world.entities, library: [],
     world: {
       traits: [], groups: [], entities: world.entities, persona: NO_PERSONA,
@@ -71,7 +71,7 @@ function playTurn(world: World) {
   };
   return runStatCodeTurn({
     stats: world.stats as PlayerStat[],
-    enabled: {}, previous: [], asks: [], regenApplied: {}, clock: { deltaHours: 7, elapsedHours: 40 }, traits,
+    enabled: {}, previous: [], asks: [], regenApplied: {}, clock: { deltaHours: 7, elapsedHours: 40 }, bearers: traits,
     placeholders: {
       placeholders: allPlaceholders(world), owners: placeholderOwners(world),
       dictionaries: world.dictionaries.map(({ id, name }) => ({ id, name })), rolls: { world: {} },

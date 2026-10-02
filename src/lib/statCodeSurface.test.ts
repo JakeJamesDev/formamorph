@@ -197,7 +197,7 @@ const turnProbe = async (timing: StatCodeTiming, code: string): Promise<number |
     asks: [{ id: probe.id, value: 40, max: 0 }],
     regenApplied: { [probe.id]: 5 },
     clock: {},
-    traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+    bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
     statNameOf: (stat) => stat.name,
     traitNameOf: (trait) => trait.name,
   });
@@ -244,7 +244,7 @@ describe('the described surface in each of the two boxes', () => {
         asks: [],
         regenApplied: {},
         clock: {},
-        traits: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
+        bearers: { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [], groups: [] } },
         statNameOf: (entry) => entry.name,
         traitNameOf: (entry) => entry.name,
       });

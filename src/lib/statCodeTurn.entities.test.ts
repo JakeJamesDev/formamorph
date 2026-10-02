@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runStatCodeTurn, type StatCodeTurn } from './statCodeTurn';
-import type { StatCodeTraits } from './statCodeTraits';
+import type { StatCodeBearers } from './statCodeTraits';
 import { inPlayBearers } from './ownedTraitsInPlay';
 import { withPersonaEntry } from './persona';
 import { encodePlaceholderToken } from './placeholders';
@@ -34,7 +34,7 @@ const pip: Entity = { id: 'pip', name: 'Pip', traits: [loyal] };
 function played(
   persona: PersonaRef,
   over: { ownedTraits?: OwnedTraitStates; entities?: Entity[]; library?: Entity[] } = {},
-): StatCodeTraits {
+): StatCodeBearers {
   const entities = over.entities ?? [rook, mira, wanderer, shade, brute];
   const library = over.library ?? [pip];
   const entered = [...withPersonaEntry(entities, persona, undefined)];
@@ -56,9 +56,9 @@ function played(
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 
 /** One stat per piece of code, in order. */
-const run = (codes: string[], traits: StatCodeTraits = played(asMira), placeholders: Placeholder[] = []) => runStatCodeTurn({
+const run = (codes: string[], traits: StatCodeBearers = played(asMira), placeholders: Placeholder[] = []) => runStatCodeTurn({
   stats: codes.map((code, i) => stat({ id: `s${i}`, name: `S${i}`, value: 0, code })),
-  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, traits,
+  enabled: {}, previous: [], asks: [], regenApplied: {}, clock: {}, bearers: traits,
   placeholders: { placeholders, rolls: {} },
   statNameOf: (s) => s.name, traitNameOf: (t) => t.name,
 } satisfies StatCodeTurn);
@@ -66,7 +66,7 @@ const run = (codes: string[], traits: StatCodeTraits = played(asMira), placehold
 const valueOf = (out: { stats: readonly PlayerStat[] }, id: string) => out.stats.find((s) => s.id === id)?.value;
 
 /** The names `entities` lists, read back through the stat's value as a bitmask over `names`. */
-const listed = async (names: string[], traits: StatCodeTraits) => {
+const listed = async (names: string[], traits: StatCodeBearers) => {
   const code = `return ${JSON.stringify(names)}.reduce((sum, name, i) => sum + (entities[name].name === name ? 2 ** i : 0), 0);`;
   const value = valueOf(await run([code], traits), 's0') ?? 0;
   return names.filter((_, i) => value & (2 ** i));
