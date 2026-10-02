@@ -102,11 +102,11 @@ describe.each(TABS)('search in $name, $type', ({ type, renderTab, empty }) => {
     type_(type, 'T');
     type_(type, 'Thr');
     type_(type, 'Thread 1');
-    await settle();
+    await act(() => new Promise((resolve) => setTimeout(resolve, FEEDBACK_SEARCH_DELAY_MS - 100)));
     expect(searchesSent().filter(Boolean)).toEqual([]);
 
+    await waitFor(() => expect(lastCall()).toMatchObject({ search: 'Thread 1', page: 1 }), { timeout: 300 });
     expect(await screen.findByText('Page 1 of 2')).toBeTruthy();
-    expect(lastCall()).toMatchObject({ search: 'Thread 1', page: 1 });
     expect(searchesSent().filter(Boolean)).toEqual(['Thread 1']);
     expect(screen.getByText('Thread 18')).toBeTruthy();
   });
@@ -205,11 +205,13 @@ describe.each([
   { name: 'the Admin Panel', renderHost: () => <FeedbackTab active /> },
   { name: 'the Feedback dialog', renderHost: () => <FeedbackHubDialog open onOpenChange={() => {}} /> },
 ])('a tab switch in $name', ({ renderHost }) => {
-  it('keeps each tab’s search', async () => {
+  it('keeps each tab’s search and page', async () => {
     render(renderHost());
     await screen.findByText('Page 1 of 5');
     type_('bug', 'Thread 1');
     await screen.findByText('Page 1 of 2');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByText('Page 2 of 2');
 
     switchTo('Suggestions');
     await waitFor(() => expect(lastCall().type).toBe('suggestion'));
@@ -217,7 +219,7 @@ describe.each([
     await waitFor(() => expect(lastCall().type).toBe('bug'));
 
     expect(searchBox('bug')).toHaveProperty('value', 'Thread 1');
-    expect(lastCall().search).toBe('Thread 1');
+    expect(lastCall()).toMatchObject({ search: 'Thread 1', page: 2 });
   });
 });
 

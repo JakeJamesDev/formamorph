@@ -182,7 +182,8 @@ export function AdminPanelDialog({
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="feedback" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+          {/* Stays mounted, so leaving and returning keeps the queues' search, filters, and page. */}
+          <TabsContent value="feedback" forceMount className="flex-1 min-h-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
             <ScrollArea className="flex-1 min-h-0 px-1">
               <FeedbackTab active={open && tab === 'feedback'} initialTab={initialFeedbackTab} />
             </ScrollArea>
