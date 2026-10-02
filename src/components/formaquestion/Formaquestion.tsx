@@ -1,5 +1,5 @@
 import {
-  useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent,
+  useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { ensureShieldedLayer } from '@/components/ui/shielded-layer';
@@ -7,7 +7,8 @@ import { useBackStop } from '@/hooks/useBackStop';
 import { useDevRoute } from '@/lib/devRouter';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
-import { registerDocsOpener, type DocsTarget } from '@/lib/formaquestion/docsOpener';
+import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
+import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
@@ -19,24 +20,18 @@ import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/useIsMobile';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame } from './FormaquestionFrame';
-import { FORMAQUESTION_TABS, useGuideView, type GuideViewChange } from './formaquestionTabs';
+import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
 import { useHelpChat } from './useHelpChat';
+import { usePointerDrag, type PointerDrag } from './usePointerDrag';
 
 const WINDOW_ID = 'formaquestion-window';
 
 /** Close animation length in ms. It matches `data-[state=closed]:duration-150` in `WINDOW_MOTION`. */
 const CLOSE_MS = 150;
 
-/**
- * Open and close timing for the window and the sheet. The closed state keeps its last frame until React
- * unmounts it, and takes no presses on the way out. Reduced motion shows and hides at once.
- *
- * `transition-none` is load-bearing: `duration-*` also sets the transition duration, and with no property
- * named a transition covers `left` and `top`, so every drag step would ease and the window would trail
- * the pointer.
- */
+/** Open and close timing. `transition-none` keeps `duration-*` from easing each drag step of `left` and `top`. */
 const MOTION = 'transition-none ease-out data-[state=open]:animate-in data-[state=open]:duration-200 data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=closed]:ease-in data-[state=closed]:fill-mode-forwards data-[state=closed]:pointer-events-none motion-reduce:!animate-none';
 
 /** The window zooms out of the Help tab and fades in, and goes back the same way. */
@@ -49,6 +44,14 @@ const SHEET_MOTION: Record<Edge, string> = {
   top: `${MOTION} data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top`,
   bottom: `${MOTION} data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom`,
 };
+
+/** A title bar or corner grip drag: where it started, and the box it gives now. */
+interface BoxPress {
+  x: number;
+  y: number;
+  start: WindowBox;
+  latest: WindowBox;
+}
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -70,8 +73,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 }) {
   const [layer] = useState(ensureShieldedLayer);
   const sheet = useIsMobile();
-  const hidden = suspended;
-  const mountedRef = useMountedRef();
+    const mountedRef = useMountedRef();
   const windowRef = useRef<HTMLElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -103,8 +105,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // The conversation lives here, so it outlives the window. The AI check runs only while the window is open.
   const chat = useHelpChat(index, useHelpAi(open));
 
-  // The window stays inside the screen after a browser resize. At a mobile width the sheet shows, and
-  // the window keeps its place and size for when the screen is wide again.
+  // A resize keeps the window on the screen. At a mobile width the sheet shows and the box waits unchanged.
   useEffect(() => {
     const onResize = () => {
       if (window.innerWidth >= MOBILE_BREAKPOINT) setBox((current) => clampBox(current, viewportOf(window)));
@@ -141,17 +142,17 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   // A "Learn more" link or a notice asks for a docs heading. The window opens now and shows it once the
   // docs have loaded. While nothing is registered, those links go to the wiki.
-  const [target, setTarget] = useState<DocsTarget | null>(null);
+  const [target, setTarget] = useState<DocTarget | null>(null);
   useEffect(() => {
-    if (hidden) return;
+    if (suspended) return;
     return registerDocsOpener((next) => {
       if (!open) openWindow();
       setTarget(next);
     });
-  }, [hidden, open, openWindow]);
+  }, [suspended, open, openWindow]);
 
   // The Android back action closes the window before any dialog under it.
-  useBackStop(open && !hidden ? closeWindow : undefined, windowRef);
+  useBackStop(open && !suspended ? closeWindow : undefined, windowRef);
 
   // The window stays mounted while its close animation runs. `present` drops when the animation ends.
   const [present, setPresent] = useState(false);
@@ -161,28 +162,28 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       return;
     }
     if (!present) return;
-    if (hidden || reducedMotion()) {
+    if (suspended || reducedMotion()) {
       setPresent(false);
       return;
     }
     // A hidden browser tab does not finish animations, so the end event has a timed backstop.
     const backstop = window.setTimeout(() => setPresent(false), CLOSE_MS + 150);
     return () => window.clearTimeout(backstop);
-  }, [open, present, hidden]);
+  }, [open, present, suspended]);
 
-  const shown = (open || present) && !hidden;
+  const shown = (open || present) && !suspended;
 
   // Focus moves in on open and back on close, after the commit that shows the Help tab again.
   const wasOpen = useRef(false);
   useLayoutEffect(() => {
-    if (open && !wasOpen.current && !hidden) focusWindow();
+    if (open && !wasOpen.current && !suspended) focusWindow();
     if (!open && wasOpen.current) {
       const back = returnFocusRef.current;
       returnFocusRef.current = null;
       if (back?.isConnected) back.focus();
     }
     wasOpen.current = open;
-  }, [open, hidden, focusWindow]);
+  }, [open, suspended, focusWindow]);
 
   // A press in the window can remove the control it was on: a result row, a contents row, a link.
   // Focus then stays in the window, on its frame, so the next F1 closes it.
@@ -207,18 +208,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [failed]);
   useEffect(() => {
     if (!target || !guide) return;
-    const sectionId = guide.resolve('', target.anchor ? `${target.page}#${target.anchor}` : target.page);
+    const sectionId = guide.resolve('', docTargetId(target));
     setTarget(null);
     // The coverage test keeps this case from shipping. The wiki is the way out if it ever does.
     if (!sectionId) {
-      window.open(wikiPageUrl(target.page) + (target.anchor ? `#${target.anchor}` : ''), '_blank', 'noopener,noreferrer');
+      window.open(wikiPageUrl(docTargetId(target)), '_blank', 'noopener,noreferrer');
       return;
     }
-    changeViewInWindow((current) => {
-      const page = guide.section(sectionId)?.page;
-      const openPages = page === undefined || current.openPages.includes(page) ? current.openPages : [...current.openPages, page];
-      return { sectionId, tab: 'guide', reading: true, openPages };
-    });
+    changeViewInWindow(openSectionChange(sectionId, guide.section(sectionId)?.page));
   }, [target, guide, changeViewInWindow]);
 
   // The docs can load after the window opens. Focus then goes from the frame to the window's first field, except on the sheet.
@@ -228,7 +225,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   // F1 opens the window, then moves focus in when focus is elsewhere, then closes it.
   useEffect(() => {
-    if (hidden) return;
+    if (suspended) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'F1' || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
       event.preventDefault();
@@ -243,7 +240,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     // Capture: a prompt field stops keydown from bubbling.
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [hidden, open, openWindow, closeWindow, focusWindow]);
+  }, [suspended, open, openWindow, closeWindow, focusWindow]);
 
   // DEV: `#dev?modal=formaquestion&tab=guide&subtab=<section id>&mode=wide` opens the window in one jump.
   const devRoute = useDevRoute();
@@ -259,28 +256,19 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     }
   }, [devRoute, changeView]);
 
-  const drag = useRef<{ kind: 'move' | 'resize'; x: number; y: number; start: WindowBox; latest: WindowBox } | null>(null);
-  // The device keeps the place and size the player left the window at.
-  const endDrag = () => {
-    if (drag.current) writeStoredBox(drag.current.latest);
-    drag.current = null;
-  };
-  const dragHandlers = (kind: 'move' | 'resize') => ({
-    onPointerDown: (event: PointerEvent<HTMLElement>) => {
-      if (event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
-      event.currentTarget.setPointerCapture(event.pointerId);
-      drag.current = { kind, x: event.clientX, y: event.clientY, start: box, latest: box };
+  const boxDrag = (step: typeof moveBox): PointerDrag<BoxPress> => ({
+    start: (event) => (event.button !== 0 || (event.target as HTMLElement).closest('button')
+      ? null
+      : { x: event.clientX, y: event.clientY, start: box, latest: box }),
+    move: (press, event) => {
+      press.latest = step(press.start, event.clientX - press.x, event.clientY - press.y, viewportOf(window));
+      setBox(press.latest);
     },
-    onPointerMove: (event: PointerEvent<HTMLElement>) => {
-      const current = drag.current;
-      if (!current) return;
-      const step = current.kind === 'move' ? moveBox : resizeBox;
-      current.latest = step(current.start, event.clientX - current.x, event.clientY - current.y, viewportOf(window));
-      setBox(current.latest);
-    },
-    onPointerUp: endDrag,
-    onPointerCancel: endDrag,
+    // The device keeps the place and size the player left the window at.
+    end: (press) => writeStoredBox(press.latest),
   });
+  const moveHandlers = usePointerDrag(boxDrag(moveBox));
+  const resizeHandlers = usePointerDrag(boxDrag(resizeBox));
   const wide = !sheet && isWide(box);
   const swap = () => {
     const next = swapWidth(box, viewportOf(window));
@@ -290,7 +278,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   return createPortal(
     <>
-      {!hidden && (
+      {!suspended && (
         <EdgeTab open={open} concealed={sheet && open} controls={WINDOW_ID} onToggle={() => (open ? closeWindow() : openWindow())} />
       )}
       {shown && (
@@ -307,8 +295,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           } : {
             wide,
             onSwapWidth: swap,
-            move: dragHandlers('move'),
-            resize: dragHandlers('resize'),
+            move: moveHandlers,
+            resize: resizeHandlers,
             className: `pointer-events-auto fixed ${WINDOW_MOTION}`,
             style: {
               left: box.x,

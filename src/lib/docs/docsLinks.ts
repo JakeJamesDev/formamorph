@@ -34,3 +34,14 @@ export function hrefParts(href: string): { page: string; anchor: string | null }
   const hash = href.indexOf('#');
   return hash < 0 ? { page: href, anchor: null } : { page: href.slice(0, hash), anchor: safeDecode(href.slice(hash + 1)) };
 }
+
+/** A docs page, and one heading on it by its wiki anchor when it names one. */
+export interface DocTarget {
+  page: string;
+  anchor?: string;
+}
+
+/** The section id of a target, which is also its href: `page#anchor`, or the page alone. */
+export function docTargetId(target: DocTarget): string {
+  return target.anchor ? `${target.page}#${target.anchor}` : target.page;
+}

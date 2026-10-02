@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SURFACE_IDS } from '@/lib/docs/surfaceMap';
-import { createSurfaceRegistry } from './surfaceRegistry';
+import { DEV_VIEWS } from '@/lib/devRoutes';
+import { createSurfaceRegistry, SCREEN_IDS } from './surfaceRegistry';
 
 let lastPlace = 0;
 
@@ -154,5 +155,11 @@ describe('subscribers', () => {
     stop();
     registry.clear(menu);
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the screen list', () => {
+  it('names every top-level view', () => {
+    expect([...SCREEN_IDS].sort()).toEqual([...DEV_VIEWS].sort());
   });
 });

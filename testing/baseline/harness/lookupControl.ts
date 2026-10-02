@@ -37,7 +37,7 @@ function contents(index: DocsIndex): string {
 }
 
 /** One question in ticket 22's lookup mode, with no history, surface or language. Yields the done event only. */
-export async function* askHelpTicket22({ question, snapshot, index, fetchImpl }: {
+export async function* askHelpContentsLookup({ question, snapshot, index, fetchImpl }: {
   question: string;
   snapshot: AiSettingsSnapshot;
   index: DocsIndex;

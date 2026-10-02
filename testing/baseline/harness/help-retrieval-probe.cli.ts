@@ -20,6 +20,7 @@ import path from 'node:path';
 import { bundledDocsIndex, BUNDLED_DOCS } from '@/lib/docs/bundledDocsIndex';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { createDocsLinkResolver } from '@/lib/docs/docsReader';
+import { docTargetId } from '@/lib/docs/docsLinks';
 import { docHeadings, isHowToHeading, plainText } from '@/lib/docs/headingAnchors';
 import { helpSections } from '@/lib/formaquestion/helpSession';
 import { refDocsIndex } from './refDocsIndex';
@@ -44,7 +45,7 @@ const guide: Question[] = Object.entries(BUNDLED_DOCS).flatMap(([page, markdown]
     const text = plainText(heading.text);
     const section = resolve(page, `#${heading.anchor}`);
     if (!isHowToHeading(text) || !section) return [];
-    return [{ set: 'guide', id: `${page}#${heading.anchor}`, question: `How do I ${text.slice('How to '.length)}?`, section }];
+    return [{ set: 'guide', id: docTargetId({ page, anchor: heading.anchor }), question: `How do I ${text.slice('How to '.length)}?`, section }];
   }));
 const player: Question[] = readCases<{ id: string; question: string; section: string }>('help-baseline-cases.json')
   .map((c) => ({ set: 'player', ...c }));

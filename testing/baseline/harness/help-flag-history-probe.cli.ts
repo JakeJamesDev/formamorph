@@ -16,12 +16,10 @@
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, type EarlierExchange } from '@/lib/formaquestion/helpSession';
-import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { factShare, mean, pct, probeSnapshot } from './help-probe-shared';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -42,16 +40,7 @@ const BASELINE = path.resolve('testing/baseline');
 const cases = (JSON.parse(readFileSync(path.join(BASELINE, 'help-flag-history-cases.json'), 'utf8')) as { cases: FlagCase[] }).cases;
 const index = bundledDocsIndex();
 
-const snapshot: AiSettingsSnapshot = {
-  resolveTarget: () => ({
-    endpointId: 'probe', url: endpoint, apiToken: token, model, maxTokens: undefined, localEngine: false,
-    samplerOverrides: defaultEndpointSamplerOverrides(), reasoning: UNKNOWN_REASONING_CAPABILITY,
-  }),
-  thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: false, promptReasoning: {},
-  promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {},
-  genTemperature: 0.9, genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05,
-  paragraphLimit: 'none', disableThinking: false,
-};
+const snapshot = probeSnapshot({ endpoint, model, token });
 
 interface Sample { answer: string; flagged: boolean; sources: string[]; history: string[] }
 
@@ -89,10 +78,6 @@ type Kind = (typeof KINDS)[number];
 interface Row { id: string; run: number; arm: Arm; kind: Kind; sample?: Sample; error?: string }
 interface First { id: string; run: number; flagged: boolean; error?: string }
 
-const factShare = (facts: string[], answer: string) =>
-  facts.length ? facts.filter((fact) => answer.toLowerCase().includes(fact.toLowerCase())).length / facts.length : 0;
-const pct = (n: number, d: number) => (d === 0 ? '  –' : `${Math.round((100 * n) / d).toString().padStart(3)}%`);
-const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
 
 const firsts: First[] = [];
 const jobs: (() => Promise<Row[]>)[] = [];

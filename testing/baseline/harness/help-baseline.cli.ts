@@ -40,17 +40,16 @@
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import sidebar from '../../../docs/_Sidebar.md?raw';
 import { BUNDLED_DOCS, bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { askHelp, HELP_DOCS_CHAR_BUDGET, HELP_MAX_TOKENS, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
-import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { RequestMessage } from '@/types';
+import { probeSnapshot, type ProbeTarget } from './help-probe-shared';
 import { BASELINE_KINDS, loadBaselineCases, type BaselineCase, type BaselineKind } from './help-baseline-cases';
 import { inLanguage, scoreAnswer, summarize, worstQuestions, type ScoredRow, type Summary } from './help-baseline-score';
 
@@ -121,23 +120,6 @@ const NO_DOCS_SYSTEM_PROMPT = [
   '- After the steps, add one or two sentences of detail when the player needs them.',
 ].join('\n');
 
-interface Target { endpoint: string; model: string; token: string }
-
-function snapshotFor(target: Target, tools: boolean): AiSettingsSnapshot {
-  return {
-    resolveTarget: () => ({
-      endpointId: 'probe', url: target.endpoint, apiToken: target.token, model: target.model, maxTokens: undefined, localEngine: false,
-      samplerOverrides: defaultEndpointSamplerOverrides(),
-      // The lookup arm says the endpoint takes function calls, so the help session picks lookup mode.
-      reasoning: tools ? { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'probe' } } : UNKNOWN_REASONING_CAPABILITY,
-    }),
-    thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: false, promptReasoning: {},
-    promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {},
-    genTemperature: 0.9, genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05,
-    paragraphLimit: 'none', disableThinking: false,
-  };
-}
-
 interface Completion {
   choices?: { message?: { content?: string | null; tool_calls?: { id?: string; function: { name: string; arguments: string } }[] }; finish_reason?: string }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -173,13 +155,13 @@ function sessionFetch(usage: Usage): typeof fetch {
 }
 
 /** One question through the app's help session. */
-async function askSession(target: Target, arm: Arm, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
+async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
   const usage = noUsage();
   const lookup = arm === 'lookup';
   const untiered = arm === 'rank-old';
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : index, lookup,
-    snapshot: snapshotFor(target, lookup), fetchImpl: sessionFetch(usage),
+    snapshot: probeSnapshot(target, lookup), fetchImpl: sessionFetch(usage),
   });
   const idOf = (id: string) => (untiered && id.startsWith(`${UNTIERED_CHANGELOG}#`) ? `Changelog${id.slice(UNTIERED_CHANGELOG.length)}` : id);
   for await (const event of session) {
@@ -189,7 +171,7 @@ async function askSession(target: Target, arm: Arm, c: BaselineCase, history: Ea
 }
 
 /** The block with the surface section outside it: the budget loses its length twice, and the cap skips it. */
-async function askOld(target: Target, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
+async function askOld(target: ProbeTarget, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
   const usage = noUsage();
   const hint = surfaceHint(c.surface, index);
   const found = helpSections(index, c.question, { history, budget: HELP_DOCS_CHAR_BUDGET - (hint?.section.markdown.length ?? 0) })
@@ -203,7 +185,7 @@ ${exchange.answer}` : exchange.answer },
     ]),
     { role: 'user', content: helpUserMessage(c.question, sections, hint?.where) },
   ];
-  const spec = buildAiRequestSpec(snapshotFor(target, false), {
+  const spec = buildAiRequestSpec(probeSnapshot(target, false), {
     systemPrompt: helpSystemPrompt(c.language ?? '', HELP_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
@@ -214,14 +196,14 @@ ${exchange.answer}` : exchange.answer },
 }
 
 /** The control: the question with its history, its screen and its language, and no guide text. */
-async function askNoDocs(target: Target, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
+async function askNoDocs(target: ProbeTarget, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
   const usage = noUsage();
   const where = surfaceHint(c.surface, index)?.where;
   const messages: RequestMessage[] = [
     ...history.flatMap((exchange): RequestMessage[] => [{ role: 'user', content: exchange.question }, { role: 'assistant', content: exchange.answer }]),
     { role: 'user', content: [...(where ? [`The player asks from this screen: ${where}.`] : []), `Question: ${c.question}`].join('\n\n') },
   ];
-  const spec = buildAiRequestSpec(snapshotFor(target, false), {
+  const spec = buildAiRequestSpec(probeSnapshot(target, false), {
     systemPrompt: helpSystemPrompt(c.language ?? '', NO_DOCS_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
@@ -246,7 +228,7 @@ async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> 
 }
 
 async function runBatch(): Promise<Batch> {
-  const target: Target = {
+  const target: ProbeTarget = {
     endpoint: argVal('--endpoint', 'https://api.lyonade.net/v1/chat/completions'),
     model: argVal('--model', 'default'),
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),

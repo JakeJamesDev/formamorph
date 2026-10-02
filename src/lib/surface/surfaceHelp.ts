@@ -1,4 +1,4 @@
-import type { DocTarget } from '@/lib/docs/docsChecks';
+import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
 import { SURFACE_EXCLUSIONS, SURFACE_MAP } from '@/lib/docs/surfaceMap';
 import type { Guide } from '@/lib/formaquestion/guide';
 import type { Surface } from './surfaceRegistry';
@@ -21,7 +21,7 @@ export function surfaceHelpTarget(
 }
 
 /** The id of the guide section that explains a Surface, or null when none does. */
-export function surfaceHelpSection(surface: Surface, guide: Guide): string | null {
+export function surfaceHelpSection(surface: Surface, guide: Pick<Guide, 'resolve'>): string | null {
   const target = surfaceHelpTarget(surface);
-  return target && guide.resolve(target.page, `${target.page}#${target.anchor}`);
+  return target && guide.resolve(target.page, docTargetId(target));
 }

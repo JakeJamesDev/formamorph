@@ -24,11 +24,9 @@
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4] [--part 1,2,3] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { askHelp, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
-import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { factShare, mean, pct, probeSnapshot } from './help-probe-shared';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -53,16 +51,7 @@ const languageCases = readCases<HelpCase>('help-cases.json').filter((c) => c.wor
 
 const index = bundledDocsIndex();
 
-const snapshot: AiSettingsSnapshot = {
-  resolveTarget: () => ({
-    endpointId: 'probe', url: endpoint, apiToken: token, model, maxTokens: undefined, localEngine: false,
-    samplerOverrides: defaultEndpointSamplerOverrides(), reasoning: UNKNOWN_REASONING_CAPABILITY,
-  }),
-  thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: false, promptReasoning: {},
-  promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {},
-  genTemperature: 0.9, genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05,
-  paragraphLimit: 'none', disableThinking: false,
-};
+const snapshot = probeSnapshot({ endpoint, model, token });
 
 interface Sample { answer: string; promptChars: number; messages: number; sources: string[] }
 
@@ -97,14 +86,10 @@ async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> 
 
 const DECLINED = /(does not|doesn't|do not|don't|not) (\w+ )?(cover|mention|include|contain|explain|describe|detail|provide|address)|no (information|section|mention)|not covered/i;
 const boldNames = (text: string) => [...text.matchAll(/\*\*([^*\n]+)\*\*/g)].map((m) => m[1].trim().replace(/[:.,]$/, ''));
-const factShare = (facts: string[], answer: string) =>
-  facts.length ? facts.filter((fact) => answer.toLowerCase().includes(fact.toLowerCase())).length / facts.length : 0;
 const boldShare = (facts: string[], answer: string) => {
   const bolds = boldNames(answer).map((name) => name.toLowerCase());
   return facts.length ? facts.filter((fact) => bolds.some((name) => name.includes(fact.toLowerCase()))).length / facts.length : 0;
 };
-const pct = (n: number, d: number) => (d === 0 ? '  –' : `${Math.round((100 * n) / d).toString().padStart(3)}%`);
-const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
 
 const out: Record<string, unknown> = { endpoint, model, runs };
 
