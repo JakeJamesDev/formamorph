@@ -46,6 +46,32 @@ describe('the surface hint', () => {
     expect(sent.indexOf('Display holds')).toBeLessThan(sent.indexOf('1. Open the **Traits** tab.'));
   });
 
+  it('never sends more than five sections, the surface section included', async () => {
+    const crowded = createDocsIndex({
+      pages: {
+        ...PAGES,
+        ...Object.fromEntries(Array.from({ length: 8 }, (_, n) => [`Zebra${n}`, `## Display zebra ${n}\n\nA zebra display.`])),
+      },
+    });
+    const { sources } = await ask('Display zebra display', { surface: SETTINGS_DISPLAY, index: crowded });
+    expect(sources).toHaveLength(5);
+    expect(sources[0]).toBe('Settings#display');
+  });
+
+  it('sends the how-to of the open page for a question with no keyword of its own', async () => {
+    const editor = createDocsIndex({
+      pages: {
+        ...PAGES,
+        'World-Editor-Locations': '# 🗺️ World Editor: Locations\n\nLocations hold the map.\n\n## How to Add a Location\n\n1. Select **Add Location**.\n',
+        ...Object.fromEntries(Array.from({ length: 6 }, (_, n) => [`Other${n}`, `## Other ${n}\n\nOne more thing to add here.`])),
+      },
+    });
+    const { sources } = await ask('How do I add one here?', { surface: surface('worldEditor', null, ['worldEditor.locations']), index: editor });
+    expect(sources[0]).toMatch(/^World-Editor-Locations#.*world-editor-locations$/);
+    expect(sources[0]).not.toContain('how-to');
+    expect(sources).toContain('World-Editor-Locations#how-to-add-a-location');
+  });
+
   it('reads the Surface of the call, so a later question names the later Surface', async () => {
     const first = await ask('What is this?', { surface: SETTINGS_DISPLAY });
     const second = await ask('What is this?', { surface: surface('mainMenu', 'settings', ['settings.output']) });

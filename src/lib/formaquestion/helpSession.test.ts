@@ -134,6 +134,45 @@ describe('the docs sections of a request', () => {
     expect(helpSections(zebraIndex(8, 200), 'zebra')).toHaveLength(5);
   });
 
+  it('counts a lead section once against the budget, so the other hits fill what is left', () => {
+    // Each section is about 3,900 characters: the lead and two more fit in 12,000.
+    const zebras = zebraIndex(8, 3900);
+    const lead = zebras.search('zebra')[0];
+    const sections = helpSections(zebras, 'zebra', { lead });
+    expect(sections[0].id).toBe(lead.id);
+    expect(sections).toHaveLength(3);
+    expect(sections.reduce((sum, section) => sum + section.markdown.length, 0)).toBeLessThanOrEqual(HELP_DOCS_CHAR_BUDGET);
+  });
+
+  it('counts a lead section the search does not find against the budget too', () => {
+    const lead = { id: 'Lead#lead', page: 'Lead', heading: 'Lead', label: 'Lead', trail: [], markdown: `## Lead
+
+${'x'.repeat(7000)}` };
+    const sections = helpSections(zebraIndex(8, 3900), 'zebra', { lead });
+    expect(sections.map((section) => section.id)[0]).toBe('Lead#lead');
+    expect(sections).toHaveLength(2);
+  });
+
+  it('holds at most five sections with a lead section included', () => {
+    const zebras = zebraIndex(8, 200);
+    const lead = zebras.search('zebra')[0];
+    const ids = helpSections(zebras, 'zebra', { lead }).map((section) => section.id);
+    expect(ids).toHaveLength(5);
+    expect(ids[0]).toBe(lead.id);
+    expect(new Set(ids).size).toBe(5);
+  });
+
+  it('adds the hits within a page, so a question without a keyword of its own reaches its how-to', () => {
+    const pages = {
+      Mine: '# Mine\n\nIntro.\n\n## How to Add One\n\n1. Select **Add**.\n',
+      ...Object.fromEntries(Array.from({ length: 6 }, (_, n) => [`Other${n}`, `## Other ${n}\n\nOne more thing to add here.`])),
+    };
+    const docs = createDocsIndex({ pages });
+    const lead = docs.get(['Mine#mine'])[0];
+    expect(helpSections(docs, 'add one here', { lead }).map((section) => section.id)).toContain('Mine#how-to-add-one');
+    expect(helpSections(docs, 'add one here', { lead, page: 'Mine' }).map((section) => section.id)).toContain('Mine#how-to-add-one');
+  });
+
   it('holds at most five sections for a follow-up too, when its own best section is not among the others', () => {
     // "Stripes" is the best match for the follow-up alone; with "zebra" the six zebra sections rank above it.
     const zebras = createDocsIndex({

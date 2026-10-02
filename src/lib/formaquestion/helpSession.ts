@@ -81,22 +81,31 @@ function keptHistory(history: readonly EarlierExchange[]): EarlierExchange[] {
   return history.filter((exchange) => exchange.answer.trim()).slice(-HELP_HISTORY_EXCHANGES);
 }
 
+/** The most hits of the open page that join the block, after the question's own top hit. */
+const HELP_PAGE_HITS = 2;
+
 /**
- * The docs sections for a question, best first, while the docs text stays inside the budget. The top hit
- * is always kept. A follow-up such as "and then?" has few keywords of its own, so after the question's own
- * top hit come the hits of the previous question and the follow-up searched together.
+ * The docs block for a question, best first, while the text stays inside the budget and the section limit.
+ * The lead section, when given, goes first and counts once toward both. The top hit is always kept. A
+ * follow-up such as "and then?" has few keywords of its own, so after the question's own top hit come the
+ * hits of the previous question and the follow-up searched together. With a `page`, its best hits for the
+ * question come next, so a "here" question reaches that page's how-to sections.
  */
-export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET }: {
+export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead, page }: {
   history?: readonly EarlierExchange[];
   budget?: number;
+  lead?: DocSection;
+  page?: string;
 } = {}): DocSection[] {
   const previous = keptHistory(history).at(-1);
   const hits = previous
     ? [...index.search(question, 1), ...index.search(`${previous.question} ${question}`, HELP_SECTION_LIMIT)]
     : index.search(question, HELP_SECTION_LIMIT);
-  const kept: DocSection[] = [];
-  let size = 0;
-  for (const hit of hits) {
+  const onPage = page ? index.search(question, Infinity).filter((hit) => hit.page === page).slice(0, HELP_PAGE_HITS) : [];
+  const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];
+  const kept: DocSection[] = lead ? [lead] : [];
+  let size = lead?.markdown.length ?? 0;
+  for (const hit of ordered) {
     if (kept.length === HELP_SECTION_LIMIT) break;
     if (kept.some((section) => section.id === hit.id)) continue;
     if (kept.length > 0 && size + hit.markdown.length > budget) break;
@@ -130,11 +139,8 @@ export async function* askHelp({
   question, history = [], language = '', snapshot, index, surface, images = [], lookup: lookupOn = HELP_LOOKUP_MODE, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = surfaceHint(surface, index);
-  const lead = hint ? [hint.section] : [];
-  const found = helpSections(index, question, { history, budget: HELP_DOCS_CHAR_BUDGET - (hint?.section.markdown.length ?? 0) })
-    .filter((section) => section.id !== hint?.section.id);
+  const inPrompt = helpSections(index, question, { history, lead: hint?.section, page: hint?.section.page });
   const lookupMode = lookupOn && toolsSupported(snapshot.resolveTarget('help').reasoning);
-  const inPrompt = [...lead, ...found];
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
