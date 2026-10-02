@@ -67,15 +67,17 @@ export interface CodePlaceholders {
   dictionaries?: readonly CodeOwnerName[];
 }
 
-/** One trait as a template slot lists it: its code name and its group path in its holder's tree. */
+/** One trait as a template slot lists it, placed in its holder's tree. */
 export interface CodeTraitPlace {
   id: string;
   name: string;
   /** Group names under their code names, outermost first. Empty at the top level. */
   path: readonly string[];
+  /** Its place in its holder's Traits tab. Absent ⇒ list order. */
+  tabPosition?: number;
 }
 
-/** One entity as the editor reads it: its code name and its trait set, owned or linked, in its own tree order. */
+/** One entity as the editor reads it: its code name and the code names of its trait set, owned or linked. */
 export interface CodeEntityNames extends CodeOwnerName {
   traits: readonly CodeTraitPlace[];
   /** Whether a persona choice can play it, so `persona.placeholders` can reach its own. */

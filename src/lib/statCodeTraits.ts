@@ -169,8 +169,7 @@ function inTreeOrder<G extends TreeGroup, L extends TreeLeaf>(
 }
 
 /** Every authored entity, persona-only ones included, as the editor reads it: code names only, since the
- *  editor knows no playthrough. Authored order, which decides who holds a shared name. Each trait set comes
- *  in the entity's own tree order. */
+ *  editor knows no playthrough. Authored order, which decides who holds a shared name. */
 export function entityTraitNames(
   world: BearerWorld & { entityGroups?: readonly EntityGroup[] }, placeholders: readonly Placeholder[],
 ): CodeEntityNames[] {
@@ -189,12 +188,16 @@ export function entityTraitNames(
   });
 }
 
-/** A bearer's traits, owned or linked, in its tree order under their authored code names. */
-const traitPlaces = (
+/** A bearer's traits, owned or linked, in the order play reads them, each placed in the bearer's tree. */
+function traitPlaces(
   bearer: Bearer | undefined, entity: Entity, worldTraits: readonly Trait[], named: readonly Placeholder[],
-): CodeTraitPlace[] =>
-  inTreeOrder(bearer?.groups ?? [], bearer?.traits ?? [], (group) => statCodeName(group.name, named))
-    .map(({ leaf, path }) => ({ id: leaf.id, name: statCodeName(authoredTraitName(leaf, entity, worldTraits), named), path }));
+): CodeTraitPlace[] {
+  const tab = new Map(inTreeOrder(bearer?.groups ?? [], bearer?.traits ?? [], (group) => statCodeName(group.name, named))
+    .map(({ leaf, path }, position) => [leaf.id, { path, tabPosition: position }]));
+  return (bearer?.traits ?? []).map((trait) => ({
+    id: trait.id, name: statCodeName(authoredTraitName(trait, entity, worldTraits), named), path: [], ...tab.get(trait.id),
+  }));
+}
 
 /** The world's own traits in Traits-tab order, which `traits` keys. */
 export const worldTraitPlaces = (
