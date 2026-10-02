@@ -25,9 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronRight, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -96,7 +95,6 @@ import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues"
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
-import { ToolRoundsView } from "../components/game/ToolRoundsView";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
@@ -127,7 +125,6 @@ import { parseTurns, buildVerbatimHistory, buildBandedHistory, extractKeywords, 
 import { anatomyRegions, toAnatomyBlocks, type RequestAnatomy } from "../lib/requestAnatomy";
 import { asTextMessage } from "../lib/aiRequest/imageParts";
 import type { PromptJumpTarget } from "../lib/promptJump";
-import { RequestAnatomyView } from "../components/game/RequestAnatomyView";
 import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
 } from "@/lib/findMarks";
@@ -149,11 +146,11 @@ import { REVEAL_TEST_NARRATION, REVEAL_TEST_PROFILES } from "../lib/revealTestSc
 import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/statChanges";
-import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic } from "../lib/statRequest";
+import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse } from "../lib/statRequest";
 import { resolveEntityTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
-import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
-import { MaxTokensChip } from "@/components/game/MaxTokensChip";
-import { ReasoningChip } from "@/components/game/ReasoningChip";
+import { toDebugEndpoint } from "../lib/promptEndpoints";
+import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
+import type { AiRequestRecord } from "@/lib/aiContext/requestRecord";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
@@ -219,35 +216,12 @@ interface GameViewerProps {
   onExitToMenu: () => void;
 }
 
-// One AI sub-request captured per turn for the AI-context viewer (its sent messages + raw response).
-// The dictionary activation captured for a turn's narration request (see lib/turnPipeline/narrationPrompt)
-// lets the AI-context viewer mark real matches — and only real matches — even on historical turns whose live
-// state has moved on.
-interface DebugRequest {
-  statRequestId?: string;
-  statDiagnostics?: StatUpdateDiagnostic[];
-  type: string;
-  messages: RequestMessage[];
-  response?: string;
-  /** The native reasoning field as streamed; inline `<think>` stays in `response`. Never sent back in history. */
-  reasoning?: string;
-  /** The tool rounds this request ran before its reply. Captured only with Show Silent Requests on. */
-  toolRounds?: AiToolRound[];
-  /** Which endpoint served this request — absent on turns captured before routing existed. */
-  endpoint?: DebugEndpointInfo;
-  // Correlates a captured request to its own response, so concurrent same-type calls (the staged character
-  // pass, parallel diaries) each land on the right entry instead of overwriting by (type + empty-response).
-  id?: string;
-  // Narration only: the dictionary activation behind this turn's injected lore.
-  dictionary?: DictionaryDebug;
-  // Which runs of the sent messages are authored prompt text and which are assembled context (see
-  // lib/requestAnatomy). Absent on drainer requests, re-rolls, and pre-anatomy captures — the viewer
-  // draws the same region/chat layout either way; runs only matter to the Settings anatomy hub.
-  anatomy?: RequestAnatomy;
-}
+// One AI sub-request captured per turn for the AI-context viewer (lib/aiContext/requestRecord). The
+// dictionary activation captured for a turn's narration request lets the viewer mark real matches, and
+// only real matches, even on historical turns whose live state has moved on.
 interface DebugTurn {
   action: string;
-  requests: DebugRequest[];
+  requests: AiRequestRecord[];
   turnId?: string; // ties this turn to its assistant message, so the viewer can show its memory digest
   regenerated?: boolean; // this turn was superseded by a re-generate of the same action
   pruned?: boolean; // this turn was discarded by a rollback to an earlier page
@@ -4965,14 +4939,14 @@ const GameViewer = ({
               .map((term) => ({ term, color: hydrationColorMap[term.toLowerCase()] }));
             // Per-block segmenter honoring the mode. Hydrations mark only inside the narration request;
             // dictionary marks come from that request's captured activation and never touch the raw output.
-            const segmentsFor = (text: string, req: DebugRequest, isOutput: boolean): Seg[] =>
+            const segmentsFor = (text: string, req: AiRequestRecord, isOutput: boolean): Seg[] =>
               debugHighlightMode === "hydrations"
                 ? buildHydrationSegments(text, req.type === "narration" ? activeHydrationRules : [])
                 : buildDictSegments(text, isOutput ? undefined : req.dictionary);
             /* One slice of one block, marked by the highlighters and then by the search. `key` names the
                block in this turn's hit plan and `start` is where the slice begins inside it, so a block
                drawn in pieces still marks the same hits under the same numbers. */
-            const renderBlock = (text: string, req: DebugRequest, isOutput: boolean, key: string, start = 0) => {
+            const renderBlock = (text: string, req: AiRequestRecord, isOutput: boolean, key: string, start = 0) => {
               const segs = segmentsFor(text, req, isOutput);
               const plan = searchActive ? findByKey.get(key) : undefined;
               return renderSegs(plan ? markFindHits(segs, plan.hits, start, plan.base) : segs);
@@ -5240,177 +5214,31 @@ const GameViewer = ({
                              nor writes the reader's own collapse map, so clearing the search restores
                              exactly the arrangement they made. Opening a folded request by hand still works. */
                           const folded = searchActive && hitsPerRequest[i] === 0;
-                          const groupOpen = folded ? !!debugUnfolded[`group-${i}`] : !collapsedDebug[`group-${i}`];
-                          const reqOpen = !collapsedDebug[i];
-                          const outOpen = !collapsedDebug[`out-${i}`];
-                          const reasoningOpen = !collapsedDebug[`reasoning-${i}`];
-                          const toolsOpen = !collapsedDebug[`tools-${i}`];
+                          // The collapse map keys this card's sections by request index, in the names the
+                          // find plan opens them by (`group-<i>`, <i>, `reasoning-<i>`, `out-<i>`).
+                          const sectionKey = (section: AiContextCardSection): string | number =>
+                            section === "group" ? `group-${i}`
+                            : section === "input" ? i
+                            : section === "output" ? `out-${i}`
+                            : `${section}-${i}`;
+                          const chunkKey = (slot: AiContextTextSlot) =>
+                            slot.part === "input" ? `${i}:in:${slot.blockIndex}`
+                            : slot.part === "reasoning" ? `${i}:reasoning`
+                            : `${i}:out`;
                           return (
-                            <Collapsible
+                            <AiContextRequestCard
                               key={i}
-                              open={groupOpen}
-                              onOpenChange={(o) => (folded
+                              record={req}
+                              index={i}
+                              folded={folded}
+                              isOpen={(section) => (section === "group" && folded
+                                ? !!debugUnfolded[`group-${i}`]
+                                : !collapsedDebug[sectionKey(section)])}
+                              onOpenChange={(section, o) => (section === "group" && folded
                                 ? setDebugUnfolded((prev) => ({ ...prev, [`group-${i}`]: o }))
-                                : setCollapsedDebug((prev) => ({ ...prev, [`group-${i}`]: !o })))}
-                              className="border border-border rounded-md"
-                            >
-                              <CollapsibleTrigger asChild>
-                                <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                  <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                                    <span>
-                                      Request {i + 1}: {req.type}
-                                      {folded && <span className="font-normal text-muted-foreground"> · no matches</span>}
-                                    </span>
-                                    {/* Which endpoint served it. A routed prompt is called out; one following
-                                        the active preset is shown quietly, since that is the norm. */}
-                                    {req.endpoint && (
-                                      <Tip tip={`${req.endpoint.model} · ${req.endpoint.url}`} labelsChild={false}>
-                                        <span
-                                          // The routed chip is marked by a tinted border + the arrow, not by
-                                          // colored text: `primary` is a pale accent that all but vanishes as
-                                          // text on a light surface (measured 1.24:1).
-                                          className={`rounded px-1.5 py-0.5 text-meta font-normal ${
-                                            req.endpoint.routed
-                                              ? "border border-primary/60 bg-primary/15 text-foreground"
-                                              : "bg-muted text-muted-foreground"
-                                          }`}
-                                        >
-                                          {req.endpoint.routed ? "→ " : ""}{req.endpoint.preset} · {req.endpoint.model}
-                                        </span>
-                                      </Tip>
-                                    )}
-                                    {req.endpoint && (
-                                      <>
-                                        <ReasoningChip endpoint={req.endpoint} />
-                                        <MaxTokensChip endpoint={req.endpoint} />
-                                      </>
-                                    )}
-                                  </span>
-                                  {groupOpen ? (
-                                    <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                  )}
-                                </button>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent className="space-y-2 p-2 pt-0">
-                                <Collapsible
-                                  open={reqOpen}
-                                  onOpenChange={(o) =>
-                                    setCollapsedDebug((prev) => ({ ...prev, [i]: !o }))
-                                  }
-                                  className="border border-border rounded-md"
-                                >
-                                  <CollapsibleTrigger asChild>
-                                    <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                      <span>Raw Input</span>
-                                      {reqOpen ? (
-                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                      )}
-                                    </button>
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent className="p-2 pt-0">
-                                    {/* Every request gets the region/chat shape — a missing anatomy sidecar
-                                        (drainer requests, re-rolls, pre-anatomy captures) just means no runs,
-                                        which `plain` never draws anyway. Provenance reading lives in the
-                                        Settings anatomy hub. */}
-                                    <RequestAnatomyView
-                                      blocks={toAnatomyBlocks(req.messages, req.anatomy)}
-                                      mode="resolved"
-                                      plain
-                                      renderText={(text, _block, blockIndex, start) =>
-                                        renderBlock(text, req, false, `${i}:in:${blockIndex}`, start)}
-                                    />
-                                  </CollapsibleContent>
-                                </Collapsible>
-                                {!!req.toolRounds?.length && (
-                                  <Collapsible
-                                    open={toolsOpen}
-                                    onOpenChange={(o) =>
-                                      setCollapsedDebug((prev) => ({ ...prev, [`tools-${i}`]: !o }))
-                                    }
-                                    className="border border-border rounded-md"
-                                  >
-                                    <CollapsibleTrigger asChild>
-                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                        <span>Tool Rounds</span>
-                                        {toolsOpen ? (
-                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                        ) : (
-                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                        )}
-                                      </button>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="p-2 pt-0">
-                                      <ToolRoundsView rounds={req.toolRounds} />
-                                    </CollapsibleContent>
-                                  </Collapsible>
-                                )}
-                                {req.reasoning && (
-                                  <Collapsible
-                                    open={reasoningOpen}
-                                    onOpenChange={(o) =>
-                                      setCollapsedDebug((prev) => ({ ...prev, [`reasoning-${i}`]: !o }))
-                                    }
-                                    className="border border-border rounded-md"
-                                  >
-                                    <CollapsibleTrigger asChild>
-                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                        <span>Raw Reasoning</span>
-                                        {reasoningOpen ? (
-                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                        ) : (
-                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                        )}
-                                      </button>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="p-2 pt-0">
-                                      <p className="whitespace-pre-wrap break-words text-label rounded-lg border border-border p-3">
-                                        {renderBlock(req.reasoning, req, true, `${i}:reasoning`)}
-                                      </p>
-                                    </CollapsibleContent>
-                                  </Collapsible>
-                                )}
-                                {typeof req.response === "string" && (
-                                  <Collapsible
-                                    open={outOpen}
-                                    onOpenChange={(o) =>
-                                      setCollapsedDebug((prev) => ({ ...prev, [`out-${i}`]: !o }))
-                                    }
-                                    className="border border-border rounded-md"
-                                  >
-                                    <CollapsibleTrigger asChild>
-                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
-                                        <span>Raw Output</span>
-                                        {outOpen ? (
-                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                        ) : (
-                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                        )}
-                                      </button>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="p-2 pt-0">
-                                      {/* Same face as the Raw Input blocks: this is the same conversation,
-                                          read top to bottom. */}
-                                      <p className="whitespace-pre-wrap break-words text-label rounded-lg border border-border p-3">
-                                        {req.response ? (
-                                          renderBlock(req.response, req, true, `${i}:out`)
-                                        ) : (
-                                          <span className="text-muted-foreground">(empty output)</span>
-                                        )}
-                                      </p>
-                                      {!!req.statDiagnostics?.length && (
-                                        <p className="mt-2 whitespace-pre-wrap break-words text-helper text-muted-foreground">
-                                          Skipped stat updates: {req.statDiagnostics.map(({ name, reason }) => `${name} (${reason})`).join('; ')}
-                                        </p>
-                                      )}
-                                    </CollapsibleContent>
-                                  </Collapsible>
-                                )}
-                              </CollapsibleContent>
-                            </Collapsible>
+                                : setCollapsedDebug((prev) => ({ ...prev, [sectionKey(section)]: !o })))}
+                              renderText={(text, slot) => renderBlock(text, req, slot.part !== "input", chunkKey(slot), slot.start)}
+                            />
                           );
                         })
                       )}
