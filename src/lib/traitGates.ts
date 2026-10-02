@@ -9,6 +9,9 @@ import { buildTree, flattenTree } from './groupTree';
 /** The owner id of the world's own traits, and the player bearer's key. */
 export const WORLD_OWNER = 'world';
 
+/** The breadcrumb of a world trait or group with no group above it. */
+export const WORLD_BREADCRUMB: readonly string[] = ['World'];
+
 /** One bearer's traits and groups. An entity owner's node sits in the world tree under `parentGroupId`. */
 export interface GateOwner {
   id: string;
@@ -662,7 +665,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       id = group.parentId;
     }
     if (owner.id !== WORLD_OWNER) path.unshift(owner.name);
-    return path.length > 0 ? path : ['World'];
+    return path.length > 0 ? path : [...WORLD_BREADCRUMB];
   };
   const bearersOf = (id: string, kind: 'trait' | 'group'): RequirementBearerOption[] => [
     { bearer: { kind: 'you' }, name: 'You' },

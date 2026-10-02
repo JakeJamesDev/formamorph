@@ -56,7 +56,7 @@ const entities: Entity[] = [
   { id: 'e3', name: 'Rook', groupId: 'crew', order: 1, persona: true, traits: [owned('scarred', 'Scarred')] },
 ];
 
-const open = (timing: StatCodeTiming = 'after') => render(
+const open = (timing: StatCodeTiming = 'after', cast: Entity[] = entities) => render(
   <StatCodeTemplateDialog
     open
     onOpenChange={vi.fn()}
@@ -67,7 +67,7 @@ const open = (timing: StatCodeTiming = 'after') => render(
     onInsert={vi.fn()}
     placeholderNames={['Mood', 'Hair Color']}
     traitPlaces={worldTraitPlaces({ traits, traitGroups }, [])}
-    entities={entityTraitNames({ traits, traitGroups, entities, entityGroups }, [])}
+    entities={entityTraitNames({ traits, traitGroups, entities: cast, entityGroups }, [])}
   />,
 );
 
@@ -85,8 +85,8 @@ const localTemplate: StatCodeTemplate = {
 };
 
 /** Start a new template and replace its code with `code`. */
-async function authoring(user: ReturnType<typeof userEvent.setup>, code: string, timing: StatCodeTiming = 'after') {
-  open(timing);
+async function authoring(user: ReturnType<typeof userEvent.setup>, code: string, timing: StatCodeTiming = 'after', cast?: Entity[]) {
+  open(timing, cast);
   await user.click(await screen.findByRole('button', { name: /New Template/i }));
   const field = await screen.findByLabelText('Template code');
   await user.clear(field);
@@ -194,17 +194,15 @@ describe('the form a template presents', () => {
   it('lists the picked entity’s traits in a tied trait slot, and the persona’s in a persona one', async () => {
     const user = userEvent.setup();
     await authoring(user, 'entities[{{who:entity}}].traits[{{t:trait(who)}}]; persona.traits[{{p:trait(persona)}}];');
-    const options = rows;
-
     await user.click(await screen.findByRole('combobox', { name: 'P' }));
-    expect(await options()).toEqual(['Scarred']);
+    expect(await rows()).toEqual(['Scarred']);
     await user.click(await screen.findByRole('option', { name: 'Scarred' }));
     // Entities-tab order, each under its Entity folders.
     await user.click(await screen.findByRole('combobox', { name: 'Who' }));
-    expect(await options()).toEqual(['MiraCrew › Deck', 'RookCrew', 'Ash']);
+    expect(await rows()).toEqual(['MiraCrew › Deck', 'RookCrew', 'Ash']);
     await user.click(await screen.findByRole('option', { name: 'Ash' }));
     await user.click(await screen.findByRole('combobox', { name: 'T' }));
-    expect(await options()).toEqual(['Loyal']);
+    expect(await rows()).toEqual(['Loyal']);
     await user.click(await screen.findByRole('option', { name: 'Loyal' }));
 
     await waitFor(() => expect(generated()).toContain('entities["Ash"].traits["Loyal"]'));
@@ -216,18 +214,29 @@ describe('the form a template presents', () => {
     await waitFor(() => expect(generated()).toContain('entities["Mira"].traits[""]'));
   });
 
+  // The sandbox keys a shared name to the last authored entity, so its row and its traits are that one's.
+  it('lists a name two entities share once, under the folders of the entity code reaches', async () => {
+    const user = userEvent.setup();
+    const twin: Entity = { id: 'e4', name: 'Mira', order: 2, traits: [owned('brave', 'Brave')] };
+    await authoring(user, 'entities[{{who:entity}}].traits[{{t:trait(who)}}];', 'after', [...entities, twin]);
+
+    await user.click(await screen.findByRole('combobox', { name: 'Who' }));
+    expect(await rows()).toEqual(['RookCrew', 'Ash', 'Mira']);
+    await user.click(screen.getByRole('option', { name: 'Mira' }));
+    await user.click(screen.getByRole('combobox', { name: 'T' }));
+    expect(await rows()).toEqual(['Brave']);
+  });
+
   it('lets a declared entity slot named persona win over the persona tie, and lists the world’s traits for a loose tie', async () => {
     const user = userEvent.setup();
     await authoring(user, 'entities[{{persona:entity}}].traits[{{t:trait(persona)}}]; traits[{{w:trait(nobody)}}];');
-    const options = rows;
-
     await user.click(await screen.findByRole('combobox', { name: 'Persona' }));
     await user.click(await screen.findByRole('option', { name: 'Ash' }));
     await user.click(await screen.findByRole('combobox', { name: 'T' }));
-    expect(await options()).toEqual(['Loyal']);
+    expect(await rows()).toEqual(['Loyal']);
     await user.click(await screen.findByRole('option', { name: 'Loyal' }));
     await user.click(await screen.findByRole('combobox', { name: 'W' }));
-    expect(await options()).toEqual(['Storm TouchedLineage › Storms', 'HeirLineage', 'CursedWorld']);
+    expect(await rows()).toEqual(['Storm TouchedLineage › Storms', 'HeirLineage', 'CursedWorld']);
   });
 
   it('fills a picked template’s stat, entity and tied trait slots from their pickers', async () => {

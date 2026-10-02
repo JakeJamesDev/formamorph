@@ -1,6 +1,6 @@
 # 03: Template Slots on the Breadcrumb Picker
 
-Status: in-progress
+Status: ready-for-human
 Base: c4162ead
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -21,8 +21,8 @@ In the **Code Templates** dialog, the stat, plain trait and entity slots open a 
 
 ## Acceptance criteria
 
-- [ ] The Code Templates dialog test opens each of the three slots, reads rows and breadcrumbs, picks one, and checks the generated code.
-- [ ] The plain trait slot never lists an entity-owned trait. The guard bites: let owned traits in and the test fails.
-- [ ] A search by a group name narrows the trait list to that group's rows.
-- [ ] Mobile: the picker fits the dialog and stays usable (verify-ui frame).
-- [ ] The four gates are green.
+- [x] The Code Templates dialog test opens each of the three slots, reads rows and breadcrumbs, picks one, and checks the generated code.
+- [x] The plain trait slot never lists an entity-owned trait. The guard bites: let owned traits in and the test fails.
+- [x] A search by a group name narrows the trait list to that group's rows.
+- [x] Mobile: the picker fits the dialog and stays usable (verify-ui frame).
+- [x] The four gates are green.
