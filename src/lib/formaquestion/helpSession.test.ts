@@ -219,17 +219,28 @@ ${'x'.repeat(7000)}` };
     expect(helpSections(docs, 'and then?', { history }).map((section) => section.id)).toEqual(['Paint#paint-zebra-stripes']);
   });
 
-  it('keeps the surface section and the how-tos of its page under the score floor', () => {
+  describe('the how-tos of the open page', () => {
     const docs = createDocsIndex({
       pages: {
         Mine: '# Mine\n\nIntro.\n\n## How to Add One\n\n1. Select **Add**.\n',
         Zebra: '# Zebra\n\n## Zebra Stripes\n\nAdd a zebra stripe to the zebra. Each zebra stripe is black.\n',
       },
     });
-    const question = 'add a zebra stripe';
     const lead = docs.get(['Mine#mine'])[0];
-    expect(docs.search(question, 5, undefined, { floor: HELP_SCORE_FLOOR }).map((section) => section.id)).toEqual(['Zebra#zebra-stripes']);
-    expect(helpSections(docs, question, { lead }).map((section) => section.id)).toEqual(['Mine#mine', 'Zebra#zebra-stripes', 'Mine#how-to-add-one']);
+    const ids = (question: string, over: Parameters<typeof helpSections>[2] = {}) => helpSections(docs, question, { lead, ...over }).map((section) => section.id);
+
+    it.each(['add a zebra stripe here', 'add this zebra stripe', 'add these zebra stripes'])('join under the score floor when the question points at the screen: %s', (question) => {
+      expect(docs.search(question, 5, undefined, { floor: HELP_SCORE_FLOOR }).map((section) => section.id)).toEqual(['Zebra#zebra-stripes']);
+      expect(ids(question)).toEqual(['Mine#mine', 'Zebra#zebra-stripes', 'Mine#how-to-add-one']);
+    });
+
+    it.each(['add a zebra stripe', 'add a zebra stripe where it goes', 'add a thistle zebra stripe'])('stay out when the question does not point at the screen: %s', (question) => {
+      expect(ids(question)).toEqual(['Mine#mine', 'Zebra#zebra-stripes']);
+    });
+
+    it('join every question with the how-to rule off, for a probe\'s control arm', () => {
+      expect(ids('add a zebra stripe', { howToRule: false })).toEqual(['Mine#mine', 'Zebra#zebra-stripes', 'Mine#how-to-add-one']);
+    });
   });
 
   it('always holds the best match, even when it is over the budget alone', () => {

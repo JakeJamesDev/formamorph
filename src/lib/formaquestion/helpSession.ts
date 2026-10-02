@@ -95,6 +95,8 @@ export interface HelpQuestion {
   searchSources?: Partial<HelpSources>;
   /** Off lets every pick count on a question that points at the open screen: tests and a probe's control arm. */
   screenRule?: boolean;
+  /** Off adds the open page's how-tos to every question: tests and a probe's control arm. */
+  howToRule?: boolean;
   /** The embedder of the semantic source, in place of the device's: tests. */
   embedder?: HelpEmbedder;
   /** Stop: the stream ends and the answer so far is kept. */
@@ -162,26 +164,32 @@ const HELP_PAGE_HITS = 2;
 /** A docs heading that starts a task: "How to Add a Location". */
 const HOW_TO_HEADING = /^how to\b/i;
 
+/** The words with which a question points at the open screen. */
+const POINTS_AT_SCREEN = /\b(?:here|this|these)\b/i;
+
 /**
  * The docs block for a question, best first, while the text stays inside the budget and the section limit.
  * The lead section, when given, goes first and counts once toward both. The top hit is always kept. A
  * follow-up such as "and then?" has few keywords of its own, so its own top hit favors the page of the
  * previous answer's topic, and after it come the hits of the previous question and the follow-up
- * searched together. The lead's page adds its best how-to sections for the question next, so a "here"
- * question reaches them. Any other hit under the score floor of its own search stays out.
+ * searched together. A question that points at the open screen gets the lead page's best how-to sections
+ * next, so a "here" question reaches them; any other question keeps those slots for its own hits. Any
+ * other hit under the score floor of its own search stays out.
  */
-export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead }: {
+export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead, howToRule = true }: {
   history?: readonly EarlierExchange[];
   budget?: number;
   lead?: DocSection;
+  howToRule?: HelpQuestion['howToRule'];
 } = {}): DocSection[] {
   const previous = keptHistory(history).at(-1);
   const options = { onSurface: lead !== undefined, floor: HELP_SCORE_FLOOR };
   const hits = previous
     ? [...index.search(question, 1, topicOf(previous), options), ...index.search(followUpQuery(previous, question), HELP_SECTION_LIMIT, undefined, options)]
     : index.search(question, HELP_SECTION_LIMIT, undefined, options);
+  const addsPageHowTos = lead && (!howToRule || POINTS_AT_SCREEN.test(question));
   // The open page's how-tos skip the floor: a "here" question's key often scores far below its top hit.
-  const onPage = lead ? index.search(question, Infinity, undefined, { onSurface: true }).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
+  const onPage = addsPageHowTos ? index.search(question, Infinity, undefined, { onSurface: true }).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
   const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];
   const kept: DocSection[] = lead ? [lead] : [];
   let size = lead?.markdown.length ?? 0;
@@ -207,9 +215,6 @@ export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'his
   /** The open screen and its section. */
   hint?: SurfaceHint | null;
 }
-
-/** The words with which a question points at the open screen. */
-const POINTS_AT_SCREEN = /\b(?:here|this|these)\b/i;
 
 /**
  * The picks a question keeps. A question that points at the open screen keeps only the picks on the screen's
@@ -258,7 +263,7 @@ export async function helpSearch({ question, history = [], snapshot, index, hint
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', snapshot, index, surface, images = [], lookup: lookupOn = HELP_LOOKUP_MODE, searchSources, screenRule, embedder, signal, fetchImpl,
+  question, history = [], language = '', snapshot, index, surface, images = [], lookup: lookupOn = HELP_LOOKUP_MODE, searchSources, screenRule, howToRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = surfaceHint(surface, index);
   const search = await helpSearch({ question, history, snapshot, index, hint, searchSources, screenRule, embedder, signal, fetchImpl });
@@ -266,7 +271,7 @@ export async function* askHelp({
     yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [] };
     return;
   }
-  const inPrompt = helpSections(search, question, { history, lead: hint?.section });
+  const inPrompt = helpSections(search, question, { history, lead: hint?.section, howToRule });
   const lookupMode = lookupOn && toolsSupported(snapshot.resolveTarget('help').reasoning);
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
