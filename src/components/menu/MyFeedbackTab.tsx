@@ -53,20 +53,18 @@ const COPY: Record<FeedbackType, {
  * when the reader happens to be on the team.
  */
 export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
-  const { page, setPage, openId, open, back, listRef, refilter } = useFeedbackListPlace();
+  const { page, setPage, openId, open, back, nonce, refresh, listRef, refilter } = useFeedbackListPlace();
   const [filing, setFiling] = useState(false);
   const [scope, setScope] = useState<FeedbackScope>(COPY[type].initialScope);
   const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
   const [sort, setSort] = useState<FeedbackSort>('newest');
-  // Bumped after filing or replying, so the list picks the change up.
-  const [nonce, setNonce] = useState(0);
 
   // Staff who find a thread here are still the team, so they answer from here rather than being told
   // replies are somebody else's business. Triage stays in the Admin Panel.
   const viewerIsStaff = isStaff(AuthService.getCurrentUser());
 
   const changed = () => {
-    setNonce((n) => n + 1);
+    refresh();
     onChanged?.();
   };
 
@@ -90,7 +88,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
         <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
             {/* Ranking only means something over everyone's; one person's own list is short. */}
             {type === 'suggestion' && scope === 'all' && (
-              <Select value={sort} onValueChange={refilter((value: string) => setSort(value as FeedbackSort))}>
+              <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
                 <SelectTrigger className="w-36" aria-label="Sort by"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {FEEDBACK_SORTS.map((value) => (
@@ -100,7 +98,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
               </Select>
             )}
 
-            <Select value={category} onValueChange={refilter((value: string) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY))}>
+            <Select value={category} onValueChange={refilter((value) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY))}>
               <SelectTrigger className="w-44" aria-label="Filter by category"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
@@ -110,7 +108,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
               </SelectContent>
             </Select>
 
-            <Select value={scope} onValueChange={refilter((value: string) => setScope(value as FeedbackScope))}>
+            <Select value={scope} onValueChange={refilter((value) => setScope(value as FeedbackScope))}>
               <SelectTrigger className="w-36" aria-label="Which threads"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {FEEDBACK_SCOPES.map((value) => (
