@@ -21,3 +21,9 @@ The two entity-scoped trait slots show which entity holds each trait, and where 
 - [ ] `trait(entity)` shows the picked entity's group breadcrumbs, and changes when the entity changes.
 - [ ] Code completions and checks for `persona.traits` and `entities[...].traits` still pass their tests.
 - [ ] The four gates are green.
+
+## Notes from ticket 03
+
+- The world-trait source is `worldTraitPlaces`, which returns `CodeTraitPlace { id, name, path }`. Reuse that shape for entity traits.
+- `CodeEntityNames` now carries optional `folder` and `tabPosition`, set by `entityTraitNames` in authored order.
+- `WORLD_BREADCRUMB` is exported from the trait gates module.

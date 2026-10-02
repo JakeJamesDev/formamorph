@@ -20,3 +20,8 @@ The placeholder slot lists only names that `placeholders["X"]` reaches, with a b
 - [ ] The guard bites: list the whole world placeholder list again and the test fails.
 - [ ] The built-in "placeholder follows stat" template still inserts working code for a top-level placeholder.
 - [ ] The four gates are green.
+
+## Notes from ticket 03
+
+- Every name slot already opens the Breadcrumb Picker. This ticket changes the placeholder row source only.
+- Follow the row shape the world-trait source uses (`worldTraitPlaces` returns `CodeTraitPlace { id, name, path }`).
