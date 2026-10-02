@@ -101,6 +101,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q63 | A what's-new question leads with the newest release's sections that hold text, in page order; heading-only sections are skipped. A question that names a version leads with that release instead. Guide hits follow, then older-release hits in the changelog tier. Refines Q62 (ticket 34 ruling) |
 | Q64 | A follow-up's own search multiplies the score of sections on the previous answer's topic page by 2: the page of its first source that is not the surface lead, else the lead's page. A flagged answer favors no page. It is a weight, not a tier, so a real topic change still wins. The combined previous-plus-follow-up search gets no weight. The help history carries each answer's sources (ticket 35 ruling) |
 | Q65 | A follow-up after a what's-new question keeps the release lead through the combined search, for now. No baseline case covers it, so it stays an open finding. Ticket 37 keeps ticket 26's set unchanged; a later ticket adds the case and decides on numbers (ticket 35 ruling) |
+| Q66 | Ticket 34 is accepted although follow-ups fell 40% → 16% on the cloud model; the keyed section still reached the model and a nearby guide section drew it away. Ticket 37 measures 32 and 34–36 together, and its worst-question list drives any fix |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
