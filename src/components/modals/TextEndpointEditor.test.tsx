@@ -107,6 +107,13 @@ describe('TextEndpointEditor', () => {
     expect(model.onSelect).toHaveBeenCalledWith('llama');
   });
 
+  it('keeps Reset AI Endpoint in the footer, outside the scrolled fields', () => {
+    renderEditor();
+    const reset = screen.getByRole('button', { name: 'Reset AI Endpoint' });
+    expect(reset.closest('[data-radix-scroll-area-viewport]')).toBeNull();
+    expect(screen.getByLabelText(/Endpoint URL/).closest('[data-radix-scroll-area-viewport]')).not.toBeNull();
+  });
+
   it('opens the connection guide through its handler', async () => {
     const onOpen = vi.fn();
     renderEditor(onOpen);

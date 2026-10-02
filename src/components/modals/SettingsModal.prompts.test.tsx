@@ -207,7 +207,7 @@ describe('Settings → Endpoints Max Output', () => {
   it('locks the shared endpoint cap', () => {
     openEndpoints();
 
-    expect(screen.getByRole('checkbox', { name: 'Override endpoint limit' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Override Endpoint Limit' })).toBeDisabled();
     expect(document.getElementById('maxTokens')).toBeDisabled();
   });
 
