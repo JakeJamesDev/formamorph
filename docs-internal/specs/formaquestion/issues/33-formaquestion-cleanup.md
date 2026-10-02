@@ -1,7 +1,7 @@
 # 33: Formaquestion cleanup
 
 Status: ready-for-agent
-Blocked by: 26, 32
+Blocked by: 32, 34, 35, 36
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
 
