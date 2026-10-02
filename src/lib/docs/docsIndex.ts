@@ -145,15 +145,28 @@ const STOP_WORDS = new Set([
   'why', 'with', 'you', 'your',
 ]);
 
+/** Words of a question that carry no topic: the screen the player means, or how they phrase looking. */
+const NO_WORDS: ReadonlySet<string> = new Set();
+
+const FILLER_WORDS: ReadonlySet<string> = new Set(['am', 'here', 'looking', 'there', 'these', 'those']);
+
 /** A word, a number, or a hyphenated run of them. */
 const WORD = /[\p{L}\p{N}]+(?:\.\p{N}+)*(?:-[\p{L}\p{N}]+)*/gu;
 
-/** A text's Porter-stemmed words and numbers, stop words dropped; a hyphenated word also gives its joined form. */
-function searchTerms(text: string): string[] {
+/** A text's words, lowercased and space-padded, so a whole-word phrase test is `includes`. */
+function wordsOf(text: string): string {
+  return ` ${(text.toLowerCase().match(WORD) ?? []).join(' ')} `;
+}
+
+/**
+ * A text's Porter-stemmed words and numbers, stop words dropped; a hyphenated word also gives its joined
+ * form. The `filler` words drop too.
+ */
+function searchTerms(text: string, filler: ReadonlySet<string>): string[] {
   const words = text.replace(MARKDOWN_LINK, '$1').toLowerCase().match(WORD) ?? [];
   return words
     .flatMap((word) => (word.includes('-') ? [...word.split('-'), word.replace(/-/g, '')] : [word]))
-    .filter((word) => !STOP_WORDS.has(word))
+    .filter((word) => !STOP_WORDS.has(word) && !filler.has(word))
     .map((word) => stemmer(word));
 }
 
@@ -218,8 +231,10 @@ function releasesOf(changelog: readonly SplitSection[]): Release[] {
 /** One section's search terms, by where they appear. */
 interface SectionTerms {
   section: SplitSection;
-  /** Terms of the section's heading and keyword lines. */
+  /** Terms of the section's heading and keyword lines, filler words included. */
   heading: Set<string>;
+  /** The heading and keyword phrases that hold a filler word, with their terms. A query that holds one whole counts its terms. */
+  fillerPhrases: { phrase: string; terms: string[] }[];
   trail: Set<string>;
   body: Map<string, number>;
   length: number;
@@ -240,10 +255,13 @@ export interface DocsIndexInput {
   pages: DocsPages;
   /** The wiki's sidebar page, which sets the page order. */
   sidebar?: string;
+  /** Whether the search ignores filler words such as "here" in a question. On unless `false`. */
+  fillerWords?: boolean;
 }
 
 /** Builds a Docs Index over the given pages. */
-export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIndex {
+export function createDocsIndex({ pages, sidebar = '', fillerWords = true }: DocsIndexInput): DocsIndex {
+  const filler = fillerWords ? FILLER_WORDS : NO_WORDS;
   const order = sidebarOrder(sidebar);
   const rank = (page: string) => (order.includes(page) ? order.indexOf(page) : order.length);
   const pageNames = Object.keys(pages).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
@@ -258,11 +276,18 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
 
   const sectionTerms: SectionTerms[] = all.map((section) => {
     const lines = section.markdown.split('\n');
-    const bodyTerms = searchTerms(section.level > 0 ? lines.slice(1).join('\n') : section.markdown);
+    const bodyTerms = searchTerms(section.level > 0 ? lines.slice(1).join('\n') : section.markdown, filler);
+    const phrases = [...(section.level > 0 ? [section.heading] : []), ...section.keywords.flatMap((list) => list.split(','))]
+      .map((phrase) => phrase.trim().toLowerCase())
+      .filter(Boolean);
     return {
       section,
-      heading: new Set([...(section.level > 0 ? searchTerms(section.heading) : []), ...section.keywords.flatMap(searchTerms)]),
-      trail: new Set(section.trail.flatMap(searchTerms)),
+      // A heading keeps its filler words, so a control named "Here" still matches itself.
+      heading: new Set(phrases.flatMap((phrase) => searchTerms(phrase, NO_WORDS))),
+      fillerPhrases: phrases
+        .filter((phrase) => (phrase.match(WORD) ?? []).some((word) => filler.has(word)))
+        .map((phrase) => ({ phrase, terms: searchTerms(phrase, NO_WORDS) })),
+      trail: new Set(section.trail.flatMap((heading) => searchTerms(heading, filler))),
       body: termCounts(bodyTerms),
       length: bodyTerms.length,
     };
@@ -287,9 +312,13 @@ export function createDocsIndex({ pages, sidebar = '' }: DocsIndexInput): DocsIn
         };
       }),
     search: (query, limit = DEFAULT_SEARCH_LIMIT, favor) => {
-      const terms = [...new Set(searchTerms(query))];
-      if (terms.length === 0) return [];
+      const queryTerms = [...new Set(searchTerms(query, filler))];
+      if (queryTerms.length === 0) return [];
+      const asked = wordsOf(query);
       const scored = sectionTerms.map((r) => {
+        // A section whose own name holds a filler word still matches that name when the query holds it whole.
+        const named = r.fillerPhrases.filter(({ phrase }) => asked.includes(wordsOf(phrase))).flatMap(({ terms }) => terms);
+        const terms = [...new Set([...queryTerms, ...named])];
         let score = 0;
         let matched = 0;
         for (const term of terms) {
