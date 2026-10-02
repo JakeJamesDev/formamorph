@@ -133,6 +133,46 @@ describe('Docs Index search', () => {
   });
 });
 
+describe('Docs Index search: guide above the changelog', () => {
+  // The shape `releasedMinorChangelog` gives the index: a title, then released sections newest first.
+  const CHANGELOG = [
+    '# 📝 Changelog',
+    '',
+    '## ✅ 3.1.2 — Released 2026-09-30',
+    '',
+    'This version fixes the profile image.',
+    '',
+    '- **Profile Image:** a change to the profile image keeps its position. Changing the profile image again saves.',
+    '',
+    '## ✅ 3.1.1 — Released 2026-09-20',
+    '',
+    'Morph art.',
+    '',
+    '- **Morph Art:** blank entities get art.',
+  ].join('\n');
+  // The guide section matches fewer of the question's words than the changelog section does.
+  const AVATARS = ['# Avatars', '', '## User Profile', '', 'Open **User Profile** and pick an image.'].join('\n');
+  const UPDATES = ['# Updates', '', '## How to Update the App', '', 'The latest version installs when you restart.'].join('\n');
+  const index = () => createDocsIndex({ pages: { Avatars: AVATARS, Updates: UPDATES, Changelog: CHANGELOG } });
+
+  it('ranks every matching guide section above every matching changelog section', () => {
+    const ids = index().search('change the profile image').map((s) => s.id);
+    expect(ids).toEqual(['Avatars#user-profile', 'Changelog#-312--released-2026-09-30']);
+  });
+
+  it('leads a what-is-new question with the released changelog sections, newest first, then guide hits', () => {
+    for (const question of ["what's new in the latest update?", 'what changed in the newest version of the app?', 'show me the patch notes']) {
+      const ids = index().search(question).map((s) => s.id);
+      expect(ids.slice(0, 2), question).toEqual(['Changelog#-312--released-2026-09-30', 'Changelog#-311--released-2026-09-20']);
+    }
+    expect(index().search('what is new in the latest version').slice(2).map((s) => s.id)).toEqual(['Updates#how-to-update-the-app']);
+  });
+
+  it('keeps a how-to question about updating on the guide', () => {
+    expect(index().search('how do I update to the latest version?')[0]?.id).toBe('Updates#how-to-update-the-app');
+  });
+});
+
 describe('Docs Index keyword line', () => {
   const page = (heading: string, keywords: string) =>
     `# P\n\n## ${heading}\n${keywords}\nPress **Go** to start.\n`;
