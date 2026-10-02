@@ -1,9 +1,10 @@
 # 🧮 Stat Code Guide
+<!-- keywords: scripting, automation, custom logic, game mechanics, coding, rules engine -->
 
 This guide explains Formamorph's **stat code**: a small JavaScript script attached to a stat. It can set the stat's value from other stats, set the stat's own bounds, pin a placeholder, or switch a trait. Each stat has two script boxes, one on each side of the AI's turn. In a world file they are the `beforeCode` and `code` fields of an entry in the world's `stats` list. The [World Format](WorldFormat#stats) page describes the rest of a stat.
 
 ## How to Add Stat Code to a Stat
-<!-- keywords: script, javascript, js, formula, calculate, dynamic, programming, tab -->
+<!-- keywords: script, javascript, js, formula, calculate, dynamic, programming, tab, computed value, derived, equation, math, tab is missing, where to write it, depends on another stat, auto update each turn -->
 
 1. In the World Editor, select **Advanced** in the mode switch. The **Code** tab shows in Advanced mode only.
 2. Open the **Stats** tab and select the stat.
@@ -12,7 +13,7 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 5. Select **Test Code** under the box. Read the result, any error, and every write the run made.
 
 ## How to Insert a Template
-<!-- keywords: example, snippet, preset code, starter, sample, script -->
+<!-- keywords: example, snippet, preset code, starter, sample, script, ready made, boilerplate, prebuilt, no coding skills, recipe, wizard, fill in the blanks -->
 
 1. Open the stat's **Code** tab.
 2. Select **Templates** beside the box's **Test Code** button.
@@ -21,7 +22,7 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 5. Edit the inserted code as you like.
 
 ## How to Limit the AI's Change to a Stat
-<!-- keywords: clamp, cap, max, restrict, prevent, too fast, delta, script -->
+<!-- keywords: clamp, cap, max, restrict, prevent, too fast, delta, script, throttle, big swings, jumps too much, slow down gains, never go up, dampen, narrator overreacts, at most per turn -->
 
 1. Open the stat's **Code** tab.
 2. In **After the AI**, read the AI's ask from `self.delta.ai.value`.
@@ -30,14 +31,14 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 5. Select **Test Code**.
 
 ## How to Pin a Placeholder from Code
-<!-- keywords: script, javascript, set value, force, wildcard, variable -->
+<!-- keywords: script, javascript, set value, force, wildcard, variable, wording follows a stat, conditional text, override the roll, swap wording by value, lock in, mood changes with number, programmatically -->
 
 1. Open the stat's **Code** tab.
 2. In **Before the AI**, call `pin` on the placeholder, such as `placeholders.Mood.pin('calm')`. A pin from this box is in the prompt for this turn.
 3. Select **Test Code**. It lists each placeholder the run pinned.
 
 ## How to Debug Stat Code
-<!-- keywords: error, console, log, fix, broken, not working, test, script -->
+<!-- keywords: error, console, log, fix, broken, not working, test, script, print values, devtools, f12, trace, inspect, wrong number -->
 
 1. Select **Test Code** to see the error and every write.
 2. Add `console.log()` lines.
@@ -60,6 +61,7 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 - **Read a dictionary's placeholders** (see [Dictionaries](#dictionaries))
 
 ## How It Works
+<!-- keywords: which box to use, lifecycle, sequence of steps, pre and post, how often it executes, hooks, script crashes, reads zero early, older single box worlds -->
 
 1. Each stat has two optional JavaScript boxes: **Before the AI** and **After the AI**
 2. On every turn, each box runs in a safe environment at its own point in the turn
@@ -96,6 +98,7 @@ A turn runs your code twice, once on each side of the AI:
 ## Writing Stat Code
 
 ### Basic Syntax
+<!-- keywords: what language, first script, minimal example, is return required, fixed number -->
 
 Your code is plain JavaScript. Return a number to set the stat's value. The code has access to `stats`, a map of every stat in the game keyed by name, and to `self`, the stat the code belongs to.
 
@@ -107,6 +110,7 @@ return 50;
 A script does not have to return anything. One that only writes `self`, a placeholder, or a trait leaves the value to the AI and regen.
 
 ### Accessing Other Stats
+<!-- keywords: reference another, dot notation, square brackets, misspelled name, undefined, get hp, missing gives zero, randomized names -->
 
 Read another stat by its name:
 
@@ -121,6 +125,7 @@ A name with a space needs brackets: `stats["Hit Points"].value`. A name the worl
 > ℹ️ **A stat name with a placeholder chip in it reads in code as the placeholder's own name.** A stat named `{{Beast}} Power` is `stats["Beast Power"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name.
 
 ### Stat Properties
+<!-- keywords: attributes, members, api reference, object shape, what can i read, disabled stat, hidden by perk, descriptors unavailable -->
 
 Each stat in the `stats` map, `self` included, exposes the following properties:
 
@@ -143,6 +148,7 @@ A stat that a trait switched off still reads as a real entry. Its name, value an
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
 
 ### Writing to `self`
+<!-- keywords: raise the ceiling, upper limit, lower limit, regeneration rate, assign, modify another stat, underlined write, scale with level up, this keyword -->
 
 `self` is the stat the code belongs to. It is the same object that sits in `stats`, so `self.value` and `stats[self.name].value` read alike. Four of its fields take writes:
 
@@ -164,6 +170,7 @@ self.max = 50 + level * 10;
 A bound your code sets overrides the authored bound, trait changes, and the AI's max changes for that field. It persists on runs that do not write it. Code-set bounds clear only when both boxes are empty. A write equal to the bound's current number counts as no write. Only `self` accepts writes. A write to another stat's fields is ignored and reported by its path, and the editor underlines it.
 
 ### Reading This Turn
+<!-- keywords: old value, how much it moved, overflow, wasted gain, halve damage, multiply narrator change, before and after, excess past maximum, requested amount -->
 
 Every stat carries the turn's state before the code ran. `previous` holds the full stat, every field `self` has, at the start of the turn. In the before box the turn has done nothing yet, so `previous` reads as the stat itself and every `delta` below reads zero. This section is about the after box.
 
@@ -200,6 +207,7 @@ if (lost > 0 && self.value === self.max) {
 ```
 
 ### Placeholders
+<!-- keywords: random text variables, nested path, reroll in script, string versus array, release a forced value, macros in scripts, check current wording, characters own variables, wrong type crashes -->
 
 `placeholders` holds the world's own placeholders, by name. A name with a space needs brackets: `placeholders["Hair Color"]`. A placeholder that an entity or a dictionary owns is not in it. Reach that one through its owner (see [Owned Placeholders](#owned-placeholders)). Each entry has:
 
@@ -278,6 +286,7 @@ A list handed to a Wildcard, or anything that is not text, **fails the run**, an
 A write to an unknown placeholder name is ignored. **Test Code** and the Test Bench both report it.
 
 ### Traits
+<!-- keywords: perks, grant ability, status effect, buff, debuff, unlock, boolean flag, check if player has, apply condition, switch had no effect -->
 
 `traits` holds every trait in the world's own trait list, by name, whether the player has it or not. Blueprint items are in it. A trait that an entity owns is not. Each entry has:
 
@@ -306,6 +315,7 @@ A write to an unknown trait name is ignored. **Test Code** and the Test Bench bo
 > ℹ️ **A trait name with a placeholder chip in it reads in code as the placeholder's own name.** A trait named `{{Beast}} Fury` is `traits["Beast Fury"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name, and the turn log still writes it.
 
 ### Persona
+<!-- keywords: hero object, who is being played, main character perks, current player body, nobody chosen, test run ignores it -->
 
 `persona` is the entity the player plays: the picked persona, or the **Custom Persona** entity when the player picks **None**.
 
@@ -332,6 +342,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 > ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits and placeholders the world doesn't have, so an unknown name after `persona.traits` or `persona.placeholders` is a warning, not an error.
 
 ### Entities
+<!-- keywords: companion status, is someone nearby, does character exist, invented ones missing, duplicate names -->
 
 `entities` holds every entity in play by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
 
@@ -369,6 +380,7 @@ A name no entity in play has reads as a blank entry. Its `name` and `id` are `''
 **Test Code** lists every authored entity, with no trait chosen. A switch it makes is reported and never applied.
 
 ### Dictionaries
+<!-- keywords: book variables, disabled book, lore owned values -->
 
 `dictionaries` holds every dictionary in play by its code name. Each entry has:
 
@@ -389,12 +401,14 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 - The editor warns on a dictionary name it doesn't know, because a library dictionary can bring more.
 
 ### Order of Effects
+<!-- keywords: which script wins, priority, precedence, conflict, race condition, execution sequence, overwrite each other, see other scripts changes -->
 
 Each box is a separate run. Within one run every stat's code reads the same snapshot, so no script sees another stat's writes from that run. After each run, effects apply in this order: trait switches, then bounds, then values, then placeholder pins. A bound a stat set this turn still wins over a bound its own trait switch moved. When two stats write the same placeholder or trait in one run, the later stat in the list wins.
 
 The two runs are ordered against each other, though: everything the before box wrote is already in place when the after box reads.
 
 ### The Story Clock
+<!-- keywords: calendar, date, day night cycle, duration, time passed, timer, how long slept, always one hour, in game time -->
 
 `clock` is a read-only object that describes the story time. A write to any of its fields is ignored and reported.
 
@@ -414,6 +428,7 @@ The two runs are ordered against each other, though: everything the before box w
 > ⚠️ **With the clock off, `clock.deltaHours` is always `1`** and every turn advances the story by one hour. Your code works either way; it just gets a flat number instead of a measured one. The setting is **Measured Clock**, under [Settings](Settings#time) → **Output** → **Time**, in **Advanced** mode.
 
 ### Examples
+<!-- keywords: sample scripts, cookbook, survival needs, decay over time, combat math, rng, randomness same number, soft cap, copy paste ideas -->
 
 #### Percentage-Based Stat
 
@@ -550,6 +565,7 @@ return baseRate * activityMultiplier * sizeFactor;
 > 💡 **Prefer the `regen` field for plain regeneration.** A stat that simply drifts at a fixed rate already scales with story hours without any code at all. Use `clock.deltaHours` when the rate itself depends on something: the time of day, another stat, a threshold.
 
 ## Best Practices
+<!-- keywords: pitfalls, dos and donts -->
 
 1. **Keep it simple**: Complex code can be hard to debug and may impact performance
 2. **Trust the zero default**: a stat name not in the world reads as a blank entry, every number `0`, so a lookup never throws
@@ -561,6 +577,7 @@ return baseRate * activityMultiplier * sizeFactor;
 8. **Add comments**: Document your code for future reference
 
 ## Limitations
+<!-- keywords: not allowed, fetch from internet, http request, freeze or hang, double counting, counter that increments, regenerate adds twice -->
 
 - Code execution has a timeout of 1 second to prevent infinite loops
 - The code cannot access external resources (network, files, etc.)
@@ -577,6 +594,7 @@ Most stat code is a **formula**: it reads other stats and returns an answer, and
 Formamorph runs it once per turn. A re-roll of a turn's stat changes runs it again by design: the re-roll rebuilds the turn from its starting values, so the total is not counted twice. A running total is more fragile than a formula. Prefer a formula where one will do.
 
 ## Troubleshooting
+<!-- keywords: no effect, value never changes, nan, silent failure, checklist, capital letters matter, ignored writes -->
 
 If your code does not work as expected:
 
@@ -587,6 +605,7 @@ If your code does not work as expected:
 5. Add `console.log()` statements to debug your code (output appears in browser console)
 
 ## Advanced Examples
+<!-- keywords: rpg attributes, hp per level, leveling up, exhaustion, tiredness, encumbrance, inventory weight, spell strength, dnd style -->
 
 ### Stat Scaling with Level
 

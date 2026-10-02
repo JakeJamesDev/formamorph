@@ -230,6 +230,7 @@ describe('keywordLineProblems', () => {
   it('fails a how-to heading with no keyword line, or an empty one', () => {
     const pages = { P: '# P\n\n## How to **Go**\n\nText.\n\n## How to Stop\n<!-- keywords: -->\n\n## Notes\n\nText.\n' };
     expect(keywordLineProblems(pages)).toEqual([
+      'P:8 keyword line has an empty phrase',
       'P:3 heading How to Go has no keyword line under it',
       'P:7 heading How to Stop has no keyword line under it',
     ]);
@@ -237,6 +238,41 @@ describe('keywordLineProblems', () => {
 
   it('skips headings inside code and pages outside the guide', () => {
     const pages = { P: '# P\n\n```md\n## How to Go\n```\n', 'Writing-Guide': '# W\n\n## How to Write\n\nText.\n' };
+    expect(keywordLineProblems(pages)).toEqual([]);
+  });
+
+  it('passes a keyword line under any heading', () => {
+    expect(keywordLineProblems({ P: '# P\n<!-- keywords: page -->\n\n## Notes\n\n<!-- keywords: memo, jot -->\n\nText.\n' })).toEqual([]);
+  });
+
+  it('fails a keyword line that is not the first line under its heading', () => {
+    const pages = { P: '<!-- keywords: top -->\n# P\n\nText.\n<!-- keywords: body -->\n\n## Go\n<!-- keywords: leave -->\n<!-- keywords: exit -->\n' };
+    expect(keywordLineProblems(pages)).toEqual([
+      'P:1 keyword line is not the first line under a heading',
+      'P:5 keyword line is not the first line under a heading',
+      'P:9 keyword line is not the first line under a heading',
+    ]);
+  });
+
+  it('fails a keyword line after a code block, or under a line the index does not read as a heading', () => {
+    const pages = { P: '# P\n\n## Go\n\n```\ncode\n```\n\n<!-- keywords: leave -->\n\n# Stop\n<!-- keywords: halt -->\n' };
+    expect(keywordLineProblems(pages)).toEqual([
+      'P:9 keyword line is not the first line under a heading',
+      'P:12 keyword line is not the first line under a heading',
+    ]);
+  });
+
+  it('fails a keyword line with an empty or repeated phrase', () => {
+    const pages = { P: '# P\n\n## Go\n<!-- keywords: leave, , exit -->\n\n## Stop\n<!-- keywords: halt, Halt , wait, halt -->\n\n## Notes\n<!-- keywords: -->\n' };
+    expect(keywordLineProblems(pages)).toEqual([
+      'P:4 keyword line has an empty phrase',
+      'P:7 keyword line repeats "halt"',
+      'P:10 keyword line has an empty phrase',
+    ]);
+  });
+
+  it('checks no keyword line inside code or outside the guide', () => {
+    const pages = { P: '# P\n\nText.\n```md\n<!-- keywords: a, a -->\n```\n', 'Writing-Guide': '# W\n\nText.\n<!-- keywords: a, a -->\n' };
     expect(keywordLineProblems(pages)).toEqual([]);
   });
 });

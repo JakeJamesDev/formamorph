@@ -1,4 +1,5 @@
 # ⚙️ Settings
+<!-- keywords: options, preferences, configuration, config, gear icon, customize app -->
 
 Settings controls how the app looks, what the AI writes each turn, which AI it connects to, and some stored data. Your settings stay on this device.
 
@@ -7,7 +8,7 @@ To open it, select **Menu** on the main menu, then **Settings**. During a game, 
 > The **Prompts** and **Tools** tabs have their own pages: [Prompts](Prompts) and [Tools](Tools). This page covers the other four tabs.
 
 ## How to Change the Narration Layout
-<!-- keywords: chat mode, pages mode, view, display, look, style, chat bubbles, book -->
+<!-- keywords: chat mode, pages mode, view, display, look, style, chat bubbles, book, messenger, conversation format, switch format, sillytavern like, toggle, single page -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.
@@ -16,7 +17,7 @@ To open it, select **Menu** on the main menu, then **Settings**. During a game, 
 The game changes at once. See [Narration](#narration) for what each layout shows.
 
 ## How to Color Quoted Speech
-<!-- keywords: dialogue, highlight, talking, italic, colour, text -->
+<!-- keywords: dialogue, highlight, talking, italic, colour, text, quotation marks, spoken lines, tint, stand out, distinguish, custom hex, what people say, emphasis -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.
@@ -26,7 +27,7 @@ The game changes at once. See [Narration](#narration) for what each layout shows
 To set quoted speech in italic, select **Quote Italic**. It works with or without **Quote Color**.
 
 ## How to Change the Narration Font
-<!-- keywords: text, typeface, bigger text, size, readability, style -->
+<!-- keywords: text, typeface, bigger text, size, readability, style, dyslexia, serif, hard to read, larger letters, line spacing, low vision, small print, legible, zoom -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.
@@ -36,7 +37,7 @@ To set quoted speech in italic, select **Quote Italic**. It works with or withou
 The font changes the story text only. **Use Global** uses the app's **Font**.
 
 ## How to Turn On a Thinking Mode
-<!-- keywords: reasoning, planning, smarter, better answers, chain of thought, cot -->
+<!-- keywords: reasoning, planning, smarter, better answers, chain of thought, cot, think first, improve quality, plan ahead, step by step, deliberate, more coherent, small model help, director -->
 
 1. Open **Settings**.
 2. Open the **Output** tab.
@@ -45,7 +46,7 @@ The font changes the story text only. **Use Global** uses the app's **Font**.
 The line under the control says what the picked mode does. **Native** adds no thinking step. See [Reasoning](#reasoning) for the cost of each mode.
 
 ## How to Limit Active Characters
-<!-- keywords: entities, max, cap, too many, speed, staged, fewer -->
+<!-- keywords: entities, max, cap, too many, speed, staged, fewer, npc count, crowd, slow turns, reduce requests, people in scene, cast size, big party, restrict -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.
@@ -55,7 +56,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 6. Type the largest number of entities to stage each turn. The default is 5.
 
 ## How to Restore Default Worlds
-<!-- keywords: get back, deleted, bundled, built-in, starter, reinstall, recover -->
+<!-- keywords: get back, deleted, bundled, built-in, starter, reinstall, recover, original, sample, accidentally removed, missing, stock, preinstalled, undelete, came with the app -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.
@@ -68,6 +69,7 @@ Each deleted bundled world comes back at its latest version. Worlds you still ha
 ---
 
 ## Simple and Advanced
+<!-- keywords: missing setting, missing tab, expert mode, show everything, basic mode, more options, dot indicator, hidden option, power user -->
 
 A switch next to the **Settings** title shows **Simple** or **Advanced**.
 
@@ -81,6 +83,7 @@ The mode only changes what you see. A hidden setting still applies. A dot on **A
 In the tables below, **Advanced** marks a row that shows in Advanced mode only.
 
 ## Display
+<!-- keywords: dark mode, night theme, color scheme, mute music, background image, translate, other language, typing animation, accent color, show thoughts -->
 
 What you see and hear.
 
@@ -136,6 +139,7 @@ These settings change the story text only, not the rest of the app.
 | **Show Silent Requests** | Shows background requests in the status bar and the context viewer: memory summaries, diaries and notes on new entities |
 
 ## Output
+<!-- keywords: slow turns, speed up, too many requests, disable stats, auto move, parallel, npc diaries, extra passes, performance, describe new npcs -->
 
 What the AI makes each turn, and what it carries forward. Most of these settings add or remove a request per turn. More requests give more features but make each turn slower.
 
@@ -212,6 +216,7 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 **Advanced.** **Concurrent Requests** sends the choices, the stat updates and the location change at the same time, not one after another. Turns are faster on endpoints that handle parallel requests. Turn it off if a local model with little memory slows down under the load.
 
 ## Endpoints
+<!-- keywords: temperature, samplers, creativity, response length, cut off, context size, gpu layers, out of memory, api key, repetitive text -->
 
 Which AI the app connects to. The tab has its own tabs: **Text**, **Image** and, in Advanced mode, **Tag Prompt**. To set up a text endpoint, follow [Connect Your Own AI](Connect-Your-Own-AI).
 
@@ -283,6 +288,7 @@ The **Image** section sets how each image is made.
 **Advanced.** Shows when **Enable Image Generation** is on. It is the prompt that your text model gets to turn a description into image tags. **Reset to Defaults** brings back the original text.
 
 ## Data
+<!-- keywords: clear cache, free up space, tutorial again, show tips again, wipe downloaded pictures, guided tour, auto saving toggle, housekeeping -->
 
 Saves, the Authoring Tour, and stored data. To back up your worlds, saves, library entities and library dictionaries, use [Backup & Restore](Saves-and-Backup#the-backup--restore-dialog) in the main menu's **Menu**. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 

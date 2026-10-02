@@ -1,11 +1,12 @@
 # 💾 Saves and Backup
+<!-- keywords: cloud sync, stored locally, uploaded to server, data safety, persistence, keep my stuff -->
 
 A save keeps one game's progress. A backup keeps your worlds, saves, library entities and library dictionaries in one file. Formamorph keeps all of it on your device. It sends an item to a server only when you publish it.
 
 > To start a new game instead, see [Starting a Game](Starting-a-Game).
 
 ## How to Save a Game
-<!-- keywords: progress, keep, file, store, checkpoint, quit, stop playing -->
+<!-- keywords: progress, keep, file, store, checkpoint, quit, stop playing, manual, slot, bookmark, come back later, overwrite, preserve, session, avoid losing -->
 
 1. In the game, select the **Menu** button at the top right.
 2. Select **Save Game**.
@@ -16,7 +17,7 @@ A save keeps one game's progress. A backup keeps your worlds, saves, library ent
 The **Logs** tab records *Game saved as …*. To keep scene images in the save, select their checkbox. See [The Save Game Dialog](#the-save-game-dialog).
 
 ## How to Load a Game
-<!-- keywords: continue, resume, open save, pick up, saved, return, carry on -->
+<!-- keywords: continue, resume, open save, pick up, saved, return, carry on, previous session, where i left off, old playthrough, reopen story, last time, slot, yesterday -->
 
 1. Open **Load Game**:
    - In the game, select **Menu**, then **Load Game**.
@@ -27,7 +28,7 @@ The **Logs** tab records *Game saved as …*. To keep scene images in the save, 
 A save from a world that is not on this device does not load from the main menu. Import or download that world first. See [Loading from Another World](#loading-from-another-world).
 
 ## How to Export a Save
-<!-- keywords: download, file, share, transfer, move, copy, json, another device -->
+<!-- keywords: download, file, share, transfer, move, copy, json, another device, send to friend, sync, pc to phone, extract, portable, single playthrough, offload -->
 
 1. Open **Load Game**.
 2. Select the world's folder.
@@ -36,7 +37,7 @@ A save from a world that is not on this device does not load from the main menu.
 You get a `.json` file with the save's name. On Android, choose a folder in the **Save As** sheet. See [Save Exports to a Folder](Install-on-Android#-save-exports-to-a-folder).
 
 ## How to Import a Save
-<!-- keywords: upload, open file, transfer, move, bring in, another device, json -->
+<!-- keywords: upload, open file, transfer, move, bring in, another device, json, load from disk, received, sync, phone to pc, add playthrough, from friend, multiple at once -->
 
 1. Open **Load Game**.
 2. Select the **Import** button.
@@ -45,7 +46,7 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 Each save goes into the folder of its world. The dialog opens that folder, and a message counts the saves it imported. The dialog skips a file that it cannot read.
 
 ## How to Make a Backup
-<!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy -->
+<!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, archive, snapshot, switch browser, before clearing cache, format pc, full dump, bulk, sync devices, protect data -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Backup** button.
@@ -56,7 +57,7 @@ Each save goes into the folder of its world. The dialog opens that folder, and a
 Make a backup before you update the app or move to a new device. See [What a Backup Holds](#what-a-backup-holds).
 
 ## How to Restore a Backup
-<!-- keywords: recover, bring back, get back, import, reinstall, new device, lost data, migrate -->
+<!-- keywords: recover, bring back, get back, import, reinstall, new device, lost data, migrate, load archive, everything gone, wiped, merge, duplicates, disappeared, old computer, put back -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Restore** button, then select a backup `.json` file.
@@ -67,7 +68,7 @@ Make a backup before you update the app or move to a new device. See [What a Bac
 Restore adds to what you have. It never erases an item that is not in the backup.
 
 ## How to Update the Desktop App
-<!-- keywords: new version, upgrade, latest, download, patch, install, mac, windows -->
+<!-- keywords: new version, upgrade, latest, download, patch, install, mac, windows, out of date, outdated, auto updater, newer release, dmg, pc client, linux -->
 
 1. On the main menu, look at the version number at the bottom left. It shows **— Update Available!** when a newer release is out.
 2. Select the version number. The update dialog opens.
@@ -79,6 +80,7 @@ On a Mac, **Download** opens the new `.dmg` file in your browser. Open the file 
 ---
 
 ## The Save Game Dialog
+<!-- keywords: what is stored, include pictures, file size, empty name, contents, replace existing, illustrations, list of slots -->
 
 **Save Game** shows the saves of the world you play.
 
@@ -95,6 +97,7 @@ A save holds the full story and a copy of each turn, so **Rewind to Here** still
 The autosave is not in this list. You cannot save over it.
 
 ## The Load Game Dialog
+<!-- keywords: erase a slot, rename, world not installed, wrong world, old version, compatibility, convert, reorder, game time, remove old -->
 
 **Load Game** has a folder for each world that has saves. In the game, the folder of the current world is first, with **(current)**. Each folder shows how many saves it has and when you last played.
 
@@ -130,6 +133,7 @@ Unsaved progress is lost each time a game closes.
 Saves from older versions of Formamorph load too. Formamorph converts a save in the oldest format when you load it. A message shows while that runs. If the conversion fails, the game still loads what it can, and the **Logs** tab says *(with conversion errors)*.
 
 ## Autosave
+<!-- keywords: automatic, forgot, crash, closed tab, lost progress, recover, disable, auto tag, browser closed -->
 
 **Autosave** saves your game after every turn. Each world has one **Autosave** slot, and each turn replaces it.
 
@@ -142,10 +146,12 @@ Saves from older versions of Formamorph load too. Formamorph converts a save in 
 To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Settings#saves) **Data** tab.
 
 ## Quick Start
+<!-- keywords: continue button, not a resume, new run instantly, lightning icon -->
 
 **Quick Start** starts a new game with the world's defaults. It does not load a save. See [How to Start with the Defaults](Starting-a-Game#how-to-start-with-the-defaults).
 
 ## The Backup & Restore Dialog
+<!-- keywords: what is included, settings not included, avatars missing, optimize, downscale, invalid file, select all, compress pictures, skip duplicates -->
 
 Open it from the main menu's **Menu** button. It has three buttons: **Backup**, **Restore** and **Close**.
 
@@ -175,6 +181,7 @@ A file that is not a Formamorph backup shows *This file is not a Formamorph back
 To move an avatar, open it on the library's **Avatars** tab and select the **Export** button.
 
 ## Where Your Data Lives
+<!-- keywords: file location, save folder, appdata, indexeddb, cleared cookies, incognito, uninstall, path, directory, portable -->
 
 Formamorph stores your data in the app's browser storage on your device. Nothing is stored on a server unless you publish it.
 
@@ -191,6 +198,7 @@ The web version asks the browser to keep its storage. A browser can still clear 
 On Windows and Linux, copy the whole folder to move your data to a new place.
 
 ## App Updates
+<!-- keywords: release notes, whats new, changelog, stable or beta, check manually, forced to, rollback, failed to start, current version, web reload -->
 
 ### The Update Dialog
 

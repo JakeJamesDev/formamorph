@@ -1,4 +1,5 @@
 # 📱 Install on Android
+<!-- keywords: system requirements, minimum os version, storage space needed, google play listing, megabytes, handheld -->
 
 The Android app is the whole of Formamorph on your device: play, the [World Editor](WorldEditor), Community Creations. No browser bar sits around it.
 
@@ -7,7 +8,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 **You need:** Android 7.0 or newer, and about **90 MB** free for the download.
 
 ## How to Install on Android
-<!-- keywords: phone, mobile, apk, download, app, tablet, sideload, play store -->
+<!-- keywords: phone, mobile, apk, download, app, tablet, sideload, play store, smartphone, samsung, installer file, unknown sources, first time setup, google pixel, get the game -->
 
 1. On your device, open [formamorph.ai](https://formamorph.ai) and tap the **Android** button at the bottom of the page.
 2. Open the downloaded file.
@@ -18,7 +19,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 7. Open Formamorph.
 
 ## How to Update the App
-<!-- keywords: new version, upgrade, latest, phone, apk, mobile -->
+<!-- keywords: new version, upgrade, latest, phone, apk, mobile, out of date, outdated, patch, auto update, newer release, get newest build -->
 
 1. On the main menu, look at the version number at the bottom. It reads **— Update Available!** when a newer release exists.
 2. Tap the version number. The update dialog opens.
@@ -30,7 +31,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 8. Confirm in Android's install sheet.
 
 ## How to Get Beta Builds
-<!-- keywords: pre-release, prerelease, test version, early access, channel, nightly -->
+<!-- keywords: pre-release, prerelease, test version, early access, channel, nightly, preview version, experimental, unstable, opt in, insider, upcoming features, back to stable -->
 
 1. Tap the version number on the main menu.
 2. Set **Release channel** to **Pre-release**.
@@ -38,7 +39,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 Set it back to **Stable** for finished releases only.
 
 ## How to Save an Export to a Folder
-<!-- keywords: downloads, file, phone, storage, location -->
+<!-- keywords: downloads, file, phone, storage, location, where did it go, missing exported world, choose directory, sd card, files app, save as picker, destination -->
 
 1. Export as you would on desktop. Android's **Save As** picker opens.
 2. Choose a folder, such as **Downloads**.
@@ -46,7 +47,7 @@ Set it back to **Stable** for finished releases only.
 4. Tap **Save**.
 
 ## How to Use a Model on Your PC
-<!-- keywords: phone, mobile, local, network, wifi, lm studio, ollama, computer, connect -->
+<!-- keywords: phone, mobile, local, network, wifi, lm studio, ollama, computer, connect, desktop gpu, home rig, 192.168, self hosted, lan address, stream from desktop -->
 
 1. On your PC, make LM Studio or Ollama accept connections from your network. See [Connect Your Own AI](Connect-Your-Own-AI#how-to-play-against-your-pc-from-another-device).
 2. In the app, open Settings → **Endpoints** → **Text**.
@@ -55,6 +56,7 @@ Set it back to **Stable** for finished releases only.
 ---
 
 ## 📥 Where to Get It
+<!-- keywords: download link, official source, older version, verify file, hash, mirror, direct apk -->
 
 | Source | What you get |
 |---|---|
@@ -67,6 +69,7 @@ Set it back to **Stable** for finished releases only.
 Every release also publishes `Formamorph-android.apk.sha512`, the checksum of the file beside it. The in-app updater checks its own downloads, so you never need it. Use it to check a manual download yourself.
 
 ## ✅ The Two Prompts Android Shows You
+<!-- keywords: permission popup, blocked install, security setting, not allowed, grant access, untrusted source, chrome permission -->
 
 Android asks permission twice over the life of the app, for two different apps. Both are the same setting, **install unknown apps**.
 
@@ -80,6 +83,7 @@ Device makers word the setting differently: *Install unknown apps*, *Allow from 
 > ℹ️ Prompt 2 never appears on the first install, because the browser did that one. It waits until your first in-app update.
 
 ## 🛡️ The Play Protect Warning
+<!-- keywords: virus, malware, is it safe, harmful app, blocked by google, unknown developer, security alert -->
 
 On the first install, Google Play Protect may warn you that the app comes from a developer it does not recognize, and offer to block it. To continue, open **More details**.
 
@@ -88,6 +92,7 @@ The warning means Google has not seen this signing key on many devices yet. It i
 Every Formamorph release is signed with the same key, so the warning gets quieter as the app spreads. Updates from inside the app use that same key, so Android accepts them as updates and does not ask you to uninstall first.
 
 ## 🔄 How Updates Work
+<!-- keywords: automatic check, mobile data usage, cellular, lose progress, corrupt download, resume download, how often -->
 
 Updating on Android works like the desktop app, with one extra tap at the end for Android's own installer.
 
@@ -110,6 +115,7 @@ Updating on Android works like the desktop app, with one extra tap at the end fo
 The update dialog has a **Release channel** selector. Set it to **Pre-release** to get beta APKs as they come out, or leave it on **Stable** for finished releases only.
 
 ## 📤 Save Exports to a Folder
+<!-- keywords: file picker, canceled export, nothing happened, documents directory, internal memory -->
 
 Exporting on Android opens Android's **Save As** picker. That covers worlds, saves, backups, dictionaries, presets, stat-code packs, entity cards, avatars, stories, and AI-context dumps.
 
@@ -118,6 +124,7 @@ The file stays in the folder you choose. Canceling the picker leaves without sav
 **Importing needs no new steps.** A world, save, entity card, or VRM comes in through the normal file picker, the same as on desktop.
 
 ## 🏠 A Model on Your Own Network
+<!-- keywords: private network access, mixed content, plain http, chrome blocks, browser fails to reach, airplane mode, insecure connection -->
 
 You can play against LM Studio or Ollama on your own PC, over plain `http://192.168.…`, with no internet at all. Put that address in Settings → **Endpoints** → **Text** → **Endpoint URL**, as you would anywhere else.
 
@@ -126,6 +133,7 @@ The browser often can't do this. Chrome asks a public web page's permission befo
 > 🔒 Community Creations always uses https, whatever an endpoint setting says. The app refuses to send to it unencrypted.
 
 ## ⬅️ The Back Button
+<!-- keywords: swipe gesture, exit app, quit, navigation key, accidentally closed, hardware key, close popup -->
 
 The hardware **back** button closes what is on top, one layer at a time: a dialog, then a menu, then a full-screen editor.
 
@@ -135,6 +143,7 @@ The hardware **back** button closes what is on top, one layer at a time: a dialo
 | On the main menu | Opens **Close Formamorph**. **Confirm** closes the app, and **Cancel** keeps it open. Unsaved progress is lost. |
 
 ## 🧭 Also Worth Knowing
+<!-- keywords: missing features, differences from desktop, on-device llm, limitations, run model on handset, what is unsupported -->
 
 - The **Built-In Engine** and its model list do not appear. Running a model inside the app is a desktop feature.
 - Everything else, including the Demo AI, Community Creations and the editor, works as it does in the browser.

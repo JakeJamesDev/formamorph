@@ -1,4 +1,5 @@
 # 🧩 World Editor: Placeholders
+<!-- keywords: random text, fill in blanks, mad libs, dynamic wording, reusable snippets -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -7,11 +8,12 @@ Placeholders are reusable pieces of world text: an eye color, a street name, a d
 The **Placeholders** tab, the palette strip and value pins are **Advanced mode only**. The `{` menu, the [Built-in chips](#built-in-chips) and the [**Values** tab](#the-values-tab) work in both modes.
 
 ## Why it exists
+<!-- keywords: replayability, variety, different each time, avoid rewriting, same detail everywhere -->
 
 Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} stranger"* one time, and it reads as a real detail in each playthrough. It can be the same detail each time, or a new one.
 
 ## How to Make a Placeholder
-<!-- keywords: wildcard, variable, random, macro, template, curly braces, random value -->
+<!-- keywords: wildcard, variable, random, macro, template, curly braces, random value, brace menu, list of options, randomizer, snippet, pick from list, constant -->
 
 1. Switch the World Editor to Advanced mode, and open the **Placeholders** tab.
 2. Type the name in the search box, such as *Eye Color*.
@@ -23,7 +25,7 @@ Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} str
 Or type `{` in a field and the new name, then pick **New Placeholder "…"** in the menu. A placeholder needs one value at least, or its chip shows nothing.
 
 ## How to Weight Values
-<!-- keywords: chance, probability, odds, rarity, random, likely, percent -->
+<!-- keywords: chance, probability, odds, rarity, random, likely, percent, more often, rare, common, frequency, bias, favor, never pick, ratio -->
 
 A Wildcard with two values or more can weight them.
 
@@ -35,7 +37,7 @@ A Wildcard with two values or more can weight them.
 In the **Multiline** style, each value has its own weight box. Weight 0 keeps the value in the list and never picks it.
 
 ## How to Pin a Value
-<!-- keywords: fixed, lock, force, condition, override, trait, location -->
+<!-- keywords: fixed, lock, force, condition, override, trait, location, always same, set when, depends on, tie to perk, stop random, hard set, conditional text -->
 
 A pin keeps a placeholder at one value while a condition is true. To pin from a trait:
 
@@ -53,7 +55,7 @@ To see or add every pin aimed at one placeholder:
 4. Pick the source, then type or pick the value in the new row.
 
 ## How to Override a Copy
-<!-- keywords: blueprint, per entity, change for one, entity version, customize -->
+<!-- keywords: blueprint, per entity, change for one, entity version, customize, npc own options, adjust npc wording, restore, undo edits, different outfit, extra option, remove option, character specific -->
 
 A copy is an entity's own version of a [blueprint](#blueprints). It appears by itself when a trait needs it.
 
@@ -65,6 +67,7 @@ A copy is an entity's own version of a [blueprint](#blueprints). It appears by i
 To change the value for every copy, select **Edit Blueprint** in the footer and edit the blueprint.
 
 ## The Panel
+<!-- keywords: sample output, try a roll, list style -->
 
 | Control | What it does |
 |---|---|
@@ -77,6 +80,7 @@ To change the value for every copy, select **Edit Blueprint** in the footer and 
 In the **Chips** style, type a value and press Enter. In the **Multiline** style, select **Add Value**. Multiline suits long values and values with line breaks.
 
 ## Kind
+<!-- keywords: difference, all at once, comma list, single constant, which to choose, one at random, nested template -->
 
 The **Kind** row says what a placeholder is:
 
@@ -91,14 +95,17 @@ The toggle offers **Wildcard** and **Object**. A Variable has no button: the lin
 > 💡 **A Variable can still roll.** When its one value contains Wildcard chips, the value is a template. The chips in it roll, and its own chips take World or Unique like a Wildcard.
 
 ## Draw Weight
+<!-- keywords: benched, disable an option, zero means never, default is one, turn off option -->
 
 Each value of a Wildcard with two values or more has a **Draw Weight**. A value with no weight counts as 1. Weight 0 keeps the value in the list and never picks it. The pop-out then reads **Benched**.
 
 ## Parts
+<!-- keywords: nested, inside another, compose, sub item, pieces, combine several, arrow name -->
 
 A value that is exactly one chip is a **part** of the placeholder that holds it. You address it as `Name › Part`. This is how you build an Object from other placeholders. Away from its owner, a part's chip reads with the owner's name, such as `Molly › Eyes`.
 
 ## World or Unique
+<!-- keywords: same everywhere, different each spot, consistent across text, separate roll, duplicates, repeat result, scope, per use, two must differ -->
 
 Each chip of a Wildcard chooses how it shares the roll. Select the placed chip to open its pop-out, and pick **World** or **Unique**:
 
@@ -112,6 +119,7 @@ A placeholder that can't roll locks the choice on **World**.
 > ⚠️ **Independent doesn't mean different.** Two Unique chips can roll the same value. Three chips from a list of ten values show a repeat about 28% of the time. Where two chips *must* differ, such as two towns, give each its own placeholder with values the other doesn't have.
 
 ## How a chip reads in the editor
+<!-- keywords: letter suffix, what does a mean, letters changed, custom caption, hover tooltip, display name, braces in text -->
 
 | Chip | Reads as | Example |
 |---|---|---|
@@ -127,6 +135,7 @@ The letters follow the order of the world: entities first, in the order of the E
 - A chip in longer text keeps its braces where the name prints as plain text: `The {Tavern Name (A)} Inn`.
 
 ## The Values Tab
+<!-- keywords: resolved text, preview filled in, edit inline, cycle options, tab greyed out, current result, see real wording -->
 
 A text field that holds a chip has a **Values** tab beside **Edit**. It opens every chip in place and shows its current value.
 
@@ -137,6 +146,7 @@ A text field that holds a chip has a **Values** tab beside **Edit**. It opens ev
 The tab shows when the world has a placeholder. It is disabled until the text holds a chip.
 
 ## Built-in Chips
+<!-- keywords: user macro, char macro, insert my name, hero name, double braces, sillytavern style, predefined, you or the player -->
 
 The `{` menu lists two chips under **Built-in**, above your own placeholders. They need no placeholder of their own.
 
@@ -148,10 +158,12 @@ The `{` menu lists two chips under **Built-in**, above your own placeholders. Th
 Type the typed form in any prose field, and it becomes the chip. In trait text the player carries, **Character Name** reads as **Player Name**. See [The Player Name Chip](Persona-Authoring#the-player-name-chip) and [The Character Name Chip](Persona-Authoring#the-character-name-chip).
 
 ## The roll stays for the playthrough
+<!-- keywords: change mid game, persist, stays the same, reroll, decided when, after loading, fresh result, locked in -->
 
 > 💡 A Wildcard rolls **one time, when a game starts**, and the save keeps the result. The stranger with gray eyes on turn one still has them on turn ninety. A loaded save changes nothing. A new game rolls again.
 
 ## Pins
+<!-- keywords: precedence, ranking of sources, temporary, returns afterwards, script can set, where set from, four kinds, gathered in one list -->
 
 A pin keeps a placeholder at one value while a condition is true. The playthrough keeps its own roll, and the roll shows again when the pin ends. Four things can pin a placeholder:
 
@@ -167,6 +179,7 @@ When two sources pin the same placeholder, the higher row in this table wins. [S
 The **Placeholder Pins** list at the bottom of a placeholder's panel gathers every pin aimed at it. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in.
 
 ## Where chips work
+<!-- keywords: which fields, supported places, cant insert, shows raw text, not replaced, listing blurb, menu order, allowed boxes -->
 
 Chips resolve **both** in the text the AI reads and in the text the player sees. Type `{` in each field that has the chip picker:
 
@@ -185,16 +198,19 @@ A [blueprint chip](#blueprint-chips) works only in the text of an original trait
 > ⚠️ **The world's Player-Facing Description takes no chips.** The library shows it before a playthrough exists, so there are no rolls to use.
 
 ## Placeholders that belong to an entity or a dictionary
+<!-- keywords: npc own variables, travels with card, portable, exported together, lorebook own list, private to one, owner -->
 
 An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. These placeholders travel with their owner in an entity card, a dictionary file and a published listing. They show under their owner in the list, not in a group.
 
 ## Groups
+<!-- keywords: organize variables, tidy shared list, sort tokens, folder tree -->
 
 Groups are folders for the shared list, like the groups on the **Entities** tab. The **+** menu offers **Add Group**, **Add Placeholder** and **Add Blueprints Group**. Drag a placeholder under a group to put it there, and drag a group under another group to nest it.
 
 Groups are for the editor only. They **never reach the AI**, and an entity card or a dictionary file doesn't keep them.
 
 ## Blueprints
+<!-- keywords: template variable, per character version, move refused, cant drag out, in use notice, one per holder, why refused -->
 
 A blueprint is a placeholder that exists to be copied. Each entity that needs it gets its own [copy](#copies), so one *Class Garb* can read a different value on each bearer.
 
@@ -208,6 +224,7 @@ Select **+**, then **Add Blueprints Group**. A group named **Blueprints** appear
 Move a world placeholder into the group to make it a blueprint. The move is refused while a chip or pin outside the allowed places names it, such as world text, a location or a stat descriptor.
 
 ## Copies
+<!-- keywords: appeared on its own, auto created, cant rename, cant move, dimmed option, where did it come, dotted name, leftover, reword for one npc, joins another world -->
 
 A copy is a placeholder that an entity owns. It reads its blueprint live, and it appears by itself.
 
@@ -235,6 +252,7 @@ An entity card carries the blueprints its copies reach, so a copy keeps its orig
 When an entity joins a world, each copy binds to a blueprint by id, then by unique name. With no match, the copy becomes a plain owned placeholder with its values, and the pins that named the blueprint move to it.
 
 ## Blueprint Chips
+<!-- keywords: link icon on token, paste refused, cant use here, one text many npcs, holder own wording, fallback order, needs an owner -->
 
 A blueprint chip reads the bearer's own copy. It shows a link glyph. Write one *Paladin* description with a *Class Garb* chip, and each Paladin's text reads that Paladin's garb.
 

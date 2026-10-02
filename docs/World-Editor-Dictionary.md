@@ -1,17 +1,19 @@
 # 📖 World Editor: Dictionary
+<!-- keywords: knowledge base, background facts, setting bible -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
 The Dictionary is your world's lorebook. Each **book** holds **entries**. When a keyword of an entry matches the scanned text, the entry activates, and its **Value** is injected into the AI's prompt.
 
 ## Why it exists
+<!-- keywords: save tokens, context too long, too much lore, only when relevant, on demand, big world -->
 
 The AI can't keep your whole world in its context at one time. If you write every detail into your world's AI-Facing Description, you use that context on every turn, relevant or not.
 
 A dictionary entry uses no context until a keyword matches. Mention the Gloamwater, and the AI knows what it is.
 
 ## How to Add a Dictionary Entry
-<!-- keywords: lorebook, keywords, trigger, lore, new, create -->
+<!-- keywords: lorebook, keywords, trigger, lore, new, create, world info, codex, encyclopedia, fact, define a term -->
 
 1. Open the **Dictionary** tab.
 2. If the world has no book yet, type a name in the **Search or add new dictionaries** box and select the **+** button (**Add to Dictionary**).
@@ -25,6 +27,7 @@ A dictionary entry uses no context until a keyword matches. Mention the Gloamwat
 To add a dictionary from your library, select **Add Dictionary** at the bottom of the editor.
 
 ## What gets scanned
+<!-- keywords: not triggering, never fires, why didnt it activate, what text is checked, how far back, detection, ignored words -->
 
 The rule: **if the AI reads it, it can activate an entry.** A **turn** is one action from you and the AI's reply. On each turn, the game scans:
 
@@ -43,6 +46,7 @@ Text that is in **every** turn is **not scanned**: your world's AI-Facing Descri
 An entry's Value doesn't activate other entries, unless the other entry is **Recursive**.
 
 ## The entry panel
+<!-- keywords: constant, always on, regular expression, pattern, partial word, capital letters, two conditions, cascade, fires too often, must not contain -->
 
 Select an entry to open its panel. **Trigger Keywords** and **Value** are all most entries need. Each other control solves one specific problem.
 
@@ -85,10 +89,12 @@ Two checkboxes change the **Secondary Keywords** test:
 > ⚠️ **An invalid Regex keyword with Exclude on always passes the test.** Check your expression.
 
 ## Semantic Lore
+<!-- keywords: by meaning, embedding, vector, fuzzy, smart match, synonyms, without exact word, similar wording -->
 
 **Semantic Lore** is a player setting in [Settings](Settings#lore) → **Output** → **Lore**, in Advanced mode. It is off by default. It activates entries by meaning, after the keyword scan. Write *"the ruined tower"*, and an *Old Beacon* entry can activate with no keyword present. It only adds entries. Keyword activation doesn't change.
 
 ## Background and Foreground
+<!-- keywords: position in prompt, insertion order, before or after, top or bottom, move between sections, nothing is sent, placement -->
 
 Each book shows its entries in two groups that collapse, **Background** and **Foreground**. They are two separate lore blocks in the system prompt. An entry's group decides which block it joins. A new entry starts in Foreground.
 
@@ -97,6 +103,7 @@ Each book shows its entries in two groups that collapse, **Background** and **Fo
 By default, Background comes earlier in the prompt than Foreground. **You control the position**: a prompt chip fills each block, and you can move the chips in the prompt editor. If your prompt has only one of the two chips, that chip gets the entries of both groups. If it has neither chip, no lore is sent.
 
 ## Books
+<!-- keywords: multiple lorebooks, disable whole set, player turns off, reorder, split by topic -->
 
 Books group related entries. The order of the books sets the order of the injected entries. Disable a book to turn off every entry in it.
 
@@ -112,6 +119,7 @@ Select a book in the tree to open its panel. It has two tabs.
 In Simple mode the panel shows the Details fields with no tabs. The tab you pick stays open when you select another book.
 
 ## In the library
+<!-- keywords: standalone lorebook, reusable across worlds, cover, edit outside world, my lorebooks, rename -->
 
 A dictionary in your library is always one book, so its editor has no row for the book. It has three tabs.
 

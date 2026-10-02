@@ -1,11 +1,12 @@
 # ❓ Formaquestion
+<!-- keywords: in-app manual, documentation, built-in tutor, what is this window, user guide, helper -->
 
 Formaquestion is the help window. You can ask it a question, search this guide and read each guide page. The guide is part of the app, so the search and the pages work with no network and no AI.
 
 > 📱 On a mobile-size screen, Formaquestion opens as a full-screen sheet. See [On Mobile](#on-mobile).
 
 ## How to Open Formaquestion
-<!-- keywords: help, assistant, f1, faq, support, guide window, question mark -->
+<!-- keywords: help, assistant, f1, faq, support, guide window, question mark, get assistance, shortcut key, hotkey, side tab, stuck, dismiss -->
 
 1. Select the **Help** tab on the edge of the screen, or press F1.
 2. To close the window, select **Close** at its top right. On Android, you can also use the back action.
@@ -13,7 +14,7 @@ Formaquestion is the help window. You can ask it a question, search this guide a
 The window stays open when you go to a different screen or open a dialog. You can use the dialog and the window together. Escape closes the dialog and leaves the window open.
 
 ## How to Ask a Question
-<!-- keywords: help, ai help, chat, assistant, support, faq, answer -->
+<!-- keywords: help, ai help, chat, assistant, support, faq, answer, chatbot, citations, where it came from, query, explain to me, bot, inquire -->
 
 1. Open Formaquestion.
 2. Select the **Ask** tab. In the wide layout, the conversation is on the right.
@@ -24,7 +25,7 @@ The window stays open when you go to a different screen or open a dialog. You ca
 Your AI writes the answer from the guide sections that match your question. To end an answer early, select **Stop**. The text so far stays. See [Ask](#ask).
 
 ## How to Ask a Follow-Up Question
-<!-- keywords: more, another, next, keep, continue, conversation, clear -->
+<!-- keywords: more, another, next, keep, continue, conversation, clear, new topic, reset chat, start over, thread, wipe history, remembers previous -->
 
 1. Ask a question.
 2. After the answer, type your next question in **Ask a Question**, such as "and then?".
@@ -33,7 +34,7 @@ Your AI writes the answer from the guide sections that match your question. To e
 The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear** above the conversation.
 
 ## How to Ask About a Screenshot
-<!-- keywords: image, picture, paste, upload, attach, what is this, screen capture -->
+<!-- keywords: image, picture, paste, upload, attach, what is this, screen capture, photo, snip, print screen, vision model, clipboard, identify button, show my screen, drag file -->
 
 1. Turn on **Image Attachments**. See [Settings](Settings).
 2. Open Formaquestion and select the **Ask** tab.
@@ -44,7 +45,7 @@ The AI gets your earlier questions and its answers, so you do not have to say th
 Your model must read images. The screenshot goes with that question only. A follow-up does not send it again.
 
 ## How to Search the Guide
-<!-- keywords: find, look up, docs, wiki, manual, help, without ai, offline -->
+<!-- keywords: find, look up, docs, wiki, manual, help, without ai, offline, keyword, documentation, results list, topic, query box, no network, filter -->
 
 1. Open Formaquestion.
 2. Select the **Search** tab.
@@ -54,7 +55,7 @@ Your model must read images. The screenshot goes with that question only. A foll
 The best matches are first. Each result shows the section, its page and the start of its text.
 
 ## How to Read a Guide Page
-<!-- keywords: docs, wiki, manual, browse, contents, table of contents, help -->
+<!-- keywords: docs, wiki, manual, browse, contents, table of contents, help, chapters, topic list, article, index, all topics, back to list, documentation pages -->
 
 1. Open Formaquestion.
 2. Select the **Guide** tab.
@@ -64,7 +65,7 @@ The best matches are first. Each result shows the section, its page and the star
 To go back to the list of pages, select **Contents** above the section.
 
 ## How to Get Help for the Screen You Have Open
-<!-- keywords: this page, current, where am i, context, here -->
+<!-- keywords: this page, current, where am i, context, here, contextual, this dialog, this menu, relevant section, what am i seeing, explain this tab, suggested topic -->
 
 1. Open the screen, dialog or tab that you need help with.
 2. Open Formaquestion.
@@ -73,7 +74,7 @@ To go back to the list of pages, select **Contents** above the section.
 The row is the first item on the **Search** tab and on the **Guide** tab. It names the guide section for the screen, the dialog and the tab that you have open. It changes when you open a different one. A screen with no guide section shows no row. The row does not show while you search.
 
 ## How to Move and Resize the Window
-<!-- keywords: drag, bigger, smaller, size, position, wide view, layout -->
+<!-- keywords: drag, bigger, smaller, size, position, wide view, layout, title bar, corner handle, in the way, covers the screen, side by side, split, enlarge, relocate -->
 
 1. Drag the title bar to move the window.
 2. Drag the bottom right corner to change its size.
@@ -81,7 +82,7 @@ The row is the first item on the **Search** tab and on the **Guide** tab. It nam
 To see the contents and a section side by side, select **Wide View** in the title bar. Select it again to go back.
 
 ## How to Move the Help Tab
-<!-- keywords: drag, edge, side, button, reposition, out of the way -->
+<!-- keywords: drag, edge, side, button, reposition, out of the way, blocking, left or bottom, arrow keys, floating, relocate, covers something, hide it, corner -->
 
 1. Drag the **Help** tab along the edge of the screen. It goes to the nearest of the four edges.
 2. Release it.
@@ -91,6 +92,7 @@ With the keyboard, press Tab until the **Help** tab has focus. Then press the ar
 ---
 
 ## The Window
+<!-- keywords: f1 key behavior, stays on top, remembers position, off screen, focus cursor, narrow or wide, disappeared, always visible -->
 
 Formaquestion is one window for the whole app. It shows above every dialog, and it keeps its conversation, its search text and its open section while the app is open.
 
@@ -115,6 +117,7 @@ F1 does one of three things:
 - While the welcome animation plays, the **Help** tab does not show and F1 does nothing.
 
 ## Ask
+<!-- keywords: privacy, what is sent, reads my saves, hallucinate, inaccurate, general knowledge note, history lost, send disabled, which model answers, reload -->
 
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
@@ -137,6 +140,7 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 An answer can be wrong. Use **Sources** to check it against the guide.
 
 ## Search
+<!-- keywords: ranking, results order, plural, nothing found, release notes, minimum letters, latest changes, scoring -->
 
 The **Search** tab finds sections by the words you type. It needs no network and no AI.
 
@@ -153,6 +157,7 @@ The search reads each page of this guide, the [Glossary](Glossary), the [World F
 In the wide layout, the results replace the contents on the left while the search field has two or more letters.
 
 ## Guide
+<!-- keywords: chapter list, part numbers, on this page, internal links, external website, expand page, collapse -->
 
 The **Guide** tab lists each page of this guide. Select a page to show or hide its sections.
 
@@ -163,6 +168,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - A link to a website opens in your browser.
 
 ## On Mobile
+<!-- keywords: full screen sheet, small screen, keyboard covers, slides in, touch, no resizing -->
 
 On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the **Ask**, **Search** and **Guide** tabs of the narrow layout.
 
@@ -173,6 +179,7 @@ On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the
 - On Android, the back action closes the sheet first, before a dialog under it.
 
 ## The Help Tab
+<!-- keywords: side handle, edge button, sideways text, opener, reduced motion, floating label, click vs drag, rotated -->
 
 The **Help** tab opens and closes Formaquestion. It starts on the right edge of the screen, at the middle.
 

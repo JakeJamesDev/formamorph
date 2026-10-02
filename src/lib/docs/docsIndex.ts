@@ -134,7 +134,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
       const to = next < last ? headings[next].line : end;
       const text = textOf(headings[start].line, to);
       const deeper = headings.slice(start + 1, next).map((h) => h.level);
-      if (text.length <= SECTION_CHAR_LIMIT || deeper.length === 0) {
+      if (takeKeywordLines(text).text.length <= SECTION_CHAR_LIMIT || deeper.length === 0) {
         addSection(headings[start], start, text);
         return;
       }

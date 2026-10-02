@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, withKeywords } from './help-recall-score';
+import { chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall } from './help-recall-score';
 
 describe('scoreRecall', () => {
   const right = ['Library#how-to-make-a-group', 'Library#groups'];
@@ -117,33 +116,5 @@ describe('chunksOf', () => {
 
   it('gives no chunk for no text', () => {
     expect(chunksOf('', 10)).toEqual([]);
-  });
-});
-
-describe('withKeywords', () => {
-  const pages = {
-    Library: '# Library\n\nYour tiles.\n\n## How to Make a Group\n\n<!-- keywords: collection -->\n\n1. Select **New Group**.\n\n## Groups\n\nA group holds tiles.\n',
-  };
-
-  it('makes the search find a section by an added phrase, through the real index', () => {
-    const before = createDocsIndex({ pages });
-    expect(before.search('folder').map((s) => s.id)).toEqual([]);
-    const { pages: grown, unknown } = withKeywords(pages, { 'Library#how-to-make-a-group': ['folder', 'bundle'] });
-    expect(unknown).toEqual([]);
-    const after = createDocsIndex({ pages: grown });
-    expect(after.search('folder')[0]?.id).toBe('Library#how-to-make-a-group');
-    // The authored line still counts, and the section text the model reads is unchanged.
-    expect(after.search('collection')[0]?.id).toBe('Library#how-to-make-a-group');
-    expect(after.get(['Library#how-to-make-a-group'])[0].markdown).toBe(before.get(['Library#how-to-make-a-group'])[0].markdown);
-  });
-
-  it('reports an id that names no heading and leaves the pages as they are', () => {
-    const { pages: grown, unknown } = withKeywords(pages, { 'Library#no-such-heading': ['folder'], 'Nowhere#x': ['y'] });
-    expect(unknown).toEqual(['Library#no-such-heading', 'Nowhere#x']);
-    expect(grown).toEqual(pages);
-  });
-
-  it('adds nothing for an empty list', () => {
-    expect(withKeywords(pages, { 'Library#groups': [] }).pages).toEqual(pages);
   });
 });

@@ -1,11 +1,12 @@
 # 🧪 Test Bench
+<!-- keywords: playtest, trial run, sanity check, simulator, free to use, lint, without spending tokens -->
 
 The Test Bench checks a world before you play it. It lives in the World Editor and works in Simple and Advanced mode.
 
 The bench shows only what the app computes from your world. It never calls the AI, so it works offline, costs nothing and updates as you type. To see what the AI writes, play a turn.
 
 ## How to Check a World for Issues
-<!-- keywords: errors, warnings, problems, bugs, validate, doctor, broken, debug, fix -->
+<!-- keywords: errors, warnings, problems, bugs, validate, doctor, broken, debug, fix, flask icon, health check, diagnose, scan for mistakes, auto repair, verify before upload, number on beaker -->
 
 1. In the World Editor, select the **Test Bench** flask button at the right of the header. The **World Doctor** popover opens.
 2. Read the findings. Errors come first, then warnings, then info.
@@ -15,7 +16,7 @@ The bench shows only what the app computes from your world. It never calls the A
 The list updates as you edit. To see the full bench, select **Open Test Bench** at the bottom of the popover.
 
 ## How to Test Which Dictionary Entries Trigger
-<!-- keywords: keywords, lorebook, activate, fire, debug, scan depth, matched -->
+<!-- keywords: keywords, lorebook, activate, fire, debug, scan depth, matched, lore not showing up, world info, why was it skipped, entry ignored, simulate a message, paste sample story, codex -->
 
 1. Open the Test Bench, then select the **Triggers** tab.
 2. Paste story text into the **Scene text** box. If you've played this world, select **Paste Last Turn** to fill it from your latest save.
@@ -25,7 +26,7 @@ The list updates as you edit. To see the full bench, select **Open Test Bench** 
 To test scan depth, open **History** and paste earlier messages, oldest first.
 
 ## How to Preview the Opening
-<!-- keywords: first message, intro, start, greeting, test, see, first turn -->
+<!-- keywords: first message, intro, start, greeting, test, see, first turn, simulate new game, beginning scene, what newcomers see, reroll randoms, initial values, as a different class, sample run -->
 
 1. Open the Test Bench, then select the **Opening** tab.
 2. In **Testing as**, pick who you play.
@@ -35,12 +36,14 @@ To test scan depth, open **History** and paste earlier messages, oldest first.
 If the world has more than one starting location, pick one in the **Starting Location** list.
 
 ## What the Bench Shows
+<!-- keywords: is it accurate, reliable results, what it cannot tell, unable to predict ai, same as real game, simulation scope -->
 
 The bench runs the same functions a real turn runs, so its results match play. It shows the text and lists the AI receives. It doesn't guess what the AI does with them.
 
 Where a result ends in the AI's choice, the bench says so. For example, **AI Context** lists every place a player can go. Whether an action counts as travel is the AI's call.
 
 ## Opening the Bench
+<!-- keywords: where to find it, beaker button, orange counter, dock or float, detach panel, side by side, simulate as a class, choose test place, instruments list -->
 
 The **Test Bench** flask button sits at the right of the World Editor's header. Its badge counts findings.
 
@@ -74,6 +77,7 @@ On desktop, the panel can sit inside the editor's list panel or beside it. Selec
 Your pick stays when you switch tabs. A broken pin on your **Testing as** pick shows in red under the bar.
 
 ## Issues
+<!-- keywords: ignore a warning, suppress, silence a finding, bring back hidden warning, world too large, file size meter, linter, simple mode hides findings -->
 
 The **Issues** tab is the World Doctor. It checks your world's structure: broken links, unused placeholders, stats that start out of range and more. It never judges your writing.
 
@@ -91,6 +95,7 @@ Some checks run only when you ask:
 In Simple mode, findings about hidden fields fold into one line. Switch to Advanced mode to see them.
 
 ## Triggers
+<!-- keywords: vector search, similarity matching, rag, near miss, name detection test, quoted names ignored, lore token budget, chat history depth -->
 
 The **Triggers** tab is the Activation Tester. Paste text, and it shows what that text makes fire.
 
@@ -104,6 +109,7 @@ The **Triggers** tab is the Activation Tester. Paste text, and it shows what tha
 Matching warnings from **Issues** show on the rows they name, with the same **Fix**.
 
 ## AI Context
+<!-- keywords: prompt size, context window, token budget, exits from here, unreachable place, where can players travel, sent in full, per location cost -->
 
 The **AI Context** tab shows what the AI gets from the location in the **at** list.
 
@@ -113,6 +119,7 @@ The **AI Context** tab shows what the AI gets from the location in the **at** li
 - **Entities the AI Is Told About** shows whether each entity arrives in full, as a summary or by name only.
 
 ## Opening
+<!-- keywords: odds of each intro, probability, likelihood of repeat, raw first request, perks at start, try different stat levels, what wildcards rolled, custom presets ignored -->
 
 The **Opening** tab shows turn one of a new game for your **Testing as** pick.
 

@@ -1,4 +1,5 @@
 # 📐 World Format
+<!-- keywords: file spec, modding, write a tool, generator script, data layout, export contents, documentation for developers -->
 
 This page describes the `.json` file of a Formamorph **world**: the file **Export World** writes and **Import World** reads. Use it when you edit a world file by hand or write a tool for one.
 
@@ -7,7 +8,7 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 > 📄 This page covers world files only. It does not describe save files.
 
 ## How to Edit a World File by Hand
-<!-- keywords: json, text editor, manual, raw, modify, notepad, tweak, fields -->
+<!-- keywords: json, text editor, manual, raw, modify, notepad, tweak, fields, vscode, outside the app, bulk change, reimport, duplicate created, wont overwrite, open exported, hack -->
 
 1. In the main menu, select the world. In its [world dialog](Starting-a-Game#the-world-dialog), select **Export World**.
 2. Open the `.json` file in a text editor. Make your changes.
@@ -18,7 +19,7 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 The import adds a new world. It never replaces the world you exported. Import skips a file that fails to load, and the menu tells you.
 
 ## How to Add a Stat
-<!-- keywords: json, file, list, by hand, manual, schema, field -->
+<!-- keywords: json, file, list, by hand, manual, schema, field, raw object, property names, regen key, meter entry, required keys -->
 
 1. Add an object to the top-level `stats` list.
 2. Give it a new `id` and a `name`. Stat code and the AI find a stat by its name, so keep names unique.
@@ -32,7 +33,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 ```
 
 ## How to Add a Trait
-<!-- keywords: json, file, list, by hand, manual, schema, field -->
+<!-- keywords: json, file, list, by hand, manual, schema, field, perk object, statchanges key, groupid, ai text key, unique ids -->
 
 1. Add an object to the top-level `traits` list. For a trait that one entity owns, add it to that entity's `traits` list.
 2. Give it a new `id` and a `name`. Trait ids must be unique across the world and every entity.
@@ -47,7 +48,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 ```
 
 ## How to Add an Entity
-<!-- keywords: json, file, list, by hand, manual, schema, character, npc -->
+<!-- keywords: json, file, list, by hand, manual, schema, character, npc, aliases key, pronouns key, location ids, playable flag, summary key -->
 
 1. Add an object to the top-level `entities` list.
 2. Give it a new `id` and a `name`.
@@ -64,6 +65,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 ---
 
 ## Reading the Tables
+<!-- keywords: req column, checkmark meaning, required vs optional, uuid, legend, editor-only meaning, mandatory -->
 
 | Mark | Meaning |
 |---|---|
@@ -74,6 +76,7 @@ The import adds a new world. It never replaces the world you exported. Import sk
 **Editor-only** fields organize the World Editor. The AI never reads them.
 
 ## The File
+<!-- keywords: top level keys, root object, import refused, wont load, invalid file, minimum valid, skeleton, missing sections -->
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -97,6 +100,7 @@ A stored world also has an `id`. Export leaves it out, and import gives the worl
 > ⚠️ **Import refuses a world without `worldOverview`, `stats`, `locations`, `entities`, `traits` and `statUpdates`.** An empty list is enough.
 
 ## Versions and Older Files
+<!-- keywords: backward compatible, legacy, outdated world, upgrade, deprecated keys, renamed properties, compatibility, converted automatically, migration -->
 
 Import runs every world through a migration. The migration changes an older shape into the current one, so a file from any version loads. These older forms still load:
 
@@ -127,6 +131,7 @@ Import runs every world through a migration. The migration changes an older shap
 Write new files in the current shape.
 
 ## worldOverview
+<!-- keywords: metadata block, title key, system prompt key, music key, welcome markdown, replace narration prompt, creator, tag array, persona restriction keys -->
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -162,6 +167,7 @@ See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields
 | `statUpdatesPromptEnabled` | Boolean | `false` keeps the text and does not use it |
 
 ## Stats
+<!-- keywords: meter properties, threshold bands, morph bindings, code keys, lock flags, bonus object, percent unit, hidden flag -->
 
 Each stat is a number the player has. The AI reads it, and [stat code](StatCodeGuide) can calculate it.
 
@@ -211,6 +217,7 @@ A trait changes a stat with a list of these.
 | `interval` | | String | An older field. Nothing reads it |
 
 ## Traits
+<!-- keywords: perk properties, prerequisite object, pick limits keys, mode values, default flag, category object, template folder flag, toggle flag -->
 
 A trait describes the player or an entity. The player picks traits before play. An entity can own traits too.
 
@@ -266,6 +273,7 @@ A group holds traits and other groups. Both the world and each entity have a `tr
 The world group with `system: "blueprints"`, and every group below it, holds Blueprints items. The player never picks a Blueprints trait. It reaches play only through an entity's [link](#trait-links). Only a Blueprints trait or group can be linked.
 
 ## Locations
+<!-- keywords: place properties, parent key, travel link object, two-way legs, spawn flag, backdrop key, map coordinates, hint key -->
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -300,6 +308,7 @@ A connection is a travel link between two locations. A connection between two lo
 A connection needs at least one leg. Both legs = two-way. A leg has one optional field, `hint`: how the trip is made, such as "through the old gate". The AI reads it after the destination's name.
 
 ## Entities
+<!-- keywords: npc properties, character object, persona marks, nickname list, gallery array, link object keys, card file extras, folder key -->
 
 | Field | Req. | Type | Meaning |
 |---|---|---|---|
@@ -388,6 +397,7 @@ An entity file, or an entity in the library, can also carry these fields. The ap
 | `locationRefs` | `{ "id", "name" }`[] | The locations the entity stood in, by name |
 
 ## Openings
+<!-- keywords: greeting object, first message key, action or narration, self flag, kind values, intro entry -->
 
 An opening is one way a game can start. The world, each location and each entity have an `openings` list.
 
@@ -401,6 +411,7 @@ An opening is one way a game can start. The world, each location and each entity
 See [World Editor: Openings](World-Editor-Openings) for which openings draw.
 
 ## Placeholders
+<!-- keywords: token syntax, double brace format, write token manually, random list object, weights map, pin object, roll flag, variable properties, override map -->
 
 A placeholder is a named value that a chip shows in text. The world's `placeholders` are shared. An entity's or a book's `placeholders` belong to it.
 
@@ -481,6 +492,7 @@ The editor can add two more parts after the placement id: a path to a part of th
 Two chips need no placeholder. `{{user}}` is the [Player Name chip](Persona-Authoring#the-player-name-chip). `{{char}}` is the [Character Name chip](Persona-Authoring#the-character-name-chip).
 
 ## Dictionaries
+<!-- keywords: lorebook object, keyword array, regex flag, constant flag, position values, depth key, world info fields, token budget -->
 
 `dictionaries` is a list of books. Each book holds lore entries. An entry goes into the AI's prompt when one of its keywords is in the scanned text. See [What Gets Scanned](World-Editor-Dictionary#what-gets-scanned).
 
@@ -525,6 +537,7 @@ Book order sets the order in the prompt.
 | `extensions` | | Object | Other imported lorebook fields, kept for export |
 
 ## Linked Copies
+<!-- keywords: link object, library id, revision keys, source tracking, sync metadata, bundled from -->
 
 An entity or a book in a world can follow a library item. Its `link` object records that. Let the app write it. See [Linked Content](LinkedContent).
 
@@ -540,10 +553,12 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 | `bundledFrom` | String | The copy came in an imported world file, and its library item is not on this machine |
 
 ## Stat Updates
+<!-- keywords: deprecated list, unused, empty array, obsolete, leftover, what is this for -->
 
 `statUpdates` is an older list. No screen edits it, and play does not read it. Write `[]`. An older file can hold records with `id`, `name`, `prompt`, `stats` (stat names) and `messageHistory`.
 
 ## Media Fields
+<!-- keywords: base64, embed binary, encode image, huge file size, web address string, audio encoding, mime, asset object -->
 
 **Images** (`thumbnail`, location `backgroundImage`, entity `images`, book `thumbnail`) hold one string:
 
@@ -566,6 +581,7 @@ An entity or a book in a world can follow a library item. Its `link` object reco
 ```
 
 ## Example World
+<!-- keywords: sample, starter, minimal, full file, copy paste, reference json, demo, boilerplate -->
 
 A short world. `...` replaces the media data.
 

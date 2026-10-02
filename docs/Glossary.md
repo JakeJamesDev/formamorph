@@ -1,10 +1,12 @@
 # 🔤 Glossary
+<!-- keywords: definitions, terminology, vocabulary, jargon, meaning, what does it mean, lexicon -->
 
 The words Formamorph uses, and what each one means. Each term links the page that explains it.
 
 > 💡 To get a world, an entity or another listing from Community Creations, you **download** it. **Install** names something else: see [Install](#-community-creations).
 
 ## 🎮 Playing
+<!-- keywords: reroll meaning, ooc meaning, llm server address, tts meaning, swipe meaning, context viewer -->
 
 | Term | Meaning |
 |---|---|
@@ -28,6 +30,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Text to Speech](How-to-Play#how-to-read-a-turn-aloud) | Reads a turn aloud with a voice model that runs in your browser |
 
 ## 🚪 Starting a Game
+<!-- keywords: greeting, first message, spawn, player character, pc vs npc, scenario start -->
 
 | Term | Meaning |
 |---|---|
@@ -49,6 +52,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Character Customization](Avatars#character-customization) | The step after Enter World where you pick and shape your Avatar |
 
 ## 🎭 Entities and Memory
+<!-- keywords: npc, character definition, recap, journal, summarization, made up character -->
 
 | Term | Meaning |
 |---|---|
@@ -64,6 +68,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Character Diaries](Memory#memory-settings) | First-person diary entries that each entity present writes. They shape its motivation. |
 
 ## 📚 Your Library and Saves
+<!-- keywords: folder, character card, pfp, profile picture, savefile, synced copy -->
 
 | Term | Meaning |
 |---|---|
@@ -82,6 +87,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Profile Image](Avatars#avatars-3d-models-and-profile-images) | The image on your Community Creations account. It is not an Avatar. |
 
 ## 🌐 Community Creations
+<!-- keywords: workshop, upvote, dlc, flag, moderation, competition, guest, dependency -->
 
 | Term | Meaning |
 |---|---|
@@ -102,6 +108,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Contest](Community-Creations#contests) | An event where authors enter worlds and players like them. Staff announce the results. |
 
 ## 📜 Prompts and Tools
+<!-- keywords: function calling, macro, variable, plugin, instruction set, system message -->
 
 | Term | Meaning |
 |---|---|
@@ -114,6 +121,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Tool Handler](Tools#handler) | The part of a Tool that runs when the AI calls it: **Lookup**, **Template** or **Script** |
 
 ## 🛠️ Building a World
+<!-- keywords: world info, attribute, perk, random table, room, zone, authoring vocabulary, creator terms, script, inheritance -->
 
 | Term | Meaning |
 |---|---|

@@ -1,11 +1,12 @@
 # 🧍 Avatars
+<!-- keywords: player body, vtuber model, mannequin, figure on the left, body morphs, what is vrm -->
 
 An Avatar is a 3D model of you, the player. It is a VRM file. You keep your Avatars in the library's **Avatars** tab, and you wear one in any world that has a 3D model. In the game, it shows in the left panel and changes shape with the world's stats.
 
 > An Avatar is not an entity's 3D model, and not your Profile Image. See [Avatars, 3D Models and Profile Images](#avatars-3d-models-and-profile-images).
 
 ## How to Import an Avatar
-<!-- keywords: add, load, upload, vrm, glb, 3d model, character model, vroid, file -->
+<!-- keywords: add, load, upload, vrm, glb, 3d model, character model, vroid, file, bring in my model, custom body, booth, vrchat model, blender export, use own mesh, duplicate warning -->
 
 1. On the main menu, select the **Avatars** tab.
 2. Select **Import Avatar**. On a narrow screen, the button is in the **Menu** button at the top center.
@@ -16,7 +17,7 @@ The Avatar gets the title in its file, or the file name. A message counts the Av
 You can also add a file during **Character Customization**: select **Add .vrm**. The app adds it to your library and selects it.
 
 ## How to Customize Your Avatar
-<!-- keywords: change, edit, hair, body, colors, appearance, look, character creator, 3d model -->
+<!-- keywords: change, edit, hair, body, colors, appearance, look, character creator, 3d model, skin tone, eye shade, hairstyle, outfit recolor, body sliders, proportions, dress up, makeover -->
 
 You customize an Avatar when you start a game in a world with a 3D model.
 
@@ -28,7 +29,7 @@ You customize an Avatar when you start a game in a world with a 3D model.
 Your choices are kept in the game and its saves. The Avatar in your library does not change. **Quick Start** skips this step and uses the Avatar as it is. See [Character Customization](#character-customization).
 
 ## How to Check an Avatar's License
-<!-- keywords: allowed, permission, rights, terms of use, copyright, share, redistribute, commercial, credit, vroid hub -->
+<!-- keywords: allowed, permission, rights, terms of use, copyright, share, redistribute, commercial, credit, vroid hub, legal to upload, who made it, attribution needed, ownership, usage rules, says not shareable, am i allowed -->
 
 1. On the **Avatars** tab, select the Avatar's tile. Its details open.
 2. Open **Details**.
@@ -38,7 +39,7 @@ Your choices are kept in the game and its saves. The Avatar in your library does
 If it shows **Not shareable**, a line under it names what the file does not allow. See [The Permissive License](#the-permissive-license).
 
 ## How to Export an Avatar
-<!-- keywords: download, save to file, get the file, back up, vrm file, copy out -->
+<!-- keywords: download, save to file, get the file, back up, vrm file, copy out, extract model, send to a friend, move to other device, transfer, take out of app, keep offline copy -->
 
 1. On the **Avatars** tab, select the Avatar's tile.
 2. Select **Export**.
@@ -46,7 +47,7 @@ If it shows **Not shareable**, a line under it names what the file does not allo
 You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no VRM data.
 
 ## How to Change Your Profile Image
-<!-- keywords: picture, photo, pfp, icon, account picture, upload, crop -->
+<!-- keywords: picture, photo, pfp, icon, account picture, upload, crop, display pic, user portrait, animated gif, account face, take off my pic, reposition, initial letter shown -->
 
 You need a Community Creations account.
 
@@ -59,6 +60,7 @@ You need a Community Creations account.
 To remove it, select **Remove your profile image**. With no picture, your initial shows in its place. See [The User Profile Dialog](Community-Creations#the-user-profile-dialog).
 
 ## Character Customization
+<!-- keywords: creator screen, rotate the model, spin view, stop it moving, sliders missing, clothing recolor, body grows with stats, hide model in game, transformation -->
 
 **Character Customization** opens between the **Enter World** dialog and the game, in a world with **3D Player Avatar** on. It fills the screen: the viewer on the left and the controls on the right. On mobile, the controls are in a sheet. Select **Customize** to open it.
 
@@ -86,6 +88,7 @@ The left panel shows your Avatar. On desktop, an **Avatar** / **Entities** switc
 A world author can tie body sliders to a stat. As the stat changes, the Avatar's shape changes. The sliders you set in **Initial Body Features** are the start point.
 
 ## The Avatar Details Dialog
+<!-- keywords: model info, metadata, properties, inspect file, vrm version, remove a model, saves using it, right click options -->
 
 Select an Avatar's tile on the **Avatars** tab to open its details. The dialog's title is the Avatar's name. The viewer is on the left. On mobile, select **Details & sliders** to open the controls.
 
@@ -116,6 +119,7 @@ Right-click a tile for **Publish**, **Thumbnail**, **Delete**, **Tile Size** and
 **Delete Player Avatar** asks you to confirm. If saves use the Avatar, the dialog names them. Those saves use the default Avatar after you delete it. You can't delete your last Avatar.
 
 ## The Permissive License
+<!-- keywords: cc0, creative commons, upload rejected, why is sharing blocked, open licence, convert to vrm 1, missing rights message, set in vroid -->
 
 You can publish an Avatar only when its file grants a Permissive License. The file's VRM 1.0 metadata must allow all of these:
 
@@ -131,10 +135,12 @@ When the license fails, **Publish** shows a message that names each missing righ
 The steps to publish are in [Publishing an Avatar](Community-Creations#publishing-an-avatar). You can download an Avatar from Community Creations whatever its license. Its details show the license terms.
 
 ## The World Avatar
+<!-- keywords: model bundled with world, author supplied body, enable 3d player, ship my own model, default body for world, not in my library -->
 
 A world author turns on a 3D Avatar with **3D Player Avatar** in the World Editor's **Overview**. In Advanced mode, **Custom Player Avatar** adds a VRM file to the world. That file shows as **World Avatar** in **Player Avatar**. It is stored in the world, not in your library. See [World Editor Overview](World-Editor-Overview).
 
 ## Avatars, 3D Models and Profile Images
+<!-- keywords: difference between, npc model, supported formats, versus, which is which, fbx obj gltf, can narrator see pictures, stored where -->
 
 | | Avatar | Entity 3D model | Profile Image |
 |---|---|---|---|

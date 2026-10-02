@@ -1,4 +1,5 @@
 # 🎬 World Editor: Openings
+<!-- keywords: first page, prewritten first turn, how story begins, starter prompt, prefilled input box, set the tone, write beginning myself, match my style -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -16,7 +17,7 @@ Each opening has two buttons, **Player Action** and **Narration**. This choice i
 After an Opening Narration, the input box is empty. A written page one works like any other page. Choices, stat changes, the clock, read-aloud and the scene image all run on it.
 
 ## How to Add an Others Opening
-<!-- keywords: first message, greeting, intro, start, starting scene, scene -->
+<!-- keywords: first message, greeting, intro, start, starting scene, scene, opener, prologue, kickoff, beginning, initial prompt, hook, first turn -->
 
 An Others opening is the normal kind. Every opening starts as one.
 
@@ -31,7 +32,7 @@ An Others opening is the normal kind. Every opening starts as one.
 To add an opening to a location or an entity, select **Add Opening to** and its name under its group. You can also use the **Openings** tab on its own panel.
 
 ## How to Add a Self Opening
-<!-- keywords: first message, greeting, intro, persona start, play as, player character start -->
+<!-- keywords: first message, greeting, intro, persona start, play as, player character start, protagonist beginning, main character opener, pov beginning, hero backstory opener, when i am them, own storyline kickoff -->
 
 A Self opening starts the game for a player who plays as the entity.
 
@@ -44,6 +45,7 @@ A Self opening starts the game for a player who plays as the entity.
 See [Self Openings](#self-openings) for when a Self opening draws.
 
 ## Weights and chances
+<!-- keywords: odds, probability, frequency, rarity, randomize beginning, percentage, keep as draft, more often -->
 
 | Setting | What it does |
 |---|---|
@@ -54,6 +56,7 @@ See [Self Openings](#self-openings) for when a Self opening draws.
 Drag a row by its handle to change its place in the list. Order doesn't change the chances.
 
 ## Collapse the Cards
+<!-- keywords: fold, minimize, shrink rows, hide long text, expand all, too much scrolling, compact list -->
 
 Each opening is a card. A card collapses to one line: the handle, "Opening N", the first line of its text, the switches, the weight, the chance and delete. Every control works while the card is collapsed, so you can drag and tune weights without scrolling past the text.
 
@@ -65,6 +68,7 @@ Each opening is a card. A card collapses to one line: the handle, "Opening N", t
 | **Not saved** | The open state never goes into your world file. |
 
 ## The list switch
+<!-- keywords: turn off all, master toggle, checkbox greyed out, wont check, disable without deleting, checked itself, not being used -->
 
 The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening. Off covers every opening in the world, including locations, entities and an entity the player picks at Enter World.
 
@@ -75,6 +79,7 @@ The checkbox beside **Openings** turns the whole list on or off. Off keeps every
 > ✅ **Adding an entity with openings checks the box.** Add an entity that brings an opening and the box checks itself, with a message naming the entity. Its openings would never draw otherwise.
 
 ## The default opening
+<!-- keywords: fallback, none written, generic beginning, built-in start, ai writes first scene, empty pool, what if none -->
 
 The game uses the default opening at a start where nothing else can come up. That happens when the switch is off, or when the pool at that start is empty. A world with no openings reads unchecked, because the box follows whether openings exist. This is an Opening Action with a general instruction to write the opening scene.
 
@@ -87,6 +92,7 @@ The **Openings** panel shows its text under **This World**. It shows the text on
 | No start has an empty pool | No |
 
 ## Every opening in one place
+<!-- keywords: see all at once, grouped by owner, filter by start, dash instead of percent, badge, never comes up, master list, adds up to 100 -->
 
 The **Openings** panel shows every opening in the world, grouped by owner:
 
@@ -121,6 +127,7 @@ A world with one starting location has no filter. The panel shows chances as at 
 An entity at no starting location shows a **No Starting Location** badge. A location that isn't a starting location shows it too. Their openings never come up.
 
 ## Location Openings
+<!-- keywords: start per place, room specific intro, area greeting, different per spawn, place based beginning, parent not inherited -->
 
 A location has its own **Openings** tab, its last tab. The rows work the same as the world's openings.
 
@@ -131,10 +138,12 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 | **With Self openings** | Location openings stay out of the draw while a persona with Self openings is played. |
 
 ## Re-generate on page one
+<!-- keywords: reroll, different start, another beginning, retry first page, cycle greetings, same page again -->
 
 **Re-generate** on page one draws again. The game picks an opening it hasn't shown yet in this session. When every opening has been shown, the draw starts over. A world with one opening keeps the same page.
 
 ## Chips, search and older worlds
+<!-- keywords: variables in intro, my name in intro, legacy world, ai asks what next, ai offers options, pre-filled action, random details per run -->
 
 - **Placeholder chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time.
 - **The Player Name chip works in openings.** Type `{` and pick **Player Name**. Page one then says the [persona](Persona-Authoring#the-player-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
@@ -145,6 +154,7 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 > ⚠️ **An Opening Action is sent as written.** Nothing is added to it. The default opening tells the AI not to ask the player what to do next. Keep a line like that in your own Opening Actions, or the AI may open by offering options.
 
 ## Entity Openings
+<!-- keywords: npc greeting, character speaks first, npc first message, greeting never shows, card greetings, npc intro rules, added from library -->
 
 **Advanced mode only** in the World Editor. The library entity editor always shows it. The **Openings** tab is the last tab. It gives an entity its own openings, so it can start the scene in its own voice. The rows work the same as the world's openings above.
 
@@ -157,6 +167,7 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 | **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#how-to-make-an-entity-playable), its **Others** openings leave the draw for that game. Its **Self** openings take over. See below. |
 
 ## Self Openings
+<!-- keywords: which start wins, priority order, protagonist intro, start per hero, playing as them, replaces normal pool, switch missing -->
 
 An opening has a second switch, **Others** or **Self**.
 

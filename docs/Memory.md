@@ -1,10 +1,12 @@
 # 🧠 Story Memory
+<!-- keywords: ai forgets, long term recall, forgetful, keeps forgetting, context limit, amnesia -->
 
 How Formamorph remembers a long story, and how you can change what it remembers.
 
 ---
 
 ## Why Memory Exists
+<!-- keywords: context window, token limit, too long, compression, pruned, repeats itself, forgot earlier events, struck through -->
 
 An AI model can only hold so much text at once. A story that runs 50 turns doesn't fit, so something has to give. Formamorph keeps the **recent** turns word for word and carries **older** turns as short memories instead.
 
@@ -20,7 +22,7 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 > Most memory settings are in Settings → **Output**, in the **Memory**, **Time** and **Characters** sections. Those sections show only in **Advanced** mode. Select **Advanced** next to the **Settings** title to see them.
 
 ## How to Edit a Memory
-<!-- keywords: change, fix, rewrite, summary, correct, wrong, remember -->
+<!-- keywords: change, fix, rewrite, summary, correct, wrong, remember, inaccurate recap, misremembered, alter, amend, pencil, revert, modify history, search for one -->
 
 1. During play, open the side panel's **Memory** tab.
 2. Select **Manage Memories**. The **Memories** dialog opens.
@@ -32,7 +34,7 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 The story always keeps your version. To go back to the story's own words, select **Revert to the Original** on that memory.
 
 ## How to Add a Memory
-<!-- keywords: remember, new, write, fact, note, summary, make ai remember -->
+<!-- keywords: remember, new, write, fact, note, summary, make ai remember, custom entry, manual, promise, backstory, insert event, teach, permanent detail, never lose -->
 
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
@@ -43,7 +45,7 @@ The story always keeps your version. To go back to the story's own words, select
 Memories you write are always kept. The story never judges them.
 
 ## How to Pin or Forget a Memory
-<!-- keywords: keep, remove, delete, lock, important, remember, drop, discard -->
+<!-- keywords: keep, remove, delete, lock, important, remember, drop, discard, always include, prioritize, force, irrelevant, stop mentioning, ignore, star, exclude, unpin -->
 
 1. Open the side panel's **Memory** tab.
 2. Find the memory.
@@ -53,7 +55,7 @@ Memories you write are always kept. The story never judges them.
 Memories you wrote have no pin button, because the story never lets them go.
 
 ## How to Undo Your Memory Changes
-<!-- keywords: reset, revert, restore, deleted, bring back, original -->
+<!-- keywords: reset, revert, restore, deleted, bring back, original, messed up, mistake, undelete, recover removed, start fresh, cancel edits, trash -->
 
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
@@ -63,7 +65,7 @@ Memories you wrote have no pin button, because the story never lets them go.
 To bring back one deleted memory instead, select the **Deleted** filter chip, then **Restore This Memory** on that memory.
 
 ## How to Turn Memory Off
-<!-- keywords: disable, summaries, stop, faster, remove -->
+<!-- keywords: disable, summaries, stop, faster, remove, fewer requests, speed up, no recap, save tokens, skip, switch off, cheaper, too slow -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
@@ -73,7 +75,7 @@ To bring back one deleted memory instead, select the **Deleted** filter chip, th
 During play, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
 
 ## How to Date Each Memory
-<!-- keywords: time, timestamp, day, calendar, clock -->
+<!-- keywords: time, timestamp, day, calendar, clock, when it happened, how long ago, time passing, hours, chronology, time of day, elapsed, story date -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
@@ -82,6 +84,7 @@ During play, the **How to Play** help has the same **Memory Summaries** checkbox
 5. Turn on **Time in Memory** if the AI should also read the dates.
 
 ## The Memory Tab
+<!-- keywords: ledger, crossed out, faded lines, filters, list in sidebar, recent divider, greyed out, icons meaning -->
 
 Open the side panel's **Memory** tab during play to see the whole ledger. Faded, struck-through lines are the ones the story let go.
 
@@ -97,6 +100,7 @@ The filter chips are **All · Verbatim · Summary · Held · Custom**. **Custom*
 Memories under the **Recent** divider still go to the AI word for word, so a pin on one of them matters only after it ages out. The divider shows under the **All** chip only.
 
 ## The Memory Manager
+<!-- keywords: full editor, regenerate summary, resummarize, badges, trash, browse all, yours badge, popup, big list -->
 
 **Manage Memories** opens the **Memories** dialog, the full editor. Each memory has these buttons:
 
@@ -117,6 +121,7 @@ Memories under the **Recent** divider still go to the AI word for word, so a pin
 > **Nothing here is destructive.** The story's own summary is always kept under whatever you write, so you can undo every change. **Reset All My Changes** puts the whole ledger back the way the story had it.
 
 ## Kept vs Sent
+<!-- keywords: accent bar, colored stripe, which ones were used, difference, relevance ranking, held meaning, verbatim meaning, scene badge, left out this turn -->
 
 Being **kept** and being **sent** are different things.
 
@@ -142,6 +147,7 @@ A memory that **Scene Recall** sent back as its full original prose has an accen
 > Nothing is marked until a turn has run. A save you just loaded shows no accents. Memories under the **Recent** divider are never marked, because they always go to the AI word for word.
 
 ## Memory Settings
+<!-- keywords: embeddings, rag, vector search, max count, limit number, defaults, configuration, diary, options list, small model download -->
 
 All of these are in [Settings](Settings#memory) → **Output**, in **Advanced** mode.
 
@@ -161,6 +167,7 @@ The **Time** section shows only while **Memory Summaries** is on.
 **Milestone Select** is a prompt, not a setting. Between turns, it decides which summarized turns stay in long-term memory. Edit it under Settings → **Prompts** → **Milestone Select**, in **Advanced** mode. Its tab shows while **Memory Summaries** is on.
 
 ## When Each Memory Happened
+<!-- keywords: day counter, wrong time of day, starts in morning, starting hour, two days ago, flat hour, relative time, time system, stamp, evening -->
 
 With **Measured Clock** on, every memory carries its place in the story's own time:
 
@@ -199,6 +206,7 @@ The clock also has to start at the right time of day. With **Measured Clock** on
 Edit how it judges a scene under Settings → **Prompts** → **Opening**, next to **Clock**. The **Prompts** tab shows in **Advanced** mode, and both tabs show while **Measured Clock** is on.
 
 ## Memories vs Notes
+<!-- keywords: difference, which should i use, compare, inventory, current goal, where to put, standing fact, what i am carrying -->
 
 Both travel with the story, but they answer different questions.
 
@@ -212,6 +220,7 @@ Both travel with the story, but they answer different questions.
 If the story keeps forgetting something that should always hold, put it in **Notes**. If it forgot something that *happened*, that's a memory. Pin it, or write it yourself.
 
 ## Turning Memory Off
+<!-- keywords: what happens without, consequences, old turns dropped, effect of disabling, nothing carried forward, manual ones still used -->
 
 **Memory Summaries** controls whether the story writes memories at all. It is in Settings → **Output** → **Memory**, in **Advanced** mode. With it off, the oldest turns drop away as the story outgrows its context, and nothing carries forward in their place.
 

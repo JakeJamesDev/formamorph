@@ -1,4 +1,5 @@
 # 🛠️ World Editor
+<!-- keywords: build my own game, worldbuilding, scenario maker, create a setting, campaign creator, write own adventure -->
 
 A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
 
@@ -20,7 +21,7 @@ Each tab has its own page.
 To check a world before you play it, see [🧪 Test Bench](Test-Bench).
 
 ## How to Switch Editor Mode
-<!-- keywords: simple, advanced, more options, hidden settings, show all, expert -->
+<!-- keywords: simple, advanced, more options, hidden settings, show all, expert, tab is missing, fields not showing, beginner view, basic layout, unlock extra tabs, power user, fewer options -->
 
 1. Open a world in the World Editor.
 2. In the header, select **Simple** or **Advanced**.
@@ -28,7 +29,7 @@ To check a world before you play it, see [🧪 Test Bench](Test-Bench).
 The app remembers your pick for every world. You can't switch while the Authoring Tour runs.
 
 ## How to Find and Replace Text
-<!-- keywords: search, ctrl+f, rename everywhere, change all -->
+<!-- keywords: search, ctrl+f, rename everywhere, change all, swap a word, bulk rename, substitute, ctrl+h, mass edit, fix typo everywhere, global rename -->
 
 1. Select the magnifier button in the header, or press **Ctrl+F**. Press **Ctrl+H** to open it with the replace row.
 2. Type in the **Find** box. Select **Match case** or **Match whole word** to narrow the search.
@@ -37,7 +38,7 @@ The app remembers your pick for every world. You can't switch while the Authorin
 5. Select **Replace** for this match, or **Replace all** for every match.
 
 ## How to Restart the Authoring Tour
-<!-- keywords: tutorial, guide, walkthrough, help, intro, learn, onboarding -->
+<!-- keywords: tutorial, guide, walkthrough, help, intro, learn, onboarding, show me around, beginner lesson -->
 
 1. Open **Settings**, then select the **Data** tab.
 2. Under **Authoring**, select **Start Authoring Tour**.
@@ -45,7 +46,7 @@ The app remembers your pick for every world. You can't switch while the Authorin
 The tour opens the World Editor on a new world. Your other worlds don't change.
 
 ## How to Save or Discard Your Changes
-<!-- keywords: unsaved, cancel, undo, exit, leave, throw away, revert, keep -->
+<!-- keywords: unsaved, cancel, undo, exit, leave, throw away, revert, keep, lost my work, close without storing, back out, abandon edits, quit editor, apply edits, back arrow -->
 
 1. Select the back arrow at the top left of the editor.
 2. In the **Unsaved changes** dialog, select **Save & Exit** to keep your changes. Select **Exit Without Saving** to discard them.
@@ -53,6 +54,7 @@ The tour opens the World Editor on a new world. Your other worlds don't change.
 To save and stay in the editor, select **Save** at the bottom right.
 
 ## Editor Modes
+<!-- keywords: difference between views, which tabs hidden, dot on button, lose data switching, stripped down, full feature set, default view -->
 
 The World Editor has two modes. **Simple** is the default.
 
@@ -75,6 +77,7 @@ Each tab's page says which of its fields Simple mode hides. When a world uses a 
 Switching to Simple mode doesn't remove anything. The hidden fields keep their values, and the AI still reads them.
 
 ## Find and Replace
+<!-- keywords: swap text for chip, keyboard shortcuts, skip to next result, turn word into variable, undo a swap, confirm bulk change, shift+enter -->
 
 The find bar searches the whole world, on every tab the current mode shows. It matches chips by their label, name or values.
 
@@ -88,6 +91,7 @@ In Advanced mode, the replace row can put a placeholder chip in place of text. S
 To undo a replace, exit without saving. That also drops your other changes since the last save.
 
 ## The Authoring Tour
+<!-- keywords: wizard, guided setup, use example button, next button stuck, end early, first world helper, in play pane, resume lesson -->
 
 The Authoring Tour builds a new world with you, one field at a time. It runs in Simple mode.
 
@@ -102,6 +106,7 @@ The tour goes through the tabs in order: **Overview**, **Locations**, **Entities
 - If you delete an item the tour made, the tour goes back to the step that made it.
 
 ## Saving and Discarding
+<!-- keywords: does it autosave, edits not kept, work disappeared, prompt on closing, new world vanished, manual saving, confirm exit -->
 
 Your edits stay in the editor until you select **Save**. Nothing saves by itself, except the Authoring Tour's steps. A new world isn't stored until its first save.
 
@@ -112,6 +117,7 @@ When you leave with unsaved changes, the **Unsaved changes** dialog asks what to
 - **Cancel** keeps you in the editor.
 
 ## Help Buttons
+<!-- keywords: question mark, info icon, explain this tab, colored icon, short reference -->
 
 Every tab has a **?** button at the right end of its toolbar. It opens a short help window for that tab. **Learn more** opens the tab's page in this guide.
 

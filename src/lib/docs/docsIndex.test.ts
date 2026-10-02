@@ -265,6 +265,15 @@ describe('Docs Index section size', () => {
     expect(one.trail).toEqual(['Big', 'Part']);
   });
 
+  it('counts no keyword line toward the size limit', () => {
+    const keywords = (n: number) => `<!-- keywords: ${filler(500).replace(/ /g, ', ')} ${n} -->`;
+    const page = ['# Big', '', '## Part', keywords(0), '', 'Intro.', '', '### One', keywords(1), '', 'Text.', '', '### Two', keywords(2), '', 'Text.'].join('\n');
+    expect(page.length).toBeGreaterThan(SECTION_CHAR_LIMIT);
+    const index = createDocsIndex({ pages: { Big: page } });
+    expect(index.contents()[0].sections.map((s) => s.label)).toEqual(['Big', 'Part']);
+    expect(index.search('word499 1').map((s) => s.id)).toEqual(['Big#part']);
+  });
+
   it('splits a section with no sub-headings into parts at top-level list items', () => {
     const item = (n: number) => `- Item ${n}: ${filler(80)}\n  - nested ${n}\n\n  more ${n}`;
     const page = ['# Big', '', '## List', '', ...Array.from({ length: 12 }, (_, n) => item(n))].join('\n');

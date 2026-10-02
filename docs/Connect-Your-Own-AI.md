@@ -1,4 +1,5 @@
 # 🔌 Connect Your Own AI
+<!-- keywords: switch model, better writing quality, smarter narrator, llm backend, change provider, improve story quality, dumb replies, replace the demo -->
 
 In the browser and on Android, Formamorph starts on the **Demo AI**. It is a small free model, and it is there so you can try the app with no setup. The desktop app starts on its **Built-In Engine** instead.
 
@@ -7,7 +8,7 @@ The AI writes everything you read. A stronger model gives you sharper narration,
 Every route ends in the same place: Settings → **Endpoints** → **Text**. The **Endpoints** tab shows in Simple and Advanced mode.
 
 ## How to Connect LM Studio
-<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, gguf -->
+<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, gguf, lmstudio, port 1234, developer tab server, failed to fetch, connection refused, browser blocks request, self hosted llm -->
 
 1. Download LM Studio from [lmstudio.ai](https://lmstudio.ai) and install it.
 2. Open the **Discover** tab and download a model.
@@ -24,7 +25,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 13. Type the model identifier that LM Studio shows into **Model Name**.
 
 ## How to Connect Ollama
-<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors -->
+<!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, port 11434, pull a model, ollama serve, 403 forbidden -->
 
 1. Download Ollama from [ollama.com/download](https://ollama.com/download) and install it.
 2. Download a model: `ollama pull <model>`. Use a model name from the Ollama library.
@@ -38,7 +39,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 10. Type the model's name into **Model Name**, exactly as `ollama ls` lists it.
 
 ## How to Connect a Hosted API
-<!-- keywords: openrouter, openai, key, cloud, paid service, provider, gpt, deepseek, set up, own key, endpoint -->
+<!-- keywords: openrouter, openai, key, cloud, paid service, provider, gpt, deepseek, set up, own key, endpoint, chatgpt, claude, gemini, anthropic, groq, mistral, subscription, remote server, byok, pay per token -->
 
 1. Make an account with a service that offers an **OpenAI-compatible chat-completions** endpoint.
 2. Get an API token from the service. Some services call it an API key.
@@ -51,7 +52,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 9. Type the identifier of the model you want into **Model Name**.
 
 ## How to Use the Desktop Engine
-<!-- keywords: built-in, offline, local model, download model, gpu, vram, run locally, no internet, own pc, windows app -->
+<!-- keywords: built-in, offline, local model, download model, gpu, vram, run locally, no internet, own pc, windows app, standalone, graphics card, easiest setup, bundled llm, pc version, native app, without lm studio -->
 
 1. Get the desktop app from [formamorph.ai](https://formamorph.ai) and install it.
 2. Open Settings → **Endpoints** → **Text**.
@@ -63,7 +64,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 With **Auto-Load** on, the default, the model loads when its download finishes. With it off, select **Load** on the model.
 
 ## How to Play Against Your PC from Another Device
-<!-- keywords: phone, tablet, laptop, network, wifi, lan, remote, mobile, home server, connect -->
+<!-- keywords: phone, tablet, laptop, network, wifi, lan, remote, mobile, home server, connect, ip address, same router, second computer, ipad, steam deck, tailscale, port forwarding, host elsewhere, private network blocked -->
 
 1. Make your server accept connections from your network. In LM Studio, turn on **Serve on Local Network**. In Ollama, set `OLLAMA_HOST` to `0.0.0.0:11434`.
 2. On the other device, open Settings → **Endpoints** → **Text**.
@@ -74,6 +75,7 @@ In the browser, Chrome may block a public page from reaching your own network. T
 ---
 
 ## 🧭 Pick a Route
+<!-- keywords: which option, compare methods, weak hardware, no graphics card, easiest way, what do i need, pros and cons -->
 
 | Route | You need | Best when |
 |---|---|---|
@@ -82,12 +84,14 @@ In the browser, Chrome may block a public page from reaching your own network. T
 | 📦 **Use the desktop app** | A PC with a capable GPU | You want the fewest installs |
 
 ## 🎯 Which Model to Pick
+<!-- keywords: best llm, recommendation, roleplay finetune, parameter count, how big, good for rp, uncensored, suggested llms -->
 
 - Pick a model tuned for **roleplay or conversation**.
 - As a rough guide, use **12B parameters or larger**.
 - Past that, use the largest model that your hardware runs well. A model that does not fit in your GPU's memory runs slowly.
 
 ## The Text Endpoint Fields
+<!-- keywords: base url, server address format, api key box, v1 path, koboldcpp, llama.cpp, oobabooga, connection failed, unable to connect, checklist -->
 
 | Field | What goes in it |
 |---|---|
@@ -99,6 +103,7 @@ In the browser, Chrome may block a public page from reaching your own network. T
 > 💡 If the connection fails, select **Trouble Connecting?** under **Endpoint URL**. It opens a checklist of the usual causes.
 
 ## OLLAMA_ORIGINS on Each System
+<!-- keywords: environment variable, env var, launchctl, systemctl, cors error, allow browser origin, mac terminal, linux service -->
 
 How you set the variable depends on your system:
 
@@ -109,6 +114,7 @@ How you set the variable depends on your system:
 | Linux | Run `systemctl edit ollama.service`, add `Environment="OLLAMA_ORIGINS=*"` under `[Service]`, then run `systemctl daemon-reload` and `systemctl restart ollama` |
 
 ## The Desktop Engine
+<!-- keywords: installed models list, vram tiers, 8gb card, fits my gpu, embedded runtime, model manager, no separate server, browser has none -->
 
 The desktop app has the AI engine built in, so there is nothing extra to install.
 
@@ -119,6 +125,7 @@ The **Local model** dialog has three views: **Installed**, **Recommended** and *
 The desktop app also connects to a local server or a hosted service. The steps are the same as above. The browser and Android builds have no **Built-In Engine**.
 
 ## The Set Up Your AI Dialog
+<!-- keywords: first launch popup, no model found, ai unreachable, onboarding, wizard, detected hardware, model too big, start playing button, skip for now -->
 
 On the desktop app, a **Set up your AI** dialog opens when the engine has no model to run. It also opens when you enter a world and the AI can't be reached.
 

@@ -1,15 +1,17 @@
 # 🗺️ World Editor: Locations
+<!-- keywords: scenes, environments, world geography, where player is, venues -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
 Locations are the places where your story happens. The player is always in one location. That location decides what the AI reads about the scene: the description, who's present, and where the story can go next.
 
 ## Why it exists
+<!-- keywords: ai forgets where, scene keeps changing, random teleport, setting drifts, keep scene consistent -->
 
 Without a fixed place, the narrator loses track of the scene. The tavern becomes a street, then a forest. A location is sent to the AI again on every turn, so the scene stays where you put it.
 
 ## How to Add a Location
-<!-- keywords: place, area, room, map, create, new place, zone, region -->
+<!-- keywords: place, area, room, map, create, new place, zone, region, town, city, building, dungeon, scene, environment, spot, venue -->
 
 1. Open the **Locations** tab.
 2. Type the location's name in the **Search or add new locations** box.
@@ -20,7 +22,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 > 💡 With the box empty, the new location is named "New Location". Rename it in **Name**.
 
 ## How to Nest a Location
-<!-- keywords: sublocation, child, inside, parent, hierarchy, room in building, indent -->
+<!-- keywords: sublocation, child, inside, parent, hierarchy, room in building, indent, subfolder, tree, contain, put within, floors, district, drag under, un-nest, group places -->
 
 **In the list:**
 
@@ -35,7 +37,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 3. To move a location back to the top level, drop it on **Top Level**.
 
 ## How to Connect Two Locations
-<!-- keywords: link, path, route, travel, road, door, map, one-way -->
+<!-- keywords: link, path, route, travel, road, door, map, one-way, exit, passage, portal, bridge, adjacent, neighbor, hallway, arrow -->
 
 **In the panel:**
 
@@ -48,14 +50,14 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 **On the canvas:** drag from the handle on the right edge of one box (**Drag To Connect**) onto the other box.
 
 ## How to Set a Starting Location
-<!-- keywords: spawn, begin, point, first place -->
+<!-- keywords: spawn, begin, point, first place, where game opens, initial, default place, origin, let player choose -->
 
 1. Select the location, then open its **Details** tab.
 2. Check **Starting Location**.
 3. Check it on more locations to let the player pick one. See [Starting Location](#starting-location).
 
 ## How to Pin a Placeholder to a Location
-<!-- keywords: place, fixed value, override, wildcard, variable, per place -->
+<!-- keywords: place, fixed value, override, wildcard, variable, per place, weather per area, depends on where, local wording, text by room, force while here, area specific -->
 
 **Advanced mode only.**
 
@@ -67,6 +69,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 While the player is at this location, the placeholder reads the pinned value. See [Placeholder Pins](#placeholder-pins).
 
 ## Nesting is the AI's map, not the player's
+<!-- keywords: trapped, cant leave, restrict movement, lock an area, story never moves, auto travel, fast travel, move prompt, up down sideways -->
 
 > 💡 **The player can always travel anywhere.** The in-game location list and the in-game map offer **every** location in your world. Nesting never limits the player, and no arrangement can trap them.
 
@@ -89,6 +92,7 @@ Two results to know:
 When the AI's answer doesn't match a connected place, the game discards it and offers nothing. The story can never send the player to an unconnected place.
 
 ## List and Canvas
+<!-- keywords: graph view, node editor, visual diagram, fullscreen, tidy layout, boxes overlap, unreachable marker, right-click menu, flowchart -->
 
 The **Locations** tab has two views. Switch between them with **List** and **Canvas**.
 
@@ -102,6 +106,7 @@ The **Locations** tab has two views. Switch between them with **List** and **Can
 Nothing on the canvas moves until you move it or ask for a layout. With nothing selected, **Auto Arrange All** in the toolbar lays out every box. With a box selected, the button reads **Auto Arrange** and lays out only its group. Right-click a location with sub-locations and select **Auto Arrange** to lay out only its children. The in-game map uses your canvas layout.
 
 ## The panel
+<!-- keywords: backdrop, wallpaper, scenery picture, looping noise, atmosphere audio, generate scenery, rain sfx -->
 
 Select a location in the list to open its panel. The tab you pick stays open when you select another location.
 
@@ -124,6 +129,7 @@ Simple mode also hides **AI-Facing Summary**.
 | **Ambient Sound** | **Advanced mode only.** A sound that plays while the player is here. Select **Add Sound** to pick a file. |
 
 ## What reaches the AI
+<!-- keywords: random events list, choices ignore rules, narrator vs other steps, hidden room details, short form used, ai misses details -->
 
 | Field | Sent? |
 |---|---|
@@ -142,10 +148,12 @@ The default prompt gives the **narrator** the current location in full. It gives
 The **✨ toolbar** beside **AI-Facing Summary** can write a draft from your AI-Facing Description. A blank summary is fine. The game uses the full description in its place.
 
 ## Entities
+<!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
 
 The **Entities** picker on the **Presence** tab lists who's at this location. Each entity stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
 
 ## Connections
+<!-- keywords: no way back, both directions, trip description, how you get there, return trip wording, arrow labels, trapdoor, shortcut across branches -->
 
 Nesting gives travel for free, and it always goes both ways. A **Connection** is a link you make between *any* two locations, at any place in the tree.
 
@@ -196,10 +204,12 @@ One Connection is one link, so it shows on **both** locations' panels. Change it
 > 💡 Connections limit the story only, the same as nesting. The player's own location list still shows every location.
 
 ## Placeholder Pins
+<!-- keywords: wording per area, child doesnt inherit, reverts on leaving, local override, climate by region -->
 
 **Advanced mode only.** A pin on the **Pins** tab keeps a [placeholder](World-Editor-Placeholders#pins) at one value while the player is here. For example, the *Fen* pins Weather to *fog*. When the player leaves, the playthrough's own roll shows again. A sub-location doesn't get its parent's pins.
 
 ## Starting Location
+<!-- keywords: random spawn, always same start, choose where to begin, several spawns, wrong first place, none checked -->
 
 The **Starting Location** checkbox marks a place where a new game can start:
 
@@ -210,6 +220,7 @@ The **Starting Location** checkbox marks a place where a new game can start:
 | **Several** | The player picks one before they start, or the game picks one at random |
 
 ## Delete a location
+<!-- keywords: children afterwards, no confirmation, accidentally removed, npc vanished, undo removal -->
 
 - Its sub-locations move up to its parent. They aren't deleted.
 - Its Connections are deleted.

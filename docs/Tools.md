@@ -1,4 +1,5 @@
 # 🧰 Tools
+<!-- keywords: plugins, extensions, is it safe, tab is missing, ai looks things up, agent abilities, mcp -->
 
 A **Tool** is a function the AI can call during a request. It gets information the AI does not have, such as the full entry of an entity. The app runs the Tool and sends the result back, and the AI then writes its reply.
 
@@ -7,7 +8,7 @@ A Tool only reads. It never changes the world, the save or your settings.
 The **Tools** tab in Settings lists the built-in Tools and your own Tools. It shows in **Advanced** mode only. To open it, open **Settings**, select **Advanced** in the switch next to the title, then open the **Tools** tab.
 
 ## How to Turn On Tools
-<!-- keywords: function calling, calling, enable, ai call, let the ai use, functions -->
+<!-- keywords: function calling, calling, enable, ai call, let the ai use, functions, activate, switch on lookups, nothing gets called, checkbox greyed, per prompt set, which prompts get it, filled dot meaning -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.
@@ -21,7 +22,7 @@ The **Tools** tab in Settings lists the built-in Tools and your own Tools. It sh
 The dot next to a Tool's name is filled while the Tool is on in that preset. A note at the top of the tab tells you when your prompts get no Tools: when the **Tools** checkbox is clear, or when your text endpoint does not support Tools. See [Endpoints Without Tool Support](#endpoints-without-tool-support).
 
 ## How to Make a Tool
-<!-- keywords: create, custom, new function, function calling, script, write -->
+<!-- keywords: create, custom, new function, function calling, script, write, build my own, define arguments, inputs the ai sends, clone a built in, save button disabled, plugin authoring, javascript helper -->
 
 1. Open the **Tools** tab.
 2. Under **My Tools**, select **New Tool**.
@@ -38,7 +39,7 @@ A new Tool is on in the active preset. **Save Tool** is off while the Tool has a
 To start from a built-in Tool, select it and then **Duplicate**. To change your own Tool later, select it and then **Edit**.
 
 ## How to Try a Tool
-<!-- keywords: test, run, debug, preview, check -->
+<!-- keywords: test, run, debug, preview, check, dry run, simulate a call, sample output, manual input values, red message, result is stale, see raw definition -->
 
 1. Select the Tool in the **Tools** tab, or open it with **Edit**.
 2. Under **Try It**, type a value for each parameter. A parameter of type **True/False** or **One of a List** shows a list.
@@ -49,7 +50,7 @@ To start from a built-in Tool, select it and then **Duplicate**. To change your 
 Open **What the AI Receives** under **Try It** to read the Tool's definition as the AI gets it. When you edit the Tool after a run, a note tells you the result is from before your last edit.
 
 ## How to Share Your Tools
-<!-- keywords: export, import, file, json, send, copy -->
+<!-- keywords: export, import, file, json, send, copy, back up, give to a friend, move to other device, load someone elses, security warning, is it malicious, bundle with preset -->
 
 1. Open the **Tools** tab.
 2. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
@@ -61,6 +62,7 @@ A shared prompt preset also carries a copy of each of your Tools that is on in i
 ---
 
 ## When the AI Calls a Tool
+<!-- keywords: never gets used, not triggering, conditions, endless loop, call log, turn got slower, hit the limit, see what it fetched, extra api usage -->
 
 A request offers a Tool only when all of these are true:
 
@@ -76,6 +78,7 @@ The AI decides when to call a Tool. The Tool's **Description** tells it when. Ea
 To see the calls, turn on **Show Silent Requests** in Settings → **Display**. The status line then shows **Looking up…** while the AI calls Tools. In the AI Context inspector, a request that called Tools has a **Tool Rounds** section with each call and its result. See [The AI Context Inspector](How-to-Play#the-ai-context-inspector).
 
 ## Endpoints Without Tool Support
+<!-- keywords: unsupported model, not compatible, capability check, backend ignores it, which models work, note replaces checkbox, falls back to summaries, local model limits -->
 
 The app sends Tools only to an endpoint and model that it knows support them. It learns this from the server's model list, such as the `tool_use` flag in LM Studio, or from a one-time check. An LM Studio model without the `tool_use` flag gets no Tools.
 
@@ -88,6 +91,7 @@ On an endpoint with no Tool support:
 The **Tools** tab shows a note while your text endpoint gets no Tools. In Settings → **Output**, the **Tools** row shows a note in place of its checkbox.
 
 ## The Tools Tab
+<!-- keywords: panel layout, enlarge window, per prompt targeting, call limit field, clone button disabled, erase permanently, applies to all presets -->
 
 The list on the left has two groups. **Built-In** holds the Tools that ship with the app. **My Tools** holds yours, with **New Tool** at the end. The **Preset** list at the top picks which prompt preset the **Enabled** checkboxes change. It is the same choice as on the **Prompts** tab, so it also sets the active preset. Built-in presets have their own switches too.
 
@@ -109,6 +113,7 @@ The buttons under the Tool act on it. A built-in Tool has **Duplicate**, which m
 The **View full screen** button opens the tab in a large window.
 
 ## The Built-In Tools
+<!-- keywords: skill check, random number, rng, fair dice, stock functions, search past events, fetch lore, fetch character sheet, what ships included -->
 
 Each built-in Tool is offered to **Narration** by default. Each one is off until you turn it on, except **get_entity** in the **Experimental** preset.
 
@@ -123,6 +128,7 @@ Each built-in Tool is offered to **Narration** by default. Each one is off until
 The lookup Tools return an empty `matches` list when nothing matches. Matching ignores letter case.
 
 ## The Tool Editor
+<!-- keywords: naming rules, boolean, enum dropdown, string or integer, canned response, nothing found message, time limit, what code can access, three behavior kinds -->
 
 **New Tool** and **Edit** open the editor. It has three tabs, with **Try It** next to them. **Cancel** closes it without a save.
 

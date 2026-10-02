@@ -1,11 +1,12 @@
 # 🎨 Image Generation
+<!-- keywords: txt2img, visuals, drawings, does it cost money, can it draw, graphics for story -->
 
 Formamorph can draw images with an image server that you connect. It makes portraits for entities, pictures for locations and world thumbnails, and an image of each turn. The image server is separate from your text AI. It can run on your own PC, or be a paid cloud service.
 
 > Image generation is off until you turn it on. To connect a text AI, see [Connect Your Own AI](Connect-Your-Own-AI).
 
 ## How to Turn On Image Generation
-<!-- keywords: enable, pictures, art, stable diffusion, ai art, set up, illustrations -->
+<!-- keywords: enable, pictures, art, stable diffusion, ai art, set up, illustrations, activate drawings, generate button missing, render visuals, image backend, photos in game, where are picture settings -->
 
 1. Open **Settings**, then the **Endpoints** tab, then the **Image** tab.
 2. Select the **Enable Image Generation** checkbox.
@@ -16,7 +17,7 @@ Formamorph can draw images with an image server that you connect. It makes portr
 The **Generate with AI** buttons now show beside the World Editor's image fields. To get an image of each turn, see [How to Turn On Scene Images](#how-to-turn-on-scene-images).
 
 ## How to Connect ComfyUI
-<!-- keywords: comfy, stable diffusion, local, set up, cors, checkpoint, sdxl -->
+<!-- keywords: comfy, stable diffusion, local, set up, cors, checkpoint, sdxl, port 8188, will not connect, request blocked, own graphics card, offline drawing, flux, model list empty, bat file flag -->
 
 1. Install ComfyUI.
 2. Add `--enable-cors-header` to the start command in your `run_*.bat` file.
@@ -28,7 +29,7 @@ The **Generate with AI** buttons now show beside the World Editor's image fields
 To use your own ComfyUI graph, see [How to Use Your Own ComfyUI Workflow](#how-to-use-your-own-comfyui-workflow).
 
 ## How to Connect InvokeAI
-<!-- keywords: invoke, stable diffusion, local, set up, cors, allow_origins, sdxl -->
+<!-- keywords: invoke, stable diffusion, local, set up, cors, allow_origins, sdxl, port 9090, yaml config edit, connection refused, text encoder missing, z image, anima, restart after config -->
 
 1. Install InvokeAI.
 2. Open `invokeai.yaml` in the InvokeAI root folder.
@@ -41,7 +42,7 @@ To use your own ComfyUI graph, see [How to Use Your Own ComfyUI Workflow](#how-t
 A Z-Image or Anima model also needs a Qwen3 text encoder and a VAE. Formamorph picks installed ones. To choose them yourself, see [InvokeAI Fields](#invokeai-fields).
 
 ## How to Connect Automatic1111 or Forge
-<!-- keywords: a1111, auto1111, sd webui, stable diffusion, local, set up, cors, api, webui -->
+<!-- keywords: a1111, auto1111, sd webui, stable diffusion, local, set up, cors, api, webui, port 7860, reforge, sd next, launch flags, fix ugly faces, face detailer, server unreachable -->
 
 1. Install Automatic1111 or Forge.
 2. Add this line to `webui-user.bat`:
@@ -58,7 +59,7 @@ A Z-Image or Anima model also needs a Qwen3 text encoder and a VAE. Formamorph p
 To use **Face Fix**, install the **ADetailer** extension on your server.
 
 ## How to Connect NovelAI
-<!-- keywords: nai, novel ai, anime, anlas, subscription, cloud, api token, set up -->
+<!-- keywords: nai, novel ai, anime, anlas, subscription, cloud, api token, set up, paid service, credits cost, opus tier free, got charged, access key, persistent key, no gpu needed -->
 
 You need a NovelAI subscription.
 
@@ -71,7 +72,7 @@ You need a NovelAI subscription.
 NovelAI starts at 1024×1024 and 28 steps. **Opus** subscribers get one free image per request at those values or lower. Larger images or more steps spend Anlas. **Stop** can't cancel an image that NovelAI has started, so that image can still cost Anlas.
 
 ## How to Connect an OpenAI-Compatible Service
-<!-- keywords: dall-e, dalle, gpt-image, api key, cloud, set up -->
+<!-- keywords: dall-e, dalle, gpt-image, api key, cloud, set up, chatgpt pictures, greyed out in browser, provider not selectable, base address, third party image api, pay per image, fixed image sizes, negative prompt ignored -->
 
 This provider works only in the [desktop app](Connect-Your-Own-AI). The desktop app sends the requests for you, so the service needs no CORS setup.
 
@@ -83,7 +84,7 @@ This provider works only in the [desktop app](Connect-Your-Own-AI). The desktop 
 This provider ignores **Negative Prompt**, **Steps / CFG** and **Sampler**. Each image is 1024×1024, 1536×1024 or 1024×1536, whichever shape is nearest to the size you set.
 
 ## How to Use Your Own ComfyUI Workflow
-<!-- keywords: graph, custom, nodes, json, api format, lora, template, setup -->
+<!-- keywords: graph, custom, nodes, json, api format, lora, template, setup, custom pipeline, upscaler, controlnet, refiner, paste exported file, dev mode export, hires fix, own node layout -->
 
 The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI graph that Formamorph sends. **How to Get This** shows these steps too.
 
@@ -96,7 +97,7 @@ The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI
 **Reset to Defaults** puts back the default graph.
 
 ## How to Turn On Scene Images
-<!-- keywords: every, automatic, pictures, illustrations, art, each, show -->
+<!-- keywords: every, automatic, pictures, illustrations, art, each, show, auto generate, per message, picture with replies, visual novel style, always draw, illustrate the story -->
 
 1. Turn on image generation. See [How to Turn On Image Generation](#how-to-turn-on-image-generation).
 2. Open **Settings**, then the **Display** tab.
@@ -105,7 +106,7 @@ The **Workflow (API Format)** field shows in Advanced mode. It holds the ComfyUI
 Each turn now ends with an image. See [Scene Images](#scene-images).
 
 ## How to Make an Image of One Turn
-<!-- keywords: picture, single, generate, draw, illustrate, art, scene tags -->
+<!-- keywords: picture, single, generate, draw, illustrate, art, scene tags, on demand, this message only, snapshot of moment, specific reply, edit prompt first, visualize now -->
 
 1. In the game, open the turn's **More** menu.
 2. Select **Generate Scene Image**. The item shows when the turn has no image.
@@ -113,7 +114,7 @@ Each turn now ends with an image. See [Scene Images](#scene-images).
 If a turn is still running, the image starts when it ends. **Write Scene Tags** writes the tags only, so you can edit them before the image is made.
 
 ## How to Add an Image Preset
-<!-- keywords: save settings, profile, switch, multiple, config, new setup -->
+<!-- keywords: save settings, profile, switch, multiple, config, new setup, second server, different art styles, swap models quickly, loadout, duplicate configuration, keep two servers, named settings -->
 
 1. On the **Image** tab, open **Preset**.
 2. Select **Add New Preset…**.
@@ -123,6 +124,7 @@ If a turn is still running, the image starts when it ends. **Write Scene Tags** 
 Select a preset in **Preset** to switch to it. See [Image Presets](#image-presets).
 
 ## Providers
+<!-- keywords: supported backends, which image service, compare options, default ports, local versus paid, gallery folder, face fix slow, detector download -->
 
 | Provider | Runs on | Default address | Setup |
 |---|---|---|---|
@@ -149,6 +151,7 @@ These fields show in Advanced mode when the provider is **InvokeAI (local)**.
 **Face Fix** on InvokeAI needs no extension. The first image with it on waits while InvokeAI downloads its detector models, a few hundred MB, one time. After that, it about doubles the time of each image.
 
 ## ComfyUI Workflow Rules
+<!-- keywords: variables in graph, substitution markers, percent signs, graph rejected, node error, hardcode a setting, which output is used -->
 
 The workflow must be ComfyUI's API format, not the normal saved workflow. Formamorph puts its values in with these tokens:
 
@@ -170,6 +173,7 @@ The workflow must be ComfyUI's API format, not the normal saved workflow. Formam
 When ComfyUI refuses the graph, the error names each node that failed and why. Text that is not JSON shows *Invalid ComfyUI workflow JSON*.
 
 ## Scene Images
+<!-- keywords: regenerate picture, redo bad picture, wrong character drawn, browse older pictures, pictures gone after loading, cancel drawing, change image prompt, enlarge, who appears -->
 
 With **Scene Images** on, each turn ends with an image of the scene. The image comes last, after all of the turn's text. Your next action waits for it.
 
@@ -193,6 +197,7 @@ The panel under the image shows the progress, with **Stop**. Select **Tags** to 
 Scene images are not in a save unless you select their checkbox in **Save Game**. Without them, the save keeps the tags only. See [The Save Game Dialog](Saves-and-Backup#the-save-game-dialog). A rewind removes the images of the turns it removes.
 
 ## Image Presets
+<!-- keywords: configuration sets, restore factory values, one per style, world editor picker -->
 
 A preset keeps a full set of **Image** tab values: the provider, its address and token, the model, the prompts, the sizes and the sampling values. Keep one preset for each server or style, and switch between them.
 
@@ -206,6 +211,7 @@ A preset keeps a full set of **Image** tab values: the provider, its address and
 The first preset is **Default**, and you can edit it. The **Generate image** dialog in the World Editor has its own **Preset** picker. **Enable Image Generation** and the **Tag Prompt** are the same for all presets.
 
 ## One GPU for Text and Images
+<!-- keywords: vram, out of memory, unable to type, input locked, takes forever, queue order, lag, both models loaded, why so slow -->
 
 Most PCs have one graphics card. When a text model and an image model run on one card at the same time, both move into system memory and get very slow. So Formamorph never runs them at the same time:
 
