@@ -13,8 +13,8 @@ interface FeedbackTabProps {
 /** Admin Panel → Feedback. Both branches under one tab: they are the same surface with different
  *  vocabularies, and side by side they cost the strip two of its six slots. */
 export function FeedbackTab({ active, initialTab = 'bugs' }: FeedbackTabProps) {
-  // Radix unmounts an inactive tab panel, so each branch remounts on every visit — which is what keeps
-  // its filters from carrying over from the last look.
+  // Both panels stay mounted, so a switch keeps each branch's search, filters, and page. Closing the
+  // dialog unmounts them, so the next open starts on defaults.
   const [tab, setTab] = useState<FeedbackSubTab>(initialTab);
 
   return (
@@ -25,11 +25,11 @@ export function FeedbackTab({ active, initialTab = 'bugs' }: FeedbackTabProps) {
           <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bugs" className="min-w-0">
+        <TabsContent value="bugs" forceMount className="min-w-0 data-[state=inactive]:hidden">
           <FeedbackQueueTab active={active && tab === 'bugs'} type="bug" />
         </TabsContent>
 
-        <TabsContent value="suggestions" className="min-w-0">
+        <TabsContent value="suggestions" forceMount className="min-w-0 data-[state=inactive]:hidden">
           <FeedbackQueueTab active={active && tab === 'suggestions'} type="suggestion" />
         </TabsContent>
       </Tabs>

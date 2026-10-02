@@ -59,9 +59,9 @@ class FeedbackService {
    * A page of threads from one branch.
    *
    * @param options - `scope: 'all'` asks for everyone's; omit for the caller's own. A status list is one
-   *   request; the server returns the union with an exact total.
+   *   request; the server returns the union with an exact total. `search` matches title or body.
    */
-  async list({ type, page = 1, limit = 20, status, category, scope, sort }: {
+  async list({ type, page = 1, limit = 20, status, category, scope, sort, search }: {
     type: FeedbackType;
     page?: number;
     limit?: number;
@@ -69,11 +69,14 @@ class FeedbackService {
     category?: FeedbackCategory;
     scope?: 'all';
     sort?: string;
+    search?: string;
   }): Promise<FeedbackPage> {
     const query = new URLSearchParams({ type, page: String(page), limit: String(limit) });
     const statuses = status ? [status].flat() : [];
     if (statuses.length) query.set('status', statuses.join(','));
     if (category) query.set('category', category);
+    const term = search?.trim();
+    if (term) query.set('search', term);
     if (scope) query.set('scope', scope);
     if (sort) query.set('sort', sort);
 

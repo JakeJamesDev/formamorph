@@ -1,6 +1,7 @@
 # 04: Search Bar
 
-Status: ready-for-agent
+Status: in-progress
+Base: 773f369a
 Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

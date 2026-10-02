@@ -134,6 +134,12 @@ export const SCOPE_LABELS: Record<FeedbackType, Record<FeedbackScope, string>> =
  */
 export const scopeFilterValue = (value: FeedbackScope): 'all' | undefined => (value === 'all' ? 'all' : undefined);
 
+/** The search bar's name and placeholder, per branch. */
+export const SEARCH_LABELS: Record<FeedbackType, string> = {
+  bug: 'Search Reports',
+  suggestion: 'Search Suggestions',
+};
+
 /** Every way a feedback list may be ordered. */
 export const FEEDBACK_SORTS = ['newest', 'oldest', 'active', 'votes'] as const;
 export type FeedbackSort = (typeof FEEDBACK_SORTS)[number];

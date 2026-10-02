@@ -20,18 +20,27 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** Whether a branch's panel is the one on screen, and whether its queue may fetch. */
+const shown = (type: string) => {
+  const queue = screen.getByTestId(`queue-${type}`);
+  return {
+    panel: queue.closest('[role="tabpanel"]')!.getAttribute('data-state'),
+    fetching: queue.getAttribute('data-active'),
+  };
+};
+
 describe('the two branches', () => {
   it('opens on bugs', () => {
     render(<FeedbackTab active />);
 
-    expect(screen.getByTestId('queue-bug')).toBeTruthy();
-    expect(screen.queryByTestId('queue-suggestion')).toBeNull();
+    expect(shown('bug')).toEqual({ panel: 'active', fetching: 'true' });
+    expect(shown('suggestion')).toEqual({ panel: 'inactive', fetching: 'false' });
   });
 
   it('opens where the caller asks, which is how the dev-router lands on either', () => {
     render(<FeedbackTab active initialTab="suggestions" />);
 
-    expect(screen.getByTestId('queue-suggestion')).toBeTruthy();
+    expect(shown('suggestion')).toEqual({ panel: 'active', fetching: 'true' });
   });
 
   it('switches between them', () => {
@@ -40,8 +49,9 @@ describe('the two branches', () => {
     // Radix tab triggers act on mousedown, not click.
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Suggestions' }));
 
-    expect(screen.getByTestId('queue-suggestion')).toBeTruthy();
-    expect(screen.queryByTestId('queue-bug')).toBeNull();
+    expect(shown('suggestion')).toEqual({ panel: 'active', fetching: 'true' });
+    // Still mounted, so its search, filters, and page are there on the way back.
+    expect(shown('bug')).toEqual({ panel: 'inactive', fetching: 'false' });
   });
 });
 

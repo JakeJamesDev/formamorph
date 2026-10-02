@@ -28,6 +28,8 @@ interface FeedbackListProps {
   category?: FeedbackCategory;
   /** How to order the list. The server's default is newest first. */
   sort?: string;
+  /** Narrow to threads whose title or body holds this text. */
+  search?: string;
   /** The page on screen, 1-based. The parent owns it, so it outlives an open thread. */
   page: number;
   /** Asks the parent for another page: the pager, or a page past the end after a reload. */
@@ -45,7 +47,7 @@ interface FeedbackListProps {
  * public suggestion board and the Admin Panel's queues — which differ only in what they ask for.
  */
 export function FeedbackList({
-  active, type, scope, status, category, sort, page, onPageChange, refreshNonce = 0, onOpen,
+  active, type, scope, status, category, sort, search, page, onPageChange, refreshNonce = 0, onOpen,
   emptyLabel = 'Nothing here yet.',
 }: FeedbackListProps) {
   const [threads, setThreads] = useState<FeedbackThread[]>([]);
@@ -84,7 +86,7 @@ export function FeedbackList({
     setIsLoading(true);
     try {
       const result = await FeedbackService.list({
-        type, page, limit: PAGE_SIZE, scope, status: statusArg, category, sort,
+        type, page, limit: PAGE_SIZE, scope, status: statusArg, category, sort, search,
       });
       if (!isCurrent()) return;
       // Triage can move the last rows out from under the page. Land on the last page that remains, and
@@ -103,7 +105,7 @@ export function FeedbackList({
     } finally {
       if (isCurrent()) setIsLoading(false);
     }
-  }, [active, type, page, scope, statusKey, category, sort]);
+  }, [active, type, page, scope, statusKey, category, sort, search]);
 
   useEffect(() => {
     let current = true;

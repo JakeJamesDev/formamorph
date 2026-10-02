@@ -4,8 +4,9 @@ import { FeedbackList } from "@/components/menu/FeedbackList";
 import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
 import { useFeedbackListPlace } from "@/components/menu/useFeedbackListPlace";
 import { FeedbackStatusSelect } from "@/components/menu/FeedbackStatusSelect";
+import { FeedbackSearchInput } from "@/components/menu/FeedbackSearchInput";
 import {
-  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, SORT_LABELS,
+  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, SEARCH_LABELS, SORT_LABELS,
   categoryFilterValue, sortsFor, statusFilterValue,
 } from "@/lib/feedbackPresentation";
 import type { FeedbackSort, StatusFilter } from "@/lib/feedbackPresentation";
@@ -31,6 +32,7 @@ const EMPTY: Record<FeedbackType, string> = {
 export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
   const [status, setStatus] = useState<StatusFilter>(DEFAULT_STATUS_FILTER[type]);
   const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
+  const [search, setSearch] = useState('');
   const [sort, setSort] = useState<FeedbackSort>(type === 'suggestion' ? 'votes' : 'newest');
   const { page, setPage, openId, open, back, nonce, refresh, listRef, refilter } = useFeedbackListPlace();
 
@@ -52,6 +54,8 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
         {/* The controls carry the whole row: a sentence saying what the tab is would leave no room for
             them, and the tab's own label already says it. */}
         <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+            <FeedbackSearchInput value={search} onSearch={refilter(setSearch)} label={SEARCH_LABELS[type]} />
+
             <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
               <SelectTrigger className="w-40" aria-label="Sort by"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -81,6 +85,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
           status={statusFilterValue(status, type)}
           category={categoryFilterValue(category)}
           sort={sort}
+          search={search}
           page={page}
           onPageChange={setPage}
           refreshNonce={nonce}
