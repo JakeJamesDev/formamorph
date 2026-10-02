@@ -12,6 +12,7 @@ The user learns whether Formaquestion now meets the 80% bar (Q59, kept in Q72). 
 - Default cloud model, ticket 26's 125 questions, both arms, 5 runs, the same keys. Change no key.
 - The bar: 80% grounded-correct over the English task, "here" and follow-up questions together. Report each kind next to tickets 26 and 37.
 - Also report ticket 39's blind-set recall for the shipped defaults, since the known set flatters the search.
+- Also report task recall@5 with an open screen (ticket 47's screen option), since in the app every question has one (Q77). It is reported, not part of the bar.
 - A result inside 5 points of the bar gets a second batch before any verdict.
 - Under the bar: list the worst questions with causes and hand them to the spec session. Do not tune the prompt here.
 
