@@ -105,6 +105,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q67 | Ticket 37 failed the bar: 51.3%. The right section reaches the model for 60% of answers, and the bar needs about 93%. Before any product change, one ticket measures section recall on a fresh blind question set: keyword (control), semantic, hybrid, AI-picked sections and a bigger word map. The user picks from the numbers (ticket 39) |
 | Q68 | Hub sections rank below specific ones (ticket 38). The six questions that fell while their right section still arrived get a cause each (ticket 40). Answers that say the guide does not cover a question, with no flag, get no ticket now |
 | Q69 | Ticket 40: all six regressions came from the sections sent, not model drift. Ticket 34 replaced changelog sections the model ignored with guide sections that look like answers. Fixes: ticket 38's hub rule, a score floor for extra sections (ticket 41), and screen words ignored on "here" questions (ticket 42). Ticket 39 measures after them |
+| Q70 | The score floor measures each search against its own best matched hit: the combined follow-up search against its own top. Always kept: the top hit, the favored follow-up hit, the what's-new lead sections and the surface section. On-page how-tos face the floor. It is a search option the help session passes; the Search tab and the lookup pass none (ticket 41 ruling) |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
