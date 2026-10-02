@@ -89,7 +89,7 @@ Rulings from the grilling session:
 
 ### Server
 
-- **List endpoint, search.** `GET /api/feedback` takes an optional search parameter. It matches threads whose title or body contains the text, case-insensitively. Blank or whitespace text is no search. The match escapes the LIKE wildcards, so `%` and `_` match literally. The parameter has a length cap.
+- **List endpoint, search.** `GET /api/feedback` takes an optional search parameter. It matches threads whose title or body contains the text, case-insensitively. Blank or whitespace text is no search. The match escapes the LIKE wildcards, so `%` and `_` match literally. The server trims the text and truncates it to 200 characters; it never rejects a long search. The client input has a maximum length of 200.
 - **List endpoint, statuses.** The status parameter accepts a comma-separated list. The server keeps each value that is valid for the type and drops the rest. No valid value means no status filter, as today. A single status works as before.
 - **List endpoint, sorts.** The sort whitelist adds `oldest` (created first) and `active` (`updated_at` latest first). Every sort ends on the same newest tiebreak. `votes` stays valid for Suggestions only; on Bugs it falls back to newest. An unknown sort falls back to newest, as today.
 - `total` counts every thread that matches all filters, so paging stays exact.
