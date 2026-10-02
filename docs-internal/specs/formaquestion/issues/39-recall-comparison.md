@@ -1,7 +1,7 @@
 # 39: Search recall comparison
 
 Status: ready-for-agent
-Blocked by: 38
+Blocked by: 38, 41, 42
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
 
@@ -20,7 +20,7 @@ The user gets numbers to pick how the search reaches a section from the player's
 
 | Approach | What it is | How to measure |
 |---|---|---|
-| Keyword search (control) | The shipped search, after ticket 38 | Offline |
+| Keyword search (control) | The shipped search, after tickets 38, 41 and 42 | Offline |
 | Semantic search | Rank sections by meaning with the shipped semantic-memory embedder: section vectors built at build time, the question embedded on the device | Offline |
 | Hybrid | Keyword and semantic ranks merged | Offline |
 | AI picks sections | A first request sends the section headings and asks which sections answer the question; the app sends those sections | Default cloud model, 5 runs |
