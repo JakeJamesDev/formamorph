@@ -95,9 +95,9 @@ describe('the sort control on the staff queue', () => {
 
 describe('the sort control on the user tab', () => {
   it.each([
-    ['bug', 'mine', ['Newest', 'Oldest', 'Recently Active']],
-    ['suggestion', 'all', ['Newest', 'Oldest', 'Recently Active', 'Most Voted']],
-  ] as const)('lists the %s sorts in the opening scope', async (type, _scope, labels) => {
+    ['bug', ['Newest', 'Oldest', 'Recently Active']],
+    ['suggestion', ['Newest', 'Oldest', 'Recently Active', 'Most Voted']],
+  ] as const)('lists the %s sorts', async (type, labels) => {
     render(<MyFeedbackTab active type={type} />);
 
     expect((await openSort()).map((option) => option.textContent)).toEqual(labels);
@@ -110,6 +110,21 @@ describe('the sort control on the user tab', () => {
 
     render(<MyFeedbackTab active type="suggestion" />);
     await waitFor(() => expect(lastQuery()).toMatchObject({ type: 'suggestion', sort: 'newest' }));
+  });
+
+  it.each([
+    ['bug', 'all'],
+    ['suggestion', 'mine'],
+  ] as const)('keeps Sort on %s after switching to %s', async (type, scope) => {
+    render(<MyFeedbackTab active type={type} />);
+    await screen.findByLabelText('Sort by');
+
+    fireEvent.keyDown(screen.getByLabelText('Which threads'), { key: 'Enter' });
+    const scopes = await screen.findAllByRole('option');
+    pick(scopes[scope === 'all' ? 1 : 0]);
+
+    await waitFor(() => expect(lastQuery()).toMatchObject({ scope: scope === 'all' ? 'all' : undefined }));
+    expect(screen.getByLabelText('Sort by')).toBeTruthy();
   });
 
   it('sends the pick from the caller’s own scope', async () => {
