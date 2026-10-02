@@ -1,6 +1,8 @@
 # 01: Settings Tab in the User Profile Dialog
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in 3f579b0b and 4eda8f40. The `verify-ui` criterion is open: the dev preview needs a real session and an age-gate acceptance, so only the jsdom tests ran. Check the Settings tab at a realistic viewport in both themes.
+Base: 9203eff3
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
