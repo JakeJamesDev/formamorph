@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
@@ -70,6 +71,12 @@ describe('the surface hint', () => {
     expect(sources[0]).toMatch(/^World-Editor-Locations#.*world-editor-locations$/);
     expect(sources[0]).not.toContain('how-to');
     expect(sources).toContain('World-Editor-Locations#how-to-add-a-location');
+  });
+
+  it('sends the Locations how-to from the bundled docs for "how do I add one here?"', async () => {
+    const { sources } = await ask('How do I add one here?', { surface: surface('worldEditor', null, ['worldEditor.locations']), index: bundledDocsIndex() });
+    expect(sources).toContain('World-Editor-Locations#how-to-add-a-location');
+    expect(sources.length).toBeLessThanOrEqual(5);
   });
 
   it('reads the Surface of the call, so a later question names the later Surface', async () => {

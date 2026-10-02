@@ -8,7 +8,7 @@
 // Each question runs in every arm inside the same batch, so the endpoint's drift hits all of them:
 //   retrieval  the app's help session as it ships: the Docs Index finds the sections, one request
 //   lookup     with `--lookup`: the help session in lookup mode, on an endpoint that takes function calls
-//   old        with `--old`: retrieval with ticket 32's old block: the surface section's length comes off the
+//   old        with `--old`: retrieval with the surface section outside the block: its length comes off the
 //              budget before the search, and the 5-section limit covers the search hits only
 //   no-docs    the control: the same model, samplers, screen line and language, with no guide text
 //
@@ -169,7 +169,7 @@ async function askSession(target: Target, arm: Arm, c: BaselineCase, history: Ea
   throw new Error('the help session ended with no answer');
 }
 
-/** The block as it was before ticket 32: the budget loses the surface section's length twice, and the cap skips it. */
+/** The block with the surface section outside it: the budget loses its length twice, and the cap skips it. */
 async function askOld(target: Target, c: BaselineCase, history: EarlierExchange[]): Promise<Sample> {
   const usage = noUsage();
   const hint = surfaceHint(c.surface, index);
