@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
 import { BearerFlyoutReference } from '@/components/design-system/BearerFlyoutReference';
+import { BreadcrumbPickerReference } from '@/components/design-system/BreadcrumbPickerReference';
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { useDevRoute } from '@/lib/devRouter';
@@ -327,6 +328,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Bearer Flyouts',
     description: 'Drill-down entity pickers in a menu and on a button',
     Component: BearerFlyoutReference,
+  },
+  {
+    id: 'breadcrumb-picker',
+    label: 'Breadcrumb Picker',
+    description: 'Searchable single-select popover over world content',
+    Component: BreadcrumbPickerReference,
   },
   {
     id: 'travel-hints',

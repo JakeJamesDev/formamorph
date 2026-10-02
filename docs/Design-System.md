@@ -289,7 +289,7 @@ The new description states the reference purpose. Action labels use the producti
 
 - Put Built-In and My Templates in a categorized sidebar at desktop widths. Use one template selector on mobile so the detail pane keeps useful width.
 - Keep the selected template's name and explanation above its parameter form. Use the template declaration as the source of fields and defaults.
-- Put required stat choices and numeric parameters in the same form. Show validation beside the affected field and connect it to the control's accessible description.
+- Put required stat choices and numeric parameters in the same form. Pick a stat, trait, entity or placeholder with the [Breadcrumb Picker](#pattern-breadcrumb-picker). Keep a short fixed set, such as a daypart, in a Select. Show validation beside the affected field and connect it to the control's accessible description.
 - Update the generated code preview as parameter values change. Keep the preview bounded and scrollable for long code.
 - Freeze the footer below the scrolling panes. Keep Duplicate or Edit and Delete beside Insert Code according to template ownership.
 - Disable Insert Code while any slot is missing or invalid. Ask for confirmation before replacing existing stat code.
@@ -470,6 +470,58 @@ On mobile, preserve the same text-first row and minimum height. Wrapping increas
 Open `#dev?modal=designSystem&tab=context-menu&subtab=picker` or use `subtab=create` for the naming form. These routes use local demonstration state and production components. They do not change stored library data or ship a prototype route.
 
 New functional labels and error/status sentences follow the [Writing Guide](Writing-Guide) by role. Authored names retain their voice. The [review record](../docs-internal/designs/design-system/group-picker-review.md) records behavior evidence and unresolved STE limits; brevity does not certify label grammar.
+
+## Pattern: Breadcrumb Picker
+
+**Purpose:** Pick one item from a list of world content, and show where each item lives.
+
+**When to use it:** Lists of world content (stats, traits, entities, placeholders) use the Breadcrumb Picker. A short fixed option set, such as a daypart, keeps Select.
+
+It differs from the Searchable Group Picker. That pattern is a Dialog for an unbounded destination list with create and rename. The Breadcrumb Picker is a popover form control.
+
+### Composition
+
+- **Trigger.** A field that looks like a Select trigger. It shows the picked name, or the slot's prompt such as "Pick a trait…". A caller can supply its own trigger, such as an outline button.
+- **Search.** The search field always shows. It matches a row's name and its full breadcrumb, with no sorting.
+- **Rows.** Rows keep the order of the matching editor tab. A group is never a row. It shows only as a breadcrumb segment.
+- **Check column.** A picker with a value reserves a check column. Every row that holds the value shows a check.
+
+### Row layout and collapse
+
+- The name comes first and keeps its width up to about 65% of the row. Past that it truncates.
+- The breadcrumb sits right-aligned in meta text and truncates.
+- One or two segments show in full. Three or more show as `First › … › Last`. The rule counts segments, never width.
+- A hover tooltip on the row shows the full path. A row with no breadcrumb has no tooltip.
+- A world row with no group shows `World`. A list with no groups, such as stats, shows no breadcrumb.
+
+### States
+
+| State | Treatment |
+| --- | --- |
+| Default | The trigger shows the prompt in muted text. Rows list their breadcrumbs. |
+| Picked | The trigger shows the name. Each row that holds the value shows a check, so a name shared by two owners shows two checks. |
+| Disabled | A disabled row stays visible, dimmed, and can't be picked. A disabled field doesn't open. |
+| Empty | The list says "Nothing to pick". |
+| No matches | The list says "No matches". |
+
+### Keyboard and responsive behavior
+
+Arrow keys move through rows, Enter picks the row, and Escape closes the picker with no change. The popover matches the trigger width and stays inside the viewport, so it fits a phone. Long lists scroll inside the popover.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Trigger, popover, list, rows, collapse and tooltip | `BreadcrumbPicker` in [`breadcrumb-picker.tsx`](../src/components/ui/breadcrumb-picker.tsx) |
+| Code Template slots | `StatCodeTemplateDialog` in [`StatCodeTemplateDialog.tsx`](../src/components/modals/StatCodeTemplateDialog.tsx) |
+| Add Requirement (reference build) | [`TraitRequiresField.tsx`](../src/components/editor/TraitRequiresField.tsx) |
+| Isolated reference | [`BreadcrumbPickerReference.tsx`](../src/components/design-system/BreadcrumbPickerReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=breadcrumb-picker`. The reference uses sample traits and local state. It never reads or writes a world.
+
+### Writing review
+
+Prompts such as "Pick a trait…" and the "Nothing to pick" and "No matches" lines are functional copy with no period. Sample names are authored content and keep their own voice. This review is local; it does not certify STE compliance.
 
 ## Pattern: Lists With Controls or Metadata
 

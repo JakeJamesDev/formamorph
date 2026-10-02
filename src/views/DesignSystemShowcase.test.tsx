@@ -257,3 +257,28 @@ describe('rich list references', () => {
     expect(screen.getByRole('heading', { name: 'Save and Load List' })).toBeInTheDocument();
   });
 });
+
+describe('breadcrumb picker reference', () => {
+  it('shows the collapsed breadcrumb, the shared pick, and the empty and no-match lines', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Breadcrumb Picker' }));
+
+    await user.click(screen.getByRole('combobox', { name: 'Default' }));
+    expect(await screen.findByText('Lineage › … › Storms')).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText('Search…'), 'zzz');
+    expect(screen.getByText('No matches')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('combobox', { name: 'Picked' }));
+    expect(await screen.findAllByRole('option', { selected: false })).not.toHaveLength(0);
+    expect(document.querySelectorAll('[data-state="checked"]')).toHaveLength(2);
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('combobox', { name: 'Empty' }));
+    expect(await screen.findByText('Nothing to pick')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    expect(screen.getByRole('combobox', { name: 'Unavailable' })).toBeDisabled();
+  });
+});
