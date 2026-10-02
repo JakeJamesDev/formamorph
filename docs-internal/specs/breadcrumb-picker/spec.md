@@ -103,6 +103,8 @@ Settled in the grilling session on 2026-10-02. A ruling reopens on new evidence,
 - Search matches the row's name and its full breadcrumb text, case-insensitive substring, in tab order without sorting. This is the filter Add Requirement uses today.
 - Two trigger modes: a Select-style field trigger (Q9) and a caller-supplied trigger, such as Add Requirement's outline button.
 - Callers can replace the list page. Add Requirement's bearer page uses this and keeps its own back button and search.
+- The list part (search field, sections, rows, "No matches") is shared too. The bearer page renders its own header, then that shared list with one section of bearer rows (Q12, settled for ticket 01).
+- A row can carry an optional right-aligned meta hint, separate from its breadcrumb. A hint gets no tooltip and no collapse. The bearer page's "Whoever has the trait" uses it.
 
 **Row layout (Q15)**
 - The name comes first and doesn't shrink below its natural width, up to about 65% of the row. Past that it truncates.
