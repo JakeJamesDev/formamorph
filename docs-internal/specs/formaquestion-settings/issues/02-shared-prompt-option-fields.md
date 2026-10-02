@@ -10,7 +10,7 @@ Reasoning effort: medium
 A prefactor with no behavior change. The fields of Settings → Prompts → Options become shared components, so Formaquestion Settings (tickets 09 and 13) can use them:
 
 - **The reasoning field:** the effort control and the budget slider.
-- **The sampler fields.**
+- **The sampler fields.** Ticket 01 already moved the sampler control out of the Settings modal as a shared, exported component, because the endpoint editor uses it. Reuse it; do not move it again.
 - **The Max Output field.**
 
 The code that builds the reasoning field's props from a resolved endpoint (the effort list, the budget, the locked and refused states) becomes one function that takes the resolved endpoint and a reasoning setting. The Settings modal calls it for a prompt; Formaquestion will call it for the answer endpoint.

@@ -25,6 +25,12 @@ A player sends help questions to a different endpoint than the game uses (Q3, Q2
 - A pick request that fails leaves the question to the other sources, as today.
 - The two ids are device settings. They are in no preset and no export.
 
+**What ticket 01 left for this ticket.**
+
+- The shared editor takes one model value: the edited preset, its field values, and handlers for select, add, edit, rename, delete and reset. It never reads the active id. The Settings modal builds its model from the active preset. This ticket builds a second model on the edit-by-id operation.
+- The shared endpoint select takes its label, description and info as props. Its "Use Active Endpoint" row text is still fixed, so this ticket makes the non-preset rows configurable: Follow Active for both selects, and Same as Answer for the pick select.
+- When the edited preset is the bundled engine, the editor shows the local model panel, which reads the settings context itself. Check that it behaves the same inside this modal.
+
 The Endpoint docs section is written here.
 
 Recommended model rationale: two routed requests, a reachability state that must follow the route, and the engine preset trap from per-prompt routing.
