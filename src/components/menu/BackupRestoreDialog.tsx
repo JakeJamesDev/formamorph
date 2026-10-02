@@ -17,15 +17,16 @@ import {
   buildBackup,
   saveBackup,
   listBackupItems,
-  parseBackup,
+  readBackupIndex,
   analyzeBackup,
   applyBackup,
-  itemLabel,
   BACKUP_CATEGORIES,
   CATEGORY_LABELS,
   type BackupCategory,
+  type BackupIndex,
   type BackupItem,
   type CategoryPlan,
+  type IdRecord,
 } from '@/lib/backup';
 import { applyWorldOptimize, applyEntityImagesOptimize, countWorldImages, type OptimizeMode } from '@/lib/imageOptim';
 import { entityImages } from '@/lib/entityImages';
@@ -68,6 +69,14 @@ interface Group {
 }
 
 type SelState = Record<BackupCategory, Set<string>>;
+/** Images a backup record holds, counted while the file is indexed. */
+const countImages = (category: BackupCategory, record: IdRecord) =>
+  category === 'worlds'
+    ? countWorldImages(record.data as World)
+    : category === 'entities'
+      ? entityImages(record.data as Entity).length
+      : 0;
+
 const emptySel = (): SelState => ({ worlds: new Set(), saves: new Set(), entities: new Set(), dictionaries: new Set() });
 const emptyFlags = (): Record<BackupCategory, boolean> => ({
   worlds: false,
@@ -156,6 +165,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
   const [exportSel, setExportSel] = useState<SelState>(emptySel);
 
   // Restore state
+  const [index, setIndex] = useState<BackupIndex | null>(null);
   const [plans, setPlans] = useState<CategoryPlan[] | null>(null);
   const [restoreSel, setRestoreSel] = useState<SelState>(emptySel);
   const [overwrite, setOverwrite] = useState<Record<BackupCategory, boolean>>(emptyFlags);
@@ -167,6 +177,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     setBusy(false);
     setItems(null);
     setExportSel(emptySel());
+    setIndex(null);
     setPlans(null);
     setRestoreSel(emptySel());
     setOverwrite(emptyFlags());
@@ -221,8 +232,8 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     .map((p) => ({
       category: p.category,
       rows: [
-        ...p.fresh.map((r) => ({ id: r.id, label: itemLabel(r) })),
-        ...p.conflicts.map((r) => ({ id: r.id, label: itemLabel(r), exists: true })),
+        ...p.fresh.map((r) => ({ id: r.id, label: r.label })),
+        ...p.conflicts.map((r) => ({ id: r.id, label: r.label, exists: true })),
       ],
     }));
   const restoreCount = BACKUP_CATEGORIES.reduce((n, c) => n + restoreSel[c].size, 0);
@@ -234,8 +245,9 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
     if (!file) return;
     setBusy(true);
     try {
-      const bundle = parseBackup(await file.text());
-      const analyzed = await analyzeBackup(bundle);
+      const read = await readBackupIndex(file, countImages);
+      const analyzed = await analyzeBackup(read);
+      setIndex(read);
       setPlans(analyzed);
       const sel = emptySel();
       for (const p of analyzed) sel[p.category] = new Set([...p.fresh, ...p.conflicts].map((r) => r.id));
@@ -262,22 +274,24 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
   };
 
   const handleRestore = async () => {
-    if (!plans) return;
+    if (!plans || !index) return;
     setBusy(true);
     try {
-      // How many images the chosen modes will touch across the ticked items, for the progress dialog.
-      const ticked = (p: CategoryPlan) => [...p.fresh, ...p.conflicts].filter((r) => restoreSel[p.category].has(r.id));
-      const totalImages = plans.reduce((n, p) => {
-        if (p.category === 'worlds' && worldOpt !== 'off')
-          return n + ticked(p).reduce((m, r) => m + countWorldImages(r.data as World), 0);
-        if (p.category === 'entities' && entityOpt !== 'off')
-          return n + ticked(p).reduce((m, r) => m + entityImages(r.data as Entity).length, 0);
-        return n;
+      // Restore only the ticked items; overwrite still gates whether a ticked conflict replaces the existing one.
+      const ticked = plans.map((p) => {
+        const keep = (r: CategoryPlan['fresh'][number]) => restoreSel[p.category].has(r.id);
+        return { category: p.category, fresh: p.fresh.filter(keep), conflicts: p.conflicts.filter(keep) };
+      });
+      // How many images the chosen modes will touch, for the progress dialog.
+      const optimizing = (c: BackupCategory) =>
+        (c === 'worlds' && worldOpt !== 'off') || (c === 'entities' && entityOpt !== 'off');
+      const totalImages = ticked.reduce((n, p) => {
+        if (!optimizing(p.category)) return n;
+        const written = [...p.fresh, ...(overwrite[p.category] ? p.conflicts : [])];
+        return n + written.reduce((m, r) => m + r.images, 0);
       }, 0);
 
-      // Restore only the ticked items; overwrite still gates whether a ticked conflict replaces the existing
-      // one. Sequential (not Promise.all) so the progress ticks stay monotonic — the encode worker
-      // serializes the images anyway.
+      // Records are read and written one at a time; sequential so the progress ticks stay monotonic.
       const restore = async (tick: (done: number) => void) => {
         let done = 0;
         // Optimize/downscale a world or entity record's images in place before it's written (no-op for 'off').
@@ -294,19 +308,10 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
           }
           return rec;
         };
-        const filtered: CategoryPlan[] = [];
-        for (const p of plans) {
-          const rows = async (list: CategoryPlan['fresh']) => {
-            const out: CategoryPlan['fresh'] = [];
-            for (const r of list.filter((r) => restoreSel[p.category].has(r.id))) out.push(await optimize(p.category, r));
-            return out;
-          };
-          filtered.push({ category: p.category, fresh: await rows(p.fresh), conflicts: await rows(p.conflicts) });
-        }
-        return filtered;
+        await applyBackup(index, ticked, overwrite, optimize);
       };
-      const filtered = totalImages ? await withOptimizeProgress(totalImages, restore) : await restore(() => {});
-      await applyBackup(filtered, overwrite);
+      if (totalImages) await withOptimizeProgress(totalImages, restore);
+      else await restore(() => {});
       setStep('restore-done');
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
