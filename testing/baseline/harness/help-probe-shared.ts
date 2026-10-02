@@ -65,14 +65,19 @@ export function sessionFetch(usage: Usage): typeof fetch {
 }
 
 /**
- * A fetch that sends each pick request without the earlier answer, as before ticket 45. It throws when the
- * app's message is not `ask` as `pickMessage` writes it, so the control drops the answer and nothing else.
+ * A fetch that sends each pick request without the earlier answer, as before ticket 45. It ends the probe when
+ * the app's message is not `ask` as `pickMessage` writes it, so the control drops the answer and nothing else.
+ * The help session reads a thrown error as a failed pick, so a mismatch exits instead.
  */
 export function withoutEarlierAnswer(fetchImpl: typeof fetch, lines: readonly string[], ask: PickQuestion): typeof fetch {
   return ((url: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: unknown }[] };
-    if (body.messages[0]?.content !== HELP_PICK_SYSTEM_PROMPT) return fetchImpl(url, init);
-    if (body.messages[1]?.content !== pickMessage(lines, ask)) throw new Error(`the pick message of "${ask.question}" is not the one the control rebuilds`);
+    // The system prompt can carry a suffix, such as `/no_think`.
+    if (!String(body.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT)) return fetchImpl(url, init);
+    if (body.messages[1]?.content !== pickMessage(lines, ask)) {
+      console.error(`pick-old: the pick message of "${ask.question}" is not the one the control rebuilds`);
+      process.exit(1);
+    }
     body.messages[1] = { ...body.messages[1], content: pickMessage(lines, { ...ask, earlierAnswer: undefined }) };
     return fetchImpl(url, { ...init, body: JSON.stringify(body) });
   }) as typeof fetch;
