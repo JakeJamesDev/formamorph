@@ -40,8 +40,8 @@ export interface DocsIndex {
   /**
    * Sections ranked by keyword match, best first, with every guide hit above every changelog hit. A question
    * about what is new leads with the newest release's sections, or those of the release it names, matched or
-   * not. Empty when the query asks nothing new and no word of it matches. The sections of `favor.page` rank
-   * above other matches of the same strength.
+   * not. Empty when the query asks nothing new and no word of it matches. A section of `favor.page` scores
+   * twice its match strength.
    */
   search(query: string, limit?: number, favor?: { page: string }): DocSection[];
   /**

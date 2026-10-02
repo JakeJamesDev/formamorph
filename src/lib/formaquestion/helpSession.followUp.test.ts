@@ -24,6 +24,10 @@ describe('a follow-up after an answer', () => {
   it('favors no page when the earlier answer had no sources', () => {
     expect(ids('How do I test it?', [{ ...toolAnswer, sources: [] }])[0]).not.toMatch(/^Tools#/);
   });
+
+  it('favors no page after an answer that did not come from the guide', () => {
+    expect(ids('How do I test it?', [{ ...toolAnswer, flagged: true }])[0]).not.toMatch(/^Tools#/);
+  });
 });
 
 describe('the favored page in the search', () => {

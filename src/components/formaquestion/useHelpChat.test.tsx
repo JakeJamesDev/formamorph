@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
+import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { HELP_HISTORY_EXCHANGES } from '@/lib/formaquestion/helpSession';
@@ -28,6 +30,7 @@ const sentMessages = (spy: ReturnType<typeof stubStream>, call: number) =>
 afterEach(() => {
   turnActivity.set(false);
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('useHelpChat', () => {
@@ -108,6 +111,21 @@ describe('useHelpChat', () => {
     await waitFor(() => expect(result.current.exchanges.at(-1)?.status).toBe('answered'));
 
     expect(result.current.exchanges.at(-1)?.sources[0].id).toBe('Tools#how-to-try-a-tool');
+  });
+
+  it('keeps a vague follow-up on the topic of the earlier answer, not on the page of the open screen', async () => {
+    vi.spyOn(surfaceRegistry, 'get').mockReturnValue({ screen: 'worldEditor', dialog: null, tabs: [] });
+    stubStream(sseReply('Select **Add Tool**.'));
+    const { result } = renderHook(() => useHelpChat(bundledDocsIndex(), ai));
+    act(() => { result.current.ask('How do I make a tool?'); });
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    act(() => { result.current.ask('how do I test it?'); });
+    await waitFor(() => expect(result.current.exchanges.at(-1)?.status).toBe('answered'));
+
+    // The open screen's section leads; the question's own top hit comes next.
+    const [lead, top] = result.current.exchanges.at(-1)!.sources;
+    expect(lead.page).toBe('WorldEditor');
+    expect(top.id).toBe('Tools#how-to-try-a-tool');
   });
 
   it('shows a flagged answer without its marker, and sends the marker back with it on a follow-up', async () => {

@@ -77,6 +77,8 @@ interface Sample extends Usage {
   flagged: boolean;
   /** The ids of the docs sections that reached the model. */
   sources: string[];
+  /** The id of the open screen's section among the sources. */
+  lead?: string;
 }
 interface Row { caseId: string; arm: Arm; run: number; sample: Sample | null; error?: string }
 interface Batch {
@@ -178,7 +180,7 @@ async function askSession(target: Target, arm: Arm, c: BaselineCase, history: Ea
   });
   const idOf = (id: string) => (untiered && id.startsWith(`${UNTIERED_CHANGELOG}#`) ? `Changelog${id.slice(UNTIERED_CHANGELOG.length)}` : id);
   for await (const event of session) {
-    if (event.type === 'done') return { answer: event.text, flagged: event.flagged, sources: event.sources.map((section) => idOf(section.id)), ...usage };
+    if (event.type === 'done') return { answer: event.text, flagged: event.flagged, sources: event.sources.map((section) => idOf(section.id)), lead: event.lead?.id, ...usage };
   }
   throw new Error('the help session ended with no answer');
 }
@@ -274,7 +276,7 @@ async function runBatch(): Promise<Batch> {
           if (followUps.length === 0) return [first];
           if (!first.sample) return [first, ...followUps.map((next): Row => ({ caseId: next.id, arm, run, sample: null, error: `the first question failed: ${first.error}` }))];
           // The control keeps the marker off its history, as its answers never carry one.
-          const history = [{ question: c.question, answer: first.sample.answer, flagged: arm !== 'no-docs' && first.sample.flagged, sources: index.get(first.sample.sources) }];
+          const history = [{ question: c.question, answer: first.sample.answer, flagged: arm !== 'no-docs' && first.sample.flagged, sources: index.get(first.sample.sources), lead: index.get(first.sample.lead ? [first.sample.lead] : [])[0] }];
           const rest: Row[] = [];
           for (const next of followUps) rest.push(await row(arm, next, run, history));
           return [first, ...rest];

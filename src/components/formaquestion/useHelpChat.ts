@@ -26,6 +26,8 @@ export interface HelpExchange {
   status: HelpStatus;
   /** The docs sections that reached the model. */
   sources: readonly DocSection[];
+  /** The open screen's section among the sources. */
+  lead?: DocSection;
   /** The answer did not come from the guide. */
   flagged: boolean;
   /** The search's sections for the question, shown under a flagged answer. */
@@ -102,7 +104,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
         const { snapshot, language } = aiRef.current;
         for await (const event of askHelp({ question, history, language, snapshot, index, surface, images, signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text, flagged: event.flagged });
-          else change({ answer: event.text, sources: event.sources, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
+          else change({ answer: event.text, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }
       } catch (error) {
         if (!mountedRef.current) return;
