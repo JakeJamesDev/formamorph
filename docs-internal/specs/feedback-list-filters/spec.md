@@ -107,6 +107,7 @@ Rulings from the grilling session:
 - **Lifetime.** Each tab owns its own search, filters, and page. The tabs stay mounted while the dialog or Admin Panel is open, so a tab switch keeps them. Closing unmounts them, so the next open starts on defaults.
 - **Staff queue tab.** Defaults: Unresolved or Still Open, any category, Newest on Bugs, Most voted on Suggestions. Visible: search, Status, Sort. Hidden: Category.
 - **User tab.** Defaults: the current scope default, Unresolved or Still Open, any category, Newest. Visible: search, scope, file button. Hidden: Status, Category, Sort.
+- **Empty labels.** On the user tab, a set search shows a "No reports match this search." style label. Without a search, a status filter other than All shows the "No reports match this filter." style label. At All, the tab keeps its "nothing yet" labels. The staff queue keeps its "match this filter" labels.
 - **Hidden filters.** One control per tab holds the hidden filters. A badge shows the number of hidden filters that differ from their defaults. Reset returns every filter to its default, the visible ones included.
 - **Layout prototype.** Two or three layouts on the dev route, in both themes, at a realistic dialog width. The user picks one. The pick is a new visual pattern, so it needs the user's approval before adoption under the design system.
 - Copy for the search placeholder, the hidden-filters label, Reset, and the new sort labels follows the writing guide and is AP title case.
