@@ -45,10 +45,10 @@ describe('FeedbackService.list', () => {
     expect(queryOf(fetchMock).get('status')).toBe('confirmed');
   });
 
-  it('sends no status when none is asked for or the list is empty', async () => {
+  it.each([[undefined], [[]]])('sends no status for %j', async (status) => {
     const fetchMock = stubFetch();
 
-    await FeedbackService.list({ type: 'bug', status: [] });
+    await FeedbackService.list({ type: 'bug', status });
 
     expect(queryOf(fetchMock).has('status')).toBe(false);
   });
