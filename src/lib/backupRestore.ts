@@ -2,12 +2,19 @@
  * Writing a backup's records back into storage. Free of the DOM and of other workers, so the JSON file
  * worker runs the whole restore: read, optimize, and write each record in turn.
  */
-import type { Entity, SaveRecord, World } from '@/types';
+import type { SaveRecord } from '@/types';
 import { openDatabase, promisifyRequest } from './idb';
 import { putSaveRecord } from '@/components/modals/dbUtils';
-import { readBackupRecord, type BackupCategory, type BackupEntry, type BackupIndex, type IdRecord } from './backupIndex';
-import { applyEntityImagesOptimize, applyWorldOptimize, type ImageCodec, type OptimizeMode } from './imageOptimCore';
-import { countWorldImages } from './imageSlots';
+import {
+  RECORD_IMAGES,
+  readBackupRecord,
+  recordData,
+  type BackupCategory,
+  type BackupEntry,
+  type BackupIndex,
+  type IdRecord,
+} from './backupIndex';
+import type { ImageCodec, OptimizeMode } from './imageOptimCore';
 import { encodeImageDataUrl, measureImageDataUrl } from './imageEncode';
 
 /** IndexedDB location of each id-keyed store (saves are handled via dbUtils, which owns the v2 schema). */
@@ -78,36 +85,36 @@ export interface RestoreRequest {
   /** Only the ticked entries. */
   plans: CategoryPlan[];
   overwrite: Record<BackupCategory, boolean>;
-  worldMode: OptimizeMode;
-  entityMode: OptimizeMode;
+  /** How to handle each category's images; a missing category keeps them as they are. */
+  modes: Partial<Record<BackupCategory, OptimizeMode>>;
   /** Probed on the main thread, which has a DOM canvas to probe with. */
   webpSupported: boolean;
 }
 
+/** Whether a restore with `modes` re-encodes this category's images. */
+export const optimizes = (modes: RestoreRequest['modes'], category: BackupCategory): boolean =>
+  !!RECORD_IMAGES[category] && (modes[category] ?? 'off') !== 'off';
+
 /**
- * Restore the ticked records, optimizing world and entity images on this thread per the chosen modes.
+ * Restore the ticked records, optimizing images on this thread per the chosen modes.
  * `onProgress(done)` counts images as they finish, across the whole restore.
  */
 export async function restoreBackup(request: RestoreRequest, onProgress: (done: number) => void = () => {}): Promise<RestoreCounts> {
-  const { worldMode, entityMode, webpSupported } = request;
+  const { modes, webpSupported } = request;
   const codec: ImageCodec = {
-    encode: (url, maxDim, lossless, allowGrow) => encodeImageDataUrl(url, maxDim, webpSupported, lossless, allowGrow),
+    encode: (url, maxDim, { lossless, allowGrow } = {}) =>
+      encodeImageDataUrl(url, maxDim, webpSupported, lossless, allowGrow),
     measure: measureImageDataUrl,
   };
   let done = 0;
   const transform = async (category: BackupCategory, rec: IdRecord): Promise<IdRecord> => {
-    if (typeof rec.data !== 'object' || rec.data === null) return rec;
-    if (category === 'worlds' && worldMode !== 'off') {
-      const world = rec.data as World;
-      const data = await applyWorldOptimize(codec, world, worldMode, (d) => onProgress(done + d));
-      done += countWorldImages(world);
-      return { ...rec, data, thumbnail: data.worldOverview?.thumbnail ?? rec.thumbnail };
-    }
-    if (category === 'entities' && entityMode !== 'off') {
-      const data = await applyEntityImagesOptimize(codec, rec.data as Entity, entityMode, () => onProgress(++done));
-      return { ...rec, data };
-    }
-    return rec;
+    const images = RECORD_IMAGES[category];
+    const data = recordData(rec);
+    const mode = modes[category] ?? 'off';
+    if (!images || !data || mode === 'off') return rec;
+    const optimized = await images.optimize(codec, { ...rec, data }, mode, (d) => onProgress(done + d));
+    done += images.count(data);
+    return optimized;
   };
   return applyBackup(request.index, request.plans, request.overwrite, transform);
 }

@@ -53,6 +53,7 @@ describe('splitByConflict', () => {
 describe('readBackupIndex', () => {
   it('rejects non-JSON', async () => {
     await expect(readBackupIndex(new Blob(['{ not json']))).rejects.toThrow(/valid JSON/);
+    await expect(readBackupIndex(new Blob(['<!doctype html><html></html>']))).rejects.toThrow(/valid JSON/);
   });
 
   it('rejects a record that is not valid JSON', async () => {
@@ -274,7 +275,7 @@ describe('backup round trip (IndexedDB)', () => {
     const index = await worldsIndex([{ id: 'w1', name: 'Keep' }, { id: 'w2', name: 'Skip' }]);
     const plans = (await analyzeBackup(index)).map((p) => ({ ...p, fresh: p.fresh.filter((e) => e.id === 'w1') }));
     const request: RestoreRequest = {
-      index, plans, overwrite: NO_OVERWRITE, worldMode: 'off', entityMode: 'off', webpSupported: false,
+      index, plans, overwrite: NO_OVERWRITE, modes: {}, webpSupported: false,
     };
 
     const result = await restoreBackup(request);
@@ -302,8 +303,7 @@ describe('backup round trip (IndexedDB)', () => {
       index,
       plans: await analyzeBackup(index),
       overwrite: NO_OVERWRITE,
-      worldMode: 'optimize',
-      entityMode: 'optimize',
+      modes: { worlds: 'optimize', entities: 'optimize' },
       webpSupported: true,
     };
 
@@ -314,7 +314,10 @@ describe('backup round trip (IndexedDB)', () => {
     expect(progress.at(-1)).toBe(total);
     expect(progress).toEqual([...progress].sort((a, b) => a - b));
     // The encoder can't run here, so it hands back each source; the records still land whole.
-    expect((await readAll('worldsDB', 'worlds')).map((r) => r.id)).toEqual(['w1', 'w2']);
+    const worlds = (await readAll('worldsDB', 'worlds')) as { id: string; thumbnail?: string }[];
+    expect(worlds.map((r) => r.id)).toEqual(['w1', 'w2']);
+    // The library card takes the optimized world's thumbnail.
+    expect(worlds.map((r) => r.thumbnail)).toEqual([png, png]);
     expect(await readAll('entitiesDB', 'entities')).toEqual([{ id: 'e1', name: 'Mara', data: { images: [png, png] } }]);
   });
 });

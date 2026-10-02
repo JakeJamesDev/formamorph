@@ -15,20 +15,19 @@ import { APP_VERSION } from '@/lib/version';
 import {
   BACKUP_CATEGORIES,
   itemLabel,
-  readBackupRecord,
   type BackupCategory,
   type BackupEntry,
   type BackupIndex,
   type IdRecord,
 } from '@/lib/backupIndex';
-import { STORE_TARGETS, applyBackup, type CategoryPlan, type RestoreCounts, type RestoreRequest } from '@/lib/backupRestore';
+import { STORE_TARGETS, applyBackup, optimizes, type CategoryPlan, type RestoreCounts, type RestoreRequest } from '@/lib/backupRestore';
 
 /** Bumped only if the bundle's shape changes incompatibly; readers warn on a newer value but still try. */
 export const BACKUP_FORMAT = 1;
 
 // Re-exported so importers keep one `@/lib/backup` path; the worker-safe parts live in `backupIndex`
 // and `backupRestore`.
-export { BACKUP_CATEGORIES, itemLabel, readBackupRecord, applyBackup };
+export { BACKUP_CATEGORIES, itemLabel, applyBackup, optimizes };
 export type { BackupCategory, BackupEntry, BackupIndex, IdRecord, CategoryPlan, RestoreCounts, RestoreRequest };
 
 export interface BackupBundle {

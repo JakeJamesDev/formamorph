@@ -5,16 +5,15 @@ import { IMAGE_CAPS, worldImageSlots, type ImageCap } from './imageSlots';
 import * as core from './imageOptimCore';
 import type { DownscaleDeps, OptimizeMode, ScannedImage } from './imageOptimCore';
 
-// Re-exported so existing importers (character cards, image-gen providers, tests) keep their `@/lib/imageOptim`
-// import paths — the pure helpers now live in the DOM-free leaf module `imageBytes`.
+// Re-exported so importers keep one `@/lib/imageOptim` path; the DOM-free parts live in `imageBytes`,
+// `imageSlots` and `imageOptimCore`, which workers also run.
 export { bytesToDataUrl, dataUrlBytes, dataUrlMime, fitWithin } from './imageBytes';
-// Likewise for the image-slot walk and the codec-free optimize core, which workers also run.
 export { IMAGE_CAPS, countWorldImages, type ImageCap } from './imageSlots';
 export type { DownscaleDeps, OptimizeMode, ScannedImage } from './imageOptimCore';
 
 /** The main thread's codec: every encode and measure runs in the image-encode worker. */
 const workerCodec: core.ImageCodec = {
-  encode: (url, maxDim, lossless, allowGrow) => encodeInWorker(url, maxDim, lossless, allowGrow),
+  encode: (url, maxDim, { lossless, allowGrow } = {}) => encodeInWorker(url, maxDim, lossless, allowGrow),
   measure: (url) => measureInWorker(url),
 };
 
