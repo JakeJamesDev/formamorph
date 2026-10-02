@@ -3,9 +3,12 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { readFileSync } from 'fs'
+import { createRequire } from 'module'
 import { releasedMinorChangelog } from './src/lib/docs/changelogSlice'
 
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'))
+// The ONNX runtime's dist folder, which its package exports do not expose (src/lib/embeddingWorker.ts).
+const ortDist = path.dirname(createRequire(import.meta.url).resolve('onnxruntime-web'))
 const syncAppOrigin = process.env.E2E_SYNC_APP_ORIGIN
 
 const directSyncAppModules = {
@@ -91,12 +94,14 @@ export default defineConfig({
     dedupe: ['@radix-ui/react-dismissable-layer'],
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'onnxruntime-web-dist': ortDist,
     },
   },
   optimizeDeps: {
     // Dev-mode pre-bundling rewrites these into .vite/deps, breaking their import.meta.url-relative
     // .wasm lookup (the QuickJS engine file). Serving them unbundled keeps the wasm path resolvable.
-    exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', 'wasm-webp'],
+    // Pre-bundling also breaks the ONNX runtime's `?url` imports.
+    exclude: ['quickjs-emscripten', '@jitl/quickjs-wasmfile-release-sync', 'wasm-webp', 'onnxruntime-web-dist'],
   },
   worker: {
     // The image-encode worker lazily `import()`s wasm-webp; under the default iife worker format that dynamic
