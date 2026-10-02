@@ -28,6 +28,10 @@ _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 The player docs bundled into the app, split into sections at their headings, with three operations: list the contents, search by keyword, and get sections by id. It needs no network and no model. Help topics are not in it.
 _Avoid_: knowledge base, embeddings, docs database
 
+**Search Source**:
+One way a help question finds its docs sections, with its own on/off switch in the help session: Keyword (the Docs Index search), AI Picks (one request in which the model picks sections from the guide's headings), or Semantic (sections ranked by meaning, with the embedding model on the device). The rankings of the sources that are on merge into one. The Search tab uses Keyword alone.
+_Avoid_: retriever, provider, search mode, lookup (the docs lookup function of lookup mode)
+
 **Surface**:
 A screen, a dialog or a tab that a player can have open, named by one id. The surface registry holds the ids that are open now, and the surface map ties each player-facing id to the docs section that explains it.
 _Avoid_: view, page, route (dev-router words), screen (one kind of Surface)

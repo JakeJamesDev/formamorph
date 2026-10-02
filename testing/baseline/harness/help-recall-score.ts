@@ -38,53 +38,6 @@ export function summarizeRecall(scores: readonly RecallScore[]): RecallSummary {
   return { questions: scores.length, first: share('first'), at5: share('at5'), sent: share('sent') };
 }
 
-/** The constant of reciprocal rank fusion; 60 is the value of the method's paper. */
-const FUSION_K = 60;
-
-/** Merges ranked id lists by reciprocal rank fusion: an id scores 1 / (k + rank) in each list that holds it. */
-export function mergeRanks(lists: readonly (readonly string[])[]): string[] {
-  const scores = new Map<string, number>();
-  for (const list of lists) {
-    list.forEach((id, at) => scores.set(id, (scores.get(id) ?? 0) + 1 / (FUSION_K + at + 1)));
-  }
-  return [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
-}
-
-/** Ids by the dot product of their vector with the query, best first. An id with several vectors scores by its best. */
-export function rankByVector(query: Float32Array, entries: readonly { id: string; vector: Float32Array }[]): { id: string; score: number }[] {
-  const best = new Map<string, number>();
-  for (const { id, vector } of entries) {
-    let dot = 0;
-    for (let i = 0; i < query.length; i++) dot += query[i] * vector[i];
-    if (dot > (best.get(id) ?? -Infinity)) best.set(id, dot);
-  }
-  return [...best.entries()].map(([id, score]) => ({ id, score })).sort((a, b) => b.score - a.score);
-}
-
-/** A line's letters and numbers as lowercase words, so a copy matches through markers, case and punctuation. */
-const lineWords = (line: string) => (line.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(' ');
-
-/**
- * The list positions a model picked: each line of its reply that copies a line of the list, as an index
- * into `lines`. A reply line with no page matches when one line alone ends with it.
- */
-export function readPicks(reply: string, lines: readonly string[]): number[] {
-  const listed = lines.map(lineWords);
-  const picks: number[] = [];
-  for (const source of reply.split('\n')) {
-    const words = lineWords(source.replace(/^\s*\d+[.)]\s*/, ''));
-    if (!words) continue;
-    let at = listed.indexOf(words);
-    if (at < 0) {
-      const ending = listed.flatMap((line, i) => (line.endsWith(` ${words}`) ? [i] : []));
-      at = ending.length === 1 ? ending[0] : -1;
-    }
-    if (at >= 0 && !picks.includes(at)) picks.push(at);
-    if (picks.length === HELP_SECTION_LIMIT) break;
-  }
-  return picks;
-}
-
 /** A section's text packed into chunks of whole blocks, each under `limit` characters where one block allows it. */
 export function chunksOf(markdown: string, limit: number): string[] {
   const chunks: string[] = [];

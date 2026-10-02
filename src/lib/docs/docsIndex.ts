@@ -53,6 +53,8 @@ export interface DocsIndex {
    * holds its heading as a phrase.
    */
   search(query: string, limit?: number, favor?: { page: string }, options?: DocsSearchOptions): DocSection[];
+  /** The release sections a question about what is new leads with, in page order. Empty for any other question. */
+  whatsNew(query: string): DocSection[];
   /**
    * The sections with these ids, in the order asked; unknown ids are skipped. The id of a split section
    * returns all its parts in order.
@@ -187,7 +189,7 @@ const HEADING_WEIGHT = 4;
 /** How much a query term in a heading above the section counts. */
 const TRAIL_WEIGHT = 1;
 /** How much a section of the favored page outweighs a match of the same strength on another page. */
-const FAVORED_PAGE_WEIGHT = 2;
+export const FAVORED_PAGE_WEIGHT = 2;
 /** BM25's term-frequency saturation and length normalization for body text. */
 const BM25_K1 = 1.2;
 const BM25_B = 0.75;
@@ -198,7 +200,7 @@ export const HUB_PAGE_COUNT = 5;
 const HUB_WEIGHT = 0.5;
 
 /** The page that holds the released changelog sections, newest first (see `changelogSlice.ts`). */
-const CHANGELOG_PAGE = 'Changelog';
+export const CHANGELOG_PAGE = 'Changelog';
 
 /** A version number such as 3.1 or 3.1.2. */
 const VERSION = /\d+\.\d+(?:\.\d+)?/;
@@ -381,6 +383,10 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
       const least = (ranked[0]?.score ?? 0) * floor;
       const kept = ranked.filter((s, i) => i === 0 || s.score >= least).map((s) => s.section);
       return [...lead, ...kept].slice(0, limit).map(publicSection);
+    },
+    whatsNew: (query) => {
+      const whatsNew = readWhatsNew(query);
+      return whatsNew ? releaseLead(whatsNew).map(publicSection) : [];
     },
     get: (ids) => ids.flatMap((id) => {
       const section = byId.get(id);

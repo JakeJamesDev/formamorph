@@ -6,6 +6,7 @@ import { languageDirective } from '@/lib/languages';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import { toolSchema } from '@/lib/tools/toolSchema';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { pastPicks } from '@/test/helpFixtures';
 import { DOCS_LOOKUP, DOCS_LOOKUP_CALL_LIMIT } from './docsLookup';
 import { askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_LOOKUP_CHAR_BUDGET, type HelpEvent, type HelpQuestion } from './helpSession';
 
@@ -49,7 +50,7 @@ const script = (...replies: (string[] | (() => Response))[]): FetchSpy => {
 };
 
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, snapshot: CAPABLE, index, lookup: true, fetchImpl: fetchImpl as unknown as typeof fetch, ...over });
+  askHelp({ question, snapshot: CAPABLE, index, lookup: true, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];

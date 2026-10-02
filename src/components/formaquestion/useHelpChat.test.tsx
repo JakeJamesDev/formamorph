@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
-import { openSseReply, sseFrame, sseReply, stubStream, textSnapshot } from '@/test/aiTextFixtures';
+import { openSseReply, sseFrame, sseReply, textSnapshot } from '@/test/aiTextFixtures';
+import { stubHelpStream } from '@/test/helpFixtures';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { HELP_HISTORY_EXCHANGES } from '@/lib/formaquestion/helpSession';
 import { languageDirective } from '@/lib/languages';
@@ -18,13 +19,13 @@ const ai: HelpAi = { snapshot: textSnapshot(), language: 'English', reachable: t
 const screenshot = (id: string): ImageAttachment => ({ id, mime: 'image/jpeg', dataUrl: `data:image/jpeg;base64,${btoa(id)}` });
 
 /** The image urls on the last message of one request the stub received. */
-const sentImages = (spy: ReturnType<typeof stubStream>, call: number): string[] => {
+const sentImages = (spy: ReturnType<typeof stubHelpStream>, call: number): string[] => {
   const last = (JSON.parse(spy.mock.calls[call][1]!.body as string) as { messages: { content: unknown }[] }).messages.at(-1)!.content;
   return Array.isArray(last) ? (last as { image_url?: { url: string } }[]).flatMap((part) => (part.image_url ? [part.image_url.url] : [])) : [];
 };
 
 /** The chat messages of one request the stub received. */
-const sentMessages = (spy: ReturnType<typeof stubStream>, call: number) =>
+const sentMessages = (spy: ReturnType<typeof stubHelpStream>, call: number) =>
   (JSON.parse(spy.mock.calls[call][1]!.body as string) as { messages: { role: string; content: string }[] }).messages;
 
 afterEach(() => {
@@ -35,7 +36,7 @@ afterEach(() => {
 
 describe('useHelpChat', () => {
   it('takes one question at a time: a second ask while the first runs adds nothing and sends nothing', async () => {
-    const fetchSpy = stubStream(sseReply('Select **Add Trait**.'));
+    const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => {
       result.current.ask('How do I add a trait?');
@@ -44,6 +45,7 @@ describe('useHelpChat', () => {
     await waitFor(() => expect(result.current.busy).toBe(false));
     expect(result.current.exchanges.map((exchange) => exchange.question)).toEqual(['How do I add a trait?']);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.picks).toHaveBeenCalledTimes(1);
 
     // The next question goes through once the first has its answer.
     act(() => { result.current.ask('And a stat?'); });
@@ -56,7 +58,7 @@ describe('useHelpChat', () => {
     ['finds the AI', true],
     ['finds no AI', false],
   ])('stops at once when Stop comes while the fresh check runs, and sends nothing when the check later %s', async (_name, found) => {
-    const fetchSpy = stubStream(sseReply('Unused.'));
+    const fetchSpy = stubHelpStream(sseReply('Unused.'));
     let finishCheck: (reachable: boolean) => void = () => {};
     const blocked: HelpAi = { ...ai, reachable: false, revalidate: () => new Promise((resolve) => { finishCheck = resolve; }) };
     const { result } = renderHook(() => useHelpChat(index, blocked));
@@ -71,18 +73,20 @@ describe('useHelpChat', () => {
     await act(async () => { finishCheck(found); });
     expect(result.current.exchanges.map((exchange) => exchange.status)).toEqual(['stopped']);
     expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy.picks).not.toHaveBeenCalled();
   });
 
   it('does nothing before the docs load', () => {
-    const fetchSpy = stubStream(sseReply('Unused.'));
+    const fetchSpy = stubHelpStream(sseReply('Unused.'));
     const { result } = renderHook(() => useHelpChat(null, ai));
     act(() => { result.current.ask('How do I add a trait?'); });
     expect(result.current.exchanges).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy.picks).not.toHaveBeenCalled();
   });
 
   it('sends a follow-up with the earlier question and answer', async () => {
-    const fetchSpy = stubStream(sseReply('Select **Add Trait**.'));
+    const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => { result.current.ask('How do I add a trait?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
@@ -103,7 +107,7 @@ describe('useHelpChat', () => {
       },
       sidebar: '- [Bench](Bench)\n- [Tools](Tools)\n',
     });
-    stubStream(sseReply('Select **Add Tool**.'));
+    stubHelpStream(sseReply('Select **Add Tool**.'));
     const { result } = renderHook(() => useHelpChat(tools, ai));
     act(() => { result.current.ask('How do I make a tool?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
@@ -115,7 +119,7 @@ describe('useHelpChat', () => {
 
   it('keeps a vague follow-up on the topic of the earlier answer, not on the page of the open screen', async () => {
     vi.spyOn(surfaceRegistry, 'get').mockReturnValue({ screen: 'worldEditor', dialog: null, tabs: [] });
-    stubStream(sseReply('Select **Add Tool**.'));
+    stubHelpStream(sseReply('Select **Add Tool**.'));
     const { result } = renderHook(() => useHelpChat(bundledDocsIndex(), ai));
     act(() => { result.current.ask('How do I make a tool?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
@@ -129,7 +133,7 @@ describe('useHelpChat', () => {
   });
 
   it('shows a flagged answer without its marker, and sends the marker back with it on a follow-up', async () => {
-    const fetchSpy = stubStream(sseReply(`${GENERAL_KNOWLEDGE_MARKER}\nLight scatters.`));
+    const fetchSpy = stubHelpStream(sseReply(`${GENERAL_KNOWLEDGE_MARKER}\nLight scatters.`));
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => { result.current.ask('Why is the sky blue?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
@@ -145,7 +149,7 @@ describe('useHelpChat', () => {
   });
 
   it(`keeps every exchange in view while a request carries only the last ${HELP_HISTORY_EXCHANGES}`, async () => {
-    const fetchSpy = stubStream(sseReply('Done.'));
+    const fetchSpy = stubHelpStream(sseReply('Done.'));
     const { result } = renderHook(() => useHelpChat(index, ai));
     const total = HELP_HISTORY_EXCHANGES + 2;
     for (let n = 0; n < total; n++) {
@@ -161,7 +165,7 @@ describe('useHelpChat', () => {
   });
 
   it('writes the answer in the AI Language', async () => {
-    const fetchSpy = stubStream(sseReply('Selecciona **Add Trait**.'));
+    const fetchSpy = stubHelpStream(sseReply('Selecciona **Add Trait**.'));
     const { result } = renderHook(() => useHelpChat(index, { ...ai, language: 'Spanish' }));
     act(() => { result.current.ask('How do I add a trait?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
@@ -170,8 +174,7 @@ describe('useHelpChat', () => {
 
   it('clears the conversation and ends the answer that is coming in', async () => {
     const reply = openSseReply([sseFrame({ content: '1. Select' })]);
-    const fetchSpy = vi.fn(async (_url: string, _init: RequestInit) => reply.respond());
-    vi.stubGlobal('fetch', fetchSpy);
+    const fetchSpy = stubHelpStream(reply.respond);
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => { result.current.ask('How do I add a trait?'); });
     await waitFor(() => expect(result.current.exchanges[0]?.answer).toBe('1. Select'));
@@ -181,7 +184,7 @@ describe('useHelpChat', () => {
     expect(result.current.busy).toBe(false);
 
     // A question right after Clear starts a new conversation, before the old stream has closed.
-    const next = stubStream(sseReply('Done.'));
+    const next = stubHelpStream(sseReply('Done.'));
     act(() => { result.current.ask('How do I add a stat?'); });
     expect(result.current.exchanges.map((exchange) => exchange.question)).toEqual(['How do I add a stat?']);
     await waitFor(() => expect(reply.cancel).toHaveBeenCalled());
@@ -192,13 +195,14 @@ describe('useHelpChat', () => {
   });
 
   it('holds Send while a game turn generates, and sends once the turn ends', async () => {
-    const fetchSpy = stubStream(sseReply('Done.'));
+    const fetchSpy = stubHelpStream(sseReply('Done.'));
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => { turnActivity.set(true); });
     expect(result.current.held).toBe(true);
     act(() => { result.current.ask('How do I add a trait?'); });
     expect(result.current.exchanges).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy.picks).not.toHaveBeenCalled();
 
     act(() => { turnActivity.set(false); });
     expect(result.current.held).toBe(false);
@@ -208,7 +212,7 @@ describe('useHelpChat', () => {
   });
 
   it('sends the pending images with the question, keeps them on its exchange, and leaves none pending', async () => {
-    const fetchSpy = stubStream(sseReply('That is the **Traits** tab.'));
+    const fetchSpy = stubHelpStream(sseReply('That is the **Traits** tab.'));
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => { result.current.setPending(() => [screenshot('a'), screenshot('b')]); });
     act(() => { result.current.ask('What is this?'); });
@@ -220,7 +224,7 @@ describe('useHelpChat', () => {
   });
 
   it('sends a follow-up without the images of the earlier question', async () => {
-    const fetchSpy = stubStream(sseReply('Done.'));
+    const fetchSpy = stubHelpStream(sseReply('Done.'));
     const { result } = renderHook(() => useHelpChat(index, ai));
     act(() => { result.current.setPending(() => [screenshot('a')]); });
     act(() => { result.current.ask('What is this?'); });
@@ -233,7 +237,7 @@ describe('useHelpChat', () => {
   });
 
   it('sends no image when the model does not read images', async () => {
-    const fetchSpy = stubStream(sseReply('Done.'));
+    const fetchSpy = stubHelpStream(sseReply('Done.'));
     const { result } = renderHook(() => useHelpChat(index, { ...ai, readsImages: false }));
     act(() => { result.current.setPending(() => [screenshot('a')]); });
     act(() => { result.current.ask('What is this?'); });

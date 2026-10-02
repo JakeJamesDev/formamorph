@@ -24,6 +24,45 @@ export function probeSnapshot(target: ProbeTarget, tools = false): AiSettingsSna
   };
 }
 
+/** Tokens in and out, summed over the requests of one question. */
+export interface Usage { promptTokens: number; answerTokens: number; requests: number }
+export const noUsage = (): Usage => ({ promptTokens: 0, answerTokens: 0, requests: 0 });
+
+export interface Completion {
+  choices?: { message?: { content?: string | null; tool_calls?: { id?: string; function: { name: string; arguments: string } }[] }; finish_reason?: string }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
+/** Sends one request body with streaming off and reasoning off, and adds its token counts to `usage`. */
+export async function send(url: RequestInfo | URL, init: RequestInit | undefined, usage: Usage): Promise<Completion | Response> {
+  const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+  const response = await fetch(url, { ...init, body: JSON.stringify({ ...body, stream: false, reasoning_effort: 'none' }) });
+  if (!response.ok) return response;
+  const json = await response.json() as Completion;
+  usage.requests++;
+  usage.promptTokens += json.usage?.prompt_tokens ?? 0;
+  usage.answerTokens += json.usage?.completion_tokens ?? 0;
+  return json;
+}
+
+/** A fetch for the help session: each request goes out through `send` and comes back as the stream the session reads. */
+export function sessionFetch(usage: Usage): typeof fetch {
+  return (async (url: RequestInfo | URL, init?: RequestInit) => {
+    const result = await send(url, init, usage);
+    if (result instanceof Response) return result;
+    const choice = result.choices?.[0];
+    const frame = (delta: Record<string, unknown>, finish: string | null = null) =>
+      `data: ${JSON.stringify({ choices: [{ delta, finish_reason: finish }] })}\n\n`;
+    const frames = [
+      ...(choice?.message?.content ? [frame({ content: choice.message.content })] : []),
+      ...(choice?.message?.tool_calls ?? []).map((call, at) => frame({ tool_calls: [{ index: at, id: call.id ?? `call-${at}`, type: 'function', function: call.function }] })),
+      frame({}, choice?.finish_reason ?? 'stop'),
+      'data: [DONE]\n\n',
+    ];
+    return new Response(frames.join(''), { headers: { 'Content-Type': 'text/event-stream' } });
+  }) as typeof fetch;
+}
+
 /** `n` of `d` as a right-aligned percent, or a dash for none. */
 export const pct = (n: number, d: number) => (d === 0 ? '  –' : `${Math.round((100 * n) / d).toString().padStart(3)}%`);
 

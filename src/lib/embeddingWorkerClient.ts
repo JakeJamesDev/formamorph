@@ -5,6 +5,7 @@
  * settling its promise.
  */
 import { randomUUID } from '@/lib/uuid';
+import { EMBEDDING_MODEL_ID } from './memoryRelevance';
 
 /** Aggregate model-download progress across files; `total` grows as files announce sizes. */
 export interface EmbeddingLoadProgress {
@@ -94,6 +95,32 @@ export async function loadEmbeddingModel(onProgress?: ProgressCallback): Promise
  *  routing scoring work here. Never triggers a download itself. */
 export function isEmbeddingModelReady(): boolean {
   return modelReady && workerInstance !== null;
+}
+
+/** The files the worker's q8 pipeline loads for the model. */
+export const EMBEDDING_MODEL_FILES = ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'onnx/model_quantized.onnx'] as const;
+
+/** The key transformers.js stores one model file under in its browser cache. */
+export const embeddingCacheKey = (file: string): string => `https://huggingface.co/${EMBEDDING_MODEL_ID}/resolve/main/${file}`;
+
+/** Whether every model file is in the browser cache, so a load downloads nothing. */
+export async function isEmbeddingModelCached(): Promise<boolean> {
+  if (typeof caches === 'undefined') return false;
+  try {
+    const cache = await caches.open('transformers-cache');
+    const hits = await Promise.all(EMBEDDING_MODEL_FILES.map((file) => cache.match(embeddingCacheKey(file))));
+    return hits.every((hit) => hit !== undefined);
+  } catch {
+    return false;
+  }
+}
+
+/** Opens the model when it is loaded or all its files are in the browser cache. Never downloads; false when it can't. */
+export async function openCachedEmbeddingModel(): Promise<boolean> {
+  if (isEmbeddingModelReady()) return true;
+  if (!(await isEmbeddingModelCached())) return false;
+  await loadEmbeddingModel();
+  return true;
 }
 
 /** Embed texts into L2-normalized vectors, one per input, in input order. */

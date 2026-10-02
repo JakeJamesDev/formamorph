@@ -5,6 +5,7 @@ import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseResponse, sseReply, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { pastPicks } from '@/test/helpFixtures';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { surfaceHint } from './surfaceHint';
 
@@ -25,7 +26,7 @@ const userMessage = (spy: FetchSpy): string =>
 async function ask(question: string, over: Partial<HelpQuestion> = {}) {
   const fetchImpl = replyWith();
   const events: HelpEvent[] = [];
-  for await (const event of askHelp({ question, snapshot: textSnapshot(), index, fetchImpl: fetchImpl as unknown as typeof fetch, ...over })) events.push(event);
+  for await (const event of askHelp({ question, snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over })) events.push(event);
   const done = events.at(-1);
   return { sent: userMessage(fetchImpl), sources: done?.type === 'done' ? done.sources.map((section) => section.id) : [] };
 }

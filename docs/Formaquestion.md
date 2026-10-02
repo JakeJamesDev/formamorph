@@ -125,6 +125,7 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again.
+- Before the answer, the app sends one more short request. In it, your AI gets the list of every guide heading and picks the sections that answer your question. The answer then uses those picks together with the sections that the search finds. When that request fails or picks no section, the answer uses the search alone.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
 - With **Image Attachments** on, a question can carry up to 4 images, the same as an action. **Attach images** shows next to the field, and a paste or a drop on the field adds an image. The images go with that question only, and the app does not store them.
 - **Clear** removes every question and answer, and ends an answer that is coming in.

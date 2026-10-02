@@ -7,7 +7,8 @@ import { useHelpChat, type HelpChat } from '@/components/formaquestion/useHelpCh
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
-import { sseReply, stubStream, textTarget } from '@/test/aiTextFixtures';
+import { sseReply, textTarget } from '@/test/aiTextFixtures';
+import { stubHelpStream } from '@/test/helpFixtures';
 
 const index = createDocsIndex({ pages: { Traits: '# Traits\n\n## How to Add a Trait\n\n1. Select **Add Trait**.\n' } });
 // The one stand-in: the active endpoint's record says it takes function calls. Everything else is the app's.
@@ -22,9 +23,9 @@ function Window() {
   return null;
 }
 
-/** Asks one question through the window's hooks and returns the body of the request it sent. */
+/** Asks one question through the window's hooks and returns the body of the answer request it sent. */
 async function helpRequestBody(): Promise<Record<string, unknown>> {
-  const fetchSpy = stubStream(sseReply('Select **Add Trait**.'));
+  const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
   act(() => chat.clear());
   act(() => chat.ask('How do I add a trait?'));
   await waitFor(() => expect(chat.exchanges.at(-1)?.status).toBe('answered'));

@@ -12,32 +12,37 @@
 //   hybrid    the keyword and the semantic rankings merged by reciprocal rank fusion
 //   ai        with `--ai`: a first request lists every section heading, and the model copies the lines it picks
 // The mixes fuse the rankings of the approaches they name the same way: ai+keyword, ai+keyword+semantic.
+//   shipped   with `--ai`: the help session's own search (`helpSearch`) with the switches as they ship
+// The pick prompt, the pick list and the rank merge are the app's.
 //
 // The score, per approach, set and kind:
 //   first   a keyed section is the first section of the block
 //   at5     a keyed section is among the block's five sections, with no size budget (recall@5)
 //   sent    a keyed section is in the block that fits the request's size budget
 //
-// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic] [--sets known,blind] [--text head|full|chunks]
+// Usage: npm run probe:help-recall -- [--arms keyword,semantic,hybrid,ai,ai+keyword,ai+keyword+semantic,shipped] [--sets known,blind] [--text head|full|chunks]
 //          [--ai] [--runs 5] [--parallel 4] [--endpoint URL] [--model default] [--token T] [--show]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
-import { HELP_SECTION_LIMIT, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { CHANGELOG_PAGE, FAVORED_PAGE_WEIGHT, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
+import { guideSections, type GuideSection } from '@/lib/formaquestion/guideSections';
+import { HELP_PICK_MAX_TOKENS, HELP_PICK_SYSTEM_PROMPT, pickList, pickMessage, readPicks } from '@/lib/formaquestion/helpPicks';
+import { HELP_SECTION_LIMIT, helpSearch, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { mergeRanks, rankByVector } from '@/lib/formaquestion/rankMerge';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
-import { mean, probeSnapshot, type ProbeTarget } from './help-probe-shared';
+import { mean, noUsage, probeSnapshot, sessionFetch, type ProbeTarget, type Usage } from './help-probe-shared';
 import { loadBlindCases, loadKnownCases, RECALL_KINDS, RECALL_SETS, type RecallCase, type RecallKind, type RecallSet } from './help-recall-cases';
-import { baseSectionId, chunksOf, mergeRanks, rankByVector, readPicks, scoreRecall, summarizeRecall, type RecallScore } from './help-recall-score';
+import { chunksOf, scoreRecall, summarizeRecall, type RecallScore } from './help-recall-score';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : fallback;
 };
-const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic'] as const;
+const ARMS = ['keyword', 'semantic', 'hybrid', 'ai', 'ai+keyword', 'ai+keyword+semantic', 'shipped'] as const;
 type Arm = (typeof ARMS)[number];
 /** The values of a comma list flag, each one of `allowed`. */
 function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
@@ -46,7 +51,7 @@ function listArg<T extends string>(flag: string, allowed: readonly T[]): T[] {
   if (unknown.length > 0) throw new Error(`${flag} takes ${allowed.join(', ')}, not ${unknown.join(', ')}`);
   return values as T[];
 }
-const isAiArm = (arm: Arm) => arm.startsWith('ai');
+const isAiArm = (arm: Arm) => arm.startsWith('ai') || arm === 'shipped';
 // The arms that send requests run only with `--ai`.
 const arms = listArg('--arms', ARMS).filter((arm) => args.includes('--ai') || !isAiArm(arm));
 const sets = listArg('--sets', RECALL_SETS);
@@ -57,11 +62,8 @@ const runs = Number(argVal('--runs', '5'));
 const parallel = Number(argVal('--parallel', '4'));
 const show = args.includes('--show');
 
-const CHANGELOG_PAGE = 'Changelog';
 /** The fewest sections of each ranking a fused arm merges; a search that asks for more gets more. */
 const FUSION_DEPTH = 50;
-/** How much a section of the favored page outweighs another, as in the keyword search. */
-const FAVORED_PAGE_WEIGHT = 2;
 /** The most characters of one body chunk a section vector covers; about 200 tokens, inside the model's window. */
 const CHUNK_CHARS = 900;
 
@@ -69,14 +71,9 @@ const index = bundledDocsIndex();
 const cases = [...loadKnownCases(), ...loadBlindCases()].filter((c) => sets.includes(c.set));
 const caseById = new Map(cases.map((c) => [c.id, c]));
 
-/** Every guide section, changelog left out: the keyword search ranks the changelog under every guide hit. */
-const guide = index.contents().filter((page) => page.page !== CHANGELOG_PAGE);
-const guideSections: DocSection[] = guide.flatMap((page) => page.sections.flatMap((s) => index.get([s.id]).filter((part) => part.id === s.id)));
-const sectionById = new Map(guideSections.map((section) => [section.id, section]));
-const titleOf = new Map(guide.map((page) => [page.page, page.title]));
-/** A section as one line: its page, the headings above it, then its own. */
-const headingLine = (section: DocSection) =>
-  [...new Set([titleOf.get(section.page) ?? section.page, ...section.trail, section.heading].map((name) => name.replace(/^[^\p{L}\p{N}]+/u, '')))].join(' › ');
+/** Every guide section with its heading line, as the app lists them; the changelog is left out. */
+const guide = guideSections(index);
+const sectionById = new Map(guide.map(({ section }) => [section.id, section]));
 
 // ── The block ────────────────────────────────────────────────────────────────
 
@@ -128,8 +125,7 @@ interface SemanticCost { loadMs: number; loadRssMb: number; vectors: number; vec
  * The texts one section is embedded as. The model reads the first 512 tokens of a text, so `full` covers the
  * start of a long section. `chunks` scores a section by its best chunk, so a long section is read whole.
  */
-function textsOf(section: DocSection): string[] {
-  const head = headingLine(section);
+function textsOf({ section, line: head }: GuideSection): string[] {
   if (sectionText === 'head') return [head];
   if (sectionText === 'full') return [`${head}\n\n${section.markdown}`];
   return [head, ...chunksOf(section.markdown, CHUNK_CHARS).map((chunk) => `${head}\n\n${chunk}`)];
@@ -156,7 +152,7 @@ async function loadSemantic(queries: string[]): Promise<{ search: DocsIndex; cos
   const loadMs = performance.now() - loadStarted;
   const loadRssMb = (process.memoryUsage().rss - rssBefore) / 2 ** 20;
 
-  const texts = guideSections.flatMap((section) => textsOf(section).map((text) => ({ id: section.id, text })));
+  const texts = guide.flatMap((entry) => textsOf(entry).map((text) => ({ id: entry.section.id, text })));
   const vectors = await embed(texts.map((t) => t.text));
   const entries = texts.map((t, at) => ({ id: t.id, vector: vectors[at] }));
 
@@ -198,41 +194,18 @@ function queriesOf(): string[] {
 
 // ── AI picks ─────────────────────────────────────────────────────────────────
 
-/** The sections the model picks from: one line per whole section. */
-const pickable = guideSections.filter((section) => section.id === baseSectionId(section.id));
-const PICK_SYSTEM_PROMPT = [
-  'You are the librarian of the Formamorph player guide. Formamorph is a text adventure app. A player asks a question, and you pick the guide sections that answer it.',
-  '',
-  'The message lists every section of the guide, one on each line: the page, then the headings down to the section.',
-  '',
-  '- Pick the sections whose text answers the question, the best one first.',
-  '- Pick 5 sections at most.',
-  '- Reply with the lines of your picks alone, one on each line, each copied as the list writes it.',
-].join('\n');
-const PICK_MAX_TOKENS = 150;
-const PICK_LINES = pickable.map(headingLine);
-const SECTION_LIST = PICK_LINES.join('\n');
-
-function pickMessage(c: RecallCase, first: RecallCase | undefined): string {
-  const where = surfaceHint(c.surface, index)?.where;
-  return [
-    `<sections>\n${SECTION_LIST}\n</sections>`,
-    ...(where ? [`The player asks from this screen: ${where}.`] : []),
-    ...(first ? [`The player's earlier question: ${first.question}`] : []),
-    `Question: ${c.question}`,
-    'Reply with the lines of the sections that answer the question, the best one first.',
-  ].join('\n\n');
-}
+/** The sections the model picks from, as the app lists them: one line per whole section. */
+const PICKS = pickList(index);
 
 interface PickReply { sections: DocSection[]; ms: number; promptTokens: number; answerTokens: number; reply: string }
 
 async function askPicks(target: ProbeTarget, c: RecallCase): Promise<PickReply> {
   const spec = buildAiRequestSpec(probeSnapshot(target), {
-    systemPrompt: PICK_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: pickMessage(c, caseById.get(c.after ?? '')) }],
+    systemPrompt: HELP_PICK_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: pickMessage(PICKS.lines, { question: c.question, earlier: caseById.get(c.after ?? '')?.question, where: surfaceHint(c.surface, index)?.where }) }],
     // The pins of a help request: temperature 0.2 and no repetition penalty, so a copied line stays exact.
     requestType: 'help',
-    maxTokensOverride: PICK_MAX_TOKENS,
+    maxTokensOverride: HELP_PICK_MAX_TOKENS,
   });
   for (let attempt = 1; ; attempt++) {
     const started = performance.now();
@@ -241,7 +214,7 @@ async function askPicks(target: ProbeTarget, c: RecallCase): Promise<PickReply> 
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
       const json = await response.json() as { choices?: { message?: { content?: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
       const reply = json.choices?.[0]?.message?.content ?? '';
-      const sections = readPicks(reply, PICK_LINES).flatMap((at) => index.get([pickable[at].id]));
+      const sections = readPicks(reply, PICKS.lines).flatMap((at) => PICKS.sections[at]);
       return { sections, ms: performance.now() - started, promptTokens: json.usage?.prompt_tokens ?? 0, answerTokens: json.usage?.completion_tokens ?? 0, reply };
     } catch (error) {
       if (attempt === 2) throw error;
@@ -304,10 +277,32 @@ if (arms.some(isAiArm)) {
     model: argVal('--model', 'default'),
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
-  console.log(`ai picks · ${target.endpoint} · model ${target.model} · ${cases.length} questions × ${runs} runs · ${pickable.length} headings`);
+  console.log(`ai picks · ${target.endpoint} · model ${target.model} · ${cases.length} questions × ${runs} runs · ${PICKS.lines.length} headings`);
   const started = Date.now();
   let empty = 0;
+  let shippedFailed = 0;
+  const probeArms = arms.some((arm) => arm.startsWith('ai'));
   for (let run = 1; run <= runs; run++) {
+    if (wants('shipped')) {
+      // The app's own search for each question: its pick request goes out once, and a failed one is not sent again.
+      const found = new Map<string, { search: DocsIndex; ms: number; usage: Usage }>();
+      await pool(cases.map((c) => async () => {
+        const first = caseById.get(c.after ?? '');
+        const usage = noUsage();
+        const asked = performance.now();
+        const search = await helpSearch({
+          question: c.question, history: first ? historyOf(first, []) : [], snapshot: probeSnapshot(target), index,
+          where: surfaceHint(c.surface, index)?.where, fetchImpl: sessionFetch(usage),
+        });
+        found.set(c.id, { search, ms: performance.now() - asked, usage });
+      }), parallel);
+      shippedFailed += [...found.values()].filter(({ usage }) => usage.requests === 0).length;
+      rows.push(...scoreAll('shipped', run, (c) => found.get(c.id)!.search, (c) => {
+        const { ms, usage } = found.get(c.id)!;
+        return { ms, promptTokens: usage.promptTokens, answerTokens: usage.answerTokens };
+      }));
+    }
+    if (!probeArms) continue;
     const picks = new Map<string, PickReply>();
     await pool(cases.map((c) => async () => {
       try {
@@ -329,7 +324,8 @@ if (arms.some(isAiArm)) {
     if (wants('ai+keyword+semantic')) rows.push(...scoreAll('ai+keyword+semantic', run, (c) => fused(picked(c), index, semantic!), pickCost));
     if (show && run === 1) for (const c of cases) console.log(`  ${c.id}: ${picks.get(c.id)?.reply.replace(/\s+/g, ' ').slice(0, 80)}`);
   }
-  notes.push(`AI picks: ${target.endpoint}, model \`${target.model}\`, ${runs} runs, ${pickable.length} headings in each request, ${failed} failed requests and ${empty} replies with no line of the list, in ${((Date.now() - started) / 1000).toFixed(0)} s.`);
+  notes.push(`AI picks: ${target.endpoint}, model \`${target.model}\`, ${runs} runs, ${PICKS.lines.length} headings in each request, ${failed} failed requests and ${empty} replies with no line of the list, in ${((Date.now() - started) / 1000).toFixed(0)} s.`);
+  if (wants('shipped')) notes.push(`Shipped: ${shippedFailed} pick requests failed.`);
 }
 
 // ── Report ───────────────────────────────────────────────────────────────────
@@ -339,6 +335,7 @@ const table = (head: string[], lines: string[][]) =>
   [`| ${head.join(' | ')} |`, `|${head.map(() => '---').join('|')}|`, ...lines.map((cells) => `| ${cells.join(' | ')} |`)].join('\n');
 const ARM_LABELS: Record<Arm, string> = {
   keyword: 'Keyword', semantic: 'Semantic', hybrid: 'Hybrid', ai: 'AI picks', 'ai+keyword': 'AI picks + keyword', 'ai+keyword+semantic': 'AI picks + keyword + semantic',
+  shipped: 'Shipped switches',
 };
 const KIND_LABELS: Record<RecallKind, string> = { task: 'Task', here: 'Here', followUp: 'Follow-up' };
 const ranArms = ARMS.filter((arm) => rows.some((r) => r.arm === arm));
