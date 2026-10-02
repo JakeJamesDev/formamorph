@@ -5,17 +5,19 @@
  *
  * Slot syntax is `{{name:type=default}}`; `type` and `=default` are both optional, and repeating a name
  * reuses the first occurrence's declaration. Substitution is textual, so a template controls its own
- * quoting: a `stat`, `placeholder`, `trait` or `daypart` slot emits a quoted string, while `number`,
- * `choice` and `text` emit their value verbatim (which is what lets a choice supply a comparison operator).
+ * quoting: a `stat`, `placeholder`, `trait`, `entity` or `daypart` slot emits a quoted string, while
+ * `number`, `choice` and `text` emit their value as typed (which is what lets a choice supply a comparison
+ * operator). `trait(persona)` lists the persona's traits, and `trait(slot)` lists the traits of the entity
+ * that `entity` slot picked.
  */
 
 import type { StatCodeTiming } from './statCodeTiming';
 
-export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'number', 'daypart', 'choice', 'text'] as const;
+export const SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity', 'number', 'daypart', 'choice', 'text'] as const;
 export type SlotType = (typeof SLOT_TYPES)[number];
 
 /** The slot types filled from a list of the world's own names. Each renders as a quoted string. */
-export const NAME_SLOT_TYPES = ['stat', 'placeholder', 'trait'] as const satisfies readonly SlotType[];
+export const NAME_SLOT_TYPES = ['stat', 'placeholder', 'trait', 'entity'] as const satisfies readonly SlotType[];
 export type NameSlotType = (typeof NAME_SLOT_TYPES)[number];
 
 export const isNameSlotType = (type: SlotType): type is NameSlotType =>
@@ -31,7 +33,12 @@ export interface TemplateSlot {
   defaultValue?: string;
   /** The `choice(a|b|…)` options, in declaration order. Only ever set for `choice` slots. */
   options?: string[];
+  /** Whose traits a `trait` slot lists: `persona`, or the name of an `entity` slot. Absent, the world's. */
+  owner?: string;
 }
+
+/** The `trait(…)` owner that lists the persona's traits. */
+export const PERSONA_TRAIT_OWNER = 'persona';
 
 export interface StatCodeTemplate {
   id: string;
@@ -111,10 +118,17 @@ export function parseTemplateSlots(code: string): ParsedTemplate {
 
     const slot: TemplateSlot = { name, type };
     if (rawDefault !== undefined && rawDefault !== '') slot.defaultValue = rawDefault;
-    if (options && options.length > 0) slot.options = options;
+    if (type === 'trait' && rawOptions?.trim()) slot.owner = rawOptions.trim();
+    else if (options && options.length > 0) slot.options = options;
 
     byName.set(name, slot);
     slots.push(slot);
+  }
+
+  for (const slot of slots) {
+    if (slot.owner === undefined || slot.owner === PERSONA_TRAIT_OWNER || byName.get(slot.owner)?.type === 'entity') continue;
+    errors.push(`Slot "${slot.name}" lists the traits of "${slot.owner}", which is not an entity slot.`);
+    delete slot.owner;
   }
 
   return { slots, errors };
@@ -156,15 +170,16 @@ export function defaultSlotValues(slots: TemplateSlot[]): Record<string, string>
   return values;
 }
 
-/** How one filled slot reaches the generated code. String-valued slots are emitted as JSON so an authored
- *  name containing a quote can't break out of its literal; the rest are pasted as written. */
+/** How one filled slot reaches the generated code. Name and daypart slots are emitted as JSON so an
+ *  authored name containing a quote can't break out of its literal; the rest are pasted as typed. */
 function renderSlot(slot: TemplateSlot, raw: string): string {
   const value = (raw ?? '').trim();
   if (isNameSlotType(slot.type)) return JSON.stringify(value);
   switch (slot.type) {
     case 'daypart':
-    case 'text':
       return JSON.stringify(value);
+    case 'text':
+      return value;
     case 'number': {
       const parsed = Number(value);
       // A blank or unparseable number would generate code that throws at run time; 0 keeps it valid and
@@ -303,7 +318,7 @@ self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2
     name: 'Bonus From Persona Trait',
     description: 'Follow another stat, with a bonus while the played persona has a trait on. A persona with no such trait gets no bonus.',
     code: `const base = stats[{{base:stat}}].value;
-const active = persona.traits[{{trait:text=Scarred}}].enabled;
+const active = persona.traits[{{trait:trait(persona)}}].enabled;
 return base + (active ? {{bonus:number=10}} : 0);`,
   },
   {
@@ -312,7 +327,7 @@ return base + (active ? {{bonus:number=10}} : 0);`,
     name: 'Penalty From Entity Trait',
     description: 'Follow another stat, with a penalty while one entity has a trait on. An entity that isn’t in play adds no penalty.',
     code: `const base = stats[{{base:stat}}].value;
-const active = entities[{{entity:text=Mira}}].traits[{{trait:text=Wounded}}].enabled;
+const active = entities[{{entity:entity}}].traits[{{trait:trait(entity)}}].enabled;
 return base - (active ? {{penalty:number=10}} : 0);`,
   },
   {

@@ -10,6 +10,7 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import { placeholderKindNoun } from '@/lib/placeholders';
+import { hasEntityKey } from '@/lib/statCodeExecutor';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
@@ -244,16 +245,16 @@ const entityNamed = (match: RegExpExecArray) => match[1] ?? match[2];
 const entityNameEntries = (entities: readonly CodeEntityNames[], dotted: boolean): SurfaceEntry[] =>
   mapNameEntries(keyedEntityNames(entities), 'entity', dotted);
 
-/** The entity names the sandbox keys: every non-empty one. */
-const keyedEntityNames = (entities: readonly CodeEntityNames[]): string[] =>
-  entities.flatMap((entity) => (entity.name ? [entity.name] : []));
+/** The entity names the sandbox keys. */
+export const keyedEntityNames = (entities: readonly CodeEntityNames[]): string[] =>
+  entities.filter(hasEntityKey).map((entity) => entity.name);
 
 /** The trait names of the last authored entity called `name`, as the sandbox keys it. An unnamed one is not keyed. */
-const traitsOfEntity = (entities: readonly CodeEntityNames[], name: string): readonly string[] | null =>
-  (name ? entities.findLast((entity) => entity.name === name)?.traits ?? null : null);
+export const traitsOfEntity = (entities: readonly CodeEntityNames[], name: string): readonly string[] | null =>
+  (hasEntityKey({ name }) ? entities.findLast((entity) => entity.name === name)?.traits ?? null : null);
 
 /** The trait names a persona in the world can hold, or null when no entities are given. */
-const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined): readonly string[] | null =>
+export const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined): readonly string[] | null =>
   (entities ? entities.filter((entity) => entity.persona).flatMap((entity) => entity.traits) : null);
 
 /** One entry per distinct persona trait name. `dotted` keeps only the names a `.` can reach. */

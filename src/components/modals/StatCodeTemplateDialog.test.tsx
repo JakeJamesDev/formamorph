@@ -44,6 +44,11 @@ const open = (timing: StatCodeTiming = 'after') => render(
     onInsert={vi.fn()}
     placeholderNames={['Mood', 'Hair Color']}
     traitNames={['Cursed']}
+    entities={[
+      { id: 'e1', name: 'Mira', traits: ['Wounded'], persona: false },
+      { id: 'e2', name: 'Ash', traits: ['Loyal'], persona: false },
+      { id: 'e3', name: 'Rook', traits: ['Scarred'], persona: true },
+    ]}
   />,
 );
 
@@ -125,6 +130,31 @@ describe('the form a template presents', () => {
     const generated = () => document.querySelector('pre')?.textContent ?? '';
     await waitFor(() => expect(generated()).toContain('placeholders["Hair Color"]'));
     expect(generated()).toContain('traits["Cursed"]');
+  });
+
+  it('lists the picked entity’s traits in a tied trait slot, and the persona’s in a persona one', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'entities[{{who:entity}}].traits[{{t:trait(who)}}]; persona.traits[{{p:trait(persona)}}];');
+    const options = async () => (await screen.findAllByRole('option')).map((option) => option.textContent);
+
+    await user.click(await screen.findByRole('combobox', { name: 'P' }));
+    expect(await options()).toEqual(['Scarred']);
+    await user.click(await screen.findByRole('option', { name: 'Scarred' }));
+    await user.click(await screen.findByRole('combobox', { name: 'Who' }));
+    expect(await options()).toEqual(['Mira', 'Ash', 'Rook']);
+    await user.click(await screen.findByRole('option', { name: 'Ash' }));
+    await user.click(await screen.findByRole('combobox', { name: 'T' }));
+    expect(await options()).toEqual(['Loyal']);
+    await user.click(await screen.findByRole('option', { name: 'Loyal' }));
+
+    const generated = () => document.querySelector('pre')?.textContent ?? '';
+    await waitFor(() => expect(generated()).toContain('entities["Ash"].traits["Loyal"]'));
+    expect(generated()).toContain('persona.traits["Scarred"]');
+
+    // Another entity clears the trait picked from the last one's list.
+    await user.click(await screen.findByRole('combobox', { name: 'Who' }));
+    await user.click(await screen.findByRole('option', { name: 'Mira' }));
+    await waitFor(() => expect(generated()).toContain('entities["Mira"].traits[""]'));
   });
 
   it('prefills the defaults of a template picked from the list', async () => {

@@ -151,6 +151,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         ...(outcome.unknownTraits ? [`Unknown trait names. Writes ignored: ${outcome.unknownTraits.join(', ')}.`] : []),
         ...(outcome.acquiredWrites ? [`acquired is read-only. Writes ignored: ${outcome.acquiredWrites.join(', ')}.`] : []),
         ...(outcome.unknownEntities ? [`Unknown entity names. Writes ignored: ${outcome.unknownEntities.join(', ')}.`] : []),
+        ...(outcome.readOnlyWrites ? [`Read-only fields. Writes ignored: ${outcome.readOnlyWrites.join(', ')}.`] : []),
         ...(outcome.entities ?? []).flatMap(({ entity, unknownTraits, acquiredWrites }) => {
           const at = (names: string[]) => names.map((name) => `${entityTraitsPath(entity)}.${name}`).join(', ');
           return [
@@ -198,6 +199,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         onInsert={(code) => write(migrateStatCodeRoutes(code, placeholders))}
         placeholderNames={placeholderNames}
         traitNames={traitNames}
+        entities={entities}
       />
 
       <div className="flex flex-wrap justify-between items-center gap-2">

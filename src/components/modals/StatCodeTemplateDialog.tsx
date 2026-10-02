@@ -31,6 +31,7 @@ import {
   resolveSlotValue,
   validateSlotValues,
   isNameSlotType,
+  PERSONA_TRAIT_OWNER,
   templatesForTiming,
   type NameSlotType,
   type StatCodeTemplate,
@@ -38,6 +39,7 @@ import {
 } from '@/lib/statCodeTemplates';
 import { STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import { keyedEntityNames, personaTraitsOf, traitsOfEntity, type CodeEntityNames } from '@/lib/statCodeAnalysis';
 import {
   buildTemplatePack,
   deleteUserTemplate,
@@ -79,21 +81,48 @@ const productionRepository: StatTemplateRepository = {
   import: importTemplates,
 };
 
-/** The world's names a name slot of each type picks from. */
-type SlotNames = Record<NameSlotType, readonly string[]>;
+/** The world's names the name slots pick from, under their code names. */
+interface SlotNames {
+  stat: readonly string[];
+  placeholder: readonly string[];
+  /** The world's own traits. */
+  trait: readonly string[];
+  entities: readonly CodeEntityNames[];
+}
 
 /** What a name slot's empty picker asks for. */
 const PICK_PROMPT: Record<NameSlotType, string> = {
-  stat: 'Pick a stat…', placeholder: 'Pick a placeholder…', trait: 'Pick a trait…',
+  stat: 'Pick a stat…', placeholder: 'Pick a placeholder…', trait: 'Pick a trait…', entity: 'Pick an entity…',
 };
+
+/** What a slot's picker offers, given the answers so far. A tied trait slot lists its owner's traits. */
+function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values: Record<string, string>, names: SlotNames): readonly string[] {
+  switch (slot.type) {
+    case 'stat':
+    case 'placeholder':
+      return names[slot.type];
+    case 'entity':
+      return [...new Set(keyedEntityNames(names.entities))];
+    case 'trait': {
+      if (slot.owner === PERSONA_TRAIT_OWNER) return [...new Set(personaTraitsOf(names.entities))];
+      const owner = slots.find((other) => other.name === slot.owner);
+      if (!owner) return names.trait;
+      return [...new Set(traitsOfEntity(names.entities, resolveSlotValue(owner, values)))];
+    }
+    case 'daypart':
+      return [...DAYPART_OPTIONS];
+    default:
+      return slot.options ?? [];
+  }
+}
 
 /** One control for one slot. Name and daypart slots pick from a list so the generated string is always
  *  a name the sandbox will actually match. */
-function SlotField({ slot, value, problem, names, onChange }: {
+function SlotField({ slot, value, problem, options, onChange }: {
   slot: TemplateSlot;
   value: string;
   problem?: string;
-  names: SlotNames;
+  options: readonly string[];
   onChange: (value: string) => void;
 }) {
   /** What the author is part-way through typing, or null when the field is showing its resolved value. */
@@ -101,11 +130,6 @@ function SlotField({ slot, value, problem, names, onChange }: {
   const fieldId = useId();
   const labelId = `${fieldId}-label`;
   const problemId = `${fieldId}-problem`;
-  const options = isNameSlotType(slot.type)
-    ? names[slot.type]
-    : slot.type === 'daypart'
-      ? [...DAYPART_OPTIONS]
-      : slot.options ?? [];
 
   return (
     <label htmlFor={fieldId} className="flex flex-col gap-1 min-w-0">
@@ -166,13 +190,18 @@ function TemplateForm({ code, names, values, onChange }: {
             <SlotField
               key={slot.name}
               slot={slot}
-              names={names}
+              options={slotOptions(slot, parsed.slots, values, names)}
               // Read through the resolver rather than straight out of `values`: a slot the author has
               // only just typed into the code has no answer yet, and its declared default is what the
               // generated code below already shows for it.
               value={resolveSlotValue(slot, values)}
               problem={problems[slot.name]}
-              onChange={(value) => onChange(current => ({ ...current, [slot.name]: value }))}
+              // A new entity clears the trait slots tied to it, whose picks were that entity's traits.
+              onChange={(value) => onChange(current => ({
+                ...current,
+                ...Object.fromEntries(parsed.slots.filter((other) => other.owner === slot.name).map((other) => [other.name, ''])),
+                [slot.name]: value,
+              }))}
             />
           ))}
         </div>
@@ -206,6 +235,7 @@ export function StatCodeTemplateDialog({
   onInsert,
   placeholderNames = [],
   traitNames = [],
+  entities = [],
   repository = productionRepository,
   fileTransfer,
 }: {
@@ -222,8 +252,10 @@ export function StatCodeTemplateDialog({
   hasExistingCode: boolean;
   /** What a placeholder slot's picker offers. */
   placeholderNames?: readonly string[];
-  /** What a trait slot's picker offers. */
+  /** What an untied trait slot's picker offers. */
   traitNames?: readonly string[];
+  /** What an entity slot and a tied trait slot offer. */
+  entities?: readonly CodeEntityNames[];
   onInsert: (code: string) => void;
   repository?: StatTemplateRepository;
   fileTransfer?: StatTemplateFileTransfer;
@@ -263,7 +295,8 @@ export function StatCodeTemplateDialog({
     stat: stats.filter(stat => stat.id !== currentStatId).map(stat => stat.name).filter(Boolean),
     placeholder: placeholderNames,
     trait: traitNames,
-  }), [stats, currentStatId, placeholderNames, traitNames]);
+    entities,
+  }), [stats, currentStatId, placeholderNames, traitNames, entities]);
   // Every stat, not the pickable ones: a slot picker must not offer the stat being edited (a formula
   // reading its own value from the list is a loop), but code written by hand may read it by name, so its
   // name belongs in the completions.
