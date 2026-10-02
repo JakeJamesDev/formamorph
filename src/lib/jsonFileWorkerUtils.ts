@@ -2,6 +2,7 @@
  * Client for the JSON file worker. See `createWorkerClient` for the request/response model.
  */
 import { createWorkerClient } from './createWorkerClient';
+import type { BackupIndex } from './backupIndex';
 
 const client = createWorkerClient(
   // type:'module' — required in dev, where Vite serves the worker with bare ESM imports a classic worker rejects.
@@ -18,6 +19,10 @@ export const serializeJsonBlob = (
 /** Serialize `value` to a compact Blob in parts, opening containers down to `splitDepth`. */
 export const serializeJsonBlobSplit = (value: unknown, splitDepth: number): Promise<Blob> =>
   client.run({ op: 'serialize', value, splitDepth }) as Promise<Blob>;
+
+/** Index a backup file for restore off the main thread. Rejects on a file that is not a backup. */
+export const indexBackupInWorker = (file: Blob): Promise<BackupIndex> =>
+  client.run({ op: 'indexBackup', file }) as Promise<BackupIndex>;
 
 /** Parse an imported file's text off the main thread. Rejects on malformed JSON. */
 export const parseJsonText = (text: string): Promise<unknown> => client.run({ op: 'parse', text });

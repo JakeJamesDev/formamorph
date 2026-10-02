@@ -2,24 +2,13 @@ import type { Entity, World } from '@/types';
 import { dataUrlRealMime, fitWithin, isConvertibleImage, isRemoteImage, reencodeKeepsAnimation } from './imageBytes';
 import { encodeInWorker, measureInWorker } from './imageOptimWorkerClient';
 import { entityImages } from './entityImages';
+import { IMAGE_CAPS, countWorldImages, worldImageSlots, type ImageCap } from './imageSlots';
 
 // Re-exported so existing importers (character cards, image-gen providers, tests) keep their `@/lib/imageOptim`
 // import paths — the pure helpers now live in the DOM-free leaf module `imageBytes`.
 export { bytesToDataUrl, dataUrlBytes, dataUrlMime, fitWithin } from './imageBytes';
-
-/** A per-use size budget for an image field. `maxDim` caps the longest edge (px); `maxBytes` the encoded size. */
-export interface ImageCap {
-  maxDim: number;
-  maxBytes: number;
-}
-
-/** Display-driven budgets: a Large library tile renders thumbnails at ~800px, entity images in a
- *  modal, backgrounds full-viewport. */
-export const IMAGE_CAPS = {
-  thumbnail: { maxDim: 1024, maxBytes: 500_000 },
-  entity: { maxDim: 1024, maxBytes: 600_000 },
-  background: { maxDim: 1920, maxBytes: 1_500_000 },
-} as const satisfies Record<string, ImageCap>;
+// Likewise for the image-slot walk, which lives in the DOM-free leaf `imageSlots`.
+export { IMAGE_CAPS, countWorldImages, type ImageCap } from './imageSlots';
 
 // Rough display-only factors: lossy WebP lands near half the source; lossless keeps most of it.
 const LOSSY_FACTOR = 0.5;
@@ -104,26 +93,6 @@ export interface ScannedImage {
   /** A lossless WebP would shrink it (and re-encoding is safe) — what Optimize acts on. */
   convertible: boolean;
 }
-
-type ImageSlot = { url: string; cap: ImageCap; path: string };
-
-/** Every image field in a world, paired with its budget. Absent fields are skipped. */
-function worldImageSlots(world: World): ImageSlot[] {
-  const slots: ImageSlot[] = [];
-  const thumb = world.worldOverview?.thumbnail;
-  if (thumb) slots.push({ url: thumb, cap: IMAGE_CAPS.thumbnail, path: 'thumbnail' });
-  for (const e of world.entities ?? []) {
-    // Every picture in the gallery counts, so a world's second and third portraits are budgeted like the first.
-    entityImages(e).forEach((url, i) => slots.push({ url, cap: IMAGE_CAPS.entity, path: `entity:${e.id}:${i}` }));
-  }
-  for (const l of world.locations ?? []) {
-    if (l.backgroundImage) slots.push({ url: l.backgroundImage, cap: IMAGE_CAPS.background, path: `location:${l.id}` });
-  }
-  return slots;
-}
-
-/** How many image-bearing slots a world has — the `total` of an optimize run's progress. */
-export const countWorldImages = (world: World): number => worldImageSlots(world).length;
 
 /** A world's images keyed by the `path` a scan tagged them with — how a caller reads back what one scanned
  *  image became once a run finished with it. */

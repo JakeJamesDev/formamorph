@@ -1,6 +1,12 @@
 // Must load before importing anything that opens IndexedDB.
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// The worker's own op, run in-process: jsdom and node have no Worker.
+vi.mock('@/lib/jsonFileWorkerUtils', async () => {
+  const { runJsonFileOp } = await import('@/lib/jsonFileOps');
+  return { indexBackupInWorker: (file: Blob) => runJsonFileOp({ op: 'indexBackup', file }), serializeJsonBlobSplit: vi.fn() };
+});
 import {
   readBackupIndex, splitByConflict, BACKUP_CATEGORIES, itemLabel,
   buildBackup, listBackupItems, analyzeBackup, applyBackup, type BackupBundle, type BackupIndex,
@@ -63,11 +69,22 @@ describe('readBackupIndex', () => {
   });
 
   it('labels each record and counts its images', async () => {
-    const index = await readBackupIndex(
-      new Blob([JSON.stringify({ formamorphBackup: 1, data: { worlds: [{ id: 'w1', name: 'Sedge Landing' }] } })]),
-      (category, record) => (category === 'worlds' && record.id === 'w1' ? 3 : 0),
-    );
-    expect(index.data.worlds[0]).toMatchObject({ id: 'w1', label: 'Sedge Landing', images: 3 });
+    const world = {
+      worldOverview: { thumbnail: 'data:image/png;base64,AA' },
+      entities: [{ id: 'e1', images: ['data:image/png;base64,AA', 'data:image/png;base64,BB'] }],
+      locations: [{ id: 'l1', backgroundImage: 'data:image/png;base64,CC' }, { id: 'l2' }],
+    };
+    const index = await indexOf({
+      formamorphBackup: 1,
+      data: {
+        worlds: [{ id: 'w1', name: 'Sedge Landing', data: world }],
+        entities: [{ id: 'e1', data: { images: ['data:image/png;base64,AA'] } }],
+        dictionaries: [{ id: 'd1', data: world }],
+      },
+    });
+    expect(index.data.worlds[0]).toMatchObject({ id: 'w1', label: 'Sedge Landing', images: 4 });
+    expect(index.data.entities[0]).toMatchObject({ id: 'e1', label: 'e1', images: 1 });
+    expect(index.data.dictionaries[0].images).toBe(0);
   });
 
   it('keeps reading a bundle written by a newer app version', async () => {
