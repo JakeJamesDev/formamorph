@@ -6,7 +6,7 @@ import { codePinText } from "@/lib/placeholderPins";
 import { sandboxDictionaries, sandboxPlaceholders } from "@/lib/statCodePlaceholders";
 import { placeholderPathLabel } from "@/lib/statCodePaths";
 import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
-import { sandboxTraits, unplayedEntities } from "@/lib/statCodeTraits";
+import { sandboxTraits, unplayedEntities, type CodeTraitPlace } from "@/lib/statCodeTraits";
 import type { CodeEntityNames, CodePlaceholders } from "@/lib/statCodeAnalysis";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
@@ -36,8 +36,10 @@ export interface StatCodeBoxContext {
   placeholders: CodePlaceholders;
   /** What a template's placeholder slot picks from. */
   placeholderNames: string[];
-  /** Trait code names: completions, template slots, and the run's entries. */
+  /** Trait code names: completions and the run's entries. */
   traitNames: string[];
+  /** The world's traits in Traits-tab order with their group paths: what a template's trait slot picks from. */
+  traitPlaces: CodeTraitPlace[];
   /** The world's traits, for the run's sandbox entries. */
   traits: readonly Trait[];
   /** Every authored entity's code name and trait code names: completions, name checks, and the run's entries.
@@ -73,7 +75,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
   const label = TIMING_LABEL[timing];
   const {
-    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traits, entities,
+    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traitPlaces, traits, entities,
   } = context;
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
@@ -198,7 +200,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         hasExistingCode={!!value.trim()}
         onInsert={(code) => write(migrateStatCodeRoutes(code, placeholders))}
         placeholderNames={placeholderNames}
-        traitNames={traitNames}
+        traitPlaces={traitPlaces}
         entities={entities}
       />
 

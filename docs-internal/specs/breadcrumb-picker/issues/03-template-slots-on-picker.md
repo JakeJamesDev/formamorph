@@ -1,6 +1,7 @@
 # 03: Template Slots on the Breadcrumb Picker
 
-Status: ready-for-agent
+Status: in-progress
+Base: c4162ead
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

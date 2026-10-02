@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { entityTraitNames, sandboxTraits, savedTraits } from './statCodeTraits';
+import { entityTraitNames, sandboxTraits, savedTraits, worldTraitPlaces } from './statCodeTraits';
 import { applyCodeTraitSwitches, type TraitWorld } from './traitRuntime';
-import type { Entity, Trait, TraitGroup } from '@/types';
+import type { Entity, EntityGroup, Placeholder, Trait, TraitGroup } from '@/types';
 
 describe('savedTraits', () => {
   const saved: Trait = { id: 'brave', name: 'Brave', statChanges: [{ statId: 'h', value: 10, type: 'starting' }] };
@@ -103,9 +103,50 @@ describe('entityTraitNames', () => {
 
   it('lists each entity’s traits, owned or linked, and marks the ones a persona choice can play', () => {
     expect(entityTraitNames({ traits: [cursed], traitGroups: [], entities }, [])).toEqual([
-      { id: 'mira', name: 'Mira', persona: true, traits: ['Scarred', 'Cursed'] },
-      { id: 'ash', name: 'Ash', persona: false, traits: ['Loyal'] },
-      { id: 'wanderer', name: 'Wanderer', persona: true, traits: ['Marked'] },
+      { id: 'mira', name: 'Mira', persona: true, traits: ['Scarred', 'Cursed'], folder: [], tabPosition: 0 },
+      { id: 'ash', name: 'Ash', persona: false, traits: ['Loyal'], folder: [], tabPosition: 1 },
+      { id: 'wanderer', name: 'Wanderer', persona: true, traits: ['Marked'], folder: [], tabPosition: 2 },
+    ]);
+  });
+
+  // Authored order stays, since the sandbox keys a shared name to the last authored entity.
+  it('carries each entity’s Entity folder path and its place in the Entities tab', () => {
+    const folders: EntityGroup[] = [
+      { id: 'crew', name: 'Crew', parentId: null, order: 1 },
+      { id: 'deck', name: 'Deck', parentId: 'crew', order: 0 },
+      { id: 'gone', name: 'Gone', parentId: null, order: 0 },
+    ];
+    const filed: Entity[] = [
+      { id: 'mira', name: 'Mira', groupId: 'deck', order: 0 },
+      { id: 'ash', name: 'Ash', order: 2 },
+      { id: 'rook', name: 'Rook', groupId: 'gone', order: 0 },
+    ];
+    expect(entityTraitNames({ traits: [], traitGroups: [], entities: filed, entityGroups: folders }, [])
+      .map(({ name, folder, tabPosition }) => ({ name, folder, tabPosition }))).toEqual([
+      { name: 'Mira', folder: ['Crew', 'Deck'], tabPosition: 1 },
+      { name: 'Ash', folder: [], tabPosition: 2 },
+      { name: 'Rook', folder: ['Gone'], tabPosition: 0 },
+    ]);
+  });
+});
+
+describe('worldTraitPlaces', () => {
+  const groups: TraitGroup[] = [
+    { id: 'lineage', name: 'Lineage', parentId: null, order: 0 },
+    { id: 'storms', name: '{{ph:ph-sky:world:p1}} Storms', parentId: 'lineage', order: 1 },
+  ];
+  const sky: Placeholder = { id: 'ph-sky', name: 'Sky', values: [{ id: 'v-grey', text: 'Grey' }] };
+
+  it('lists the world’s traits in Traits-tab order, each with its group path under code names', () => {
+    const traits: Trait[] = [
+      { id: 'plain', name: 'Plain', statChanges: [], order: 1 },
+      { id: 'touched', name: 'Touched', statChanges: [], groupId: 'storms', order: 0 },
+      { id: 'heir', name: 'Heir', statChanges: [], groupId: 'lineage', order: 0 },
+    ];
+    expect(worldTraitPlaces({ traits, traitGroups: groups }, [sky])).toEqual([
+      { id: 'heir', name: 'Heir', path: ['Lineage'] },
+      { id: 'touched', name: 'Touched', path: ['Lineage', 'Sky Storms'] },
+      { id: 'plain', name: 'Plain', path: [] },
     ]);
   });
 });
