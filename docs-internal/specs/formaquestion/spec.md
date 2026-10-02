@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: formaquestion — spec
-Status note: 40 tickets in issues/. Ticket 37 failed the 80% bar (51.3%); 38 demotes hub sections, 39 compares recall approaches on a blind set for the user's pick (Q67), and 40 explains six regressions. 32 and 33 are follow-ups from the effort review; 32 and 34–36 fix the search misses from ticket 26's baseline, and 37 measures the result against the bar (Q59). 33 runs after the search tickets. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
+Status note: 42 tickets in issues/. Ticket 37 failed the 80% bar (51.3%); 38 demotes hub sections, 40 explained six regressions, 41 and 42 fix them (Q69), and 39 then compares recall approaches on a blind set for the user's pick (Q67). 32 and 33 are follow-ups from the effort review; 32 and 34–36 fix the search misses from ticket 26's baseline, and 37 measures the result against the bar (Q59). 33 runs after the search tickets. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
 
 ## Problem Statement
 
@@ -104,6 +104,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q66 | Ticket 34 is accepted although follow-ups fell 40% → 16% on the cloud model; the keyed section still reached the model and a nearby guide section drew it away. Ticket 37 measures 32 and 34–36 together, and its worst-question list drives any fix |
 | Q67 | Ticket 37 failed the bar: 51.3%. The right section reaches the model for 60% of answers, and the bar needs about 93%. Before any product change, one ticket measures section recall on a fresh blind question set: keyword (control), semantic, hybrid, AI-picked sections and a bigger word map. The user picks from the numbers (ticket 39) |
 | Q68 | Hub sections rank below specific ones (ticket 38). The six questions that fell while their right section still arrived get a cause each (ticket 40). Answers that say the guide does not cover a question, with no flag, get no ticket now |
+| Q69 | Ticket 40: all six regressions came from the sections sent, not model drift. Ticket 34 replaced changelog sections the model ignored with guide sections that look like answers. Fixes: ticket 38's hub rule, a score floor for extra sections (ticket 41), and screen words ignored on "here" questions (ticket 42). Ticket 39 measures after them |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
