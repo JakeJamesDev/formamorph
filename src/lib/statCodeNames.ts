@@ -42,3 +42,6 @@ export function statCodeNamed<T extends { name: string }>(
     return name === stat.name ? stat : { ...stat, name };
   });
 }
+
+/** Whether `entities` keys an entity by this code name: only a named one gets a key. */
+export const hasEntityKey = (name: string): boolean => name !== '';

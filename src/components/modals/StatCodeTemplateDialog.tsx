@@ -95,6 +95,16 @@ const PICK_PROMPT: Record<NameSlotType, string> = {
   stat: 'Pick a stat…', placeholder: 'Pick a placeholder…', trait: 'Pick a trait…', entity: 'Pick an entity…',
 };
 
+/** Each name once, in first-seen order. */
+const unique = (names: readonly string[] | null): string[] => [...new Set(names)];
+
+/** The answers with `slot` set to `value`. The trait slots tied to it clear, since they held the old entity's traits. */
+const withAnswer = (answers: Record<string, string>, slots: readonly TemplateSlot[], slot: TemplateSlot, value: string) => ({
+  ...answers,
+  ...Object.fromEntries(slots.filter((other) => other.owner === slot.name).map((other) => [other.name, ''])),
+  [slot.name]: value,
+});
+
 /** What a slot's picker offers, given the answers so far. A tied trait slot lists its owner's traits. */
 function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values: Record<string, string>, names: SlotNames): readonly string[] {
   switch (slot.type) {
@@ -102,13 +112,13 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
     case 'placeholder':
       return names[slot.type];
     case 'entity':
-      return [...new Set(keyedEntityNames(names.entities))];
+      return unique(keyedEntityNames(names.entities));
     case 'trait': {
       const owner = slots.find((other) => other.name === slot.owner && other.type === 'entity');
       if (!owner) {
-        return slot.owner === PERSONA_TRAIT_OWNER ? [...new Set(personaTraitsOf(names.entities))] : names.trait;
+        return slot.owner === PERSONA_TRAIT_OWNER ? unique(personaTraitsOf(names.entities)) : names.trait;
       }
-      return [...new Set(traitsOfEntity(names.entities, resolveSlotValue(owner, values)))];
+      return unique(traitsOfEntity(names.entities, resolveSlotValue(owner, values)));
     }
     case 'daypart':
       return [...DAYPART_OPTIONS];
@@ -197,12 +207,7 @@ function TemplateForm({ code, names, values, onChange }: {
               // generated code below already shows for it.
               value={resolveSlotValue(slot, values)}
               problem={problems[slot.name]}
-              // A new entity clears the trait slots tied to it, whose picks were that entity's traits.
-              onChange={(value) => onChange(current => ({
-                ...current,
-                ...Object.fromEntries(parsed.slots.filter((other) => other.owner === slot.name).map((other) => [other.name, ''])),
-                [slot.name]: value,
-              }))}
+              onChange={(value) => onChange(current => withAnswer(current, parsed.slots, slot, value))}
             />
           ))}
         </div>
