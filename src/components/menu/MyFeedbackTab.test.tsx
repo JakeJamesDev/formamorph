@@ -147,25 +147,6 @@ describe('what the tab does not say', () => {
   });
 });
 
-describe('the sort control', () => {
-  it('is offered on a board of everyone’s suggestions', async () => {
-    stubList();
-
-    render(<MyFeedbackTab active type="suggestion" />);
-
-    expect(await screen.findByLabelText('Sort by')).toBeTruthy();
-  });
-
-  it('is absent on bugs, which have nothing to rank by', async () => {
-    stubList();
-
-    render(<MyFeedbackTab active type="bug" />);
-    await screen.findByText('Save button does nothing');
-
-    expect(screen.queryByLabelText('Sort by')).toBeNull();
-  });
-});
-
 describe('opening a thread from the profile', () => {
   const openFirst = async (type: 'bug' | 'suggestion' = 'bug') => {
     stubList({ type });
@@ -197,5 +178,37 @@ describe('opening a thread from the profile', () => {
 
   it('treats an ordinary account as one', async () => {
     expect(await openFirst()).toMatchObject({ isAdmin: false });
+  });
+});
+
+describe('the status filter', () => {
+  it('opens a bug tab on what is unresolved, before any filter is picked', async () => {
+    stubList();
+    render(<MyFeedbackTab active type="bug" />);
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'need_info', 'confirmed'] }));
+  });
+
+  it('opens a suggestion tab on what is still open, before any filter is picked', async () => {
+    stubList();
+    render(<MyFeedbackTab active type="suggestion" />);
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'considering', 'planned'] }));
+  });
+
+  it('offers the staff options and sends the pick with the request', async () => {
+    // Radix's Select opens by keyboard in jsdom; the shared test setup polyfills the rest.
+    stubList();
+    render(<MyFeedbackTab active type="bug" />);
+    await waitFor(() => expect(FeedbackService.list).toHaveBeenCalled());
+
+    fireEvent.keyDown(screen.getByLabelText('Filter by status'), { key: 'Enter' });
+    const labels = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    expect(labels).toEqual(['All statuses', 'Unresolved', 'Open', 'Need Info', 'Confirmed', 'Resolved', "Won't Fix"]);
+
+    const all = screen.getByRole('option', { name: 'All statuses' });
+    fireEvent.pointerDown(all, { pointerType: 'mouse' });
+    fireEvent.pointerUp(all, { pointerType: 'mouse' });
+    fireEvent.click(all);
+    await waitFor(() => expect(vi.mocked(FeedbackService.list).mock.calls.at(-1)?.[0]).toMatchObject({ status: undefined }));
+    expect(vi.mocked(FeedbackService.list).mock.calls.length).toBeGreaterThan(1);
   });
 });

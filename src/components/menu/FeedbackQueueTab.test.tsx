@@ -107,20 +107,10 @@ describe('what each queue opens on', () => {
     await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'need_info', 'confirmed'] }));
   });
 
-  it('shows the suggestion queue everything, ranked', async () => {
-    // What matters there is what is most wanted, whatever state it is in.
+  it('shows the suggestion queue what is still open, ranked', async () => {
+    // Closed suggestions would fill the first pages; most-wanted still orders what is left.
     render(<FeedbackQueueTab active type="suggestion" />);
 
-    await waitFor(() => expect(firstQuery()).toMatchObject({ status: undefined, sort: 'votes' }));
-  });
-
-  it('offers a sort control only where there is something to rank', async () => {
-    render(<FeedbackQueueTab active type="suggestion" />);
-    expect(await screen.findByLabelText('Sort by')).toBeTruthy();
-
-    cleanup();
-    render(<FeedbackQueueTab active type="bug" />);
-    await screen.findByText('Save button does nothing');
-    expect(screen.queryByLabelText('Sort by')).toBeNull();
+    await waitFor(() => expect(firstQuery()).toMatchObject({ status: ['open', 'considering', 'planned'], sort: 'votes' }));
   });
 });

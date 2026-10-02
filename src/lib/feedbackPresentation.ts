@@ -78,6 +78,15 @@ export const UNRESOLVED_LABELS: Record<FeedbackType, string> = {
   suggestion: 'Still Open',
 };
 
+/** Everything the status filter can hold: one state, every state, or every state still needing work. */
+export type StatusFilter = FeedbackStatus | typeof ANY_STATUS | typeof UNRESOLVED_STATUS;
+
+/** What every feedback list opens on: the threads that still need work. */
+export const DEFAULT_STATUS_FILTER: Record<FeedbackType, StatusFilter> = {
+  bug: UNRESOLVED_STATUS,
+  suggestion: UNRESOLVED_STATUS,
+};
+
 /** The category filter's "no filter" value, for the same reason. */
 export const ANY_CATEGORY = 'any';
 
@@ -89,7 +98,7 @@ export const ANY_CATEGORY = 'any';
  * @returns The status or statuses to filter by, or undefined for every status
  */
 export const statusFilterValue = (
-  value: FeedbackStatus | typeof ANY_STATUS | typeof UNRESOLVED_STATUS,
+  value: StatusFilter,
   type: FeedbackType,
 ): FeedbackStatus | FeedbackStatus[] | undefined => {
   if (value === ANY_STATUS) return undefined;
@@ -125,15 +134,26 @@ export const SCOPE_LABELS: Record<FeedbackType, Record<FeedbackScope, string>> =
  */
 export const scopeFilterValue = (value: FeedbackScope): 'all' | undefined => (value === 'all' ? 'all' : undefined);
 
-/** How a suggestion board may be ordered. */
-export const FEEDBACK_SORTS = ['newest', 'votes'] as const;
+/** Every way a feedback list may be ordered. */
+export const FEEDBACK_SORTS = ['newest', 'oldest', 'active', 'votes'] as const;
 export type FeedbackSort = (typeof FEEDBACK_SORTS)[number];
 
 /** The sort dropdown's labels. */
 export const SORT_LABELS: Record<FeedbackSort, string> = {
   newest: 'Newest',
-  votes: 'Most voted',
+  oldest: 'Oldest',
+  active: 'Recently Active',
+  votes: 'Most Voted',
 };
+
+/**
+ * The sorts a branch offers, in dropdown order. Only suggestions carry votes, so only they rank by them.
+ *
+ * @param type - Which branch the list shows
+ * @returns The offered sorts
+ */
+export const sortsFor = (type: FeedbackType): FeedbackSort[] =>
+  (type === 'suggestion' ? [...FEEDBACK_SORTS] : FEEDBACK_SORTS.filter((value) => value !== 'votes'));
 
 // A thread timestamp is a server timestamp like any other — see `lib/serverDate`.
 export { formatServerDateTime as formatFeedbackDate } from './serverDate';

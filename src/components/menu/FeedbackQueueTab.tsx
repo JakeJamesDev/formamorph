@@ -3,12 +3,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FeedbackList } from "@/components/menu/FeedbackList";
 import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
 import { useFeedbackListPlace } from "@/components/menu/useFeedbackListPlace";
+import { FeedbackStatusSelect } from "@/components/menu/FeedbackStatusSelect";
 import {
-  ANY_CATEGORY, ANY_STATUS, CATEGORY_OPTIONS, FEEDBACK_SORTS, SORT_LABELS, STATUS_OPTIONS,
-  UNRESOLVED_LABELS, UNRESOLVED_STATUS, categoryFilterValue, statusFilterValue,
+  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, SORT_LABELS,
+  categoryFilterValue, sortsFor, statusFilterValue,
 } from "@/lib/feedbackPresentation";
-import type { FeedbackSort } from "@/lib/feedbackPresentation";
-import type { FeedbackCategory, FeedbackStatus, FeedbackType } from "@/types";
+import type { FeedbackSort, StatusFilter } from "@/lib/feedbackPresentation";
+import type { FeedbackCategory, FeedbackType } from "@/types";
 
 interface FeedbackQueueTabProps {
   /** Whether the tab is visible; the list only fetches while it is. */
@@ -17,22 +18,10 @@ interface FeedbackQueueTabProps {
   type: FeedbackType;
 }
 
-/** Everything the status dropdown can hold: one state, every state, or every state still needing work. */
-type StatusFilter = FeedbackStatus | typeof ANY_STATUS | typeof UNRESOLVED_STATUS;
-
-/** What each queue opens on, and what it says when nothing matches. */
-const COPY: Record<FeedbackType, { empty: string; initialStatus: StatusFilter }> = {
-  bug: {
-    empty: 'No reports match this filter.',
-    // Opens on the work: a queue of everything ever resolved is not a queue. All of it, though — a
-    // report waiting on the reporter or already reproduced is still a report nobody has fixed.
-    initialStatus: UNRESOLVED_STATUS,
-  },
-  suggestion: {
-    empty: 'No suggestions match this filter.',
-    // Opens on everything: what matters here is what is most wanted, whatever state it is in.
-    initialStatus: ANY_STATUS,
-  },
+/** What each queue says when nothing matches. */
+const EMPTY: Record<FeedbackType, string> = {
+  bug: 'No reports match this filter.',
+  suggestion: 'No suggestions match this filter.',
 };
 
 /**
@@ -40,7 +29,7 @@ const COPY: Record<FeedbackType, { empty: string; initialStatus: StatusFilter }>
  * thread, answer it and triage it.
  */
 export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
-  const [status, setStatus] = useState<StatusFilter>(COPY[type].initialStatus);
+  const [status, setStatus] = useState<StatusFilter>(DEFAULT_STATUS_FILTER[type]);
   const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
   const [sort, setSort] = useState<FeedbackSort>(type === 'suggestion' ? 'votes' : 'newest');
   const { page, setPage, openId, open, back, nonce, refresh, listRef, refilter } = useFeedbackListPlace();
@@ -63,17 +52,14 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
         {/* The controls carry the whole row: a sentence saying what the tab is would leave no room for
             them, and the tab's own label already says it. */}
         <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
-            {/* Suggestions are ranked; a bug queue has nothing to rank by. */}
-            {type === 'suggestion' && (
-              <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
-                <SelectTrigger className="w-36" aria-label="Sort by"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {FEEDBACK_SORTS.map((value) => (
-                    <SelectItem key={value} value={value}>{SORT_LABELS[value]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
+              <SelectTrigger className="w-40" aria-label="Sort by"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {sortsFor(type).map((value) => (
+                  <SelectItem key={value} value={value}>{SORT_LABELS[value]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select value={category} onValueChange={refilter((value) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY))}>
               <SelectTrigger className="w-44" aria-label="Filter by category"><SelectValue /></SelectTrigger>
@@ -85,17 +71,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
               </SelectContent>
             </Select>
 
-            <Select value={status} onValueChange={refilter((value) => setStatus(value as StatusFilter))}>
-              <SelectTrigger className="w-40" aria-label="Filter by status"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ANY_STATUS}>All statuses</SelectItem>
-                {/* Above the individual states: it is the one most of this queue's work is done from. */}
-                <SelectItem value={UNRESOLVED_STATUS}>{UNRESOLVED_LABELS[type]}</SelectItem>
-                {STATUS_OPTIONS[type].map((option) => (
-                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FeedbackStatusSelect type={type} value={status} onValueChange={refilter((value) => setStatus(value as StatusFilter))} />
         </div>
 
         <FeedbackList
@@ -109,7 +85,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
           onPageChange={setPage}
           refreshNonce={nonce}
           onOpen={open}
-          emptyLabel={COPY[type].empty}
+          emptyLabel={EMPTY[type]}
         />
       </div>
     </>
