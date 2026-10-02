@@ -15,8 +15,8 @@ interface MyFeedbackSectionProps {
 /** The profile dialog's Feedback tab. Both branches under one tab, the same shape the Admin Panel uses —
  *  they are the same surface with different vocabularies, and side by side they cost the strip two slots. */
 export function MyFeedbackSection({ active, initialTab = 'bugs', onChanged }: MyFeedbackSectionProps) {
-  // Radix unmounts an inactive panel, so each branch remounts on every visit — which is what keeps its
-  // filters from carrying over from the last look.
+  // Both panels stay mounted, so a switch keeps each branch's search, filters, and page. Closing the
+  // dialog unmounts them, so the next open starts on defaults.
   const [tab, setTab] = useState<MyFeedbackTabKey>(initialTab);
 
   return (
@@ -27,11 +27,11 @@ export function MyFeedbackSection({ active, initialTab = 'bugs', onChanged }: My
           <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="bugs" className="min-w-0">
+        <TabsContent value="bugs" forceMount className="min-w-0 data-[state=inactive]:hidden">
           <MyFeedbackTab active={active && tab === 'bugs'} type="bug" onChanged={onChanged} />
         </TabsContent>
 
-        <TabsContent value="suggestions" className="min-w-0">
+        <TabsContent value="suggestions" forceMount className="min-w-0 data-[state=inactive]:hidden">
           <MyFeedbackTab active={active && tab === 'suggestions'} type="suggestion" onChanged={onChanged} />
         </TabsContent>
       </Tabs>

@@ -7,8 +7,9 @@ import { FeedbackThreadView } from "@/components/menu/FeedbackThreadView";
 import { FeedbackDialog } from "@/components/menu/FeedbackDialog";
 import { useFeedbackListPlace } from "@/components/menu/useFeedbackListPlace";
 import { FeedbackStatusSelect } from "@/components/menu/FeedbackStatusSelect";
+import { FeedbackSearchInput } from "@/components/menu/FeedbackSearchInput";
 import {
-  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, FEEDBACK_SCOPES, SCOPE_LABELS, SORT_LABELS,
+  ANY_CATEGORY, CATEGORY_OPTIONS, DEFAULT_STATUS_FILTER, FEEDBACK_SCOPES, SCOPE_LABELS, SEARCH_LABELS, SORT_LABELS,
   categoryFilterValue, scopeFilterValue, sortsFor, statusFilterValue,
 } from "@/lib/feedbackPresentation";
 import type { FeedbackScope, FeedbackSort, StatusFilter } from "@/lib/feedbackPresentation";
@@ -29,12 +30,14 @@ interface MyFeedbackTabProps {
 const COPY: Record<FeedbackType, {
   emptyMine: string;
   emptyAll: string;
+  emptySearch: string;
   button: string;
   initialScope: FeedbackScope;
 }> = {
   bug: {
     emptyMine: 'You haven’t reported anything yet.',
     emptyAll: 'Nothing has been reported yet.',
+    emptySearch: 'No reports match this search.',
     button: 'Report a Bug',
     // Opens on their own: this is where their replies are, and the badge counts their threads.
     initialScope: 'mine',
@@ -42,6 +45,7 @@ const COPY: Record<FeedbackType, {
   suggestion: {
     emptyMine: 'You haven’t suggested anything yet.',
     emptyAll: 'Nothing has been suggested yet.',
+    emptySearch: 'No suggestions match this search.',
     button: 'Suggest Something',
     // Opens on everyone's: a board is for browsing and voting, and mine-first buries the point.
     initialScope: 'all',
@@ -59,6 +63,7 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
   const [scope, setScope] = useState<FeedbackScope>(COPY[type].initialScope);
   const [status, setStatus] = useState<StatusFilter>(DEFAULT_STATUS_FILTER[type]);
   const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
+  const [search, setSearch] = useState('');
   const [sort, setSort] = useState<FeedbackSort>('newest');
 
   // Staff who find a thread here are still the team, so they answer from here rather than being told
@@ -88,6 +93,8 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
         {/* The controls carry the whole row: a sentence saying what the tab is would leave no room for
             them, and the tab's own label already says it. */}
         <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+            <FeedbackSearchInput value={search} onSearch={refilter(setSearch)} label={SEARCH_LABELS[type]} />
+
             <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
               <SelectTrigger className="w-40" aria-label="Sort by"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -131,11 +138,12 @@ export function MyFeedbackTab({ active, type, onChanged }: MyFeedbackTabProps) {
           status={statusFilterValue(status, type)}
           category={categoryFilterValue(category)}
           sort={sort}
+          search={search}
           page={page}
           onPageChange={setPage}
           refreshNonce={nonce}
           onOpen={open}
-          emptyLabel={scope === 'mine' ? copy.emptyMine : copy.emptyAll}
+          emptyLabel={search ? copy.emptySearch : scope === 'mine' ? copy.emptyMine : copy.emptyAll}
         />
 
         <FeedbackDialog open={filing} onOpenChange={setFiling} initialType={type} onFiled={changed} />

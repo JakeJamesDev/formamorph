@@ -52,4 +52,22 @@ describe('FeedbackService.list', () => {
 
     expect(queryOf(fetchMock).has('status')).toBe(false);
   });
+
+  it('sends the search text, trimmed, in the same request', async () => {
+    const fetchMock = stubFetch();
+
+    await FeedbackService.list({ type: 'suggestion', status: ['open'], search: '  100% my_save  ' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(queryOf(fetchMock).get('search')).toBe('100% my_save');
+    expect(queryOf(fetchMock).get('status')).toBe('open');
+  });
+
+  it.each([[undefined], [''], ['   ']])('sends no search for %j', async (search) => {
+    const fetchMock = stubFetch();
+
+    await FeedbackService.list({ type: 'bug', search });
+
+    expect(queryOf(fetchMock).has('search')).toBe(false);
+  });
 });
