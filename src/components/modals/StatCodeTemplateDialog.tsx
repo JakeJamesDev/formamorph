@@ -42,6 +42,7 @@ import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import { keyedEntityNames, personaTraitsOf, traitsOfEntity, type CodeEntityNames } from '@/lib/statCodeAnalysis';
 import type { CodeTraitPlace } from '@/lib/statCodeTraits';
 import { BreadcrumbPicker, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
+import { WORLD_BREADCRUMB } from '@/lib/traitGates';
 import {
   buildTemplatePack,
   deleteUserTemplate,
@@ -95,11 +96,11 @@ interface SlotNames {
 type SlotRow = BreadcrumbPickerRow<string>;
 
 /** What a name slot's empty picker asks for, and what its search field says. */
-const PICK_PROMPT: Record<NameSlotType, string> = {
-  stat: 'Pick a stat…', placeholder: 'Pick a placeholder…', trait: 'Pick a trait…', entity: 'Pick an entity…',
-};
-const SEARCH_PROMPT: Record<NameSlotType, string> = {
-  stat: 'Search stats', placeholder: 'Search placeholders', trait: 'Search traits', entity: 'Search entities',
+const PROMPTS: Record<NameSlotType, { pick: string; search: string }> = {
+  stat: { pick: 'Pick a stat…', search: 'Search stats' },
+  placeholder: { pick: 'Pick a placeholder…', search: 'Search placeholders' },
+  trait: { pick: 'Pick a trait…', search: 'Search traits' },
+  entity: { pick: 'Pick an entity…', search: 'Search entities' },
 };
 
 /** Each name once, in first-seen order, as rows with no breadcrumb. */
@@ -137,7 +138,7 @@ function slotOptions(slot: TemplateSlot, slots: readonly TemplateSlot[], values:
       if (owner) return plainRows(traitsOfEntity(names.entities, resolveSlotValue(owner, values)));
       if (slot.owner === PERSONA_TRAIT_OWNER) return plainRows(personaTraitsOf(names.entities));
       return names.trait.map((trait) => ({
-        key: trait.id, value: trait.name, name: trait.name, breadcrumb: trait.path.length > 0 ? trait.path : ['World'],
+        key: trait.id, value: trait.name, name: trait.name, breadcrumb: trait.path.length > 0 ? trait.path : WORLD_BREADCRUMB,
       }));
     }
     case 'daypart':
@@ -184,8 +185,8 @@ function SlotField({ slot, value, problem, options, onChange }: {
           sections={[{ rows: options }]}
           value={value}
           onPick={onChange}
-          placeholder={PICK_PROMPT[slot.type]}
-          searchPlaceholder={SEARCH_PROMPT[slot.type]}
+          placeholder={PROMPTS[slot.type].pick}
+          searchPlaceholder={PROMPTS[slot.type].search}
           id={fieldId}
           ariaLabelledBy={labelId}
           ariaInvalid={!!problem}
