@@ -12,8 +12,9 @@ A player sends help questions to a different endpoint than the game uses (Q3, Q2
 **The tab.**
 
 - **Answer Endpoint:** Follow Active (the default) or one of the text-endpoint presets, with the reachability badge.
-- **Pick Endpoint:** Same as Answer (the default), Follow Active, or a preset, with its own badge.
+- **Pick Endpoint:** Same as Answer (the default), Follow Active, or a preset, with its own badge. This ticket adds the "Same as Answer" row to the shared endpoint select as an optional extra row (Q49).
 - **The text-endpoint editor** from ticket 01, on the same presets as the regular Settings. An edit here shows there, and the reverse.
+- **The editor never changes the game's active endpoint (Q48).** Its preset select chooses the preset to edit. That choice is view state of the tab, and it starts on the preset that answers resolve to. Add New Preset adds to the shared list and opens the new preset in the editor. Neither changes a route. The settings need an operation that edits a preset's fields by id; rename, delete and reset take an id already.
 - Reset follows the regular Settings: the editor's own reset of a preset. There is no reset of the whole tab (Q24).
 
 **The help session.**
@@ -36,6 +37,7 @@ Recommended model rationale: two routed requests, a reachability state that must
 - [ ] The Ask tab's "no AI" state is true for the answer endpoint, not the active one.
 - [ ] A help answer routed to the bundled engine starts the engine, as a routed game prompt does.
 - [ ] An edit to a preset in this tab shows in Settings → AI Endpoints.
+- [ ] A preset picked in the editor, and a preset added there, leave the game's active endpoint and both help routes unchanged.
 - [ ] With the defaults, the request bodies and targets equal those of ticket 05.
 - [ ] A changelog line is in In Progress.
 - [ ] The four gates are green.
