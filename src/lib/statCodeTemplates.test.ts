@@ -19,7 +19,7 @@ import {
   type StatCodeTemplate,
   type TemplateSlot,
 } from './statCodeTemplates';
-import { executeStatCode, type SandboxTrait } from './statCodeExecutor';
+import { executeStatCode, type SandboxEntity, type SandboxTrait } from './statCodeExecutor';
 import { phMap, phWrite } from '@/test/sandboxPlaceholders';
 import type { Stat } from '@/types';
 
@@ -219,6 +219,11 @@ describe('built-in templates', () => {
     { name: 'Cursed', enabled: true, acquired: true },
     { name: 'Blessed', enabled: false, acquired: false },
   ];
+  const scarred: SandboxTrait = { name: 'Scarred', enabled: true, acquired: true };
+  const wounded: SandboxTrait = { name: 'Wounded', enabled: true, acquired: true };
+  const mira: SandboxEntity = { name: 'Mira', traits: [wounded] };
+  const rook: SandboxEntity = { name: 'Rook', traits: [{ ...scarred }] };
+  const castOptions = { placeholders, traits, persona: rook, entities: [mira, rook] };
   /** The world's names, the way the picker fills a slot of each kind. */
   const pickFor = (slot: TemplateSlot): string | undefined => {
     switch (slot.type) {
@@ -243,7 +248,7 @@ describe('built-in templates', () => {
         ? { deltaHours: 0, elapsedHours: 0 }
         : { deltaHours: 2, elapsedHours: 12 };
       const result = await executeStatCode(fillTemplate(template.code, values), world, self, {
-        clock, placeholders, traits,
+        ...castOptions, clock,
       });
       expect(result.error, template.name).toBeNull();
       // A template writes a value, a bound, a placeholder, or a trait; one that does nothing is broken.
@@ -321,6 +326,31 @@ describe('built-in templates', () => {
         .toBe('placeholders["Hair Color"].value');
       expect(fillTemplate('traits[{{t:trait}}].enabled', { t: 'Night Owl' }))
         .toBe('traits["Night Owl"].enabled');
+    });
+  });
+
+  describe('the trait reader templates', () => {
+    const run = (id: string, values: Record<string, string>, options: Parameters<typeof executeStatCode>[3]) => {
+      const template = BUILT_IN_TEMPLATES.find(t => t.id === id)!;
+      return executeStatCode(fillTemplate(template.code, values), world, self, options);
+    };
+
+    it('adds the bonus while the played persona has the trait on, and not otherwise', async () => {
+      const values = { base: 'Health', trait: 'Scarred', bonus: '10' };
+      // Health 80 plus the bonus.
+      expect((await run('builtin-persona-trait-bonus', values, castOptions)).value).toBe(90);
+      const off = { ...castOptions, persona: { ...rook, traits: [{ ...scarred, enabled: false }] } };
+      expect((await run('builtin-persona-trait-bonus', values, off)).value).toBe(80);
+      // No persona in play reads every trait as off, and the run does not fail.
+      const none = await run('builtin-persona-trait-bonus', values, { ...castOptions, persona: undefined });
+      expect(none).toEqual({ value: 80, error: null });
+    });
+
+    it('subtracts the penalty while the named entity has the trait on, and not when it is out of play', async () => {
+      const values = { base: 'Health', entity: 'Mira', trait: 'Wounded', penalty: '15' };
+      expect((await run('builtin-entity-trait-penalty', values, castOptions)).value).toBe(65);
+      const gone = await run('builtin-entity-trait-penalty', values, { ...castOptions, entities: [rook] });
+      expect(gone).toEqual({ value: 80, error: null });
     });
   });
 

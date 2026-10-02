@@ -524,7 +524,7 @@ This enables a per-hour drain (\`current + 2 * clock.deltaHours\`) or a stat tha
 
 **A failed run changes nothing.** Code that throws or times out leaves the stat, the placeholders and the traits unchanged. A write to an unknown placeholder or trait name is ignored. Test Code and the Test Bench both report it.
 
-**Templates.** The **Templates** menu beside each Test Code button inserts common code shapes. Each box offers the templates that match its timing. Before the AI: a placeholder pin, a trait switch, an opening value. After the AI: a drain, a timer, a blend of two stats, a bound from another stat. Each template asks only for its inputs and inserts plain code you can edit.`,
+**Templates.** The **Templates** menu beside each Test Code button inserts common code shapes. Each box offers the templates that match its timing. Before the AI: a placeholder pin, a trait switch, an opening value. After the AI: a drain, a timer, a blend of two stats, a bound from another stat, a bonus or penalty from a persona's or an entity's trait. Each template asks only for its inputs and inserts plain code you can edit.`,
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',

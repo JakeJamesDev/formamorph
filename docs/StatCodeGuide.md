@@ -56,13 +56,15 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 - **Shape what the AI asked for** before it lands (see [Reading This Turn](#reading-this-turn))
 - **Pin a placeholder** to any text (see [Placeholders](#placeholders))
 - **Switch a trait** on or off (see [Traits](#traits))
+- **Read or switch an entity's traits**, and read its placeholders (see [Persona](#persona) and [Entities](#entities))
+- **Read a dictionary's placeholders** (see [Dictionaries](#dictionaries))
 
 ## How It Works
 
 1. Each stat has two optional JavaScript boxes: **Before the AI** and **After the AI**
 2. On every turn, each box runs in a safe environment at its own point in the turn
-3. Each box reads every stat, the story clock, the world's placeholders, and the world's traits
-4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, and `traits` apply after the run
+3. Each box reads every stat, the story clock, the world's placeholders and traits, and the entities and dictionaries in play
+4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, `traits`, `persona`, `entities` and `dictionaries` apply after the run
 5. A script that throws or times out changes nothing
 
 ### The Two Boxes
@@ -131,9 +133,12 @@ Each stat in the `stats` map, `self` included, exposes the following properties:
 | `min` | Minimum value |
 | `max` | Maximum value |
 | `value` | Current value, with this turn's AI change and regen applied |
+| `enabled` | False while a trait's stat toggle switches the stat off. Read-only |
 | `regen` | Regen per story hour, with traits applied |
 | `previous` | The full stat at the start of the turn: `id`, `name`, `type`, `description`, `min`, `max`, `value`, `regen`. Read-only |
 | `delta` | Every change this turn made, by source: `ai`, `regen`, `total`, `actual`. Read-only |
+
+A stat that a trait switched off still reads as a real entry. Its name, value and bounds read as usual, with `enabled` false. A write to it is dropped and reported. A live stat wins a code name over a switched-off one. Between stats in the same state, the later one wins.
 
 > ℹ️ Only these fields are passed into the sandbox. A stat's own `code` and `descriptors` are **not** available from inside a script.
 
@@ -156,7 +161,7 @@ const level = stats.Level.value;
 self.max = 50 + level * 10;
 ```
 
-A bound your code sets overrides the authored bound, trait changes, and the AI's max changes for that field. It persists on runs that do not write it. Code-set bounds clear only when both boxes are empty. A write equal to the bound's current number counts as no write. Only `self` accepts writes. A write to another stat's entry does nothing, and the editor underlines it.
+A bound your code sets overrides the authored bound, trait changes, and the AI's max changes for that field. It persists on runs that do not write it. Code-set bounds clear only when both boxes are empty. A write equal to the bound's current number counts as no write. Only `self` accepts writes. A write to another stat's fields is dropped and reported by its path, and the editor underlines it.
 
 ### Reading This Turn
 
@@ -171,7 +176,7 @@ Every stat carries the turn's state before the code ran. `previous` holds the fu
 | `delta.total` | Every source added up: what the turn asked of the stat, before flags and the range |
 | `delta.actual` | Current values minus `previous`. A bound a trait changed since the turn started shows here |
 
-`previous` and `delta` are frozen, so a write to them does nothing. Together they let a script clamp or scale an ask:
+`previous` and `delta` are read-only. A write to them is dropped and reported. Together they let a script clamp or scale an ask:
 
 ```javascript
 // The AI may lower Sanity by at most 10 per turn, and never raise it.
@@ -196,10 +201,12 @@ if (lost > 0 && self.value === self.max) {
 
 ### Placeholders
 
-`placeholders` holds the world's own placeholders, by name. A name with a space needs brackets: `placeholders["Hair Color"]`. An entity's or a dictionary's placeholders are on its entry: `entities.Molly.placeholders`, `persona.placeholders` and `dictionaries.Weather.placeholders`. Each entry has:
+`placeholders` holds the world's own placeholders, by name. A name with a space needs brackets: `placeholders["Hair Color"]`. A placeholder that an entity or a dictionary owns is not in it. Reach that one through its owner (see [Owned Placeholders](#owned-placeholders)). Each entry has:
 
 | Member | What it is |
 | --- | --- |
+| `id` | Unique identifier. Read-only |
+| `name` | The placeholder's name. Read-only |
 | `values` | Every authored value as text, in authored order. Values with weight 0 are included |
 | `value` | The current value. One text on a Wildcard or a Variable, a list on an Object |
 | `text` | `value` as one string: exactly what the prompt sees. A list joins with `", "`. Read-only |
@@ -225,7 +232,19 @@ entities["Old Molly"].placeholders["Eye Color"]  // brackets, at any depth
 
 Each placeholder has one path. A part's bare name doesn't reach it, and neither does an owner's name under `placeholders`.
 
-Every placeholder has all six members in the table above, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
+Every placeholder has every member in the table above, so a part named `value` or `roll` is shadowed by the member. The editor warns on the part's name field.
+
+#### Owned Placeholders
+
+An entity or a dictionary can own placeholders. Code reaches them only through the owner's entry:
+
+```javascript
+entities.Molly.placeholders.Hair       // the Hair that Molly owns
+persona.placeholders.Hair              // the played persona's Hair
+dictionaries.Weather.placeholders.Sky  // the Sky that the Weather dictionary owns
+```
+
+An owned placeholder has the same members as a world placeholder, and `pin` lands on that placeholder. A name the owner doesn't have reads as a blank entry, and a pin through it is ignored. **Test Code** and the Test Bench report it.
 
 #### The three words
 
@@ -266,8 +285,14 @@ A write to an unknown placeholder name is ignored. **Test Code** and the Test Be
 | --- | --- |
 | `enabled` | True when the player has the trait and it is on. Write it to switch the trait |
 | `acquired` | True when the player has the trait, on or off. Read-only |
+| `id` | Unique identifier. Read-only |
+| `name` | Code name. Read-only |
+| `mode` | `'optional'`, `'alwaysOn'` or `'hidden'`. Read-only |
+| `available` | True when the trait's requirements hold for its bearer now. Read-only |
+| `group` | The code name of the trait's group, or `''` when it has none. Read-only |
+| `playerToggle` | True when the player can switch the trait in play. Read-only |
 
-Both read the player's state only. An entity that holds the same trait does not change them.
+`enabled` and `acquired` read the player's state only. An entity that holds the same trait does not change them. Use `mode`, `available` and `group` to see why a switch had no effect.
 
 Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Always On or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can switch a trait the player cannot toggle.
 
@@ -276,7 +301,7 @@ Writing `enabled` switches the trait after the run, with the same effect as the 
 traits.Cursed.enabled = self.value <= 0;
 ```
 
-A write to an unknown trait name is ignored. **Test Code** and the Test Bench both report it. A write to `acquired` is ignored, and **Test Code** says so.
+A write to an unknown trait name is ignored. **Test Code** and the Test Bench both report it. A write to `acquired`, or to any other read-only field, is ignored, and **Test Code** says so.
 
 > ℹ️ **A trait name with a placeholder chip in it reads in code as the placeholder's own name.** A trait named `{{Beast}} Fury` is `traits["Beast Fury"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name, and the turn log still writes it.
 
@@ -286,40 +311,82 @@ A write to an unknown trait name is ignored. **Test Code** and the Test Bench bo
 
 | Member | What it is |
 | --- | --- |
-| `name` | The persona's code name. Read-only |
+| `name` | The persona's code name, never the name the player typed under **None**. Read-only |
 | `traits` | The persona's own traits by name, owned or linked |
+| `placeholders` | The placeholders the persona owns. See [Owned Placeholders](#owned-placeholders) |
 
-Each entry in `persona.traits` has the same `enabled` and `acquired` as a `traits` entry, for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.
+`persona` also has the `id`, `type`, `pronouns` and `inScene` of an [entity entry](#entities). `inScene` is always true for the played persona. Each entry in `persona.traits` has the [same members as a `traits` entry](#traits), for the persona's state. Writing `enabled` switches the persona's own trait by the same rules as `traits`.
 
 ```javascript
 // Lose a point each turn while the persona is Scarred.
 if (persona.traits.Scarred.enabled) self.value -= 1;
+
+// Read the persona's own placeholder.
+if (persona.placeholders.Hair.text.includes('gray')) self.value -= 1;
 ```
 
 `persona.traits` and `traits` are separate. A world trait and a persona trait can share a name, and each map reads its own.
 
-When the player plays no entity, `name` is empty and every trait reads as off. **Test Code** runs with no persona, so it reports each persona trait write as ignored.
+When the player plays no entity, `persona` is an empty entry. Its `name` is `''`, every trait reads as off, and a switch through it is ignored. Code that reads `persona.traits.X.enabled` never throws. **Test Code** runs with no persona, so it reports each persona trait write as ignored.
 
-> ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits the world doesn't have, so an unknown name is a warning, not an error.
+> ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits and placeholders the world doesn't have, so an unknown name after `persona.traits` or `persona.placeholders` is a warning, not an error.
 
 ### Entities
 
-`entities` holds every entity in play by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. Each entry has the same `name` and `traits` as `persona`.
+`entities` holds every entity in play by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `id` | Unique identifier. Read-only |
+| `name` | The entity's code name. Read-only |
+| `type` | The entity's type, or `''` when it has none. Read-only |
+| `pronouns` | The entity's pronouns, or `''` when it has none. Read-only |
+| `inScene` | True when the entity is in this turn's scene. Read-only |
+| `traits` | The entity's own traits by name, owned or linked |
+| `placeholders` | The placeholders the entity owns. See [Owned Placeholders](#owned-placeholders) |
+
+Each entry in an entity's `traits` has the [same members as a `traits` entry](#traits), for that entity's state. Writing `enabled` switches the entity's own trait. The other traits in its groups follow, as after a manual switch. A write to any other field is ignored.
 
 ```javascript
 // Mira's wound costs the party a point each turn.
 if (entities.Mira.traits.Wounded.enabled) self.value -= 1;
 
-// Switch Mira's own trait. Her other traits in the group follow, as after a manual switch.
+// Switch Mira's own trait. Her other traits in the group follow.
 entities.Mira.traits.Calm.enabled = self.value > 50;
+
+// React while Mira is in the scene.
+if (entities.Mira.inScene) self.value += 1;
 ```
 
 - `persona` is the played persona's entry, so `persona === entities[persona.name]` whenever a persona entity plays.
-- An entity the narrator invents in play is not listed. Neither is a persona-only entity the player didn't pick.
-- A name no entity in play has reads as a blank entry: `name` is empty and every trait reads as off. A switch through it is ignored. Check `entities.Mira.name` to test whether Mira is in play.
+- An entity's `traits` lists only that entity's own set. A name outside it reads as a blank entry: `enabled` and `acquired` are false, and a switch through it is ignored.
+- An entity the narrator invents in play is not listed. Neither is a persona-only entity the player didn't pick, the **Custom Persona** entity under a world persona, or an entity with no code name.
 - Of two entities that share a code name, the later one is the entry. The played persona always keeps its own name.
+- An entity's descriptions, aliases, locations and media are not in the entry.
 
-**Test Code** lists every authored entity, with no trait chosen.
+A name no entity in play has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch through it is ignored. Check `entities.Mira.name` to test whether Mira is in play.
+
+**Test Code** lists every authored entity, with no trait chosen. A switch it makes is reported and never applied.
+
+### Dictionaries
+
+`dictionaries` holds every dictionary in play by its code name. Each entry has:
+
+| Member | What it is |
+| --- | --- |
+| `id` | Unique identifier. Read-only |
+| `name` | The dictionary's code name. Read-only |
+| `placeholders` | The placeholders the dictionary owns. See [Owned Placeholders](#owned-placeholders) |
+
+```javascript
+// The sky follows Sanity's band.
+dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
+```
+
+- The list holds the world's dictionaries that the player left on at **Enter World**, then the library dictionaries the player picked there. Of two that share a code name, the later one is the entry.
+- A dictionary the player turned off reads as an unknown dictionary.
+- A name no dictionary in play has reads as a blank entry. Its `name` and `id` are `''`, and every placeholder under it reads as blank. A pin through it is ignored.
+- The editor warns on a dictionary name it doesn't know, because a library dictionary can bring more.
 
 ### Order of Effects
 
@@ -329,7 +396,7 @@ The two runs are ordered against each other, though: everything the before box w
 
 ### The Story Clock
 
-`clock` is a read-only object that describes the story time. A write to any of its fields does nothing.
+`clock` is a read-only object that describes the story time. A write to any of its fields is dropped and reported.
 
 | Field | What it is |
 | --- | --- |
@@ -516,7 +583,7 @@ If your code does not work as expected:
 1. Check for typos in stat, placeholder, and trait names (they are case-sensitive)
 2. Ensure your code returns a number, or writes a field instead
 3. Verify that every stat you reference exists
-4. Use the "Test Code" button to see any error messages and every field, placeholder, and trait the run wrote
+4. Use the "Test Code" button to see any error messages, every field, placeholder, and trait the run wrote, and every write it ignored
 5. Add `console.log()` statements to debug your code (output appears in browser console)
 
 ## Advanced Examples

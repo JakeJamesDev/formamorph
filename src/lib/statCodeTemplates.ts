@@ -210,8 +210,8 @@ export function fillTemplate(code: string, values: Record<string, string>): stri
  * The bundled templates, both boxes' menus in one list. Eight value formulas rather than a longer literal
  * list: a signed rate covers decay and growth, a comparison slot covers both threshold directions, a
  * direction slot covers counting up and down, and "regen toward target" with the target set to the stat's
- * max is the soft-capped regen. Those eight and Bound From Another Stat run after the AI, so the after
- * menu holds the nine of them.
+ * max is the soft-capped regen. Those eight, Bound From Another Stat and the two trait readers run after
+ * the AI, so the after menu holds the eleven of them.
  *
  * The before menu holds the three setup shapes instead: pin a placeholder, switch a trait, and set an
  * opening value. Each is a write the AI should read on the same turn, which is the box's whole point.
@@ -297,6 +297,24 @@ return value + (target - value) * rate * clock.deltaHours;`,
     description: 'Set this stat’s Min, Max, or Regen from another stat times a factor. The value keeps its normal changes.',
     code: `const source = stats[{{source:stat}}].value;
 self.{{bound:choice(max|min|regen)=max}} = Math.round(source * {{factor:number=2}});`,
+  },
+  {
+    id: 'builtin-persona-trait-bonus',
+    timing: 'after',
+    name: 'Bonus From Persona Trait',
+    description: 'Follow another stat, with a bonus while the played persona has a trait on. A persona with no such trait gets no bonus.',
+    code: `const base = stats[{{base:stat}}].value;
+const active = persona.traits['{{trait:text=Scarred}}'].enabled;
+return base + (active ? {{bonus:number=10}} : 0);`,
+  },
+  {
+    id: 'builtin-entity-trait-penalty',
+    timing: 'after',
+    name: 'Penalty From Entity Trait',
+    description: 'Follow another stat, with a penalty while one entity has a trait on. An entity that isn’t in the game adds no penalty.',
+    code: `const base = stats[{{base:stat}}].value;
+const active = entities['{{entity:text=Mira}}'].traits['{{trait:text=Wounded}}'].enabled;
+return base - (active ? {{penalty:number=10}} : 0);`,
   },
   {
     id: 'builtin-placeholder-follows-stat',

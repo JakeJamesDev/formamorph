@@ -612,9 +612,9 @@ describe('the stats map in stat code', () => {
     expect(messages('return stats[self.name].value;', { statNames })).toEqual([]);
   });
 
-  it('warns on a shared name, which reaches the last one authored', () => {
+  it('warns on a shared name, which a live stat wins and otherwise the last one authored', () => {
     expect(messages('return stats.Health.value;', { statNames: ['Health', 'Mood', 'Health'] }))
-      .toEqual(['2 stats are named “Health”. This reads the last one authored.']);
+      .toEqual(['2 stats are named “Health”. A stat that is on wins the name over a switched-off one. Otherwise this reads the last one authored.']);
   });
 
   it('warns about a write to another stat through the map, by dot, by bracket, or by a name holding it', () => {
