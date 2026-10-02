@@ -9,7 +9,7 @@
  */
 import { openDatabase, promisifyRequest } from '@/lib/idb';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { serializeJsonBlob } from '@/lib/jsonFileWorkerUtils';
+import { serializeJsonBlobSplit } from '@/lib/jsonFileWorkerUtils';
 import { getAllSaveRecords, putSaveRecord } from '@/components/modals/dbUtils';
 import { APP_VERSION } from '@/lib/version';
 import type { SaveRecord } from '@/types';
@@ -218,5 +218,24 @@ function backupFilename(bundle: BackupBundle): string {
  */
 export async function saveBackup(bundle: BackupBundle): Promise<void> {
   // Off-thread: a bundle is every selected world and save, the largest payload the app ever serializes.
-  downloadBlob(await serializeJsonBlob(bundle), backupFilename(bundle));
+  // Depth 3 (bundle → data → category → record) writes each record as its own part.
+  const blob = await serializeJsonBlobSplit(bundle, 3);
+  if (blob.size > MAX_RESTORE_BYTES) throw new BackupTooLargeError(blob.size);
+  downloadBlob(blob, backupFilename(bundle));
 }
+
+/** Restore reads the file into one string, so a backup can't pass V8's maximum string length. */
+export const MAX_RESTORE_BYTES = 2 ** 29 - 24;
+
+/** A backup that restore can't read. Bytes are an upper bound on characters, so this errs early. */
+export class BackupTooLargeError extends Error {
+  constructor(readonly bytes: number) {
+    super(
+      `This backup is ${formatMB(bytes)}. Restore can't read a file over ${formatMB(MAX_RESTORE_BYTES)}. ` +
+        'Select fewer items and save more than one backup.',
+    );
+    this.name = 'BackupTooLargeError';
+  }
+}
+
+const formatMB = (bytes: number) => `${Math.round(bytes / 2 ** 20)} MB`;
