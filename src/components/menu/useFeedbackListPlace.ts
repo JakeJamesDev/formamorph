@@ -11,16 +11,24 @@ const viewportOf = (node: HTMLElement | null): HTMLElement | null =>
 export function useFeedbackListPlace() {
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
+  /** Bumped to reload the list in place. */
+  const [nonce, setNonce] = useState(0);
   /** On the element that holds the list; it finds the viewport that scrolls it. */
   const listRef = useRef<HTMLDivElement>(null);
   const savedScroll = useRef<number | null>(null);
+
+  const refresh = () => setNonce((n) => n + 1);
 
   const open = (id: string) => {
     savedScroll.current = viewportOf(listRef.current)?.scrollTop ?? null;
     setOpenId(id);
   };
 
-  const back = () => setOpenId(null);
+  // Reloads too: not every change in a thread reports itself, and the rows stayed on screen meanwhile.
+  const back = () => {
+    setOpenId(null);
+    refresh();
+  };
 
   // Before paint, so the list never shows at the thread's offset first.
   useLayoutEffect(() => {
@@ -31,10 +39,10 @@ export function useFeedbackListPlace() {
   }, [openId]);
 
   /** Wraps a filter's setter so a change starts the list on page 1. */
-  const refilter = <T>(set: (value: T) => void) => (value: T) => {
+  const refilter = (set: (value: string) => void) => (value: string) => {
     set(value);
     setPage(1);
   };
 
-  return { page, setPage, openId, open, back, listRef, refilter };
+  return { page, setPage, openId, open, back, nonce, refresh, listRef, refilter };
 }

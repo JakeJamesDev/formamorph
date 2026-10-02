@@ -43,9 +43,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
   const [status, setStatus] = useState<StatusFilter>(COPY[type].initialStatus);
   const [category, setCategory] = useState<FeedbackCategory | typeof ANY_CATEGORY>(ANY_CATEGORY);
   const [sort, setSort] = useState<FeedbackSort>(type === 'suggestion' ? 'votes' : 'newest');
-  const { page, setPage, openId, open, back, listRef, refilter } = useFeedbackListPlace();
-  // Bumped after anything that changes a thread, so the list behind it picks it up.
-  const [nonce, setNonce] = useState(0);
+  const { page, setPage, openId, open, back, nonce, refresh, listRef, refilter } = useFeedbackListPlace();
 
   return (
     <>
@@ -55,7 +53,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
           isAdmin
           showTriage
           onBack={back}
-          onChanged={() => setNonce((n) => n + 1)}
+          onChanged={refresh}
           onDeleted={back}
         />
       )}
@@ -67,7 +65,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
         <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
             {/* Suggestions are ranked; a bug queue has nothing to rank by. */}
             {type === 'suggestion' && (
-              <Select value={sort} onValueChange={refilter((value: string) => setSort(value as FeedbackSort))}>
+              <Select value={sort} onValueChange={refilter((value) => setSort(value as FeedbackSort))}>
                 <SelectTrigger className="w-36" aria-label="Sort by"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {FEEDBACK_SORTS.map((value) => (
@@ -77,7 +75,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
               </Select>
             )}
 
-            <Select value={category} onValueChange={refilter((value: string) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY))}>
+            <Select value={category} onValueChange={refilter((value) => setCategory(value as FeedbackCategory | typeof ANY_CATEGORY))}>
               <SelectTrigger className="w-44" aria-label="Filter by category"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ANY_CATEGORY}>All categories</SelectItem>
@@ -87,7 +85,7 @@ export function FeedbackQueueTab({ active, type }: FeedbackQueueTabProps) {
               </SelectContent>
             </Select>
 
-            <Select value={status} onValueChange={refilter((value: string) => setStatus(value as StatusFilter))}>
+            <Select value={status} onValueChange={refilter((value) => setStatus(value as StatusFilter))}>
               <SelectTrigger className="w-40" aria-label="Filter by status"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={ANY_STATUS}>All statuses</SelectItem>

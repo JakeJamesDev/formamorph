@@ -89,12 +89,16 @@ export function FeedbackList({
         type, page, limit: PAGE_SIZE, scope, status: statusArg, category, sort,
       });
       if (!isCurrent()) return;
+      // Triage can move the last rows out from under the page. Land on the last page that remains, and
+      // keep the old rows until it loads rather than flashing the empty label.
+      const lastPage = Math.max(Math.ceil(result.total / PAGE_SIZE), 1);
+      if (page > lastPage) {
+        onPageChangeRef.current(lastPage);
+        return;
+      }
       setThreads(result.threads);
       setTotal(result.total);
       setTruncated(result.truncated ?? false);
-      // Triage can move the last rows out from under the page; land on the last page that remains.
-      const lastPage = Math.max(Math.ceil(result.total / PAGE_SIZE), 1);
-      if (page > lastPage) onPageChangeRef.current(lastPage);
     } catch (error) {
       if (!isCurrent()) return;
       toastError(error, 'Failed to load these');

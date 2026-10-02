@@ -1,5 +1,5 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
-import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FeedbackQueueTab } from './FeedbackQueueTab';
 import { MyFeedbackTab } from './MyFeedbackTab';
@@ -11,26 +11,27 @@ import type { FeedbackThread, FeedbackType } from '@/types';
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
 // Radix Select never opens in jsdom, so each dropdown stands in as a native select with the trigger's label.
-vi.mock('@/components/ui/select', () => ({
-  Select: ({ value, onValueChange, children }: {
-    value: string; onValueChange: (value: string) => void; children: ReactNode;
-  }) => {
-    const trigger = Children.toArray(children).find(
-      (child): child is ReactElement<{ 'aria-label'?: string }> => isValidElement(child) && child.type === SelectTriggerStub,
-    );
-    return (
-      <select aria-label={trigger?.props['aria-label']} value={value} onChange={(e) => onValueChange(e.target.value)}>
-        {children}
-      </select>
-    );
-  },
-  SelectTrigger: SelectTriggerStub,
-  SelectValue: () => null,
-  SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SelectItem: ({ value, children }: { value: string; children: ReactNode }) => <option value={value}>{children}</option>,
-}));
-
-function SelectTriggerStub() { return null; }
+vi.mock('@/components/ui/select', () => {
+  const SelectTrigger = () => null;
+  return {
+    Select: ({ value, onValueChange, children }: {
+      value: string; onValueChange: (value: string) => void; children: ReactNode;
+    }) => {
+      const trigger = Children.toArray(children).find(
+        (child): child is ReactElement<{ 'aria-label'?: string }> => isValidElement(child) && child.type === SelectTrigger,
+      );
+      return (
+        <select aria-label={trigger?.props['aria-label']} value={value} onChange={(e) => onValueChange(e.target.value)}>
+          {children}
+        </select>
+      );
+    },
+    SelectTrigger,
+    SelectValue: () => null,
+    SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+    SelectItem: ({ value, children }: { value: string; children: ReactNode }) => <option value={value}>{children}</option>,
+  };
+});
 
 // The thread view has its own coverage; the stub hands back its Back and its change report.
 const threadProps = vi.hoisted(() => ({ last: null as { onBack: () => void; onChanged?: () => void } | null }));
@@ -66,14 +67,18 @@ const thread = (id: string, type: FeedbackType): FeedbackThread => ({
 
 /** The server's thread count; a test lowers it to stand for triage moving threads out. */
 let serverTotal = 45;
+/** While set, a request for this page waits until the test releases it. */
+let held: { page: number; release: Promise<void> } | null = null;
 
 const lastPageAsked = () => vi.mocked(FeedbackService.list).mock.calls.at(-1)?.[0].page;
 
 beforeEach(() => {
   serverTotal = 45;
+  held = null;
   threadProps.last = null;
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(FeedbackService, 'list').mockImplementation(async ({ type, page = 1, limit = 10 }) => {
+    if (held?.page === page) await held.release;
     const first = (page - 1) * limit;
     const count = Math.max(Math.min(limit, serverTotal - first), 0);
     return {
@@ -129,7 +134,7 @@ describe.each(TABS)('Back in $name', ({ renderTab }) => {
 
     viewport.scrollTop = 320;
     await openRow('Thread 2-7');
-    // The thread is read at its own offset.
+    // Reading the thread moved the viewport.
     viewport.scrollTop = 0;
     pressBack();
 
@@ -151,6 +156,35 @@ describe.each(TABS)('Back in $name', ({ renderTab }) => {
     expect(await screen.findByText('Page 4 of 4')).toBeTruthy();
     expect(screen.getByText('Thread 4-0')).toBeTruthy();
     expect(lastPageAsked()).toBe(4);
+  });
+
+  it('keeps the old rows on screen while the last page loads', async () => {
+    render(renderTab('bug'));
+    await pageTo(5);
+    await openRow('Thread 5-1');
+    serverTotal = 40;
+    let release = () => {};
+    held = { page: 4, release: new Promise<void>((resolve) => { release = resolve; }) };
+
+    pressBack();
+    await waitFor(() => expect(lastPageAsked()).toBe(4));
+
+    // The empty label would stand in place of the rows.
+    expect(screen.getByText('Thread 5-1')).toBeTruthy();
+    await act(async () => release());
+    expect(await screen.findByText('Page 4 of 4')).toBeTruthy();
+  });
+
+  it('picks up a change the thread did not report', async () => {
+    // Deleting a reply, for one, changes the row without a change report.
+    render(renderTab('bug'));
+    await pageTo(2);
+    await openRow('Thread 2-3');
+    serverTotal = 35;
+
+    pressBack();
+
+    expect(await screen.findByText('Page 2 of 4')).toBeTruthy();
   });
 });
 
