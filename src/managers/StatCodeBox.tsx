@@ -35,7 +35,7 @@ export interface StatCodeBoxContext {
   /** The placeholder tree and the books the editor completes over and a run reads. */
   placeholders: CodePlaceholders;
   /** What a template's placeholder slot picks from. */
-  placeholderNames: string[];
+  placeholderPlaces: CodeTraitPlace[];
   /** Trait code names: completions and the run's entries. */
   traitNames: string[];
   /** The world's traits in Traits-tab order with their group paths: what a template's trait slot picks from. */
@@ -75,7 +75,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
 
   const label = TIMING_LABEL[timing];
   const {
-    codeNamedStats, statNames, selfName, placeholders, placeholderNames, traitNames, traitPlaces, traits, entities,
+    codeNamedStats, statNames, selfName, placeholders, placeholderPlaces, traitNames, traitPlaces, traits, entities,
   } = context;
 
   /** Drop what the last test said. Editing the code makes every part of that report stale together. */
@@ -199,7 +199,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         currentStatId={stat.id}
         hasExistingCode={!!value.trim()}
         onInsert={(code) => write(migrateStatCodeRoutes(code, placeholders))}
-        placeholderNames={placeholderNames}
+        placeholderPlaces={placeholderPlaces}
         traitPlaces={traitPlaces}
         entities={entities}
       />

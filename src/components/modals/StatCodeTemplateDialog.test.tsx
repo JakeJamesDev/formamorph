@@ -2,8 +2,10 @@ import 'fake-indexeddb/auto';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Entity, EntityGroup, Stat, Trait, TraitGroup } from '@/types';
+import type { Entity, EntityGroup, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup } from '@/types';
 import { entityTraitNames, worldTraitPlaces } from '@/lib/statCodeTraits';
+import { encodePlaceholderToken } from '@/lib/placeholders';
+import { worldPlaceholderPlaces } from '@/lib/statCodePlaceholderPlaces';
 import { StatCodeTemplateDialog } from './StatCodeTemplateDialog';
 import type { StatCodeTiming } from '@/lib/statCodeTiming';
 import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
@@ -61,6 +63,19 @@ const entities: Entity[] = [
   { id: 'e3', name: 'Rook', groupId: 'crew', order: 1, persona: true, traits: [owned('scarred', 'Scarred')] },
 ];
 
+// Placeholders tab: Looks > Hair Color (holding the child Tint), then Mood at the top level. Mira owns Secret.
+const placeholderGroups: PlaceholderGroup[] = [{ id: 'looks', name: 'Looks', parentId: null, order: 0 }];
+const placeholders: Placeholder[] = [
+  { id: 'mood', name: 'Mood', values: [{ id: 'mood-v', text: 'calm' }] },
+  {
+    id: 'hair', name: 'Hair Color', groupId: 'looks',
+    values: [{ id: 'hair-v', text: encodePlaceholderToken({ id: 'tint', mode: 'world', placementId: 'p1' }) }],
+  },
+  { id: 'tint', name: 'Tint', ownerId: 'hair', values: [{ id: 'tint-v', text: 'ash' }] },
+  { id: 'secret', name: 'Secret', values: [{ id: 'secret-v', text: 'x' }] },
+];
+const placeholderOwners = new Map([['secret', { kind: 'entity' as const, id: 'e1', name: 'Mira' }]]);
+
 const open = (timing: StatCodeTiming = 'after', cast: Entity[] = entities) => render(
   <StatCodeTemplateDialog
     open
@@ -70,7 +85,7 @@ const open = (timing: StatCodeTiming = 'after', cast: Entity[] = entities) => re
     currentStatId="s1"
     hasExistingCode={false}
     onInsert={vi.fn()}
-    placeholderNames={['Mood', 'Hair Color']}
+    placeholderPlaces={worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups })}
     traitPlaces={worldTraitPlaces({ traits, traitGroups }, [])}
     entities={entityTraitNames({ traits, traitGroups, entities: cast, entityGroups }, [])}
   />,
@@ -151,12 +166,21 @@ describe('the form a template presents', () => {
     await authoring(user, 'placeholders[{{p:placeholder}}].value = "x"; traits[{{t:trait}}].enabled = true;');
 
     await user.click(await screen.findByRole('combobox', { name: 'P' }));
-    await user.click(await screen.findByRole('option', { name: 'Hair Color' }));
+    await user.click(await screen.findByRole('option', { name: /^Hair Color/ }));
     await user.click(await screen.findByRole('combobox', { name: 'T' }));
     await user.click(await screen.findByRole('option', { name: /^Cursed/ }));
 
     await waitFor(() => expect(generated()).toContain('placeholders["Hair Color"]'));
     expect(generated()).toContain('traits["Cursed"]');
+  });
+
+  it('lists only the placeholders code reaches by name, under their folders', async () => {
+    const user = userEvent.setup();
+    await authoring(user, 'placeholders[{{p:placeholder}}].value = "x";');
+
+    await user.click(await screen.findByRole('combobox', { name: 'P' }));
+    // Tint is held by Hair Color and Secret by Mira, so neither is a top-level key.
+    expect(await rows()).toEqual(['Hair ColorLooks', 'Mood']);
   });
 
   it('lists the other stats in a stat slot, with no breadcrumb', async () => {
