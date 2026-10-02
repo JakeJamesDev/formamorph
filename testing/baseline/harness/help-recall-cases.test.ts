@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
+import { loadBaselineCases } from './help-baseline-cases';
 import { loadBlindCases, loadKnownCases } from './help-recall-cases';
 
 // The blind set against the real docs: a moved heading fails here, not as a silent recall drop.
@@ -46,9 +47,14 @@ describe('the blind recall question set', () => {
 });
 
 describe('the known recall question set', () => {
-  it('holds the task, here and follow-up questions of the help baseline, each with a keyed section', () => {
-    expect(new Set(known.map((c) => c.kind))).toEqual(new Set(['task', 'here', 'followUp']));
-    expect(known.filter((c) => c.right.length === 0).map((c) => c.id)).toEqual([]);
+  it('holds every task, here and follow-up question of the help baseline, and no other kind', () => {
+    const bar = loadBaselineCases().filter((c) => c.kind === 'task' || c.kind === 'here' || c.kind === 'followUp');
+    expect(known.map((c) => c.id)).toEqual(bar.map((c) => c.id));
+    expect(known.map((c) => c.right)).toEqual(bar.map((c) => [c.section, ...(c.otherSections ?? [])]));
+  });
+
+  it('keeps the open screen of a here question and the first question of a follow-up', () => {
     expect(known.filter((c) => c.kind === 'here' && !c.surface).map((c) => c.id)).toEqual([]);
+    expect(known.filter((c) => c.kind === 'followUp' && !known.some((first) => first.id === c.after)).map((c) => c.id)).toEqual([]);
   });
 });
