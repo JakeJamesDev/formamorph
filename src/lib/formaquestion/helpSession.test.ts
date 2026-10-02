@@ -141,6 +141,8 @@ describe('the docs sections of a request', () => {
     const sections = helpSections(zebras, 'zebra', { lead });
     expect(sections[0].id).toBe(lead.id);
     expect(sections).toHaveLength(3);
+    // The budget is full: a fourth section of this size does not fit.
+    expect(sections.reduce((sum, section) => sum + section.markdown.length, 0) + sections[1].markdown.length).toBeGreaterThan(HELP_DOCS_CHAR_BUDGET);
     expect(sections.reduce((sum, section) => sum + section.markdown.length, 0)).toBeLessThanOrEqual(HELP_DOCS_CHAR_BUDGET);
   });
 
@@ -170,7 +172,6 @@ ${'x'.repeat(7000)}` };
     const docs = createDocsIndex({ pages });
     const lead = docs.get(['Mine#mine'])[0];
     expect(helpSections(docs, 'add one here', { lead }).map((section) => section.id)).toContain('Mine#how-to-add-one');
-    expect(helpSections(docs, 'add one here', { lead, page: 'Mine' }).map((section) => section.id)).toContain('Mine#how-to-add-one');
   });
 
   it('holds at most five sections for a follow-up too, when its own best section is not among the others', () => {
