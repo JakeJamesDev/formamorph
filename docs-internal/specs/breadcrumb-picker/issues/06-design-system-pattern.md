@@ -23,3 +23,7 @@ The Design System documents the **Breadcrumb Picker** as a pattern, with a live 
 - [ ] The copy passes a copy sweep (Writing Guide roles, STE for non-creative text).
 - [ ] verify-ui frames of the showcase in both themes.
 - [ ] The four gates are green.
+
+## Notes from ticket 03
+
+- The Code Templates reference in the Design System has sample traits, entities and a "Trait Bonus" template. Build the showcase fixture on it.
