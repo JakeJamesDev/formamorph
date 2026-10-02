@@ -366,7 +366,7 @@ You can still generate a single scene yourself from the button above the story.`
   },
   imageModel: {
     label: 'Model',
-    description: 'Selects which checkpoint draws the image',
+    description: 'Selects which checkpoint generates the image',
   },
   promptPrefix: {
     label: 'Prompt Prefix',
@@ -382,7 +382,7 @@ You can still generate a single scene yourself from the button above the story.`
   },
   landscapeSize: {
     label: 'Landscape (W × H)',
-    description: 'Sets the size of locations and thumbnails',
+    description: 'Sets the size of location images and thumbnails',
   },
   stepsCfg: {
     label: 'Steps / CFG',
