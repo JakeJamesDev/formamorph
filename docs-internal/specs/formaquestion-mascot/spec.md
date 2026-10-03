@@ -60,6 +60,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q31 | A face change plays a transition. The transition mode and its tuning are part of the rig and travel in the card. The defaults are settled by a prototype first |
 | Q32 | The default rig ticket 01 ships is provisional: twelve composite word-named faces, three arm states, and a drafted Persona. The user tunes the real defaults in-app once the tab exists, and a follow-up ticket extracts those settings into code. No extra UI for authoring defaults |
 | Q33 | Expressions are composite whole faces, one row each. A part the arm must cover (the :O mouth under the thinking hand) rides in the arm state, because one row cannot sit both under and over another row. The format stays a flat list |
+| Q34 | The minimal chrome's pill is grip, today's ⋮ menu (Clear Conversation, AI Context, Settings) and Close; the head toggle joins it in its ticket. Until the reader piece lands, a docs request with the mascot on opens the heading in the wiki, as with the window unmounted |
 
 ## User Stories
 
@@ -180,7 +181,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 - The window owns the mascot phase. Sending a question sets thinking and clears the AI's expression. A face event stores the AI's expression and changes nothing else. The first answer event with content text sets answering, and the stored expression shows then; with none stored, Idle shows (Q18, Q30). The first open in an app load starts in the initial phase and leaves it on the first send (Q8–Q10). The phase lives in the mounted window, which lives for the app load.
 - Turning the mascot off or on while the window is open swaps the chrome in place. The conversation and the phase carry over.
 - The thinking phase covers the pick request, the prefill and the reasoning text, because the session yields nothing until the pick is done and reasoning arrives without content text (Q18).
-- With the mascot on, the window renders the minimal chrome: the prototype's chat column, taken from the prototype branch. The frame, the title bar, the tabs and the resize grip do not render. The pill holds the drag grip, the head toggle, Clear and Close.
+- With the mascot on, the window renders the minimal chrome: the prototype's chat column, taken from the prototype branch. The frame, the title bar, the tabs and the resize grip do not render. The pill holds the drag grip, today's ⋮ menu (Clear Conversation, AI Context, Settings), the head toggle and Close (Q34).
 - The mascot piece stands left of the column at the base's aspect, scaled to the column's height. The head view draws the Mask crop. The desktop head toggle is remembered per device with the window box. On mobile the head sits left of the pill row and there is no full view.
 - The reader piece opens right of the column on a source-name click, shows the guide reader, and closes with its own button. Source names are links again in the minimal chrome.
 - The three pieces share one window box. The box widens by the mascot's width and the reader's width while each shows, and the stored box is the column's.
