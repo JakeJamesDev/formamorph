@@ -518,8 +518,8 @@ export function RemoteWorldDetailsModal({
     <>
       <h3 className="text-helper font-semibold text-muted-foreground">Author</h3>
       <p className="flex items-center gap-2 min-w-0">
-        <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="sm" />
-        <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} />
+        <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} supporter={world.author?.supporter} size="sm" />
+        <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} supporter={world.author?.supporter} />
       </p>
     </>
   );
@@ -783,8 +783,8 @@ export function RemoteWorldDetailsModal({
                   <div key={c.id} className="text-label border-b border-border/50 pb-2 last:border-0 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 min-w-0 font-medium">
-                        <UserAvatar username={c.author?.username} avatarUrl={c.author?.avatarUrl} size="xs" />
-                        <UserName userId={c.author?.id} username={c.author?.username} role={c.author?.role} />
+                        <UserAvatar username={c.author?.username} avatarUrl={c.author?.avatarUrl} supporter={c.author?.supporter} size="xs" />
+                        <UserName userId={c.author?.id} username={c.author?.username} role={c.author?.role} supporter={c.author?.supporter} />
                       </span>
                       <span className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground">
                         {c.created_at ? formatServerDateTime(c.created_at) : ''}

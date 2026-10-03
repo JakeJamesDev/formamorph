@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 import { RoleBadge } from "@/components/RoleBadge";
+import { SupporterBadge } from "@/components/SupporterBadge";
 import { useUserProfile } from "@/contexts/userProfileStore";
+import { SUPPORTER_NAME_STYLES, flairTier, type SupporterFlair } from "@/lib/supporterFlair";
 
 interface UserNameProps {
   userId?: string | null;
@@ -9,6 +11,8 @@ interface UserNameProps {
   fallback?: string;
   /** Their staff role, if the caller has one. Anything else renders no badge. */
   role?: string | null;
+  /** Their Supporter Flair, as the server sent it. Null or absent renders none; the server decides for staff. */
+  supporter?: SupporterFlair | null;
   className?: string;
 }
 
@@ -23,15 +27,22 @@ interface UserNameProps {
  * control goes, and a screen reader announcing "Mod View wren_hallow's profile" would be reading the
  * two as one thing.
  */
-export function UserName({ userId, username, fallback = 'Unknown', role, className }: UserNameProps) {
+export function UserName({ userId, username, fallback = 'Unknown', role, supporter, className }: UserNameProps) {
   const { openProfile } = useUserProfile();
   const label = username || fallback;
-  const badge = <RoleBadge role={role} />;
+  const tier = flairTier(supporter);
+  const nameStyle = tier ? SUPPORTER_NAME_STYLES[tier] : undefined;
+  const badge = (
+    <>
+      {tier && <SupporterBadge tier={tier} since={supporter?.since} />}
+      <RoleBadge role={role} />
+    </>
+  );
 
   if (!userId || !username) {
     return (
       <span className="inline-flex items-center gap-1.5 min-w-0">
-        <span className={cn('truncate', className)}>{label}</span>
+        <span className={cn('truncate', nameStyle, className)}>{label}</span>
         {badge}
       </span>
     );
@@ -46,6 +57,7 @@ export function UserName({ userId, username, fallback = 'Unknown', role, classNa
         aria-label={`View ${username}'s profile`}
         className={cn(
           'truncate rounded-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          nameStyle,
           className
         )}
       >

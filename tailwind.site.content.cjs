@@ -58,6 +58,7 @@ const FILES = [
   'src/components/EntityPlaceholderArt.tsx',
   'src/components/PatreonSection.tsx',
   'src/components/RoleBadge.tsx',
+  'src/components/SupporterBadge.tsx',
   'src/components/UserAvatar.tsx',
   'src/components/theme-provider.tsx',
   'src/components/community/AgeGateDialog.tsx',

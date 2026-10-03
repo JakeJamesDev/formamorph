@@ -1,8 +1,40 @@
 import type { AvatarSize } from '@/components/UserAvatar';
+import { parseServerDate } from '@/lib/serverDate';
 
 /** The Patreon tiers that carry Supporter Flair. */
 export const SUPPORTER_TIERS = ['supporter', 'supporter_plus'] as const;
 export type SupporterTier = (typeof SUPPORTER_TIERS)[number];
+
+/** The `supporter` field of an author object. The server sends null for no flair, staff included. */
+export interface SupporterFlair {
+  tier: SupporterTier;
+  /** When the current pledge started, or null when Patreon gave no date. */
+  since: string | null;
+}
+
+/** The tier to draw, or null. An absent field, a null, and a tier this build doesn't know all mean no flair. */
+export const flairTier = (supporter: { tier: string } | null | undefined): SupporterTier | null =>
+  supporter && (SUPPORTER_TIERS as readonly string[]).includes(supporter.tier) ? (supporter.tier as SupporterTier) : null;
+
+const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+
+/**
+ * How long a pledge has run: whole months under a year, then years and months. Null when `since` is null
+ * or unreadable. A future date counts as 0 months.
+ */
+export function supporterTenure(since: string | null | undefined, now: Date = new Date()): string | null {
+  const start = since ? parseServerDate(since) : null;
+  if (!start) return null;
+
+  let months = (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth();
+  if (now.getDate() < start.getDate()) months -= 1;
+  months = Math.max(0, months);
+
+  if (months < 12) return plural(months, 'month');
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  return rest === 0 ? plural(years, 'year') : `${plural(years, 'year')}, ${plural(rest, 'month')}`;
+}
 
 export const SUPPORTER_LABELS: Record<SupporterTier, string> = {
   supporter: 'Supporter',

@@ -1,5 +1,6 @@
 import type { CatalogKind } from '@/lib/catalogKinds';
 import type { LikeCount } from '@/lib/likeCount';
+import type { SupporterFlair } from '@/lib/supporterFlair';
 
 /**
  * The public face of an account: what a stranger sees when they click a name.
@@ -16,6 +17,8 @@ export interface PublicProfile {
   createdAt: string;
   /** Their staff role, or null for an ordinary account. Public: being on the team is not a private fact. */
   role?: string | null;
+  /** Their Supporter Flair, or null for none. Absent from a server that predates it. */
+  supporter?: SupporterFlair | null;
   /** How many accounts follow them. Public; who they are is not. */
   followers: number;
   /**
@@ -75,6 +78,8 @@ export interface FollowedUser {
   avatarUrl: string | null;
   /** Their staff role, or null for an ordinary account. */
   role?: string | null;
+  /** Their Supporter Flair, or null for none. Absent from a server that predates it. */
+  supporter?: SupporterFlair | null;
   /** When the follow started — also the point the feed counts from. */
   followedAt: string;
 }
@@ -96,6 +101,8 @@ export interface FeedItem {
     avatarUrl: string | null;
     /** Their staff role, or null for an ordinary account. */
     role?: string | null;
+    /** Their Supporter Flair, or null for none. Absent from a server that predates it. */
+    supporter?: SupporterFlair | null;
   };
 }
 

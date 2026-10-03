@@ -11,7 +11,6 @@ import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
 import { UserAvatar } from "@/components/UserAvatar";
-import { RoleBadge } from "@/components/RoleBadge";
 import { UserName } from "@/components/UserName";
 import { FeedbackEditDialog } from "@/components/menu/FeedbackEditDialog";
 import { mayEditProse, mayRefile } from "@/lib/feedbackEditing";
@@ -306,7 +305,7 @@ export function FeedbackThreadView({
         </div>
         <p className="text-meta text-muted-foreground">
           {FEEDBACK_CATEGORY_LABELS[thread.category]} ·{' '}
-          <UserName userId={thread.reporter.id} username={thread.reporter.username} role={thread.reporter.role} /> ·{' '}
+          <UserName userId={thread.reporter.id} username={thread.reporter.username} role={thread.reporter.role} supporter={thread.reporter.supporter} /> ·{' '}
           {formatFeedbackDate(thread.createdAt)}
           {/* Said plainly: somebody may already have read the earlier wording. */}
           {thread.editedAt && <span className="italic"> · edited</span>}
@@ -355,9 +354,8 @@ export function FeedbackThreadView({
                 <div className="flex items-start justify-between gap-2">
                   <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
                     {/* Everyone signs with their own name and face; the badge says who they answer for. */}
-                    <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} size="xs" />
-                    <UserName userId={comment.author.id} username={comment.author.username} />
-                    <RoleBadge role={comment.author.role} />
+                    <UserAvatar username={comment.author.username} avatarUrl={comment.author.avatarUrl} supporter={comment.author.supporter} size="xs" />
+                    <UserName userId={comment.author.id} username={comment.author.username} role={comment.author.role} supporter={comment.author.supporter} />
                     {' · '}{formatFeedbackDate(comment.createdAt)}
                     {/* Said plainly, so the other reader can tell a reply changed after they read it. */}
                     {comment.editedAt && <span className="italic"> · edited</span>}
