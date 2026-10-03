@@ -62,6 +62,10 @@ export const DEFAULT_PREVIEW_STAGGER = 40;
 export const DEFAULT_REVEAL_MIN_DURATION = 250;
 export const DEFAULT_REVEAL_MIN_STAGGER = 0;
 
+/** The spec with Move and Scale off when the OS asks for reduced motion. Fade and Blur do not move text. */
+export const reducedMotionSpec = (s: RevealSpec, reduce: boolean): RevealSpec =>
+  (reduce ? { ...s, move: false, scale: false } : s);
+
 /** Any effect enabled ⇒ animate the reveal; none ⇒ fall back to the smooth crawl. */
 export const revealActive = (s: RevealSpec): boolean => s.fade || s.move || s.scale || s.blur;
 

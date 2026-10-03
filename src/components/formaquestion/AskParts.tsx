@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent } from 'react';
 import { ChevronDown, ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
@@ -12,7 +12,10 @@ import { withoutAttachment } from '@/lib/actionAttachments';
 import type { DocSection } from '@/lib/docs/docsIndex';
 import { withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
+import { helpRevealSpec, helpRevealTiming } from '@/lib/formaquestion/helpReveal';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { cn } from '@/lib/utils';
 import { SectionRows } from './GuideParts';
@@ -107,6 +110,9 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   // Sources and Nearest Sections share one fold, set when the list arrives.
   const fold = useFoldRule(listed.length > 0, settings.sourcesOpen, (sourcesOpen) => onSettingsChange({ sourcesOpen }));
   const components = useMemo(() => readerComponents(onOpen), [onOpen]);
+  const reduceMotion = usePrefersReducedMotion();
+  const spec = useMemo(() => helpRevealSpec(settings.reveal, reduceMotion), [settings.reveal, reduceMotion]);
+  const timing = useMemo(() => helpRevealTiming(settings.reveal), [settings.reveal]);
   // A docs link that the model copies from a section opens that section here.
   const text = useMemo(() => withReaderLinks(answer, '', guide.resolve), [answer, guide]);
   const searched = status === 'no-ai' || status === 'failed';
@@ -119,8 +125,15 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
       <Thinking text={reasoning} settings={settings} onSettingsChange={onSettingsChange} />
       {flagged && answer && <GeneralKnowledgeNotice />}
       {answer && (
-        <div className="[&_:first-child]:mt-0">
-          <MarkdownRenderer text={text} animate={status === 'writing'} components={components} />
+        <div data-reveal className="[&_:first-child]:mt-0" style={revealVars(spec) as CSSProperties}>
+          <MarkdownRenderer
+            text={text}
+            animate={status === 'writing' && revealActive(spec)}
+            animation={revealAnimName(spec)}
+            easing={settings.reveal.easing}
+            timing={timing}
+            components={components}
+          />
         </div>
       )}
       {/* The conversation is a log, which announces its own new text. */}

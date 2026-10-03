@@ -8,7 +8,7 @@ import remarkFlexibleMarkers from 'remark-flexible-markers';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
 import { rehypePreviewTint } from '@/lib/previewTint';
 import { rehypeQuoteSpans } from '@/lib/rehypeQuoteSpans';
-import { getRevealTiming } from '@/lib/revealTimingStore';
+import { getRevealTiming, type RevealTiming } from '@/lib/revealTimingStore';
 import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
 
@@ -109,9 +109,12 @@ const COMPONENTS: MarkdownComponents = {
  *
  * `components` replaces the renderer of the tags it names, such as the reader's links. Pass a stable
  * object: Streamdown memoizes each block on its identity.
+ *
+ * `timing` is the word timing of a reveal with its own pace, such as a help answer. Without it the
+ * renderer reads the narration timing store.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, tinted = false, dialogue = false, components }: { text: string; animate?: boolean; animation?: string; easing?: string; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents },
+  { text, animate = false, animation = 'fadeIn', easing, timing, tinted = false, dialogue = false, components }: { text: string; animate?: boolean; animation?: string; easing?: string; timing?: RevealTiming; tinted?: boolean; dialogue?: boolean; components?: MarkdownComponents },
 ) {
   const allComponents = useMemo(() => (components ? { ...COMPONENTS, ...components } : COMPONENTS), [components]);
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
@@ -128,7 +131,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
         // them through state committed in a transition, which leaves finished text a render behind —
         // visible when paging history, where nothing follows to flush it.
         mode={animate ? 'streaming' : 'static'}
-        animated={animate ? { animation, sep: 'word', easing, ...getRevealTiming() } : false}
+        animated={animate ? { animation, sep: 'word', easing, ...(timing ?? getRevealTiming()) } : false}
         isAnimating={animate}
       >
         {text}

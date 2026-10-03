@@ -1,8 +1,10 @@
+import { useCallback } from 'react';
 import { Settings } from 'lucide-react';
 import { CheckRow, HintInfo, Row, Section } from '@/components/SettingsRows';
 import { PromptReasoningField } from '@/components/modals/PromptOptionFields';
 import { promptReasoningFieldProps, type ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
 import { REASONING_NOTES } from '@/components/modals/settingsCopy';
+import { RevealAnimationDemoButton } from '@/components/RevealAnimationDemo';
 import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { reasoningRuledOut } from '@/lib/reasoningEffort';
 import { EndpointTab } from './FormaquestionEndpointTab';
+import { useHelpRevealSource } from './useHelpRevealSource';
 import type { SemanticSearch } from './useSemanticSearch';
 import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 
@@ -67,6 +70,16 @@ function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; 
   );
 }
 
+/** The reveal button and dialog of Narration Reveal, on help's own values. */
+function AnswerRevealRow({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
+  const source = useHelpRevealSource(settings.reveal, useCallback((reveal) => onChange({ reveal }), [onChange]));
+  return (
+    <Row {...GENERAL_COPY.answerReveal}>
+      <RevealAnimationDemoButton source={source} kind="answer" />
+    </Row>
+  );
+}
+
 function GeneralTab({ settings, onChange, semantic, answerTarget }: {
   settings: HelpSettings;
   onChange: (change: HelpSettingsChange) => void;
@@ -77,6 +90,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
     <div className="grid gap-6 py-4">
       <Section title="Answer">
         <ReasoningRow settings={settings} onChange={onChange} target={answerTarget} />
+        <AnswerRevealRow settings={settings} onChange={onChange} />
       </Section>
       <Section title="Search">
         <CheckRow

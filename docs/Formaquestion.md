@@ -179,13 +179,14 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - This device keeps each setting. The settings are not in a backup or an export.
 
 ### General
-<!-- keywords: reasoning, thinking, effort, reasoning budget, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
+<!-- keywords: reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
 
 The **General** tab sets how your AI answers, how a question finds its guide sections, and what the request holds.
 
 | Setting | Default | What it does |
 |---|---|---|
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Picks** request never reasons. For a model that cannot reason, a note shows in place of the control. |
+| **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
 | **AI Picks** | On | Sends one more request for each question, in which your AI picks guide sections from the list of headings |
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the switch goes off and **Retry** starts it again. Until the model is ready, questions use the other sources. |
