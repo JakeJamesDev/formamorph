@@ -55,6 +55,12 @@ export const PROMPTS_COPY = {
   reset: { label: 'Reset to Default', hint: 'Returns this prompt to the text of this release' },
 } as const;
 
+/** The copy of the Tools tab. */
+export const TOOLS_COPY = {
+  lookupSummary: 'Searches the guide or reads sections by id, and returns their text',
+  unsupported: "Your Answer Endpoint won't receive these functions. Its model doesn't support them, or support isn't confirmed yet.",
+} as const;
+
 export const COMPARE_COPY = {
   action: { label: 'Compare to Default', hint: 'Shows how this prompt differs from the text of this release', same: 'This prompt matches the default text' },
   title: (label: string) => `${label} Prompt vs. Default`,

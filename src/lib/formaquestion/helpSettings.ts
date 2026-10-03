@@ -8,6 +8,7 @@ import {
   type PromptReasoningSetting,
 } from '@/lib/reasoningEffort';
 import type { Codec } from '@/lib/usePersistentState';
+import { DOCS_LOOKUP_CALL_LIMIT } from './docsLookup';
 import { EMPTY_HELP_PRESET_STORE, parseHelpPresetStore, type HelpPresetStore } from './helpPresets';
 import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
 
@@ -34,6 +35,8 @@ export interface HelpSettings {
   readonly pickEndpoint: string | null;
   /** Lookup mode: the model reads more sections through the guide lookup, where the endpoint takes function calls (ADR-0009). */
   readonly lookup: boolean;
+  /** The most guide lookup calls one help question runs. */
+  readonly lookupCallLimit: number;
   /** The open screen's section leads the docs, and the request names the screen. */
   readonly openScreen: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
@@ -58,6 +61,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   answerEndpoint: null,
   pickEndpoint: SAME_AS_ANSWER,
   lookup: false,
+  lookupCallLimit: DOCS_LOOKUP_CALL_LIMIT,
   openScreen: true,
   historyLength: 4,
   reasoning: defaultPromptReasoningSetting('help'),
@@ -78,6 +82,12 @@ export function helpSettingsOf({ sources, reveal, ...change }: HelpSettingsChang
 
 /** The most earlier exchanges the History Length field takes. */
 export const HELP_HISTORY_MAX = 20;
+
+/** The most guide lookup calls the Max Calls per Request field takes. */
+export const HELP_LOOKUP_CALL_LIMIT_MAX = 20;
+
+/** A Max Calls per Request entry as the setting holds it: none is the default, more than the most is the most. */
+export const lookupCallLimitOf = (limit: number | undefined): number => Math.min(limit ?? DOCS_LOOKUP_CALL_LIMIT, HELP_LOOKUP_CALL_LIMIT_MAX);
 
 type Check = (value: unknown) => boolean;
 const isBool: Check = (value) => typeof value === 'boolean';
@@ -105,6 +115,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
       lookup: isBool,
+      lookupCallLimit: isBetween(1, HELP_LOOKUP_CALL_LIMIT_MAX),
       openScreen: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,

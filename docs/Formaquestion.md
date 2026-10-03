@@ -270,6 +270,29 @@ Each preset has its own options, and a copy of a preset takes them. **Default** 
 3. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips the app reads back.
 4. Close the settings and ask a question. The next request uses the new text.
 
+### Tools
+<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported -->
+
+The **Tools** tab lists the functions your AI can call while it answers. It uses the layout of **Settings** → **Tools**: the list on the left, and the selected function on the right.
+
+| Function | Default | What it does |
+|---|---|---|
+| **read_guide** | Off | The guide lookup. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. |
+
+- **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
+- **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default of 3.
+- The panel also shows the text your AI reads about the function, and its parameters.
+- The guide lookup is part of the app. You can't edit, copy or delete it.
+- The **Tools** switch under **Settings** → **Output** does not apply to Formaquestion.
+
+A function goes out only when the **Answer Endpoint** takes function calls. If it doesn't, or the app hasn't confirmed it yet, the tab shows a note, and each question goes out as one request with no function. The default cloud endpoint takes no function calls.
+
+**How to let your AI read more of the guide:**
+
+1. Set **Answer Endpoint** to a model that takes function calls, such as a local model.
+2. Open the **Tools** tab, select **read_guide**, and turn on **Enabled**.
+3. Ask a question. Your AI reads more sections when it needs them, and the answer lists them under **Sources**.
+
 ## On Mobile
 <!-- keywords: full screen sheet, small screen, keyboard covers, slides in, touch, no resizing -->
 

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
+import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_LOOKUP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 
@@ -12,6 +12,7 @@ describe('the default help settings', () => {
       answerEndpoint: null,
       pickEndpoint: SAME_AS_ANSWER,
       lookup: false,
+      lookupCallLimit: 3,
       openScreen: true,
       historyLength: 4,
       reasoning: { enabled: false, level: 'global' },
@@ -55,6 +56,14 @@ describe('the stored help settings', () => {
     expect(stored({ sourcesOpen: false }).sourcesOpen).toBe(false);
     expect(stored({ sources: null })).toEqual(DEFAULT_HELP_SETTINGS);
     expect(stored({})).toEqual(DEFAULT_HELP_SETTINGS);
+  });
+
+  it('keep a lookup call limit from 1 to the most the field takes, and take the default for anything else', () => {
+    expect(stored({ lookupCallLimit: 1 }).lookupCallLimit).toBe(1);
+    expect(stored({ lookupCallLimit: HELP_LOOKUP_CALL_LIMIT_MAX }).lookupCallLimit).toBe(HELP_LOOKUP_CALL_LIMIT_MAX);
+    for (const bad of [0, HELP_LOOKUP_CALL_LIMIT_MAX + 1, 2.5, '2', null]) {
+      expect(stored({ lookupCallLimit: bad }).lookupCallLimit).toBe(DEFAULT_HELP_SETTINGS.lookupCallLimit);
+    }
   });
 
   it('keep a preset id or Follow Active for each route, and take the default for anything else', () => {

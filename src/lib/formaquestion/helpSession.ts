@@ -296,7 +296,7 @@ export async function* askHelp({
     requestType: 'help',
     maxTokensOverride: options.maxTokens,
     samplerOverride: { temperature: options.temperature, repetitionPenalty: options.repetitionPenalty },
-    ...(lookup && { tools: [DOCS_LOOKUP] }),
+    ...(lookup && { tools: [{ ...DOCS_LOOKUP, callLimit: settings.lookupCallLimit }] }),
   });
   let text = '';
   let marked = false;

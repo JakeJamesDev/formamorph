@@ -1,12 +1,13 @@
 // The help request against the real settings provider, through the window's own hooks: the Output → Tools
-// switch is a Tools setting, and the docs lookup is no Tool, so the help request is the same with the switch on and off.
+// switch is a Tools setting that Formaquestion does not read, so the help request is the same with the switch on and off.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render, waitFor } from '@testing-library/react';
 import { useHelpAi } from '@/components/formaquestion/useHelpAi';
 import { useHelpChat, type HelpChat } from '@/components/formaquestion/useHelpChat';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
+import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseReply, textTarget } from '@/test/aiTextFixtures';
 import { stubHelpStream } from '@/test/helpFixtures';
@@ -17,10 +18,10 @@ const capable = textTarget({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools
 
 let settings: ReturnType<typeof useSettings>;
 let chat: HelpChat;
-function Window() {
+function Window({ help = DEFAULT_HELP_SETTINGS }: { help?: HelpSettings }) {
   settings = useSettings();
-  const ai = useHelpAi(false, DEFAULT_HELP_SETTINGS);
-  chat = useHelpChat(index, { ...ai, snapshot: { ...ai.snapshot, resolveTarget: () => capable } }, DEFAULT_HELP_SETTINGS);
+  const ai = useHelpAi(false, help);
+  chat = useHelpChat(index, { ...ai, snapshot: { ...ai.snapshot, resolveTarget: () => capable } }, help);
   return null;
 }
 
@@ -52,6 +53,20 @@ describe('the Output → Tools switch', () => {
     const off = await helpRequestBody();
 
     expect(on.tools).toBeUndefined();
+    expect(off).toEqual(on);
+  });
+
+  it('does not change the help request with the guide lookup on: the lookup function goes out with the switch on or off', async () => {
+    render(<SettingsProvider><Window help={helpSettingsOf({ lookup: true })} /></SettingsProvider>);
+
+    act(() => settings.setToolsEnabled(true));
+    const on = await helpRequestBody();
+
+    act(() => settings.setToolsEnabled(false));
+    expect(settings.toolsEnabled).toBe(false);
+    const off = await helpRequestBody();
+
+    expect((on.tools as { function: { name: string } }[]).map((tool) => tool.function.name)).toEqual([DOCS_LOOKUP.name]);
     expect(off).toEqual(on);
   });
 });
