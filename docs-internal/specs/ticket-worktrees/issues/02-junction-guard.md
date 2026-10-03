@@ -1,6 +1,8 @@
 # 02: Junction Guard for Worktree Removal
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in the ~/.claude repo, commit 2a6ce3c (hooks/junction-guard.py, tests in hooks/test_guards.py, one settings.json entry).
+Base: abd4cf3b
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
