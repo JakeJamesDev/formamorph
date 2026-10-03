@@ -122,7 +122,17 @@ export default defineConfig({
             // rewrites one — `graphify watch` regenerates graphify-out/graph.html on any source change, and the
             // baseline harness writes dumps, profiles and docs of its own. A reload mid-run kills the scripted
             // turn it was driving ("Execution context was destroyed" / "__baseline is undefined").
-            ignored: ['**/graphify-out/**', '**/testing/**', '**/graph.json', '**/GRAPH_REPORT.md'],
+            // Worktrees and build output too: a ticket's `npm run build` holds files in its dist/, and a watch
+            // on a held file throws EBUSY, which kills the main checkout's dev server.
+            ignored: [
+              '**/graphify-out/**',
+              '**/testing/**',
+              '**/graph.json',
+              '**/GRAPH_REPORT.md',
+              '**/.claude/worktrees/**',
+              '**/.scratch/**',
+              '**/dist/**',
+            ],
           },
         }),
   },
