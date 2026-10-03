@@ -1,6 +1,6 @@
 # 07: Endpoint tab
 
-Status: in-progress
+Status: ready-for-human
 Base: 9481bc16
 Blocked by: 01, 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -1,13 +1,15 @@
 import 'fake-indexeddb/auto';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
-import { textEndpointPresetCodec } from '@/lib/textEndpointPresets';
+import { BUILTIN_ENGINE_PRESET_ID, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
+import { sentenceShapeViolation } from '@/test/copyShape';
 import { EndpointTab } from './FormaquestionEndpointTab';
+import { ENDPOINT_COPY } from './formaquestionSettingsTabs';
 
 vi.mock('@/lib/reasoningEffort', async () => ({
   ...await vi.importActual<typeof import('@/lib/reasoningEffort')>('@/lib/reasoningEffort'),
@@ -18,6 +20,8 @@ vi.mock('@/lib/contextLength', async () => ({
   ...await vi.importActual<typeof import('@/lib/contextLength')>('@/lib/contextLength'),
   fetchContextLength: () => Promise.resolve(null),
 }));
+// The engine panel talks to Electron IPC. The marker shows which panel the editor chose.
+vi.mock('@/components/modals/LocalModelPanel', () => ({ LocalModelPanel: () => <div data-testid="local-model-panel" /> }));
 vi.mock('@/lib/useEndpointReachable', () => ({ useEndpointReachable: () => ({ status: 'ok', checking: false, recheck: () => {} }) }));
 
 const preset = (id: string) => ({
@@ -93,6 +97,31 @@ describe('the Endpoint tab', () => {
     renderTab();
     await userEvent.setup().type(screen.getByLabelText(/Model/, { selector: 'input' }), '-v2');
     expect(app.modelName).toBe('game-model-v2');
+  });
+
+  it('shows an edit made in Settings', () => {
+    renderTab();
+    act(() => app.setModelName('game-model-v3'));
+    expect(screen.getByLabelText(/Model/, { selector: 'input' })).toHaveValue('game-model-v3');
+  });
+
+  it('edits the Built-In Engine with the local model panel, as Settings does', () => {
+    (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {};
+    try {
+      renderTab({ answerEndpoint: BUILTIN_ENGINE_PRESET_ID });
+      expect(selects().editor).toHaveTextContent('Built-In Engine');
+      expect(screen.getByTestId('local-model-panel')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Endpoint URL/)).toBeNull();
+    } finally {
+      delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop;
+    }
+  });
+
+  it('writes each description as one short line', () => {
+    for (const line of [ENDPOINT_COPY.answer.description, ENDPOINT_COPY.pick.description, ENDPOINT_COPY.presetHint]) {
+      expect(sentenceShapeViolation(line), line).toBeNull();
+      expect(line.split(/\s+/).length, line).toBeLessThanOrEqual(12);
+    }
   });
 
   it('picks a preset to edit without a change to the active endpoint or a route', async () => {

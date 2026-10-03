@@ -25,8 +25,8 @@ export const GENERAL_COPY = {
 /** The copy of the Endpoint tab. */
 export const ENDPOINT_COPY = {
   answer: { label: 'Answer Endpoint', description: 'Sends your questions to this endpoint for answers' },
-  pick: { label: 'Pick Endpoint', description: 'Sends the AI Picks request to this endpoint. A small, fast model works well.' },
+  pick: { label: 'Pick Endpoint', description: 'Sends the "AI Picks" request here. A small, fast model works well.' },
   followsActive: 'Follows the endpoint picked on the **AI Endpoints** tab of Settings. Switch endpoints there and this follows.',
   sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
-  presetHint: "Picks the preset to edit. A change applies everywhere it's used, the game included.",
+  presetHint: 'Picks the preset to edit. The game uses the same presets.',
 } as const;
