@@ -73,7 +73,7 @@ Accepted without a numbered ruling:
 |---|---|
 | A1 | A linked account with no tier stays linked. Its status reads "No active membership". |
 | A2 | The site and the app show a **Become a Supporter** link to accounts with no tier. |
-| A3 | The in-app link flow opens the system browser. The callback is on the server. |
+| A3 | The in-app link flow opens the system browser. The callback is on the server, and the member confirms the link signed in on the site (see the ticket 03 rulings). |
 | A4 | Flair reads live everywhere. A lapsed supporter loses flair on old feedback replies too. |
 | A5 | Contest podiums show no flair. A placement stores only a name. |
 | A6 | Tiers map by Patreon tier ID in server configuration. A new tier needs a configuration change. |
@@ -155,6 +155,7 @@ Rulings from ticket 03 (2026-10-02):
 - A linked account that links again with a different Patreon user replaces its row. That is an unlink plus a link (Q14); the uniqueness check against the new Patreon user ID still applies.
 - When the identity read succeeds and the tier read fails, the link is stored with no tier and a null last-check time, and the result is `linked` (A1). The webhook or the hourly job corrects the tier.
 - Status shape: `{ linked: false }` or `{ linked: true, tier, since, showFlair }`. `tier` is `supporter`, `supporter_plus`, or null; `since` matches `supporter.since`. The status shows a staff account its real tier; only author payloads null it (Q2).
+- **Confirm on return (link injection).** An attacker could start a link on their own account and send the approval URL to a victim; the victim's approval would link the victim's Patreon user to the attacker's account. So the callback does not finish the link. It stores a pending link for 10 minutes and redirects to the site's account page with a one-shot confirm token in the URL. That page, signed in, calls a confirm route with the token and its bearer. The server finishes the link only when the bearer account equals the account in the pending link. The attacker never holds the token, and a victim signed in as themselves fails the match. A3 changes: in the app flow the member signs in on formamorph.ai in the system browser if asked, confirms, then returns to the app. Ticket 09 calls confirm on return; ticket 10 words the return step that way.
 - Until ticket 06, the creator token comes from the environment. The server has no tracked example env file; the README's environment block is the example.
 
 ### The tier rule (server)
