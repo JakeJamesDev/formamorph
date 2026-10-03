@@ -216,3 +216,12 @@ function sampleHistory(): ChatMessage[] {
 /** The Tool Snapshot of the sample world, for trying a Tool with no world open. */
 export const sampleToolSnapshot = (): ToolSnapshot =>
   buildToolSnapshot(sampleChipScene(), sampleDictionaries(), { history: sampleHistory(), overrides: null, verbatimFloor: 0 });
+
+/** The Chip Scene of no world: nowhere, nobody, nothing written. */
+const EMPTY_SCENE: ChipScene = {
+  overview: '', stats: [], traits: [], traitGroups: [], persona: null, location: null, locations: [], connections: [], entities: [],
+  presentIds: [], inSceneIds: [], lore: [], notes: '', time: null, resolve: (text) => text,
+};
+
+/** The Tool Snapshot of no world: what a Tool reads when no world is open. Every lookup returns its empty result. */
+export const emptyToolSnapshot = (): ToolSnapshot => buildToolSnapshot(EMPTY_SCENE, []);

@@ -59,6 +59,7 @@ export const PROMPTS_COPY = {
 export const TOOLS_COPY = {
   lookupSummary: 'Searches the guide or reads sections by id, and returns their text',
   unsupported: "Your Answer Endpoint won't receive these functions. Its model doesn't support them, or support isn't confirmed yet.",
+  worldText: 'Sends text from the world you have open when a Tool is on',
 } as const;
 
 export const COMPARE_COPY = {

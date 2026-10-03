@@ -368,7 +368,7 @@ function fixesToSave(draft: Tool, problems: DraftProblems): string | null {
  * beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
  */
 export function ToolEditor({
-  draft, onDraftChange, keptHandlers, editTab, onEditTabChange, userTools, editing, world, fullscreen, fullscreenButton,
+  draft, onDraftChange, keptHandlers, editTab, onEditTabChange, userTools, reservedNames = [], editing, world, fullscreen, fullscreenButton,
   onCancel, onSave,
 }: {
   draft: Tool;
@@ -379,6 +379,8 @@ export function ToolEditor({
   onEditTabChange: (tab: ToolEditTab) => void;
   /** The user Tools, for the name check. */
   userTools: readonly Tool[];
+  /** The caller's fixed function names, which the name check refuses as built-in. */
+  reservedNames?: readonly string[];
   /** True when the draft edits a saved Tool, false for a new one. */
   editing: boolean;
   world: TryItWorld;
@@ -388,7 +390,7 @@ export function ToolEditor({
   onCancel: () => void;
   onSave: () => void;
 }) {
-  const problems = draftProblems(draft, userTools);
+  const problems = draftProblems(draft, userTools, reservedNames);
   const blocked = hasDraftProblems(problems);
   const fixes = fixesToSave(draft, problems);
   const body = { draft, onChange: (next: Tool) => onDraftChange(next), problems };

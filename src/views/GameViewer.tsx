@@ -95,6 +95,7 @@ import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues"
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
+import { useHelpWorldSource } from "../lib/formaquestion/helpWorld";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
@@ -1846,6 +1847,8 @@ const GameViewer = ({
     () => buildToolSnapshot(liveScene(), dictionaries, toolMemorySource()),
     [liveScene, dictionaries, toolMemorySource],
   );
+  // A Formaquestion Tool reads the same playthrough while the game shows.
+  useHelpWorldSource(toolWorld);
   // Requests between a round's Tool calls and the next round's first token: the count behind "Looking up…".
   const [toolLookups, setToolLookups] = useState(0);
 

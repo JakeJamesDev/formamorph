@@ -3,11 +3,15 @@ import { ToolsTab as ToolsLayout, type FixedFunction, type FixedFunctions } from
 import { EMPTY_TOOLS_VIEW, type ToolsView } from '@/components/modals/toolsView';
 import { DOCS_LOOKUP, DOCS_LOOKUP_CALL_LIMIT } from '@/lib/formaquestion/docsLookup';
 import { HELP_LOOKUP_CALL_LIMIT_MAX, lookupCallLimitOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { deleteHelpTool, dropHelpToolSwitch, saveHelpTool } from '@/lib/formaquestion/helpTools';
+import { useHelpWorld } from '@/lib/formaquestion/helpWorld';
+import { APP_VERSION } from '@/lib/version';
 import { TOOLS_COPY } from './formaquestionSettingsTabs';
 
 /**
  * The Tools tab of Formaquestion Settings: the functions a help answer request can call, switched on this
- * device. The guide lookup is a fixed row; its switch is lookup mode.
+ * device. The guide lookup is a fixed row; its switch is lookup mode. Under it, the player's own Formaquestion
+ * Tools: a list apart from the gameplay Tools (ADR-0010), with the Tool editor and the Tool pack file.
  */
 export function ToolsTab({ settings, onChange, toolsSupported }: {
   settings: HelpSettings;
@@ -16,6 +20,7 @@ export function ToolsTab({ settings, onChange, toolsSupported }: {
   toolsSupported: boolean;
 }) {
   const [view, setView] = useState<ToolsView>(EMPTY_TOOLS_VIEW);
+  const openWorld = useHelpWorld();
   const lookup: FixedFunction = {
     ...DOCS_LOOKUP,
     summary: TOOLS_COPY.lookupSummary,
@@ -28,18 +33,29 @@ export function ToolsTab({ settings, onChange, toolsSupported }: {
     functions: [lookup],
     onCallLimitChange: (_id, limit) => onChange({ lookupCallLimit: lookupCallLimitOf(limit) }),
   };
+  const setEnabled = (id: string, on: boolean) => {
+    if (id === DOCS_LOOKUP.id) onChange({ lookup: on });
+    else onChange({ toolSwitches: { ...settings.toolSwitches, [id]: on } });
+  };
   return (
-    <div className="flex min-h-0 flex-1 flex-col py-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 py-4">
       <ToolsLayout
         catalogTools={[]}
         fixed={fixed}
-        enabledTools={{ [DOCS_LOOKUP.id]: settings.lookup }}
+        userTools={settings.tools}
+        onSaveTool={(tool) => onChange({ tools: saveHelpTool(settings.tools, tool) })}
+        onDeleteTool={(id) => onChange({ tools: deleteHelpTool(settings.tools, id), toolSwitches: dropHelpToolSwitch(settings.toolSwitches, id) })}
+        appVersion={APP_VERSION}
+        singleRequest
+        enabledTools={{ ...settings.toolSwitches, [DOCS_LOOKUP.id]: settings.lookup }}
         toolsSupported={toolsSupported}
         unsupportedNote={TOOLS_COPY.unsupported}
-        onSetEnabled={(_id, on) => onChange({ lookup: on })}
+        onSetEnabled={setEnabled}
         view={view}
         onViewChange={setView}
+        openWorld={openWorld}
       />
+      <p className="flex-shrink-0 text-helper text-muted-foreground">{TOOLS_COPY.worldText}</p>
     </div>
   );
 }

@@ -30,6 +30,9 @@ function paramSchema(param: ToolParam): ToolParamSchema {
 /** What a request reads of a function it offers. A Tool is one; an app-internal function names only these. */
 export type OfferedFunction = Pick<Tool, 'id' | 'name' | 'description' | 'params' | 'callLimit'>;
 
+/** Whether an offered function is a Tool with a handler, not an app-internal function. */
+export const isTool = (fn: OfferedFunction): fn is Tool => 'handler' in fn;
+
 /** The schema the AI receives for `tool`. */
 export function toolSchema(tool: OfferedFunction): ToolFunctionSchema {
   return {

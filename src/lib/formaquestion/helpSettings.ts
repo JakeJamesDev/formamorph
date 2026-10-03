@@ -8,9 +8,11 @@ import {
   type PromptReasoningSetting,
 } from '@/lib/reasoningEffort';
 import type { Codec } from '@/lib/usePersistentState';
+import type { Tool, ToolEnabledMap } from '@/types';
 import { DOCS_LOOKUP_CALL_LIMIT } from './docsLookup';
 import { EMPTY_HELP_PRESET_STORE, parseHelpPresetStore, type HelpPresetStore } from './helpPresets';
 import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
+import { parseHelpTools, parseHelpToolSwitches } from './helpTools';
 
 /** The search sources of a help question. The rankings of the ones that are on merge into one. */
 export interface HelpSources {
@@ -53,6 +55,10 @@ export interface HelpSettings {
   readonly reveal: HelpReveal;
   /** The help prompt presets and the active one. The session sends the active preset's three texts. */
   readonly presets: HelpPresetStore;
+  /** The player's Formaquestion Tools: a list of their own, apart from the gameplay Tools (ADR-0010). */
+  readonly tools: readonly Tool[];
+  /** The switch of each Formaquestion Tool, by id. Absent is off. */
+  readonly toolSwitches: ToolEnabledMap;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
@@ -70,6 +76,8 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   thinkingOpen: false,
   reveal: DEFAULT_HELP_REVEAL,
   presets: EMPTY_HELP_PRESET_STORE,
+  tools: [],
+  toolSwitches: {},
 };
 
 /** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
@@ -110,7 +118,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
   parse: (raw) => {
     const stored: unknown = JSON.parse(raw);
     if (!isRecord(stored)) throw new Error('not a help settings object');
-    const { sources, reveal, presets, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
+    const { sources, reveal, presets, tools, toolSwitches, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
       sources: isRecord,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
@@ -124,9 +132,19 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       thinkingOpen: isBool,
       reveal: isRecord,
       presets: isRecord,
+      tools: Array.isArray,
+      toolSwitches: isRecord,
     });
     const storedSources = isRecord(sources) ? sources : {};
-    return { ...rest, reveal: parseHelpReveal(reveal), presets: parseHelpPresetStore(presets), sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }) };
+    const storedTools = parseHelpTools(tools);
+    return {
+      ...rest,
+      reveal: parseHelpReveal(reveal),
+      presets: parseHelpPresetStore(presets),
+      sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }),
+      tools: storedTools,
+      toolSwitches: parseHelpToolSwitches(toolSwitches, storedTools),
+    };
   },
   serialize: (value) => JSON.stringify(value),
 };

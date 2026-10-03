@@ -4,6 +4,7 @@ import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { askHelp } from '@/lib/formaquestion/helpSession';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
+import { helpWorld } from '@/lib/formaquestion/helpWorld';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -80,8 +81,9 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
   const ask = useCallback((question: string) => {
     if (!index || running.current || turnActivity.get()) return;
     const history = exchangesRef.current;
-    // The Surface and the settings at send time, before any wait.
+    // The Surface, the open world and the settings at send time, before any wait.
     const surface = surfaceRegistry.get();
+    const world = helpWorld.get();
     const sentSettings = settingsRef.current;
     const controller = new AbortController();
     running.current = controller;
@@ -108,7 +110,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
           }
         }
         const { snapshot, language } = aiRef.current;
-        for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, signal: controller.signal })) {
+        for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, world, signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, flagged: event.flagged });
           else change({ answer: event.text, reasoning: event.reasoning, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }

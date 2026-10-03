@@ -32,6 +32,11 @@ describe('draftProblems', () => {
     expect(hasDraftProblems(problems)).toBe(true);
   });
 
+  it('blocks a reserved name of the caller’s fixed functions as a built-in one, in any case', () => {
+    expect(draftProblems(draft({ name: 'Read_Guide' }), [mine], ['read_guide']).name).toBe('builtin');
+    expect(draftProblems(draft({ name: 'read_guide' }), [mine]).name).toBeNull();
+  });
+
   it('accepts a 64-character name and the draft’s own saved name', () => {
     expect(draftProblems(draft({ name: 'x'.repeat(64) }), [mine]).name).toBeNull();
     expect(draftProblems(draft({ id: 'other', name: 'get_weather' }), [mine]).name).toBeNull();

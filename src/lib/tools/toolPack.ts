@@ -46,8 +46,11 @@ export function parseToolList(list: readonly unknown[]): { tools: Tool[]; warnin
   return { tools, warnings };
 }
 
-/** Which imported Tools join the user Tools, each under a fresh id, and which names the list already holds. */
-export function planToolImport(held: readonly Tool[], imported: readonly Tool[], mintId: () => string): {
+/**
+ * Which imported Tools join the user Tools, each under a fresh id, and which names the list already holds.
+ * A name among `reserved`, the caller's fixed functions, is skipped as a held one is.
+ */
+export function planToolImport(held: readonly Tool[], imported: readonly Tool[], mintId: () => string, reserved: readonly string[] = []): {
   added: Tool[];
   skipped: string[];
   hasScript: boolean;
@@ -55,7 +58,7 @@ export function planToolImport(held: readonly Tool[], imported: readonly Tool[],
   const added: Tool[] = [];
   const skipped: string[] = [];
   for (const tool of imported) {
-    if (toolNameProblem(tool.name, [...held, ...added])) skipped.push(tool.name);
+    if (toolNameProblem(tool.name, [...held, ...added], { reserved })) skipped.push(tool.name);
     else added.push({ ...tool, id: mintId() });
   }
   return { added, skipped, hasScript: added.some((t) => t.handler.kind === 'script') };
@@ -86,13 +89,13 @@ export function planPresetTools(held: readonly Tool[], embedded: readonly Tool[]
 
 const COPY_SUFFIX = '_copy';
 
-/** A copy of `tool` as a new user Tool, named `<name>_copy` (numbered when taken) so it saves among `held`.
+/** A copy of `tool` as a new user Tool, named `<name>_copy` (numbered when taken among `held` or `reserved`) so it saves.
  *  Null when a user Tool can't store its handler. */
-export function copyTool(tool: Tool, held: readonly Tool[], id: string): Tool | null {
+export function copyTool(tool: Tool, held: readonly Tool[], id: string, reserved: readonly string[] = []): Tool | null {
   if (!userCanStore(tool.handler)) return null;
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? COPY_SUFFIX : `${COPY_SUFFIX}_${n}`;
     const name = tool.name.slice(0, TOOL_NAME_MAX - suffix.length) + suffix;
-    if (!toolNameProblem(name, held)) return { ...structuredClone(tool), id, name };
+    if (!toolNameProblem(name, held, { reserved })) return { ...structuredClone(tool), id, name };
   }
 }

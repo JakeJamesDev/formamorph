@@ -1,6 +1,14 @@
 import { vi } from 'vitest';
 import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import type { Tool } from '@/types';
 import { sseReply, sseResponse } from './aiTextFixtures';
+
+/** A Formaquestion Tool: an entity lookup by name, offered to no prompt, with `patch` applied. */
+export const helpTool = (patch: Partial<Tool> = {}): Tool => ({
+  id: 'h-1', name: 'find_person', description: 'Finds a person of the world by name.',
+  params: [{ name: 'name', type: 'string', description: 'The name.', required: true, options: [] }],
+  handler: { kind: 'lookup', source: 'entities', param: 'name', returns: 'full' }, emptyResult: '{"matches": []}', offeredTo: [], ...patch,
+});
 
 type Responder = (url: string, init: RequestInit) => Response | Promise<Response>;
 

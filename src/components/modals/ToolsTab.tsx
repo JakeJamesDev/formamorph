@@ -67,13 +67,15 @@ function CallLimitField({ callLimit, defaultLimit, maxLimit, onChange }: {
   );
 }
 
-/** Offered To and Max Calls per Request, written on each change. */
-function AvailabilityFields({ tool, onChange }: { tool: Tool; onChange: (tool: Tool) => void }) {
+/** Offered To and Max Calls per Request, written on each change. Where one request takes every Tool, the limit alone. */
+function AvailabilityFields({ tool, onChange, offeredTo }: { tool: Tool; onChange: (tool: Tool) => void; offeredTo: boolean }) {
   const id = useId();
   const setLimit = (limit: number | undefined) => {
     const { callLimit: _, ...rest } = tool;
     onChange(limit === undefined ? rest : { ...rest, callLimit: limit });
   };
+  const limit = <CallLimitField callLimit={tool.callLimit} defaultLimit={DEFAULT_TOOL_CALL_LIMIT} onChange={setLimit} />;
+  if (!offeredTo) return limit;
   return (
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
       <div className="flex flex-col gap-1 min-w-0">
@@ -84,7 +86,7 @@ function AvailabilityFields({ tool, onChange }: { tool: Tool; onChange: (tool: T
           defaultValue={tool.offeredTo} onValueChange={(kinds) => onChange({ ...tool, offeredTo: kinds as AIRequestType[] })}
         />
       </div>
-      <CallLimitField callLimit={tool.callLimit} defaultLimit={DEFAULT_TOOL_CALL_LIMIT} onChange={setLimit} />
+      {limit}
     </div>
   );
 }
@@ -131,6 +133,11 @@ interface MyToolsProps {
   onDeleteTool: (id: string) => void;
   appVersion: string;
   fileTransfer?: ToolFileTransfer;
+  /**
+   * One request takes every Tool that is on, so no prompt preset is involved: no Offered To field, a new Tool
+   * offered to no prompt, and a delete that names no preset.
+   */
+  singleRequest?: boolean;
 }
 
 interface ToolsTabProps {
@@ -164,14 +171,16 @@ const TEXT_ENDPOINT_NOTE = "Your text endpoint won't receive Tools. Its model do
  */
 export function ToolsTab({
   catalogTools, fixed, userTools, enabledTools, toolsSupported, unsupportedNote = TEXT_ENDPOINT_NOTE, toolsEnabled, onSaveTool, onDeleteTool,
-  onSetEnabled, view, onViewChange, presetSelector, fullscreen = false, onToggleFullscreen, appVersion, fileTransfer, openWorld,
+  onSetEnabled, view, onViewChange, presetSelector, fullscreen = false, onToggleFullscreen, appVersion, fileTransfer, singleRequest = false, openWorld,
 }: ToolsTabProps & (MyToolsProps | { [K in keyof MyToolsProps]?: undefined })) {
   const [confirmDelete, setConfirmDelete] = useState<Tool | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const world: TryItWorld = { snapshot: openWorld ?? sampleToolSnapshot, open: !!openWorld };
 
-  const my: MyToolsProps | null = userTools ? { userTools, onSaveTool, onDeleteTool, appVersion, fileTransfer } : null;
+  const my: MyToolsProps | null = userTools ? { userTools, onSaveTool, onDeleteTool, appVersion, fileTransfer, singleRequest } : null;
   const fixedFunctions = fixed?.functions ?? [];
+  // A fixed function's name is taken as a catalog name is: at save, import and copy.
+  const reserved = fixedFunctions.map((fn) => fn.name);
   const mine = [...(my?.userTools ?? [])].sort((a, b) => a.name.localeCompare(b.name));
   const tools = [...catalogTools, ...mine];
   const rows: readonly OfferedFunction[] = [...fixedFunctions, ...tools];
@@ -191,7 +200,7 @@ export function ToolsTab({
 
   const duplicate = (tool: Tool) => {
     if (!my) return;
-    const copy = copyTool(tool, my.userTools, randomUUID());
+    const copy = copyTool(tool, my.userTools, randomUUID(), reserved);
     if (!copy) return;
     my.onSaveTool(copy);
     onSetEnabled(copy.id, true);
@@ -211,7 +220,7 @@ export function ToolsTab({
       const text = await readText();
       if (text === null || !my) return;
       const { tools, warnings } = parseToolPack(text);
-      const plan = planToolImport(my.userTools, tools, randomUUID);
+      const plan = planToolImport(my.userTools, tools, randomUUID, reserved);
       plan.added.forEach(my.onSaveTool);
       for (const warning of warnings) toast.warn(warning);
       if (plan.skipped.length) toast.info(`Already in My Tools: ${plan.skipped.join(', ')}`);
@@ -245,6 +254,7 @@ export function ToolsTab({
         editTab={view.editTab}
         onEditTabChange={(editTab) => onViewChange({ ...view, editTab })}
         userTools={my.userTools}
+        reservedNames={reserved}
         editing={saved}
         world={world}
         fullscreen={fullscreen}
@@ -338,7 +348,7 @@ export function ToolsTab({
 
             <button
               type="button"
-              onClick={() => onViewChange({ ...view, draft: blankTool(randomUUID()), editTab: 'definition', keptHandlers: {} })}
+              onClick={() => onViewChange({ ...view, draft: blankTool(randomUUID(), my.singleRequest ? [] : undefined), editTab: 'definition', keptHandlers: {} })}
               className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <Plus className="h-4 w-4" />New Tool
@@ -362,7 +372,7 @@ export function ToolsTab({
           {selected && (
             <div className="flex flex-col gap-3 min-w-0 pr-3">
               {readHeader(selected, toolSummary(selected))}
-              {my && <AvailabilityFields tool={selected} onChange={my.onSaveTool} />}
+              {my && <AvailabilityFields tool={selected} onChange={my.onSaveTool} offeredTo={!my.singleRequest} />}
               <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selected.description}</p>
               <ToolTryIt key={selected.id} tool={selected} world={world} />
             </div>
@@ -394,7 +404,7 @@ export function ToolsTab({
         open={!!confirmDelete}
         onOpenChange={(o) => !o && setConfirmDelete(null)}
         title="Delete Tool"
-        description={`Delete “${confirmDelete?.name}” from every preset? This can't be undone.`}
+        description={my?.singleRequest ? `Delete “${confirmDelete?.name}”? This can't be undone.` : `Delete “${confirmDelete?.name}” from every preset? This can't be undone.`}
         onConfirm={() => {
           if (!confirmDelete || !my) return;
           my.onDeleteTool(confirmDelete.id);

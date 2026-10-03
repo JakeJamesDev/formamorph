@@ -4,8 +4,11 @@
  */
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { ABORTED_FINISH_REASON } from '@/lib/aiRequest/aiStream';
-import { streamAiToolLoop } from '@/lib/aiRequest/toolLoop';
+import { streamAiToolLoop, type ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import { extractReasoningLive, stripReasoningLive } from '@/lib/aiResponse';
+import { snapshotToolExecutor } from '@/lib/tools/toolOffer';
+import { isTool, type OfferedFunction } from '@/lib/tools/toolSchema';
+import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { CHANGELOG_PAGE, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
 import { resolvePromptReasoning, resolvePromptReasoningSetting, toolsSupported, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
@@ -20,6 +23,8 @@ import { helpRoutes } from './helpRoutes';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
+import { helpToolsOn } from './helpTools';
+import type { ToolSnapshotSource } from './helpWorld';
 import { mergeRanks } from './rankMerge';
 import { surfaceHint, type SurfaceHint } from './surfaceHint';
 import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
@@ -68,6 +73,8 @@ export interface HelpQuestion {
   surface?: Surface;
   /** The images the player attached to this question. They go on the question alone, never on history. */
   images?: readonly ImageAttachment[];
+  /** The open world as a Tool Snapshot, read once at the first Tool call. None: a Tool runs on an empty snapshot (Q36). */
+  world?: ToolSnapshotSource;
   /** Off lets every pick count on a question that points at the open screen: tests and a probe's control arm. */
   screenRule?: boolean;
   /** Off adds the open page's how-tos to every question: tests and a probe's control arm. */
@@ -264,15 +271,20 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
  * - A bare question, when every source is off, lookup mode is off and the open screen adds no section: the
  *   question alone, with no search. A search that runs and misses still sends the empty guide block.
  *
+ * The player's Formaquestion Tools that are on go with the request on the same gate, in either mode. They
+ * are no source (Q51): they change neither the prompt nor the bare rule. A Tool reads the open world.
+ *
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', settings, snapshot, index, surface, images = [], screenRule, howToRule, embedder, signal, fetchImpl,
+  question, history = [], language = '', settings, snapshot, index, surface, images = [], world = emptyToolSnapshot, screenRule, howToRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = settings.openScreen ? surfaceHint(surface, index) : null;
   const kept = keptHistory(history, settings.historyLength);
   const answerSnapshot = helpSnapshot(snapshot, helpRoutes(settings).answer, settings.reasoning, settings.reasoningBudget);
-  const lookupMode = settings.lookup && toolsSupported(answerSnapshot.resolveTarget('help').reasoning);
+  const takesFunctions = toolsSupported(answerSnapshot.resolveTarget('help').reasoning);
+  const lookupMode = settings.lookup && takesFunctions;
+  const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const search = bare ? index : await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl });
@@ -290,13 +302,19 @@ export async function* askHelp({
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
   const options = activeHelpOptions(settings.presets);
+  // The lookup first, then the player's Tools. The lookup keeps its own executor; a Tool runs on the one world snapshot of the question.
+  const offered: OfferedFunction[] = [...(lookup ? [{ ...DOCS_LOOKUP, callLimit: settings.lookupCallLimit }] : []), ...playerTools];
+  const runTool = snapshotToolExecutor(world);
+  // The one offered function without a handler is the lookup, and `offered` holds it only while `lookup` is set.
+  const execute: ToolExecutor<OfferedFunction> = (fn, argumentsText, callSignal) =>
+    (isTool(fn) ? runTool(fn, argumentsText, callSignal) : lookup!.execute(fn, argumentsText, callSignal));
   const spec = buildAiRequestSpec(answerSnapshot, {
     systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer)),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
     maxTokensOverride: options.maxTokens,
     samplerOverride: { temperature: options.temperature, repetitionPenalty: options.repetitionPenalty },
-    ...(lookup && { tools: [{ ...DOCS_LOOKUP, callLimit: settings.lookupCallLimit }] }),
+    ...(offered.length > 0 && { tools: offered }),
   });
   let text = '';
   let marked = false;
@@ -306,7 +324,7 @@ export async function* askHelp({
   let content = '';
   let reasoning = '';
   const reasoningNow = () => joinReasoning(native, earlierInline, extractReasoningLive(content));
-  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, ...(lookup && { execute: lookup.execute }) })) {
+  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, ...(offered.length > 0 && { execute }) })) {
     if (event.type === 'toolCalls') {
       // What the model wrote before a call is not the answer, but its inline reasoning still is reasoning.
       earlierInline = joinReasoning(earlierInline, extractReasoningLive(content));
