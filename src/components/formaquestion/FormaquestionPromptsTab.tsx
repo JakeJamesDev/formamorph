@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { Copy, GitCompare, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
 import PromptField from '@/components/prompt/PromptField';
@@ -13,11 +13,12 @@ import {
   activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpPrompt, isDefaultHelpPresetActive,
   isHelpPromptEdited, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from '@/lib/formaquestion/helpPresets';
-import { HELP_PROMPT_CHIPS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
+import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { randomUUID } from '@/lib/uuid';
+import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
 import { AnswerOptions } from './AnswerOptions';
-import { PROMPTS_COPY } from './formaquestionSettingsTabs';
+import { COMPARE_COPY, PROMPTS_COPY } from './formaquestionSettingsTabs';
 
 const ADD_PRESET = '__add__';
 
@@ -44,10 +45,12 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   const readOnly = isDefaultHelpPresetActive(store);
   const [key, setKey] = useState<HelpPromptKey>('answer');
   const [pending, setPending] = useState<Pending>(null);
+  const [comparing, setComparing] = useState(false);
   const setStore = (next: HelpPresetStore) => onChange({ presets: next });
   const duplicate = (name: string) => setStore(duplicateHelpPreset(store, active.id, randomUUID(), name));
   const copyName = `${active.name} (copy)`;
   const prompt = PROMPTS_COPY.prompts[key];
+  const edited = isHelpPromptEdited(active.prompts, key);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
@@ -115,15 +118,22 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
             readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
             onRequestEdit={() => duplicate(copyName)}
             labelAside={!readOnly && (
-              <Tip tip={PROMPTS_COPY.reset.hint} labelsChild={false}>
-                <Button
-                  variant="outline" size="sm" className="h-7 px-2"
-                  disabled={!isHelpPromptEdited(active.prompts, key)}
-                  onClick={() => setPending({ kind: 'reset', key })}
-                >
-                  <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden /> {PROMPTS_COPY.reset.label}
-                </Button>
-              </Tip>
+              <div className="flex items-center gap-2">
+                <Tip tip={edited ? COMPARE_COPY.action.hint : COMPARE_COPY.action.same} labelsChild={false}>
+                  <Button variant="outline" size="sm" className="h-7 px-2" disabled={!edited} onClick={() => setComparing(true)}>
+                    <GitCompare className="mr-1 h-3.5 w-3.5" aria-hidden /> {COMPARE_COPY.action.label}
+                  </Button>
+                </Tip>
+                <Tip tip={PROMPTS_COPY.reset.hint} labelsChild={false}>
+                  <Button
+                    variant="outline" size="sm" className="h-7 px-2"
+                    disabled={!edited}
+                    onClick={() => setPending({ kind: 'reset', key })}
+                  >
+                    <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden /> {PROMPTS_COPY.reset.label}
+                  </Button>
+                </Tip>
+              </div>
             )}
             className="min-h-0 flex-1"
           />
@@ -131,6 +141,13 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         </div>
       </div>
 
+      <HelpPromptCompareDialog
+        open={comparing && !readOnly}
+        onOpenChange={setComparing}
+        label={prompt.label}
+        defaultText={DEFAULT_HELP_PROMPTS[key]}
+        text={active.prompts[key]}
+      />
       <PresetNameDialog
         open={pending?.kind === 'add' || pending?.kind === 'rename'}
         mode={pending?.kind === 'rename' ? 'rename' : 'add'}

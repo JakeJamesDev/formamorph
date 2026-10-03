@@ -7,7 +7,7 @@ import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { sentenceShapeViolation } from '@/test/copyShape';
 import { PromptsTab } from './FormaquestionPromptsTab';
-import { PROMPTS_COPY } from './formaquestionSettingsTabs';
+import { COMPARE_COPY, PROMPTS_COPY } from './formaquestionSettingsTabs';
 
 let help: HelpSettings;
 
@@ -103,6 +103,26 @@ describe('the Prompts tab on a custom preset', () => {
     expect(resetButton()).toBeDisabled();
   });
 
+  it('disables Compare to Default for a prompt equal to the default, and opens the diff over the tab for an edited one', async () => {
+    renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'answer', `Be brief. ${DEFAULT_HELP_PROMPTS.answer}`) });
+    const user = userEvent.setup();
+    const compare = () => screen.getByRole('button', { name: /Compare to Default/ });
+    expect(compare()).toBeEnabled();
+    await user.click(compare());
+    const dialog = await screen.findByRole('dialog', { name: COMPARE_COPY.title('Answer') });
+    expect([...dialog.querySelectorAll('ins')].map((el) => el.textContent).join('')).toContain('brief');
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: COMPARE_COPY.title('Answer') })).toBeNull());
+
+    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Picks' }));
+    expect(compare()).toBeDisabled();
+  });
+
+  it('shows no Compare to Default on the Default preset', () => {
+    renderTab();
+    expect(screen.queryByRole('button', { name: /Compare to Default/ })).toBeNull();
+  });
+
   it('keeps an edited text when the active prompt changes in the rail', async () => {
     renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'pick', 'Pick well.') });
     const user = userEvent.setup();
@@ -146,7 +166,7 @@ describe('the Prompts tab on a custom preset', () => {
 
 describe('the Prompts copy', () => {
   it('writes each description as one short line', () => {
-    const hints = [PROMPTS_COPY.preset.hint, PROMPTS_COPY.reset.hint, ...Object.values(PROMPTS_COPY.prompts).map((prompt) => prompt.hint)];
+    const hints = [PROMPTS_COPY.preset.hint, PROMPTS_COPY.reset.hint, COMPARE_COPY.action.hint, COMPARE_COPY.action.same, ...Object.values(PROMPTS_COPY.prompts).map((prompt) => prompt.hint)];
     for (const hint of hints) {
       expect(sentenceShapeViolation(hint), hint).toBeNull();
       expect(hint.split(/\s+/).length, hint).toBeLessThanOrEqual(12);

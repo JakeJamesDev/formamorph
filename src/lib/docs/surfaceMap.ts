@@ -200,6 +200,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'formaquestion.search': { page: 'Formaquestion', anchor: 'search' },
   'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
   formaquestionSettings: FORMAQUESTION_SETTINGS,
+  formaquestionCompare: { page: 'Formaquestion', anchor: 'prompts' },
   'formaquestionSettings.general': { page: 'Formaquestion', anchor: 'general' },
   'formaquestionSettings.endpoint': { page: 'Formaquestion', anchor: 'endpoint' },
   'formaquestionSettings.prompts': { page: 'Formaquestion', anchor: 'prompts' },
