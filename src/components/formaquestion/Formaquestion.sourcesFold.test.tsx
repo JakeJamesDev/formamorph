@@ -5,6 +5,7 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { sseFrame, sseReply, textSnapshot } from '@/test/aiTextFixtures';
 import { stubHelpStream } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
+
 const SETTINGS_KEY = 'FORMAMORPH_helpSettings';
 const storedOpen = () => (JSON.parse(localStorage.getItem(SETTINGS_KEY)!) as { sourcesOpen: boolean }).sourcesOpen;
 
@@ -88,7 +89,7 @@ describe('the Sources fold of an answer', () => {
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(encoder.encode(sseFrame({ content: '1. Open the **Stats** tab.' })));
-        finish = () => { controller.enqueue(encoder.encode(sseReply('')[0] ?? '')); controller.close(); };
+        finish = () => controller.close();
       },
     });
     stubHelpStream(() => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));

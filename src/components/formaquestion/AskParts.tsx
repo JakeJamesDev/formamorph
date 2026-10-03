@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
-import { ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
@@ -103,7 +103,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
             onClick={fold.toggle}
             className={cn('flex w-fit items-center gap-1 rounded text-meta text-muted-foreground', FOCUS_RING)}
           >
-            <ChevronRight aria-hidden className={cn('h-3 w-3 shrink-0 transition-transform', fold.open && 'rotate-90')} />
+            <ChevronDown aria-hidden className={cn('h-3 w-3 shrink-0', fold.open && 'rotate-180')} />
             {fold.open ? listLabel : `${listLabel} (${listed.length})`}
           </button>
           {fold.open && (

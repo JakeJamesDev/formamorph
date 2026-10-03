@@ -1,6 +1,6 @@
 # 08: Sources collapse
 
-Status: in-progress
+Status: ready-for-human
 Base: 9e8df9af
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
