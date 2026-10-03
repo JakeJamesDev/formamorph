@@ -38,6 +38,7 @@ export const AI_CONTEXT_COPY = {
   empty: 'No question has reached your AI yet. Ask one, then reopen this.',
   bare: 'A bare question: no search ran, and the request holds the question alone.',
   search: 'Search',
+  question: 'Question',
   query: 'Query',
   preset: 'Preset',
   sourcesOn: 'Sources on',
