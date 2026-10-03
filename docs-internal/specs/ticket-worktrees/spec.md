@@ -68,6 +68,9 @@ The workflow is global. It lives in `~/.claude` and works in any repo with a `do
 | Q29 | The marker is a `prepared: {branch, head, main}` field in the unit's state file. Prepare clears it before doing anything else. The gate log is `<git common dir>/ticket-worktrees/<slug>.log`. "main" means whatever branch the main checkout has checked out. A detached main checkout is refused. (Ticket 03) |
 | Q30 | Untracked files that git doesn't ignore count as dirty. Gates are command strings, run through the shell in the worktree root. The allow-list entry for prepare belongs to ticket 05. (Ticket 03) |
 | Q31 | Prepare clears the marker before any refusal, a dirty tree included. A refusal never changes git state. The marker is written only when the gates are green, the branch has exactly one commit on top of main, and no gate edited a tracked file. `prepared.head` and `prepared.main` are full shas. Prepare also refuses these cases: the message file inside the worktree, a rebase already in progress, running in the main checkout, an unclaimed branch, a malformed `gates` list, and nothing to land. A failed squash restores the old head. (Ticket 03 review) |
+| Q32 | Already landed: the marker matches the branch HEAD, main has moved, and main already contains that HEAD (`merge-base --is-ancestor`). In that case the landing skips the fast-forward, runs the full cleanup, and reports the landed sha. (Ticket 04) |
+| Q33 | On a refusal, the landing hook writes the prepared commit's message to `<git common dir>/ticket-worktrees/<slug>.message` and names that path in the full prepare command it prints. Ticket 03 doesn't change. (Ticket 04) |
+| Q34 | Cleanup that fails after a successful fast-forward reports the landed sha and the failed step, and keeps the state file. The recovery it names is to re-enter with `EnterWorktree` and the path, then `ExitWorktree` with `keep`. Under Q32, that second exit finishes the cleanup. The hook reads the worktree's real branch from git, not from `worktreeBranch` in the payload. If the fast-forward fails after the claim revert, the hook writes the claim edit back. (Ticket 04) |
 | Q22 | On a resume through `EnterWorktree` with `path`, a `ticket/*` branch counts as the same ticket. The setup hook repairs the worktree and changes nothing else. (Ticket 01) |
 
 Verified by the probe on 2026-10-02 (Claude Code 2.1.284, Windows):
@@ -80,6 +83,7 @@ Verified by the probe on 2026-10-02 (Claude Code 2.1.284, Windows):
 | Default branch name | `worktree-<name>`. The desktop branch prefix did not apply. |
 | `symlinkDirectories` | ❌ No link was created, either nested or at the top level |
 | `.worktreeinclude` | ✅ `CLAUDE.md` and `docs/agents/` were present |
+| Session lock | Claude Code locks a worktree while a session is in it (`locked claude session <name> (pid N)`). `ExitWorktree keep` releases the lock before the tool returns, so a plain `git worktree remove` in the landing hook works. (Ticket 04) |
 | Isolation | Inside the worktree, Claude Code refused a Bash command that ran `cmd`. Hooks run outside these checks. |
 
 ## User Stories
@@ -205,4 +209,5 @@ Guards are proven by mutation: reinstate each bug (no junction cut, no `main` ch
 - The landing hook runs git in the main checkout from a hook. That works because hooks run outside the worktree isolation checks. A future Claude Code version could close that path, and the setup hook's tests would show it.
 - `symlinkDirectories` may work on a machine with Windows Developer Mode on. If a later probe shows it working here, the junction step can be retired.
 - Gate runs double per ticket (before review and in prepare), and parallel tickets each run their own suite. Watch machine load during the end-to-end run, and say so if it hurts.
+- The landing hook cuts every link in the worktree before removal. A tracked symlink would be cut too and would then block the removal. This machine can't create symlinks (`core.symlinks` is false), so the case can't happen here. Revisit it before using the flow on a machine that can.
 - On Windows, approvals given inside a worktree stay with that worktree. Missing allow-list entries show up as repeated prompts in the end-to-end run.
