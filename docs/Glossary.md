@@ -10,7 +10,8 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 
 | Term | Meaning |
 |---|---|
-| [Formaquestion](Formaquestion) | The help window. You can ask it a question, search this guide and read each page. The **Help** tab or F1 opens it. |
+| [Formaquestion](Formaquestion) | The help window. You can ask it a question, search this guide and read each page. The **Help** tab or F1 opens it. A Tool that you turn on lets it read the world you have open. |
+| [Search Source](Formaquestion#general) | One way Formaquestion finds guide sections for your question: **Keyword Search**, **AI Picks** or **Semantic Search**. You turn each one on or off in **Formaquestion Settings**. |
 | [Turn](How-to-Play) | One action from you and the AI's reply to it |
 | [Action](How-to-Play#how-to-take-an-action) | What you write in the action box: what you do next |
 | [Choice](How-to-Play#how-to-use-a-choice) | A ready-made action under the story. Select one to put its text in the action box. |
@@ -117,7 +118,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Chip](World-Editor-Placeholders) | A box in text that the app fills with a value. In world text, a chip places a placeholder. In a [prompt](Prompts#the-chip-editor), it places game data, such as your stats. |
 | [Request Anatomy](Prompts#anatomy) | A labeled map of every message in one request, which marks the text you typed |
 | [Custom Prompts](Prompts#world-prompts-and-the-diff-viewer) | A world's own narration, choices or stats prompt, which replaces yours while you play it |
-| [Tool](Tools) | A function the AI can call during a request to get information it does not have. A Tool only reads. |
+| [Tool](Tools) | A function the AI can call during a request to get information it does not have. A Tool only reads. Formaquestion has its own list of Tools, which you switch on and off on this device. |
 | [Tool Handler](Tools#handler) | The part of a Tool that runs when the AI calls it: **Lookup**, **Template** or **Script** |
 
 ## 🛠️ Building a World

@@ -1,6 +1,6 @@
 # 19: Docs and glossary pass
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16, 17, 18
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
