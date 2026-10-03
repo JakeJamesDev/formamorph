@@ -2,7 +2,8 @@ import { cn } from "@/lib/utils";
 import { RoleBadge } from "@/components/RoleBadge";
 import { SupporterBadge } from "@/components/SupporterBadge";
 import { useUserProfile } from "@/contexts/userProfileStore";
-import { SUPPORTER_NAME_STYLES, flairTier, type SupporterFlair } from "@/lib/supporterFlair";
+import { SUPPORTER_NAME_STYLES, flairTier } from "@/lib/supporterFlair";
+import type { SupporterFlair } from "@/types";
 
 interface UserNameProps {
   userId?: string | null;

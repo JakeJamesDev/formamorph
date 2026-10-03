@@ -7,3 +7,4 @@ export * from './policies';
 export * from './feedback';
 export * from './audit';
 export * from './users';
+export * from './supporter';

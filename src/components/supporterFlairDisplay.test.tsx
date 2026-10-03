@@ -6,7 +6,8 @@ import { TooltipProvider } from './ui/tooltip';
 import { UserAvatar } from './UserAvatar';
 import { UserName } from './UserName';
 import { UserProfileContext } from '@/contexts/userProfileStore';
-import { SUPPORTER_TIERS, type SupporterFlair } from '@/lib/supporterFlair';
+import { SUPPORTER_TIERS } from '@/lib/supporterFlair';
+import type { SupporterFlair } from '@/types';
 
 afterEach(cleanup);
 

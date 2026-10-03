@@ -3,7 +3,8 @@ import { Meta, SectionTitle } from '@/components/ui/typography';
 import { RoleBadge } from '@/components/RoleBadge';
 import { SupporterBadge } from '@/components/SupporterBadge';
 import { UserAvatar, type AvatarSize } from '@/components/UserAvatar';
-import { SUPPORTER_LABELS, SUPPORTER_NAME_STYLES, SUPPORTER_TIERS, supporterRing, type SupporterTier } from '@/lib/supporterFlair';
+import { SUPPORTER_LABELS, SUPPORTER_NAME_STYLES, SUPPORTER_TIERS, supporterRing } from '@/lib/supporterFlair';
+import type { SupporterTier } from '@/types';
 import { cn } from '@/lib/utils';
 
 const TIERS = SUPPORTER_TIERS;

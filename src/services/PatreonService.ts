@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
-import type { SupporterTier } from '@/lib/supporterFlair';
+import type { SupporterTier } from '@/types';
 
 /** The caller's own Patreon link, as the server reports it. */
 export type PatreonStatus =
