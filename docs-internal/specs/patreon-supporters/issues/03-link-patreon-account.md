@@ -1,7 +1,7 @@
 # 03: Link a Patreon Account
 
 Status: ready-for-human
-Status note: Built in FormamorphServer f69efa0 (server base 6831227). The review added the confirm step from the link-injection ruling: `POST /api/users/me/patreon/confirm` with `{ token }` answers 200 with the status, 400 `PATREON_CONFIRM_REFUSED`, or 409 `PATREON_TAKEN`. The callback answers `?patreon=confirm&token=…`, `taken`, `denied`, `expired`, or `failed`. Server suite: 1903 tests green in 22 s.
+Status note: Built in FormamorphServer f69efa0 (server base 6831227). The review added the confirm step from the link-injection ruling: `POST /api/users/me/patreon/confirm` with `{ token }` answers 200 with the status, 400 `PATREON_CONFIRM_REFUSED`, or 409 `PATREON_TAKEN`. The callback answers `?patreon=confirm&token=…`, `taken`, `denied`, `expired`, or `failed`. Server suite: 1903 tests green in 22 s. Follow-up 5f0927b: every callback failure now redirects with `failed` instead of hanging (spec-session review); suite 2056 green in 28 s.
 Base: 8fd568fe
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
