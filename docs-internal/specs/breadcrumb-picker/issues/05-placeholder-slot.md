@@ -1,6 +1,7 @@
 # 05: Placeholder Slot Reach and Folders
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 2b661e8f
 Blocked by: 03
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
