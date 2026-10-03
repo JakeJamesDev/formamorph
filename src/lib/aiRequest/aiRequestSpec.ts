@@ -30,7 +30,8 @@ export interface AiEndpointTarget {
 
 /** The per-call settings snapshot: plain values plus the endpoint resolver, so nothing here touches React. */
 export interface AiSettingsSnapshot {
-  resolveTarget: (kind: AIRequestType) => AiEndpointTarget;
+  /** The kind's own route, or with `routes` the first preset id of them that exists, else the active endpoint. */
+  resolveTarget: (kind: AIRequestType, routes?: readonly string[]) => AiEndpointTarget;
   thinkingMode: ThinkingMode;
   /** Global native effort level, folded in by a prompt set to `global`. */
   reasoningEffort: ReasoningEffort;

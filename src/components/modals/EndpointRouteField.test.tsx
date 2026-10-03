@@ -63,4 +63,38 @@ describe('EndpointRouteField', () => {
     renderField('llama', vi.fn(), false);
     expect(screen.queryByText('Reachable')).toBeNull();
   });
+
+  describe('with a row that names no preset', () => {
+    const renderWithRow = (value: string | null, onChange = vi.fn()) => {
+      render(
+        <EndpointRouteField
+          label="Pick Endpoint"
+          description="Where picks go"
+          info="Where they go now"
+          value={value}
+          activeName="Default"
+          extraRows={[{ value: 'same', label: 'Same as Answer (Llama)' }]}
+          presets={presets}
+          onChange={onChange}
+          target={{ ...target, enabled: false }}
+        />,
+      );
+      return onChange;
+    };
+
+    it('lists it first and passes its value', async () => {
+      const onChange = renderWithRow(null);
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('combobox'));
+      const options = await screen.findAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual(['Same as Answer (Llama)', 'Use Active Endpoint (Default)', 'Default', 'Llama']);
+      await user.click(options[0]);
+      expect(onChange).toHaveBeenCalledWith('same');
+    });
+
+    it('shows it for its value', () => {
+      renderWithRow('same');
+      expect(screen.getByRole('combobox')).toHaveTextContent('Same as Answer (Llama)');
+    });
+  });
 });

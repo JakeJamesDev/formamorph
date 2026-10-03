@@ -15,10 +15,17 @@ export interface HelpSources {
   readonly semantic: boolean;
 }
 
+/** The Pick Endpoint choice that sends picks where answers go. */
+export const SAME_AS_ANSWER = 'same-as-answer';
+
 /** Every setting a help question carries. */
 export interface HelpSettings {
   /** The sources whose rankings the search of a question merges. */
   readonly sources: HelpSources;
+  /** The text-endpoint preset answers go to, or null to follow the active endpoint. */
+  readonly answerEndpoint: string | null;
+  /** The preset picks go to, `SAME_AS_ANSWER`, or null to follow the active endpoint. */
+  readonly pickEndpoint: string | null;
   /** Lookup mode: the model reads more sections through the guide lookup, where the endpoint takes function calls (ADR-0009). */
   readonly lookup: boolean;
   /** The open screen's section leads the docs, and the request names the screen. */
@@ -34,6 +41,8 @@ export interface HelpSettings {
 /** The settings of a player who has changed nothing. The help bar run measures these. */
 export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   sources: { keyword: true, aiPicks: true, semantic: false },
+  answerEndpoint: null,
+  pickEndpoint: SAME_AS_ANSWER,
   lookup: false,
   openScreen: true,
   historyLength: 4,
@@ -56,6 +65,9 @@ type Check = (value: unknown) => boolean;
 const isBool: Check = (value) => typeof value === 'boolean';
 const isCount = (max: number): Check => (value) => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
 
+/** A preset id, or null for Follow Active. */
+const isPresetId: Check = (value) => value === null || (typeof value === 'string' && value !== '' && value !== SAME_AS_ANSWER);
+
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** The stored field when it passes its check, else the default. */
@@ -71,6 +83,8 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
     if (!isRecord(stored)) throw new Error('not a help settings object');
     const { sources, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
       sources: isRecord,
+      answerEndpoint: isPresetId,
+      pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
       lookup: isBool,
       openScreen: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),

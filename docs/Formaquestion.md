@@ -194,6 +194,33 @@ With **Keyword Search**, **AI Picks** and **Use the Open Screen** all off, no gu
 
 When a search runs and finds no section, the answer still gets that note.
 
+### Endpoint
+<!-- keywords: different model, other endpoint, separate ai, small model for picks, help endpoint, answer endpoint, pick endpoint, follow active, same as answer -->
+
+The **Endpoint** tab sets where help questions go. Help can use a different AI than your game.
+
+| Setting | Default | What it does |
+|---|---|---|
+| **Answer Endpoint** | **Use Active Endpoint** | Sends your questions to this endpoint for answers |
+| **Pick Endpoint** | **Same as Answer** | Sends the **AI Picks** request to this endpoint. A small, fast model works well here. |
+
+- **Use Active Endpoint** follows the endpoint you pick in **Settings** → **AI Endpoints**.
+- A preset you choose shows whether it answers. Select **Recheck** to check again.
+- If you delete a preset that a setting names, that setting goes back to its default.
+- The **Ask** tab says when your AI is not connected. It checks the **Answer Endpoint**.
+
+Under the two settings is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
+
+- Its preset list chooses the preset to edit. It does not change where the game or help sends requests.
+- **Add New Preset** adds a copy of the preset you are editing, and opens it in the editor.
+- A change to a preset applies everywhere that preset is used, the game included.
+
+**How to send help to a different AI:**
+
+1. Open **Formaquestion Settings**, then the **Endpoint** tab.
+2. In the editor, select **Add New Preset**, and enter the endpoint, token and model of the other AI.
+3. Set **Answer Endpoint** to the new preset.
+
 ## On Mobile
 <!-- keywords: full screen sheet, small screen, keyboard covers, slides in, touch, no resizing -->
 

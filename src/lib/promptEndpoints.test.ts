@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  resolvePromptEndpoint, routedPresetId, isRoutableId, setPromptEndpoint,
+  resolvePromptEndpoint, routedPresetId, isRoutableId, setPromptEndpoint, routeMap,
   endpointSignature, toDebugEndpoint,
   type PromptEndpointMap, type ActiveEndpointState,
 } from './promptEndpoints';
@@ -44,6 +44,17 @@ describe('routing lookup', () => {
   it('routes to the built-in Default even though it is never stored in presets', () => {
     expect(isRoutableId(store, DEFAULT_TEXT_PRESET_ID)).toBe(true);
     expect(routedPresetId('summary', { summary: DEFAULT_TEXT_PRESET_ID }, store)).toBe(DEFAULT_TEXT_PRESET_ID);
+  });
+});
+
+describe('a route list', () => {
+  it('pins the kind to the first id that names a preset', () => {
+    expect(routeMap('help', ['deleted-id', 'p1', DEFAULT_TEXT_PRESET_ID], store)).toEqual({ help: 'p1' });
+  });
+
+  it('follows the active endpoint when it is empty or every id is deleted', () => {
+    expect(routeMap('help', [], store)).toEqual({});
+    expect(routeMap('help', ['deleted-id'], store)).toEqual({});
   });
 });
 

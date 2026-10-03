@@ -234,11 +234,13 @@ export function setActive(store: TextEndpointPresetStore, id: string): TextEndpo
   return { ...store, activeId: id };
 }
 
-/** Add a user preset (a copy of `values`) and select it. */
-export function addPreset(store: TextEndpointPresetStore, id: string, name: string, values: TextEndpointValues): TextEndpointPresetStore {
+/** Add a user preset (a copy of `values`), and select it unless `select` is false. */
+export function addPreset(
+  store: TextEndpointPresetStore, id: string, name: string, values: TextEndpointValues, { select = true }: { select?: boolean } = {},
+): TextEndpointPresetStore {
   return {
     ...store,
-    activeId: id,
+    activeId: select ? id : store.activeId,
     presets: [...store.presets, { id, name, values: { ...values, samplerOverrides: coerceEndpointSamplerOverrides(values.samplerOverrides) } }],
   };
 }
@@ -306,5 +308,31 @@ export function updateValue<K extends TextEndpointValueKey>(store: TextEndpointP
   return {
     ...store,
     presets: store.presets.map((p) => (p.id === store.activeId ? { ...p, values: { ...p.values, [key]: value } } : p)),
+  };
+}
+
+/**
+ * Apply a change to the preset `id` names, active or not. The change reads that preset's current values. The
+ * built-ins keep their connection fields: the Default takes only sampler changes, the engine takes none.
+ */
+export function editPreset(
+  store: TextEndpointPresetStore,
+  id: string,
+  change: (values: TextEndpointValues) => Partial<TextEndpointValues>,
+): TextEndpointPresetStore {
+  if (id === BUILTIN_ENGINE_PRESET_ID) return store;
+  if (id !== DEFAULT_TEXT_PRESET_ID && !store.presets.some((p) => p.id === id)) return store;
+  const current = valuesForId(store, id);
+  const { samplerOverrides, ...fields } = change(current);
+  let next = store;
+  if (samplerOverrides) {
+    for (const sampler of Object.keys(samplerOverrides) as EndpointSampler[]) {
+      next = updateSamplerOverride(next, id, sampler, samplerOverrides[sampler]);
+    }
+  }
+  if (id === DEFAULT_TEXT_PRESET_ID || Object.keys(fields).length === 0) return next;
+  return {
+    ...next,
+    presets: next.presets.map((p) => (p.id === id ? { ...p, values: { ...p.values, ...fields } } : p)),
   };
 }

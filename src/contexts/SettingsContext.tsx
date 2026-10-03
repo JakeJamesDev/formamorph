@@ -22,7 +22,7 @@ import {
   isEngineActive as isTextEngineActive, setActive as textSetActive,
   addPreset as textAddPreset, renamePreset as textRenamePreset, deletePreset as textDeletePreset,
   resetPreset as textResetPreset, updateValue as textUpdateValue, updateSamplerOverride as textUpdateSamplerOverride,
-  updateMaxOutputOverride as textUpdateMaxOutputOverride,
+  updateMaxOutputOverride as textUpdateMaxOutputOverride, editPreset as textEditPreset,
   type TextEndpointPresetStore, type TextEndpointValues, type TextEndpointValueKey,
 } from '../lib/textEndpointPresets';
 import type { EndpointSampler } from '../lib/endpointSamplers';
@@ -61,7 +61,7 @@ import { resolvePinnedPreset } from '../lib/worldPromptPreset';
 import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
 import {
-  resolvePromptEndpoint, endpointSignature, routedPresetId,
+  resolvePromptEndpoint, endpointSignature, routedPresetId, routeMap,
   setPromptEndpoint as setRoutedEndpoint,
   type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
@@ -1194,20 +1194,28 @@ function useProvideSettings() {
     endpoint: textValues.endpoint,
   });
   const selectTextEndpointPreset = (id: string) => setTextPresetStore((s) => textSetActive(s, id));
-  const addTextEndpointPreset = (name: string) => {
+  /** Add a copy of the active preset and select it, or with `from` a copy of that preset, leaving the selection. */
+  const addTextEndpointPreset = (name: string, from?: string) => {
     const id = randomUUID();
     setTextPresetStore((s) => {
-      const source = textActiveValues(s);
+      const source = from === undefined ? textActiveValues(s) : textValuesForId(s, from);
       return textAddPreset(s, id, name, {
         ...source,
         maxOutputOverride: { ...source.maxOutputOverride, enabled: false },
         samplerOverrides: Object.fromEntries(
           Object.entries(source.samplerOverrides).map(([sampler, override]) => [sampler, { ...override, enabled: false }]),
         ) as typeof source.samplerOverrides,
-      });
+      }, { select: from === undefined });
     });
     return id;
   };
+  /** The values of the preset `id` names, active or not. */
+  const textEndpointValuesFor = useCallback((id: string) => textValuesForId(textPresetStore, id), [textPresetStore]);
+  /** Change the preset `id` names, active or not. Built-ins keep their connection fields. */
+  const editTextEndpointPreset = useCallback(
+    (id: string, change: (values: TextEndpointValues) => Partial<TextEndpointValues>) => setTextPresetStore((s) => textEditPreset(s, id, change)),
+    [setTextPresetStore],
+  );
   const renameTextEndpointPreset = (id: string, name: string) => setTextPresetStore((s) => textRenamePreset(s, id, name));
   // Routes naming the deleted preset are left alone rather than swept out of every prompt preset: a ghost id
   // already resolves as Use Active Endpoint wherever it's read, and ids are UUIDs, so none is ever recycled.
@@ -1228,6 +1236,12 @@ function useProvideSettings() {
     });
   // Signatures already probed this session, so a miss fires one probe rather than one per request.
   const routedProbedRef = useRef<Set<string>>(new Set());
+  const rememberRoutedContext = useCallback((sig: string, detected: number) => setRoutedContextCache((prev) => {
+    const next = { ...prev, [sig]: detected };
+    const keys = Object.keys(next);
+    if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
+    return next;
+  }), [setRoutedContextCache]);
 
   /**
    * Everything one prompt kind needs to build its request. An unpinned kind returns exactly the active
@@ -1240,7 +1254,7 @@ function useProvideSettings() {
     maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens, engineModelId: engineState.modelId ?? '',
   }), [textPresetStore.activeId, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens, localMaxTokens, engineState.modelId]);
 
-  const resolveEndpointForKind = useCallback((kind: AIRequestType): ResolvedPromptEndpoint & {
+  const resolveEndpointForKind = useCallback((kind: AIRequestType, routes?: readonly string[]): ResolvedPromptEndpoint & {
     /** Chat-completions URL, normalized the same way the active endpoint is. */
     url: string;
     /** Display name of the preset this resolved to, whether pinned or followed. */
@@ -1248,7 +1262,8 @@ function useProvideSettings() {
     contextWindow: number;
     reasoning: ReasoningCapability;
   } => {
-    const resolved = resolvePromptEndpoint(kind, promptEndpoints, textPresetStore, activeEndpointState);
+    const map = routes ? routeMap(kind, routes, textPresetStore) : promptEndpoints;
+    const resolved = resolvePromptEndpoint(kind, map, textPresetStore, activeEndpointState);
     const url = normalizeEndpointUrl(resolved.endpoint);
     const presetName = resolved.presetId === null
       ? activeTextEndpointPresetName
@@ -1276,12 +1291,7 @@ function useProvideSettings() {
       if (routedContextCache[sig] === undefined) {
         void fetchContextLength(url, resolved.apiToken, resolved.model).then((detected) => {
           if (detected === null || unmountRef.current?.signal.aborted) return;
-          setRoutedContextCache((prev) => {
-            const next = { ...prev, [sig]: detected };
-            const keys = Object.keys(next);
-            if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
-            return next;
-          });
+          rememberRoutedContext(sig, detected);
         }).catch(() => { /* an unreachable routed endpoint surfaces as a request failure, not here */ });
       }
       const routedStored = reasoningCapabilityCache[sig];
@@ -1317,8 +1327,37 @@ function useProvideSettings() {
   }, [
     promptEndpoints, textPresetStore, activeEndpointState,
     contextWindow, reasoningCapability, routedContextCache, reasoningCapabilityCache, localContextSize,
-    activeTextEndpointPresetName, setRoutedContextCache, cacheReasoningCapability,
+    activeTextEndpointPresetName, rememberRoutedContext, cacheReasoningCapability,
   ]);
+
+  /** The routed-cache signature of the preset `id` names. */
+  const presetSignature = useCallback((id: string) => {
+    const values = textValuesForId(textPresetStore, id);
+    return { values, sig: endpointSignature(normalizeEndpointUrl(values.endpoint), values.model) };
+  }, [textPresetStore]);
+  /** The context window detected for a preset that is not the active one, or null. */
+  const detectedContextWindowFor = useCallback(
+    (id: string): number | null => routedContextCache[presetSignature(id).sig] ?? null,
+    [routedContextCache, presetSignature],
+  );
+  /** Ask a preset that is not the active one for its context window, and remember the answer. */
+  const detectContextWindowFor = useCallback(async (id: string): Promise<number | null> => {
+    const { values, sig } = presetSignature(id);
+    const detected = await fetchContextLength(normalizeEndpointUrl(values.endpoint), values.apiToken, values.model);
+    if (detected !== null && !unmountRef.current?.signal.aborted) rememberRoutedContext(sig, detected);
+    return detected;
+  }, [presetSignature, rememberRoutedContext]);
+
+  // Engine claims from outside the prompt presets: Formaquestion's routes.
+  const [engineClaims, setEngineClaims] = useState<ReadonlySet<string>>(() => new Set());
+  /** Mark the bundled engine as wanted, or not, for one owner. */
+  const claimEngine = useCallback((owner: string, wanted: boolean) => setEngineClaims((current) => {
+    if (current.has(owner) === wanted) return current;
+    const next = new Set(current);
+    if (wanted) next.add(owner);
+    else next.delete(owner);
+    return next;
+  }), []);
 
   // The Demo AI notice follows the narration model; the routing of other kinds has no effect.
   const narrationIsDemoAI = useMemo(
@@ -1333,6 +1372,7 @@ function useProvideSettings() {
    */
   const engineWanted = isDesktop() && (
     localModelActive ||
+    engineClaims.size > 0 ||
     Object.keys(promptEndpoints).some(
       (k) => routedPresetId(k as AIRequestType, promptEndpoints, textPresetStore) === BUILTIN_ENGINE_PRESET_ID,
     )
@@ -1600,6 +1640,7 @@ function useProvideSettings() {
     localMaxTokens,
     setLocalMaxTokens,
     engineWanted,
+    claimEngine,
     builtinTextEndpointPresets,
     textEndpointPresets,
     activeTextEndpointPresetId,
@@ -1612,6 +1653,10 @@ function useProvideSettings() {
     renameTextEndpointPreset,
     deleteTextEndpointPreset,
     resetTextEndpointPreset,
+    textEndpointValuesFor,
+    editTextEndpointPreset,
+    detectedContextWindowFor,
+    detectContextWindowFor,
     activeEndpointUrl,
     activeApiToken,
     activeModelName,
