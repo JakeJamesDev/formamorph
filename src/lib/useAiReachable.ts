@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
+import type { AiEndpointTarget } from '@/lib/aiRequest/aiRequestSpec';
 import { useLocalLlmStatus } from '@/lib/useLocalLlmStatus';
 import { deriveModelsUrls } from '@/lib/contextLength';
 import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
@@ -88,12 +89,7 @@ export async function probeEndpoint(
 }
 
 /** One resolved endpoint to check in place of the active one. */
-export interface ReachableTarget {
-  localEngine: boolean;
-  url: string;
-  apiToken: string;
-  model: string;
-}
+export type ReachableTarget = Pick<AiEndpointTarget, 'localEngine' | 'url' | 'apiToken' | 'model'>;
 
 /**
  * Whether the configured AI can actually serve a turn, plus why not. The bundled desktop engine reports
@@ -104,12 +100,12 @@ export interface ReachableTarget {
  */
 export function useAiReachable({ enabled = true, target }: { enabled?: boolean; target?: ReachableTarget } = {}): AiReachable {
   const settings = useSettings();
-  const localModelActive = target ? target.localEngine : settings.localModelActive;
-  const activeEndpointUrl = target ? target.url : settings.activeEndpointUrl;
-  const activeApiToken = target ? target.apiToken : settings.activeApiToken;
-  const activeModelName = target ? target.model : settings.activeModelName;
+  const localEngine = target ? target.localEngine : settings.localModelActive;
+  const url = target ? target.url : settings.activeEndpointUrl;
+  const apiToken = target ? target.apiToken : settings.activeApiToken;
+  const model = target ? target.model : settings.activeModelName;
   const engine = useLocalLlmStatus();
-  const mode: AiMode = localModelActive ? 'local' : 'custom';
+  const mode: AiMode = localEngine ? 'local' : 'custom';
   const [nonce, setNonce] = useState(0);
   const recheck = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -119,10 +115,10 @@ export function useAiReachable({ enabled = true, target }: { enabled?: boolean; 
     if (mode !== 'custom' || !enabled) return;
     let active = true;
     setProbe(null);
-    probeEndpoint(activeEndpointUrl, activeApiToken, activeModelName)
+    probeEndpoint(url, apiToken, model)
       .then((result) => { if (active) setProbe(result); });
     return () => { active = false; };
-  }, [mode, enabled, activeEndpointUrl, activeApiToken, activeModelName, nonce]);
+  }, [mode, enabled, url, apiToken, model, nonce]);
 
   // Local engine: whether any GGUF is on disk at all. Distinguishes "nothing downloaded" (offer a download)
   // from "downloaded but won't load" (send them to the panel) — and keeps us at `null` until it's known,
@@ -141,14 +137,14 @@ export function useAiReachable({ enabled = true, target }: { enabled?: boolean; 
   // stale answer can't gate a working setup. Also seeds the cached state so the UI catches up. Never throws.
   const revalidate = useCallback(async (): Promise<boolean> => {
     if (mode === 'custom') {
-      const result = await probeEndpoint(activeEndpointUrl, activeApiToken, activeModelName);
+      const result = await probeEndpoint(url, apiToken, model);
       setProbe(result);
       return result === 'ok';
     }
     if (!isDesktop()) return false;
     const st = await localLlmStatus().catch(() => null);
     return st?.status === 'ready';
-  }, [mode, activeEndpointUrl, activeApiToken, activeModelName]);
+  }, [mode, url, apiToken, model]);
 
   if (mode === 'custom') {
     return {

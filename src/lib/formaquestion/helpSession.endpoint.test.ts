@@ -46,6 +46,13 @@ const snapshot = textSnapshot(undefined, {
   },
 });
 
+/** Every request one question sends: its URL and its body. */
+async function requests(settings: HelpSettingsChange, through: typeof snapshot) {
+  const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => sseResponse(sseReply(isPickRequest(init) ? NO_PICK : 'Select **Import**.')));
+  for await (const event of askHelp({ question: 'How do I import a world?', settings: helpSettingsOf(settings), snapshot: through, index, fetchImpl: fetchImpl as unknown as typeof fetch })) void event;
+  return fetchImpl.mock.calls.map(([url, init]) => ({ url, body: JSON.parse(init.body as string) as unknown }));
+}
+
 /** Asks one question and returns the host each request went to, by kind. */
 async function hosts(change: HelpSettingsChange) {
   const sent: { pick: string[]; answer: string[]; answerBodies: Record<string, unknown>[] } = { pick: [], answer: [], answerBodies: [] };
@@ -70,6 +77,13 @@ describe('the help routes', () => {
   it('send both requests to the active endpoint by default', async () => {
     const sent = await hosts({});
     expect(sent).toMatchObject({ pick: ['game'], answer: ['game'] });
+  });
+
+  it('send the same requests by default as the help kind sent before it had routes', async () => {
+    const unrouted = { ...snapshot, resolveTarget: (kind: AIRequestType) => snapshot.resolveTarget(kind) };
+    const sent = await requests({}, snapshot);
+    expect(sent).toHaveLength(2);
+    expect(sent).toEqual(await requests({}, unrouted));
   });
 
   it('send picks where answers go when only the answer endpoint is set', async () => {

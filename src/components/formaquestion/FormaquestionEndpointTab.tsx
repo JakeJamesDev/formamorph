@@ -10,10 +10,10 @@ import { SAME_AS_ANSWER, type HelpSettings, type HelpSettingsChange } from '@/li
 import { useMountedRef } from '@/lib/useMountedRef';
 import { ENDPOINT_COPY } from './formaquestionSettingsTabs';
 
-type Settings = ReturnType<typeof useSettings>;
+type DetectSource = Pick<ReturnType<typeof useSettings>, 'detectContextWindowFor' | 'editTextEndpointPreset'>;
 
 /** The context-window check of a preset that is not the active one. A newer check or an unmount drops a late answer. */
-function usePresetDetect(s: Settings, id: string): Pick<PresetEditorView, 'detectStatus' | 'detectContextWindow'> {
+function usePresetDetect(s: DetectSource, id: string): Pick<PresetEditorView, 'detectStatus' | 'detectContextWindow'> {
   const [detectStatus, setDetectStatus] = useState<PresetEditorView['detectStatus']>('idle');
   const mountedRef = useMountedRef();
   const request = useRef(0);
@@ -64,7 +64,7 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
   const detect = usePresetDetect(s, editedId);
   const model = presetEditor(s, editedId, {
     onSelect: setChosen,
-    onAdd: (name) => setChosen(s.addTextEndpointPreset(name, editedId)),
+    onAdd: (name) => setChosen(s.copyTextEndpointPreset(name, editedId)),
     ...detect,
   });
   const [guideOpen, setGuideOpen] = useState(false);

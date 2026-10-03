@@ -1194,21 +1194,25 @@ function useProvideSettings() {
     endpoint: textValues.endpoint,
   });
   const selectTextEndpointPreset = (id: string) => setTextPresetStore((s) => textSetActive(s, id));
-  /** Add a copy of the active preset and select it, or with `from` a copy of that preset, leaving the selection. */
-  const addTextEndpointPreset = (name: string, from?: string) => {
+  /** A new preset copied from `source`, with its overrides off. `select` makes it the active preset. */
+  const addTextEndpointPresetFrom = (name: string, source: (s: TextEndpointPresetStore) => TextEndpointValues, select: boolean) => {
     const id = randomUUID();
     setTextPresetStore((s) => {
-      const source = from === undefined ? textActiveValues(s) : textValuesForId(s, from);
+      const values = source(s);
       return textAddPreset(s, id, name, {
-        ...source,
-        maxOutputOverride: { ...source.maxOutputOverride, enabled: false },
+        ...values,
+        maxOutputOverride: { ...values.maxOutputOverride, enabled: false },
         samplerOverrides: Object.fromEntries(
-          Object.entries(source.samplerOverrides).map(([sampler, override]) => [sampler, { ...override, enabled: false }]),
-        ) as typeof source.samplerOverrides,
-      }, { select: from === undefined });
+          Object.entries(values.samplerOverrides).map(([sampler, override]) => [sampler, { ...override, enabled: false }]),
+        ) as typeof values.samplerOverrides,
+      }, { select });
     });
     return id;
   };
+  /** Add a copy of the active preset and select it. */
+  const addTextEndpointPreset = (name: string) => addTextEndpointPresetFrom(name, textActiveValues, true);
+  /** Add a copy of the preset `from` names. The active preset stays. */
+  const copyTextEndpointPreset = (name: string, from: string) => addTextEndpointPresetFrom(name, (s) => textValuesForId(s, from), false);
   /** The values of the preset `id` names, active or not. */
   const textEndpointValuesFor = useCallback((id: string) => textValuesForId(textPresetStore, id), [textPresetStore]);
   /** Change the preset `id` names, active or not. Built-ins keep their connection fields. */
@@ -1650,6 +1654,7 @@ function useProvideSettings() {
     narrationIsDemoAI,
     selectTextEndpointPreset,
     addTextEndpointPreset,
+    copyTextEndpointPreset,
     renameTextEndpointPreset,
     deleteTextEndpointPreset,
     resetTextEndpointPreset,
