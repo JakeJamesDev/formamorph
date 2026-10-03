@@ -1,7 +1,7 @@
 # 05: Global Workflow Doc and Config
 
 Status: ready-for-human
-Status note: Built in the ~/.claude repo, commit 1c06362 (hooks/implement-workflow.md; the /implement hook names it and resumes by path). Open for the user: the settings.json allow-list entry (auto mode refused the self-edit) and the MEMORY.md / parallel-sessions-same-repo.md link edits, left uncommitted for the next sync.
+Status note: Built in the ~/.claude repo, commit 1c06362 (hooks/implement-workflow.md; the /implement hook names it and resumes by path). The allow-list entry was dropped by Q35. Open for the user: the MEMORY.md / parallel-sessions-same-repo.md link edits, left uncommitted for the next sync.
 Base: fb6a5467
 Blocked by: 01, 03, 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: ticket-worktrees — spec
-Status note: 8 tickets in issues/. 01–06 are ready-for-human. 08 (clean landings) came out of the pre-07 review and blocks 07. 07 is the Sonnet 5.5 acceptance run on a ticket the user names.
+Status note: 9 tickets in issues/. 01–06 are ready-for-human. 08 (clean landings) and 09 (affected-only gates) came out of the pre-07 review and block 07. 07 is the Sonnet 5.5 acceptance run on a ticket the user names.
 
 Every `/implement` ticket runs in its own git worktree and lands on `main` as one commit. Hooks do the mechanical steps, so a smaller model such as Sonnet 5.5 can run the flow without hand-built git commands. Designed in a discussion session on 2026-10-02. A live probe in this repo checked the Claude Code behavior that the design depends on.
 
@@ -71,6 +71,13 @@ The workflow is global. It lives in `~/.claude` and works in any repo with a `do
 | Q32 | Already landed: the marker matches the branch HEAD, main has moved, and main already contains that HEAD (`merge-base --is-ancestor`). In that case the landing skips the fast-forward, runs the full cleanup, and reports the landed sha. (Ticket 04) |
 | Q33 | On a refusal, the landing hook writes the prepared commit's message to `<git common dir>/ticket-worktrees/<slug>.message` and names that path in the full prepare command it prints. Ticket 03 doesn't change. (Ticket 04) |
 | Q34 | Cleanup that fails after a successful fast-forward reports the landed sha and the failed step, and keeps the state file. The recovery it names is to re-enter with `EnterWorktree` and the path, then `ExitWorktree` with `keep`. Under Q32, that second exit finishes the cleanup. The hook reads the worktree's real branch from git, not from `worktreeBranch` in the payload. If the fast-forward fails after the claim revert, the hook writes the claim edit back. (Ticket 04) |
+| Q35 | No allow-list entry for prepare. The user's sessions run in auto mode, where the classifier approves the command. The Windows per-worktree approval note matters only in a mode that prompts. Ticket 07's audit shows any prompt that does appear. (Pre-07 review) |
+| Q36 | One sweep also finishes a landed leftover: the state file has a prepared marker, main contains `prepared.head`, and git lists no worktree for the branch. The sweep cuts any link inside the folder before deleting it, then runs `branch -d`, drops the launch entry, and deletes the state file. (Ticket 08) |
+| Q37 | When git has already unregistered the worktree, the landing still deletes the branch, the launch entry, and the state file. It retries the folder delete for about 5 s, and if the folder is still held, the next sweep removes it. There is no detached reaper process. With graphify skipping linked worktrees (Q39), this path is only a fallback. (Ticket 08) |
+| Q38 | The sweep runs in both the `/implement` hook and the landing hook. An orphan claim is a unit with no worktree, no branch, and no prepared marker, whose ticket file in the main checkout is not `Status: in-progress`. (Ticket 08) |
+| Q39 | Graphify's git hooks do nothing in a linked worktree. A `post-merge` graphify trigger in the main checkout only updates the graph after a landing's fast-forward. Sessions don't run `graphify update .` inside a ticket worktree. (Ticket 08) |
+| Q40 | The slow suites come from process-spawn cost, not leaked handles. The hook suites take 157 s with no gap between the suite total and the sum of the tests, and the free-port theory was wrong. The fix is to cut redundant git calls in the hooks and the test helpers, which also speeds real use. There's no numeric target. Report before and after, both measured with no peer gates running. No parallel test runner. (Ticket 08) |
+| Q41 | Ticket gates run only what the change can affect. Tests run with `vitest run --changed {base}` plus an always-run list for tests outside the module graph. Lint runs on changed files only. Typecheck and build stay full. Prepare fills in `{base}` with the `main` sha it rebased onto. The Implement protocol runs the gates once. The full suite runs at release time. (Pre-07 review: ticket 16's gates took 199 s, 137 s of it the full test suite.) |
 | Q22 | On a resume through `EnterWorktree` with `path`, a `ticket/*` branch counts as the same ticket. The setup hook repairs the worktree and changes nothing else. (Ticket 01) |
 
 Verified by the probe on 2026-10-02 (Claude Code 2.1.284, Windows):
