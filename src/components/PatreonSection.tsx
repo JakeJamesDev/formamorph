@@ -19,6 +19,9 @@ import { PatreonError, PatreonService, type PatreonStatus } from '@/services/Pat
 /** The project's Patreon page. */
 export const PATREON_PAGE_URL = 'https://www.patreon.com/JakeJamesNSFW';
 
+/** The Supporters wall. Absolute, so the app's Settings tab reaches it too. */
+export const SUPPORTERS_WALL_URL = 'https://formamorph.ai/supporters';
+
 /** What the server's callback redirect carried back: the `patreon` result and, for `confirm`, its one-shot token. */
 export interface PatreonReturn {
   result: string;
@@ -91,9 +94,11 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
   const [attempt, setAttempt] = useState(0);
   // The confirm token is spent on any attempt, so each read runs once even when StrictMode re-runs effects.
   const ran = useRef(-1);
-  // Read by the focus listener, so a refresh never lands on top of a write in flight.
+  // Read by the focus listener, so a refresh never starts on top of a write in flight.
   const busyRef = useRef(false);
   busyRef.current = busy;
+  // Counts status reads and writes; only the newest one may set the status.
+  const latest = useRef(0);
 
   useEffect(() => {
     if (ran.current === attempt) return;
@@ -106,11 +111,12 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
       // A `confirm` with no token cannot finish a link, so it reads as an expired request.
       const stated = arrival ? patreonReturnNotice(arrival.result === 'confirm' && !held ? 'expired' : arrival.result) : null;
 
+      const mine = ++latest.current;
       try {
         const next = held ? await PatreonService.confirm(held) : await PatreonService.getStatus();
         if (!mounted.current) return;
-        setStatus(next);
-        if (held) setNotice({ kind: 'success', text: 'Patreon is linked. If you started in the app, return to it.' });
+        if (mine === latest.current) setStatus(next);
+        if (held) setNotice({ kind: 'success', text: 'Patreon is linked. You can return to the app.' });
         // A `taken`, `denied`, `expired` or `failed` redirect stored no link; its message still applies.
         if (stated) setNotice(stated);
       } catch (failure) {
@@ -140,8 +146,13 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
 
     const refresh = () => {
       if (document.visibilityState === 'hidden' || busyRef.current) return;
+      const mine = ++latest.current;
       PatreonService.getStatus().then(
-        (next) => { if (mounted.current && !busyRef.current) setStatus(next); },
+        (next) => {
+          if (!mounted.current || mine !== latest.current) return;
+          setStatus(next);
+          setNotice(null);
+        },
         () => { /* The next focus tries again; the last status stays on screen. */ },
       );
     };
@@ -158,9 +169,10 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
   const write = async (action: () => Promise<PatreonStatus>, failure: string) => {
     setNotice(null);
     setBusy(true);
+    const mine = ++latest.current;
     try {
       const next = await action();
-      if (mounted.current) setStatus(next);
+      if (mounted.current && mine === latest.current) setStatus(next);
     } catch (error) {
       if (mounted.current) setNotice({ kind: 'error', text: (error as Error).message || failure });
     } finally {
@@ -200,6 +212,17 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
     </a>
   );
 
+  const wall = (
+    <a
+      href={SUPPORTERS_WALL_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-label text-primary underline underline-offset-2"
+    >
+      See the Supporters wall
+    </a>
+  );
+
   const unlinkButton = (
     <Button variant="outline" disabled={busy || suspended} onClick={() => setConfirmingUnlink(true)}>
       Unlink
@@ -234,6 +257,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
             </Button>
             {become}
           </div>
+          <div>{wall}</div>
         </>
       )}
 
@@ -244,6 +268,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
             {unlinkButton}
             {become}
           </div>
+          <div>{wall}</div>
         </>
       )}
 
@@ -270,7 +295,10 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
               </p>
             </div>
           </div>
-          <div>{unlinkButton}</div>
+          <div className="flex flex-wrap items-center gap-3">
+            {unlinkButton}
+            {wall}
+          </div>
         </>
       )}
 

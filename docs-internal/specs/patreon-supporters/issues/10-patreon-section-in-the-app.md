@@ -1,6 +1,7 @@
 # 10: Patreon Section in the App
 
-Status: in-progress
+Status: ready-for-human
+Status note: Built in 57657350. Open: the `verify-ui` criterion (the preview needs a real session) and a device check that `window.open` reaches the system browser on Android (UNVERIFIED; Electron routes it through `setWindowOpenHandler`).
 Base: b6c69c76
 Blocked by: 01, 09
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
