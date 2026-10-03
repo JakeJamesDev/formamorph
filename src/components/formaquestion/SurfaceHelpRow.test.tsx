@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { createGuide } from '@/lib/formaquestion/guide';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { SurfaceLayer, useSurfaceTab } from '@/components/ui/surface';
 import { renderReporting as render } from '@/test/surfaceReporter';
 import { useGuideView, type FormaquestionTab } from './formaquestionTabs';
@@ -28,7 +29,7 @@ afterEach(cleanup);
 function Window({ wide = false, tab = 'search' }: { wide?: boolean; tab?: FormaquestionTab }) {
   const [view, changeView] = useGuideView();
   return (
-    <GuideBody guide={guide} failed={false} onRetry={() => {}} view={{ ...view, tab: view.sectionId ? view.tab : tab }} onViewChange={changeView} wide={wide} chat={NO_CHAT} />
+    <GuideBody guide={guide} failed={false} onRetry={() => {}} view={{ ...view, tab: view.sectionId ? view.tab : tab }} onViewChange={changeView} wide={wide} chat={NO_CHAT} settings={DEFAULT_HELP_SETTINGS} onSettingsChange={() => {}} />
   );
 }
 

@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Hint } from '@/components/ui/typography';
 import type { Guide } from '@/lib/formaquestion/guide';
+import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { AskPanel } from './AskParts';
 import {
   FORMAQUESTION_TABS, isSearchable, openSectionChange, type FormaquestionTab, type GuideView, type GuideViewChange,
@@ -21,7 +22,7 @@ const TAB_PANEL = 'mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex';
  * a rail with search and contents beside the conversation or the reader. The search text, the open section
  * and the conversation carry over.
  */
-export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, chat }: {
+export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, chat, settings, onSettingsChange }: {
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
@@ -30,6 +31,8 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
   onViewChange: (change: GuideViewChange) => void;
   wide: boolean;
   chat: HelpChat;
+  settings: HelpSettings;
+  onSettingsChange: (change: HelpSettingsChange) => void;
 }) {
   const openSection = useCallback(
     (sectionId: string) => onViewChange(openSectionChange(sectionId, guide?.section(sectionId)?.page)),
@@ -55,7 +58,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
     );
   }
 
-  const ask = <AskPanel guide={guide} chat={chat} draft={view.draft} onDraftChange={setDraft} onOpen={openSection} />;
+  const ask = <AskPanel guide={guide} chat={chat} settings={settings} onSettingsChange={onSettingsChange} draft={view.draft} onDraftChange={setDraft} onOpen={openSection} />;
 
   if (wide) {
     // The pane shows the conversation until a section opens, and again after Back to Conversation.

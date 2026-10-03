@@ -27,6 +27,8 @@ export interface HelpSettings {
   readonly historyLength: number;
   /** The answer cap in tokens: room for a long list of steps. */
   readonly answerMaxTokens: number;
+  /** The state a Sources list takes when its answer's sources arrive. A click on a list sets it. */
+  readonly sourcesOpen: boolean;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
@@ -36,6 +38,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   openScreen: true,
   historyLength: 4,
   answerMaxTokens: 800,
+  sourcesOpen: true,
 };
 
 /** A change to the settings: any field, and inside `sources` only the switches it names. */
@@ -72,6 +75,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       openScreen: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       answerMaxTokens: (value) => Number.isInteger(value) && (value as number) > 0,
+      sourcesOpen: isBool,
     });
     const storedSources = isRecord(sources) ? sources : {};
     return { ...rest, sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }) };

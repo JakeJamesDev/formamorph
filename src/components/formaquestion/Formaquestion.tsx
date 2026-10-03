@@ -330,7 +330,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             },
           })}
         >
-          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} />
+          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} />
         </FormaquestionFrame>
       )}
       <FormaquestionSettings

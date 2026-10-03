@@ -12,10 +12,12 @@ import { withoutAttachment } from '@/lib/actionAttachments';
 import type { DocSection } from '@/lib/docs/docsIndex';
 import { withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
+import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { cn } from '@/lib/utils';
 import { SectionRows } from './GuideParts';
 import { FOCUS_RING, readerComponents } from './readerLinks';
+import { useFoldRule } from './useFoldRule';
 import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
 
 /** The most docs sections shown in place of an answer. */
@@ -55,11 +57,19 @@ function GeneralKnowledgeNotice() {
   );
 }
 
-function Answer({ guide, exchange, onOpen }: { guide: Guide; exchange: HelpExchange; onOpen: (id: string) => void }) {
+function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
+  guide: Guide;
+  exchange: HelpExchange;
+  settings: HelpSettings;
+  onSettingsChange: (change: HelpSettingsChange) => void;
+  onOpen: (id: string) => void;
+}) {
   const { answer, status, sources, question, flagged, nearest } = exchange;
   // A flagged answer lists the nearest sections in place of its sources.
   const listed = flagged ? nearest : sources;
   const listLabel = flagged ? 'Nearest Sections' : 'Sources';
+  // Sources and Nearest Sections share one fold, set when the list arrives.
+  const fold = useFoldRule(listed.length > 0, settings.sourcesOpen, (sourcesOpen) => onSettingsChange({ sourcesOpen }));
   const components = useMemo(() => readerComponents(onOpen), [onOpen]);
   // A docs link that the model copies from a section opens that section here.
   const text = useMemo(() => withReaderLinks(answer, '', guide.resolve), [answer, guide]);
@@ -87,18 +97,30 @@ function Answer({ guide, exchange, onOpen }: { guide: Guide; exchange: HelpExcha
       )}
       {listed.length > 0 && (
         <div role="group" aria-label={listLabel} className="flex flex-col gap-1">
-          <Meta>{listLabel}</Meta>
-          <div className="flex flex-wrap gap-1">
-            {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
-          </div>
+          <button
+            type="button"
+            aria-expanded={fold.open}
+            onClick={fold.toggle}
+            className={cn('flex w-fit items-center gap-1 rounded text-meta text-muted-foreground', FOCUS_RING)}
+          >
+            <ChevronRight aria-hidden className={cn('h-3 w-3 shrink-0 transition-transform', fold.open && 'rotate-90')} />
+            {fold.open ? listLabel : `${listLabel} (${listed.length})`}
+          </button>
+          {fold.open && (
+            <div className="flex flex-wrap gap-1">
+              {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function Conversation({ guide, exchanges, busy, onOpen }: {
+function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOpen }: {
   guide: Guide;
+  settings: HelpSettings;
+  onSettingsChange: (change: HelpSettingsChange) => void;
   exchanges: readonly HelpExchange[];
   busy: boolean;
   onOpen: (id: string) => void;
@@ -132,7 +154,7 @@ function Conversation({ guide, exchanges, busy, onOpen }: {
               <AttachmentThumbs attachments={exchange.images} />
               <p className="whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-label [overflow-wrap:anywhere]">{exchange.question}</p>
             </div>
-            <Answer guide={guide} exchange={exchange} onOpen={onOpen} />
+            <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
           </div>
         ))}
       </div>
@@ -212,9 +234,11 @@ function AskField({ draft, onDraftChange, chat }: {
 }
 
 /** The Ask part of the window: the conversation, and the field that adds a question to it. */
-export function AskPanel({ guide, chat, draft, onDraftChange, onOpen }: {
+export function AskPanel({ guide, chat, settings, onSettingsChange, draft, onDraftChange, onOpen }: {
   guide: Guide;
   chat: HelpChat;
+  settings: HelpSettings;
+  onSettingsChange: (change: HelpSettingsChange) => void;
   draft: string;
   onDraftChange: (text: string) => void;
   onOpen: (id: string) => void;
@@ -222,7 +246,7 @@ export function AskPanel({ guide, chat, draft, onDraftChange, onOpen }: {
   return (
     <>
       {chat.exchanges.length > 0 && <ClearRow onClear={chat.clear} />}
-      <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} onOpen={onOpen} />
+      <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
       <AskField draft={draft} onDraftChange={onDraftChange} chat={chat} />
     </>
   );
