@@ -11,6 +11,7 @@ describe('the default help settings', () => {
       openScreen: true,
       historyLength: 4,
       answerMaxTokens: 800,
+      sourcesOpen: true,
     });
   });
 });
@@ -42,6 +43,8 @@ describe('the stored help settings', () => {
       .toEqual(helpSettingsOf({ sources: { aiPicks: false } }));
     expect(stored({ historyLength: HELP_HISTORY_MAX + 1 }).historyLength).toBe(DEFAULT_HELP_SETTINGS.historyLength);
     expect(stored({ historyLength: HELP_HISTORY_MAX }).historyLength).toBe(HELP_HISTORY_MAX);
+    expect(stored({ sourcesOpen: 'no' }).sourcesOpen).toBe(true);
+    expect(stored({ sourcesOpen: false }).sourcesOpen).toBe(false);
     expect(stored({ sources: null })).toEqual(DEFAULT_HELP_SETTINGS);
     expect(stored({})).toEqual(DEFAULT_HELP_SETTINGS);
   });

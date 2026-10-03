@@ -8,6 +8,7 @@ import { GuideBody } from '@/components/formaquestion/GuideBody';
 import type { HelpChat, HelpExchange } from '@/components/formaquestion/useHelpChat';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { createGuide } from '@/lib/formaquestion/guide';
+import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import type { Edge } from '@/lib/formaquestion/tabPlace';
 import { NARROW_WIDTH, WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 
@@ -60,6 +61,12 @@ const SAMPLE_FLAGGED_EXCHANGE: HelpExchange = {
   nearest: SAMPLE_GUIDE.index.get(['Oil#how-to-fill-a-lantern', 'Lanterns#how-to-light-a-lantern']),
 };
 
+/** Help settings that live in the sample alone, so the showcase writes nothing to the device. */
+function useReferenceSettings() {
+  const [settings, setSettings] = useState<HelpSettings>(DEFAULT_HELP_SETTINGS);
+  return [settings, (change: HelpSettingsChange) => setSettings((current) => helpSettingsOf(change, current))] as const;
+}
+
 /** A conversation with no AI behind it: a new question shows the sample guide's search for it. */
 function useSampleChat(): HelpChat {
   const [exchanges, setExchanges] = useState<HelpExchange[]>([SAMPLE_EXCHANGE, SAMPLE_FLAGGED_EXCHANGE]);
@@ -90,10 +97,11 @@ function SampleWindow() {
   const [wide, setWide] = useState(false);
   const [view, changeView] = useGuideView();
   const chat = useSampleChat();
+  const [settings, changeSettings] = useReferenceSettings();
   const style = useMemo(() => ({ width: wide ? WIDE_WIDTH : NARROW_WIDTH, height: 480 }), [wide]);
   return (
     <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full" style={style}>
-      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} chat={chat} />
+      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} />
     </FormaquestionFrame>
   );
 }
@@ -102,9 +110,10 @@ function SampleWindow() {
 function SampleSheet() {
   const [view, changeView] = useGuideView();
   const chat = useSampleChat();
+  const [settings, changeSettings] = useReferenceSettings();
   return (
     <FormaquestionFrame sheet onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
-      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} chat={chat} />
+      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} chat={chat} settings={settings} onSettingsChange={changeSettings} />
     </FormaquestionFrame>
   );
 }
