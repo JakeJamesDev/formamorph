@@ -27,7 +27,7 @@ The window keeps the traces in memory with the conversation. They are recorded a
 - The questions of the conversation, newest first.
 - Each question holds a Search block and its request cards. The cards are the shared card from ticket 03.
 - The Search block shows, for each source that was on, its top sections in order, then the merged order, with the sections that reached the model marked.
-- On mobile it opens full screen.
+- On mobile it opens full screen, and the sheet hides while it is open, by the rule ticket 05 builds for the settings modal (Q52).
 
 **What ticket 03 left for this ticket.**
 
