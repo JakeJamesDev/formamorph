@@ -1,7 +1,7 @@
 # 11: Supporters Wall
 
 Status: ready-for-human
-Status note: Built. Server commit 9d5dccf in FormamorphServer, client commit b5ff0486. Open question: the wall lists suspended accounts, and the spec is silent. Their `/u/<name>` page reads as not found. Excluding them is one `WHERE` clause. Live look at both viewports and themes was done with computed styles and one mobile screenshot.
+Status note: Built. Server commits 9d5dccf and aeff7e2 in FormamorphServer, client commit b5ff0486. The wall excludes suspended accounts (spec session ruling): a wall name must open a profile. Live look at both viewports and themes was done with computed styles and one mobile screenshot.
 Base: 6f2f5727
 Blocked by: 04, 08
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
