@@ -98,6 +98,7 @@ Settled with the user on 2026-10-02. A later ruling that refines an earlier one 
 | Q54 | Ticket 07's routing details. (a) Images: the Image Attachments switch stays the only gate; no endpoint is checked for vision, and ticket 07's "image attachments check" line was wrong. (b) The bundled engine is wanted while the answer route or the pick route resolves to it, with the window open or closed, as for a pinned game prompt. (c) A reachability badge shows only for a route that names a preset; Follow Active and Same as Answer show none, and the Ask tab's "no AI" state covers them. From the ticket 07 session |
 | Q55 | Ticket 09's reasoning details. (a) The help reasoning row keeps the Global level, as a game prompt does. The stored default is the shipped help default: switch off, level Global, budget 75%. With the switch off, the answer request sends reasoning off whatever Settings → Output → Native Reasoning says, so the measured default holds (Q4, Q5). (b) The Thinking block shows any reasoning text that arrives, native or inline, also with the setting off, because an endpoint that refuses off still reasons. Refines Q16. (c) A vLLM-dialect endpoint before its first reply shows the full field, as the Output row does; only a model ruled out shows the unavailable note. (d) The General row has its own label, Reasoning, its own description and an ⓘ that explains Global; the shared field takes its copy as props. From the ticket 09 session |
 | Q56 | "Follow Active" is the spec's name for the concept, not UI text. Both help selects show the row text the Settings select uses, "Use Active Endpoint (<name>)", so one concept has one term. The pick select's extra row reads "Same as Answer (<name>)". Docs use the UI text. From the ticket 07 session |
+| Q57 | Help's reveal timing is computed per answer from the default pace and help's own minimums, and passed to the renderer as a prop. There is no second stored timing value and no help pacer. From the ticket 10 session |
 | Q50 | The answer samplers join the help settings value in ticket 13, not ticket 04. They are a request-kind pin today that the pick request shares, so they need a call-level sampler override; ticket 13 adds the field, the override and the controls together, and the pick request keeps the pin. From the ticket 04 session |
 
 ### Rulings of the Formaquestion spec that this effort replaces
@@ -255,7 +256,7 @@ Each of these is inline or private in the Settings modal today. Each becomes a s
 ### Reveal
 
 - The help answer reads help's reveal values, not narration's.
-- The reveal timing store is one module-level value today, written by the game view. Help gets its own timing value, so neither writes over the other.
+- The reveal timing store is one module-level value, written by the game view's sentence pacer. Help has no pacer, so its timing is computed, not stored: the default pace, floored by help's own minimum duration and stagger. The help answer passes it to the markdown renderer as a prop. Help never reads or writes the game's store, and a test guards that (Q57).
 
 ### AI Context popup
 
