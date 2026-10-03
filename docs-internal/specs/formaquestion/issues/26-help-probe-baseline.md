@@ -1,6 +1,6 @@
 # 26: Help probe baseline
 
-Status: ready-for-human
+Status: done
 Status note: The baseline is in the Handover. The user sets the pass bar from it (Q24). The lookup arm runs on Cydonia later, in a window the user names (asked 2026-10-01). Follow-up tickets come after the bar.
 Base: fefcbc20
 Blocked by: 13, 22, 23, 24, 27, 28, 29, 30, 31

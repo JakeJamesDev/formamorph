@@ -1,6 +1,6 @@
 # 45: Pronoun follow-ups
 
-Status: ready-for-human
+Status: done
 Status note: Built and measured. Follow-up recall@5 rises to 90% on both sets, and follow-up answers rise from 48% to 80% grounded-correct. Two follow-ups still miss, because their first question misses.
 Base: 01047d1f
 Blocked by: 43, 44

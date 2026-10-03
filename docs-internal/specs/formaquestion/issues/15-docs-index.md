@@ -1,6 +1,6 @@
 # 15: Docs Index
 
-Status: ready-for-human
+Status: done
 Base: 8a206765
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

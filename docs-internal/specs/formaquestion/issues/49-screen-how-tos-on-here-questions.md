@@ -1,6 +1,6 @@
 # 49: Screen how-tos only on "here" questions
 
-Status: ready-for-human
+Status: done
 Status note: Built and measured. Task recall@5 over an open screen rises 4–10 points on three screens and both sets; "here" stays at 100%. The answer probe was skipped by ruling.
 Base: d0255691
 Blocked by: 47

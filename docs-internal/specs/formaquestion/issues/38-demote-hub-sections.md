@@ -1,6 +1,6 @@
 # 38: Demote hub sections
 
-Status: ready-for-human
+Status: done
 Base: aabf1297
 Blocked by: 37
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

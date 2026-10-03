@@ -1,6 +1,6 @@
 # 02: Docs for Traits, Placeholders and Persona Authoring
 
-Status: ready-for-human
+Status: done
 Base: 6f6228d7
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

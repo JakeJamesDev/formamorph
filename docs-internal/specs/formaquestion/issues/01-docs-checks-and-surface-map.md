@@ -1,6 +1,6 @@
 # 01: Docs checks and surface map
 
-Status: ready-for-human
+Status: done
 Base: 7bb7de14
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

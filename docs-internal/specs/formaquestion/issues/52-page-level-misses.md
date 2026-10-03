@@ -1,6 +1,6 @@
 # 52: Questions that never reach the page
 
-Status: ready-for-human
+Status: done
 Status note: Two of the eight fixed by three keyword lines (Q81); blind recall@5 86.0% → 89.4%, same batch. The other six are pick misses; no pick change held the blind set.
 Base: 44724f1d
 Blocked by: 50

@@ -1,6 +1,6 @@
 # 21: Conversation
 
-Status: ready-for-human
+Status: done
 Base: 15319e49
 Blocked by: 20 — Ask a question
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

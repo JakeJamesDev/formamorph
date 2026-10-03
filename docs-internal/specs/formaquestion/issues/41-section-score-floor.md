@@ -1,6 +1,6 @@
 # 41: Score floor for extra sections
 
-Status: ready-for-human
+Status: done
 Base: 76d770c8
 Blocked by: 38
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

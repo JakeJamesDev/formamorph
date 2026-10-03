@@ -1,6 +1,6 @@
 # 27: Search in player words
 
-Status: ready-for-human
+Status: done
 Base: 9a010b82
 Blocked by: 15, 20
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

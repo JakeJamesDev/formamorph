@@ -1,6 +1,6 @@
 # 39: Search recall comparison
 
-Status: ready-for-human
+Status: done
 Status note: The numbers and a recommendation are in the Handover. The user picks the approach (Q67).
 Base: 62ef56e0
 Blocked by: 38, 41, 42

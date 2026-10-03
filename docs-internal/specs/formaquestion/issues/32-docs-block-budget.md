@@ -1,6 +1,6 @@
 # 32: Docs block budget and cap
 
-Status: ready-for-human
+Status: done
 Base: 2b387d53
 Blocked by: 26
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

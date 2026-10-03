@@ -1,6 +1,6 @@
 # 31: Lookup mode off by default
 
-Status: ready-for-human
+Status: done
 Base: 2242003f
 Blocked by: 28
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

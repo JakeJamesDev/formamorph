@@ -1,6 +1,6 @@
 # 30: General-knowledge flag in history
 
-Status: ready-for-human
+Status: done
 Base: 224770f3
 Blocked by: 21, 24
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -1,6 +1,6 @@
 # 44: Switchable search sources
 
-Status: ready-for-human
+Status: done
 Status note: Built and measured. Answers rise from 61% to 73% grounded-correct, and "here" questions fall from 98% to 82%. Four points in the Handover need a ruling.
 Base: 199c2b26
 Blocked by: 39

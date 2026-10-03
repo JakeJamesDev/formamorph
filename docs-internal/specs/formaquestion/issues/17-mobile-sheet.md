@@ -1,6 +1,6 @@
 # 17: Formaquestion on mobile
 
-Status: ready-for-human
+Status: done
 Base: 3b5d9139
 Blocked by: 16
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

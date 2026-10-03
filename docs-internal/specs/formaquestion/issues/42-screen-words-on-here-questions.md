@@ -1,6 +1,6 @@
 # 42: Screen words on "here" questions
 
-Status: ready-for-human
+Status: done
 Base: 76d770c8
 Blocked by: 38
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
