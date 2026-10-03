@@ -11,6 +11,7 @@ The Tools tab lists a dice roll, off by default (Q47).
 
 - The roll is a fixed function of Formaquestion, second in the list after the guide lookup. The player cannot edit, copy or delete it.
 - It reuses the catalog roll's handler, its parameters and its empty result.
+- It joins the Tools tab's fixed functions, which ticket 14 passes as one prop. Its switch and its Max Calls per Request are device settings beside the lookup's (Q59).
 - It has its own description. The catalog roll's description is written for narration ("roll before you narrate the outcome"), and a help request has no story. The new description is a positive contract with no narration words, and it names no sample value a small model can copy beyond what the parameter needs.
 - The gameplay catalog roll does not change.
 
