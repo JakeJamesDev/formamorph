@@ -49,7 +49,7 @@ export function MaxOutputControl({ custom, value, shipped, disabled, onCustomCha
  * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
  * engine ignores the effort field, so it shows the slider alone (`level` false).
  */
-export function PromptReasoningField({ setting, onChange, options, budget, level, lockedOn, disabled, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning' }: PromptReasoningFieldProps) {
+export function PromptReasoningField({ setting, onChange, options, budget, level, lockedOn, disabled, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning', switchLabel }: PromptReasoningFieldProps) {
   const inert = disabled || !(setting.enabled || lockedOn);
   const sliderInert = inert || budget?.disabled === true;
   const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
@@ -74,6 +74,7 @@ export function PromptReasoningField({ setting, onChange, options, budget, level
       )}
       <ReasoningSwitch
         id={id}
+        label={switchLabel}
         enabled={setting.enabled}
         onEnabledChange={(enabled) => onChange({ ...setting, enabled })}
         disabled={disabled}

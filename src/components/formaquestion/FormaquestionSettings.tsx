@@ -13,7 +13,6 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
-import { reasoningRuledOut } from '@/lib/reasoningEffort';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
 import type { SemanticSearch } from './useSemanticSearch';
@@ -56,7 +55,8 @@ function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; 
     onChange: (reasoning) => onChange({ reasoning }),
     onBudgetChange: (reasoningBudget) => onChange({ reasoningBudget }),
   });
-  if (!field || (!target.localEngine && reasoningRuledOut(target.reasoning))) {
+  // No field: the model is ruled out, since the call is never suppressed and a pending proof still draws one.
+  if (!field) {
     return (
       <Row muted label={copy.label}>
         <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
@@ -65,7 +65,7 @@ function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; 
   }
   return (
     <Row top htmlFor="fq-reasoning" label={copy.label} hint={copy.hint} info={<HintInfo>{copy.info}</HintInfo>}>
-      <PromptReasoningField {...field} id="fq-reasoning" copy={null} />
+      <PromptReasoningField {...field} id="fq-reasoning" copy={null} switchLabel={copy.label} />
     </Row>
   );
 }
