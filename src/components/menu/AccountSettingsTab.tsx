@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { useAccountDeletion } from '@/contexts/AccountDeletionContext';
 import AuthService from '@/services/AuthService';
+import { PatreonSection } from '@/components/PatreonSection';
+import { openExternal } from '@/lib/openExternal';
 
 type Note = { kind: 'success' | 'error'; text: string } | null;
 
@@ -181,6 +183,8 @@ export function AccountSettingsTab({ suspended, onChangePassword }: {
   return (
     <div className="space-y-8 py-4">
       <EmailSection suspended={suspended} />
+
+      <PatreonSection openAuthorize={openExternal} refreshOnFocus suspended={suspended} />
 
       <Section title="Password">
         <Button variant="outline" size="sm" onClick={onChangePassword}>

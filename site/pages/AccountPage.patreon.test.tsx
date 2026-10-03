@@ -169,6 +169,7 @@ describe('returning from Patreon', () => {
     const [, init] = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes('/confirm'))!;
     expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer tok' });
     expect(window.location.search).toBe('');
+    expect(screen.getByRole('status').textContent).toContain('return to it');
   });
 
   it('keeps the token through sign-in for a signed-out reader', async () => {
