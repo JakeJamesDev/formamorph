@@ -193,6 +193,24 @@ describe('returning from Patreon', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
   });
 
+  it('offers Link Patreon again after a refused confirm, because the token is spent', async () => {
+    at('/account?patreon=confirm&token=abc123');
+    patreon({ 'POST /confirm': refused(400, 'PATREON_CONFIRM_REFUSED', 'x'), 'GET ': ok(NOT_LINKED) });
+    render(<AccountPage />);
+
+    expect(await screen.findByRole('button', { name: 'Link Patreon' })).toBeTruthy();
+    expect(screen.getByRole('alert')).toHaveTextContent(/link request expired/);
+  });
+
+  it('says the request expired when the redirect has no token', async () => {
+    at('/account?patreon=confirm');
+    patreon({ 'GET ': ok(NOT_LINKED) });
+    render(<AccountPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/link request expired/);
+    expect(calls().map(([method, path]) => `${method} ${path}`)).toEqual(['GET ']);
+  });
+
   it.each([
     ['taken', /linked to another Formamorph account/],
     ['denied', /didn.t approve the request/],

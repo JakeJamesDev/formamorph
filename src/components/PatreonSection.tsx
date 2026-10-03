@@ -42,7 +42,7 @@ const confirmFailure = (failure: unknown): string => {
 };
 
 /** The notice a redirect result states without a call, or null when the result needs one or is unknown. */
-export const patreonReturnNotice = (result: string): Notice =>
+const patreonReturnNotice = (result: string): Notice =>
   result in MESSAGES ? { kind: 'error', text: MESSAGES[result as keyof typeof MESSAGES] } : null;
 
 /** Whole months from `since` to `now`, as "1 year, 3 months". Null when `since` is not a date. */
@@ -98,7 +98,8 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
       // Only the arrival read uses the redirect; a retry reads the status.
       const arrival = attempt === 0 ? returned : null;
       const held = arrival?.result === 'confirm' && arrival.token ? arrival.token : null;
-      const stated = arrival ? patreonReturnNotice(arrival.result) : null;
+      // A `confirm` with no token cannot finish a link, so it reads as an expired request.
+      const stated = arrival ? patreonReturnNotice(arrival.result === 'confirm' && !held ? 'expired' : arrival.result) : null;
 
       try {
         const next = held ? await PatreonService.confirm(held) : await PatreonService.getStatus();
@@ -108,11 +109,20 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
         if (stated) setNotice(stated);
       } catch (failure) {
         if (!mounted.current) return;
-        setStatus(null);
-        setNotice({
-          kind: 'error',
-          text: held ? confirmFailure(failure) : (failure as Error).message || 'Could not read your Patreon status.',
-        });
+        if (!held) {
+          setStatus(null);
+          setNotice({ kind: 'error', text: (failure as Error).message || 'Could not read your Patreon status.' });
+          return;
+        }
+
+        // The token is spent, so a retry cannot confirm. Show the account as it stands, with the reason.
+        setNotice({ kind: 'error', text: confirmFailure(failure) });
+        try {
+          const current = await PatreonService.getStatus();
+          if (mounted.current) setStatus(current);
+        } catch {
+          if (mounted.current) setStatus(null);
+        }
       }
     };
 
