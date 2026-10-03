@@ -1,6 +1,7 @@
 # Spec: Feedback List Search and Filters
 
-Status: ready-for-agent
+Status: done
+Status note: All seven tickets landed on 2026-10-02. Server: da72d5a, c330882, 1711a3d, ff7587e (safe with the released client). Client: 01 through 07, last 4e55abce. Gates green on 2026-10-03.
 Spec session: feedback-list-filters — spec
 
 ## Problem Statement

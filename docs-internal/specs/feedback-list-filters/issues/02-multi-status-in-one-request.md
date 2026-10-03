@@ -1,6 +1,6 @@
 # 02: Multi-Status in One Request
 
-Status: ready-for-human
+Status: done
 Base: 32612c5e
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
