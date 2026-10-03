@@ -16,7 +16,7 @@ A power user moves a custom assistant between devices with one file (Q11, Q39).
 - the three prompt texts
 - the answer options: temperature, repetition penalty and Max Output (Q58)
 - the player's Formaquestion Tools
-- the function and Tool switches
+- the function and Tool switches, and the fixed functions' Max Calls per Request (Q59)
 
 It carries no endpoint, no token and no other device setting. Build the file from an explicit field list, so a later setting cannot ride along.
 
