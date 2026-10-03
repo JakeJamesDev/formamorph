@@ -130,6 +130,14 @@ describe('the pick request', () => {
     );
   });
 
+  it('keeps its pinned samplers and cap when the answer fields change', async () => {
+    const server = endpoint();
+    await ask('import', { fetchImpl: server.fetchImpl, settings: helpSettingsOf({ answerTemperature: 1.1, answerRepetitionPenalty: 1.3, answerMaxTokens: 321 }) });
+
+    expect(bodyOf(server.picks)).toMatchObject({ temperature: 0.2, repetition_penalty: 1, repeat_penalty: 1, max_tokens: HELP_PICK_MAX_TOKENS });
+    expect(bodyOf(server.answers)).toMatchObject({ temperature: 1.1, repetition_penalty: 1.3, repeat_penalty: 1.3, max_tokens: 321 });
+  });
+
   it('names the open screen, the earlier question and its answer, and carries no image', async () => {
     const server = endpoint();
     const image: ImageAttachment = { id: 'a', mime: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,AAAA' };

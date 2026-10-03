@@ -15,6 +15,8 @@ describe('the default help settings', () => {
       openScreen: true,
       historyLength: 4,
       answerMaxTokens: 800,
+      answerTemperature: 0.2,
+      answerRepetitionPenalty: 1,
       reasoning: { enabled: false, level: 'global' },
       reasoningBudget: 75,
       sourcesOpen: true,
@@ -45,6 +47,12 @@ describe('the stored help settings', () => {
   it('read back what was written', () => {
     const changed = helpSettingsOf({ sources: { keyword: false, aiPicks: false }, openScreen: false, historyLength: 0 });
     expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(changed))).toEqual(changed);
+  });
+
+  it('take the default for an answer sampler that is out of range or not a number, and keep a good one', () => {
+    expect(stored({ answerTemperature: 3, answerRepetitionPenalty: '1.2' })).toEqual(DEFAULT_HELP_SETTINGS);
+    expect(stored({ answerTemperature: -0.1, answerRepetitionPenalty: 0.9 })).toEqual(DEFAULT_HELP_SETTINGS);
+    expect(stored({ answerTemperature: 0.7, answerRepetitionPenalty: 1.1 })).toMatchObject({ answerTemperature: 0.7, answerRepetitionPenalty: 1.1 });
   });
 
   it('take the default for each field that is missing or bad, and keep the good ones', () => {
