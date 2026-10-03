@@ -165,7 +165,7 @@ describe('the trace of a help question', () => {
   it('keeps the answer events and the request bodies as they are without it', async () => {
     const fetchImpl = replyWith(sseReply('Select **Add Trait**.'));
     const events = await collect(ask(TRAIT, fetchImpl));
-    const plain = events.filter((event) => event.type !== 'trace');
+    const plain = events.filter((event) => event.type !== 'trace' && event.type !== 'stage');
     expect(plain.map((event) => event.type)).toEqual(['answer', 'done']);
     expect(Object.keys(JSON.parse(fetchImpl.mock.calls[0][1].body as string) as object).sort()).toEqual(
       ['max_tokens', 'messages', 'model', 'repeat_penalty', 'repetition_penalty', 'stream', 'temperature'],

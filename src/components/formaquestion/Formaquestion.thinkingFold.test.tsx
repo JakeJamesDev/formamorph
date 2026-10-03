@@ -133,11 +133,11 @@ describe('the Thinking block of an answer', () => {
     await send(field, 'How do I add a trait?');
     // The header pulses while the model reasons, and the time shows once the answer starts.
     await within(conversation()).findByRole('button', { name: 'Thinking…' });
-    expect(conversation()).toHaveTextContent('Writing an answer…');
+    // The pulsing header is the wait line while the model reasons.
+    expect(conversation()).not.toHaveTextContent('Waiting for your AI…');
 
     await act(async () => { finish(); });
     await vi.waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
-    expect(conversation()).not.toHaveTextContent('Writing an answer…');
     expect(within(conversation()).getByRole('button', { name: /^Thought for \d+s$/ })).toBeInTheDocument();
     expect(within(conversation()).queryByRole('button', { name: 'Thinking…' })).toBeNull();
   });

@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { SectionRows } from './GuideParts';
 import { FOCUS_RING, readerComponents } from './readerLinks';
 import { useFoldRule } from './useFoldRule';
+import type { HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
 
 /** The most docs sections shown in place of an answer. */
@@ -36,6 +37,15 @@ const ASK_FIELD_LINE_H = 40;
 const ASK_FIELD_MAX_H = 240;
 
 /** The line above the docs search that takes the place of an answer, or of the rest of one. */
+/** The wait line of each stage, under the question until its answer text starts. */
+const STAGE_LINE: Record<HelpStage, string> = {
+  checking: 'Checking your AI…',
+  searching: 'Searching the guide…',
+  picking: 'Picking sections…',
+  waiting: 'Waiting for your AI…',
+  lookingUp: 'Looking up…',
+};
+
 function fallbackLine(status: Extract<HelpStatus, 'no-ai' | 'failed'>, partial: boolean, matched: boolean): string {
   const cause = status === 'no-ai' ? 'No AI is connected' : partial ? 'The answer did not finish' : 'The AI did not answer';
   return matched ? `${cause}. These guide sections match your question.` : `${cause}, and no guide section matches your question`;
@@ -107,7 +117,9 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
 }) {
-  const { answer, reasoning, reasoningMs, status, sources, question, flagged, nearest } = exchange;
+  const { answer, reasoning, reasoningMs, status, stage, sources, question, flagged, nearest } = exchange;
+  // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
+  const waitLine = status === 'writing' && !answer && stage && !(reasoning && stage === 'waiting') ? STAGE_LINE[stage] : null;
   // A flagged answer lists the nearest sections in place of its sources.
   const listed = flagged ? nearest : sources;
   const listLabel = flagged ? 'Nearest Sections' : 'Sources';
@@ -141,7 +153,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
         </div>
       )}
       {/* The conversation is a log, which announces its own new text. */}
-      {status === 'writing' && !answer && <Hint>Writing an answer…</Hint>}
+      {waitLine && <Hint>{waitLine}</Hint>}
       {status === 'stopped' && <Meta>Stopped</Meta>}
       {(status === 'no-ai' || status === 'failed') && (
         <div className="flex flex-col gap-1">

@@ -302,6 +302,27 @@ describe('the check of the AI', () => {
   });
 });
 
+describe('the wait line', () => {
+  it('says it waits for the AI until the first answer text, then hides', async () => {
+    const encoder = new TextEncoder();
+    let answer = () => {};
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        answer = () => { for (const chunk of sseReply('Select **Add Trait**.')) controller.enqueue(encoder.encode(chunk)); controller.close(); };
+      },
+    });
+    stubHelpStream(() => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('Waiting for your AI…'));
+    expect(conversation()).not.toHaveTextContent('Writing');
+
+    await act(async () => { answer(); });
+    await waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
+    expect(conversation()).not.toHaveTextContent('Waiting for your AI…');
+  });
+});
+
 describe('with no AI connected', () => {
   it('shows the docs search for the question, sends nothing and shows no error', async () => {
     const fetchSpy = stubHelpStream(sseReply('Not used.'));
@@ -320,6 +341,20 @@ describe('with no AI connected', () => {
 
     await userEvent.click(searchRows()[0]);
     expect(screen.getByRole('article', { name: '🧬 Traits: How to Add a Trait' })).toBeInTheDocument();
+  });
+
+  it('says it is checking the AI while the fresh check runs', async () => {
+    stubHelpStream(sseReply('Select **Add Trait**.'));
+    let found = (_ok: boolean) => {};
+    const revalidate = vi.fn(() => new Promise<boolean>((resolve) => { found = resolve; }));
+    ai.current = { ...ai.current, reachable: false, revalidate };
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('Checking your AI…'));
+
+    await act(async () => { found(true); });
+    await waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
+    expect(conversation()).not.toHaveTextContent('Checking your AI…');
   });
 
   it('asks the AI when a fresh check finds it, after a check that found none', async () => {

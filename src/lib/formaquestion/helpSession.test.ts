@@ -34,10 +34,10 @@ const bodyOf = (spy: FetchSpy, call = 0) => JSON.parse(spy.mock.calls[call][1].b
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
   askHelp({ question, settings: DEFAULT_HELP_SETTINGS, snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over });
 
-/** The answer events of a question. The trace events have their own test file. */
-async function collect(events: AsyncIterable<HelpEvent>): Promise<Exclude<HelpEvent, { type: 'trace' }>[]> {
-  const all: Exclude<HelpEvent, { type: 'trace' }>[] = [];
-  for await (const event of events) if (event.type !== 'trace') all.push(event);
+/** The answer events of a question. The trace and stage events have their own test files. */
+async function collect(events: AsyncIterable<HelpEvent>): Promise<Exclude<HelpEvent, { type: 'trace' | 'stage' }>[]> {
+  const all: Exclude<HelpEvent, { type: 'trace' | 'stage' }>[] = [];
+  for await (const event of events) if (event.type !== 'trace' && event.type !== 'stage') all.push(event);
   return all;
 }
 
