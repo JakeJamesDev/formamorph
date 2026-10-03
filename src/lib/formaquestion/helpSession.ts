@@ -15,7 +15,7 @@ import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { renderHelpPrompt } from './helpChips';
 import { requestPicks } from './helpPicks';
-import { activeHelpPrompts } from './helpPresets';
+import { activeHelpOptions, activeHelpPrompts } from './helpPresets';
 import { helpRoutes } from './helpRoutes';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
@@ -289,12 +289,13 @@ export async function* askHelp({
     : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
+  const options = activeHelpOptions(settings.presets);
   const spec = buildAiRequestSpec(answerSnapshot, {
     systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer)),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
-    maxTokensOverride: settings.answerMaxTokens,
-    samplerOverride: { temperature: settings.answerTemperature, repetitionPenalty: settings.answerRepetitionPenalty },
+    maxTokensOverride: options.maxTokens,
+    samplerOverride: { temperature: options.temperature, repetitionPenalty: options.repetitionPenalty },
     ...(lookup && { tools: [DOCS_LOOKUP] }),
   });
   let text = '';

@@ -10,6 +10,7 @@ import { HELP_PICK_MAX_TOKENS, pickList } from './helpPicks';
 import { HELP_PICK_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT } from './helpPrompt';
 import type { HelpEmbedder } from './helpSemantic';
 import { askHelp, HELP_SCORE_FLOOR, type HelpEvent, type HelpQuestion } from './helpSession';
+import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { helpSettingsOf, type HelpSources } from './helpSettings';
 import { encodeVector, sectionTexts, type SectionVectorsFile } from './sectionVectors';
 
@@ -130,9 +131,9 @@ describe('the pick request', () => {
     );
   });
 
-  it('keeps its pinned samplers and cap when the answer fields change', async () => {
+  it('keeps its pinned samplers and cap when the answer options of the preset change', async () => {
     const server = endpoint();
-    await ask('import', { fetchImpl: server.fetchImpl, settings: helpSettingsOf({ answerTemperature: 1.1, answerRepetitionPenalty: 1.3, answerMaxTokens: 321 }) });
+    await ask('import', { fetchImpl: server.fetchImpl, settings: helpSettingsOf({ presets: editHelpOptions(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', { temperature: 1.1, repetitionPenalty: 1.3, maxTokens: 321 }) }) });
 
     expect(bodyOf(server.picks)).toMatchObject({ temperature: 0.2, repetition_penalty: 1, repeat_penalty: 1, max_tokens: HELP_PICK_MAX_TOKENS });
     expect(bodyOf(server.answers)).toMatchObject({ temperature: 1.1, repetition_penalty: 1.3, repeat_penalty: 1.3, max_tokens: 321 });

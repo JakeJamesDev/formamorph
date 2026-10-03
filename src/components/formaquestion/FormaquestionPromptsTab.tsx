@@ -10,7 +10,7 @@ import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { helpChipVocabulary } from '@/lib/formaquestion/helpChips';
 import {
-  activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpPrompt, isDefaultHelpPresetActive,
+  activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, isDefaultHelpPresetActive,
   isHelpPromptEdited, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
@@ -124,7 +124,14 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {showOptions ? (
-            <AnswerOptions settings={settings} onChange={onChange} />
+            <AnswerOptions
+              key={active.id}
+              options={active.options}
+              readOnly={readOnly}
+              readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
+              onRequestEdit={() => duplicate(copyName)}
+              onChange={(change) => setStore(editHelpOptions(store, active.id, change))}
+            />
           ) : (
             <PromptField
               key={`${active.id}:${key}`}

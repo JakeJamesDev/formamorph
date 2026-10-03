@@ -1,14 +1,29 @@
 /**
  * The help preset store: the three help prompts as one named set. The Default preset is read-only and reads
- * its text from the code, so each release updates it for every player who has no custom preset. A custom
- * preset stores its own three texts. The store is a device setting, apart from the gameplay prompt presets.
+ * its text and answer options from the code, so each release updates it for every player who has no custom
+ * preset. A custom preset stores its own three texts and its answer options. The store is a device setting, apart from the gameplay prompt presets.
  */
 import { DEFAULT_HELP_PROMPTS, type HelpPromptKey, type HelpPromptTexts } from './helpPrompt';
+
+/** The answer request's sampler values and cap. A preset holds them, so the Default preset's follow the code. */
+export interface HelpAnswerOptions {
+  readonly temperature: number;
+  readonly repetitionPenalty: number;
+  /** The answer cap in tokens: room for a long list of steps. */
+  readonly maxTokens: number;
+}
+
+export const DEFAULT_HELP_ANSWER_OPTIONS: HelpAnswerOptions = { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 };
+
+/** The ranges the answer option fields take. */
+export const HELP_TEMPERATURE_RANGE = { min: 0, max: 2, step: 0.05 } as const;
+export const HELP_REPETITION_PENALTY_RANGE = { min: 1, max: 1.5, step: 0.02 } as const;
 
 export interface HelpPreset {
   readonly id: string;
   readonly name: string;
   readonly prompts: HelpPromptTexts;
+  readonly options: HelpAnswerOptions;
 }
 
 /** The active preset id and every custom preset. The Default preset is virtual, never stored. */
@@ -24,7 +39,7 @@ export const DEFAULT_HELP_PRESET_NAME = 'Default';
 export const EMPTY_HELP_PRESET_STORE: HelpPresetStore = { activeId: DEFAULT_HELP_PRESET_ID, presets: [] };
 
 /** The Default preset, from the code of this build. */
-export const defaultHelpPreset = (): HelpPreset => ({ id: DEFAULT_HELP_PRESET_ID, name: DEFAULT_HELP_PRESET_NAME, prompts: DEFAULT_HELP_PROMPTS });
+export const defaultHelpPreset = (): HelpPreset => ({ id: DEFAULT_HELP_PRESET_ID, name: DEFAULT_HELP_PRESET_NAME, prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_ANSWER_OPTIONS });
 
 const customOf = (store: HelpPresetStore, id: string): HelpPreset | undefined => store.presets.find((preset) => preset.id === id);
 
@@ -42,6 +57,9 @@ export const isDefaultHelpPresetActive = (store: HelpPresetStore): boolean => cu
 /** The three texts the help session sends, chips in place. */
 export const activeHelpPrompts = (store: HelpPresetStore): HelpPromptTexts => activeHelpPreset(store).prompts;
 
+/** The answer options the help session sends. */
+export const activeHelpOptions = (store: HelpPresetStore): HelpAnswerOptions => activeHelpPreset(store).options;
+
 /** True when a prompt's text differs from the default text. */
 export const isHelpPromptEdited = (prompts: HelpPromptTexts, key: HelpPromptKey): boolean => prompts[key] !== DEFAULT_HELP_PROMPTS[key];
 
@@ -53,7 +71,7 @@ export function selectHelpPreset(store: HelpPresetStore, id: string): HelpPreset
 /** Adds a copy of the preset `sourceId` names under `id` and `name`, and selects it. */
 export function duplicateHelpPreset(store: HelpPresetStore, sourceId: string, id: string, name: string): HelpPresetStore {
   const source = helpPresetOf(store, sourceId);
-  return { activeId: id, presets: [...store.presets, { id, name, prompts: { ...source.prompts } }] };
+  return { activeId: id, presets: [...store.presets, { id, name, prompts: { ...source.prompts }, options: { ...source.options } }] };
 }
 
 /** The store with one custom preset changed. The Default preset refuses the change, so the store is returned as it is. */
@@ -66,6 +84,10 @@ function withCustom(store: HelpPresetStore, id: string, change: (preset: HelpPre
 export function editHelpPrompt(store: HelpPresetStore, id: string, key: HelpPromptKey, text: string): HelpPresetStore {
   return withCustom(store, id, (preset) => ({ ...preset, prompts: { ...preset.prompts, [key]: text } }));
 }
+
+/** Sets answer options of a custom preset. */
+export const editHelpOptions = (store: HelpPresetStore, id: string, change: Partial<HelpAnswerOptions>): HelpPresetStore =>
+  withCustom(store, id, (preset) => ({ ...preset, options: { ...preset.options, ...change } }));
 
 /** Returns one prompt of a custom preset to the default text. */
 export const resetHelpPrompt = (store: HelpPresetStore, id: string, key: HelpPromptKey): HelpPresetStore =>
@@ -85,12 +107,28 @@ export function deleteHelpPreset(store: HelpPresetStore, id: string): HelpPreset
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const isText = (value: unknown): value is string => typeof value === 'string';
 
+const isNumberIn = ({ min, max }: { min: number; max: number }) => (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+const isTemperature = isNumberIn(HELP_TEMPERATURE_RANGE);
+const isPenalty = isNumberIn(HELP_REPETITION_PENALTY_RANGE);
+
+/** Stored answer options, each bad or missing field read as its default. */
+function readOptions(value: unknown): HelpAnswerOptions {
+  const stored = isRecord(value) ? value : {};
+  const { temperature, repetitionPenalty, maxTokens } = DEFAULT_HELP_ANSWER_OPTIONS;
+  return {
+    temperature: isTemperature(stored.temperature) ? stored.temperature : temperature,
+    repetitionPenalty: isPenalty(stored.repetitionPenalty) ? stored.repetitionPenalty : repetitionPenalty,
+    maxTokens: Number.isInteger(stored.maxTokens) && (stored.maxTokens as number) > 0 ? (stored.maxTokens as number) : maxTokens,
+  };
+}
+
 /** A stored preset with its id, a name and three texts; anything else is dropped. */
 function readPreset(value: unknown): HelpPreset | null {
   if (!isRecord(value) || !isText(value.id) || value.id === '' || !isText(value.name) || !isRecord(value.prompts)) return null;
   const { answer, pick, lookup } = value.prompts;
   if (!isText(answer) || !isText(pick) || !isText(lookup)) return null;
-  return { id: value.id, name: value.name, prompts: { answer, pick, lookup } };
+  return { id: value.id, name: value.name, prompts: { answer, pick, lookup }, options: readOptions(value.options) };
 }
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HELP_PROMPTS } from './helpPrompt';
 import {
-  activeHelpPreset, activeHelpPrompts, DEFAULT_HELP_PRESET_ID, deleteHelpPreset, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE,
+  activeHelpOptions, activeHelpPreset, activeHelpPrompts, DEFAULT_HELP_ANSWER_OPTIONS, DEFAULT_HELP_PRESET_ID, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, EMPTY_HELP_PRESET_STORE,
   isDefaultHelpPresetActive, isHelpPromptEdited, parseHelpPresetStore, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from './helpPresets';
 
@@ -10,7 +10,7 @@ const custom = (store: HelpPresetStore, id = 'mine') => duplicateHelpPreset(stor
 describe('the help preset store', () => {
   it('starts on the Default preset, whose texts are the default prompts of this build', () => {
     expect(isDefaultHelpPresetActive(EMPTY_HELP_PRESET_STORE)).toBe(true);
-    expect(activeHelpPreset(EMPTY_HELP_PRESET_STORE)).toEqual({ id: DEFAULT_HELP_PRESET_ID, name: 'Default', prompts: DEFAULT_HELP_PROMPTS });
+    expect(activeHelpPreset(EMPTY_HELP_PRESET_STORE)).toEqual({ id: DEFAULT_HELP_PRESET_ID, name: 'Default', prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_ANSWER_OPTIONS });
     expect(activeHelpPrompts(EMPTY_HELP_PRESET_STORE)).toBe(DEFAULT_HELP_PROMPTS);
   });
 
@@ -19,6 +19,8 @@ describe('the help preset store', () => {
     expect(editHelpPrompt(store, DEFAULT_HELP_PRESET_ID, 'answer', 'Mine.')).toBe(store);
     expect(renameHelpPreset(store, DEFAULT_HELP_PRESET_ID, 'Renamed')).toBe(store);
     expect(deleteHelpPreset(store, DEFAULT_HELP_PRESET_ID)).toBe(store);
+    expect(editHelpOptions(store, DEFAULT_HELP_PRESET_ID, { temperature: 1 })).toBe(store);
+    expect(activeHelpOptions(store)).toBe(DEFAULT_HELP_ANSWER_OPTIONS);
     expect(resetHelpPrompt(store, DEFAULT_HELP_PRESET_ID, 'answer')).toBe(store);
     expect(activeHelpPrompts(store)).toBe(DEFAULT_HELP_PROMPTS);
   });
@@ -27,12 +29,19 @@ describe('the help preset store', () => {
     const store = custom(EMPTY_HELP_PRESET_STORE);
     expect(store.activeId).toBe('mine');
     expect(isDefaultHelpPresetActive(store)).toBe(false);
-    expect(activeHelpPreset(store)).toEqual({ id: 'mine', name: 'Mine', prompts: DEFAULT_HELP_PROMPTS });
+    expect(activeHelpPreset(store)).toEqual({ id: 'mine', name: 'Mine', prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_ANSWER_OPTIONS });
 
     const edited = editHelpPrompt(store, 'mine', 'pick', 'Pick well.');
     const copy = duplicateHelpPreset(edited, 'mine', 'copy', 'Copy');
     expect(activeHelpPrompts(copy).pick).toBe('Pick well.');
     expect(copy.presets.map((preset) => preset.id)).toEqual(['mine', 'copy']);
+  });
+
+  it('edits the answer options of a custom preset, copies them on duplicate, and leaves the Default options', () => {
+    const store = editHelpOptions(custom(EMPTY_HELP_PRESET_STORE), 'mine', { temperature: 0.9, maxTokens: 400 });
+    expect(activeHelpOptions(store)).toEqual({ ...DEFAULT_HELP_ANSWER_OPTIONS, temperature: 0.9, maxTokens: 400 });
+    expect(activeHelpOptions(duplicateHelpPreset(store, 'mine', 'copy', 'Copy'))).toEqual(activeHelpOptions(store));
+    expect(DEFAULT_HELP_ANSWER_OPTIONS).toEqual({ temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 });
   });
 
   it('edits one prompt of a custom preset and leaves the other two', () => {
@@ -80,11 +89,20 @@ describe('the stored help preset store', () => {
     expect(parseHelpPresetStore(JSON.parse(JSON.stringify(store)))).toEqual(store);
   });
 
+  it('reads each bad or missing answer option as its default and keeps the good ones', () => {
+    const preset = (options: unknown) => ({ id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c' }, options });
+    const read = (options: unknown) => activeHelpOptions(parseHelpPresetStore({ activeId: 'ok', presets: [preset(options)] }));
+    expect(read(undefined)).toEqual(DEFAULT_HELP_ANSWER_OPTIONS);
+    expect(read({ temperature: 3, repetitionPenalty: '1.2', maxTokens: -1 })).toEqual(DEFAULT_HELP_ANSWER_OPTIONS);
+    expect(read({ temperature: -0.1, repetitionPenalty: 0.9, maxTokens: 12.5 })).toEqual(DEFAULT_HELP_ANSWER_OPTIONS);
+    expect(read({ temperature: 0.7, repetitionPenalty: 1.1, maxTokens: 400 })).toEqual({ temperature: 0.7, repetitionPenalty: 1.1, maxTokens: 400 });
+  });
+
   it('reads a bad value as the empty store, drops a bad preset, and points a ghost active id at Default', () => {
     expect(parseHelpPresetStore('presets')).toEqual(EMPTY_HELP_PRESET_STORE);
     expect(parseHelpPresetStore(null)).toEqual(EMPTY_HELP_PRESET_STORE);
     expect(parseHelpPresetStore({ activeId: 'x', presets: 'none' })).toEqual(EMPTY_HELP_PRESET_STORE);
-    const good = { id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c' } };
+    const good = { id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c' }, options: DEFAULT_HELP_ANSWER_OPTIONS };
     const read = parseHelpPresetStore({ activeId: 'gone', presets: [good, { id: 'bad', name: 'Bad', prompts: { answer: 1 } }, { id: 'ok', name: 'Twin', prompts: good.prompts }, 'junk'] });
     expect(read).toEqual({ activeId: DEFAULT_HELP_PRESET_ID, presets: [good] });
     expect(parseHelpPresetStore({ activeId: 'ok', presets: [good] }).activeId).toBe('ok');

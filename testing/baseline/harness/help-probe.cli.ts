@@ -42,7 +42,8 @@ import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, helpSections } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
+import { DEFAULT_HELP_ANSWER_OPTIONS } from '@/lib/formaquestion/helpPresets';
+import { helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { mean, pct, probeSnapshot } from './help-probe-shared';
 import { askHelpContentsLookup } from './lookupControl';
 import { refDocsIndex } from './refDocsIndex';
@@ -195,8 +196,8 @@ async function request(arm: Arm, c: HelpCase): Promise<Sample> {
   if (isLookup(arm)) return lookupRequest(arm, c);
   const sections = arm === 'no-docs' ? [] : helpSections(indexOf(arm), (arm === 'mismatch' ? mismatchPartner(c) : c).question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
-    ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_SETTINGS.answerMaxTokens }
-    : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_SETTINGS.answerMaxTokens });
+    ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens }
+    : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens });
   const response = await fetch(spec.url, {
     method: 'POST',
     headers: spec.headers,
