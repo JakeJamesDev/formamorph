@@ -21,12 +21,14 @@ import { cn } from '@/lib/utils';
 /** The menu's width, which decides the corner it hangs from. Matches the `w-52` on the content. */
 const MENU_WIDTH = 208;
 
-export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, container, large = false }: {
+export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, container, large = false, round = false }: {
   onOpenAiContext: () => void;
   onOpenSettings: () => void;
   onClear?: () => void;
   container?: HTMLElement;
   large?: boolean;
+  /** A round button with no border, as the other buttons of the minimal chrome's pill. */
+  round?: boolean;
 }) {
   const pending = useRef<(() => void) | null>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -40,7 +42,7 @@ export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, co
             size="icon"
             aria-label="More Actions"
             aria-haspopup="menu"
-            className={large ? 'h-12 w-12' : 'h-8 w-8'}
+            className={cn(large ? 'h-12 w-12' : 'h-8 w-8', round && 'rounded-full border-transparent')}
             onClick={(event) => {
               const bounds = event.currentTarget.getBoundingClientRect();
               openBubbleMenu(event.currentTarget, bounds.left + MENU_WIDTH <= window.innerWidth ? 'left' : 'right');

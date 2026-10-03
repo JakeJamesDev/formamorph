@@ -91,6 +91,9 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
 }) {
   return (
     <div className="grid gap-6 py-4">
+      <Section title="Window">
+        <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...GENERAL_COPY.mascot} />
+      </Section>
       <Section title="Answer">
         <ReasoningRow settings={settings} onChange={onChange} target={answerTarget} />
         <AnswerRevealRow settings={settings} onChange={onChange} />

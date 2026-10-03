@@ -7,6 +7,7 @@ import { openDocs } from '@/lib/formaquestion/docsOpener';
 
 // The AI settings come from the app's providers. No test here asks a question.
 vi.mock('./useHelpAi', () => import('@/test/idleHelpAi'));
+import { storeFramedWindow } from '@/test/helpFixtures';
 import { Formaquestion } from './Formaquestion';
 
 const PAGES = {
@@ -67,7 +68,10 @@ function setScreenWidth(width: number) {
   });
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  storeFramedWindow();
+});
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -368,9 +372,18 @@ describe('the window on the screen', () => {
     expect(frame().style).toMatchObject({ left: '40px', top: '60px', width: '420px', height: '380px' });
   });
 
-  it('opens at its default place when storage is blocked', async () => {
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('blocked', 'SecurityError'); });
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked', 'SecurityError'); });
+  it('opens at its default place when storage of the box is blocked', async () => {
+    // Only the box's key: with every key blocked the settings read as defaults, and the Mascot's chrome shows.
+    const blocked = (key: string) => key === 'formamorph.formaquestion.window';
+    const { getItem, setItem } = Storage.prototype;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key) {
+      if (blocked(key)) throw new DOMException('blocked', 'SecurityError');
+      return getItem.call(this, key);
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (blocked(key)) throw new DOMException('blocked', 'SecurityError');
+      setItem.call(this, key, value);
+    });
     await openWindow();
     expect(frame().style.width).toBe(`${NARROW_WIDTH}px`);
     await userEvent.click(screen.getByRole('button', { name: 'Wide View' }));

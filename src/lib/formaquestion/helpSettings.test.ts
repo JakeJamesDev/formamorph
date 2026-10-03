@@ -5,6 +5,7 @@ import type { Tool } from '@/types';
 import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
+import { DEFAULT_MASCOT_RIG } from './mascot';
 
 describe('the default help settings', () => {
   it('equal the values the help session had as constants when the bar run measured it', () => {
@@ -27,6 +28,8 @@ describe('the default help settings', () => {
       // No Tool and no switch, so the request bodies of the bar run are unchanged.
       tools: [],
       toolSwitches: {},
+      mascot: true,
+      rig: DEFAULT_MASCOT_RIG,
     });
   });
 });
@@ -119,5 +122,31 @@ describe('the reveal values', () => {
     expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings)).reveal).toEqual(settings.reveal);
     expect(helpSettingsCodec.parse(JSON.stringify({ reveal: 'fade' })).reveal).toEqual(DEFAULT_HELP_REVEAL);
     expect(helpSettingsCodec.parse(JSON.stringify({ reveal: { blur: 3 } })).reveal).toEqual(DEFAULT_HELP_REVEAL);
+  });
+});
+
+describe('the mascot', () => {
+  const stored = (value: unknown) => helpSettingsCodec.parse(JSON.stringify(value));
+
+  it('reads as on with the default rig when the value has none', () => {
+    expect(stored({})).toMatchObject({ mascot: true, rig: DEFAULT_MASCOT_RIG });
+  });
+
+  it('keeps the switch, and takes on for anything else', () => {
+    expect(stored({ mascot: false }).mascot).toBe(false);
+    expect(stored({ mascot: 'off' }).mascot).toBe(true);
+  });
+
+  it('survives the codec with a changed rig', () => {
+    const rig = { ...DEFAULT_MASCOT_RIG, persona: 'Terse.', layers: DEFAULT_MASCOT_RIG.layers.slice(0, 2) };
+    const settings = helpSettingsOf({ mascot: false, rig });
+    expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings))).toEqual(settings);
+  });
+
+  it('reads the rig through the mascot codec, so a bad layer drops and the others stay', () => {
+    const [first, second] = DEFAULT_MASCOT_RIG.layers;
+    const rig = stored({ rig: { ...DEFAULT_MASCOT_RIG, layers: [first, { id: 'broken' }, second] } }).rig;
+    expect(rig.layers).toEqual([first, second]);
+    expect(stored({ rig: 'mine' }).rig).toEqual(DEFAULT_MASCOT_RIG);
   });
 });

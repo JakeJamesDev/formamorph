@@ -14,6 +14,14 @@ import { gotoDev, openApp, openWorldEditor } from './app';
 // A full HD desktop: the 900px Settings dialog and the 400px window fit side by side.
 test.use({ viewport: { width: 1920, height: 1080 } });
 
+// These specs cover the framed window, so the Mascot is off unless the page already stored settings.
+// `formaquestion-mascot.spec.ts` covers the minimal chrome.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('FORMAMORPH_helpSettings') === null) localStorage.setItem('FORMAMORPH_helpSettings', JSON.stringify({ mascot: false }));
+  });
+});
+
 const helpWindow = (page: Page) => page.locator('#formaquestion-window');
 const helpTab = (page: Page) => page.getByRole('button', { name: 'Help', exact: true });
 const askField = (page: Page) => helpWindow(page).getByRole('textbox', { name: 'Ask a Question' });

@@ -8,7 +8,7 @@ import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 import { turnActivity } from '@/lib/turnActivity';
 import { openSseReply, sseFrame, sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream } from '@/test/helpFixtures';
+import { stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
 import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS } from '@/lib/actionAttachments';
 import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
 import type { HelpAi } from './useHelpAi';
@@ -57,6 +57,7 @@ function slowRefusal() {
 
 beforeEach(() => {
   localStorage.clear();
+  storeFramedWindow();
   ai.enabled = [];
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });

@@ -14,8 +14,8 @@ import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
-  clampBox, defaultBox, isWide, moveBox, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
-  NARROW_WIDTH, WIDE_WIDTH, type WindowBox,
+  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
+  NARROW_WIDTH, WIDE_WIDTH, type Viewport, type WindowBox,
 } from '@/lib/formaquestion/windowBox';
 import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/useIsMobile';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -26,6 +26,9 @@ import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './for
 import { FormaquestionSettings } from './FormaquestionSettings';
 import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
+import { composeMascot } from '@/lib/formaquestion/mascot';
+import { MascotPiece } from './MascotPiece';
+import { MinimalChat } from './MinimalChat';
 import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
 import { GuideBody } from './GuideBody';
@@ -65,6 +68,9 @@ interface BoxPress {
   latest: WindowBox;
 }
 
+/** Opens a docs section in the wiki, in a new browser tab. */
+const openInWiki = (id: string) => window.open(wikiPageUrl(id), '_blank', 'noopener,noreferrer');
+
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** The element that holds keyboard focus, or null when nothing does. */
@@ -92,6 +98,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const [open, setOpen] = useState(false);
   const [view, changeView] = useGuideView();
   const [box, setBox] = useState<WindowBox>(() => readStoredBox(viewportOf(window)) ?? defaultBox(viewportOf(window)));
+  const [viewport, setViewport] = useState<Viewport>(() => viewportOf(window));
+  /** The Mascot base's width over its height, once its image has loaded. */
+  const [mascotAspect, setMascotAspect] = useState<number | null>(null);
 
   // The docs load on the first open, from their own chunk.
   const [index, setIndex] = useState<DocsIndex | null>(null);
@@ -119,6 +128,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const semantic = useSemanticSearch(settings, changeSettings);
   const ai = useHelpAi(open, settings);
   const chat = useHelpChat(index, ai, settings);
+  // The Mascot implies the minimal chrome (Q5). The switch swaps the chrome in place; the conversation lives above both.
+  const minimal = settings.mascot;
 
   // A dialog opened from the window. On the sheet it fills the screen, so the sheet hides under it and keeps its state.
   // On the desktop the window closes while the dialog is open, and opens again when the dialog closes.
@@ -131,6 +142,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // A resize keeps the window on the screen. At a mobile width the sheet shows and the box waits unchanged.
   useEffect(() => {
     const onResize = () => {
+      setViewport(viewportOf(window));
       if (window.innerWidth >= MOBILE_BREAKPOINT) setBox((current) => clampBox(current, viewportOf(window)));
     };
     window.addEventListener('resize', onResize);
@@ -186,9 +198,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (suspended) return;
     return registerDocsOpener((next) => {
       if (!open) openWindow();
-      setTarget(next);
+      // The minimal chrome has no reader, so the heading opens in the wiki.
+      if (minimal) openInWiki(docTargetId(next));
+      else setTarget(next);
     });
-  }, [suspended, open, openWindow]);
+  }, [suspended, open, openWindow, minimal]);
 
   // The Android back action closes the window before any dialog under it.
   useBackStop(open && !suspended && !covered ? closeWindow : undefined, windowRef);
@@ -321,10 +335,13 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     }
   }, [devRoute, changeView]);
 
-  const boxDrag = (step: typeof moveBox): PointerDrag<BoxPress> => ({
+  // In the minimal chrome the stored box places the column.
+  const layout = minimal && !sheet ? minimalLayout(box, viewport, mascotAspect) : null;
+  const movePill = (start: WindowBox, dx: number, dy: number, within: Viewport) => moveColumn(start, dx, dy, within, mascotAspect);
+  const boxDrag = (step: typeof moveBox, from: WindowBox = box): PointerDrag<BoxPress> => ({
     start: (event) => (event.button !== 0 || (event.target as HTMLElement).closest('button')
       ? null
-      : { x: event.clientX, y: event.clientY, start: box, latest: box }),
+      : { x: event.clientX, y: event.clientY, start: from, latest: from }),
     move: (press, event) => {
       press.latest = step(press.start, event.clientX - press.x, event.clientY - press.y, viewportOf(window));
       setBox(press.latest);
@@ -334,6 +351,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   });
   const moveHandlers = usePointerDrag(boxDrag(moveBox));
   const resizeHandlers = usePointerDrag(boxDrag(resizeBox));
+  // The drag starts from the column's place as drawn, which a small screen can shift.
+  const columnHandlers = usePointerDrag(boxDrag(movePill, layout ? { ...box, x: layout.column.x, y: layout.column.y } : box));
   const wide = !sheet && isWide(box);
   const swap = () => {
     const next = swapWidth(box, viewportOf(window));
@@ -346,7 +365,53 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       {!suspended && (
         <EdgeTab open={open} concealed={sheet && open} controls={WINDOW_ID} onToggle={() => (open ? closeWindow() : openWindow())} />
       )}
-      {shown && (
+      {shown && minimal && (
+        <section
+          ref={windowRef}
+          id={WINDOW_ID}
+          role="dialog"
+          aria-modal="false"
+          aria-label="Formaquestion"
+          tabIndex={-1}
+          data-state={open ? 'open' : 'closed'}
+          data-fq-chrome="minimal"
+          data-fq-sheet={sheet ? '' : undefined}
+          onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
+          className={cn(
+            'flex text-foreground outline-none',
+            sheet
+              // On the sheet a dim, blurred backdrop stands in for the frame, because the bubbles fill the screen.
+              ? cn('app-viewport pointer-events-auto bg-background/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm', SHEET_MOTION[origin?.edge ?? 'right'], covered && 'invisible')
+              // Only the pieces take presses; the gaps between them belong to the app.
+              : `pointer-events-none fixed items-end ${WINDOW_MOTION}`,
+          )}
+          style={layout ? {
+            left: layout.group.x,
+            top: layout.group.y,
+            width: layout.group.w,
+            height: layout.group.h,
+            transformOrigin: origin ? `${origin.x - layout.group.x}px ${origin.y - layout.group.y}px` : undefined,
+          } : undefined}
+        >
+          {layout && <MascotPiece images={composeMascot(settings.rig, 'answering', null)} size={layout.mascot} onAspect={setMascotAspect} />}
+          <MinimalChat
+            guide={guide}
+            failed={failed}
+            onRetry={load}
+            chat={chat}
+            settings={settings}
+            onSettingsChange={changeSettings}
+            draft={view.draft}
+            onDraftChange={(draft) => changeView({ draft })}
+            onOpen={openInWiki}
+            move={sheet ? undefined : columnHandlers}
+            large={sheet}
+            menu={{ onOpenAiContext: () => openDialog('aiContext'), onOpenSettings: () => openDialog('settings'), onClear: chat.exchanges.length > 0 ? chat.clear : undefined, container: layer }}
+            onClose={closeWindow}
+          />
+        </section>
+      )}
+      {shown && !minimal && (
         <FormaquestionFrame
           ref={windowRef}
           id={WINDOW_ID}

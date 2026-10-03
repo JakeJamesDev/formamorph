@@ -1,5 +1,5 @@
 /** The URLs of the default rig's bundled images. */
-import type { MascotAssetName } from './mascot';
+import type { MascotAssetName, MascotImageRef } from './mascot';
 
 const URLS = import.meta.glob<string>('./mascotAssets/*.webp', { eager: true, import: 'default', query: '?url' });
 
@@ -15,4 +15,9 @@ export function mascotAssetUrl(name: MascotAssetName): string {
   const url = BY_NAME.get(name);
   if (url === undefined) throw new Error(`No bundled mascot image named ${name}.`);
   return url;
+}
+
+/** The URL of one rig image, or null for a stored image, which no store serves. */
+export function mascotImageUrl(ref: MascotImageRef): string | null {
+  return ref.kind === 'bundled' ? mascotAssetUrl(ref.name) : null;
 }
