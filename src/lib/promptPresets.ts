@@ -373,7 +373,7 @@ export const userToolsCodec: Codec<Tool[]> = {
 
 /** Add `tool` to the user Tools, or replace the one with its id. Unchanged for a name `toolNameProblem` rejects. */
 export function saveUserTool(tools: Tool[], tool: Tool): Tool[] {
-  if (toolNameProblem(tool.name, tools, tool.id)) return tools;
+  if (toolNameProblem(tool.name, tools, { selfId: tool.id })) return tools;
   const held = tools.some((t) => t.id === tool.id);
   return held ? tools.map((t) => (t.id === tool.id ? tool : t)) : [...tools, tool];
 }

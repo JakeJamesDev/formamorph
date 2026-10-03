@@ -2,7 +2,7 @@
  * The edit-mode rules for a user Tool: what blocks Save, how a parameter rename carries the lookup, the
  * handler each kind starts from, and the arguments Try It sends. React-free.
  */
-import type { Tool, ToolHandler, ToolParam } from '@/types';
+import type { AIRequestType, Tool, ToolHandler, ToolParam } from '@/types';
 import { toolNameProblem, type ToolNameProblem } from './toolValidation';
 
 /** Why a parameter blocks Save: no name, a name another parameter uses, or a list with no options. */
@@ -31,18 +31,18 @@ function paramProblem(param: ToolParam, params: readonly ToolParam[]): ParamProb
   return null;
 }
 
-/** A new Tool: a lookup on entities with no parameters yet, offered to narration. */
-export const blankTool = (id: string): Tool => ({
+/** A new Tool: a lookup on entities with no parameters yet, offered to narration, or to no prompt where one request takes every Tool. */
+export const blankTool = (id: string, offeredTo: AIRequestType[] = ['narration']): Tool => ({
   id, name: '', description: '', params: [],
   handler: { kind: 'lookup', source: 'entities', param: '', returns: 'full' },
-  emptyResult: '{"matches": []}', offeredTo: ['narration'],
+  emptyResult: '{"matches": []}', offeredTo,
 });
 
-/** Every problem with `draft` among the user `tools`. */
-export function draftProblems(draft: Tool, tools: readonly Tool[]): DraftProblems {
+/** Every problem with `draft` among the user `tools`. `reserved` names are the caller's fixed functions. */
+export function draftProblems(draft: Tool, tools: readonly Tool[], reserved: readonly string[] = []): DraftProblems {
   const { handler, params } = draft;
   return {
-    name: toolNameProblem(draft.name, tools, draft.id),
+    name: toolNameProblem(draft.name, tools, { selfId: draft.id, reserved }),
     params: params.map((p) => paramProblem(p, params)),
     handler: handler.kind === 'lookup' && !params.some((p) => p.name === handler.param) ? 'lookupParam' : null,
   };

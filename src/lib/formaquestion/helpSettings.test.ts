@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { Tool } from '@/types';
 import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_LOOKUP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
@@ -21,6 +22,9 @@ describe('the default help settings', () => {
       thinkingOpen: false,
       reveal: DEFAULT_HELP_REVEAL,
       presets: EMPTY_HELP_PRESET_STORE,
+      // No Tool and no switch, so the request bodies of the bar run are unchanged.
+      tools: [],
+      toolSwitches: {},
     });
   });
 });
@@ -70,6 +74,17 @@ describe('the stored help settings', () => {
     expect(stored({ answerEndpoint: 'p1', pickEndpoint: null })).toMatchObject({ answerEndpoint: 'p1', pickEndpoint: null });
     expect(stored({ answerEndpoint: 4, pickEndpoint: '' })).toMatchObject({ answerEndpoint: null, pickEndpoint: SAME_AS_ANSWER });
     expect(stored({ answerEndpoint: SAME_AS_ANSWER }).answerEndpoint).toBeNull();
+  });
+
+  it('keep the Formaquestion Tools and their switches, and drop a switch of a Tool that is gone', () => {
+    const tool: Tool = {
+      id: 'h-1', name: 'find_person', description: '', params: [], handler: { kind: 'template', body: 'hi' }, emptyResult: '', offeredTo: [],
+    };
+    const settings = helpSettingsOf({ tools: [tool], toolSwitches: { 'h-1': true } });
+    expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings))).toEqual(settings);
+    expect(stored({ tools: [tool], toolSwitches: { 'h-1': true, gone: true } })).toEqual(settings);
+    expect(stored({ tools: [{ id: 'bad' }], toolSwitches: { bad: true } })).toEqual(DEFAULT_HELP_SETTINGS);
+    expect(stored({ tools: 'mine', toolSwitches: 'on' })).toEqual(DEFAULT_HELP_SETTINGS);
   });
 
   it('refuse text that is not a settings object, so the defaults stand', () => {

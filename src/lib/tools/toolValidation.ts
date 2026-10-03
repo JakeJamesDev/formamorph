@@ -17,10 +17,18 @@ export const sameToolName = (a: string, b: string) => a.toLowerCase() === b.toLo
 /** The catalog Tool named `name`, if any. */
 export const catalogToolNamed = (name: string): Tool | undefined => TOOL_CATALOG.find((t) => sameToolName(t.name, name));
 
-/** The problem with naming a user Tool `name` among `tools`, or null. `selfId` is the Tool being renamed. */
-export function toolNameProblem(name: string, tools: readonly Tool[], selfId?: string): ToolNameProblem | null {
+/** What a name check leaves out of "taken", and what it counts as built-in. */
+export interface ToolNameCheck {
+  /** The Tool being renamed, which may keep its own name. */
+  selfId?: string;
+  /** The caller's fixed function names, which count as built-in. */
+  reserved?: readonly string[];
+}
+
+/** The problem with naming a user Tool `name` among `tools`, or null. */
+export function toolNameProblem(name: string, tools: readonly Tool[], { selfId, reserved = [] }: ToolNameCheck = {}): ToolNameProblem | null {
   if (!TOOL_NAME_PATTERN.test(name)) return 'format';
-  if (catalogToolNamed(name)) return 'builtin';
+  if (catalogToolNamed(name) || reserved.some((taken) => sameToolName(taken, name))) return 'builtin';
   if (tools.some((t) => t.id !== selfId && sameToolName(t.name, name))) return 'taken';
   return null;
 }

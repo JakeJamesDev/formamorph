@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Tool, ToolParam } from '@/types';
 import { TOOL_CATALOG } from './toolCatalog';
-import { toolSchema } from './toolSchema';
+import { isTool, toolSchema, type OfferedFunction } from './toolSchema';
 
 const param = (name: string, over: Partial<ToolParam> = {}): ToolParam =>
   ({ name, type: 'string', description: '', required: true, options: [], ...over });
@@ -50,5 +50,13 @@ describe('toolSchema', () => {
     expect(toolSchema(tool([])).function.parameters).toEqual({
       type: 'object', properties: {}, required: [], additionalProperties: false,
     });
+  });
+});
+
+describe('isTool', () => {
+  it('tells a Tool from an app-internal function by the handler alone', () => {
+    const { handler: _, offeredTo: __, emptyResult: ___, ...internal } = tool([]);
+    expect(isTool(internal satisfies OfferedFunction)).toBe(false);
+    expect(isTool(tool([]))).toBe(true);
   });
 });

@@ -65,6 +65,12 @@ describe('planToolImport', () => {
   it('does not flag a Script Tool it skipped', () => {
     expect(planToolImport([script], [script], mint).hasScript).toBe(false);
   });
+
+  it('skips a reserved name of the caller’s fixed functions, in any case', () => {
+    const plan = planToolImport([], [tool({ name: 'Read_Guide' }), script], mint, ['read_guide']);
+    expect(plan.added.map((t) => t.name)).toEqual(['roll_dice']);
+    expect(plan.skipped).toEqual(['Read_Guide']);
+  });
 });
 
 describe('planPresetTools', () => {
@@ -117,5 +123,9 @@ describe('copyTool', () => {
   it('keeps the copy name within 64 characters', () => {
     const long = tool({ name: 'x'.repeat(64) });
     expect(copyTool(long, [long], 'fresh')?.name).toBe(`${'x'.repeat(59)}_copy`);
+  });
+
+  it('numbers past a reserved name of the caller’s fixed functions', () => {
+    expect(copyTool(catalog, [], 'fresh', ['get_entity_copy'])?.name).toBe('get_entity_copy_2');
   });
 });

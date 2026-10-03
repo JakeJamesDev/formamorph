@@ -97,6 +97,9 @@ import { SelectedContentActions } from '@/components/ContentLinkStatus';
 import { SplitButton } from '@/components/ui/split-button';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { Tip } from '@/components/ui/tooltip';
+import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { useHelpWorldSource } from '@/lib/formaquestion/helpWorld';
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
 }: {
@@ -129,6 +132,12 @@ const WorldEditorInner = ({
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
+
+  // A Formaquestion Tool reads the world as the editor holds it, unsaved edits included, at its opening.
+  useHelpWorldSource(useCallback(() => {
+    const world = getWorldData();
+    return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? []);
+  }, [getWorldData]));
 
   // Assemble the editor's live world for an image scan/downscale (id/version unused by the scan).
   const buildCurrentWorld = (): World => ({

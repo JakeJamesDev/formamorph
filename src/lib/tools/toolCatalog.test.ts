@@ -61,7 +61,7 @@ describe('toolNameProblem', () => {
     const siblings = [userTool()];
     expect(toolNameProblem('get_weather', siblings)).toBe('taken');
     expect(toolNameProblem('GET_WEATHER', siblings)).toBe('taken');
-    expect(toolNameProblem('get_weather', siblings, 'u-1')).toBeNull();
+    expect(toolNameProblem('get_weather', siblings, { selfId: 'u-1' })).toBeNull();
   });
 
   it('rejects a catalog name', () => {

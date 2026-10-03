@@ -13,15 +13,19 @@ The complete, plain-value description of one AI call — prompt, messages, resol
 _Avoid_: request options, config
 
 **Tool**:
-A function the AI may call during a request to get information it does not have, such as an entity's full entry. Defined once in settings, enabled per prompt preset, and offered only to the prompts it names, and only on endpoints known to support tools. Read-only: a Tool never changes the world or the playthrough.
+A function the AI may call during a request to get information it does not have, such as an entity's full entry. Defined once in settings, enabled per prompt preset, and offered only to the prompts it names, and only on endpoints known to support tools. Read-only: a Tool never changes the world or the playthrough. A Formaquestion Tool is the same shape in a second list, switched per device for the help request.
 _Avoid_: function (wire-format word), instrument (a Test Bench part)
+
+**Formaquestion Tool**:
+A Tool of the player's own that the help answer request offers. A separate list from the gameplay Tools, with a switch per device and no prompt preset; the gameplay Tool store never holds one, and a gameplay Tool never shows in Formaquestion. It reads the open world in the game or the editor, and an empty Tool Snapshot on every other screen. Imports and exports with the Tool pack file. Cannot take a fixed function's name, such as the guide lookup's.
+_Avoid_: help Tool, custom Tool, assistant Tool
 
 **Tool Handler**:
 The part of a Tool that runs when the AI calls it: a Lookup (searches world data), a Template (returns chip text), or a Script (sandboxed code that reads the world and the current scene).
 _Avoid_: resolver, source
 
 **Formaquestion**:
-The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save.
+The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, unless the player turns on a Formaquestion Tool, which reads the open world.
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
 **Docs Index**:

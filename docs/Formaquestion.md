@@ -271,9 +271,9 @@ Each preset has its own options, and a copy of a preset takes them. **Default** 
 4. Close the settings and ask a question. The next request uses the new text.
 
 ### Tools
-<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported -->
+<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text -->
 
-The **Tools** tab lists the functions your AI can call while it answers. It uses the layout of **Settings** → **Tools**: the list on the left, and the selected function on the right.
+The **Tools** tab lists the functions your AI can call while it answers. It uses the layout of **Settings** → **Tools**: the list on the left, and the selected function on the right. **Built-In** holds the functions that ship with the app. **My Tools** holds the Tools you make for help questions.
 
 | Function | Default | What it does |
 |---|---|---|
@@ -292,6 +292,27 @@ A function goes out only when the **Answer Endpoint** takes function calls. If i
 1. Set **Answer Endpoint** to a model that takes function calls, such as a local model.
 2. Open the **Tools** tab, select **read_guide**, and turn on **Enabled**.
 3. Ask a question. Your AI reads more sections when it needs them, and the answer lists them under **Sources**.
+
+**My Tools.** Make your own Tools for help questions, and Formaquestion can work as a chat assistant for the world you have open. They are a list of their own: a Tool you make here never goes to a game prompt, and a Tool from **Settings** → **Tools** does not show here.
+
+- **New Tool** opens the same editor as **Settings** → **Tools**. See [The Tool Editor](Tools#the-tool-editor). A Tool can't take the name of a built-in function, such as **read_guide**.
+- **Enabled** turns a Tool on or off. A Tool you save here starts on, and an imported Tool is off until you turn it on. This device keeps the switches.
+- **Max Calls per Request** caps the calls for one question. Leave it blank for the default of 4. There is no **Offered To**, because one request takes every Tool that is on.
+- **Edit** and **Delete** act on the selected Tool. **Delete** can't be undone.
+- **Try It** runs the Tool on the world you have open in the game or the World Editor, else on a sample world.
+
+A Tool that's on reads the world you have open, so text from that world can go to your **Answer Endpoint**. The tab says so under the list. In the game, a Tool reads the playthrough as a game Tool does. In the World Editor, it reads the world as you have it, unsaved edits included. With the World Editor open from the game, a Tool reads the editor's world until you close it. On the Main Menu, a Tool reads no world and returns its empty result.
+
+**How to make a Tool for help questions:**
+
+1. Open the **Tools** tab and select **New Tool** under **My Tools**.
+2. Fill in **Definition**, **Parameters** and **Handler**, then select **Save Tool**. The new Tool is on.
+3. Open a world in the game or the editor, and ask a question that needs it. Your AI calls the Tool when the question needs what it returns.
+
+**How to share Tools with the game's list:**
+
+1. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
+2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
 ## On Mobile
 <!-- keywords: full screen sheet, small screen, keyboard covers, slides in, touch, no resizing -->
