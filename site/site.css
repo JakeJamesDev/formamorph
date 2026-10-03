@@ -42,6 +42,9 @@
     --input: 120 10% 85%;
     --ring: 126 37% 36%;
     --radius: 0.625rem;
+    /* Supporter Flair tier colors. Same values as the app's index.css, which tests their contrast. */
+    --supporter: 12 80% 30%;
+    --supporter-plus: 318 75% 30%;
   }
 
   .dark {
@@ -73,6 +76,8 @@
     --border: 218 12% 19%;
     --input: 218 12% 19%;
     --ring: 124 39% 62%;
+    --supporter: 12 85% 84%;
+    --supporter-plus: 318 75% 85%;
   }
 
   * {
