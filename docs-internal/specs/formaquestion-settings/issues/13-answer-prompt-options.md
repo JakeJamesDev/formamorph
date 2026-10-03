@@ -1,6 +1,6 @@
 # 13: Answer prompt options
 
-Status: ready-for-human
+Status: done
 Base: abd4cf3b
 Blocked by: 02, 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

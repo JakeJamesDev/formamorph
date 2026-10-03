@@ -1,8 +1,8 @@
 # Spec: Formaquestion Settings
 
-Status: ready-for-agent
+Status: done
 Spec session: formaquestion-settings — spec
-Status note: 19 tickets in issues/. 01–04 are prefactors. Ticket 04 and every ticket after it wait for ticket 46 of the Formaquestion effort, the bar rerun (Q4). 01, 02, 03 and 08 do not touch the measured defaults and can start now.
+Status note: Done on 2026-10-03. Tickets 01–19 landed; the last landing is bf73bc91. Gates green on 2026-10-03.
 
 ## Problem Statement
 

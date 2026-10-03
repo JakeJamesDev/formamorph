@@ -1,6 +1,6 @@
 # 11: Help presets and the Prompts tab
 
-Status: ready-for-human
+Status: done
 Base: 9fcc55cb
 Blocked by: 05
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
