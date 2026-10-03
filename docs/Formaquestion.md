@@ -227,7 +227,7 @@ Under the two settings is the same preset editor as **Settings** → **AI Endpoi
 3. Set **Answer Endpoint** to the new preset.
 
 ### Prompts
-<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only -->
+<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only, export preset, import preset, preset file, move preset, another device -->
 
 The **Prompts** tab holds the help prompts: the text that tells your AI how to answer. The prompts are in a preset, apart from the prompt presets of your game. A change to the game's preset never changes help.
 
@@ -243,6 +243,8 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 - **Reset to Default** above a custom prompt returns that one prompt to the text of this release. A custom preset does not get the updates of a release on its own.
 - **Compare to Default** above a custom prompt opens a diff of your text against the text of this release. Text you added is tinted. Text you removed is struck through. **Raw** shows your text as it is. The button is off for a prompt that equals the default.
 - This device keeps the presets, with the other Formaquestion settings.
+- A custom preset has **Export** beside the list. It saves the preset to a file, with your **My Tools** and the switches of the **Tools** tab. **Default** has no export.
+- **Import** beside the list adds the preset from a file and makes it the one in use.
 
 Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chips are the parts the app reads back or names elsewhere:
 
@@ -272,6 +274,19 @@ Each preset has its own options, and a copy of a preset takes them. **Default** 
 3. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips the app reads back.
 4. Close the settings and ask a question. The next request uses the new text.
 
+**How to move a help preset to another device:**
+
+1. On the first device, select your custom preset, then select **Export**. Formamorph saves a `.help-preset.json` file.
+2. On the other device, open the **Prompts** tab, select **Import**, and choose the file.
+
+The file holds the three prompts, the answer options, your **My Tools**, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
+
+- If you already have a preset with that name, the import adds a number to the new name.
+- If you already have a Tool with that name, the import skips that Tool and names it. Your Tool keeps its own switch.
+- The switches in the file apply to its Tools and to the built-in functions, such as **read_guide**.
+- A file with a Script Tool that is on shows a warning, because a script runs code when the AI calls it.
+- A file from a different version, or a file that is not complete, is refused. Nothing changes.
+
 ### Tools
 <!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text -->
 
@@ -298,7 +313,7 @@ A function goes out only when the **Answer Endpoint** takes function calls. If i
 **My Tools.** Make your own Tools for help questions, and Formaquestion can work as a chat assistant for the world you have open. They are a list of their own: a Tool you make here never goes to a game prompt, and a Tool from **Settings** → **Tools** does not show here.
 
 - **New Tool** opens the same editor as **Settings** → **Tools**. See [The Tool Editor](Tools#the-tool-editor). A Tool can't take the name of a built-in function, such as **read_guide**.
-- **Enabled** turns a Tool on or off. A Tool you save here starts on, and an imported Tool is off until you turn it on. This device keeps the switches.
+- **Enabled** turns a Tool on or off. A Tool you save here starts on, and a Tool from a Tool pack is off until you turn it on. A help preset file sets the switches of its own Tools. This device keeps the switches.
 - **Max Calls per Request** caps the calls for one question. Leave it blank for the default of 4. There is no **Offered To**, because one request takes every Tool that is on.
 - **Edit** and **Delete** act on the selected Tool. **Delete** can't be undone.
 - **Try It** runs the Tool on the world you have open in the game or the World Editor, else on a sample world.

@@ -1,5 +1,6 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState, type ChangeEvent } from 'react';
 import { Copy, GitCompare, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
 import PromptField from '@/components/prompt/PromptField';
@@ -7,15 +8,23 @@ import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
+import { ActionIcon } from '@/lib/actionIcons';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
+import { downloadBlob } from '@/lib/downloadBlob';
 import { helpChipVocabulary } from '@/lib/formaquestion/helpChips';
+import { buildHelpPresetFile, helpPresetFileName, importHelpPresetFile, parseHelpPresetFile } from '@/lib/formaquestion/helpPresetFile';
 import {
   activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, isDefaultHelpPresetActive,
   isHelpPromptEdited, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { filesFrom } from '@/lib/importFiles';
+import { toastError } from '@/lib/linkToast';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 import { randomUUID } from '@/lib/uuid';
+import { APP_VERSION } from '@/lib/version';
 import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
 import { AnswerOptions } from './AnswerOptions';
 import { COMPARE_COPY, PROMPTS_COPY } from './formaquestionSettingsTabs';
@@ -40,7 +49,7 @@ type Pending = { kind: 'add' } | { kind: 'rename' } | { kind: 'delete' } | { kin
 /**
  * The Prompts tab: the help preset select with duplicate, rename and delete, and the three prompts in a
  * rail. The Default preset shows its prompts read-only with a way to duplicate; a custom prompt resets to
- * the default text.
+ * the default text. A custom preset exports to a help preset file, and a file imports as a new preset.
  */
 export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
   const store = settings.presets;
@@ -56,10 +65,36 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   const copyName = `${active.name} (copy)`;
   const prompt = PROMPTS_COPY.prompts[key];
   const edited = isHelpPromptEdited(active.prompts, key);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const mounted = useMountedRef();
+  // The import reads the settings after the file text arrives, not as they were at the click.
+  const latest = useRef(settings);
+  latest.current = settings;
+
+  const exportPreset = () => {
+    const file = buildHelpPresetFile(settings, active.id, APP_VERSION);
+    if (file) downloadBlob(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }), helpPresetFileName(file.name));
+  };
+
+  const importPreset = async (event: ChangeEvent<HTMLInputElement>) => {
+    const [chosen] = filesFrom(event);
+    if (!chosen) return;
+    try {
+      const text = await chosen.text();
+      if (!mounted.current) return;
+      const { change, presetName, skipped, scriptOn } = importHelpPresetFile(latest.current, parseHelpPresetFile(text), randomUUID);
+      onChange(change);
+      toast.success(`Imported the “${presetName}” preset`);
+      if (skipped.length) toast.info(`Already in My Tools: ${skipped.join(', ')}`);
+      if (scriptOn) toast.warn(PRESET_SCRIPT_TOOL_WARNING);
+    } catch (error) {
+      toastError(error, 'Couldn’t import that preset');
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
-      <div className="flex flex-shrink-0 items-center gap-2" data-testid="help-preset-header-row">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2" data-testid="help-preset-header-row">
         <span className="text-helper text-muted-foreground">{PROMPTS_COPY.preset.label}</span>
         {!readOnly && (
           <Tip tip="Delete">
@@ -69,7 +104,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
           </Tip>
         )}
         <Select value={active.id} onValueChange={(value) => (value === ADD_PRESET ? setPending({ kind: 'add' }) : setStore(selectHelpPreset(store, value)))}>
-          <SelectTrigger aria-label={PROMPTS_COPY.preset.label} className="min-w-0 flex-1">
+          <SelectTrigger aria-label={PROMPTS_COPY.preset.label} className="min-w-40 flex-1">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -91,6 +126,19 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
             </Button>
           </Tip>
         )}
+        <Tip tip="Import">
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Import Preset" onClick={() => fileRef.current?.click()}>
+            <ActionIcon.import className="h-4 w-4" aria-hidden />
+          </Button>
+        </Tip>
+        {!readOnly && (
+          <Tip tip="Export">
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Export Preset" onClick={exportPreset}>
+              <ActionIcon.export className="h-4 w-4" aria-hidden />
+            </Button>
+          </Tip>
+        )}
+        <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" data-testid="help-preset-input" onChange={(event) => void importPreset(event)} />
       </div>
       <p className="-mt-2 flex-shrink-0 text-helper text-muted-foreground">{PROMPTS_COPY.preset.hint}</p>
 
