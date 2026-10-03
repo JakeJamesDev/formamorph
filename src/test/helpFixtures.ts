@@ -5,6 +5,11 @@ import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import type { Tool } from '@/types';
 import { sseReply, sseResponse } from './aiTextFixtures';
 
+/** Stores help settings with the Mascot off, so the window has the framed chrome. Fields pass as given, bad ones included. */
+export function storeFramedWindow(fields: Record<string, unknown> = {}) {
+  localStorage.setItem('FORMAMORPH_helpSettings', JSON.stringify({ mascot: false, ...fields }));
+}
+
 /** A Formaquestion Tool: an entity lookup by name, offered to no prompt, with `patch` applied. */
 export const helpTool = (patch: Partial<Tool> = {}): Tool => ({
   id: 'h-1', name: 'find_person', description: 'Finds a person of the world by name.',

@@ -14,6 +14,7 @@ import { DOCS_LOOKUP_CALL_LIMIT } from './docsLookup';
 import { EMPTY_HELP_PRESET_STORE, parseHelpPresetStore, type HelpPresetStore } from './helpPresets';
 import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
 import { parseHelpTools, parseHelpToolSwitches } from './helpTools';
+import { DEFAULT_MASCOT_RIG, parseMascotRig, type MascotRig } from './mascot';
 
 /** The search sources of a help question. The rankings of the ones that are on merge into one. */
 export interface HelpSources {
@@ -64,6 +65,10 @@ export interface HelpSettings {
   readonly tools: readonly Tool[];
   /** The switch of each Formaquestion Tool, by id. Absent is off. */
   readonly toolSwitches: ToolEnabledMap;
+  /** The Mascot stands beside the chat, and the window takes the minimal chrome. */
+  readonly mascot: boolean;
+  /** The Mascot's rig: its images by reference, its layers, picks, Mask and Persona. */
+  readonly rig: MascotRig;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
@@ -86,6 +91,8 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   presets: EMPTY_HELP_PRESET_STORE,
   tools: [],
   toolSwitches: {},
+  mascot: true,
+  rig: DEFAULT_MASCOT_RIG,
 };
 
 /** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
@@ -126,7 +133,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
   parse: (raw) => {
     const stored: unknown = JSON.parse(raw);
     if (!isRecord(stored)) throw new Error('not a help settings object');
-    const { sources, reveal, presets, tools, toolSwitches, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
+    const { sources, reveal, presets, tools, toolSwitches, rig, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
       sources: isRecord,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
@@ -144,6 +151,8 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       presets: isRecord,
       tools: Array.isArray,
       toolSwitches: isRecord,
+      mascot: isBool,
+      rig: isRecord,
     });
     const storedSources = isRecord(sources) ? sources : {};
     const storedTools = parseHelpTools(tools);
@@ -154,6 +163,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }),
       tools: storedTools,
       toolSwitches: parseHelpToolSwitches(toolSwitches, storedTools),
+      rig: parseMascotRig(rig),
     };
   },
   serialize: (value) => JSON.stringify(value),

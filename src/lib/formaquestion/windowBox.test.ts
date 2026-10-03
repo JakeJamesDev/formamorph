@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  clampBox, defaultBox, isWide, moveBox, readStoredBox, resizeBox, swapWidth, writeStoredBox,
+  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, resizeBox, swapWidth, writeStoredBox,
   MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, WIDE_WIDTH,
 } from './windowBox';
 
@@ -117,5 +117,58 @@ describe('the stored box', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
     expect(() => writeStoredBox({ x: 0, y: 0, w: 400, h: 400 })).not.toThrow();
     expect(readStoredBox(SCREEN)).toBeNull();
+  });
+});
+
+describe('minimalLayout', () => {
+  const ASPECT = 0.75;
+
+  it('puts the Mascot left of the column at the column height, and the shared box spans both', () => {
+    const { column, mascot, group } = minimalLayout({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    expect(column).toEqual({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 });
+    expect(mascot).toEqual({ w: 420, h: 560 });
+    expect(group).toEqual({ x: 680, y: 200, w: 420 + NARROW_WIDTH, h: 560 });
+  });
+
+  it('caps the column at the narrow width', () => {
+    expect(minimalLayout({ x: 800, y: 0, w: WIDE_WIDTH, h: 560 }, SCREEN, ASPECT).column.w).toBe(NARROW_WIDTH);
+    expect(minimalLayout({ x: 800, y: 0, w: MIN_WIDTH, h: 560 }, SCREEN, ASPECT).column.w).toBe(MIN_WIDTH);
+  });
+
+  it('moves the column right until the Mascot is whole on the screen', () => {
+    const { column, group } = minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    expect(column.x).toBe(420);
+    expect(group.x).toBe(0);
+  });
+
+  it('keeps the column whole on the right and bottom edges', () => {
+    const { column } = minimalLayout({ x: 1500, y: 800, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    expect(column).toMatchObject({ x: SCREEN.width - NARROW_WIDTH, y: SCREEN.height - 560 });
+  });
+
+  it('shrinks the Mascot, bottom-aligned, when the screen lacks the room for its full height', () => {
+    const narrow = { width: 700, height: 900 };
+    const { column, mascot, group } = minimalLayout({ x: 300, y: 100, w: NARROW_WIDTH, h: 560 }, narrow, ASPECT);
+    expect(mascot).toEqual({ w: 268, h: 268 / ASPECT });
+    expect(group.x).toBeGreaterThanOrEqual(0);
+    expect(column.x + column.w).toBeLessThanOrEqual(narrow.width);
+  });
+
+  it('is the column alone while the Mascot is not drawn', () => {
+    const { column, mascot, group } = minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, null);
+    expect(mascot).toBeNull();
+    expect(group).toEqual(column);
+    expect(column.x).toBe(100);
+  });
+});
+
+describe('moveColumn', () => {
+  it('moves the column and keeps the width and height of the box', () => {
+    const wide = { x: 900, y: 200, w: WIDE_WIDTH, h: 560 };
+    expect(moveColumn(wide, -100, 40, SCREEN, 0.75)).toEqual({ x: 800, y: 240, w: WIDE_WIDTH, h: 560 });
+  });
+
+  it('stops where the Mascot would leave the screen', () => {
+    expect(moveColumn({ x: 500, y: 0, w: NARROW_WIDTH, h: 560 }, -400, 0, SCREEN, 0.75).x).toBe(420);
   });
 });

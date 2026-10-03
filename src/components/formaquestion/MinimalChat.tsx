@@ -1,0 +1,148 @@
+import type { ComponentProps } from 'react';
+import { GripHorizontal, SendHorizontal, Square, X } from 'lucide-react';
+import { AttachImagesButton } from '@/components/AttachImagesButton';
+import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
+import { Button } from '@/components/ui/button';
+import { Tip } from '@/components/ui/tooltip';
+import { Hint } from '@/components/ui/typography';
+import { withoutAttachment } from '@/lib/actionAttachments';
+import type { Guide } from '@/lib/formaquestion/guide';
+import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
+import { cn } from '@/lib/utils';
+import { Answer } from './AskParts';
+import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
+import { FormaquestionMenu } from './FormaquestionMenu';
+import type { HelpChat } from './useHelpChat';
+import type { DragHandlers } from './usePointerDrag';
+
+/** Every floating piece takes presses and lifts off the app with the same shadow. The gaps belong to the app. */
+const FLOATING = 'pointer-events-auto shadow-md';
+const BUBBLE = cn(FLOATING, 'rounded-2xl px-3 py-2 text-label');
+const ASSISTANT_BUBBLE = cn(BUBBLE, 'mr-6 self-start rounded-bl-sm border bg-popover text-popover-foreground');
+const PILL_BUTTON = 'inline-flex items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+
+type MenuProps = Omit<ComponentProps<typeof FormaquestionMenu>, 'large' | 'round'>;
+
+/** The only chrome: it moves the window, holds the ⋮ menu, and closes the window. */
+function Pill({ move, large, menu, onClose }: { move?: DragHandlers; large: boolean; menu: MenuProps; onClose: () => void }) {
+  return (
+    <div
+      data-fq-drag=""
+      {...move}
+      className={cn(FLOATING, 'flex shrink-0 select-none items-center self-end rounded-full border bg-background p-0.5', move && 'cursor-move touch-none')}
+    >
+      {move && <GripHorizontal aria-hidden className="mx-1.5 h-4 w-4 text-muted-foreground" />}
+      <FormaquestionMenu {...menu} large={large} round />
+      <Tip tip={large ? 'Close' : 'Close (F1)'}>
+        <button type="button" aria-label="Close Formaquestion" onClick={onClose} className={cn(PILL_BUTTON, large ? 'h-12 w-12' : 'h-8 w-8')}>
+          <X aria-hidden className="h-4 w-4" />
+        </button>
+      </Tip>
+    </div>
+  );
+}
+
+function AskPill({ draft, onDraftChange, chat }: { draft: string; onDraftChange: (text: string) => void; chat: HelpChat }) {
+  const { busy, held, readsImages, pending, setPending, stop } = chat;
+  const { attaching, dragOver, attachFiles, intakeProps } = useAttachmentIntake({ enabled: readsImages, pending, setPending });
+  const { canSend, send, onKeyDown } = useAskSend(draft, onDraftChange, chat);
+  return (
+    <div className="flex shrink-0 flex-col gap-1" {...intakeProps}>
+      {readsImages && pending.length > 0 && (
+        <AttachmentThumbs attachments={pending} onRemove={(id) => setPending((prev) => withoutAttachment(prev, id))} className="pointer-events-auto self-end" />
+      )}
+      <div className={cn(FLOATING, 'flex items-end gap-1 rounded-3xl border bg-background p-1 shadow-lg focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring', readsImages ? 'pl-1' : 'pl-4', dragOver && 'ring-2 ring-inset ring-ring')}>
+        {readsImages && (
+          <AttachImagesButton attaching={attaching} onFiles={(files) => void attachFiles(files)} variant="ghost" className="h-9 w-9 shrink-0 rounded-full" />
+        )}
+        <textarea
+          data-fq-autofocus=""
+          aria-label="Ask a Question"
+          placeholder="Ask a Question"
+          value={draft}
+          rows={1}
+          onChange={(event) => onDraftChange(event.target.value)}
+          onKeyDown={onKeyDown}
+          className="max-h-32 min-w-0 flex-1 resize-none self-center bg-transparent py-1.5 text-label outline-none [field-sizing:content] placeholder:text-muted-foreground"
+        />
+        {busy ? (
+          <Tip tip="Stop">
+            <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={stop}>
+              <Square aria-hidden className="h-4 w-4" />
+            </Button>
+          </Tip>
+        ) : (
+          <Tip tip="Send">
+            <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" disabled={!canSend} onClick={send}>
+              <SendHorizontal aria-hidden className="h-4 w-4" />
+            </Button>
+          </Tip>
+        )}
+      </div>
+      {held && !busy && <Hint className={cn(BUBBLE, 'self-end border bg-background')}>{HELD_LINE}</Hint>}
+    </div>
+  );
+}
+
+/**
+ * The minimal chrome's chat column: a pill, the conversation as floating bubbles, and the ask field. No frame,
+ * no title bar, no tabs. Older bubbles fade out at the top, and no scroll bar draws.
+ */
+export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, move, large, menu, onClose }: {
+  /** Null until the docs load. */
+  guide: Guide | null;
+  failed: boolean;
+  onRetry: () => void;
+  chat: HelpChat;
+  settings: HelpSettings;
+  onSettingsChange: (change: HelpSettingsChange) => void;
+  draft: string;
+  onDraftChange: (text: string) => void;
+  /** Opens a docs section that an answer links to. */
+  onOpen: (id: string) => void;
+  /** Pointer handlers for the pill, where the window moves. */
+  move?: DragHandlers;
+  /** Sheet-size controls. */
+  large: boolean;
+  /** The ⋮ menu's actions, as the framed window's title bar menu takes them. */
+  menu: MenuProps;
+  onClose: () => void;
+}) {
+  const { viewportRef, onScroll } = useFollowEnd(chat.exchanges);
+  return (
+    <div data-fq-piece="column" className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2">
+      <Pill move={move} large={large} menu={menu} onClose={onClose} />
+      <div
+        ref={viewportRef}
+        onScroll={onScroll}
+        data-fq-scroll="conversation"
+        className="min-h-0 flex-1 overflow-y-auto [mask-image:linear-gradient(to_bottom,transparent,black_2rem)] [scrollbar-width:none]"
+      >
+        <div role="log" aria-label="Conversation" aria-busy={chat.busy} className="flex min-h-full flex-col justify-end gap-2 px-1 pb-1 pt-8">
+          {!guide && (failed ? (
+            <div role="alert" className={cn(ASSISTANT_BUBBLE, 'flex flex-col items-start gap-2')}>
+              <span>The guide did not load</span>
+              <Button variant="outline" size="sm" onClick={onRetry}>Try Again</Button>
+            </div>
+          ) : (
+            <Hint role="status" className={ASSISTANT_BUBBLE}>Loading the guide…</Hint>
+          ))}
+          {guide && chat.exchanges.length === 0 && <Hint className={ASSISTANT_BUBBLE}>Ask how to do something in Formamorph</Hint>}
+          {guide && chat.exchanges.map((exchange) => (
+            <div key={exchange.id} className="flex flex-col gap-2">
+              <div className="ml-10 flex flex-col items-end gap-2 self-end">
+                <AttachmentThumbs attachments={exchange.images} className="pointer-events-auto" />
+                <p className={cn(BUBBLE, 'whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground [overflow-wrap:anywhere]')}>{exchange.question}</p>
+              </div>
+              <div className={ASSISTANT_BUBBLE}>
+                <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} sourcesAsNames />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <AskPill draft={draft} onDraftChange={onDraftChange} chat={chat} />
+    </div>
+  );
+}

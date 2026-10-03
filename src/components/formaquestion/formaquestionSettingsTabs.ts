@@ -15,6 +15,7 @@ export function asFormaquestionSettingsTab(value: string | undefined): Formaques
 
 /** The label and the description of each General row. */
 export const GENERAL_COPY = {
+  mascot: { label: 'Mascot', hint: 'Shows a character beside a bare chat column' },
   reasoning: {
     label: 'Reasoning',
     hint: 'Lets your AI reason before it answers. Answers take longer.',

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight, Info, SendHorizontal, Square } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
@@ -25,12 +25,10 @@ import { FOCUS_RING, readerComponents } from './readerLinks';
 import { useFoldRule } from './useFoldRule';
 import type { HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
+import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
 
 /** The most docs sections shown in place of an answer. */
 const FALLBACK_RESULT_LIMIT = 5;
-
-/** How near the end, in pixels, the conversation must be for new text to keep it at the end. */
-const FOLLOW_SLACK = 48;
 
 /** The ask field's one-line height, which matches the Send button, and the height it grows to before it scrolls. */
 const ASK_FIELD_LINE_H = 40;
@@ -51,8 +49,17 @@ function fallbackLine(status: Extract<HelpStatus, 'no-ai' | 'failed'>, partial: 
   return matched ? `${cause}. These guide sections match your question.` : `${cause}, and no guide section matches your question`;
 }
 
-/** A source under an answer: the page, then the section. It opens the section in the reader. */
-function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSection; onOpen: (id: string) => void }) {
+/** A source under an answer: the page, then the section. It opens the section in the reader, or only names it without one. */
+function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSection; onOpen?: (id: string) => void }) {
+  if (!onOpen) {
+    return (
+      <span className="inline-flex max-w-full items-center gap-1 text-meta text-muted-foreground">
+        <span className="truncate">{guide.titleOf(section.page)}</span>
+        <ChevronRight aria-hidden className="h-3 w-3 shrink-0" />
+        <span className="truncate text-foreground">{section.label}</span>
+      </span>
+    );
+  }
   return (
     <button
       type="button"
@@ -110,12 +117,15 @@ function Thinking({ text, ms, active, settings, onSettingsChange }: {
   );
 }
 
-function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
+/** One answer: its reasoning, text, wait line, fallback and sources. */
+export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, sourcesAsNames = false }: {
   guide: Guide;
   exchange: HelpExchange;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
+  /** Names the sources without opening them, where no reader shows. */
+  sourcesAsNames?: boolean;
 }) {
   const { answer, reasoning, reasoningMs, status, stage, sources, question, flagged, nearest } = exchange;
   // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
@@ -166,7 +176,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
           <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />
           {fold.open && (
             <div className="flex flex-wrap gap-1">
-              {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
+              {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={sourcesAsNames ? undefined : onOpen} />)}
             </div>
           )}
         </div>
@@ -183,26 +193,12 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
   busy: boolean;
   onOpen: (id: string) => void;
 }) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const following = useRef(true);
-  const last = exchanges.at(-1);
-  // A new question goes to the end. A growing answer stays at the end unless the player scrolled up.
-  useEffect(() => { following.current = true; }, [exchanges.length]);
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (viewport && following.current) viewport.scrollTop = viewport.scrollHeight;
-  }, [exchanges.length, last?.answer, last?.reasoning, last?.status]);
+  const { viewportRef, onScroll } = useFollowEnd(exchanges);
   return (
     <ScrollArea
       className="min-h-0 flex-1"
       viewportRef={viewportRef}
-      viewportProps={{
-        'data-fq-scroll': 'conversation',
-        onScroll: (event) => {
-          const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
-          following.current = scrollHeight - scrollTop - clientHeight <= FOLLOW_SLACK;
-        },
-      }}
+      viewportProps={{ 'data-fq-scroll': 'conversation', onScroll }}
     >
       <div role="log" aria-label="Conversation" aria-busy={busy} className="flex flex-col gap-3 p-3">
         {exchanges.length === 0 && <Hint className="py-6 text-center">Ask how to do something in Formamorph</Hint>}
@@ -225,22 +221,10 @@ function AskField({ draft, onDraftChange, chat }: {
   onDraftChange: (text: string) => void;
   chat: HelpChat;
 }) {
-  const { busy, held, readsImages, pending, setPending, ask, stop } = chat;
+  const { busy, held, readsImages, pending, setPending, stop } = chat;
   const { attaching, dragOver, attachFiles, intakeProps } = useAttachmentIntake({ enabled: readsImages, pending, setPending });
   const grow = useAutoGrowTextarea(draft, ASK_FIELD_LINE_H, ASK_FIELD_MAX_H);
-  const question = draft.trim();
-  const canSend = !busy && !held && question.length > 0;
-  const send = () => {
-    if (!canSend) return;
-    ask(question);
-    onDraftChange('');
-  };
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Enter sends. Shift+Enter, and Enter that confirms composed text, add to the question.
-    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
-    event.preventDefault();
-    send();
-  };
+  const { canSend, send, onKeyDown } = useAskSend(draft, onDraftChange, chat);
   return (
     <div className={cn('flex shrink-0 flex-col gap-2 border-t p-3', dragOver && 'ring-2 ring-inset ring-ring')} {...intakeProps}>
       {readsImages && (
@@ -275,7 +259,7 @@ function AskField({ draft, onDraftChange, chat }: {
         )}
       </div>
       {/* Pattern 9: the reason sits under the field. */}
-      {held && !busy && <Hint>Wait for the game turn to finish to send a question</Hint>}
+      {held && !busy && <Hint>{HELD_LINE}</Hint>}
     </div>
   );
 }

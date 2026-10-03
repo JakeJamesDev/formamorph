@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { sseFrame, sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream } from '@/test/helpFixtures';
+import { stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const SETTINGS_KEY = 'FORMAMORPH_helpSettings';
@@ -38,6 +38,7 @@ const SOURCE_BUTTON = /How to Add a Trait/;
 
 beforeEach(() => {
   localStorage.clear();
+  storeFramedWindow();
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {
@@ -117,14 +118,14 @@ describe('the Sources fold of an answer', () => {
     expect(await within(conversation()).findByRole('button', { name: /^Sources \(\d+\)$/ })).toHaveAttribute('aria-expanded', 'false');
     cleanup();
 
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ sourcesOpen: 'nonsense', historyLength: 2 }));
+    storeFramedWindow({ sourcesOpen: 'nonsense', historyLength: 2 });
     const third = await openAsk();
     await send(third, 'How do I add a trait?');
     expect(await within(conversation()).findByRole('button', { name: 'Sources' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('applies the same default to Nearest Sections', async () => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ sourcesOpen: false }));
+    storeFramedWindow({ sourcesOpen: false });
     stubHelpStream([sseFrame({ content: '[NOT IN' }), ...sseReply(' GUIDE]\nA trait is a tag on an entity.')]);
     const field = await openAsk();
     await send(field, 'How do I add a trait to a stat?');

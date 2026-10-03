@@ -79,6 +79,44 @@ export function resizeBox(start: WindowBox, dx: number, dy: number, viewport: Vi
   }, viewport);
 }
 
+const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
+
+/** The minimal chrome's pieces: the chat column, and the Mascot bottom-aligned at its left while it is drawn. */
+export interface MinimalLayout {
+  /** The stored box's part: it moves, and the device keeps it. */
+  readonly column: WindowBox;
+  readonly mascot: { readonly w: number; readonly h: number } | null;
+  /** The box the pieces share: the column, widened left by the Mascot. */
+  readonly group: WindowBox;
+}
+
+/**
+ * The pieces for a stored box. The column takes the box's height and at most the narrow width. The Mascot
+ * takes the column's height at its aspect, less when the screen lacks the room. Both stay whole on the screen.
+ */
+export function minimalLayout(box: WindowBox, viewport: Viewport, mascotAspect: number | null): MinimalLayout {
+  const w = clamp(Math.min(box.w, NARROW_WIDTH), MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
+  const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
+  const room = Math.max(0, viewport.width - SCREEN_MARGIN * 2 - w);
+  const mascotW = mascotAspect ? Math.min(h * mascotAspect, room) : 0;
+  const x = clamp(box.x, mascotW, viewport.width - w);
+  const y = clamp(box.y, 0, viewport.height - h);
+  return {
+    column: { x, y, w, h },
+    mascot: mascotAspect && mascotW > 0 ? { w: mascotW, h: mascotW / mascotAspect } : null,
+    group: { x: x - mascotW, y, w: w + mascotW, h },
+  };
+}
+
+/**
+ * The box a pill drag of (dx, dy) gives, from where the drag started. The column's place moves; the box
+ * keeps its own width and height, so the framed window comes back at its size.
+ */
+export function moveColumn(start: WindowBox, dx: number, dy: number, viewport: Viewport, mascotAspect: number | null): WindowBox {
+  const { column } = minimalLayout({ ...start, x: start.x + dx, y: start.y + dy }, viewport, mascotAspect);
+  return { ...start, x: column.x, y: column.y };
+}
+
 const isBox = (value: unknown): value is WindowBox =>
   typeof value === 'object' && value !== null
   && (['x', 'y', 'w', 'h'] as const).every((key) => Number.isFinite((value as Record<string, unknown>)[key]));

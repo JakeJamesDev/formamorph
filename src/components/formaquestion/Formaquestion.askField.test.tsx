@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { helpAi } from '@/test/helpAiFixture';
+import { storeFramedWindow } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
@@ -31,6 +32,7 @@ async function openAsk() {
 
 beforeEach(() => {
   localStorage.clear();
+  storeFramedWindow();
   ai.current = helpAi();
 });
 afterEach(() => {
