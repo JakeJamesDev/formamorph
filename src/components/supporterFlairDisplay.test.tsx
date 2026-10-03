@@ -65,6 +65,17 @@ describe('the badge tooltip', () => {
     expect(await screen.findByText('Supporting for 1 year, 1 month')).toBeTruthy();
   });
 
+  it.each([
+    [0, 'Supporting for 0 months'],
+    [11, 'Supporting for 11 months'],
+    [14, 'Supporting for 1 year, 2 months'],
+  ])('words a pledge of %i months', async (months, wording) => {
+    const now = new Date();
+    await hover(new Date(now.getFullYear(), now.getMonth() - months, 1).toISOString());
+
+    expect(await screen.findByText(wording)).toBeTruthy();
+  });
+
   it('shows no tenure when the start is null', async () => {
     await hover(null);
     await new Promise((resolve) => setTimeout(resolve, 600));

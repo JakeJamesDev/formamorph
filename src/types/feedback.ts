@@ -1,4 +1,5 @@
 import type { SupporterFlair } from '@/lib/supporterFlair';
+
 /** The two branches of the feedback tree. Mirrors the server's `CHECK` constraint. */
 export const FEEDBACK_TYPES = ['bug', 'suggestion'] as const;
 export type FeedbackType = (typeof FEEDBACK_TYPES)[number];

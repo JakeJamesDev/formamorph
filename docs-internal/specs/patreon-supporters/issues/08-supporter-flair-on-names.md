@@ -1,6 +1,7 @@
 # 08: Supporter Flair on Names
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 9e8df9af
 Blocked by: 04, 07
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -28,3 +29,22 @@ The shared username and Profile Image components read the author's `supporter` f
 - [ ] `verify-ui` evidence on a card, a comment, and a profile, in both themes.
 - [ ] A changelog line in In Progress.
 - [ ] Four gates green.
+
+## Hand-over
+
+Built in `0dacdacc`. Gates: typecheck, lint, build and `site` tests pass. Full `npm test` showed 18 load timeouts in unrelated files; 13 files re-ran with 1 CodeArea flake that passes alone. One typecheck error in `site/pages/AccountPage.test.tsx` came from ticket 09, which is committed now.
+
+Open:
+
+- **`verify-ui` evidence** (card, comment, profile, both themes) is not done. No dev route has an author with a `supporter` field. Add a sample or check it live.
+- **Contest entries** use the community card, so they carry the flair. No contest-specific check ran.
+- **No surface pass-through tests.** A dropped `supporter` prop on a surface fails no test.
+
+Surfaces left plain, with the reason:
+
+- Admin Manage Users table, Likers dialog, Reports queue, Contest podiums: staff or snapshot surfaces (A5). The Likers payload has no `supporter`.
+- Liked-by-user row (`UserLikesTab`): the row holds only an author ID and name.
+- Downloaded-world author line in `MainMenu`: a stored name string, no account payload.
+- The signed-in user's own avatar button in `MainMenu`: not a place others see.
+
+Review notes left as judgment calls: the name-style and badge trio repeats in `ProfilePage`, `UserProfileDialog` and `RemoteWorldCard`.
