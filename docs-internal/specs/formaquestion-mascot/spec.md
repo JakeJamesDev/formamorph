@@ -58,6 +58,8 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q29 | The Persona travels in the card with the rig |
 | Q30 | Thinking holds until the first content token. A face call before that is stored and shows when the text starts. Refines Q12 and Q18 |
 | Q31 | A face change plays a transition. The transition mode and its tuning are part of the rig and travel in the card. The defaults are settled by a prototype first |
+| Q32 | The default rig ticket 01 ships is provisional: twelve composite word-named faces, three arm states, and a drafted Persona. The user tunes the real defaults in-app once the tab exists, and a follow-up ticket extracts those settings into code. No extra UI for authoring defaults |
+| Q33 | Expressions are composite whole faces, one row each. A part the arm must cover (the :O mouth under the thinking hand) rides in the arm state, because one row cannot sit both under and over another row. The format stays a flat list |
 
 ## User Stories
 
@@ -141,7 +143,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 - The composition is one pure function. It takes the rig, the phase (initial, thinking, answering) and the AI's expression, and returns the ordered list of images to draw: the base, then the overlays of each active layer in list order. Active means: in the initial phase, the Initial pick's two layers; in the thinking phase, the Thinking pick's two layers; in the answering phase, the AI's expression if set, else the Idle pick's expression, plus the Idle pick's state in both cases. A disabled layer is never active. The function carries no other rule (Q2, Q11, Q21).
 - The codec reads a stored rig field by field. A bad layer drops; a bad pick clears; a missing Mask reads as the whole base. The default rig is the fallback for a missing or unreadable value.
 - The warning rule is a pure function: the picks that name a disabled or missing layer.
-- The default rig is built from bundled assets cut from the author's layered file, with the arm overlays on the Initial, Idle and Thinking picks the author chose. Its Persona text lives in code.
+- The default rig is built from bundled assets cut from the author's layered file. Its Persona text lives in code. The provisional rig (Q32, Q33): three arm states, Wave = [Wave, No Thinking], Rest = [No Wave, No Thinking], Thinking = [:O, No Wave, Thinking arm]; twelve composite faces with word names (Happy, Excited, Surprised, Pondering, Confused, Sad, Sleepy, Smitten, Dizzy, Wink, Flustered, Unimpressed); picks Initial = (none, Wave), Idle = (none, Rest), Thinking = (Pondering, Thinking). States first in the list, then the faces. The real defaults come from the user's in-app tuning, extracted by a later ticket.
 
 ### Transition
 
