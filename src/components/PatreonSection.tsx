@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { SUPPORTER_LABELS } from '@/lib/supporterFlair';
+import { SUPPORTER_LABELS, supporterTenure } from '@/lib/supporterFlair';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { PatreonError, PatreonService, type PatreonStatus } from '@/services/PatreonService';
 
@@ -37,6 +37,10 @@ const MESSAGES = {
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
 
+/** The message of a caught error, or `fallback` when it carries none. */
+const errorText = (failure: unknown, fallback: string): string =>
+  failure instanceof Error && failure.message ? failure.message : fallback;
+
 /** What a failed confirm says. The two codes the server uses for a refused or taken link get this section's own copy. */
 const confirmFailure = (failure: unknown): string => {
   if (failure instanceof PatreonError && failure.code === 'PATREON_TAKEN') return MESSAGES.taken;
@@ -47,24 +51,6 @@ const confirmFailure = (failure: unknown): string => {
 /** The notice a redirect result states without a call, or null when the result needs one or is unknown. */
 const patreonReturnNotice = (result: string): Notice =>
   result in MESSAGES ? { kind: 'error', text: MESSAGES[result as keyof typeof MESSAGES] } : null;
-
-/** Whole months from `since` to `now`, as "1 year, 3 months". Null when `since` is not a date. */
-export function formatTenure(since: string, now = new Date()): string | null {
-  const start = new Date(since);
-  if (Number.isNaN(start.getTime())) return null;
-
-  let months = (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth();
-  if (now.getDate() < start.getDate()) months -= 1;
-  if (months < 1) return 'less than a month';
-
-  const years = Math.floor(months / 12);
-  const rest = months % 12;
-  const part = (count: number, unit: string) => `${count} ${unit}${count === 1 ? '' : 's'}`;
-
-  return [years > 0 ? part(years, 'year') : null, rest > 0 ? part(rest, 'month') : null]
-    .filter(Boolean)
-    .join(', ');
-}
 
 interface PatreonSectionProps {
   /** Sends the browser to Patreon's approval page. The site navigates; the app opens the system browser. */
@@ -122,8 +108,10 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
       } catch (failure) {
         if (!mounted.current) return;
         if (!held) {
+          // A newer read or write owns the status now; its answer stands.
+          if (mine !== latest.current) return;
           setStatus(null);
-          setNotice({ kind: 'error', text: (failure as Error).message || 'Could not read your Patreon status.' });
+          setNotice({ kind: 'error', text: errorText(failure, 'Could not read your Patreon status.') });
           return;
         }
 
@@ -131,9 +119,9 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
         setNotice({ kind: 'error', text: confirmFailure(failure) });
         try {
           const current = await PatreonService.getStatus();
-          if (mounted.current) setStatus(current);
+          if (mounted.current && mine === latest.current) setStatus(current);
         } catch {
-          if (mounted.current) setStatus(null);
+          if (mounted.current && mine === latest.current) setStatus(null);
         }
       }
     };
@@ -174,7 +162,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
       const next = await action();
       if (mounted.current && mine === latest.current) setStatus(next);
     } catch (error) {
-      if (mounted.current) setNotice({ kind: 'error', text: (error as Error).message || failure });
+      if (mounted.current) setNotice({ kind: 'error', text: errorText(error, failure) });
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -191,7 +179,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
       if (refreshOnFocus) setBusy(false);
     } catch (error) {
       if (!mounted.current) return;
-      setNotice({ kind: 'error', text: (error as Error).message || 'Could not start the link.' });
+      setNotice({ kind: 'error', text: errorText(error, 'Could not start the link.') });
       setBusy(false);
     }
   };
@@ -229,7 +217,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
     </Button>
   );
 
-  const tenure = status?.linked && status.tier && status.since ? formatTenure(status.since) : null;
+  const tenure = status?.linked && status.tier ? supporterTenure(status.since) : null;
 
   return (
     <section className={cn('space-y-3', className)}>
