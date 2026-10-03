@@ -6,7 +6,8 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { closeErrorDetails } from '@/lib/errorDetails';
 import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 import { turnActivity } from '@/lib/turnActivity';
-import { openSseReply, sseFrame, sseReply, textSnapshot } from '@/test/aiTextFixtures';
+import { openSseReply, sseFrame, sseReply } from '@/test/aiTextFixtures';
+import { helpAi } from '@/test/helpAiFixture';
 import { stubHelpStream } from '@/test/helpFixtures';
 import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS } from '@/lib/actionAttachments';
 import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
@@ -57,7 +58,7 @@ function slowRefusal() {
 beforeEach(() => {
   localStorage.clear();
   ai.enabled = [];
-  ai.current = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: vi.fn(async () => true), readsImages: false };
+  ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {
   act(() => {

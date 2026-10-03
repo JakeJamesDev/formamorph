@@ -2,7 +2,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { sseFrame, sseReply, textSnapshot } from '@/test/aiTextFixtures';
+import { sseFrame, sseReply } from '@/test/aiTextFixtures';
+import { helpAi } from '@/test/helpAiFixture';
 import { stubHelpStream } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
@@ -37,7 +38,7 @@ const SOURCE_BUTTON = /How to Add a Trait/;
 
 beforeEach(() => {
   localStorage.clear();
-  ai.current = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: vi.fn(async () => true), readsImages: false };
+  ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {
   cleanup();

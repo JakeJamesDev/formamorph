@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import type { ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { useAiSettingsSnapshot } from '@/lib/aiRequest/useAiSettingsSnapshot';
@@ -22,6 +23,8 @@ export interface HelpAi {
   revalidate: () => Promise<boolean>;
   /** The Image Attachments setting: the player's model reads images. */
   readsImages: boolean;
+  /** What the Reasoning row reads off the endpoint answers resolve to. */
+  answerTarget: ReasoningFieldTarget;
 }
 
 /**
@@ -40,12 +43,13 @@ export function useHelpAi(enabled: boolean, settings: Pick<HelpSettings, 'answer
   useEffect(() => () => claimEngine(ENGINE_OWNER, false), [claimEngine]);
 
   const demoAI = isDemoAI(answer);
-  const { localEngine, url, apiToken, model } = answer;
+  const { localEngine, url, apiToken, model, reasoning, maxTokens } = answer;
   const target = useMemo(() => ({ localEngine, url, apiToken, model }), [localEngine, url, apiToken, model]);
   const { reachable, revalidate } = useAiReachable({ enabled: enabled && !demoAI, target });
   const readsImages = useImageAttachments();
+  const answerTarget = useMemo(() => ({ reasoning, localEngine, maxTokens }), [reasoning, localEngine, maxTokens]);
   return useMemo(
-    () => ({ snapshot, language, reachable: demoAI ? true : reachable, revalidate, readsImages }),
-    [snapshot, language, demoAI, reachable, revalidate, readsImages],
+    () => ({ snapshot, language, reachable: demoAI ? true : reachable, revalidate, readsImages, answerTarget }),
+    [snapshot, language, demoAI, reachable, revalidate, readsImages, answerTarget],
   );
 }

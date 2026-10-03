@@ -24,6 +24,8 @@ export interface HelpExchange {
   images: ImageAttachment[];
   /** The answer so far, as markdown. */
   answer: string;
+  /** The model's reasoning so far, native or inline. */
+  reasoning: string;
   status: HelpStatus;
   /** The docs sections that reached the model. */
   sources: readonly DocSection[];
@@ -89,7 +91,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
     const change = (fields: Partial<HelpExchange>) => {
       if (mountedRef.current) setExchanges((all) => all.map((entry) => (entry.id === id ? { ...entry, ...fields } : entry)));
     };
-    setExchanges((all) => [...all, { id, question, images, answer: '', status: 'writing', sources: [], flagged: false, nearest: [] }]);
+    setExchanges((all) => [...all, { id, question, images, answer: '', reasoning: '', status: 'writing', sources: [], flagged: false, nearest: [] }]);
 
     void (async () => {
       try {
@@ -107,8 +109,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
         }
         const { snapshot, language } = aiRef.current;
         for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, signal: controller.signal })) {
-          if (event.type === 'answer') change({ answer: event.text, flagged: event.flagged });
-          else change({ answer: event.text, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
+          if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, flagged: event.flagged });
+          else change({ answer: event.text, reasoning: event.reasoning, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }
       } catch (error) {
         if (!mountedRef.current) return;

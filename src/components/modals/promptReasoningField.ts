@@ -5,6 +5,9 @@ import {
 import { reasoningDialectTakesBudget, reasoningDialectBudgetFloor } from '@/lib/reasoningDialect';
 import type { AIRequestType } from '@/types';
 
+/** The label, line and ⓘ of a reasoning field. */
+export interface ReasoningFieldCopy { label: string; description: string; info?: string }
+
 export interface PromptReasoningFieldProps {
   setting: PromptReasoningSetting;
   onChange: (v: PromptReasoningSetting) => void;
@@ -16,6 +19,11 @@ export interface PromptReasoningFieldProps {
   /** The endpoint refuses to switch reasoning off, so the switch reads checked and locked. */
   lockedOn?: boolean;
   disabled?: boolean;
+  /** The label, line and ⓘ in place of the prompt copy, where the target takes a level or neither strength. Null
+   *  draws none, for a settings row that carries its own. */
+  copy?: ReasoningFieldCopy | null;
+  /** The switch's element id, so two fields never share one. */
+  id?: string;
 }
 
 /** What the reasoning field reads off a resolved endpoint. */
@@ -33,6 +41,8 @@ export interface PromptReasoningFieldInput {
   budgetPct: number;
   /** The call never sends native reasoning, as Inline narration does not. */
   suppressed: boolean;
+  /** Draws the field while the dialect awaits proof, as the Output row does. */
+  showAwaitingProof?: boolean;
   onChange: (v: PromptReasoningSetting) => void;
   onBudgetChange: (pct: number) => void;
 }
@@ -42,11 +52,11 @@ export interface PromptReasoningFieldInput {
  * external endpoint whose record rules reasoning out or still awaits proof. The local engine always draws one.
  */
 export function promptReasoningFieldProps(input: PromptReasoningFieldInput): Omit<PromptReasoningFieldProps, 'disabled'> | null {
-  const { target, kind, setting, budgetPct, suppressed, onChange, onBudgetChange } = input;
+  const { target, kind, setting, budgetPct, suppressed, showAwaitingProof = false, onChange, onBudgetChange } = input;
   const capability = target.reasoning;
   // An unanswered record keeps the field; a proof-needing dialect (vLLM) waits for its first reply.
   const applicable = !suppressed
-    && (target.localEngine || (!reasoningRuledOut(capability) && !reasoningAwaitingProof(capability)));
+    && (target.localEngine || (!reasoningRuledOut(capability) && (showAwaitingProof || !reasoningAwaitingProof(capability))));
   if (!applicable) return null;
   // The same base the request reads; with none, a floor dialect still sends its floor.
   const tokens = reasoningBudget({

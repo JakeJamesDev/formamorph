@@ -123,6 +123,7 @@ F1 does one of three things:
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
+- **Thinking**, above an answer, shows how the AI reasoned, when your model reasons. It starts closed. Open or close one, and later answers start the same way.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again. **History Length** sets how many.
@@ -137,7 +138,7 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 - With no AI connected, **Send** shows the guide sections that match your question. The Demo AI always counts as connected.
 - When the AI does not answer, an error message shows, and the guide sections that match your question show in place of the answer. Text that came before the failure stays.
 - The conversation stays while the app is open, also when you close the window or go to a different screen. The app does not store it, so a reload or a restart empties it.
-- The answer comes from your active text endpoint, with reasoning off. See [Connect Your Own AI](Connect-Your-Own-AI).
+- The answer comes from the **Answer Endpoint**, with the **Reasoning** setting. See [Formaquestion Settings](#formaquestion-settings).
 
 An answer can be wrong. Use **Sources** to check it against the guide.
 
@@ -178,12 +179,13 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - This device keeps each setting. The settings are not in a backup or an export.
 
 ### General
-<!-- keywords: keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
+<!-- keywords: reasoning, thinking, effort, reasoning budget, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
 
-The **General** tab sets how a question finds its guide sections, and what the request holds.
+The **General** tab sets how your AI answers, how a question finds its guide sections, and what the request holds.
 
 | Setting | Default | What it does |
 |---|---|---|
+| **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Picks** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
 | **AI Picks** | On | Sends one more request for each question, in which your AI picks guide sections from the list of headings |
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the switch goes off and **Retry** starts it again. Until the model is ready, questions use the other sources. |

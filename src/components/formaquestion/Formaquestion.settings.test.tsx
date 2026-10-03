@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
-import { sseFrame, sseReply, textSnapshot } from '@/test/aiTextFixtures';
+import { sseFrame, sseReply } from '@/test/aiTextFixtures';
+import { helpAi } from '@/test/helpAiFixture';
 import { stubHelpStream } from '@/test/helpFixtures';
 import { sentenceShapeViolation } from '@/test/copyShape';
 import { renderReporting } from '@/test/surfaceReporter';
@@ -60,7 +61,7 @@ async function setChecks(checks: Record<string, boolean>) {
 
 beforeEach(() => {
   localStorage.clear();
-  ai.current = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: vi.fn(async () => true), readsImages: false };
+  ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {
   surfaceRegistry.clear(SCREEN_PLACE);
@@ -76,7 +77,8 @@ describe('Formaquestion Settings', () => {
 
     expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools']);
     expect(within(dialog).getByRole('tab', { name: 'General' })).toHaveAttribute('data-state', 'active');
-    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['true', 'true', 'false', 'true']);
+    // Reasoning, Keyword Search, AI Picks, Semantic Search, Use the Open Screen.
+    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'true', 'false', 'true']);
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
     // jsdom loads no stylesheet, so it reads the open dialog's `pointer-events: none` on the body and not the

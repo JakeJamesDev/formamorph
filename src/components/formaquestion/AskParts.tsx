@@ -57,6 +57,42 @@ function GeneralKnowledgeNotice() {
   );
 }
 
+/** The toggle of a foldable block under or above an answer. */
+function FoldToggle({ open, label, onToggle }: { open: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      onClick={onToggle}
+      className={cn('flex w-fit items-center gap-1 rounded text-meta text-muted-foreground', FOCUS_RING)}
+    >
+      <ChevronDown aria-hidden className={cn('h-3 w-3 shrink-0', open && 'rotate-180')} />
+      {label}
+    </button>
+  );
+}
+
+/** The model's reasoning, muted, above its answer. */
+function Thinking({ text, settings, onSettingsChange }: {
+  text: string;
+  settings: HelpSettings;
+  onSettingsChange: (change: HelpSettingsChange) => void;
+}) {
+  // The answer takes the default when its first reasoning text arrives.
+  const fold = useFoldRule(text !== '', settings.thinkingOpen, (thinkingOpen) => onSettingsChange({ thinkingOpen }));
+  if (!text) return null;
+  return (
+    <div role="group" aria-label="Thinking" className="flex flex-col gap-1">
+      <FoldToggle open={fold.open} label="Thinking" onToggle={fold.toggle} />
+      {fold.open && (
+        <div className="border-l-2 border-border pl-3 text-helper leading-snug text-muted-foreground [&_:first-child]:mt-0 [&_h1]:text-helper [&_h2]:text-helper [&_h3]:text-helper [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
+          <MarkdownRenderer text={text} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   guide: Guide;
   exchange: HelpExchange;
@@ -64,7 +100,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
 }) {
-  const { answer, status, sources, question, flagged, nearest } = exchange;
+  const { answer, reasoning, status, sources, question, flagged, nearest } = exchange;
   // A flagged answer lists the nearest sections in place of its sources.
   const listed = flagged ? nearest : sources;
   const listLabel = flagged ? 'Nearest Sections' : 'Sources';
@@ -80,6 +116,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   );
   return (
     <div className="flex flex-col gap-2 text-label">
+      <Thinking text={reasoning} settings={settings} onSettingsChange={onSettingsChange} />
       {flagged && answer && <GeneralKnowledgeNotice />}
       {answer && (
         <div className="[&_:first-child]:mt-0">
@@ -97,15 +134,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
       )}
       {listed.length > 0 && (
         <div role="group" aria-label={listLabel} className="flex flex-col gap-1">
-          <button
-            type="button"
-            aria-expanded={fold.open}
-            onClick={fold.toggle}
-            className={cn('flex w-fit items-center gap-1 rounded text-meta text-muted-foreground', FOCUS_RING)}
-          >
-            <ChevronDown aria-hidden className={cn('h-3 w-3 shrink-0', fold.open && 'rotate-180')} />
-            {fold.open ? listLabel : `${listLabel} (${listed.length})`}
-          </button>
+          <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />
           {fold.open && (
             <div className="flex flex-wrap gap-1">
               {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
@@ -133,7 +162,7 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
   useEffect(() => {
     const viewport = viewportRef.current;
     if (viewport && following.current) viewport.scrollTop = viewport.scrollHeight;
-  }, [exchanges.length, last?.answer, last?.status]);
+  }, [exchanges.length, last?.answer, last?.reasoning, last?.status]);
   return (
     <ScrollArea
       className="min-h-0 flex-1"

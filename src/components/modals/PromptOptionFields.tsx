@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import { MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
 import { ReasoningSwitch, type ReasoningStrength } from './ReasoningSwitch';
-import type { PromptReasoningFieldProps } from './promptReasoningField';
+import type { PromptReasoningFieldProps, ReasoningFieldCopy } from './promptReasoningField';
 
 /** A prompt's Max Output row. Off reads Auto with the shipped cap; on, the slider sets the cap in tokens. */
 export interface MaxOutputControlProps {
@@ -49,7 +49,7 @@ export function MaxOutputControl({ custom, value, shipped, disabled, onCustomCha
  * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
  * engine ignores the effort field, so it shows the slider alone (`level` false).
  */
-export function PromptReasoningField({ setting, onChange, options, budget, level, lockedOn, disabled }: PromptReasoningFieldProps) {
+export function PromptReasoningField({ setting, onChange, options, budget, level, lockedOn, disabled, copy = SETTINGS_COPY.promptNativeReasoning, id = 'promptReasoning' }: PromptReasoningFieldProps) {
   const inert = disabled || !(setting.enabled || lockedOn);
   const sliderInert = inert || budget?.disabled === true;
   const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
@@ -60,16 +60,20 @@ export function PromptReasoningField({ setting, onChange, options, budget, level
     : null;
   // The field is named for what it actually offers: the budget where that is the only strength, and the
   // switch's own name where the target takes a level, or takes neither and the switch stands alone.
-  const lead = level || !budgetStrength ? SETTINGS_COPY.promptNativeReasoning : SETTINGS_COPY.reasoningBudget;
+  const lead: ReasoningFieldCopy | null = copy && (level || !budgetStrength ? copy : SETTINGS_COPY.reasoningBudget);
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
-        <label htmlFor="promptReasoning" className="text-label">{lead.label}</label>
-        {'info' in lead && <HintInfo>{lead.info}</HintInfo>}
-      </div>
-      <span className="text-helper text-muted-foreground">{lead.description}</span>
+      {lead && (
+        <>
+          <div className="flex items-center gap-1.5">
+            <label htmlFor={id} className="text-label">{lead.label}</label>
+            {lead.info && <HintInfo>{lead.info}</HintInfo>}
+          </div>
+          <span className="text-helper text-muted-foreground">{lead.description}</span>
+        </>
+      )}
       <ReasoningSwitch
-        id="promptReasoning"
+        id={id}
         enabled={setting.enabled}
         onEnabledChange={(enabled) => onChange({ ...setting, enabled })}
         disabled={disabled}
