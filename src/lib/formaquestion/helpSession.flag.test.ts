@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { helpSettings, pastPicks } from '@/test/helpFixtures';
+import { pastPicks } from '@/test/helpFixtures';
 import { DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
+import { helpSettingsOf } from './helpSettings';
 
 const PAGES = {
   Stats: '# 📊 Stats\n\nStats are numbers.\n\n## How to Add a Stat\n\n1. Open the **Stats** tab.\n2. Select **Add Stat**.\n',
@@ -23,7 +24,7 @@ const script = (...replies: string[][]): FetchSpy => {
 };
 
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, settings: helpSettings({ lookup: true }), snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over });
+  askHelp({ question, settings: helpSettingsOf({ lookup: true }), snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];

@@ -42,7 +42,7 @@ import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, helpSections } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
+import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { mean, pct, probeSnapshot } from './help-probe-shared';
 import { askHelpContentsLookup } from './lookupControl';
 import { refDocsIndex } from './refDocsIndex';
@@ -181,7 +181,7 @@ async function lookupRequest(arm: Arm, c: HelpCase): Promise<Sample> {
   let sources: string[] = [];
   let flagged = false;
   const request = { question: c.question, snapshot: lookupSnapshot, index, fetchImpl };
-  const session = arm === 'lookup22' ? askHelpContentsLookup(request) : askHelp({ ...request, settings: { ...DEFAULT_HELP_SETTINGS, lookup: true } });
+  const session = arm === 'lookup22' ? askHelpContentsLookup(request) : askHelp({ ...request, settings: helpSettingsOf({ lookup: true }) });
   for await (const event of session) {
     if (event.type !== 'done') continue;
     answer = event.text;

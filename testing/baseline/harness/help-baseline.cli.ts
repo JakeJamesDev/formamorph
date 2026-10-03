@@ -57,7 +57,7 @@ import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/
 import { pickList } from '@/lib/formaquestion/helpPicks';
 import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { askHelp, HELP_DOCS_CHAR_BUDGET, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
+import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
 import { mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
@@ -152,7 +152,7 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
     : sessionFetch(usage);
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
-    settings: { ...DEFAULT_HELP_SETTINGS, lookup, ...(arm === 'keyword-only' && { sources: { ...DEFAULT_HELP_SETTINGS.sources, aiPicks: false } }) },
+    settings: helpSettingsOf({ lookup, ...(arm === 'keyword-only' && { sources: { aiPicks: false } }) }),
     snapshot: probeSnapshot(target, lookup), fetchImpl,
     ...(arm === 'keep-old' && { screenRule: false }),
     ...(arm === 'howto-old' && { howToRule: false }),

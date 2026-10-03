@@ -5,8 +5,9 @@ import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseResponse, sseReply, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { helpSettings, pastPicks } from '@/test/helpFixtures';
+import { pastPicks } from '@/test/helpFixtures';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
+import { helpSettingsOf } from './helpSettings';
 import { surfaceHint } from './surfaceHint';
 
 const PAGES = {
@@ -26,7 +27,7 @@ const userMessage = (spy: FetchSpy): string =>
 async function ask(question: string, over: Partial<HelpQuestion> = {}) {
   const fetchImpl = replyWith();
   const events: HelpEvent[] = [];
-  for await (const event of askHelp({ question, settings: helpSettings(), snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over })) events.push(event);
+  for await (const event of askHelp({ question, settings: helpSettingsOf(), snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over })) events.push(event);
   const done = events.at(-1);
   return { sent: userMessage(fetchImpl), sources: done?.type === 'done' ? done.sources.map((section) => section.id) : [] };
 }
@@ -127,7 +128,7 @@ describe('the surface hint', () => {
 
   it('puts the mapped section in a lookup request as a section already fetched', async () => {
     const reasoning: ReasoningCapability = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } };
-    const { sent, sources } = await ask('What does this tab do?', { surface: SETTINGS_DISPLAY, settings: helpSettings({ lookup: true }), snapshot: textSnapshot(textTarget({ reasoning })) });
+    const { sent, sources } = await ask('What does this tab do?', { surface: SETTINGS_DISPLAY, settings: helpSettingsOf({ lookup: true }), snapshot: textSnapshot(textTarget({ reasoning })) });
     expect(sent).toContain('<section id="Settings#display">');
     expect(sent).toContain('this screen: Settings dialog, Display tab.');
     expect(sources[0]).toBe('Settings#display');

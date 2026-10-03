@@ -57,7 +57,7 @@ export interface HelpQuestion {
   history?: readonly EarlierExchange[];
   /** The AI Language setting. */
   language?: string;
-  /** The Formaquestion settings. The window passes the stored value; tests and probes pass their own. */
+  /** The Formaquestion settings. The window passes its value; tests and probes pass their own. */
   settings: HelpSettings;
   snapshot: AiSettingsSnapshot;
   index: DocsIndex;
