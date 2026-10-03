@@ -191,7 +191,7 @@ Rulings from ticket 03 (2026-10-02):
 - A status route returns the caller's own link: linked or not, the tier, the pledge start, and the flair toggle.
 - A route sets the flair toggle.
 - A public wall route returns the supporters in display order: Supporter+ first, then earliest pledge start first (Q15). Each row has the account ID, username, Profile Image URL, tier, and pledge start.
-- The wall includes staff (Q13) and excludes every account with the toggle off (Q8).
+- The wall includes staff (Q13) and excludes every account with the toggle off (Q8). It also excludes suspended accounts: a name on the wall must open a profile (ruling from ticket 11, 2026-10-02).
 
 ### Flair display (client)
 
