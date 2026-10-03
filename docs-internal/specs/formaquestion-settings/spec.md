@@ -94,6 +94,7 @@ Settled with the user on 2026-10-02. A later ruling that refines an earlier one 
 | Q49 | The "Same as Answer" row of the Pick Endpoint select is built in ticket 07. Ticket 01 changes no behavior and adds no row |
 | Q51 | Q41 fires on the settings, not on a search result. A question goes bare and unflagged only when no part of the request can carry a section: Keyword, AI Picks and Semantic are off, the guide lookup is not offered (off, or the endpoint does not take function calls), and Use the Open Screen is off or the open screen maps to no section. A search that runs and finds nothing keeps today's empty guide block and the forced flag, as story 61 needs. Player Tools do not count as a source. From the ticket 05 session |
 | Q52 | On the mobile sheet, a full-screen dialog opened from Formaquestion (the settings modal, AI Context) hides the sheet while it is open, and closing it brings the sheet back as it was. The sheet is hidden, not unmounted: the conversation, the scroll place and a streaming answer continue. Q30 holds on desktop. Refines Q22 and Q30. From the ticket 05 session |
+| Q53 | The device settings are one stored value with a field-by-field codec, stored by a hook of its own that writes only on a change and survives blocked storage, not by the app's persistent-state helper. Later tickets add their fields to that value. History Length takes 0 to 20. From the ticket 05 handover |
 | Q50 | The answer samplers join the help settings value in ticket 13, not ticket 04. They are a request-kind pin today that the pick request shares, so they need a call-level sampler override; ticket 13 adds the field, the override and the controls together, and the pick request keeps the pin. From the ticket 04 session |
 
 ### Rulings of the Formaquestion spec that this effort replaces
@@ -199,7 +200,8 @@ Settled with the user on 2026-10-02. A later ruling that refines an earlier one 
 
 - One new pure module holds the Formaquestion settings: the device settings, the help preset store and the Formaquestion Tool list. It has no React.
 - The device settings are: answer endpoint id, pick endpoint id, reasoning effort and budget, the four source switches, Use the Open Screen, History Length, the answer samplers and Max Output, the function and Tool switches, the AI Context switch, the reveal values, the Sources default and the Thinking default.
-- Each setting persists through the app's persistent-state helper with a codec. A stored value that fails to parse falls back to the default.
+- The device settings are one stored value with one codec that falls back field by field: a bad field reads as its default, and the other fields keep their stored values. A small hook of its own stores it. It writes only on a change and survives blocked storage, because the window opens with storage blocked in tests and writes nothing until the player changes something. Every later ticket adds its fields to this value and codec, the Sources and Thinking defaults included (Q53).
+- History Length takes 0 to 20 exchanges. A stored value outside that range reads as the default (Q53).
 - Defaults live with the other settings defaults. Each default equals the constant it replaces. The constants in the help session become the defaults of this module.
 - None of these settings has an environment twin.
 - None of these settings is exported, synced or shared, except through the preset file (Q39).
