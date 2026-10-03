@@ -66,6 +66,18 @@ export const DEFAULT_REVEAL_MIN_STAGGER = 0;
 export const reducedMotionSpec = (s: RevealSpec, reduce: boolean): RevealSpec =>
   (reduce ? { ...s, move: false, scale: false } : s);
 
+/** The ranges of the reveal dialog's sliders. A stored value outside its range takes the default. */
+export const REVEAL_RANGES = {
+  moveDistance: { min: 0.1, max: 2, step: 0.05 },
+  scaleAmount: { min: 0.05, max: 0.9, step: 0.05 },
+  blurAmount: { min: 1, max: 12, step: 1 },
+  minDuration: { min: 0, max: 1400, step: 50 },
+  minStagger: { min: 0, max: 150, step: 5 },
+} as const;
+
+/** A word reveal's per-word fade length and the delay between words, in ms. */
+export interface RevealTiming { duration: number; stagger: number }
+
 /** Any effect enabled ⇒ animate the reveal; none ⇒ fall back to the smooth crawl. */
 export const revealActive = (s: RevealSpec): boolean => s.fade || s.move || s.scale || s.blur;
 
@@ -145,11 +157,7 @@ export { clamp }; // re-exported (from ./utils) so existing importers/tests keep
 /** Apply the user's minimum floors to a timing (0 = no floor): stagger can't drop below `minStagger`,
  *  and duration can't drop below `minDuration` (re-derived from the floored stagger so the fade keeps
  *  a sensible spread). Lets a fast model be pinned to a readable minimum pace. */
-export function flooredTiming(
-  t: { duration: number; stagger: number },
-  minStagger: number,
-  minDuration: number,
-): { duration: number; stagger: number } {
+export function flooredTiming(t: RevealTiming, minStagger: number, minDuration: number): RevealTiming {
   const stagger = Math.max(t.stagger, minStagger);
   return { stagger, duration: Math.max(stagger * FADE_SPREAD, minDuration) };
 }

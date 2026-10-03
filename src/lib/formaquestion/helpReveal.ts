@@ -6,10 +6,9 @@ import {
   DEFAULT_DURATION, DEFAULT_REVEAL_BLUR, DEFAULT_REVEAL_BLUR_AMOUNT, DEFAULT_REVEAL_EASING, DEFAULT_REVEAL_FADE,
   DEFAULT_REVEAL_MIN_DURATION, DEFAULT_REVEAL_MIN_STAGGER, DEFAULT_REVEAL_MOVE, DEFAULT_REVEAL_MOVE_DIRECTION,
   DEFAULT_REVEAL_MOVE_DISTANCE, DEFAULT_REVEAL_SCALE, DEFAULT_REVEAL_SCALE_AMOUNT, DEFAULT_REVEAL_SCALE_DIRECTION,
-  DEFAULT_REVEAL_SCALE_MODE, DEFAULT_STAGGER, REVEAL_DIRECTIONS, REVEAL_EASINGS, REVEAL_SCALE_MODES,
-  flooredTiming, reducedMotionSpec, type RevealSpec,
+  DEFAULT_REVEAL_SCALE_MODE, DEFAULT_STAGGER, REVEAL_DIRECTIONS, REVEAL_EASINGS, REVEAL_RANGES, REVEAL_SCALE_MODES,
+  flooredTiming, reducedMotionSpec, type RevealSpec, type RevealTiming,
 } from '@/lib/narrationRevealConfig';
-import type { RevealTiming } from '@/lib/revealTimingStore';
 
 /** The effects of the answer reveal, its easing, and its minimum speed in ms. */
 export interface HelpReveal extends RevealSpec {
@@ -38,24 +37,23 @@ export const DEFAULT_HELP_REVEAL: HelpReveal = {
 type Check = (value: unknown) => boolean;
 const isBool: Check = (value) => typeof value === 'boolean';
 const isOneOf = (options: readonly { value: string }[]): Check => (value) => options.some((option) => option.value === value);
-// The ranges of the reveal dialog's sliders.
-const isIn = (min: number, max: number): Check => (value) => typeof value === 'number' && value >= min && value <= max;
-const isIntIn = (min: number, max: number): Check => (value) => Number.isInteger(value) && isIn(min, max)(value);
+const isIn = ({ min, max }: { min: number; max: number }): Check => (value) => typeof value === 'number' && value >= min && value <= max;
+const isIntIn = (range: { min: number; max: number }): Check => (value) => Number.isInteger(value) && isIn(range)(value);
 
 const CHECKS: { [K in keyof HelpReveal]: Check } = {
   fade: isBool,
   move: isBool,
   moveDirection: isOneOf(REVEAL_DIRECTIONS),
-  moveDistance: isIn(0.1, 2),
+  moveDistance: isIn(REVEAL_RANGES.moveDistance),
   scale: isBool,
   scaleMode: isOneOf(REVEAL_SCALE_MODES),
   scaleDirection: isOneOf(REVEAL_DIRECTIONS),
-  scaleAmount: isIn(0.05, 0.9),
+  scaleAmount: isIn(REVEAL_RANGES.scaleAmount),
   blur: isBool,
-  blurAmount: isIntIn(1, 12),
+  blurAmount: isIntIn(REVEAL_RANGES.blurAmount),
   easing: isOneOf(REVEAL_EASINGS),
-  minDuration: isIntIn(0, 1400),
-  minStagger: isIntIn(0, 150),
+  minDuration: isIntIn(REVEAL_RANGES.minDuration),
+  minStagger: isIntIn(REVEAL_RANGES.minStagger),
 };
 
 /** The stored values; a bad field takes its default, and a value that is not an object takes all of them. */
@@ -63,6 +61,7 @@ export function parseHelpReveal(stored: unknown): HelpReveal {
   const record = typeof stored === 'object' && stored !== null && !Array.isArray(stored) ? stored as Record<string, unknown> : {};
   const entries = Object.entries(CHECKS).map(([key, check]) =>
     [key, check(record[key]) ? record[key] : DEFAULT_HELP_REVEAL[key as keyof HelpReveal]]);
+  // Every key of CHECKS holds a value that passed its check or the default, so the record is whole.
   return Object.fromEntries(entries) as unknown as HelpReveal;
 }
 

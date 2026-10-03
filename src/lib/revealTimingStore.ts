@@ -1,7 +1,6 @@
-import { DEFAULT_DURATION, DEFAULT_STAGGER } from './narrationRevealConfig';
+import { DEFAULT_DURATION, DEFAULT_STAGGER, type RevealTiming } from './narrationRevealConfig';
 
-/** A word reveal's per-word fade length and the delay between words, in ms. */
-export interface RevealTiming { duration: number; stagger: number }
+export type { RevealTiming };
 
 // Current narration fade timing (per-word fade `duration` + word `stagger`). The sentence pacer
 // (useSentenceReveal) sets it from the measured arrival rate as each sentence is released; the

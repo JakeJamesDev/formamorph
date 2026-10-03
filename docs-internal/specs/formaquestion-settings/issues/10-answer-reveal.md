@@ -1,6 +1,6 @@
 # 10: Answer Reveal
 
-Status: in-progress
+Status: ready-for-human
 Base: bfcb41fa
 Blocked by: 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

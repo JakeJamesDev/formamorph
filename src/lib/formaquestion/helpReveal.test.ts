@@ -3,7 +3,7 @@ import {
   DEFAULT_REVEAL_BLUR_AMOUNT, DEFAULT_REVEAL_EASING, DEFAULT_REVEAL_FADE, DEFAULT_REVEAL_MIN_DURATION,
   DEFAULT_REVEAL_MIN_STAGGER, DEFAULT_REVEAL_MOVE, DEFAULT_REVEAL_MOVE_DIRECTION, DEFAULT_REVEAL_MOVE_DISTANCE,
   DEFAULT_REVEAL_SCALE, DEFAULT_REVEAL_SCALE_AMOUNT, DEFAULT_REVEAL_SCALE_DIRECTION, DEFAULT_REVEAL_SCALE_MODE,
-  DEFAULT_REVEAL_BLUR, DEFAULT_STAGGER, DEFAULT_DURATION, FADE_SPREAD, REVEAL_EASINGS,
+  DEFAULT_REVEAL_BLUR, DEFAULT_STAGGER, DEFAULT_DURATION, REVEAL_EASINGS,
 } from '@/lib/narrationRevealConfig';
 import { DEFAULT_HELP_REVEAL, helpRevealSpec, helpRevealTiming, parseHelpReveal } from './helpReveal';
 
@@ -78,6 +78,8 @@ describe('helpRevealTiming', () => {
 
   it('never runs faster than the floors', () => {
     expect(helpRevealTiming({ ...DEFAULT_HELP_REVEAL, minDuration: 900, minStagger: 120 }))
-      .toEqual({ stagger: 120, duration: Math.max(120 * FADE_SPREAD, 900) });
+      .toEqual({ stagger: 120, duration: 900 });
+    expect(helpRevealTiming({ ...DEFAULT_HELP_REVEAL, minDuration: 0, minStagger: 120 }))
+      .toEqual({ stagger: 120, duration: 480 });
   });
 });

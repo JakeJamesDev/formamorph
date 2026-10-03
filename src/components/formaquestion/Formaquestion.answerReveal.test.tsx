@@ -1,10 +1,11 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { DEFAULT_HELP_REVEAL, type HelpReveal } from '@/lib/formaquestion/helpReveal';
-import { DEFAULT_REVEAL_EASING, REVEAL_EASINGS } from '@/lib/narrationRevealConfig';
-import { getRevealTiming, setRevealTiming } from '@/lib/revealTimingStore';
+import { DEFAULT_DURATION, DEFAULT_REVEAL_EASING, DEFAULT_STAGGER, REVEAL_EASINGS } from '@/lib/narrationRevealConfig';
+import { getRevealTiming } from '@/lib/revealTimingStore';
+import { useSentenceReveal } from '@/lib/useSentenceReveal';
 import { sseFrame } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { stubHelpStream } from '@/test/helpFixtures';
@@ -71,7 +72,7 @@ describe('Answer Reveal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
     const settings = screen.getByRole('dialog', { name: 'Formaquestion Settings' });
     await userEvent.click(within(settings).getByRole('button', { name: /choose reveal animation/i }));
-    const dialog = await screen.findByRole('dialog', { name: 'Answer reveal' });
+    const dialog = await screen.findByRole('dialog', { name: 'Answer Reveal' });
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /Blur/ }));
 
     expect(storedReveal()).toMatchObject({ fade: true, blur: true });
@@ -123,14 +124,18 @@ describe('Answer Reveal', () => {
   });
 
   it("neither reads nor writes the game view's timing while a turn reveals", async () => {
-    const turn = { duration: 1234, stagger: 77 };
-    setRevealTiming(turn);
+    // The game view's pacer, floored well above help's pace, mid-turn.
+    const turn = renderHook(() => useSentenceReveal(() => {}, 120, 1300));
+    act(() => turn.result.current.push('The lantern gutters as you step inside.'));
+    const turnTiming = getRevealTiming();
+    expect(turnTiming).toEqual({ stagger: 120, duration: 1300 });
+
     storeReveal({ minDuration: 0, minStagger: 0 });
     await askWriting();
-    expect(wordStyle('--sd-duration')).not.toBe('1234ms');
-    expect(wordStyle('--sd-delay')).not.toBe('77ms');
-    await act(async () => {});
-    expect(getRevealTiming()).toBe(turn);
+    expect(wordStyle('--sd-duration')).toBe(`${DEFAULT_DURATION}ms`);
+    expect(wordStyle('--sd-delay')).toBe(`${DEFAULT_STAGGER}ms`);
+    expect(getRevealTiming()).toBe(turnTiming);
+    turn.unmount();
   });
 
   it('resets help to the defaults from the dialog', async () => {
@@ -138,9 +143,9 @@ describe('Answer Reveal', () => {
     await openAsk();
     await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Formaquestion Settings' })).getByRole('button', { name: /choose reveal animation/i }));
-    const dialog = await screen.findByRole('dialog', { name: 'Answer reveal' });
+    const dialog = await screen.findByRole('dialog', { name: 'Answer Reveal' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Reset to defaults' }));
-    await userEvent.click(await screen.findByRole('button', { name: /^(Reset|Confirm|Continue)$/ }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(storedReveal()).toEqual(DEFAULT_HELP_REVEAL));
   });
 });
