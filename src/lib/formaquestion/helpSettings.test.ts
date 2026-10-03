@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
+import { DEFAULT_HELP_REVEAL } from './helpReveal';
 
 describe('the default help settings', () => {
   it('equal the values the help session had as constants when the bar run measured it', () => {
@@ -17,6 +18,7 @@ describe('the default help settings', () => {
       reasoningBudget: 75,
       sourcesOpen: true,
       thinkingOpen: false,
+      reveal: DEFAULT_HELP_REVEAL,
     });
   });
 });
@@ -62,5 +64,19 @@ describe('the stored help settings', () => {
 
   it('refuse text that is not a settings object, so the defaults stand', () => {
     for (const raw of ['not json', '[]', 'null', '4']) expect(() => helpSettingsCodec.parse(raw)).toThrow();
+  });
+});
+
+describe('the reveal values', () => {
+  it('change only the values a change names', () => {
+    const blurred = helpSettingsOf({ reveal: { blur: true } });
+    expect(helpSettingsOf({ reveal: { easing: 'linear' } }, blurred).reveal).toEqual({ ...DEFAULT_HELP_REVEAL, blur: true, easing: 'linear' });
+  });
+
+  it('survive the codec, and a value that is not an object takes the defaults', () => {
+    const settings = helpSettingsOf({ reveal: { fade: false, minStagger: 90 } });
+    expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings)).reveal).toEqual(settings.reveal);
+    expect(helpSettingsCodec.parse(JSON.stringify({ reveal: 'fade' })).reveal).toEqual(DEFAULT_HELP_REVEAL);
+    expect(helpSettingsCodec.parse(JSON.stringify({ reveal: { blur: 3 } })).reveal).toEqual(DEFAULT_HELP_REVEAL);
   });
 });

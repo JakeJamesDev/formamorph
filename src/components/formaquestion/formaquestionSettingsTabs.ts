@@ -20,6 +20,7 @@ export const GENERAL_COPY = {
     hint: 'Lets your AI reason before it answers. Answers take longer.',
     info: '**Global** follows the **Native Reasoning** row under Settings → Output, its switch included. **Model Default** sends no hint. Only applies to models with native reasoning.',
   },
+  answerReveal: { label: 'Answer Reveal', hint: 'Sets how each answer appears as it streams' },
   keyword: { label: 'Keyword Search', hint: 'Finds guide sections that share words with your question' },
   aiPicks: { label: 'AI Picks', hint: 'Lets your AI pick guide sections. Costs one more request per question.' },
   semantic: { label: 'Semantic Search', hint: 'Finds guide sections by meaning. Downloads a small model once.' },

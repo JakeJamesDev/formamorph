@@ -8,6 +8,7 @@ import {
   type PromptReasoningSetting,
 } from '@/lib/reasoningEffort';
 import type { Codec } from '@/lib/usePersistentState';
+import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
 
 /** The search sources of a help question. The rankings of the ones that are on merge into one. */
 export interface HelpSources {
@@ -46,6 +47,8 @@ export interface HelpSettings {
   readonly sourcesOpen: boolean;
   /** The state a Thinking block takes when its answer's first reasoning text arrives. A click on a block sets it. */
   readonly thinkingOpen: boolean;
+  /** How an answer reveals as it streams: the Answer Reveal dialog's values. */
+  readonly reveal: HelpReveal;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
@@ -61,14 +64,15 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   reasoningBudget: defaultReasoningBudgetPct('help'),
   sourcesOpen: true,
   thinkingOpen: false,
+  reveal: DEFAULT_HELP_REVEAL,
 };
 
-/** A change to the settings: any field, and inside `sources` only the switches it names. */
-export type HelpSettingsChange = Partial<Omit<HelpSettings, 'sources'>> & { sources?: Partial<HelpSources> };
+/** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
+export type HelpSettingsChange = Partial<Omit<HelpSettings, 'sources' | 'reveal'>> & { sources?: Partial<HelpSources>; reveal?: Partial<HelpReveal> };
 
 /** The settings, the defaults when none are given, with a change applied. */
-export function helpSettingsOf({ sources, ...change }: HelpSettingsChange = {}, base: HelpSettings = DEFAULT_HELP_SETTINGS): HelpSettings {
-  return { ...base, ...change, sources: { ...base.sources, ...sources } };
+export function helpSettingsOf({ sources, reveal, ...change }: HelpSettingsChange = {}, base: HelpSettings = DEFAULT_HELP_SETTINGS): HelpSettings {
+  return { ...base, ...change, sources: { ...base.sources, ...sources }, reveal: { ...base.reveal, ...reveal } };
 }
 
 /** The most earlier exchanges the History Length field takes. */
@@ -95,7 +99,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
   parse: (raw) => {
     const stored: unknown = JSON.parse(raw);
     if (!isRecord(stored)) throw new Error('not a help settings object');
-    const { sources, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
+    const { sources, reveal, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
       sources: isRecord,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
@@ -107,9 +111,10 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       reasoningBudget: isBetween(MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT),
       sourcesOpen: isBool,
       thinkingOpen: isBool,
+      reveal: isRecord,
     });
     const storedSources = isRecord(sources) ? sources : {};
-    return { ...rest, sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }) };
+    return { ...rest, reveal: parseHelpReveal(reveal), sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }) };
   },
   serialize: (value) => JSON.stringify(value),
 };

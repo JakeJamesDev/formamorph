@@ -40,6 +40,27 @@ export type RevealAnimationSource = Pick<ReturnType<typeof useSettings>,
   | 'revealMinStagger' | 'setRevealMinStagger' | 'prefersReducedMotion'
 >;
 
+/** The text the dialog reads, by the surface whose reveal it sets. */
+const COPY = {
+  narration: {
+    title: 'Narration reveal',
+    srDescription: 'Preview the narration reveal and tune its animation.',
+    noEffects: 'No effects — narration types in with the smooth character crawl (paced by the model’s speed, so it isn’t previewable here).',
+    speed: 'In game the pace follows the model’s tokens/sec, but never goes faster than these floors.',
+    resetDescription: 'Reset all narration reveal settings to their defaults?',
+  },
+  answer: {
+    title: 'Answer reveal',
+    srDescription: 'Preview the answer reveal and tune its animation.',
+    noEffects: 'No effects. Answers show with no animation.',
+    speed: 'Answers reveal at a default pace, but never go faster than these floors.',
+    resetDescription: 'Reset all answer reveal settings to their defaults?',
+  },
+} as const;
+
+/** The surface whose reveal the dialog sets. */
+export type RevealKind = keyof typeof COPY;
+
 const SAMPLE =
   'The lantern guttered as you stepped into the hollow. Cold air pressed close, and somewhere ahead water dripped in the dark. You are not alone here.';
 const WORDS = SAMPLE.split(' ');
@@ -55,7 +76,8 @@ function DirectionSelect({ value, onChange }: { value: RevealDirection; onChange
   );
 }
 
-function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; onOpenChange: (v: boolean) => void; source?: RevealAnimationSource }) {
+function RevealAnimationDialog({ open, onOpenChange, source, kind }: { open: boolean; onOpenChange: (v: boolean) => void; source?: RevealAnimationSource; kind: RevealKind }) {
+  const copy = COPY[kind];
   const {
     revealSpec,
     revealFade, setRevealFade,
@@ -136,8 +158,8 @@ function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl h-[705px] max-h-[90dvh] flex flex-col">
         <DialogHeader className="shrink-0">
-          <DialogTitle>Narration reveal</DialogTitle>
-          <DialogDescription className="sr-only">Preview the narration reveal and tune its animation.</DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription className="sr-only">{copy.srDescription}</DialogDescription>
         </DialogHeader>
 
         {/* Frozen live preview */}
@@ -146,10 +168,7 @@ function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; 
           style={containerVars}
         >
           {!active ? (
-            <span className="text-muted-foreground">
-              No effects — narration types in with the smooth character crawl (paced by the model’s speed,
-              so it isn’t previewable here).
-            </span>
+            <span className="text-muted-foreground">{copy.noEffects}</span>
           ) : (
             WORDS.map((w, i) => (
               <Fragment key={`${playKey}-${i}`}>
@@ -284,9 +303,8 @@ function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; 
         {active && (
           <div className="rounded-md border border-dashed border-border p-3 space-y-3">
             <div className="text-helper text-muted-foreground">
-              <span className="font-medium text-foreground">Minimum speed.</span> In game the pace follows the
-              model’s tokens/sec, but never goes faster than these floors. 0 = no limit. The preview above runs
-              at your minimum (or a default when unlimited).
+              <span className="font-medium text-foreground">Minimum speed.</span> {copy.speed} 0 = no limit. The
+              preview above runs at your minimum (or a default when unlimited).
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="flex flex-col gap-1 text-label">
@@ -309,7 +327,7 @@ function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; 
         <DialogFooter className="shrink-0 flex-row items-center justify-between sm:justify-between">
           <ConfirmDialog
             title="Reset reveal animation"
-            description="Reset all narration reveal settings to their defaults?"
+            description={copy.resetDescription}
             onConfirm={reset}
           >
             <Button variant="ghost" disabled={atDefaults}>Reset to defaults</Button>
@@ -324,15 +342,15 @@ function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; 
   );
 }
 
-/** Button + dialog to compose and preview the narration reveal animation; drop into settings. */
-export function RevealAnimationDemoButton({ source }: { source?: RevealAnimationSource }) {
+/** Button + dialog to compose and preview a reveal animation, narration's unless `kind` names another. */
+export function RevealAnimationDemoButton({ source, kind = 'narration' }: { source?: RevealAnimationSource; kind?: RevealKind }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         Choose reveal animation…
       </Button>
-      <RevealAnimationDialog open={open} onOpenChange={setOpen} source={source} />
+      <RevealAnimationDialog open={open} onOpenChange={setOpen} source={source} kind={kind} />
     </>
   );
 }
