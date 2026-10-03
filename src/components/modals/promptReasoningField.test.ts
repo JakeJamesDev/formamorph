@@ -30,6 +30,11 @@ describe('promptReasoningFieldProps', () => {
     expect(promptReasoningFieldProps(input({ reasoning: { dialect: 'vllm', budget: true } }))).not.toBeNull();
   });
 
+  it('draws the field while the dialect awaits proof when the caller asks, and still none where the model does not reason', () => {
+    expect(promptReasoningFieldProps(input({ reasoning: { dialect: 'vllm' }, showAwaitingProof: true }))).not.toBeNull();
+    expect(promptReasoningFieldProps(input({ reasoning: { reasons: false }, showAwaitingProof: true }))).toBeNull();
+  });
+
   it('draws no field on a suppressed call', () => {
     expect(promptReasoningFieldProps(input({ suppressed: true }))).toBeNull();
   });

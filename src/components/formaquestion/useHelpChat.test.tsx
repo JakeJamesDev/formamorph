@@ -3,18 +3,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
-import { openSseReply, sseFrame, sseReply, textSnapshot } from '@/test/aiTextFixtures';
+import { openSseReply, sseFrame, sseReply } from '@/test/aiTextFixtures';
 import { stubHelpStream } from '@/test/helpFixtures';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { languageDirective } from '@/lib/languages';
 import { turnActivity } from '@/lib/turnActivity';
 import type { ImageAttachment } from '@/types';
+import { helpAi } from '@/test/helpAiFixture';
 import type { HelpAi } from './useHelpAi';
 import { useHelpChat } from './useHelpChat';
 
 const index = createDocsIndex({ pages: { Traits: '# Traits\n\n## How to Add a Trait\n\n1. Select **Add Trait**.\n' } });
-const ai: HelpAi = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: async () => true, readsImages: true };
+const ai: HelpAi = helpAi({ readsImages: true });
 
 const screenshot = (id: string): ImageAttachment => ({ id, mime: 'image/jpeg', dataUrl: `data:image/jpeg;base64,${btoa(id)}` });
 

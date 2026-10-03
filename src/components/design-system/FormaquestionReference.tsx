@@ -37,12 +37,13 @@ const SAMPLE_PAGES = {
 };
 const SAMPLE_GUIDE = createGuide(createDocsIndex({ pages: SAMPLE_PAGES }));
 
-/** One answered question, so the sample shows a question, an answer and its sources. */
+/** One answered question, so the sample shows a question, the model's reasoning, an answer and its sources. */
 const SAMPLE_EXCHANGE: HelpExchange = {
   id: 'sample',
   question: 'How do I light a lantern?',
   images: [],
   answer: '1. Select **Lanterns**.\n2. Select **Light**.\n\nThe room shows its exits.',
+  reasoning: 'The player asks about lanterns. The Lanterns page has the steps.',
   status: 'answered',
   sources: SAMPLE_GUIDE.index.get(['Lanterns#how-to-light-a-lantern']),
   flagged: false,
@@ -55,6 +56,7 @@ const SAMPLE_FLAGGED_EXCHANGE: HelpExchange = {
   question: 'How long does lantern oil last?',
   images: [],
   answer: 'Lamp oil often lasts for some hours, but the time depends on the lamp and the wick.',
+  reasoning: '',
   status: 'answered',
   sources: [],
   flagged: true,
@@ -77,7 +79,7 @@ function useSampleChat(): HelpChat {
     readsImages: false,
     pending: [],
     setPending: () => {},
-    ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, images: [], answer: '', status: 'no-ai', sources: [], flagged: false, nearest: [] }]),
+    ask: (question) => setExchanges((all) => [...all, { id: crypto.randomUUID(), question, images: [], answer: '', reasoning: '', status: 'no-ai', sources: [], flagged: false, nearest: [] }]),
     stop: () => {},
     clear: () => setExchanges([]),
   }), [exchanges]);

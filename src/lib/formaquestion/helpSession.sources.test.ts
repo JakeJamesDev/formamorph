@@ -347,7 +347,7 @@ describe('Stop while the pick request runs', () => {
     const server = endpoint({ picks: () => { queueMicrotask(() => controller.abort()); return open.respond(); } });
     const { events } = await ask('import', { fetchImpl: server.fetchImpl, signal: controller.signal });
 
-    expect(events).toEqual([{ type: 'done', text: '', sources: [], lead: undefined, stopped: true, flagged: false, nearest: [] }]);
+    expect(events).toEqual([{ type: 'done', text: '', sources: [], lead: undefined, stopped: true, flagged: false, nearest: [], reasoning: '' }]);
     expect(server.order).toEqual(['pick']);
   });
 });
@@ -365,7 +365,7 @@ describe('Stop while the semantic source opens its model', () => {
       fetchImpl: server.fetchImpl, embedder: embedderOf({ open }), signal: controller.signal, settings: helpSettingsOf({ sources: { aiPicks: false, semantic: true } }),
     });
 
-    expect(events).toEqual([{ type: 'done', text: '', sources: [], lead: undefined, stopped: true, flagged: false, nearest: [] }]);
+    expect(events).toEqual([{ type: 'done', text: '', sources: [], lead: undefined, stopped: true, flagged: false, nearest: [], reasoning: '' }]);
     expect(server.order).toEqual([]);
   });
 });

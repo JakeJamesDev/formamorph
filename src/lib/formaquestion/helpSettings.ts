@@ -3,6 +3,10 @@
  * setting from a constant. The device stores them; tests and probes pass their own. No setting has an
  * environment twin, and none is exported, synced or shared.
  */
+import {
+  defaultPromptReasoningSetting, defaultReasoningBudgetPct, MAX_REASONING_BUDGET_PCT, MIN_REASONING_BUDGET_PCT, parsePromptReasoningSetting,
+  type PromptReasoningSetting,
+} from '@/lib/reasoningEffort';
 import type { Codec } from '@/lib/usePersistentState';
 
 /** The search sources of a help question. The rankings of the ones that are on merge into one. */
@@ -34,8 +38,14 @@ export interface HelpSettings {
   readonly historyLength: number;
   /** The answer cap in tokens: room for a long list of steps. */
   readonly answerMaxTokens: number;
+  /** The answer request's reasoning switch and strength. The pick request never reasons. */
+  readonly reasoning: PromptReasoningSetting;
+  /** The answer request's reasoning budget, in percent of the endpoint's Max Output. */
+  readonly reasoningBudget: number;
   /** The state a Sources list takes when its answer's sources arrive. A click on a list sets it. */
   readonly sourcesOpen: boolean;
+  /** The state a Thinking block takes when its answer's first reasoning text arrives. A click on a block sets it. */
+  readonly thinkingOpen: boolean;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
@@ -47,7 +57,10 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   openScreen: true,
   historyLength: 4,
   answerMaxTokens: 800,
+  reasoning: defaultPromptReasoningSetting('help'),
+  reasoningBudget: defaultReasoningBudgetPct('help'),
   sourcesOpen: true,
+  thinkingOpen: false,
 };
 
 /** A change to the settings: any field, and inside `sources` only the switches it names. */
@@ -63,7 +76,8 @@ export const HELP_HISTORY_MAX = 20;
 
 type Check = (value: unknown) => boolean;
 const isBool: Check = (value) => typeof value === 'boolean';
-const isCount = (max: number): Check => (value) => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
+const isBetween = (min: number, max: number): Check => (value) => Number.isInteger(value) && (value as number) >= min && (value as number) <= max;
+const isCount = (max: number): Check => isBetween(0, max);
 
 /** A preset id, or null for Follow Active. */
 const isPresetId: Check = (value) => value === null || (typeof value === 'string' && value !== '' && value !== SAME_AS_ANSWER);
@@ -89,7 +103,10 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       openScreen: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       answerMaxTokens: (value) => Number.isInteger(value) && (value as number) > 0,
+      reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,
+      reasoningBudget: isBetween(MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT),
       sourcesOpen: isBool,
+      thinkingOpen: isBool,
     });
     const storedSources = isRecord(sources) ? sources : {};
     return { ...rest, sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }) };

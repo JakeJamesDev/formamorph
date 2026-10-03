@@ -310,7 +310,9 @@ export const EDITOR_REQUEST_KINDS = ['descriptionSummary', 'descriptionBridge', 
 
 export const ALL_REQUEST_KINDS = [...PROMPT_REQUEST_KINDS, ...EDITOR_REQUEST_KINDS] as const;
 
-const isEditorRequest = (kind: AIRequestType): boolean => (EDITOR_REQUEST_KINDS as readonly AIRequestType[]).includes(kind);
+/** An editor kind that always sends reasoning off. Help reads its own setting, which the help session puts in the snapshot. */
+const isForcedOffEditorRequest = (kind: AIRequestType): boolean =>
+  kind !== 'help' && (EDITOR_REQUEST_KINDS as readonly AIRequestType[]).includes(kind);
 // Fails to compile when a kind is added to the union but not to the list above.
 type _EveryKindListed = Exclude<AIRequestType, (typeof ALL_REQUEST_KINDS)[number]> extends never ? true : never;
 const _everyKindListed: _EveryKindListed = true;
@@ -347,7 +349,7 @@ export function resolvePromptReasoning(
   globalEffort: ReasoningEffort,
   mode: ThinkingMode,
 ): ReasoningEffort {
-  if (nativeReasoningSuppressed(mode, kind) || isEditorRequest(kind)) return 'none';
+  if (nativeReasoningSuppressed(mode, kind) || isForcedOffEditorRequest(kind)) return 'none';
   const pref = prefs[kind] ?? defaultPromptReasoning(kind);
   return pref === 'global' ? globalEffort : pref;
 }

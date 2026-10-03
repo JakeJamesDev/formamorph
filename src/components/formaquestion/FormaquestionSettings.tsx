@@ -1,5 +1,8 @@
 import { Settings } from 'lucide-react';
-import { CheckRow, Row, Section } from '@/components/SettingsRows';
+import { CheckRow, HintInfo, Row, Section } from '@/components/SettingsRows';
+import { PromptReasoningField } from '@/components/modals/PromptOptionFields';
+import { promptReasoningFieldProps, type ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
+import { REASONING_NOTES } from '@/components/modals/settingsCopy';
 import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { reasoningRuledOut } from '@/lib/reasoningEffort';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import type { SemanticSearch } from './useSemanticSearch';
 import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
@@ -41,9 +45,39 @@ function SemanticStatus({ semantic }: { semantic: SemanticSearch }) {
   );
 }
 
-function GeneralTab({ settings, onChange, semantic }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void; semantic: SemanticSearch }) {
+/** The answer request's reasoning, with the effort list and the budget of the endpoint answers resolve to. */
+function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void; target: ReasoningFieldTarget }) {
+  const copy = GENERAL_COPY.reasoning;
+  const field = promptReasoningFieldProps({
+    target, kind: 'help', setting: settings.reasoning, budgetPct: settings.reasoningBudget, suppressed: false, showAwaitingProof: true,
+    onChange: (reasoning) => onChange({ reasoning }),
+    onBudgetChange: (reasoningBudget) => onChange({ reasoningBudget }),
+  });
+  if (!field || (!target.localEngine && reasoningRuledOut(target.reasoning))) {
+    return (
+      <Row muted label={copy.label}>
+        <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
+      </Row>
+    );
+  }
+  return (
+    <Row top htmlFor="fq-reasoning" label={copy.label} hint={copy.hint} info={<HintInfo>{copy.info}</HintInfo>}>
+      <PromptReasoningField {...field} id="fq-reasoning" copy={null} />
+    </Row>
+  );
+}
+
+function GeneralTab({ settings, onChange, semantic, answerTarget }: {
+  settings: HelpSettings;
+  onChange: (change: HelpSettingsChange) => void;
+  semantic: SemanticSearch;
+  answerTarget: ReasoningFieldTarget;
+}) {
   return (
     <div className="grid gap-6 py-4">
+      <Section title="Answer">
+        <ReasoningRow settings={settings} onChange={onChange} target={answerTarget} />
+      </Section>
       <Section title="Search">
         <CheckRow
           htmlFor="fq-keyword"
@@ -87,7 +121,7 @@ function GeneralTab({ settings, onChange, semantic }: { settings: HelpSettings; 
  * Formaquestion Settings: a dialog the size of Settings, opened from the gear in the Formaquestion header.
  * The help window stays above it.
  */
-export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, settings, onChange, semantic }: {
+export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, settings, onChange, semantic, answerTarget }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tab: FormaquestionSettingsTab;
@@ -95,6 +129,8 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
   settings: HelpSettings;
   onChange: (change: HelpSettingsChange) => void;
   semantic: SemanticSearch;
+  /** The endpoint answers resolve to, which the Reasoning row reads. */
+  answerTarget: ReasoningFieldTarget;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,7 +153,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
           </TabsList>
           <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
             <ScrollArea className="min-h-0 flex-1">
-              <GeneralTab settings={settings} onChange={onChange} semantic={semantic} />
+              <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} />
             </ScrollArea>
           </TabsContent>
           <TabsContent value="endpoint" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">

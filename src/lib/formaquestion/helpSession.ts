@@ -5,9 +5,9 @@
 import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { ABORTED_FINISH_REASON } from '@/lib/aiRequest/aiStream';
 import { streamAiToolLoop } from '@/lib/aiRequest/toolLoop';
-import { stripReasoningLive } from '@/lib/aiResponse';
+import { extractReasoningLive, stripReasoningLive } from '@/lib/aiResponse';
 import { CHANGELOG_PAGE, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
-import { toolsSupported } from '@/lib/reasoningEffort';
+import { resolvePromptReasoning, resolvePromptReasoningSetting, toolsSupported, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { withImageParts } from '@/lib/aiRequest/imageParts';
 import type { ImageAttachment, RequestMessage } from '@/types';
@@ -78,20 +78,37 @@ export interface HelpQuestion {
 }
 
 export type HelpEvent =
-  /** The answer so far. `flagged` once the general-knowledge marker came in. */
-  | { type: 'answer'; text: string; flagged: boolean }
+  /** The answer so far. `flagged` once the general-knowledge marker came in. `reasoning` is the model's, native or inline. */
+  | { type: 'answer'; text: string; flagged: boolean; reasoning: string }
   /**
    * The end of the answer, with the docs sections that reached the model. A flagged answer did not come
    * from the guide, and `nearest` holds the search's sections for the question. `lead` is the open screen's
    * section among the sources.
    */
-  | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[] };
+  | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[]; reasoning: string };
 
-/** The snapshot with the help kind sent along `routes`: the first preset id of them that exists, else the active endpoint. */
-const routed = (snapshot: AiSettingsSnapshot, routes: readonly string[]): AiSettingsSnapshot => ({
-  ...snapshot,
-  resolveTarget: (kind) => snapshot.resolveTarget(kind, routes),
-});
+/** The pick request never reasons (Q28). */
+const PICK_REASONING: PromptReasoningSetting = { enabled: false, level: 'global' };
+
+/**
+ * The snapshot of one help request: the help kind sent along `routes` (the first preset id of them that exists,
+ * else the active endpoint), with `reasoning` in place of any game setting for the kind.
+ */
+function helpSnapshot(snapshot: AiSettingsSnapshot, routes: readonly string[], reasoning: PromptReasoningSetting, budgetPct?: number): AiSettingsSnapshot {
+  const promptReasoning = { ...snapshot.promptReasoning, help: resolvePromptReasoningSetting(reasoning) };
+  const reasons = resolvePromptReasoning('help', promptReasoning, snapshot.reasoningEffort, snapshot.thinkingMode) !== 'none';
+  return {
+    ...snapshot,
+    resolveTarget: (kind) => snapshot.resolveTarget(kind, routes),
+    promptReasoning,
+    ...(budgetPct !== undefined && { promptReasoningBudget: { ...snapshot.promptReasoningBudget, help: budgetPct } }),
+    keptReasoning: { ...snapshot.keptReasoning, prompts: { ...snapshot.keptReasoning?.prompts, help: reasoning } },
+    reasoningEngaged: snapshot.reasoningEngaged || reasons,
+  };
+}
+
+/** The reasoning parts that came in, as one text. */
+const joinReasoning = (...parts: string[]): string => parts.filter(Boolean).join('\n\n');
 
 /** The exchanges that got answer text. */
 const answered = (history: readonly EarlierExchange[]): EarlierExchange[] => history.filter((exchange) => exchange.answer.trim());
@@ -219,7 +236,7 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
   const previous = keptHistory(history, settings.historyLength).at(-1);
   const [allPicks, semantic] = await Promise.all([
     on.aiPicks
-      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, routed(snapshot, helpRoutes(settings).pick), { signal, fetchImpl }).catch(() => [])
+      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING), { signal, fetchImpl }).catch(() => [])
       : [],
     on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), embedder), stopped]) : null,
   ]);
@@ -251,13 +268,13 @@ export async function* askHelp({
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = settings.openScreen ? surfaceHint(surface, index) : null;
   const kept = keptHistory(history, settings.historyLength);
-  const answerSnapshot = routed(snapshot, helpRoutes(settings).answer);
+  const answerSnapshot = helpSnapshot(snapshot, helpRoutes(settings).answer, settings.reasoning, settings.reasoningBudget);
   const lookupMode = settings.lookup && toolsSupported(answerSnapshot.resolveTarget('help').reasoning);
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const search = bare ? index : await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl });
   if (signal?.aborted) {
-    yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [] };
+    yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [], reasoning: '' };
     return;
   }
   const inPrompt = bare ? [] : helpSections(search, question, { history: kept, lead: hint?.section, howToRule });
@@ -276,18 +293,32 @@ export async function* askHelp({
   });
   let text = '';
   let marked = false;
+  // Native reasoning of every round, inline reasoning of earlier rounds, and this round's content.
+  let native = '';
+  let earlierInline = '';
+  let content = '';
+  let reasoning = '';
+  const reasoningNow = () => joinReasoning(native, earlierInline, extractReasoningLive(content));
   for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, ...(lookup && { execute: lookup.execute }) })) {
     if (event.type === 'toolCalls') {
-      // What the model wrote before a call is not the answer.
-      if (text || marked) yield { type: 'answer', text: '', flagged: false };
+      // What the model wrote before a call is not the answer, but its inline reasoning still is reasoning.
+      earlierInline = joinReasoning(earlierInline, extractReasoningLive(content));
+      content = '';
+      if (text || marked) yield { type: 'answer', text: '', flagged: false, reasoning };
       text = '';
       marked = false;
-    } else if (event.type === 'delta') {
-      const next = readMarker(stripReasoningLive(event.content));
-      if (next.text === text && next.marked === marked) continue;
+    } else if (event.type === 'reasoning' || event.type === 'delta') {
+      if (event.type === 'reasoning') native = event.text;
+      else content = event.content;
+      const next = readMarker(stripReasoningLive(content));
+      const nextReasoning = reasoningNow();
+      if (next.text === text && next.marked === marked && nextReasoning === reasoning) continue;
       ({ text, marked } = next);
-      yield { type: 'answer', text, flagged: marked && !bare };
+      reasoning = nextReasoning;
+      yield { type: 'answer', text, flagged: marked && !bare, reasoning };
     } else if (event.type === 'done') {
+      native = event.result.reasoningText;
+      content = event.result.content;
       const sources = [...(lookup?.fetched() ?? []), ...inPrompt];
       const stopped = event.result.finishReason === ABORTED_FINISH_REASON;
       // A Stop can land while a start of the marker is held back; that start stays hidden.
@@ -297,7 +328,7 @@ export async function* askHelp({
       }
       const flagged = !bare && isGeneralKnowledge(answer.marked, sources.length);
       const nearest = flagged ? helpSections(search, question, { history: kept }) : [];
-      yield { type: 'done', text: answer.text, sources, lead: hint?.section, stopped, flagged, nearest };
+      yield { type: 'done', text: answer.text, sources, lead: hint?.section, stopped, flagged, nearest, reasoning: reasoningNow() };
     }
   }
 }

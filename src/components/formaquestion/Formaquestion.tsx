@@ -113,7 +113,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // The conversation lives here, so it outlives the window. The AI check runs only while the window is open.
   const [settings, changeSettings] = useHelpSettings();
   const semantic = useSemanticSearch(settings, changeSettings);
-  const chat = useHelpChat(index, useHelpAi(open, settings), settings);
+  const ai = useHelpAi(open, settings);
+  const chat = useHelpChat(index, ai, settings);
 
   // A dialog opened from the window. On the sheet it fills the screen, so the sheet hides under it and keeps its state.
   const [dialog, setDialog] = useState<FormaquestionDialog | null>(null);
@@ -341,6 +342,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         settings={settings}
         onChange={changeSettings}
         semantic={semantic}
+        answerTarget={ai.answerTarget}
       />
     </>,
     layer,

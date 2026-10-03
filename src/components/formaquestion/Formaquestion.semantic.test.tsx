@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
-import { sseReply, textSnapshot } from '@/test/aiTextFixtures';
+import { sseReply } from '@/test/aiTextFixtures';
+import { helpAi } from '@/test/helpAiFixture';
 import { stubHelpStream } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import type { EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
@@ -64,7 +65,7 @@ beforeEach(() => {
   model.cached = false;
   model.load.mockReset();
   model.embed.mockClear();
-  ai.current = { snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: vi.fn(async () => true), readsImages: false };
+  ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {
   surfaceRegistry.clear(1_000_000);

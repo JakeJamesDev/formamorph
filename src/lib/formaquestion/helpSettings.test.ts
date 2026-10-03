@@ -13,7 +13,10 @@ describe('the default help settings', () => {
       openScreen: true,
       historyLength: 4,
       answerMaxTokens: 800,
+      reasoning: { enabled: false, level: 'global' },
+      reasoningBudget: 75,
       sourcesOpen: true,
+      thinkingOpen: false,
     });
   });
 });

@@ -113,14 +113,19 @@ describe('a help question', () => {
     expect(traits.frame).not.toMatch(/Trait|Stat|Import|##/);
   });
 
-  it('keeps an inline reasoning block out of the answer', async () => {
+  it('keeps an inline reasoning block out of the answer, and sends it as the reasoning', async () => {
     const fetchImpl = replyWith([
       sseFrame({ content: '<think>The player wants' }),
       sseFrame({ content: ' steps.</think>\n\n1. Select' }),
       ...sseReply(' **Add Trait**.'),
     ]);
     const events = await collect(ask('add a trait', fetchImpl));
-    expect(events.map((event) => event.text)).toEqual(['1. Select', '1. Select **Add Trait**.', '1. Select **Add Trait**.']);
+    expect(events.map((event) => [event.text, event.reasoning])).toEqual([
+      ['', 'The player wants'],
+      ['1. Select', 'The player wants steps.'],
+      ['1. Select **Add Trait**.', 'The player wants steps.'],
+      ['1. Select **Add Trait**.', 'The player wants steps.'],
+    ]);
   });
 });
 

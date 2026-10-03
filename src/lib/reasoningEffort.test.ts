@@ -249,6 +249,19 @@ describe('per-prompt reasoning', () => {
     expect(resolvePromptReasoning('narration', {}, 'max', 'inline')).toBe('none');
     expect(resolvePromptReasoning('narration', { narration: 'high' }, 'high', 'staged')).toBe('high');
   });
+
+  it('resolves the editor kinds to none whatever is stored or set globally', () => {
+    for (const kind of ['descriptionSummary', 'descriptionBridge', 'imageTags'] as const) {
+      expect(resolvePromptReasoning(kind, { [kind]: 'high' }, 'high', 'off')).toBe('none');
+      expect(resolvePromptReasoning(kind, { [kind]: 'global' }, 'max', 'staged')).toBe('none');
+    }
+  });
+
+  it('resolves the help kind from its own setting, off when none is given', () => {
+    expect(resolvePromptReasoning('help', { help: 'high' }, 'low', 'off')).toBe('high');
+    expect(resolvePromptReasoning('help', { help: 'global' }, 'medium', 'off')).toBe('medium');
+    expect(resolvePromptReasoning('help', {}, 'max', 'staged')).toBe('none');
+  });
 });
 
 describe('reasoning budget (local engine)', () => {
