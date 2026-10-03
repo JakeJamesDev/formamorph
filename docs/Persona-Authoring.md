@@ -173,8 +173,8 @@ Select the placed chip to open its pop-out and set **Content**:
 
 | Content | Sends | Use it for |
 |---|---|---|
-| **Full** | Name, aliases, pronouns and full description | Prompts that write or plan the scene |
-| **Summary** | The short AI summary, or the full description when there is none | A shorter prompt |
+| **Full** | Name, aliases, pronouns, full description and active traits | Prompts that write or plan the scene |
+| **Summary** | The short AI summary, or the full description when there is none, and the names of its active traits | A shorter prompt |
 | **Name** | The name and pronouns only, as plain text | Inside a sentence |
 
 **Format** works as on the other list chips: **Simple**, **Markdown** or **XML**. **Name** sends plain text, so it locks **Format**.

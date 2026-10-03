@@ -69,7 +69,8 @@ describe("buildLocationContext", () => {
 
   it("prefers aiSummary when preferSummary is set", () => {
     const out = buildLocationContext(location, { preferSummary: true });
-    expect(out).toContain("description: A towering stone gate.");
+    expect(out).toContain("summary: A towering stone gate.");
+    expect(out).not.toContain("description:");
     expect(out).not.toContain("portcullis raised");
   });
 
@@ -330,6 +331,12 @@ describe("navigableDestinations / buildDestinationsContext", () => {
     expect(xml).toContain("<via>the shimmering portal</via>");
   });
 
+  it("tags a list item's text as summary only when its authored summary won", () => {
+    const xml = buildDestinationsContext(green, locs, conns, { preferSummary: true, format: "xml" });
+    expect(xml).toContain("<summary>A blue-doored cottage.</summary>");
+    expect(buildDestinationsContext(green, locs, conns, { format: "xml" })).not.toContain("<summary>");
+  });
+
   describe("a hint for each direction", () => {
     const hintTo = (from: GameLocation, to: GameLocation, connections: Connection[]) =>
       navigableDestinationEntries(from, locs, connections).find((e) => e.location.id === to.id)?.hint;
@@ -414,7 +421,8 @@ describe("buildEntityContext", () => {
 
   it("prefers aiSummary for entities when preferSummary is set", () => {
     const out = buildEntityContext(location, [guard], { preferSummary: true });
-    expect(out).toContain("  description: A burly scarred guard.");
+    expect(out).toContain("  summary: A burly scarred guard.");
+    expect(out).not.toContain("description:");
     expect(out).not.toContain("full plate");
   });
 
@@ -465,7 +473,7 @@ describe("buildEntityContext", () => {
 
     it("gives the summary one line of trait names, in tree order", () => {
       const out = renderEntityRoster(["wolf"], [wolf], { ownedTraits, preferSummary: true });
-      expect(out).toBe("Ash\n  description: A gray wolf.\n  traits: Tamed, Calm\n");
+      expect(out).toBe("Ash\n  summary: A gray wolf.\n  traits: Tamed, Calm\n");
       expect(renderEntityRoster(["wolf"], [wolf], { ownedTraits, preferSummary: true, format: "xml" }))
         .toContain("  <traits>Tamed, Calm</traits>\n");
     });

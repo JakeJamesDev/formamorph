@@ -242,24 +242,33 @@ describe('the Traits chip', () => {
   const vow: Trait = { id: 'vow', name: 'Vow of Silence', aiDescription: 'Speaks to no one.', statChanges: [] };
   const played: ResolvedPersona = { source: 'world', entity: { ...traveler, traits: [scarred, vow] } };
 
-  it("adds the played entity's owned traits in force after the world traits", () => {
+  it("keeps the played entity's owned traits out of the Traits chip", () => {
     const values = chipValues(scene({ persona: played, ownedTraits: { traveler: ['scarred'] } }));
-    expect(values['<TRAITS DESCRIPTION>']).toBe(
-      'Light Sleeper: Wakes at the smallest sound.\nOrigin:\n  Where you come from.\n  Saltborn: Raised on the coast.\n'
-      + 'Scarred: A pale line across one cheek.',
-    );
-    expect(values['<TRAITS DESCRIPTION>']).not.toContain('Vow of Silence');
-    expect(values['<TRAITS DESCRIPTION|xml>']).toContain('<name>Scarred</name>');
+    expect(values['<TRAITS DESCRIPTION>']).toBe(chipValues(scene())['<TRAITS DESCRIPTION>']);
+    expect(chipValues(scene({ traits: [], persona: played, ownedTraits: { traveler: ['scarred'] } }))['<TRAITS DESCRIPTION>'])
+      .toBe(NONE_PLACEHOLDER);
+  });
+});
+
+describe('owned traits in the Persona chip', () => {
+  const scarred: Trait = { id: 'scarred', name: 'Scarred', aiDescription: 'A pale line across one cheek.', statChanges: [] };
+  const vow: Trait = { id: 'vow', name: 'Vow of Silence', aiDescription: 'Speaks to no one.', statChanges: [] };
+  const played: ResolvedPersona = { source: 'world', entity: { ...traveler, traits: [scarred, vow] } };
+  const values = chipValues(scene({ persona: played, ownedTraits: { traveler: ['scarred'] } }));
+
+  it("nests the played entity's owned traits in force in its block, as a cast member's", () => {
+    expect(values['<PERSONA>']).toContain('  traits:\n    Scarred: A pale line across one cheek.');
+    expect(values['<PERSONA>']).not.toContain('Vow of Silence');
+    expect(values['<PERSONA|summary>']).toContain('  traits: Scarred');
+    expect(values['<PERSONA|xml>']).toContain('<traits>');
   });
 
-  it('renders the owned traits alone when no world trait is in force', () => {
-    const values = chipValues(scene({ traits: [], persona: played, ownedTraits: { traveler: ['scarred'] } }));
-    expect(values['<TRAITS DESCRIPTION>']).toBe('Scarred: A pale line across one cheek.');
+  it('places the traits inside the block, before the known-person line', () => {
+    expect(values['<PERSONA>'].indexOf('Scarred')).toBeLessThan(values['<PERSONA>'].indexOf(knownPersonaLine('Traveler')));
   });
 
-  it('keeps the owned traits out of the Persona chip', () => {
-    const values = chipValues(scene({ persona: played, ownedTraits: { traveler: ['scarred'] } }));
-    expect(values['<PERSONA>']).not.toContain('Scarred');
+  it('leaves the name content bare', () => {
+    expect(values['<PERSONA|name>']).not.toContain('Scarred');
   });
 });
 

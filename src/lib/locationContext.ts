@@ -17,6 +17,10 @@ type ContextFormat = "simple" | "markdown" | "xml";
 const pickDescription = (preferSummary: boolean, summary?: string, description?: string) =>
   preferSummary ? summary?.trim() || description : description;
 
+/** The field key for the text `pickDescription` chose: `summary` when an authored summary won, else `description`. */
+const descriptionKey = (preferSummary: boolean, summary?: string) =>
+  (preferSummary && summary?.trim() ? "summary" : "description");
+
 /** Which authored text a location or entity reaches the AI as. `none` means the item lists as a bare name. */
 export type ContextDelivery = 'full' | 'summary' | 'none';
 
@@ -74,7 +78,8 @@ function buildLocationList(
     const hint = hints?.get(item.id)?.trim();
     if (format === "xml") {
       let inner = `  <name>${xmlEscape(item.name)}</name>\n`;
-      if (hasDesc) inner += `  <description>${xmlEscape(desc!)}</description>\n`;
+      const key = descriptionKey(preferSummary, item.aiSummary);
+      if (hasDesc) inner += `  <${key}>${xmlEscape(desc!)}</${key}>\n`;
       if (hint) inner += `  <via>${xmlEscape(hint)}</via>\n`;
       output += `<location>\n${inner}</location>\n`;
       continue;
@@ -117,7 +122,7 @@ export function buildLocationContext(
   let output = field("name", location.name);
   const locationDescription = pickDescription(preferSummary, location.aiSummary, location.aiDescription) || location.description;
   if (locationDescription && locationDescription.trim() !== "") {
-    output += field("description", locationDescription);
+    output += field(descriptionKey(preferSummary, location.aiSummary), locationDescription);
   }
   output += appendAllowedFields(location, AI_LOCATION_FIELDS, field);
   return output;
@@ -188,6 +193,7 @@ export function renderEntityRoster(
     if (!entityItem) return;
     const entityDescription = pickDescription(preferSummary, entityItem.aiSummary, entityItem.aiDescription);
     const hasDesc = !!entityDescription && entityDescription.trim() !== "";
+    const descKey = descriptionKey(preferSummary, entityItem.aiSummary);
     // Aliases render explicitly (not via the scalar allowlist): joined, and under a spaced label the
     // small models read naturally — except in xml, where a tag name can't contain spaces.
     const aliases = (entityItem.aliases ?? []).map((a) => a.trim()).filter(Boolean);
@@ -201,7 +207,7 @@ export function renderEntityRoster(
       let inner = field("name", entityItem.name);
       inner += aliasLine;
       inner += pronounLine;
-      if (hasDesc) inner += field("description", entityDescription!);
+      if (hasDesc) inner += field(descKey, entityDescription!);
       inner += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
       inner += traitLines;
       output += `<entity>\n${inner}</entity>\n`;
@@ -210,7 +216,7 @@ export function renderEntityRoster(
     output += head(entityItem.name);
     output += aliasLine;
     output += pronounLine;
-    if (hasDesc) output += field("description", entityDescription!);
+    if (hasDesc) output += field(descKey, entityDescription!);
     output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
     output += traitLines;
   });
