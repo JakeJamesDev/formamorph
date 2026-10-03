@@ -47,7 +47,7 @@ export const PROMPTS_COPY = {
   },
   options: {
     title: 'Options',
-    hint: 'Apply to the answer request of every preset. The Picks request keeps its own values.',
+    hint: 'Applies to the answer request of every preset. The Picks request keeps its own values.',
     temperature: { label: 'Custom Temperature', hint: 'Sets how freely the answer words its steps' },
     repetitionPenalty: { label: 'Custom Repetition Penalty', hint: 'Sets how hard the answer avoids repeated words' },
   },
