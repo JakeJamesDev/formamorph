@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPicks';
 import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
-import { answerVariant, rewriteAnswer } from './help-answer-variants';
+import { answerVariant, rewriteAnswer, type AnswerVariant } from './help-answer-variants';
 
 const index = bundledDocsIndex();
 const sections = index.get(['Formaquestion#how-to-move-the-help-tab', 'Formaquestion#how-to-move-and-resize-the-window', 'Formaquestion#the-window']);
@@ -54,11 +54,11 @@ describe('the answer variants', () => {
 });
 
 describe('the answer variant fetch', () => {
-  const sent = (system: string) => {
-    const fetchImpl = vi.fn(async () => new Response(''));
-    const body = JSON.stringify({ messages: [{ role: 'system', content: system }, { role: 'user', content: plain }] });
-    void answerVariant(fetchImpl, 'v-labels')('https://help.example.com', { body });
-    return JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body)) as { messages: { content: string }[] };
+  const sent = (system: string, user = plain, variant: AnswerVariant = 'v-labels') => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(''));
+    const body = JSON.stringify({ messages: [{ role: 'system', content: system }, { role: 'user', content: user }] });
+    void answerVariant(fetchImpl, variant)('https://help.example.com', { body });
+    return JSON.parse(String(fetchImpl.mock.calls[0][1]?.body)) as { messages: { content: string }[] };
   };
 
   it('rewrites the answer request, with the language directive on its prompt too', () => {
@@ -67,5 +67,15 @@ describe('the answer variant fetch', () => {
 
   it('sends every other request as it is', () => {
     expect(sent(HELP_PICK_SYSTEM_PROMPT).messages[1].content).toBe(plain);
+  });
+
+  it('ends the probe when a rewrite cannot apply, so no arm runs on as the control', () => {
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('exit'); }) as typeof process.exit);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => sent(HELP_SYSTEM_PROMPT, `${plain}\nMore.`, 'v-close')).toThrow('exit');
+    expect(exit).toHaveBeenCalledWith(1);
+    expect(error).toHaveBeenCalledWith(expect.stringMatching(/v-close/));
+    exit.mockRestore();
+    error.mockRestore();
   });
 });
