@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 import { avatarHue, avatarInitial } from "@/lib/avatar";
 import { serverAssetSrc } from "@/lib/serverAssets";
 import { API_BASE_URL } from "@/lib/apiBase";
-import { flairTier, supporterRing, type SupporterFlair } from "@/lib/supporterFlair";
+import { flairTier, supporterRing } from "@/lib/supporterFlair";
+import type { SupporterFlair } from "@/types";
 
 /** Named sizes rather than a free number: the same face appears at the same few scales throughout. */
 const SIZES = {

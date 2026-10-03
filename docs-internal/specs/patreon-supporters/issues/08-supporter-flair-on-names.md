@@ -1,6 +1,7 @@
 # 08: Supporter Flair on Names
 
 Status: ready-for-human
+Status note: built; `SupporterTier` and `SupporterFlair` live in `src/types/supporter.ts`. `verify-ui` evidence still open (see Hand-over).
 Base: 9e8df9af
 Blocked by: 04, 07
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

@@ -1,6 +1,6 @@
 import type { CatalogKind } from '@/lib/catalogKinds';
 import type { LikeCount } from '@/lib/likeCount';
-import type { SupporterFlair } from '@/lib/supporterFlair';
+import type { SupporterFlair } from './supporter';
 
 /**
  * The public face of an account: what a stranger sees when they click a name.

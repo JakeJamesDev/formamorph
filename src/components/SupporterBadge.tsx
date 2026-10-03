@@ -1,7 +1,8 @@
 import { Heart, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
-import { SUPPORTER_BADGE_STYLES, SUPPORTER_LABELS, supporterTenure, type SupporterTier } from "@/lib/supporterFlair";
+import { SUPPORTER_BADGE_STYLES, SUPPORTER_LABELS, supporterTenure } from "@/lib/supporterFlair";
+import type { SupporterTier } from "@/types";
 
 interface SupporterBadgeProps {
   tier: SupporterTier;

@@ -1,16 +1,9 @@
 import type { AvatarSize } from '@/components/UserAvatar';
 import { parseServerDate } from '@/lib/serverDate';
+import type { SupporterTier } from '@/types';
 
-/** The Patreon tiers that carry Supporter Flair. */
-export const SUPPORTER_TIERS = ['supporter', 'supporter_plus'] as const;
-export type SupporterTier = (typeof SUPPORTER_TIERS)[number];
-
-/** The `supporter` field of an author object. The server sends null for no flair, staff included. */
-export interface SupporterFlair {
-  tier: SupporterTier;
-  /** When the current pledge started, or null when Patreon gave no date. */
-  since: string | null;
-}
+/** Every tier, in display order. */
+export const SUPPORTER_TIERS: readonly SupporterTier[] = ['supporter', 'supporter_plus'];
 
 /** The tier to draw, or null. An absent field, a null, and a tier this build doesn't know all mean no flair. */
 export const flairTier = (supporter: { tier: string } | null | undefined): SupporterTier | null =>

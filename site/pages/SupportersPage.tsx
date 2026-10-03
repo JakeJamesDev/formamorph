@@ -5,8 +5,8 @@ import { PATREON_PAGE_URL } from '@/components/PatreonSection';
 import {
   SUPPORTER_LABELS,
   SUPPORTER_NAME_STYLES,
-  type SupporterTier,
 } from '@/lib/supporterFlair';
+import type { SupporterTier } from '@/types';
 import { PatreonService, type Supporter } from '@/services/PatreonService';
 import { cn } from '@/lib/utils';
 import { SiteLayout } from '../components/SiteLayout';
