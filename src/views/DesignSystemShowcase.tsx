@@ -5,6 +5,7 @@ import { BreadcrumbPickerReference } from '@/components/design-system/Breadcrumb
 import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
+import { SupporterFlairReference } from '@/components/design-system/SupporterFlairReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -353,6 +354,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Filter Row',
     description: 'Search, the main filters, and a Filters popover',
     Component: FeedbackFilterRowReference,
+  },
+  {
+    id: 'supporter-flair',
+    label: 'Supporter Flair',
+    description: 'Tier colors, badges, names, and Profile Image rings',
+    Component: SupporterFlairReference,
   },
 ];
 

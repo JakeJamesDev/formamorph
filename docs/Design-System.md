@@ -1071,6 +1071,45 @@ Open `#dev?modal=designSystem&tab=filter-row` for the staff and user rows in loc
 
 The labels follow AP title case: **Filters**, **More Filters**, and **Reset Filters**. The count in the accessible name changes with the state, so it is status text, not a lecture. The select names keep their production wording.
 
+## Pattern: Supporter Flair
+
+Supporter Flair marks an account that supports the project on Patreon. It is a proposal until the user approves it. No surface uses it yet.
+
+### Composition
+
+- 🎨 **Two tier tokens.** `--supporter` is coral. `--supporter-plus` is magenta. Both stay the same in every palette, so a palette never blurs a tier against its own primary color.
+- 🏷️ **Badges.** A pill with an icon. Supporter has a heart on a light tint. Supporter+ has a sparkle, a stronger tint, and an outline, so the tiers differ by shape and not only by hue.
+- 🔤 **Names.** The name takes its tier color. Use no other change to the name.
+- 🖼️ **Profile Image ring.** A ring in the tier color with a gap to the image. The ring is 1 pixel at the two small sizes, 2 pixels at the middle sizes, and 3 pixels at the largest size.
+- 🧭 **Beside staff.** The staff badges stay square text tags in blue, green, and the palette's primary. A pill with an icon never reads as a staff tag.
+
+### When to use it
+
+- Show the flair wherever other people see a name: listings, comments, feedback, and profiles.
+- Show no flair on a staff account. The staff badge wins.
+- Show no flair on a stored name snapshot, such as a contest podium.
+- Do not use the tier colors for anything else. They mean support and nothing more.
+
+### Contrast
+
+Each token meets 4.5:1 as text on the background, card, popover, and muted surface of every palette, in both modes. It meets the same ratio under its strongest badge tint. [`supporterTokens.test.ts`](../src/lib/supporterTokens.test.ts) reads [`src/index.css`](../src/index.css) and checks every palette. Hover fills are not part of the check: the High Contrast hover fill is a mid gray that no hue clears.
+
+### Production mapping
+
+| Part | Source |
+| --- | --- |
+| Tokens | [`src/index.css`](../src/index.css) and [`tailwind.config.js`](../tailwind.config.js) |
+| Tier labels and styles, ring classes | [`supporterFlair.ts`](../src/lib/supporterFlair.ts) |
+| Badge | `SupporterBadge` in [`SupporterBadge.tsx`](../src/components/SupporterBadge.tsx) |
+| Staff badge for comparison | `RoleBadge` in [`RoleBadge.tsx`](../src/components/RoleBadge.tsx) |
+| Profile Image | `UserAvatar` in [`UserAvatar.tsx`](../src/components/UserAvatar.tsx), with `supporterRing` as its `className` |
+
+Open `#dev?modal=designSystem&tab=supporter-flair` for the light and dark panels side by side.
+
+### Writing review
+
+The badge labels are **Supporter** and **Supporter+**. Copy says Profile Image, never avatar.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

@@ -104,6 +104,11 @@ module.exports = {
         gold: "hsl(var(--gold))",
         silver: "hsl(var(--silver))",
         bronze: "hsl(var(--bronze))",
+        // Supporter Flair tiers: badge tint, name color, and Profile Image ring. One set across every theme.
+        supporter: {
+          DEFAULT: "hsl(var(--supporter))",
+          plus: "hsl(var(--supporter-plus))",
+        },
         // The filled heart on a liked listing. Deliberately one pink across every theme — see index.css.
         like: "hsl(var(--like))",
         overlay: "hsl(var(--overlay))",
