@@ -1,3 +1,0 @@
-# Graphify knowledge-graph output — ignore so rebuilds don't invalidate Claude Code's prompt cache.
-graph.json
-graphify-out/
