@@ -1,6 +1,7 @@
 # 13: Answer prompt options
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: abd4cf3b
 Blocked by: 02, 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -26,9 +27,9 @@ Recommended model rationale: three fields on existing components and one read in
 
 ## Acceptance criteria
 
-- [ ] Each field changes the answer request body, and does not change the pick request.
-- [ ] With the defaults, the request bodies equal those of ticket 11.
-- [ ] The values stay when the player changes the help preset.
-- [ ] A bad stored value falls back to the default.
-- [ ] A changelog line is in In Progress.
-- [ ] The four gates are green.
+- [x] Each field changes the answer request body, and does not change the pick request.
+- [x] With the defaults, the request bodies equal those of ticket 11.
+- [x] The values stay when the player changes the help preset.
+- [x] A bad stored value falls back to the default.
+- [x] A changelog line is in In Progress.
+- [x] The four gates are green.
