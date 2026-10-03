@@ -377,14 +377,14 @@ describe('the window on the screen', () => {
     expect(frame().style.width).toBe(`${WIDE_WIDTH}px`);
   });
 
-  it('orders the title bar controls Wide View, Settings, Close, and Wide View keeps one icon in both states', async () => {
+  it('orders the title bar controls Wide View, Menu, Close, and Wide View keeps one icon in both states', async () => {
     setScreenWidth(1600);
     vi.stubGlobal('innerHeight', 900);
     await openSearch();
     const header = frame().querySelector('header')!;
     const order = () => {
       const buttons = within(header).getAllByRole('button');
-      return ['Wide View', 'Formaquestion Settings', 'Close Formaquestion'].map((name) => buttons.indexOf(within(header).getByRole('button', { name })));
+      return ['Wide View', 'More Actions', 'Close Formaquestion'].map((name) => buttons.indexOf(within(header).getByRole('button', { name })));
     };
     expect(order()).toEqual([0, 1, 2]);
 
@@ -394,6 +394,46 @@ describe('the window on the screen', () => {
     expect(wideView).toHaveAttribute('aria-pressed', 'true');
     expect(wideView.querySelector('svg')!.getAttribute('class')).toBe(icon);
     expect(order()).toEqual([0, 1, 2]);
+  });
+
+  it('lists Clear Conversation, AI Context and Settings, and hangs from the corner of the button that has room', async () => {
+    setScreenWidth(1600);
+    vi.stubGlobal('innerHeight', 900);
+    await openSearch();
+    const button = within(frame().querySelector('header')!).getByRole('button', { name: 'More Actions' });
+    const anchors: number[] = [];
+    button.addEventListener('contextmenu', (event) => anchors.push(event.clientX));
+    const at = (left: number) => vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({ left, right: left + 32, top: 8, bottom: 40, width: 32, height: 32, x: left, y: 8, toJSON: () => ({}) });
+
+    at(100);
+    await userEvent.click(button);
+    const menu = await screen.findByRole('menu');
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Clear Conversation', 'AI Context', 'Settings']);
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+
+    at(1500);
+    await userEvent.click(button);
+    await screen.findByRole('menu');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    // Room on the right: the button's left edge. No room: its right edge, so the menu opens leftward from it.
+    expect(anchors).toEqual([100, 1532]);
+  });
+
+  it('does not start a window move from a press on a menu item', async () => {
+    setScreenWidth(1600);
+    vi.stubGlobal('innerHeight', 900);
+    await openSearch();
+    const header = frame().querySelector('header')!;
+    const left = frame().style.left;
+    await userEvent.click(within(header).getByRole('button', { name: 'More Actions' }));
+    const item = await screen.findByRole('menuitem', { name: 'AI Context' });
+    // The menu renders outside the title bar, but React routes its events through the title bar's handlers.
+    fireEvent.pointerDown(item, { button: 0, pointerId: 1, clientX: 300, clientY: 100 });
+    fireEvent.pointerMove(header, { pointerId: 1, clientX: 400, clientY: 160 });
+    fireEvent.pointerUp(header, { pointerId: 1 });
+    expect(frame().style.left).toBe(left);
   });
 
   it('swaps to the wide layout and back with Wide View, keeps the open section, and stores the width', async () => {

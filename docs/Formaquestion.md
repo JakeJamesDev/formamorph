@@ -31,7 +31,7 @@ Your AI writes the answer from the guide sections that match your question. To e
 2. After the answer, type your next question in **Ask a Question**, such as "and then?".
 3. Select **Send**.
 
-The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear** above the conversation.
+The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear Conversation** in the title bar's **⋮** menu.
 
 ## How to Ask About a Screenshot
 <!-- keywords: image, picture, paste, upload, attach, what is this, screen capture, photo, snip, print screen, vision model, clipboard, identify button, show my screen, drag file -->
@@ -92,7 +92,7 @@ With the keyboard, press Tab until the **Help** tab has focus. Then press the ar
 ## How to Use a Different AI for Help
 <!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, pick endpoint, small model -->
 
-1. Select the gear in the Formaquestion title bar.
+1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Endpoint** tab.
 3. In the editor, select **Add New Preset**.
 4. Enter the endpoint, token and model of the other AI.
@@ -103,7 +103,7 @@ Your game keeps its own AI. To send the **AI Picks** request to a small, fast mo
 ## How to Turn On Reasoning for Help
 <!-- keywords: thinking, think harder, reasoning model, hard question, effort, reasoning level, show thinking, think before answering, better answers, deep answer, slow answers, thinking block -->
 
-1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
+1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Select the **Reasoning** checkbox.
 3. Pick a level in the list that appears.
 4. Ask a question. The **Thinking** block above the answer shows how the AI reasoned.
@@ -113,7 +113,7 @@ Answers take longer with reasoning on. The row shows a note instead of the check
 ## How to Turn On Semantic Search
 <!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download -->
 
-1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
+1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Select the **Semantic Search** checkbox.
 3. Wait while the app downloads the small model. A progress bar shows on the row.
 4. Ask a question. When the download is done, the search also finds sections by meaning.
@@ -123,7 +123,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 ## How to Write Your Own Help Prompt
 <!-- keywords: change how answers read, custom prompt, edit the help prompt, answer style, shorter answers, tone of help, duplicate default, rewrite instructions, reset prompt, compare to default, prompt chips -->
 
-1. Select the gear in the Formaquestion title bar.
+1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Prompts** tab.
 3. Select **Duplicate & Edit**, or **Add New Preset…** in the preset list.
 4. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips that the app reads back.
@@ -134,7 +134,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 ## How to Add a Tool to Formaquestion
 <!-- keywords: custom tool, own tool, new function, chat assistant, world lookup, create a tool, tool for help, function call, my tools, script tool, give the ai a function, extend the assistant -->
 
-1. Select the gear in the Formaquestion title bar.
+1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Tools** tab.
 3. Under **My Tools**, select **New Tool**.
 4. Fill in **Definition**, **Parameters** and **Handler**.
@@ -159,17 +159,15 @@ The import adds the preset and selects it. See [The Preset File](#the-preset-fil
 ## How to See What the App Sent for a Question
 <!-- keywords: debug a question, wrong answer, why this answer, inspect the request, see the prompt, trace, missing section, request log, export json, bug report, what was sent to the ai -->
 
-1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
-2. Select the **Show AI Context** checkbox.
-3. Ask a question.
-4. Select **AI Context** in the title bar.
+1. Ask a question.
+2. Select **⋮** in the Formaquestion title bar, then **AI Context**.
 
 The dialog lists each question, newest first, with the request cards. See [AI Context](#ai-context).
 
 ## How to Use Formaquestion as a Plain Chat
 <!-- keywords: chat assistant, no guide, ordinary chat, talk to the ai, turn off search, no sources, bare question, general chatbot, roleplay assistant, stop the guide, only my question -->
 
-1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
+1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Clear **Keyword Search**.
 3. Clear **AI Picks**.
 4. Clear **Semantic Search**.
@@ -189,9 +187,8 @@ Formaquestion is one window for the whole app. It shows above every dialog, and 
 | Control | What it does |
 |---|---|
 | Title bar | Drag it to move the window |
-| **AI Context** | Shows what each question sent to your AI. It shows only with **Show AI Context** on. See [AI Context](#ai-context) |
-| **Formaquestion Settings** | Opens the settings of Formaquestion. See [Formaquestion Settings](#formaquestion-settings) |
-| **Wide View** | Changes between the narrow and the wide layout |
+| **Wide View** | Changes between the narrow and the wide layout. It stays lit while the wide view is on |
+| **⋮** | Opens a menu with **Clear Conversation**, **AI Context** and **Settings** |
 | **Close** | Closes the window |
 | Bottom right corner | Drag it to change the size of the window |
 
@@ -221,7 +218,7 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 - Before the answer, the app sends one more short request, while **AI Picks** is on. In it, your AI gets the list of every guide heading and picks the sections that answer your question. The answer then uses those picks together with the sections that the search finds. When that request fails or picks no section, the answer uses the search alone.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
 - With **Image Attachments** on, a question can carry up to 4 images, the same as an action. **Attach images** shows next to the field, and a paste or a drop on the field adds an image. The images go with that question only, and the app does not store them.
-- **Clear** removes every question and answer, and ends an answer that is coming in.
+- **Clear Conversation**, in the **⋮** menu, removes every question and answer, and ends an answer that is coming in.
 - While a game turn generates, **Send** waits. **Search** and **Guide** still work.
 - The answer is in your **AI Language**. Control names stay as the guide writes them. See [Settings](Settings).
 - Enter sends the question. Shift+Enter starts a new line.
@@ -264,7 +261,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 ## Formaquestion Settings
 <!-- keywords: gear, options, configure help, help settings, turn off search, plain chat -->
 
-**Formaquestion Settings** opens from the gear in the Formaquestion title bar. It has four tabs: **General**, **Endpoint**, **Prompts** and **Tools**.
+**Formaquestion Settings** opens from **Settings** in the **⋮** menu of the Formaquestion title bar. The window closes while the settings are open and opens again when you close them. It has four tabs: **General**, **Endpoint**, **Prompts** and **Tools**.
 
 - The Formaquestion window stays above the settings, so you can change a setting and ask a question to see the effect.
 - This device keeps each setting. The settings are not in a backup or an export.
@@ -283,7 +280,6 @@ The **General** tab sets how your AI answers, how a question finds its guide sec
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. |
 | **Use the Open Screen** | On | Sends the screen you have open and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
-| **Show AI Context** | Off | Adds an **AI Context** button to the title bar. It shows what each question sent to your AI. See [AI Context](#ai-context). |
 
 With **Keyword Search**, **AI Picks** and **Use the Open Screen** all off, no guide section can reach your AI. The request then holds your question alone, and the answer has no note that it is not from the guide.
 
@@ -408,10 +404,9 @@ A Tool that's on reads the world you have open, so text from that world can go t
 
 **AI Context** shows what each question of the conversation sent to your AI, and what came back. Use it to find why an answer went wrong: a section the search missed, or a prompt you changed.
 
-1. Select the gear in the title bar, and turn on **Show AI Context** on the **General** tab.
-2. Select **AI Context** in the title bar.
+1. Select **⋮** in the title bar, then **AI Context**.
 
-The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-ai-context-inspector). It lists the questions of the conversation, newest first. The Formaquestion window stays above it.
+The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-ai-context-inspector). It lists the questions of the conversation, newest first. The window closes while the dialog is open and opens again when you close it.
 
 | Block | What it shows |
 |---|---|
@@ -422,8 +417,7 @@ The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-a
 - A request card has the same blocks as a request in the game's inspector. Its header names the endpoint that served it, its reasoning fields, its **Max Tokens**, and its sampler values. A **Custom Prompt** mark shows when the prompt of that request differs from the default text.
 - **Collapse all** and **Expand all** fold or open every block.
 - **Export** downloads every question and its trace as a `.json` file, for a bug report.
-- The app records the trace of every question, so a question you asked before you turned the switch on is in the dialog too.
-- **Clear** on the **Ask** tab removes the traces with the conversation. A reload empties them.
+- **Clear Conversation** removes the traces with the conversation. A reload empties them.
 
 ## On Mobile
 <!-- keywords: full screen sheet, small screen, keyboard covers, slides in, touch, no resizing -->

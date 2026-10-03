@@ -5,7 +5,7 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream } from '@/test/helpFixtures';
+import { openHelpSettings, stubHelpStream } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import type { EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
 import type { HelpAi } from './useHelpAi';
@@ -39,7 +39,7 @@ async function openSettings() {
   const view = renderReporting(<Formaquestion loadIndex={loadFixture} />);
   fireEvent.click(screen.getByRole('button', { name: 'Help' }));
   const field = await screen.findByRole('textbox', { name: 'Ask a Question' });
-  await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
+  await openHelpSettings();
   return { view, field, dialog: screen.getByRole('dialog', { name: 'Formaquestion Settings' }) };
 }
 

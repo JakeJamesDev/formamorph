@@ -106,8 +106,9 @@ const ContextMenuRadioGroup = ContextMenuPrimitive.RadioGroup
 const ContextMenuContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
->(({ className, onPointerDownOutside, ...props }, ref) => (
-  <ContextMenuPrimitive.Portal>
+  & { /** Where the menu renders. Defaults to the document body. */ container?: HTMLElement }
+>(({ className, onPointerDownOutside, container, ...props }, ref) => (
+  <ContextMenuPrimitive.Portal container={container}>
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(

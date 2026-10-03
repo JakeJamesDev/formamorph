@@ -26,7 +26,6 @@ export const GENERAL_COPY = {
   semantic: { label: 'Semantic Search', hint: 'Finds guide sections by meaning. Downloads a small model once.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the screen you have open and its guide section' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
-  showAiContext: { label: 'Show AI Context', hint: 'Adds a title bar button that shows what each question sent' },
 } as const;
 
 /** The copy of the AI Context dialog. */

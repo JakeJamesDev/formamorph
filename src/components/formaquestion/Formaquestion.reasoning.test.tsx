@@ -6,7 +6,7 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { reasoningCapabilityFromLevels, type ReasoningCapability } from '@/lib/reasoningEffort';
 import { sseReply, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream } from '@/test/helpFixtures';
+import { openHelpSettings, stubHelpStream } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import type { HelpAi } from './useHelpAi';
 
@@ -33,7 +33,7 @@ async function openSettings() {
   renderReporting(<Formaquestion loadIndex={loadFixture} />);
   fireEvent.click(screen.getByRole('button', { name: 'Help' }));
   await screen.findByRole('textbox', { name: 'Ask a Question' });
-  await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
+  await openHelpSettings();
   return settingsDialog();
 }
 

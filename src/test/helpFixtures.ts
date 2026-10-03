@@ -1,3 +1,5 @@
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import type { Tool } from '@/types';
@@ -35,4 +37,10 @@ export function stubHelpStream(chunks: string[] | (() => Response), picked = NO_
   const picks = vi.fn((_url: string, _init: RequestInit) => sseResponse(sseReply(picked)));
   vi.stubGlobal('fetch', (url: string, init: RequestInit) => (isPickRequest(init) ? picks(url, init) : answers(url, init)));
   return Object.assign(answers, { picks });
+}
+
+/** Opens Formaquestion Settings from the window's title bar menu. */
+export async function openHelpSettings() {
+  await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Settings' }));
 }

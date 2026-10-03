@@ -194,10 +194,18 @@ describe('the conversation', () => {
     expect(conversation()).toHaveTextContent('and then?');
   });
 
-  it('is empty after Clear, which also ends the answer that is coming in', async () => {
+  /** Opens the title bar menu and returns Clear Conversation. */
+  async function clearItem() {
+    await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
+    return screen.findByRole('menuitem', { name: 'Clear Conversation' });
+  }
+
+  it('is empty after Clear Conversation, which is off while empty and also ends the answer that is coming in', async () => {
     stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
-    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    expect(await clearItem()).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
     await send(field, 'How do I add a trait?');
     await within(conversation()).findByRole('group', { name: 'Sources' });
 
@@ -205,11 +213,14 @@ describe('the conversation', () => {
     stubHelpStream(reply.respond);
     await send(field, 'How do I add a stat?');
     await waitFor(() => expect(conversation()).toHaveTextContent('Open the Stats tab.'));
-    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    const item = await clearItem();
+    expect(item).not.toHaveAttribute('aria-disabled');
+    await userEvent.click(item);
 
     expect(conversation()).not.toHaveTextContent('How do I add a trait?');
     expect(conversation()).not.toHaveTextContent('Open the Stats tab.');
-    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+    expect(await clearItem()).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.keyboard('{Escape}');
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
     await waitFor(() => expect(reply.cancel).toHaveBeenCalledTimes(1));
   });

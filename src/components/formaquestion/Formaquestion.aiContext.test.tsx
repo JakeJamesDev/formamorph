@@ -40,7 +40,7 @@ const blobText = (blob: Blob) => new Promise<string>((resolve, reject) => {
 });
 
 const conversation = () => screen.getByRole('log', { name: 'Conversation' });
-const aiContextButton = () => screen.queryByRole('button', { name: 'AI Context' });
+
 const aiContext = () => screen.getByRole('dialog', { name: 'AI Context' });
 
 function setScreenWidth(width: number) {
@@ -64,18 +64,10 @@ async function send(field: HTMLElement, question: string) {
   await within(conversation()).findByRole('group', { name: 'Sources' });
 }
 
-/** Opens the settings, sets Show AI Context, and closes them. */
-async function showAiContext(on: boolean) {
-  await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
-  const dialog = screen.getByRole('dialog', { name: 'Formaquestion Settings' });
-  const box = within(dialog).getByRole('checkbox', { name: 'Show AI Context' });
-  if ((box.getAttribute('aria-checked') === 'true') !== on) await userEvent.click(box);
-  await userEvent.keyboard('{Escape}');
-  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());
-}
-
+/** Opens AI Context from the title bar menu. */
 async function openAiContext() {
-  await userEvent.click(screen.getByRole('button', { name: 'AI Context' }));
+  await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'AI Context' }));
   return aiContext();
 }
 
@@ -90,26 +82,20 @@ afterEach(() => {
 });
 
 describe('AI Context in Formaquestion', () => {
-  it('shows its button only with Show AI Context on, and the dialog reports to the surface registry', async () => {
+  it('opens from the title bar menu, and the dialog reports to the surface registry', async () => {
     await openAsk();
-    expect(aiContextButton()).toBeNull();
-    await showAiContext(true);
-    expect(aiContextButton()).not.toBeNull();
     await openAiContext();
     await waitFor(() => expect(surfaceRegistry.get()).toMatchObject({ dialog: 'formaquestionAiContext' }));
     expect(within(aiContext()).getByText(AI_CONTEXT_COPY.empty)).toBeInTheDocument();
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'AI Context' })).toBeNull());
-    await showAiContext(false);
-    expect(aiContextButton()).toBeNull();
   });
 
-  it('shows a question asked before the switch went on: its Search block, then its pick and answer cards', async () => {
+  it('shows a question: its Search block, then its pick and answer cards', async () => {
     stubHelpStream([sseFrame({ reasoning: 'Traits first.' }), ...sseReply('Select **Add Trait**.')], TRAIT_LINE);
     const { field } = await openAsk();
     await send(field, 'How do I add a trait?');
-    await showAiContext(true);
     const dialog = await openAiContext();
 
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
@@ -129,7 +115,6 @@ describe('AI Context in Formaquestion', () => {
     stubHelpStream(sseReply('Select **Add Trait**.'), TRAIT_LINE);
     const { field } = await openAsk();
     await send(field, 'How do I add a trait?');
-    await showAiContext(true);
     const dialog = await openAiContext();
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
 
@@ -148,7 +133,7 @@ describe('AI Context in Formaquestion', () => {
     // A stored custom preset with an edited answer prompt, active, and the switch on.
     let presets = duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine');
     presets = editHelpPrompt(presets, 'mine', 'answer', `Be brief. ${HELP_CHIP.marker}`);
-    localStorage.setItem(STORAGE_KEY, helpSettingsCodec.serialize(helpSettingsOf({ presets, showAiContext: true })));
+    localStorage.setItem(STORAGE_KEY, helpSettingsCodec.serialize(helpSettingsOf({ presets })));
     stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
     await send(field, 'How do I add a trait?');
@@ -165,7 +150,6 @@ describe('AI Context in Formaquestion', () => {
     stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
     await send(field, 'How do I add a trait?');
-    await showAiContext(true);
     let dialog = await openAiContext();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Export' }));
     expect(download).toHaveBeenCalledTimes(1);
@@ -176,7 +160,8 @@ describe('AI Context in Formaquestion', () => {
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'AI Context' })).toBeNull());
 
-    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Clear Conversation' }));
     dialog = await openAiContext();
     expect(within(dialog).queryByRole('group', { name: 'How do I add a trait?' })).toBeNull();
     expect(within(dialog).getByText(AI_CONTEXT_COPY.empty)).toBeInTheDocument();
@@ -187,7 +172,6 @@ describe('AI Context in Formaquestion', () => {
     stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
     await send(field, 'How do I add a trait?');
-    await showAiContext(true);
     const dialog = await openAiContext();
     expect(within(dialog).getAllByText('Raw Output')).toHaveLength(2);
 
@@ -202,7 +186,6 @@ describe('AI Context in Formaquestion', () => {
     stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
     await send(field, 'How do I add a trait?');
-    await showAiContext(true);
     const dialog = await openAiContext();
     expect(within(dialog).getByText(`${AI_CONTEXT_COPY.sources.aiPicks}: ${AI_CONTEXT_COPY.noRanking}`)).toBeInTheDocument();
   });
@@ -210,7 +193,7 @@ describe('AI Context in Formaquestion', () => {
   it('unmounts during a stream with the dialog open, and the late events reach nothing', async () => {
     const reply = openSseReply([sseFrame({ content: '1. Select' })]);
     stubHelpStream(reply.respond);
-    localStorage.setItem(STORAGE_KEY, helpSettingsCodec.serialize(helpSettingsOf({ showAiContext: true })));
+    localStorage.setItem(STORAGE_KEY, helpSettingsCodec.serialize(helpSettingsOf()));
     const { view, field } = await openAsk();
     await userEvent.type(field, 'How do I add a trait?');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -229,7 +212,6 @@ describe('AI Context in Formaquestion', () => {
     await openAsk();
     const sheet = screen.getByRole('dialog', { name: 'Formaquestion' });
     expect(sheet).toHaveAttribute('data-fq-sheet');
-    await showAiContext(true);
     await openAiContext();
     expect(sheet).toHaveClass('invisible');
 

@@ -102,7 +102,7 @@ function SampleWindow() {
   const [settings, changeSettings] = useReferenceSettings();
   const style = useMemo(() => ({ width: wide ? WIDE_WIDTH : NARROW_WIDTH, height: 480 }), [wide]);
   return (
-    <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full" style={style}>
+    <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onOpenAiContext={() => {}} onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full" style={style}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} />
     </FormaquestionFrame>
   );
@@ -114,7 +114,7 @@ function SampleSheet() {
   const chat = useSampleChat();
   const [settings, changeSettings] = useReferenceSettings();
   return (
-    <FormaquestionFrame sheet onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
+    <FormaquestionFrame sheet onOpenAiContext={() => {}} onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} chat={chat} settings={settings} onSettingsChange={changeSettings} />
     </FormaquestionFrame>
   );

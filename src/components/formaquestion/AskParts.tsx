@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
-import { ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
+import { ChevronRight, Info, SendHorizontal, Square } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
@@ -208,18 +208,6 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
   );
 }
 
-/** The row above the conversation, with the control that empties it. */
-function ClearRow({ onClear }: { onClear: () => void }) {
-  return (
-    <div className="flex shrink-0 items-center justify-end border-b px-2 py-1">
-      <Button variant="link" size="sm" className="gap-1 px-1 text-foreground" onClick={onClear}>
-        <Eraser aria-hidden className="h-4 w-4" />
-        Clear
-      </Button>
-    </div>
-  );
-}
-
 function AskField({ draft, onDraftChange, chat }: {
   draft: string;
   onDraftChange: (text: string) => void;
@@ -292,7 +280,6 @@ export function AskPanel({ guide, chat, settings, onSettingsChange, draft, onDra
 }) {
   return (
     <>
-      {chat.exchanges.length > 0 && <ClearRow onClear={chat.clear} />}
       <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
       <AskField draft={draft} onDraftChange={onDraftChange} chat={chat} />
     </>
