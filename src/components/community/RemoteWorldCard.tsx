@@ -21,6 +21,8 @@ import WorldStorageService from "@/services/WorldStorageService";
 import { useListingPrefetch } from "@/lib/useListingPrefetch";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
+import { SupporterBadge } from "@/components/SupporterBadge";
+import { SUPPORTER_NAME_STYLES, flairTier } from "@/lib/supporterFlair";
 import { canModerate, isStaff } from "@/lib/roles";
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { PlaceBadges } from "@/components/PlaceBadges";
@@ -82,6 +84,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
+  const authorTier = flairTier(world.author?.supporter);
   const prefetch = useListingPrefetch(worldId);
   // Player-facing noun for this listing's kind (World / Entity / Dictionary), for the download tooltips.
   const noun = KIND_LABELS[kindOf(world)].one.toLowerCase();
@@ -224,18 +227,19 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
       ) : undefined}
       author={(
         <span className="inline-flex items-center gap-1.5 min-w-0">
-          <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="xs" />
+          <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} supporter={world.author?.supporter} size="xs" />
           <Tip
             tip={world.author?.username && onHideAuthor ? `Hide all worlds by ${world.author.username}` : undefined}
             labelsChild={false}
           >
             <span
               onClick={(e) => { e.stopPropagation(); if (world.author?.username) onHideAuthor?.(world.author.username); }}
-              className={world.author?.username && onHideAuthor ? "cursor-pointer hover:line-through truncate" : "truncate"}
+              className={cn("truncate", authorTier && SUPPORTER_NAME_STYLES[authorTier], world.author?.username && onHideAuthor && "cursor-pointer hover:line-through")}
             >
               By {world.author?.username || "Unknown"}
             </span>
           </Tip>
+          {authorTier && <SupporterBadge tier={authorTier} since={world.author?.supporter?.since} />}
           <RoleBadge role={world.author?.role} />
         </span>
       )}

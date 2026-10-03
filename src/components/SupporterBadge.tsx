@@ -1,9 +1,12 @@
 import { Heart, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SUPPORTER_BADGE_STYLES, SUPPORTER_LABELS, type SupporterTier } from "@/lib/supporterFlair";
+import { Tip } from "@/components/ui/tooltip";
+import { SUPPORTER_BADGE_STYLES, SUPPORTER_LABELS, supporterTenure, type SupporterTier } from "@/lib/supporterFlair";
 
 interface SupporterBadgeProps {
   tier: SupporterTier;
+  /** When the pledge started. The tooltip states the tenure; null or absent shows no tooltip. */
+  since?: string | null;
   className?: string;
 }
 
@@ -13,10 +16,12 @@ interface SupporterBadgeProps {
  * A pill with an icon, where the staff badges are square text tags, so a name never reads as both. Supporter+
  * adds an outline and a second icon; the tiers do not rest on hue alone.
  */
-export function SupporterBadge({ tier, className }: SupporterBadgeProps) {
+export function SupporterBadge({ tier, since, className }: SupporterBadgeProps) {
   const Icon = tier === 'supporter_plus' ? Sparkles : Heart;
 
-  return (
+  const tenure = supporterTenure(since);
+
+  const badge = (
     <span
       className={cn(
         'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide',
@@ -28,4 +33,6 @@ export function SupporterBadge({ tier, className }: SupporterBadgeProps) {
       {SUPPORTER_LABELS[tier]}
     </span>
   );
+
+  return tenure ? <Tip tip={`Supporting for ${tenure}`} labelsChild={false}>{badge}</Tip> : badge;
 }

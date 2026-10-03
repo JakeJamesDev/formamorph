@@ -101,11 +101,11 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
               </p>
             ) : following.map((user) => (
               <div key={user.id} className="flex items-center gap-2 rounded-md px-1 py-1 min-w-0">
-                <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="sm" />
+                <UserAvatar username={user.username} avatarUrl={user.avatarUrl} supporter={user.supporter} size="sm" />
                 {/* The stretch lives out here: the name is wrapped alongside its badge, so growing the
                     name itself would push the badge off the end of the row instead of filling it. */}
                 <div className="flex-1 min-w-0">
-                  <UserName userId={user.id} username={user.username} role={user.role} className="text-label text-left" />
+                  <UserName userId={user.id} username={user.username} role={user.role} supporter={user.supporter} className="text-label text-left" />
                 </div>
                 <Tip tip={`Unfollow ${user.username}`}>
                   <Button
@@ -138,10 +138,10 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
         <ul className="space-y-2">
           {items.map((item) => (
             <li key={item.id} className="flex items-start gap-2 rounded-md border p-3 min-w-0">
-              <UserAvatar username={item.author.username} avatarUrl={item.author.avatarUrl} size="sm" />
+              <UserAvatar username={item.author.username} avatarUrl={item.author.avatarUrl} supporter={item.author.supporter} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="text-label min-w-0">
-                  <UserName userId={item.author.id} username={item.author.username} role={item.author.role} className="font-medium" />
+                  <UserName userId={item.author.id} username={item.author.username} role={item.author.role} supporter={item.author.supporter} className="font-medium" />
                   {' '}{describe(item)}{' '}
                   {onOpenListing ? (
                     <button

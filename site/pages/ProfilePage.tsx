@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RoleBadge } from '@/components/RoleBadge';
+import { SupporterBadge } from '@/components/SupporterBadge';
+import { SUPPORTER_NAME_STYLES, flairTier } from '@/lib/supporterFlair';
+import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileStats } from '@/components/community/ProfileStats';
 import { UserCreationsTab } from '@/components/community/UserCreationsTab';
@@ -68,6 +71,7 @@ function ProfileBody({ username }: { username: string }) {
   if (state.status === 'missing') return <NotFoundPage />;
 
   const profile = state.status === 'found' ? state.profile : null;
+  const tier = flairTier(profile?.supporter);
   const memberSince = profile ? parseServerDate(profile.createdAt)?.toLocaleDateString() : null;
 
   return (
@@ -77,6 +81,7 @@ function ProfileBody({ username }: { username: string }) {
           <UserAvatar
             username={profile.username}
             avatarUrl={profile.avatarUrl}
+            supporter={profile.supporter}
             size="xl"
             // An avatar's initial scales with its circle, not with the type scale, so no role fits.
             className="h-24 w-24 text-4xl"
@@ -89,7 +94,8 @@ function ProfileBody({ username }: { username: string }) {
           <div className="flex items-center justify-center gap-2 min-w-0">
             {/* The name off the address bar while the fetch is in flight, so the page opens with the
                 thing the reader clicked rather than with a blank. */}
-            <h1 className="text-title font-semibold truncate">{profile?.username ?? username}</h1>
+            <h1 className={cn('text-title font-semibold truncate', tier && SUPPORTER_NAME_STYLES[tier])}>{profile?.username ?? username}</h1>
+            {tier && <SupporterBadge tier={tier} since={profile?.supporter?.since} />}
             <RoleBadge role={profile?.role} />
           </div>
 

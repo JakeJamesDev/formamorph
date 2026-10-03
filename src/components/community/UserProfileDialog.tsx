@@ -8,6 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { RoleBadge } from "@/components/RoleBadge";
+import { cn } from "@/lib/utils";
+import { SupporterBadge } from "@/components/SupporterBadge";
+import { SUPPORTER_NAME_STYLES, flairTier } from "@/lib/supporterFlair";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserCreationsTab } from "@/components/community/UserCreationsTab";
 import { UserLikesTab } from "@/components/community/UserLikesTab";
@@ -73,6 +76,7 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
   const memberSince = profile ? parseServerDate(profile.createdAt)?.toLocaleDateString() : null;
   // Offered only to somebody who could act on it: following needs an account, and following yourself
   // would put your own work in your own news.
+  const tier = flairTier(profile?.supporter);
   const canFollow = Boolean(profile) && Boolean(myId) && profile?.id !== myId;
   // The same rule as following, for the same reason: reporting yourself is not a thing to offer.
   const canReport = reportsEnabled && Boolean(profile) && profile?.id !== myId;
@@ -118,6 +122,7 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
             <UserAvatar
               username={name}
               avatarUrl={profile?.avatarUrl}
+              supporter={profile?.supporter}
               size="xl"
               // An avatar's initial scales with its circle, not with the type scale, so no role fits.
               // eslint-disable-next-line no-restricted-syntax
@@ -127,7 +132,8 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
 
           <div className="min-w-0 space-y-1">
             <div className="flex items-center justify-center gap-2 min-w-0">
-              <h3 className="text-title font-semibold truncate">{name || 'Unknown'}</h3>
+              <h3 className={cn("text-title font-semibold truncate", tier && SUPPORTER_NAME_STYLES[tier])}>{name || 'Unknown'}</h3>
+              {tier && <SupporterBadge tier={tier} since={profile?.supporter?.since} />}
               <RoleBadge role={profile?.role} />
             </div>
 

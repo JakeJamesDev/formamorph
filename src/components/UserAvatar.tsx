@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { avatarHue, avatarInitial } from "@/lib/avatar";
 import { serverAssetSrc } from "@/lib/serverAssets";
 import { API_BASE_URL } from "@/lib/apiBase";
+import { flairTier, supporterRing, type SupporterFlair } from "@/lib/supporterFlair";
 
 /** Named sizes rather than a free number: the same face appears at the same few scales throughout. */
 const SIZES = {
@@ -21,6 +22,8 @@ interface UserAvatarProps {
   /** The `avatarUrl` from a server DTO, or null for somebody who has not set one. */
   avatarUrl?: string | null;
   size?: AvatarSize;
+  /** Their Supporter Flair, as the server sent it. A tier draws the ring; null or absent draws none. */
+  supporter?: SupporterFlair | null;
   className?: string;
 }
 
@@ -30,7 +33,7 @@ interface UserAvatarProps {
  * The fallback is a letter rather than a generic silhouette: a row of identical gray circles is harder
  * to read than no circles at all, while a stable per-name color makes a thread scannable at a glance.
  */
-export function UserAvatar({ username, avatarUrl, size = 'sm', className }: UserAvatarProps) {
+export function UserAvatar({ username, avatarUrl, size = 'sm', supporter, className }: UserAvatarProps) {
   // A broken image would otherwise leave a torn-page icon where a face should be. Keyed on the URL so a
   // replacement gets its own chance rather than inheriting the last one's failure.
   const [failed, setFailed] = useState<string | null>(null);
@@ -38,9 +41,12 @@ export function UserAvatar({ username, avatarUrl, size = 'sm', className }: User
   const src = serverAssetSrc(avatarUrl, API_BASE_URL);
   const showImage = Boolean(src) && failed !== src;
 
+  const tier = flairTier(supporter);
+
   const shared = cn(
     'shrink-0 rounded-full object-cover select-none',
     SIZES[size],
+    tier && supporterRing(tier, size),
     className
   );
 
