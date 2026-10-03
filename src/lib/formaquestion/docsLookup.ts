@@ -8,7 +8,7 @@ import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import type { ToolCallResult } from '@/lib/tools/toolRunner';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
 
-/** The most lookup calls one help question runs. */
+/** The default most lookup calls one help question runs. */
 export const DOCS_LOOKUP_CALL_LIMIT = 3;
 
 /** The most ids an unknown-id result lists. */
@@ -24,7 +24,6 @@ export const DOCS_LOOKUP: OfferedFunction = {
     { name: 'sections', type: 'string', description: 'Section ids, each written Page#section, separated by commas.', required: false, options: [] },
     { name: 'search', type: 'string', description: 'Words to search the guide for.', required: false, options: [] },
   ],
-  callLimit: DOCS_LOOKUP_CALL_LIMIT,
 };
 
 export interface DocsLookupOptions {

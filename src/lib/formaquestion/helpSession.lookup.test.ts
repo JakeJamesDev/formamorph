@@ -296,6 +296,18 @@ describe('a model that calls without end', () => {
     expect(results.at(-1)).toContain('limit');
   });
 
+  it('takes its call limit from the settings', async () => {
+    let request = 0;
+    const fetchImpl: FetchSpy = vi.fn(async () => sseResponse(callFrames({ sections: SECTIONS[request++ % SECTIONS.length] })));
+    const failure = await collect(ask(NOTHING, fetchImpl, { settings: helpSettingsOf({ lookup: true, lookupCallLimit: 1 }) })).catch((error: unknown) => error);
+
+    expect((failure as Error).message).toContain('empty answer');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    const results = toolResults(bodyOf(fetchImpl, 2));
+    expect(results.filter((text) => text.startsWith('<section '))).toHaveLength(1);
+    expect(results.at(-1)).toContain('limit of 1 call');
+  });
+
   it('counts the calls of one round against the limit, and the answer after them reports what was read', async () => {
     const fetchImpl = script(
       callFrames(...SECTIONS.slice(0, DOCS_LOOKUP_CALL_LIMIT + 2).map((sections) => ({ sections }))),

@@ -4,12 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
-import { sseFrame, sseReply } from '@/test/aiTextFixtures';
+import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { sseFrame, sseReply, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { stubHelpStream } from '@/test/helpFixtures';
 import { sentenceShapeViolation } from '@/test/copyShape';
 import { renderReporting } from '@/test/surfaceReporter';
-import { GENERAL_COPY } from './formaquestionSettingsTabs';
+import { GENERAL_COPY, TOOLS_COPY } from './formaquestionSettingsTabs';
 import type { HelpAi } from './useHelpAi';
 
 // The AI settings and the reachability check come from the app's providers. Each test sets them here.
@@ -129,6 +131,51 @@ describe('Formaquestion Settings', () => {
       expect(sentenceShapeViolation(hint), hint).toBeNull();
       expect(hint.split(/\s+/).length, hint).toBeLessThanOrEqual(12);
     }
+  });
+});
+
+describe('the guide lookup switch on the Tools tab', () => {
+  /** The help AI of an endpoint whose record says whether it takes function calls. */
+  const endpoint = (tools: boolean) => {
+    const target = textTarget({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools, sources: { tools: 'native' } } });
+    return helpAi({ snapshot: textSnapshot(target), answerTarget: { reasoning: target.reasoning, localEngine: target.localEngine, maxTokens: target.maxTokens } });
+  };
+  type ToolsBody = Body & { tools?: { function: { name: string } }[] };
+
+  async function askWithLookup(field: HTMLElement) {
+    const dialog = await openSettings();
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'Tools' }));
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Enabled' }));
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());
+    await send(field, 'How do I add a trait?');
+    await within(conversation()).findByRole('group', { name: 'Sources' });
+  }
+
+  it('sends the lookup prompt and the function to an endpoint that takes function calls', async () => {
+    ai.current = endpoint(true);
+    const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    await askWithLookup(field);
+
+    const body = sentBody(fetchSpy) as ToolsBody;
+    expect(body.tools?.map((tool) => tool.function.name)).toEqual([DOCS_LOOKUP.name]);
+    expect(body.messages[0].content).toContain(DOCS_LOOKUP.name);
+  });
+
+  it('sends the retrieval request with no function, and the tab says so, to an endpoint that does not', async () => {
+    ai.current = endpoint(false);
+    const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    const dialog = await openSettings();
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'Tools' }));
+    expect(within(dialog).getByRole('note')).toHaveTextContent(TOOLS_COPY.unsupported);
+    await userEvent.keyboard('{Escape}');
+    await askWithLookup(field);
+
+    const body = sentBody(fetchSpy) as ToolsBody;
+    expect(body.tools).toBeUndefined();
+    expect(body.messages[0].content).not.toContain(DOCS_LOOKUP.name);
   });
 });
 

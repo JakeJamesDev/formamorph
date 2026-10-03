@@ -5,7 +5,7 @@ import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiR
 import { streamAiToolLoop } from '@/lib/aiRequest/toolLoop';
 import { stripReasoningLive } from '@/lib/aiResponse';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
-import { createDocsLookup, DOCS_LOOKUP, sectionBlock } from '@/lib/formaquestion/docsLookup';
+import { createDocsLookup, DOCS_LOOKUP, DOCS_LOOKUP_CALL_LIMIT, sectionBlock } from '@/lib/formaquestion/docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { HELP_DOCS_CHAR_BUDGET, HELP_SECTION_LIMIT, helpSections, type HelpEvent } from '@/lib/formaquestion/helpSession';
 import { DEFAULT_HELP_ANSWER_OPTIONS } from '@/lib/formaquestion/helpPresets';
@@ -23,6 +23,7 @@ const SYSTEM_PROMPT = [
 
 const LOOKUP = {
   ...DOCS_LOOKUP,
+  callLimit: DOCS_LOOKUP_CALL_LIMIT,
   description: 'Returns the text of guide sections. Pass `sections` to read sections from the contents list, or pass `search` to find sections by words.',
 };
 
