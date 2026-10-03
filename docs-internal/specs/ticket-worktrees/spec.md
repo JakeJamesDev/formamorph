@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: ticket-worktrees — spec
-Status note: 7 tickets in issues/. 01 and 02 can start now. 01–05 edit the ~/.claude repo, and 06 and 07 edit this one. 07 is the Sonnet 5.5 acceptance run on a ticket the user picks.
+Status note: 8 tickets in issues/. 01–06 are ready-for-human. 08 (clean landings) came out of the pre-07 review and blocks 07. 07 is the Sonnet 5.5 acceptance run on a ticket the user names.
 
 Every `/implement` ticket runs in its own git worktree and lands on `main` as one commit. Hooks do the mechanical steps, so a smaller model such as Sonnet 5.5 can run the flow without hand-built git commands. Designed in a discussion session on 2026-10-02. A live probe in this repo checked the Claude Code behavior that the design depends on.
 

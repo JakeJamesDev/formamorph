@@ -1,7 +1,7 @@
 # 07: Sonnet 5.5 End-to-End Run
 
 Status: ready-for-agent
-Blocked by: 02, 06
+Blocked by: 02, 06, 08
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 Repo: formamorph
