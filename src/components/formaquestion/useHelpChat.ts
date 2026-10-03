@@ -3,6 +3,7 @@ import { toastAiRequestFailure } from '@/lib/aiRequest/aiRequestFailureToast';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { askHelp } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -102,7 +103,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
           }
         }
         const { snapshot, language } = aiRef.current;
-        for await (const event of askHelp({ question, history, language, snapshot, index, surface, images, signal: controller.signal })) {
+        // Nothing stores the help settings yet, so every question carries the defaults.
+        for await (const event of askHelp({ question, history, language, settings: DEFAULT_HELP_SETTINGS, snapshot, index, surface, images, signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text, flagged: event.flagged });
           else change({ answer: event.text, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }

@@ -12,6 +12,7 @@
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { askHelp } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { factShare, mean, pct, probeSnapshot } from './help-probe-shared';
 
@@ -67,7 +68,7 @@ async function run(arm: Arm, c: Case): Promise<Sample> {
   }) as typeof fetch;
   let answer = '';
   let sources: string[] = [];
-  for await (const event of askHelp({ question: c.question, snapshot, index, fetchImpl, ...(arm === 'hint' && { surface: c.surface }) })) {
+  for await (const event of askHelp({ question: c.question, settings: DEFAULT_HELP_SETTINGS, snapshot, index, fetchImpl, ...(arm === 'hint' && { surface: c.surface }) })) {
     if (event.type !== 'done') continue;
     answer = event.text;
     sources = event.sources.map((section) => section.id);

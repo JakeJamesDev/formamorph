@@ -26,6 +26,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { askHelp, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { factShare, mean, pct, probeSnapshot } from './help-probe-shared';
 
 const args = process.argv.slice(2);
@@ -65,7 +66,7 @@ async function ask(question: string, history: EarlierExchange[], language: strin
     messages = body.messages.length;
     return fetch(url, { ...init, body: JSON.stringify({ ...body, reasoning_effort: 'none' }) });
   };
-  for await (const event of askHelp({ question, history, language, snapshot, index, fetchImpl })) {
+  for await (const event of askHelp({ question, history, language, settings: DEFAULT_HELP_SETTINGS, snapshot, index, fetchImpl })) {
     if (event.type === 'done') return { answer: event.text, promptChars, messages, sources: event.sources.map((s) => s.id) };
   }
   throw new Error('no answer');

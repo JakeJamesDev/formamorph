@@ -9,8 +9,9 @@ import type { AIRequestType, ImageAttachment } from '@/types';
 import { languageDirective } from '@/lib/languages';
 import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import {
-  askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_HISTORY_EXCHANGES, HELP_SCORE_FLOOR, type EarlierExchange, type HelpEvent, type HelpQuestion,
+  askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_SCORE_FLOOR, type EarlierExchange, type HelpEvent, type HelpQuestion,
 } from './helpSession';
+import { DEFAULT_HELP_SETTINGS } from './helpSettings';
 
 const PAGES = {
   Stats: '# 📊 Stats\n\nStats are numbers.\n\n## How to Add a Stat\n\n1. Open the **Stats** tab.\n2. Select **Add Stat**.\n',
@@ -30,7 +31,7 @@ const bodyOf = (spy: FetchSpy, call = 0) => JSON.parse(spy.mock.calls[call][1].b
 
 /** One help question against the fixture docs. The fake fetch gets the answer request; the pick request picks nothing. */
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over });
+  askHelp({ question, settings: DEFAULT_HELP_SETTINGS, snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];
@@ -339,15 +340,37 @@ describe('a follow-up', () => {
     expect(messages.filter((message) => message.content.includes('<guide>'))).toHaveLength(1);
   });
 
-  it(`leaves out the oldest exchanges past the last ${HELP_HISTORY_EXCHANGES}`, async () => {
+  it(`leaves out the oldest exchanges past the last ${DEFAULT_HELP_SETTINGS.historyLength}`, async () => {
     const fetchImpl = replyWith(sseReply('Done.'));
-    const history = Array.from({ length: HELP_HISTORY_EXCHANGES + 2 }, (_, n) => turn(`question ${n}`, `answer ${n}`));
+    const { historyLength } = DEFAULT_HELP_SETTINGS;
+    const history = Array.from({ length: historyLength + 2 }, (_, n) => turn(`question ${n}`, `answer ${n}`));
     await collect(ask('and then?', fetchImpl, { history }));
 
     const earlier = bodyOf(fetchImpl).messages.slice(1, -1).map((message) => message.content);
-    expect(earlier).toHaveLength(HELP_HISTORY_EXCHANGES * 2);
+    expect(earlier).toHaveLength(historyLength * 2);
     expect(earlier[0]).toBe('question 2');
-    expect(earlier.at(-1)).toBe(`answer ${HELP_HISTORY_EXCHANGES + 1}`);
+    expect(earlier.at(-1)).toBe(`answer ${historyLength + 1}`);
+  });
+
+  it('reads the History Length and the answer cap from the settings of the question', async () => {
+    const fetchImpl = replyWith(sseReply('Done.'));
+    const history = Array.from({ length: 3 }, (_, n) => turn(`question ${n}`, `answer ${n}`));
+    await collect(ask('and then?', fetchImpl, { history, settings: { ...DEFAULT_HELP_SETTINGS, historyLength: 1, answerMaxTokens: 123 } }));
+
+    const body = bodyOf(fetchImpl);
+    expect(body.messages.slice(1, -1).map((message) => message.content)).toEqual(['question 2', 'answer 2']);
+    expect(body.max_tokens).toBe(123);
+  });
+
+  it('carries no earlier exchange at a History Length of 0, and searches for the question alone', async () => {
+    const fetchImpl = replyWith(sseReply('Done.'));
+    const settings = { ...DEFAULT_HELP_SETTINGS, historyLength: 0 };
+    await collect(ask('How do I add a stat?', fetchImpl, { history: [turn('How do I add a trait?', '1. Open the **Traits** tab.')], settings }));
+
+    const { messages } = bodyOf(fetchImpl);
+    expect(messages.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(messages[1].content).toContain('## How to Add a Stat');
+    expect(messages[1].content).not.toContain('How to Add a Trait');
   });
 
   it('leaves out an earlier question that got no answer text', async () => {

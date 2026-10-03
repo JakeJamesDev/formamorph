@@ -41,7 +41,8 @@ import { buildAiRequestSpec } from '@/lib/aiRequest/aiRequestSpec';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
-import { askHelp, HELP_MAX_TOKENS, helpSections } from '@/lib/formaquestion/helpSession';
+import { askHelp, helpSections } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { mean, pct, probeSnapshot } from './help-probe-shared';
 import { askHelpContentsLookup } from './lookupControl';
 import { refDocsIndex } from './refDocsIndex';
@@ -180,7 +181,7 @@ async function lookupRequest(arm: Arm, c: HelpCase): Promise<Sample> {
   let sources: string[] = [];
   let flagged = false;
   const request = { question: c.question, snapshot: lookupSnapshot, index, fetchImpl };
-  const session = arm === 'lookup22' ? askHelpContentsLookup(request) : askHelp({ ...request, lookup: true });
+  const session = arm === 'lookup22' ? askHelpContentsLookup(request) : askHelp({ ...request, settings: { ...DEFAULT_HELP_SETTINGS, lookup: true } });
   for await (const event of session) {
     if (event.type !== 'done') continue;
     answer = event.text;
@@ -194,8 +195,8 @@ async function request(arm: Arm, c: HelpCase): Promise<Sample> {
   if (isLookup(arm)) return lookupRequest(arm, c);
   const sections = arm === 'no-docs' ? [] : helpSections(indexOf(arm), (arm === 'mismatch' ? mismatchPartner(c) : c).question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
-    ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS }
-    : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS });
+    ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_SETTINGS.answerMaxTokens }
+    : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_SETTINGS.answerMaxTokens });
   const response = await fetch(spec.url, {
     method: 'POST',
     headers: spec.headers,
