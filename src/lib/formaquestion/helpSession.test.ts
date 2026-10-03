@@ -11,7 +11,7 @@ import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import {
   askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_SCORE_FLOOR, type EarlierExchange, type HelpEvent, type HelpQuestion,
 } from './helpSession';
-import { DEFAULT_HELP_SETTINGS } from './helpSettings';
+import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from './helpSettings';
 
 const PAGES = {
   Stats: '# 📊 Stats\n\nStats are numbers.\n\n## How to Add a Stat\n\n1. Open the **Stats** tab.\n2. Select **Add Stat**.\n',
@@ -355,7 +355,7 @@ describe('a follow-up', () => {
   it('reads the History Length and the answer cap from the settings of the question', async () => {
     const fetchImpl = replyWith(sseReply('Done.'));
     const history = Array.from({ length: 3 }, (_, n) => turn(`question ${n}`, `answer ${n}`));
-    await collect(ask('and then?', fetchImpl, { history, settings: { ...DEFAULT_HELP_SETTINGS, historyLength: 1, answerMaxTokens: 123 } }));
+    await collect(ask('and then?', fetchImpl, { history, settings: helpSettingsOf({ historyLength: 1, answerMaxTokens: 123 }) }));
 
     const body = bodyOf(fetchImpl);
     expect(body.messages.slice(1, -1).map((message) => message.content)).toEqual(['question 2', 'answer 2']);
@@ -364,7 +364,7 @@ describe('a follow-up', () => {
 
   it('carries no earlier exchange at a History Length of 0, and searches for the question alone', async () => {
     const fetchImpl = replyWith(sseReply('Done.'));
-    const settings = { ...DEFAULT_HELP_SETTINGS, historyLength: 0 };
+    const settings = helpSettingsOf({ historyLength: 0 });
     await collect(ask('How do I add a stat?', fetchImpl, { history: [turn('How do I add a trait?', '1. Open the **Traits** tab.')], settings }));
 
     const { messages } = bodyOf(fetchImpl);

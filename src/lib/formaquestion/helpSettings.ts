@@ -14,7 +14,9 @@ export interface HelpSources {
   readonly semantic: boolean;
 }
 
+/** Every setting a help question carries. */
 export interface HelpSettings {
+  /** The sources whose rankings the search of a question merges. */
   readonly sources: HelpSources;
   /** Lookup mode: the model reads more sections through the guide lookup, where the endpoint takes function calls (ADR-0009). */
   readonly lookup: boolean;
@@ -24,10 +26,18 @@ export interface HelpSettings {
   readonly answerMaxTokens: number;
 }
 
-/** The values the Formaquestion effort's bar run measured. */
+/** The settings of a player who has changed nothing. The help bar run measures these. */
 export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   sources: { keyword: true, aiPicks: true, semantic: false },
   lookup: false,
   historyLength: 4,
   answerMaxTokens: 800,
 };
+
+/** A change to the settings: any field, and inside `sources` only the switches it names. */
+export type HelpSettingsChange = Partial<Omit<HelpSettings, 'sources'>> & { sources?: Partial<HelpSources> };
+
+/** The defaults with a change applied. */
+export function helpSettingsOf({ sources, ...change }: HelpSettingsChange = {}): HelpSettings {
+  return { ...DEFAULT_HELP_SETTINGS, ...change, sources: { ...DEFAULT_HELP_SETTINGS.sources, ...sources } };
+}

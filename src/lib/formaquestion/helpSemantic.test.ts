@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import { sseReply, sseResponse, textSnapshot } from '@/test/aiTextFixtures';
-import { helpSettings, pastPicks } from '@/test/helpFixtures';
+import { pastPicks } from '@/test/helpFixtures';
 import { semanticRanking, type HelpEmbedder } from './helpSemantic';
 import { askHelp, type HelpEvent } from './helpSession';
+import { helpSettingsOf } from './helpSettings';
 import { encodeVector, sectionTexts, type SectionVectorsFile } from './sectionVectors';
 
 const index = createDocsIndex({
@@ -57,7 +58,7 @@ describe('the semantic source on a device with no embedding model', () => {
     const answers = vi.fn(async (_url: string, _init: RequestInit) => sseResponse(sseReply('Run **Check**.')));
 
     const events: HelpEvent[] = [];
-    for await (const event of askHelp({ question: 'test', settings: helpSettings({ sources: { semantic: true } }), snapshot: textSnapshot(), index, fetchImpl: pastPicks(answers) })) events.push(event);
+    for await (const event of askHelp({ question: 'test', settings: helpSettingsOf({ sources: { semantic: true } }), snapshot: textSnapshot(), index, fetchImpl: pastPicks(answers) })) events.push(event);
 
     const done = events.at(-1);
     expect(done).toMatchObject({ type: 'done', text: 'Run **Check**.', stopped: false });
