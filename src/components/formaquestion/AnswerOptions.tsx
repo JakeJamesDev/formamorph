@@ -17,7 +17,7 @@ export function AnswerOptions({ settings, onChange }: { settings: HelpSettings; 
   });
   const copy = PROMPTS_COPY.options;
   return (
-    <section aria-label={copy.title} className="flex-shrink-0 space-y-4 border-t pt-4" data-testid="help-answer-options">
+    <section aria-label={copy.title} className="space-y-4" data-testid="help-answer-options">
       <div>
         <h3 className="text-label font-medium">{copy.title}</h3>
         <p className="text-helper text-muted-foreground">{copy.hint}</p>
