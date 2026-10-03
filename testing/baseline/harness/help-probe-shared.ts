@@ -1,7 +1,8 @@
 /** What the help probes share: the settings snapshot and the summary math. */
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
-import { HELP_PICK_SYSTEM_PROMPT, pickMessage, type PickQuestion } from '@/lib/formaquestion/helpPicks';
+import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { pickMessage, type PickQuestion } from '@/lib/formaquestion/helpPicks';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
 export interface ProbeTarget {
@@ -69,7 +70,7 @@ export function sessionFetch(usage: Usage): typeof fetch {
  * the app's message is not `ask` as `pickMessage` writes it, so the control drops the answer and nothing else.
  * The help session reads a thrown error as a failed pick, so a mismatch exits instead.
  */
-export function withoutEarlierAnswer(fetchImpl: typeof fetch, lines: readonly string[], ask: PickQuestion): typeof fetch {
+export function withoutEarlierAnswer(fetchImpl: typeof fetch, lines: readonly string[], ask: Omit<PickQuestion, 'prompt'>): typeof fetch {
   return ((url: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: unknown }[] };
     // The system prompt can carry a suffix, such as `/no_think`.

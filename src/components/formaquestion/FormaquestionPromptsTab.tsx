@@ -1,0 +1,155 @@
+import { useState } from 'react';
+import { Copy, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
+import PromptField from '@/components/prompt/PromptField';
+import { Button } from '@/components/ui/button';
+import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tip } from '@/components/ui/tooltip';
+import type { ChipVocabulary } from '@/lib/chipVocabulary';
+import { helpChipVocabulary } from '@/lib/formaquestion/helpChips';
+import {
+  activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpPrompt, isDefaultHelpPresetActive,
+  isHelpPromptEdited, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
+} from '@/lib/formaquestion/helpPresets';
+import { HELP_PROMPT_CHIPS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
+import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { randomUUID } from '@/lib/uuid';
+import { PROMPTS_COPY } from './formaquestionSettingsTabs';
+
+const ADD_PRESET = '__add__';
+
+/** The prompts in rail order. */
+const PROMPT_KEYS: readonly HelpPromptKey[] = ['answer', 'pick', 'lookup'];
+
+/** One chip family per prompt, made once: the palette of each is fixed. */
+const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
+  answer: helpChipVocabulary(HELP_PROMPT_CHIPS.answer),
+  pick: helpChipVocabulary(HELP_PROMPT_CHIPS.pick),
+  lookup: helpChipVocabulary(HELP_PROMPT_CHIPS.lookup),
+};
+
+type Pending = { kind: 'add' } | { kind: 'rename' } | { kind: 'delete' } | { kind: 'reset'; key: HelpPromptKey } | null;
+
+/**
+ * The Prompts tab: the help preset select with duplicate, rename and delete, and the three prompts in a
+ * rail. The Default preset shows its prompts read-only with a way to duplicate; a custom prompt resets to
+ * the default text.
+ */
+export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
+  const store = settings.presets;
+  const active = activeHelpPreset(store);
+  const readOnly = isDefaultHelpPresetActive(store);
+  const [key, setKey] = useState<HelpPromptKey>('answer');
+  const [pending, setPending] = useState<Pending>(null);
+  const setStore = (next: HelpPresetStore) => onChange({ presets: next });
+  const duplicate = (name: string) => setStore(duplicateHelpPreset(store, active.id, randomUUID(), name));
+  const copyName = `${active.name} (copy)`;
+  const prompt = PROMPTS_COPY.prompts[key];
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
+      <div className="flex flex-shrink-0 items-center gap-2" data-testid="help-preset-header-row">
+        <span className="text-helper text-muted-foreground">{PROMPTS_COPY.preset.label}</span>
+        {!readOnly && (
+          <Tip tip="Delete">
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Delete Preset" onClick={() => setPending({ kind: 'delete' })}>
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </Button>
+          </Tip>
+        )}
+        <Select value={active.id} onValueChange={(value) => (value === ADD_PRESET ? setPending({ kind: 'add' }) : setStore(selectHelpPreset(store, value)))}>
+          <SelectTrigger aria-label={PROMPTS_COPY.preset.label} className="min-w-0 flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={DEFAULT_HELP_PRESET_ID}>{DEFAULT_HELP_PRESET_NAME}</SelectItem>
+            {store.presets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>)}
+            <SelectSeparator />
+            <SelectItem value={ADD_PRESET}>Add New Preset…</SelectItem>
+          </SelectContent>
+        </Select>
+        <Tip tip="Duplicate">
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Duplicate Preset" onClick={() => duplicate(copyName)}>
+            <Copy className="h-4 w-4" aria-hidden />
+          </Button>
+        </Tip>
+        {!readOnly && (
+          <Tip tip="Rename">
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Rename Preset" onClick={() => setPending({ kind: 'rename' })}>
+              <Pencil className="h-4 w-4" aria-hidden />
+            </Button>
+          </Tip>
+        )}
+      </div>
+      <p className="-mt-2 flex-shrink-0 text-helper text-muted-foreground">{PROMPTS_COPY.preset.hint}</p>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
+        <Select value={key} onValueChange={(value) => setKey(value as HelpPromptKey)}>
+          <SelectTrigger aria-label="Prompt" className="md:hidden">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PROMPT_KEYS.map((id) => <SelectItem key={id} value={id}>{PROMPTS_COPY.prompts[id].label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <nav aria-label="Prompts" className="hidden w-[160px] shrink-0 flex-col border-r pr-3 md:flex">
+          {PROMPT_KEYS.map((id) => (
+            <CompactSelectionRow key={id} selected={key === id} showCheck={false} aria-pressed={undefined} aria-current={key === id ? 'true' : undefined} onClick={() => setKey(id)}>
+              {PROMPTS_COPY.prompts[id].label}
+            </CompactSelectionRow>
+          ))}
+        </nav>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <PromptField
+            key={`${active.id}:${key}`}
+            label={prompt.label}
+            ariaLabel={`${prompt.label} Prompt`}
+            hint={prompt.hint}
+            value={active.prompts[key]}
+            onChange={(text) => setStore(editHelpPrompt(store, active.id, key, text))}
+            vocabulary={VOCABULARIES[key]}
+            readOnly={readOnly}
+            readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
+            onRequestEdit={() => duplicate(copyName)}
+            labelAside={!readOnly && (
+              <Tip tip={PROMPTS_COPY.reset.hint} labelsChild={false}>
+                <Button
+                  variant="outline" size="sm" className="h-7 px-2"
+                  disabled={!isHelpPromptEdited(active.prompts, key)}
+                  onClick={() => setPending({ kind: 'reset', key })}
+                >
+                  <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden /> {PROMPTS_COPY.reset.label}
+                </Button>
+              </Tip>
+            )}
+            className="min-h-0 flex-1"
+          />
+        </div>
+      </div>
+
+      <PresetNameDialog
+        open={pending?.kind === 'add' || pending?.kind === 'rename'}
+        mode={pending?.kind === 'rename' ? 'rename' : 'add'}
+        initialName={pending?.kind === 'rename' ? active.name : copyName}
+        onOpenChange={(open) => { if (!open) setPending(null); }}
+        onSubmit={(name) => (pending?.kind === 'rename' ? setStore(renameHelpPreset(store, active.id, name)) : duplicate(name))}
+      />
+      <ConfirmDialog
+        open={pending?.kind === 'delete'}
+        onOpenChange={(open) => { if (!open) setPending(null); }}
+        title="Delete Preset"
+        description={`Delete the "${active.name}" preset? This can't be undone.`}
+        onConfirm={() => setStore(deleteHelpPreset(store, active.id))}
+      />
+      <ConfirmDialog
+        open={pending?.kind === 'reset'}
+        onOpenChange={(open) => { if (!open) setPending(null); }}
+        title="Reset Prompt"
+        description={`Reset the ${prompt.label} prompt of "${active.name}" to its default text? This can't be undone.`}
+        onConfirm={() => setStore(resetHelpPrompt(store, active.id, key))}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,92 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_HELP_PROMPTS } from './helpPrompt';
+import {
+  activeHelpPreset, activeHelpPrompts, DEFAULT_HELP_PRESET_ID, deleteHelpPreset, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE,
+  isDefaultHelpPresetActive, isHelpPromptEdited, parseHelpPresetStore, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
+} from './helpPresets';
+
+const custom = (store: HelpPresetStore, id = 'mine') => duplicateHelpPreset(store, DEFAULT_HELP_PRESET_ID, id, 'Mine');
+
+describe('the help preset store', () => {
+  it('starts on the Default preset, whose texts are the default prompts of this build', () => {
+    expect(isDefaultHelpPresetActive(EMPTY_HELP_PRESET_STORE)).toBe(true);
+    expect(activeHelpPreset(EMPTY_HELP_PRESET_STORE)).toEqual({ id: DEFAULT_HELP_PRESET_ID, name: 'Default', prompts: DEFAULT_HELP_PROMPTS });
+    expect(activeHelpPrompts(EMPTY_HELP_PRESET_STORE)).toBe(DEFAULT_HELP_PROMPTS);
+  });
+
+  it('refuses an edit, a rename and a delete of the Default preset', () => {
+    const store = EMPTY_HELP_PRESET_STORE;
+    expect(editHelpPrompt(store, DEFAULT_HELP_PRESET_ID, 'answer', 'Mine.')).toBe(store);
+    expect(renameHelpPreset(store, DEFAULT_HELP_PRESET_ID, 'Renamed')).toBe(store);
+    expect(deleteHelpPreset(store, DEFAULT_HELP_PRESET_ID)).toBe(store);
+    expect(resetHelpPrompt(store, DEFAULT_HELP_PRESET_ID, 'answer')).toBe(store);
+    expect(activeHelpPrompts(store)).toBe(DEFAULT_HELP_PROMPTS);
+  });
+
+  it('duplicates a preset into a custom copy of its texts and selects it', () => {
+    const store = custom(EMPTY_HELP_PRESET_STORE);
+    expect(store.activeId).toBe('mine');
+    expect(isDefaultHelpPresetActive(store)).toBe(false);
+    expect(activeHelpPreset(store)).toEqual({ id: 'mine', name: 'Mine', prompts: DEFAULT_HELP_PROMPTS });
+
+    const edited = editHelpPrompt(store, 'mine', 'pick', 'Pick well.');
+    const copy = duplicateHelpPreset(edited, 'mine', 'copy', 'Copy');
+    expect(activeHelpPrompts(copy).pick).toBe('Pick well.');
+    expect(copy.presets.map((preset) => preset.id)).toEqual(['mine', 'copy']);
+  });
+
+  it('edits one prompt of a custom preset and leaves the other two', () => {
+    const store = editHelpPrompt(custom(EMPTY_HELP_PRESET_STORE), 'mine', 'answer', 'Answer briefly.');
+    expect(activeHelpPrompts(store)).toEqual({ ...DEFAULT_HELP_PROMPTS, answer: 'Answer briefly.' });
+    expect(isHelpPromptEdited(activeHelpPrompts(store), 'answer')).toBe(true);
+    expect(isHelpPromptEdited(activeHelpPrompts(store), 'pick')).toBe(false);
+    expect(DEFAULT_HELP_PROMPTS.answer).not.toBe('Answer briefly.');
+  });
+
+  it('resets one prompt to the default text', () => {
+    const edited = editHelpPrompt(custom(EMPTY_HELP_PRESET_STORE), 'mine', 'lookup', 'Look it up.');
+    const reset = resetHelpPrompt(edited, 'mine', 'lookup');
+    expect(activeHelpPrompts(reset).lookup).toBe(DEFAULT_HELP_PROMPTS.lookup);
+    expect(isHelpPromptEdited(activeHelpPrompts(reset), 'lookup')).toBe(false);
+  });
+
+  it('renames a custom preset and keeps the selection', () => {
+    const store = renameHelpPreset(custom(EMPTY_HELP_PRESET_STORE), 'mine', 'Terse');
+    expect(activeHelpPreset(store).name).toBe('Terse');
+    expect(store.activeId).toBe('mine');
+  });
+
+  it('deletes a custom preset; the active one selects Default, another leaves the selection', () => {
+    const two = custom(custom(EMPTY_HELP_PRESET_STORE), 'other');
+    expect(two.activeId).toBe('other');
+    const gone = deleteHelpPreset(two, 'other');
+    expect(gone.activeId).toBe(DEFAULT_HELP_PRESET_ID);
+    expect(gone.presets.map((preset) => preset.id)).toEqual(['mine']);
+    const kept = deleteHelpPreset(selectHelpPreset(two, 'other'), 'mine');
+    expect(kept.activeId).toBe('other');
+  });
+
+  it('selects by id, and an id no preset holds selects Default', () => {
+    const store = selectHelpPreset(custom(EMPTY_HELP_PRESET_STORE), DEFAULT_HELP_PRESET_ID);
+    expect(isDefaultHelpPresetActive(store)).toBe(true);
+    expect(selectHelpPreset(store, 'mine').activeId).toBe('mine');
+    expect(selectHelpPreset(store, 'ghost').activeId).toBe(DEFAULT_HELP_PRESET_ID);
+  });
+});
+
+describe('the stored help preset store', () => {
+  it('reads back what was stored', () => {
+    const store = editHelpPrompt(custom(EMPTY_HELP_PRESET_STORE), 'mine', 'answer', 'Mine.');
+    expect(parseHelpPresetStore(JSON.parse(JSON.stringify(store)))).toEqual(store);
+  });
+
+  it('reads a bad value as the empty store, drops a bad preset, and points a ghost active id at Default', () => {
+    expect(parseHelpPresetStore('presets')).toEqual(EMPTY_HELP_PRESET_STORE);
+    expect(parseHelpPresetStore(null)).toEqual(EMPTY_HELP_PRESET_STORE);
+    expect(parseHelpPresetStore({ activeId: 'x', presets: 'none' })).toEqual(EMPTY_HELP_PRESET_STORE);
+    const good = { id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c' } };
+    const read = parseHelpPresetStore({ activeId: 'gone', presets: [good, { id: 'bad', name: 'Bad', prompts: { answer: 1 } }, { id: 'ok', name: 'Twin', prompts: good.prompts }, 'junk'] });
+    expect(read).toEqual({ activeId: DEFAULT_HELP_PRESET_ID, presets: [good] });
+    expect(parseHelpPresetStore({ activeId: 'ok', presets: [good] }).activeId).toBe('ok');
+  });
+});

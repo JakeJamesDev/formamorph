@@ -36,3 +36,15 @@ export const ENDPOINT_COPY = {
   sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
   presetHint: 'Picks the preset to edit. The game uses the same presets.',
 } as const;
+
+/** The copy of the Prompts tab. */
+export const PROMPTS_COPY = {
+  preset: { label: 'Preset', hint: 'Picks the preset that help questions use. Default updates with each release.' },
+  prompts: {
+    answer: { label: 'Answer', hint: 'Tells your AI how to answer from the guide sections' },
+    pick: { label: 'Picks', hint: 'Tells your AI how to pick guide sections from the heading list' },
+    lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
+  },
+  readOnly: (name: string) => `${name} is read-only`,
+  reset: { label: 'Reset to Default', hint: 'Returns this prompt to the text of this release' },
+} as const;

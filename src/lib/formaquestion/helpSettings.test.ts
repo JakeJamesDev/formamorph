@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
+import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 
 describe('the default help settings', () => {
   it('equal the values the help session had as constants when the bar run measured it', () => {
@@ -19,6 +20,7 @@ describe('the default help settings', () => {
       sourcesOpen: true,
       thinkingOpen: false,
       reveal: DEFAULT_HELP_REVEAL,
+      presets: EMPTY_HELP_PRESET_STORE,
     });
   });
 });
@@ -64,6 +66,15 @@ describe('the stored help settings', () => {
 
   it('refuse text that is not a settings object, so the defaults stand', () => {
     for (const raw of ['not json', '[]', 'null', '4']) expect(() => helpSettingsCodec.parse(raw)).toThrow();
+  });
+});
+
+describe('the help presets', () => {
+  it('survive the codec, and a bad value reads as no custom preset', () => {
+    const presets = duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, 'default', 'mine', 'Mine');
+    const settings = helpSettingsOf({ presets, historyLength: 2 });
+    expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings))).toEqual(settings);
+    expect(helpSettingsCodec.parse(JSON.stringify({ presets: 'mine', historyLength: 2 }))).toEqual(helpSettingsOf({ historyLength: 2 }));
   });
 });
 

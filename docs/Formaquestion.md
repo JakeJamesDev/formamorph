@@ -224,6 +224,41 @@ Under the two settings is the same preset editor as **Settings** → **AI Endpoi
 2. In the editor, select **Add New Preset**, and enter the endpoint, token and model of the other AI.
 3. Set **Answer Endpoint** to the new preset.
 
+### Prompts
+<!-- keywords: help prompt, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only -->
+
+The **Prompts** tab holds the help prompts: the text that tells your AI how to answer. The prompts are in a preset, apart from the prompt presets of your game. A change to the game's preset never changes help.
+
+| Prompt | What it does |
+|---|---|
+| **Answer** | Tells your AI how to answer from the guide sections in the request |
+| **Picks** | Tells your AI how to pick guide sections from the list of headings, for the **AI Picks** request |
+| **Lookup** | Tells your AI how to answer when it can read more sections through the lookup function |
+
+- **Default** is read-only. Its text comes from the app, so each release updates it.
+- **Duplicate & Edit** in the notice above a Default prompt makes a copy of the preset and opens it for edits. The **Duplicate** button beside the preset list does the same. **Add New Preset…** in the list asks for a name first.
+- A custom preset has **Rename** and **Delete** beside the list. When you delete the preset in use, help goes back to **Default**.
+- **Reset to Default** above a custom prompt returns that one prompt to the text of this release. A custom preset does not get the updates of a release on its own.
+- This device keeps the presets, with the other Formaquestion settings.
+
+Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chips are the parts the app reads back or names elsewhere:
+
+| Chip | In | What it sends |
+|---|---|---|
+| **Not in Guide Marker** | Answer, Lookup | The line your AI writes first when the guide does not cover the question. The app reads that line and shows the notice above the answer. |
+| **Lookup Function** | Lookup | The name of the function your AI calls to read more guide sections |
+| **Pick Limit** | Picks | The most sections one pick reply names. The app reads that many picks at most, whatever the prompt says. |
+| **Reply Format** | Picks | The rule for how the pick reply is written, so the app can read the picks |
+
+A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
+
+**How to change a help prompt:**
+
+1. Open **Formaquestion Settings**, then the **Prompts** tab.
+2. Select **Duplicate & Edit**, or **Add New Preset…** in the preset list.
+3. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips the app reads back.
+4. Close the settings and ask a question. The next request uses the new text.
+
 ## On Mobile
 <!-- keywords: full screen sheet, small screen, keyboard covers, slides in, touch, no resizing -->
 

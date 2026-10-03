@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPicks';
+import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { answerVariant, rewriteAnswer, type AnswerVariant } from './help-answer-variants';
 

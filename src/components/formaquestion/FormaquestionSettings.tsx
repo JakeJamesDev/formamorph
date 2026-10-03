@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { EndpointTab } from './FormaquestionEndpointTab';
+import { PromptsTab } from './FormaquestionPromptsTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
 import type { SemanticSearch } from './useSemanticSearch';
 import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
@@ -172,6 +173,9 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
           </TabsContent>
           <TabsContent value="endpoint" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
             <EndpointTab settings={settings} onChange={onChange} />
+          </TabsContent>
+          <TabsContent value="prompts" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
+            <PromptsTab settings={settings} onChange={onChange} />
           </TabsContent>
         </Tabs>
       </DialogContent>

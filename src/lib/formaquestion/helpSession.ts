@@ -13,14 +13,16 @@ import { withImageParts } from '@/lib/aiRequest/imageParts';
 import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
+import { renderHelpPrompt } from './helpChips';
 import { requestPicks } from './helpPicks';
+import { activeHelpPrompts } from './helpPresets';
 import { helpRoutes } from './helpRoutes';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
 import { mergeRanks } from './rankMerge';
 import { surfaceHint, type SurfaceHint } from './surfaceHint';
-import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
+import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /** The fewest sections of each source's ranking the merge reads; a search that asks for more gets more. */
 const HELP_MERGE_DEPTH = 50;
@@ -234,9 +236,10 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
   // The embedder takes no stop signal, so Stop ends the wait for it here.
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
   const previous = keptHistory(history, settings.historyLength).at(-1);
+  const prompt = renderHelpPrompt(activeHelpPrompts(settings.presets).pick);
   const [allPicks, semantic] = await Promise.all([
     on.aiPicks
-      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING), { signal, fetchImpl }).catch(() => [])
+      ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING), { signal, fetchImpl }).catch(() => [])
       : [],
     on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), embedder), stopped]) : null,
   ]);
@@ -284,8 +287,10 @@ export async function* askHelp({
   const userMessage = bare
     ? question
     : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
+  // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
+  const prompts = activeHelpPrompts(settings.presets);
   const spec = buildAiRequestSpec(answerSnapshot, {
-    systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
+    systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer)),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
     maxTokensOverride: settings.answerMaxTokens,

@@ -8,6 +8,7 @@ import {
   type PromptReasoningSetting,
 } from '@/lib/reasoningEffort';
 import type { Codec } from '@/lib/usePersistentState';
+import { EMPTY_HELP_PRESET_STORE, parseHelpPresetStore, type HelpPresetStore } from './helpPresets';
 import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
 
 /** The search sources of a help question. The rankings of the ones that are on merge into one. */
@@ -49,6 +50,8 @@ export interface HelpSettings {
   readonly thinkingOpen: boolean;
   /** How an answer reveals as it streams: the Answer Reveal dialog's values. */
   readonly reveal: HelpReveal;
+  /** The help prompt presets and the active one. The session sends the active preset's three texts. */
+  readonly presets: HelpPresetStore;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
@@ -65,6 +68,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   sourcesOpen: true,
   thinkingOpen: false,
   reveal: DEFAULT_HELP_REVEAL,
+  presets: EMPTY_HELP_PRESET_STORE,
 };
 
 /** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
@@ -99,7 +103,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
   parse: (raw) => {
     const stored: unknown = JSON.parse(raw);
     if (!isRecord(stored)) throw new Error('not a help settings object');
-    const { sources, reveal, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
+    const { sources, reveal, presets, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
       sources: isRecord,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
@@ -112,9 +116,10 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       sourcesOpen: isBool,
       thinkingOpen: isBool,
       reveal: isRecord,
+      presets: isRecord,
     });
     const storedSources = isRecord(sources) ? sources : {};
-    return { ...rest, reveal: parseHelpReveal(reveal), sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }) };
+    return { ...rest, reveal: parseHelpReveal(reveal), presets: parseHelpPresetStore(presets), sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }) };
   },
   serialize: (value) => JSON.stringify(value),
 };
