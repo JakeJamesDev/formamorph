@@ -299,14 +299,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setDialog('settings');
     setDevCompare(true);
   }, [devRoute]);
-  // `#dev?modal=formaquestionAiContext` opens the window and AI Context on a canned question with a trace.
+  // `#dev?modal=formaquestionAiContext` opens the window and AI Context on two canned questions with traces.
   // The sample loads on demand, so it stays out of the shipped bundle.
   const [devTrace, setDevTrace] = useState<HelpExchange[] | null>(null);
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestionAiContext' || !index) return;
     setOpen(true);
     setDialog('aiContext');
-    void import('@/lib/devHelpTraceSample').then(({ devHelpTraceSample }) => { if (mountedRef.current) setDevTrace([devHelpTraceSample(index)]); });
+    void import('@/lib/devHelpTraceSample').then(({ devHelpTraceSample }) => { if (mountedRef.current) setDevTrace([devHelpTraceSample(index), devHelpTraceSample(index, 'And how do I remove one?', 'dev-trace-2')]); });
   }, [devRoute, index, mountedRef]);
   const tracedExchanges = devTrace ?? chat.exchanges;
   useEffect(() => {

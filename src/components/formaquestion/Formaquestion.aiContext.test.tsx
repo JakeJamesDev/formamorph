@@ -64,6 +64,10 @@ async function send(field: HTMLElement, question: string) {
   await within(conversation()).findByRole('group', { name: 'Sources' });
 }
 
+/** The dialog's question line reads this. The quote marks are CSS, so the text has none. */
+const questionLine = (dialog: HTMLElement, text: string) =>
+  within(dialog).getByText((_content, element) => element?.tagName === 'DIV' && element.textContent === text);
+
 /** Opens AI Context from the title bar menu. */
 async function openAiContext() {
   await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
@@ -166,6 +170,42 @@ describe('AI Context in Formaquestion', () => {
     expect(within(dialog).queryByRole('group', { name: 'How do I add a trait?' })).toBeNull();
     expect(within(dialog).getByText(AI_CONTEXT_COPY.empty)).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Export' })).toBeDisabled();
+  });
+
+  it('shows one question per page, opens on the newest, and pages back to an earlier one', async () => {
+    stubHelpStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    await userEvent.type(field, 'And the theme?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(within(conversation()).getAllByRole('group', { name: 'Sources' })).toHaveLength(2));
+    const dialog = await openAiContext();
+
+    expect(questionLine(dialog, 'Question 2 of 2 — And the theme?')).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'And the theme?' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('group', { name: 'How do I add a trait?' })).toBeNull();
+    expect(within(dialog).getByRole('navigation', { name: 'pagination' })).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByLabelText('Go to previous page'));
+    expect(questionLine(dialog, 'Question 1 of 2 — How do I add a trait?')).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'How do I add a trait?' })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('group', { name: 'And the theme?' })).toBeNull();
+
+    // Collapse all folds the open page alone. The other page keeps its blocks open.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Collapse all' }));
+    expect(within(dialog).queryByText('Raw Output')).toBeNull();
+    await userEvent.click(within(dialog).getByLabelText('Go to next page'));
+    expect(within(dialog).getAllByText('Raw Output')).toHaveLength(2);
+    expect(within(dialog).getByRole('button', { name: 'Collapse all' })).toBeInTheDocument();
+  });
+
+  it('shows no pager for one question', async () => {
+    stubHelpStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    await send(field, 'How do I add a trait?');
+    const dialog = await openAiContext();
+    expect(questionLine(dialog, 'Question 1 of 1 — How do I add a trait?')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('navigation', { name: 'pagination' })).toBeNull();
   });
 
   it('collapses and expands every block at once', async () => {

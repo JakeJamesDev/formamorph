@@ -4,10 +4,10 @@ import { traceSection, type HelpTrace } from '@/lib/formaquestion/helpTrace';
 
 /**
  * A canned help question with a trace, for `#dev?modal=formaquestionAiContext`: the AI Context popup has
- * something to draw without an AI. The sections come from the loaded guide, so every link resolves.
+ * something to draw without an AI. The sections come from the loaded guide, so every link resolves. The
+ * route seeds two, so the dialog shows its pager.
  */
-export function devHelpTraceSample(index: DocsIndex): HelpExchange {
-  const question = 'How do I add a trait?';
+export function devHelpTraceSample(index: DocsIndex, question = 'How do I add a trait?', id = 'dev-trace'): HelpExchange {
   const keyword = index.search(question, 6).map(traceSection);
   const picks = index.search('trait', 3).map(traceSection);
   const merged = [...new Map([...keyword, ...picks].map((section) => [section.id, section])).values()];
@@ -48,5 +48,5 @@ export function devHelpTraceSample(index: DocsIndex): HelpExchange {
       },
     ],
   };
-  return { id: 'dev-trace', question, images: [], answer: '1. Open the **Traits** tab.\n2. Select **Add Trait**.', reasoning: '', status: 'answered', sources: [], flagged: false, nearest: [], trace };
+  return { id, question, images: [], answer: '1. Open the **Traits** tab.\n2. Select **Add Trait**.', reasoning: '', status: 'answered', sources: [], flagged: false, nearest: [], trace };
 }

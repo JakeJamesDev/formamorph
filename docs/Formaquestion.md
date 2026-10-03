@@ -162,7 +162,7 @@ The import adds the preset and selects it. See [The Preset File](#the-preset-fil
 1. Ask a question.
 2. Select **⋮** in the Formaquestion title bar, then **AI Context**.
 
-The dialog lists each question, newest first, with the request cards. See [AI Context](#ai-context).
+The dialog shows one question per page, the newest first, with its request cards. See [AI Context](#ai-context).
 
 ## How to Use Formaquestion as a Plain Chat
 <!-- keywords: chat assistant, no guide, ordinary chat, talk to the ai, turn off search, no sources, bare question, general chatbot, roleplay assistant, stop the guide, only my question -->
@@ -406,7 +406,7 @@ A Tool that's on reads the world you have open, so text from that world can go t
 
 1. Select **⋮** in the title bar, then **AI Context**.
 
-The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-ai-context-inspector). It lists the questions of the conversation, newest first. The window closes while the dialog is open and opens again when you close it.
+The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-ai-context-inspector). Each question of the conversation is one page, and the dialog opens on the newest. The line above the blocks says **Question N of M** and quotes the question. The pager at the bottom turns to another question. The window closes while the dialog is open and opens again when you close it.
 
 | Block | What it shows |
 |---|---|
@@ -415,7 +415,7 @@ The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-a
 | **Request N: Answer** | The answer request, its **Tool Rounds** when the lookup ran, its reasoning, and the answer as your AI wrote it |
 
 - A request card has the same blocks as a request in the game's inspector. Its header names the endpoint that served it, its reasoning fields, its **Max Tokens**, and its sampler values. A **Custom Prompt** mark shows when the prompt of that request differs from the default text.
-- **Collapse all** and **Expand all** fold or open every block.
+- **Collapse all** and **Expand all** fold or open every block of the open page.
 - **Export** downloads every question and its trace as a `.json` file, for a bug report.
 - **Clear Conversation** removes the traces with the conversation. A reload empties them.
 

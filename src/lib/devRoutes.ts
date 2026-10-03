@@ -85,8 +85,8 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `formaquestion` opens the help window over whatever is on screen. It is not a dialog, so it does not
  *  close one: open the dialog first, then the window, to see both. `formaquestionSettings` opens the window
  *  and Formaquestion Settings under it. `formaquestionCompare` adds the compare view over them, on a canned
- *  edit of the answer prompt. `formaquestionAiContext` opens the window and its AI Context under it, on a
- *  canned question with a trace, so the popup has something to show without an AI. */
+ *  edit of the answer prompt. `formaquestionAiContext` opens the window and its AI Context under it, on two
+ *  canned questions with traces, so the popup has pages to show without an AI. */
 export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext'] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 

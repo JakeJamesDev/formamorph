@@ -1,10 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronsDownUp, ChevronsUpDown, ScrollText } from 'lucide-react';
 import { AiContextExportButton } from '@/components/aiContext/AiContextExportButton';
 import { AiContextRequestCard, AiContextSection, type AiContextCardSection } from '@/components/aiContext/AiContextRequestCard';
 import { DebugChip } from '@/components/game/DebugChip';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, dialogFullHeightMobile } from '@/components/ui/dialog';
+import { Pager } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { HELP_SAMPLER_FIELDS, type HelpQueryTrace, type HelpRequestTrace, type HelpSamplers, type HelpTrace, type HelpTraceSection } from '@/lib/formaquestion/helpTrace';
@@ -106,9 +107,9 @@ function SearchBlock({ trace }: { trace: HelpTrace }) {
 const keyOf = (id: string, part: string | number): string => `${id}:${part}`;
 
 /**
- * Formaquestion's AI Context: what each question of the conversation sent, newest first, in the game view's
- * AI Context layout. Each question holds its Search block and the shared request card for each request.
- * The help window stays above it.
+ * Formaquestion's AI Context: what each question of the conversation sent, one question per page, in the
+ * game view's AI Context layout. A page holds the question's Search block and the shared request card for
+ * each request. The newest question opens first, as the game view opens on the newest turn.
  */
 export function FormaquestionAiContext({ open, onOpenChange, exchanges }: {
   open: boolean;
@@ -116,14 +117,25 @@ export function FormaquestionAiContext({ open, onOpenChange, exchanges }: {
   exchanges: readonly HelpExchange[];
 }) {
   const traced = useMemo(() => exchanges.filter(hasTrace), [exchanges]);
-  // Which blocks the reader closed. Everything starts open, as in the game view.
+  // Page = question, 1-based. A new question turns to its page, as the game view turns to a new turn.
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    if (traced.length > 0) setPage(traced.length);
+  }, [traced.length]);
+  const pageIndex = Math.min(Math.max(page, 1), Math.max(traced.length, 1)) - 1;
+  const current = traced[pageIndex];
+  // Which blocks the reader closed. Everything starts open, as in the game view. Collapse all acts on the open page.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const keys = traced.flatMap((exchange) => [
-    keyOf(exchange.id, 'search'),
-    ...exchange.trace.requests.flatMap((_request, i) => (['group', 'input', 'tools', 'reasoning', 'output'] as const).map((section) => keyOf(exchange.id, `${i}:${section}`))),
-  ]);
+  const keys = current === undefined ? [] : [
+    keyOf(current.id, 'search'),
+    ...current.trace.requests.flatMap((_request, i) => (['group', 'input', 'tools', 'reasoning', 'output'] as const).map((section) => keyOf(current.id, `${i}:${section}`))),
+  ];
   const allCollapsed = keys.length > 0 && keys.every((key) => collapsed[key]);
-  const toggleAll = () => setCollapsed(allCollapsed ? {} : Object.fromEntries(keys.map((key) => [key, true])));
+  const toggleAll = () => setCollapsed((prev) => {
+    const next = { ...prev };
+    for (const key of keys) next[key] = !allCollapsed;
+    return next;
+  });
   const isOpen = (key: string) => !collapsed[key];
   const setOpen = (key: string, next: boolean) => setCollapsed((prev) => ({ ...prev, [key]: !next }));
   const exportData = traced.map(({ question, trace }) => ({ question, trace }));
@@ -131,42 +143,45 @@ export function FormaquestionAiContext({ open, onOpenChange, exchanges }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent surface="formaquestionAiContext" aria-describedby={undefined} className={DIALOG_SIZE}>
-        <div className="flex flex-shrink-0 items-center gap-2 pr-8">
-          <DialogTitle className="flex items-center gap-1.5">
-            <ScrollText className="h-5 w-5" />
-            {AI_CONTEXT_COPY.title}
-          </DialogTitle>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={toggleAll} disabled={keys.length === 0} className="h-8 flex-shrink-0 gap-1">
-              {allCollapsed ? <ChevronsUpDown className="h-4 w-4" /> : <ChevronsDownUp className="h-4 w-4" />}
-              {allCollapsed ? AI_CONTEXT_COPY.expandAll : AI_CONTEXT_COPY.collapseAll}
-            </Button>
-            <AiContextExportButton data={exportData} name="formaquestion" tip={AI_CONTEXT_COPY.export} disabled={traced.length === 0} />
+        <DialogTitle className="flex flex-shrink-0 items-center gap-1.5 pr-8">
+          <ScrollText className="h-5 w-5" />
+          {AI_CONTEXT_COPY.title}
+        </DialogTitle>
+        {/* The question line and the view controls share one row, as the game view's turn line does. */}
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="min-w-0 flex-grow truncate text-meta text-muted-foreground">
+            {current && <>{AI_CONTEXT_COPY.question} {pageIndex + 1} of {traced.length} — <q>{current.question}</q></>}
           </div>
+          <Button variant="outline" size="sm" onClick={toggleAll} disabled={keys.length === 0} className="h-8 flex-shrink-0 gap-1">
+            {allCollapsed ? <ChevronsUpDown className="h-4 w-4" /> : <ChevronsDownUp className="h-4 w-4" />}
+            {allCollapsed ? AI_CONTEXT_COPY.expandAll : AI_CONTEXT_COPY.collapseAll}
+          </Button>
+          <AiContextExportButton data={exportData} name="formaquestion" tip={AI_CONTEXT_COPY.export} disabled={traced.length === 0} />
         </div>
         <div className="min-h-0 flex-grow">
           <ScrollArea className="h-full">
             <div className="space-y-4 text-meta">
-              {traced.length === 0 ? (
+              {current === undefined ? (
                 <p className="text-muted-foreground">{AI_CONTEXT_COPY.empty}</p>
               ) : (
-                // Numbered in conversation order, listed newest first.
-                traced.map((exchange, at) => (
-                  <Question key={exchange.id} exchange={exchange} number={at + 1} isOpen={isOpen} setOpen={setOpen} />
-                )).reverse()
+                <Question key={current.id} exchange={current} isOpen={isOpen} setOpen={setOpen} />
               )}
             </div>
           </ScrollArea>
         </div>
+        {traced.length > 1 && (
+          <div className="flex flex-shrink-0 justify-center pt-2">
+            <Pager page={pageIndex + 1} pageCount={traced.length} onPageChange={setPage} />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
 /** One question of the conversation: its Search block, then its request cards. */
-function Question({ exchange, number, isOpen, setOpen }: {
+function Question({ exchange, isOpen, setOpen }: {
   exchange: TracedExchange;
-  number: number;
   isOpen: (key: string) => boolean;
   setOpen: (key: string, open: boolean) => void;
 }): ReactNode {
@@ -174,7 +189,6 @@ function Question({ exchange, number, isOpen, setOpen }: {
   const searchKey = keyOf(id, 'search');
   return (
     <section role="group" aria-label={question} className="space-y-2">
-      <h3 className="truncate text-label font-semibold">Question {number}: <q>{question}</q></h3>
       <AiContextSection title={AI_CONTEXT_COPY.search} open={isOpen(searchKey)} onOpenChange={(next) => setOpen(searchKey, next)}>
         <SearchBlock trace={trace} />
       </AiContextSection>
