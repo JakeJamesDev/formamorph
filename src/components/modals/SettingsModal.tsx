@@ -4,6 +4,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from '../theme-provider';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
+import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { SurfaceTab } from '@/components/ui/surface';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
@@ -41,7 +42,7 @@ import { revealEditorChip, cancelEditorReveals } from '@/lib/editorFieldFocus';
 import type { AnatomyViewMode } from '@/components/game/RequestAnatomyView';
 import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobile } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { FullscreenShell } from "@/components/FullscreenShell";
 import { useMorphFullscreen, type MorphFullscreen } from "@/lib/useMorphFullscreen";
@@ -1033,12 +1034,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         aria-describedby={undefined}
         // One width for every tab, matching the Feedback hub — Prompts wanted a wider window only to fit
         // the side-by-side panes, and those now belong to full screen.
-        className={cn(
-          'flex flex-col overflow-hidden sm:max-w-[900px]',
-          // Mobile has no room to spend on the frame around a settings panel — fill the screen.
-          dialogFullHeightMobile,
-          'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
-        )}
+        className={SETTINGS_DIALOG_SIZE}
       >
         <DialogHeader className="flex-shrink-0">
           {/* The close cross is absolutely placed over this row, so the switch is kept clear of it. */}

@@ -18,5 +18,5 @@ export const GENERAL_COPY = {
   keyword: { label: 'Keyword Search', hint: 'Finds guide sections that share words with your question' },
   aiPicks: { label: 'AI Picks', hint: 'Lets your AI pick guide sections. Costs one more request per question.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the screen you have open and its guide section' },
-  historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request carries' },
+  historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
 } as const;
