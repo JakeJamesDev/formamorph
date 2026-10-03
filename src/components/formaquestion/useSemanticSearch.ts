@@ -22,6 +22,8 @@ export interface SemanticSearch {
 export function useSemanticSearch(settings: HelpSettings, change: (next: HelpSettingsChange) => void): SemanticSearch {
   const mounted = useMountedRef();
   const attempt = useRef(0);
+  const loading = useRef<Promise<void> | null>(null);
+  const onProgress = useRef<(next: EmbeddingLoadProgress) => void>(() => {});
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState<EmbeddingLoadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,10 @@ export function useSemanticSearch(settings: HelpSettings, change: (next: HelpSet
     void (async () => {
       try {
         if (!isEmbeddingModelReady() && !(await isEmbeddingModelCached())) {
-          await loadEmbeddingModel((next) => { if (current()) setProgress(next); });
+          onProgress.current = (next) => { if (current()) setProgress(next); };
+          // A switch off and on again joins the download in flight.
+          loading.current ??= loadEmbeddingModel((next) => onProgress.current(next)).finally(() => { loading.current = null; });
+          await loading.current;
         }
         if (!current()) return;
         change({ sources: { semantic: true } });

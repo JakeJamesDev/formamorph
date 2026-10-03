@@ -125,6 +125,20 @@ describe('the Semantic Search switch', () => {
     await waitFor(() => expect(storedSemantic()).toBe(true));
   });
 
+  it('joins the download in flight when the switch goes off and on again', async () => {
+    const download = pendingLoad();
+    const { dialog } = await openSettings();
+    await userEvent.click(semanticBox(dialog));
+    await waitFor(() => expect(model.load).toHaveBeenCalledTimes(1));
+    await userEvent.click(semanticBox(dialog));
+    expect(semanticBox(dialog)).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(semanticBox(dialog));
+    await download.finish();
+
+    await waitFor(() => expect(storedSemantic()).toBe(true));
+    expect(model.load).toHaveBeenCalledTimes(1);
+  });
+
   it('answers a question sent during the download from the other sources', async () => {
     pendingLoad();
     const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
