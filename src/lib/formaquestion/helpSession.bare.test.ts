@@ -30,8 +30,10 @@ const bodyOf = (spy: FetchSpy, call = 0): Body => JSON.parse(spy.mock.calls[call
 
 async function ask(question: string, change: HelpSettingsChange, { reply = 'Light scatters.', ...over }: Partial<HelpQuestion> & { reply?: string } = {}) {
   const fetchImpl: FetchSpy = vi.fn(async () => sseResponse(sseReply(reply)));
-  const events: HelpEvent[] = [];
-  for await (const event of askHelp({ question, settings: helpSettingsOf(change), snapshot: textSnapshot(), index, fetchImpl: asFetch(fetchImpl), ...over })) events.push(event);
+  const events: Exclude<HelpEvent, { type: 'trace' }>[] = [];
+  for await (const event of askHelp({ question, settings: helpSettingsOf(change), snapshot: textSnapshot(), index, fetchImpl: asFetch(fetchImpl), ...over })) {
+    if (event.type !== 'trace') events.push(event);
+  }
   const done = events.at(-1);
   if (done?.type !== 'done') throw new Error('no done event');
   return { fetchImpl, events, done: { ...done, sources: done.sources.map((section) => section.id), nearest: done.nearest.map((section) => section.id) } };

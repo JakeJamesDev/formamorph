@@ -59,6 +59,8 @@ export interface HelpSettings {
   readonly tools: readonly Tool[];
   /** The switch of each Formaquestion Tool, by id. Absent is off. */
   readonly toolSwitches: ToolEnabledMap;
+  /** The AI Context button shows in the Formaquestion header. The traces are recorded either way. */
+  readonly showAiContext: boolean;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
@@ -78,6 +80,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   presets: EMPTY_HELP_PRESET_STORE,
   tools: [],
   toolSwitches: {},
+  showAiContext: false,
 };
 
 /** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
@@ -134,6 +137,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       presets: isRecord,
       tools: Array.isArray,
       toolSwitches: isRecord,
+      showAiContext: isBool,
     });
     const storedSources = isRecord(sources) ? sources : {};
     const storedTools = parseHelpTools(tools);

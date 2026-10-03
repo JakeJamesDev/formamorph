@@ -2,14 +2,15 @@
  * The help session: one question in, one streamed answer and its sources out. It has no React and reads no
  * world or save. It sends through the AI Request Spec and the tool loop, the same path as every other call.
  */
-import { buildAiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
-import { ABORTED_FINISH_REASON } from '@/lib/aiRequest/aiStream';
-import { streamAiToolLoop, type ToolExecutor } from '@/lib/aiRequest/toolLoop';
+import { buildAiRequestSpec, type AiRequestBody, type AiRequestSpec, type AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import { ABORTED_FINISH_REASON, type AiStreamResult } from '@/lib/aiRequest/aiStream';
+import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import { extractReasoningLive, stripReasoningLive } from '@/lib/aiResponse';
 import { snapshotToolExecutor } from '@/lib/tools/toolOffer';
 import { isTool, type OfferedFunction } from '@/lib/tools/toolSchema';
 import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { CHANGELOG_PAGE, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
+import { toDebugEndpoint } from '@/lib/promptEndpoints';
 import { resolvePromptReasoning, resolvePromptReasoningSetting, toolsSupported, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { withImageParts } from '@/lib/aiRequest/imageParts';
@@ -18,15 +19,19 @@ import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { renderHelpPrompt } from './helpChips';
 import { requestPicks } from './helpPicks';
-import { activeHelpOptions, activeHelpPrompts } from './helpPresets';
+import { activeHelpOptions, activeHelpPreset, activeHelpPrompts, isHelpPromptEdited } from './helpPresets';
 import { helpRoutes } from './helpRoutes';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
 import { helpToolsOn } from './helpTools';
+import {
+  emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection,
+  type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
+} from './helpTrace';
 import type { ToolSnapshotSource } from './helpWorld';
 import { mergeRanks } from './rankMerge';
-import { surfaceHint, type SurfaceHint } from './surfaceHint';
+import { surfaceHint, surfaceWords, type SurfaceHint } from './surfaceHint';
 import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /** The fewest sections of each source's ranking the merge reads; a search that asks for more gets more. */
@@ -94,7 +99,12 @@ export type HelpEvent =
    * from the guide, and `nearest` holds the search's sections for the question. `lead` is the open screen's
    * section among the sources.
    */
-  | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[]; reasoning: string };
+  | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[]; reasoning: string }
+  /**
+   * What the question sent, for AI Context: once the search is done and the answer request is built, again
+   * after each tool round, and once more with the reply. Each event carries the whole trace so far.
+   */
+  | { type: 'trace'; trace: HelpTrace };
 
 /** The pick request never reasons (Q28). */
 const PICK_REASONING: PromptReasoningSetting = { enabled: false, level: 'global' };
@@ -118,6 +128,28 @@ function helpSnapshot(snapshot: AiSettingsSnapshot, routes: readonly string[], r
 
 /** The reasoning parts that came in, as one text. */
 const joinReasoning = (...parts: string[]): string => parts.filter(Boolean).join('\n\n');
+
+/** The sampler values a request body carried, in the settings' names. The engine spells the penalty `repeat_penalty`. */
+function samplersOf(body: AiRequestBody): HelpSamplers {
+  const sent: Record<string, unknown> = { ...body, repetition_penalty: body.repetition_penalty ?? body.repeat_penalty };
+  return Object.fromEntries(HELP_SAMPLER_FIELDS.flatMap(({ key, wire }) => (typeof sent[wire] === 'number' ? [[key, sent[wire]]] : [])));
+}
+
+/** One request as the trace records it: the wire messages and the endpoint, and the reply once it came. */
+function requestTrace(type: string, { target, body }: AiRequestSpec, customPrompt: boolean, result?: AiStreamResult, toolRounds?: readonly AiToolRound[]): HelpRequestTrace {
+  const endpoint = { presetId: target.presetId ?? null, presetName: target.presetName ?? target.endpointId, model: target.model, url: target.url, apiToken: target.apiToken };
+  return {
+    record: {
+      type,
+      messages: body.messages,
+      endpoint: toDebugEndpoint(endpoint, body, target.reasoning.dialect),
+      ...(toolRounds?.length && { toolRounds: [...toolRounds] }),
+      ...(result && { response: result.content, reasoning: result.reasoningText }),
+    },
+    samplers: samplersOf(body),
+    customPrompt,
+  };
+}
 
 /** The exchanges that got answer text. */
 const answered = (history: readonly EarlierExchange[]): EarlierExchange[] => history.filter((exchange) => exchange.answer.trim());
@@ -144,23 +176,47 @@ function helpQueries(question: string, previous: EarlierExchange | undefined): s
   return previous ? [question, followUpQuery(previous, question)] : [question];
 }
 
+/** One search source and its name, for the merge and the trace. */
+interface NamedRanking {
+  source: HelpSource;
+  ranking: SectionRanking;
+}
+
 /**
  * One search over the rankings of several sources, merged by reciprocal rank fusion. A merged ranking has no
  * score the floor fits, so the floor does not apply. The release sections of a what's-new question stay first,
  * with any mix of sources. Other changelog sections come from the keyword search alone and stay under every
- * guide section.
+ * guide section. Each query goes in the record, when one is given.
  */
-function mergedSearch(index: DocsIndex, rankings: readonly SectionRanking[]): DocsIndex {
+function mergedSearch(index: DocsIndex, sources: readonly NamedRanking[], record?: HelpSearchRecord): DocsIndex {
   return {
     ...index,
     search: (query, limit = HELP_SECTION_LIMIT, favor, options) => {
-      const hits = rankings.map((ranking) => ranking(query, Math.max(limit, HELP_MERGE_DEPTH), favor, options?.onSurface));
+      const hits = sources.map(({ ranking }) => ranking(query, Math.max(limit, HELP_MERGE_DEPTH), favor, options?.onSurface));
       const sectionOf = new Map(hits.flat().map((section) => [section.id, section]));
       const isGuide = (section: DocSection) => section.page !== CHANGELOG_PAGE;
       const guide = mergeRanks(hits.map((list) => list.filter(isGuide).map((section) => section.id))).flatMap((id) => sectionOf.get(id) ?? []);
       const lead = index.whatsNew(query);
       const others = hits.flat().filter((section) => !isGuide(section) && !lead.some((release) => release.id === section.id));
-      return [...lead, ...guide, ...others].slice(0, limit);
+      const merged = [...lead, ...guide, ...others];
+      // Every source that was on gets a row; one that gave no ranking has no sections.
+      if (record) recordQuery(record, { query, sources: record.on.map((source) => ({ source, sections: hits[sources.findIndex((named) => named.source === source)] ?? [] })), merged });
+      return merged.slice(0, limit);
+    },
+  };
+}
+
+/**
+ * The keyword search alone, with each query put in the record. The index's own search ranks and then cuts,
+ * so a deeper call cut to the limit returns what the limit alone would.
+ */
+function recordedKeyword(index: DocsIndex, record: HelpSearchRecord): DocsIndex {
+  return {
+    ...index,
+    search: (query, limit, favor, options) => {
+      const hits = index.search(query, limit === undefined ? undefined : Math.max(limit, HELP_MERGE_DEPTH), favor, options);
+      recordQuery(record, { query, sources: record.on.map((source) => ({ source, sections: source === 'keyword' ? hits : [] })), merged: hits });
+      return limit === undefined ? hits : hits.slice(0, limit);
     },
   };
 }
@@ -222,6 +278,8 @@ function historyMessages(kept: readonly EarlierExchange[]): RequestMessage[] {
 export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'settings' | 'snapshot' | 'index' | 'screenRule' | 'embedder' | 'signal' | 'fetchImpl'> {
   /** The open screen and its section. */
   hint?: SurfaceHint | null;
+  /** Gets each source's ranking of each query, and the pick request, for the trace. */
+  record?: HelpSearchRecord;
 }
 
 /**
@@ -238,23 +296,30 @@ function screenPicks(question: string, picks: DocSection[], lead: DocSection | u
  * screen rule empties, or a semantic source with no model on the device. The keyword search alone is the
  * index's own search, with its score floor.
  */
-export async function helpSearch({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, signal, fetchImpl }: HelpSearchQuestion): Promise<DocsIndex> {
+export async function helpSearch({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, signal, fetchImpl, record }: HelpSearchQuestion): Promise<DocsIndex> {
   const on = settings.sources;
   // The embedder takes no stop signal, so Stop ends the wait for it here.
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
   const previous = keptHistory(history, settings.historyLength).at(-1);
-  const prompt = renderHelpPrompt(activeHelpPrompts(settings.presets).pick);
+  const prompts = activeHelpPrompts(settings.presets);
+  const prompt = renderHelpPrompt(prompts.pick);
+  const observe = record && ((spec: AiRequestSpec, result?: AiStreamResult) => { record.pick = requestTrace('AI Picks', spec, isHelpPromptEdited(prompts, 'pick'), result); });
   const [allPicks, semantic] = await Promise.all([
     on.aiPicks
-      ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING), { signal, fetchImpl }).catch(() => [])
+      ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING), { signal, fetchImpl, observe }).catch(() => [])
       : [],
     on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), embedder), stopped]) : null,
   ]);
   const picks = screenRule ? screenPicks(question, allPicks, hint?.section) : allPicks;
   const keyword: SectionRanking = (query, limit, favor, onSurface) => index.search(query, limit, favor, { onSurface });
   const picked: SectionRanking = (_query, limit) => picks.slice(0, limit);
-  const rankings = [...(on.keyword ? [keyword] : []), ...(picks.length > 0 ? [picked] : []), ...(semantic ? [semantic] : [])];
-  return on.keyword && rankings.length === 1 ? index : mergedSearch(index, rankings);
+  const sources: NamedRanking[] = [
+    ...(on.keyword ? [{ source: 'keyword' as const, ranking: keyword }] : []),
+    ...(picks.length > 0 ? [{ source: 'aiPicks' as const, ranking: picked }] : []),
+    ...(semantic ? [{ source: 'semantic' as const, ranking: semantic }] : []),
+  ];
+  if (on.keyword && sources.length === 1) return record ? recordedKeyword(index, record) : index;
+  return mergedSearch(index, sources, record);
 }
 
 /**
@@ -287,7 +352,8 @@ export async function* askHelp({
   const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
-  const search = bare ? index : await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl });
+  const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
+  const search = record ? await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl, record }) : index;
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [], reasoning: '' };
     return;
@@ -316,6 +382,19 @@ export async function* askHelp({
     samplerOverride: { temperature: options.temperature, repetitionPenalty: options.repetitionPenalty },
     ...(offered.length > 0 && { tools: offered }),
   });
+  // The trace so far. Each yield builds it anew, so a viewer that keeps an earlier one sees no later change.
+  const rounds: AiToolRound[] = [];
+  const customAnswer = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer');
+  const traceOf = (result?: AiStreamResult): HelpTrace => ({
+    surface: surface ? surfaceWords(surface) : null,
+    openScreen: settings.openScreen,
+    ...(hint && { lead: traceSection(hint.section) }),
+    preset: activeHelpPreset(settings.presets).name,
+    search: record && searchTraceOf(record, inPrompt),
+    sent: inPrompt.map(traceSection),
+    requests: [...(record?.pick ? [record.pick] : []), requestTrace('Answer', spec, customAnswer, result, rounds)],
+  });
+  yield { type: 'trace', trace: traceOf() };
   let text = '';
   let marked = false;
   // Native reasoning of every round, inline reasoning of earlier rounds, and this round's content.
@@ -324,8 +403,11 @@ export async function* askHelp({
   let content = '';
   let reasoning = '';
   const reasoningNow = () => joinReasoning(native, earlierInline, extractReasoningLive(content));
-  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, ...(offered.length > 0 && { execute }) })) {
-    if (event.type === 'toolCalls') {
+  for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, captureRounds: true, ...(offered.length > 0 && { execute }) })) {
+    if (event.type === 'toolRound') {
+      rounds.push(event.round);
+      yield { type: 'trace', trace: traceOf() };
+    } else if (event.type === 'toolCalls') {
       // What the model wrote before a call is not the answer, but its inline reasoning still is reasoning.
       earlierInline = joinReasoning(earlierInline, extractReasoningLive(content));
       content = '';
@@ -348,6 +430,8 @@ export async function* askHelp({
       const stopped = event.result.finishReason === ABORTED_FINISH_REASON;
       // A Stop can land while a start of the marker is held back; that start stays hidden.
       const answer = readMarker(stripReasoningLive(event.result.content), { final: !stopped });
+      // The trace goes out first, so an empty reply is in AI Context.
+      yield { type: 'trace', trace: traceOf(event.result) };
       if (!answer.text && !stopped) {
         throw new Error(`The model sent an empty answer (finish reason: ${event.result.finishReason ?? 'none'})`);
       }

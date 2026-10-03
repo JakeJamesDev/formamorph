@@ -129,6 +129,12 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
             className="w-20"
           />
         </Row>
+        <CheckRow
+          htmlFor="fq-show-ai-context"
+          checked={settings.showAiContext}
+          onChange={(showAiContext) => onChange({ showAiContext })}
+          {...GENERAL_COPY.showAiContext}
+        />
       </Section>
     </div>
   );

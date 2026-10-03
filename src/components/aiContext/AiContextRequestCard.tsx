@@ -30,6 +30,8 @@ export interface AiContextRequestCardProps {
   isOpen: (section: AiContextCardSection) => boolean;
   onOpenChange: (section: AiContextCardSection, open: boolean) => void;
   renderText?: (text: string, slot: AiContextTextSlot) => ReactNode;
+  /** The caller's own chips, drawn after the endpoint chips in the header. */
+  chips?: ReactNode;
 }
 
 const TRIGGER = 'flex w-full items-center justify-between gap-2 p-2 text-left font-semibold';
@@ -40,8 +42,8 @@ function Chevron({ open }: { open: boolean }) {
   return open ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />;
 }
 
-/** A titled collapsible section inside the card. */
-function Section({ title, open, onOpenChange, children }: { title: string; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode }) {
+/** A titled collapsible section of an AI Context viewer: the card's own, and any block a caller sets beside its cards. */
+export function AiContextSection({ title, open, onOpenChange, children }: { title: string; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode }) {
   return (
     <Collapsible open={open} onOpenChange={onOpenChange} className={BOX}>
       <CollapsibleTrigger asChild>
@@ -62,7 +64,7 @@ function Section({ title, open, onOpenChange, children }: { title: string; open:
  * Shared by the game view and Formaquestion. The caller owns every open state, so a find bar can open the
  * section that hides a hit, and `renderText` is the caller's highlighter; the card draws plain text without it.
  */
-export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChange, renderText }: AiContextRequestCardProps) {
+export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChange, renderText, chips }: AiContextRequestCardProps) {
   const text = (value: string, slot: AiContextTextSlot) => (renderText ? renderText(value, slot) : value);
   const groupOpen = isOpen('group');
   return (
@@ -95,12 +97,13 @@ export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChan
                 <MaxTokensChip endpoint={record.endpoint} />
               </>
             )}
+            {chips}
           </span>
           <Chevron open={groupOpen} />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 p-2 pt-0">
-        <Section title="Raw Input" open={isOpen('input')} onOpenChange={(o) => onOpenChange('input', o)}>
+        <AiContextSection title="Raw Input" open={isOpen('input')} onOpenChange={(o) => onOpenChange('input', o)}>
           {/* Every request gets the region/chat shape. A missing anatomy sidecar just means no runs, which
               `plain` never draws anyway. Provenance reading lives in the Settings anatomy hub. */}
           <RequestAnatomyView
@@ -109,19 +112,19 @@ export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChan
             plain
             renderText={(value, _block, blockIndex, start) => text(value, { part: 'input', blockIndex, start })}
           />
-        </Section>
+        </AiContextSection>
         {!!record.toolRounds?.length && (
-          <Section title="Tool Rounds" open={isOpen('tools')} onOpenChange={(o) => onOpenChange('tools', o)}>
+          <AiContextSection title="Tool Rounds" open={isOpen('tools')} onOpenChange={(o) => onOpenChange('tools', o)}>
             <ToolRoundsView rounds={record.toolRounds} />
-          </Section>
+          </AiContextSection>
         )}
         {record.reasoning && (
-          <Section title="Raw Reasoning" open={isOpen('reasoning')} onOpenChange={(o) => onOpenChange('reasoning', o)}>
+          <AiContextSection title="Raw Reasoning" open={isOpen('reasoning')} onOpenChange={(o) => onOpenChange('reasoning', o)}>
             <p className={TEXT_BLOCK}>{text(record.reasoning, { part: 'reasoning', blockIndex: 0, start: 0 })}</p>
-          </Section>
+          </AiContextSection>
         )}
         {typeof record.response === 'string' && (
-          <Section title="Raw Output" open={isOpen('output')} onOpenChange={(o) => onOpenChange('output', o)}>
+          <AiContextSection title="Raw Output" open={isOpen('output')} onOpenChange={(o) => onOpenChange('output', o)}>
             {/* Same face as the Raw Input blocks: this is the same conversation, read top to bottom. */}
             <p className={TEXT_BLOCK}>
               {record.response ? (
@@ -135,7 +138,7 @@ export function AiContextRequestCard({ record, index, folded, isOpen, onOpenChan
                 Skipped stat updates: {record.statDiagnostics.map(({ name, reason }) => `${name} (${reason})`).join('; ')}
               </p>
             )}
-          </Section>
+          </AiContextSection>
         )}
       </CollapsibleContent>
     </Collapsible>

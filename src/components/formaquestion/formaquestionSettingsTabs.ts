@@ -26,6 +26,31 @@ export const GENERAL_COPY = {
   semantic: { label: 'Semantic Search', hint: 'Finds guide sections by meaning. Downloads a small model once.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the screen you have open and its guide section' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
+  showAiContext: { label: 'Show AI Context', hint: 'Adds a title bar button that shows what each question sent' },
+} as const;
+
+/** The copy of the AI Context dialog. */
+export const AI_CONTEXT_COPY = {
+  title: 'AI Context',
+  export: "Download every question's trace as JSON",
+  // Lower case after the first word, as the game view's AI Context writes them.
+  collapseAll: 'Collapse all',
+  expandAll: 'Expand all',
+  empty: 'No question has reached your AI yet. Ask one, then reopen this.',
+  bare: 'A bare question: no search ran, and the request holds the question alone.',
+  search: 'Search',
+  query: 'Query',
+  preset: 'Preset',
+  sourcesOn: 'Sources on',
+  none: 'none',
+  noScreen: 'No open screen',
+  lead: 'Lead',
+  merged: 'Merged',
+  sentList: 'Sent',
+  noRanking: 'no ranking',
+  sent: 'sent',
+  customPrompt: { label: 'Custom Prompt', tip: 'Differs from the default text' },
+  sources: { keyword: 'Keyword Search', aiPicks: 'AI Picks', semantic: 'Semantic Search' },
 } as const;
 
 /** The copy of the Endpoint tab. */

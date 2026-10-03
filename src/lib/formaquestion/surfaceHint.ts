@@ -13,7 +13,7 @@ export interface SurfaceHint {
 }
 
 /** The open screen or dialog, then the open tabs, by label. The screen is left out under a dialog. */
-function surfaceWords(surface: Surface): string {
+export function surfaceWords(surface: Surface): string {
   const first = surface.dialog ? `${surfaceLabel(surface.dialog)} dialog` : surface.screen ? `${surfaceLabel(surface.screen)} screen` : '';
   return [first, ...surface.tabs.map((tab) => `${surfaceLabel(tab)} tab`)].filter(Boolean).join(', ');
 }

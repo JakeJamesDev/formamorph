@@ -15,6 +15,10 @@ import { customMaxOutput, type PromptMaxOutputMap } from '@/lib/promptMaxOutput'
 export interface AiEndpointTarget {
   /** Stable endpoint-configuration identity, including the hosted Default. */
   endpointId: string;
+  /** The preset the kind is pinned or routed to, or null when it follows the active selection. The app's resolver sets it. */
+  presetId?: string | null;
+  /** The name of the preset this resolved to, pinned or followed. The app's resolver sets it. */
+  presetName?: string;
   url: string;
   apiToken: string;
   model: string;
