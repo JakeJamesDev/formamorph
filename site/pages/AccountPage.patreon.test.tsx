@@ -78,6 +78,20 @@ describe('the Patreon section: not linked', () => {
   });
 });
 
+describe('the Patreon section: the Supporters wall link', () => {
+  it.each([
+    ['not linked', NOT_LINKED],
+    ['linked with no tier', NO_TIER],
+    ['linked with a tier', SUPPORTER],
+  ])('points to the wall when %s', async (_state, status) => {
+    patreon({ 'GET ': ok(status) });
+    render(<AccountPage />);
+
+    expect(await screen.findByRole('link', { name: 'See the Supporters wall' }))
+      .toHaveAttribute('href', 'https://formamorph.ai/supporters');
+  });
+});
+
 describe('the Patreon section: linked with no tier', () => {
   it('says there is no active membership, and offers Unlink and the Patreon page', async () => {
     patreon({ 'GET ': ok(NO_TIER) });
@@ -169,7 +183,7 @@ describe('returning from Patreon', () => {
     const [, init] = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes('/confirm'))!;
     expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer tok' });
     expect(window.location.search).toBe('');
-    expect(screen.getByRole('status').textContent).toContain('return to it');
+    expect(screen.getByRole('status').textContent).toBe('Patreon is linked. You can return to the app.');
   });
 
   it('keeps the token through sign-in for a signed-out reader', async () => {

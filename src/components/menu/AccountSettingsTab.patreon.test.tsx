@@ -81,6 +81,45 @@ describe('the Patreon section in the Settings tab', () => {
     expect(vi.mocked(PatreonService.getStatus).mock.calls.length).toBe(reads);
   });
 
+  it('skips the read while the page is hidden', async () => {
+    show();
+    await screen.findByRole('button', { name: 'Link Patreon' });
+    const reads = vi.mocked(PatreonService.getStatus).mock.calls.length;
+
+    const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    hidden.mockRestore();
+
+    expect(vi.mocked(PatreonService.getStatus).mock.calls.length).toBe(reads);
+  });
+
+  it('lets the newest of two overlapping reads win', async () => {
+    show();
+    await screen.findByRole('button', { name: 'Link Patreon' });
+
+    let older!: (status: typeof NOT_LINKED) => void;
+    vi.mocked(PatreonService.getStatus)
+      .mockImplementationOnce(() => new Promise((resolve) => { older = resolve as typeof older; }))
+      .mockResolvedValueOnce(SUPPORTER);
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    act(() => { window.dispatchEvent(new Event('focus')); });
+
+    expect(await screen.findByRole('checkbox', { name: 'Show Supporter Flair' })).toBeTruthy();
+    await act(async () => { older(NOT_LINKED); });
+    expect(screen.getByRole('checkbox', { name: 'Show Supporter Flair' })).toBeTruthy();
+  });
+
+  it('clears an old error when the status reads again', async () => {
+    vi.mocked(PatreonService.startLink).mockRejectedValue(new Error('Could not start the link.'));
+    show();
+    fireEvent.click(await screen.findByRole('button', { name: 'Link Patreon' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    act(() => { window.dispatchEvent(new Event('focus')); });
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
   it('keeps the last status when a focus read fails', async () => {
     vi.mocked(PatreonService.getStatus).mockResolvedValueOnce(SUPPORTER);
     show();
