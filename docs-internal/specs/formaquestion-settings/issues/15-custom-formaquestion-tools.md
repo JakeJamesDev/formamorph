@@ -24,6 +24,8 @@ A power user adds Tools to Formaquestion, so that a dedicated player can make it
 - A Tool handler runs on a Tool Snapshot of the open world when a world is open in the game or the editor. On every other screen it runs on an empty snapshot and returns its empty result.
 - Try It uses the open world, else the sample world, as in the regular Settings.
 
+**What ticket 14 left for this ticket.** The Tools tab component takes the fixed functions as one prop. Its My Tools props (the Tool list, save, delete, the app version and file transfer) are optional as one group; passing them turns on My Tools, New Tool and import and export. The guide lookup's call limit is a device setting (Q59); a user Tool keeps its own limit on the Tool.
+
 **World text.** With a Tool on and a world open, text of the player's world can go to the help endpoint. The tab states this next to the list.
 
 **Records.**
