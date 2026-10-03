@@ -35,3 +35,5 @@ Model rationale: instructions that a smaller model must follow exactly. The word
 - [ ] The doc names no Formamorph-specific gate, file, or path.
 - [ ] The prepare command runs in a worktree session without a permission prompt.
 - [ ] The global CLAUDE.md branching line is present, and the memory changes are made with the index updated.
+- [ ] The doc tells the session to write the prepare message file in its scratchpad, because prepare refuses a message file inside the worktree (Q31).
+- [ ] The `Status:` regex is defined once and shared by the `/implement` hook and the ticket worktree module. Before you edit the `/implement` hook, check `git -C ~/.claude status`: another session had uncommitted edits in it on 2026-10-03.
