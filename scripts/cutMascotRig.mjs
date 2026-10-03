@@ -4,13 +4,13 @@
 // through scripts/cutMascotRig.py under a timeout, because a bad procedure call hangs the console
 // instead of exiting.
 //
-// Usage: node scripts/cutMascotRig.mjs [path/to/formaquestion.xcf]
+// Usage: node scripts/cutMascotRig.mjs [path/to/formaquestion.xcf] (default: the mascot spec's assets)
 
 import { spawnSync } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 
-const SOURCE = path.resolve(process.argv[2] ?? 'formaquestion.xcf');
+const SOURCE = path.resolve(process.argv[2] ?? 'docs-internal/specs/formaquestion-mascot/assets/formaquestion.xcf');
 const OUT = path.resolve('src/lib/formaquestion/mascotAssets');
 const SCRIPT = path.resolve('scripts/cutMascotRig.py');
 const TIMEOUT_MS = 180_000;

@@ -1,6 +1,7 @@
 # 07: Sonnet 5.5 End-to-End Run
 
-Status: ready-for-agent
+Status: in-progress
+Base: ca35165c
 Blocked by: 02, 06, 08, 09
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
