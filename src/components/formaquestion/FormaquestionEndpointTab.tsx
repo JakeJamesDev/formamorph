@@ -1,0 +1,102 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSettings } from '@/contexts/SettingsContext';
+import { Section } from '@/components/SettingsRows';
+import { EndpointRouteField } from '@/components/modals/EndpointRouteField';
+import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
+import { TextEndpointEditor } from '@/components/modals/TextEndpointEditor';
+import { presetEditor, type PresetEditorView } from '@/components/modals/textEndpointEditorModel';
+import { helpRoutes } from '@/lib/formaquestion/helpRoutes';
+import { SAME_AS_ANSWER, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { useMountedRef } from '@/lib/useMountedRef';
+import { ENDPOINT_COPY } from './formaquestionSettingsTabs';
+
+type Settings = ReturnType<typeof useSettings>;
+
+/** The context-window check of a preset that is not the active one. A newer check or an unmount drops a late answer. */
+function usePresetDetect(s: Settings, id: string): Pick<PresetEditorView, 'detectStatus' | 'detectContextWindow'> {
+  const [detectStatus, setDetectStatus] = useState<PresetEditorView['detectStatus']>('idle');
+  const mountedRef = useMountedRef();
+  const request = useRef(0);
+  const { detectContextWindowFor, editTextEndpointPreset } = s;
+  useEffect(() => {
+    request.current += 1;
+    setDetectStatus('idle');
+  }, [id]);
+  const detectContextWindow = useCallback(async (force = false) => {
+    const ask = ++request.current;
+    setDetectStatus('detecting');
+    const detected = await detectContextWindowFor(id);
+    if (!mountedRef.current || ask !== request.current) return;
+    if (detected === null) {
+      setDetectStatus(force ? 'error' : 'idle');
+      return;
+    }
+    if (force) editTextEndpointPreset(id, () => ({ contextWindowOverride: null }));
+    setDetectStatus('success');
+  }, [detectContextWindowFor, editTextEndpointPreset, id, mountedRef]);
+  return { detectStatus, detectContextWindow };
+}
+
+/** The ⓘ of a route: where its choice sends the request now. */
+function routeInfo(presetName: string | undefined, follows: string): string {
+  return presetName ? `Always goes to ${presetName}, even when you switch endpoints in Settings` : follows;
+}
+
+/**
+ * The Endpoint tab: where answers and picks go, and the text-endpoint editor on the presets Settings uses.
+ * The editor's select picks the preset to edit and never a route.
+ */
+export function EndpointTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
+  const s = useSettings();
+  const presets = [...s.builtinTextEndpointPresets, ...s.textEndpointPresets];
+  const presetOf = (id: string | null) => presets.find((p) => p.id === id);
+  const routes = helpRoutes(settings);
+  const answer = s.resolveEndpointForKind('help', routes.answer);
+  const pick = s.resolveEndpointForKind('help', routes.pick);
+
+  // A deleted preset shows as the default of its route, which is where it sends.
+  const answerPreset = presetOf(settings.answerEndpoint);
+  const pickPreset = presetOf(settings.pickEndpoint);
+  const pickValue = settings.pickEndpoint === null ? null : pickPreset?.id ?? SAME_AS_ANSWER;
+
+  const [chosen, setChosen] = useState<string | null>(null);
+  const editedId = presetOf(chosen)?.id ?? answer.endpointId;
+  const detect = usePresetDetect(s, editedId);
+  const model = presetEditor(s, editedId, {
+    onSelect: setChosen,
+    onAdd: (name) => setChosen(s.addTextEndpointPreset(name, editedId)),
+    ...detect,
+  });
+  const [guideOpen, setGuideOpen] = useState(false);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="grid flex-shrink-0 gap-4 pt-4">
+        <EndpointRouteField
+          {...ENDPOINT_COPY.answer}
+          info={routeInfo(answerPreset?.name, ENDPOINT_COPY.followsActive)}
+          value={answerPreset?.id ?? null}
+          activeName={s.activeTextEndpointPresetName}
+          presets={presets}
+          onChange={(answerEndpoint) => onChange({ answerEndpoint })}
+          target={{ url: answer.url, apiToken: answer.apiToken, model: answer.model, enabled: answer.presetId !== null }}
+        />
+        <EndpointRouteField
+          {...ENDPOINT_COPY.pick}
+          info={pickValue === SAME_AS_ANSWER ? ENDPOINT_COPY.sameAsAnswer : routeInfo(pickPreset?.name, ENDPOINT_COPY.followsActive)}
+          value={pickValue}
+          activeName={s.activeTextEndpointPresetName}
+          extraRows={[{ value: SAME_AS_ANSWER, label: `Same as Answer (${answer.presetName})` }]}
+          presets={presets}
+          onChange={(pickEndpoint) => onChange({ pickEndpoint })}
+          target={{ url: pick.url, apiToken: pick.apiToken, model: pick.model, enabled: pickPreset !== undefined }}
+        />
+      </div>
+      <div className="flex-shrink-0 pt-6">
+        <Section title="Presets">{null}</Section>
+      </div>
+      <TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => setGuideOpen(true)} presetDescription={ENDPOINT_COPY.presetHint} />
+      <LlmSetupGuide open={guideOpen} onOpenChange={setGuideOpen} endpointUrl={model.fields.endpointUrl} />
+    </div>
+  );
+}

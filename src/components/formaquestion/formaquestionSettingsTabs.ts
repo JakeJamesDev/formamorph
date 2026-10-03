@@ -21,3 +21,12 @@ export const GENERAL_COPY = {
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the screen you have open and its guide section' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
 } as const;
+
+/** The copy of the Endpoint tab. */
+export const ENDPOINT_COPY = {
+  answer: { label: 'Answer Endpoint', description: 'Sends your questions to this endpoint for answers' },
+  pick: { label: 'Pick Endpoint', description: 'Sends the AI Picks request to this endpoint. A small, fast model works well.' },
+  followsActive: 'Follows the endpoint picked on the **AI Endpoints** tab of Settings. Switch endpoints there and this follows.',
+  sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
+  presetHint: "Picks the preset to edit. A change applies everywhere it's used, the game included.",
+} as const;

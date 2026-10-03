@@ -70,6 +70,15 @@ export function routedPresetId(kind: AIRequestType, map: PromptEndpointMap, stor
 }
 
 /**
+ * A routing map that pins `kind` to the first of `routes` that names a preset. None follows the active
+ * endpoint, so a route left behind by a deleted preset gives way to the next.
+ */
+export function routeMap(kind: AIRequestType, routes: readonly string[], store: TextEndpointPresetStore): PromptEndpointMap {
+  const id = routes.find((route) => isRoutableId(store, route));
+  return id === undefined ? {} : { [kind]: id };
+}
+
+/**
  * The endpoint a prompt kind sends to. An unpinned (or ghost-pinned) kind returns the active state
  * untouched, so nothing about the pre-routing path changes. A pinned kind returns its preset's values
  * layered over the shipped defaults, so a preset stored before a new field existed still resolves.

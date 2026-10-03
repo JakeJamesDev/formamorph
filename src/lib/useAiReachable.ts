@@ -87,15 +87,27 @@ export async function probeEndpoint(
   return 'unreachable';
 }
 
+/** One resolved endpoint to check in place of the active one. */
+export interface ReachableTarget {
+  localEngine: boolean;
+  url: string;
+  apiToken: string;
+  model: string;
+}
+
 /**
  * Whether the configured AI can actually serve a turn, plus why not. The bundled desktop engine reports
  * its own state over IPC (free, already live, and proves the model loaded); any custom endpoint — on
  * desktop or web — is probed instead. Stays `null` until the answer is known, so callers never flash a
  * gate during boot. With `enabled` false it starts no check, so a custom endpoint that was never checked
- * stays `null`.
+ * stays `null`. A `target` is checked in place of the active endpoint.
  */
-export function useAiReachable({ enabled = true }: { enabled?: boolean } = {}): AiReachable {
-  const { localModelActive, activeEndpointUrl, activeApiToken, activeModelName } = useSettings();
+export function useAiReachable({ enabled = true, target }: { enabled?: boolean; target?: ReachableTarget } = {}): AiReachable {
+  const settings = useSettings();
+  const localModelActive = target ? target.localEngine : settings.localModelActive;
+  const activeEndpointUrl = target ? target.url : settings.activeEndpointUrl;
+  const activeApiToken = target ? target.apiToken : settings.activeApiToken;
+  const activeModelName = target ? target.model : settings.activeModelName;
   const engine = useLocalLlmStatus();
   const mode: AiMode = localModelActive ? 'local' : 'custom';
   const [nonce, setNonce] = useState(0);

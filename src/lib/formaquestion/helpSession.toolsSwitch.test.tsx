@@ -19,7 +19,7 @@ let settings: ReturnType<typeof useSettings>;
 let chat: HelpChat;
 function Window() {
   settings = useSettings();
-  const ai = useHelpAi(false);
+  const ai = useHelpAi(false, DEFAULT_HELP_SETTINGS);
   chat = useHelpChat(index, { ...ai, snapshot: { ...ai.snapshot, resolveTarget: () => capable } }, DEFAULT_HELP_SETTINGS);
   return null;
 }

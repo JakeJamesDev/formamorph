@@ -1,6 +1,7 @@
 # 07: Endpoint tab
 
-Status: ready-for-agent
+Status: in-progress
+Base: 9481bc16
 Blocked by: 01, 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -20,7 +21,7 @@ A player sends help questions to a different endpoint than the game uses (Q3, Q2
 **The help session.**
 
 - The answer request and the pick request each resolve their endpoint from the help settings, through the resolver that per-prompt routing uses. A stored id of a deleted preset reads as the default.
-- Every branch that depends on the endpoint reads the resolved one: the capability check for functions, the image attachments check, the bundled engine.
+- Every branch that depends on the endpoint reads the resolved one: the capability check for functions, the bundled engine. The Image Attachments switch stays the only image gate (Q54).
 - The "no AI" state of the Ask tab follows the answer endpoint. The default cloud endpoint still counts as connected.
 - A pick request that fails leaves the question to the other sources, as today.
 - The two ids are device settings. They are in no preset and no export.

@@ -14,6 +14,7 @@ import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { requestPicks } from './helpPicks';
+import { helpRoutes } from './helpRoutes';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
@@ -85,6 +86,12 @@ export type HelpEvent =
    * section among the sources.
    */
   | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[] };
+
+/** The snapshot with the help kind sent along `routes`: the first preset id of them that exists, else the active endpoint. */
+const routed = (snapshot: AiSettingsSnapshot, routes: readonly string[]): AiSettingsSnapshot => ({
+  ...snapshot,
+  resolveTarget: (kind) => snapshot.resolveTarget(kind, routes),
+});
 
 /** The exchanges that got answer text. */
 const answered = (history: readonly EarlierExchange[]): EarlierExchange[] => history.filter((exchange) => exchange.answer.trim());
@@ -212,7 +219,7 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
   const previous = keptHistory(history, settings.historyLength).at(-1);
   const [allPicks, semantic] = await Promise.all([
     on.aiPicks
-      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, snapshot, { signal, fetchImpl }).catch(() => [])
+      ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, routed(snapshot, helpRoutes(settings).pick), { signal, fetchImpl }).catch(() => [])
       : [],
     on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), embedder), stopped]) : null,
   ]);
@@ -244,7 +251,8 @@ export async function* askHelp({
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = settings.openScreen ? surfaceHint(surface, index) : null;
   const kept = keptHistory(history, settings.historyLength);
-  const lookupMode = settings.lookup && toolsSupported(snapshot.resolveTarget('help').reasoning);
+  const answerSnapshot = routed(snapshot, helpRoutes(settings).answer);
+  const lookupMode = settings.lookup && toolsSupported(answerSnapshot.resolveTarget('help').reasoning);
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const search = bare ? index : await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl });
@@ -259,7 +267,7 @@ export async function* askHelp({
   const userMessage = bare
     ? question
     : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
-  const spec = buildAiRequestSpec(snapshot, {
+  const spec = buildAiRequestSpec(answerSnapshot, {
     systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',

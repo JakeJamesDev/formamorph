@@ -35,10 +35,12 @@ const ENDPOINT_SAMPLERS = [
  * prompt can be routed to it. The select stays visible for every preset, including the engine, or there'd be
  * no way back.
  */
-export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
+export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, presetDescription = SETTINGS_COPY.textPreset.description }: {
   model: TextEndpointEditorModel;
   advanced: boolean;
   onOpenConnectionGuide: () => void;
+  /** The help line under the preset select. */
+  presetDescription?: string;
 }) {
   const { presets, edited, fields, edit, onSelect, onAdd, onRename, onDelete, onReset } = model;
   const {
@@ -151,7 +153,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide }: {
           <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
         )}
       </div>
-      <Hint className="flex-shrink-0 pt-1">{SETTINGS_COPY.textPreset.description}</Hint>
+      <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
       {edited.engine ? <LocalModelPanel /> : (
         <ScrollArea className="flex-1 min-h-0">

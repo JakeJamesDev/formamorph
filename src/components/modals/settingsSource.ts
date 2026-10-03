@@ -55,5 +55,10 @@ export type TextEndpointSource = Pick<SettingsValue,
   | 'deleteTextEndpointPreset' | 'resetTextEndpointPreset'
 >;
 
+/** What the text-endpoint editor reads to edit a preset by id, active or not. */
+export type PresetEditorSource = TextEndpointSource & Pick<SettingsValue,
+  'textEndpointValuesFor' | 'editTextEndpointPreset' | 'detectedContextWindowFor'
+>;
+
 /** Everything both sections read: the Settings dialog passes the live context, theme, and download. */
 export type SettingsSource = DisplaySettingsSource & OutputSettingsSource;

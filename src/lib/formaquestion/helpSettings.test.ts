@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, helpSettingsCodec, helpSettingsOf } from './helpSettings';
+import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 
 describe('the default help settings', () => {
   it('equal the values the help session had as constants when the bar run measured it', () => {
     expect(DEFAULT_HELP_SETTINGS).toEqual({
       sources: { keyword: true, aiPicks: true, semantic: false },
+      answerEndpoint: null,
+      pickEndpoint: SAME_AS_ANSWER,
       lookup: false,
       openScreen: true,
       historyLength: 4,
@@ -47,6 +49,12 @@ describe('the stored help settings', () => {
     expect(stored({ sourcesOpen: false }).sourcesOpen).toBe(false);
     expect(stored({ sources: null })).toEqual(DEFAULT_HELP_SETTINGS);
     expect(stored({})).toEqual(DEFAULT_HELP_SETTINGS);
+  });
+
+  it('keep a preset id or Follow Active for each route, and take the default for anything else', () => {
+    expect(stored({ answerEndpoint: 'p1', pickEndpoint: null })).toMatchObject({ answerEndpoint: 'p1', pickEndpoint: null });
+    expect(stored({ answerEndpoint: 4, pickEndpoint: '' })).toMatchObject({ answerEndpoint: null, pickEndpoint: SAME_AS_ANSWER });
+    expect(stored({ answerEndpoint: SAME_AS_ANSWER }).answerEndpoint).toBeNull();
   });
 
   it('refuse text that is not a settings object, so the defaults stand', () => {

@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   presetStoreFromEnv, activeValues, isBuiltInActive, setActive, addPreset, renamePreset,
-  deletePreset, resetPreset, updateValue, emptyStore, DEFAULT_TEXT_ENDPOINT_VALUES, DEFAULT_TEXT_PRESET_ID,
+  deletePreset, resetPreset, updateValue, editPreset, emptyStore, DEFAULT_TEXT_ENDPOINT_VALUES, DEFAULT_TEXT_PRESET_ID,
   updateSamplerOverride, updateMaxOutputOverride, valuesForId, textEndpointPresetCodec, type TextEndpointValues,
 } from './textEndpointPresets';
 import { defaultEndpointSamplerOverrides } from './endpointSamplers';
@@ -132,6 +132,43 @@ describe('store operations', () => {
     const store = { activeId: 'p1', presets: [{ id: 'p1', name: 'Partial', values: { endpoint: 'https://x/v1' } as TextEndpointValues }] };
     expect(activeValues(store).endpoint).toBe('https://x/v1');
     expect(activeValues(store).maxOutputOverride).toEqual(DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride);
+  });
+
+  it('adds a preset without selecting it when asked', () => {
+    const store = addPreset(emptyStore, 'p1', 'Custom', customValues, { select: false });
+    expect(store.activeId).toBe(DEFAULT_TEXT_PRESET_ID);
+    expect(valuesForId(store, 'p1').model).toBe(customValues.model);
+  });
+});
+
+describe('editPreset', () => {
+  const two = setActive(addPreset(addPreset(emptyStore, 'p1', 'One', customValues), 'p2', 'Two', customValues), 'p1');
+
+  it('edits the preset it names, not the active one', () => {
+    const edited = editPreset(two, 'p2', () => ({ model: 'other', contextWindowOverride: null }));
+    expect(valuesForId(edited, 'p2').model).toBe('other');
+    expect(valuesForId(edited, 'p2').contextWindowOverride).toBeNull();
+    expect(valuesForId(edited, 'p1')).toEqual(valuesForId(two, 'p1'));
+    expect(edited.activeId).toBe('p1');
+  });
+
+  it('gives the change the preset values it applies to', () => {
+    const edited = editPreset(two, 'p2', (values) => ({ maxOutputOverride: { ...values.maxOutputOverride, enabled: false } }));
+    expect(valuesForId(edited, 'p2').maxOutputOverride).toEqual({ enabled: false, value: 2048 });
+  });
+
+  it('changes only the samplers of the Default built-in, as the Settings editor does', () => {
+    const edited = editPreset(two, DEFAULT_TEXT_PRESET_ID, (values) => ({
+      endpoint: 'https://hacked/v1',
+      samplerOverrides: { ...values.samplerOverrides, temperature: { enabled: true, value: 0.3 } },
+    }));
+    const values = valuesForId(edited, DEFAULT_TEXT_PRESET_ID);
+    expect(values.endpoint).toBe(DEFAULT_TEXT_ENDPOINT_VALUES.endpoint);
+    expect(values.samplerOverrides.temperature).toEqual({ enabled: true, value: 0.3 });
+  });
+
+  it('leaves the store as it is for an id that names no preset', () => {
+    expect(editPreset(two, 'gone', () => ({ model: 'x' }))).toBe(two);
   });
 });
 
