@@ -147,6 +147,16 @@ Accepted without a numbered ruling:
 - Patreon redirects to a callback route on the server. The callback verifies `state`, stores the link, reads the member's tier, and redirects to the site's account page with a result.
 - Unlink deletes the row. Account deletion deletes the row.
 
+Rulings from ticket 03 (2026-10-02):
+
+- Routes: `POST /api/users/me/patreon/link` returns `{ url }`; `GET /api/users/me/patreon` is the status; `DELETE /api/users/me/patreon` unlinks; `GET /api/patreon/callback` is public. The webhook of ticket 05 is `POST /api/patreon/webhook`.
+- The callback redirects to `${SITE_URL}/account?patreon=<result>`. Results: `linked`, `taken` (the Patreon user ID is held by another account), `denied` (the member refused on Patreon), `expired` (bad or old state), `failed` (a Patreon call failed). Ticket 09 reads them.
+- `state` is a JWT signed with the server's JWT secret, purpose `patreon-link`, bound to the account ID and its token generation, valid 10 minutes. A suspended or deleted account's state stores nothing.
+- A linked account that links again with a different Patreon user replaces its row. That is an unlink plus a link (Q14); the uniqueness check against the new Patreon user ID still applies.
+- When the identity read succeeds and the tier read fails, the link is stored with no tier and a null last-check time, and the result is `linked` (A1). The webhook or the hourly job corrects the tier.
+- Status shape: `{ linked: false }` or `{ linked: true, tier, since, showFlair }`. `tier` is `supporter`, `supporter_plus`, or null; `since` matches `supporter.since`. The status shows a staff account its real tier; only author payloads null it (Q2).
+- Until ticket 06, the creator token comes from the environment. The server has no tracked example env file; the README's environment block is the example.
+
 ### The tier rule (server)
 
 - The tier is the highest mapped tier in the member's `currently_entitled_tiers`. No other field decides it (Q1).
