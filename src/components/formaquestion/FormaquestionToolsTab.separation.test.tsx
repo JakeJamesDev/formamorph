@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { HELP_ROLL } from '@/lib/formaquestion/helpRoll';
 import { helpSettingsCodec } from '@/lib/formaquestion/helpSettings';
 import { helpTool } from '@/test/helpFixtures';
 import { ToolsTab } from './FormaquestionToolsTab';
@@ -33,7 +34,7 @@ describe('the two Tool lists', () => {
     render(<SettingsProvider><Both /></SettingsProvider>);
     act(() => game.saveTool(WEATHER));
     expect(game.userTools.map((t) => t.name)).toEqual([WEATHER.name]);
-    expect(listed()).toEqual([DOCS_LOOKUP.name, 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, 'New Tool']);
 
     const input = screen.getByTestId('tool-pack-input') as HTMLInputElement;
     const contents = JSON.stringify({ formamorphTools: 1, appVersion: '3.1.2', tools: [FIND_PERSON] });
@@ -42,7 +43,7 @@ describe('the two Tool lists', () => {
     await user.upload(input, file);
     await screen.findByRole('button', { name: FIND_PERSON.name });
 
-    expect(listed()).toEqual([DOCS_LOOKUP.name, FIND_PERSON.name, 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, FIND_PERSON.name, 'New Tool']);
     expect(help[0].tools.map((t) => t.name)).toEqual([FIND_PERSON.name]);
     expect(game.userTools.map((t) => t.name)).toEqual([WEATHER.name]);
     const stored = helpSettingsCodec.parse(localStorage.getItem('FORMAMORPH_helpSettings')!);

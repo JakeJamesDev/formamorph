@@ -11,7 +11,8 @@ import type { HelpPromptTexts } from './helpPrompt';
 import {
   DEFAULT_HELP_PRESET_NAME, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, type HelpAnswerOptions, type HelpPreset,
 } from './helpPresets';
-import { HELP_LOOKUP_CALL_LIMIT_MAX, type HelpSettings, type HelpSettingsChange } from './helpSettings';
+import { HELP_ROLL } from './helpRoll';
+import { HELP_CALL_LIMIT_MAX, type HelpSettings, type HelpSettingsChange } from './helpSettings';
 import { HELP_RESERVED_TOOL_NAMES } from './helpTools';
 
 export const HELP_PRESET_FILE_VERSION = 1;
@@ -48,7 +49,8 @@ type LimitKey = { [K in keyof HelpSettings]: HelpSettings[K] extends number ? K 
 
 /** Each fixed function's settings fields: one row per function of `HELP_FIXED_FUNCTIONS`. */
 const FUNCTION_FIELDS: readonly { name: string; enabled: SwitchKey; maxCalls: LimitKey; max: number }[] = [
-  { name: DOCS_LOOKUP.name, enabled: 'lookup', maxCalls: 'lookupCallLimit', max: HELP_LOOKUP_CALL_LIMIT_MAX },
+  { name: DOCS_LOOKUP.name, enabled: 'lookup', maxCalls: 'lookupCallLimit', max: HELP_CALL_LIMIT_MAX },
+  { name: HELP_ROLL.name, enabled: 'roll', maxCalls: 'rollCallLimit', max: HELP_CALL_LIMIT_MAX },
 ];
 
 /** The file of the custom preset `presetId`; null for the Default preset, which has no export. */

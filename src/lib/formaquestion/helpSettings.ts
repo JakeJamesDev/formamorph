@@ -3,6 +3,7 @@
  * setting from a constant. The device stores them; tests and probes pass their own. No setting has an
  * environment twin, and none is exported, synced or shared.
  */
+import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import {
   defaultPromptReasoningSetting, defaultReasoningBudgetPct, MAX_REASONING_BUDGET_PCT, MIN_REASONING_BUDGET_PCT, parsePromptReasoningSetting,
   type PromptReasoningSetting,
@@ -39,6 +40,10 @@ export interface HelpSettings {
   readonly lookup: boolean;
   /** The most guide lookup calls one help question runs. */
   readonly lookupCallLimit: number;
+  /** The help dice roll is offered, where the endpoint takes function calls. */
+  readonly roll: boolean;
+  /** The most help dice roll calls one help question runs. */
+  readonly rollCallLimit: number;
   /** The open screen's section leads the docs, and the request names the screen. */
   readonly openScreen: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
@@ -70,6 +75,9 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   pickEndpoint: SAME_AS_ANSWER,
   lookup: false,
   lookupCallLimit: DOCS_LOOKUP_CALL_LIMIT,
+  roll: false,
+  // The catalog roll's limit, so a roll behaves the same in help and in play (Q61).
+  rollCallLimit: DEFAULT_TOOL_CALL_LIMIT,
   openScreen: true,
   historyLength: 4,
   reasoning: defaultPromptReasoningSetting('help'),
@@ -94,11 +102,11 @@ export function helpSettingsOf({ sources, reveal, ...change }: HelpSettingsChang
 /** The most earlier exchanges the History Length field takes. */
 export const HELP_HISTORY_MAX = 20;
 
-/** The most guide lookup calls the Max Calls per Request field takes. */
-export const HELP_LOOKUP_CALL_LIMIT_MAX = 20;
+/** The most calls of one fixed function the Max Calls per Request field takes. */
+export const HELP_CALL_LIMIT_MAX = 20;
 
-/** A Max Calls per Request entry as the setting holds it: none is the default, more than the most is the most. */
-export const lookupCallLimitOf = (limit: number | undefined): number => Math.min(limit ?? DOCS_LOOKUP_CALL_LIMIT, HELP_LOOKUP_CALL_LIMIT_MAX);
+/** A Max Calls per Request entry as the setting holds it: none is the function's default, more than the most is the most. */
+export const callLimitOf = (limit: number | undefined, fallback: number): number => Math.min(limit ?? fallback, HELP_CALL_LIMIT_MAX);
 
 type Check = (value: unknown) => boolean;
 const isBool: Check = (value) => typeof value === 'boolean';
@@ -126,7 +134,9 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
       lookup: isBool,
-      lookupCallLimit: isBetween(1, HELP_LOOKUP_CALL_LIMIT_MAX),
+      lookupCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
+      roll: isBool,
+      rollCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       openScreen: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,

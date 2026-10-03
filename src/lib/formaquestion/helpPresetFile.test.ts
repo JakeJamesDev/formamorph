@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { helpTool } from '@/test/helpFixtures';
 import type { Tool } from '@/types';
 import { DOCS_LOOKUP } from './docsLookup';
+import { HELP_ROLL } from './helpRoll';
 import { parseHelpPrompt } from './helpChips';
 import {
   buildHelpPresetFile, HELP_PRESET_FILE_FIELDS, HELP_PRESET_FILE_VERSION, importHelpPresetFile, parseHelpPresetFile, type HelpPresetFile,
@@ -90,7 +91,7 @@ describe('export then import on a clean profile', () => {
   it('leaves every device setting the file does not hold', () => {
     const device = helpSettingsOf({ answerEndpoint: 'mine', historyLength: 2 });
     const { change } = importHelpPresetFile(device, parseHelpPresetFile(textOf(fileOf(customized()))), mint);
-    expect(Object.keys(change).sort()).toEqual(['lookup', 'lookupCallLimit', 'presets', 'toolSwitches', 'tools']);
+    expect(Object.keys(change).sort()).toEqual(['lookup', 'lookupCallLimit', 'presets', 'roll', 'rollCallLimit', 'toolSwitches', 'tools']);
   });
 });
 
@@ -136,11 +137,11 @@ describe('importHelpPresetFile', () => {
 
   it('applies the switch of each added Tool and of the fixed functions only', () => {
     const device = helpSettingsOf({ tools: [helpTool({ id: 'other', name: 'other_tool' })], toolSwitches: { other: true } });
-    const { change } = importHelpPresetFile(device, file({ functions: { [DOCS_LOOKUP.name]: { enabled: false, maxCalls: 2 } } }), mint);
+    const functions = { [DOCS_LOOKUP.name]: { enabled: false, maxCalls: 2 }, [HELP_ROLL.name]: { enabled: true, maxCalls: 7 } };
+    const { change } = importHelpPresetFile(device, file({ functions }), mint);
     const result = helpSettingsOf(change, device);
     expect(result.toolSwitches.other).toBe(true);
-    expect(result.lookup).toBe(false);
-    expect(result.lookupCallLimit).toBe(2);
+    expect(result).toMatchObject({ lookup: false, lookupCallLimit: 2, roll: true, rollCallLimit: 7 });
   });
 
   it('reports an added Script Tool that the file turns on', () => {

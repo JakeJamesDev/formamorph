@@ -19,6 +19,7 @@ import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { renderHelpPrompt } from './helpChips';
 import { requestPicks } from './helpPicks';
+import { HELP_ROLL } from './helpRoll';
 import { activeHelpOptions, activeHelpPreset, activeHelpPrompts, isHelpPromptEdited } from './helpPresets';
 import { helpRoutes } from './helpRoutes';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
@@ -332,6 +333,8 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
  *
  * - Lookup mode, only while the lookup setting is on and the endpoint is known to take function calls: the
  *   model reads more sections through the docs lookup.
+ * - The help dice roll joins either mode while its setting is on and the endpoint is known to take function
+ *   calls. It is no source, so it never decides the mode.
  * - Retrieval mode, everywhere else: one request. The capability check does not run.
  * - A bare question, when every source is off, lookup mode is off and the open screen adds no section: the
  *   question alone, with no search. A search that runs and misses still sends the empty guide block.
@@ -368,8 +371,13 @@ export async function* askHelp({
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
   const options = activeHelpOptions(settings.presets);
-  // The lookup first, then the player's Tools. The lookup keeps its own executor; a Tool runs on the one world snapshot of the question.
-  const offered: OfferedFunction[] = [...(lookup ? [{ ...DOCS_LOOKUP, callLimit: settings.lookupCallLimit }] : []), ...playerTools];
+  // The lookup first, then the dice roll, then the player's Tools. The lookup keeps its own executor; the roll
+  // and the Tools run on the one world snapshot of the question, which the roll does not read.
+  const offered: OfferedFunction[] = [
+    ...(lookup ? [{ ...DOCS_LOOKUP, callLimit: settings.lookupCallLimit }] : []),
+    ...(settings.roll && takesFunctions ? [{ ...HELP_ROLL, callLimit: settings.rollCallLimit }] : []),
+    ...playerTools,
+  ];
   const runTool = snapshotToolExecutor(world);
   // The one offered function without a handler is the lookup, and `offered` holds it only while `lookup` is set.
   const execute: ToolExecutor<OfferedFunction> = (fn, argumentsText, callSignal) =>

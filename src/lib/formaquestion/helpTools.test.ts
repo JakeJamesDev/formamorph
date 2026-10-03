@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import { helpTool as tool } from '@/test/helpFixtures';
 import { DOCS_LOOKUP } from './docsLookup';
+import { HELP_ROLL } from './helpRoll';
 import {
   deleteHelpTool, dropHelpToolSwitch, HELP_FIXED_FUNCTIONS, HELP_RESERVED_TOOL_NAMES, helpToolsOn, parseHelpTools, parseHelpToolSwitches, saveHelpTool,
 } from './helpTools';
 
 describe('the fixed functions of a help request', () => {
-  it('are the guide lookup, and their names are the reserved Tool names', () => {
-    expect(HELP_FIXED_FUNCTIONS).toEqual([DOCS_LOOKUP]);
-    expect(HELP_RESERVED_TOOL_NAMES).toEqual([DOCS_LOOKUP.name]);
+  it('are the guide lookup and the dice roll, and their names are the reserved Tool names', () => {
+    expect(HELP_FIXED_FUNCTIONS).toEqual([DOCS_LOOKUP, HELP_ROLL]);
+    expect(HELP_RESERVED_TOOL_NAMES).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name]);
   });
 });
 
