@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: formaquestion — spec
-Status note: 53 tickets in issues/. 43–49 shipped the recall pick and follow-up fixes; ticket 46 scored 75.5% against the 80% bar. 50–52 close the last gaps and 53 runs the bar a third time (Q79). Ticket 37 failed the 80% bar (51.3%); 38 demotes hub sections, 40 explained six regressions, 41 and 42 fix them (Q69), and 39 then compares recall approaches on a blind set for the user's pick (Q67). 32 and 33 are follow-ups from the effort review; 32 and 34–36 fix the search misses from ticket 26's baseline, and 37 measures the result against the bar (Q59). 33 runs after the search tickets. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
+Status note: 54 tickets in issues/. Three bar runs held at 74.5–75.5%; the bar is now 75% (Q84). Ticket 54 fixes one regression, fixes two keys and measures the final bar; then the spec closes, with open misses in the Backlog section. Ticket 37 failed the 80% bar (51.3%); 38 demotes hub sections, 40 explained six regressions, 41 and 42 fix them (Q69), and 39 then compares recall approaches on a blind set for the user's pick (Q67). 32 and 33 are follow-ups from the effort review; 32 and 34–36 fix the search misses from ticket 26's baseline, and 37 measures the result against the bar (Q59). 33 runs after the search tickets. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
 
 ## Problem Statement
 
@@ -119,6 +119,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q81 | A keyword line may hold a feature's core term (a single word or a standard term that names the feature, such as "function calling" or "random") even when a known question uses it. Phrases from a known question stay banned. Each such line is named in the handover as found through the known set, and the blind set is the check (ticket 52 ruling) |
 | Q82 | Ticket 52 fixed two of the eight page misses (blind recall@5 86.0% → 89.4%). The other six stay open into ticket 53, named in its handover: five pick misses where the AI picks another page, and `world-editor-placeholders-2`, where the stemmer splits "randomly" from "random". Page summaries in the pick list and a wrong-page parse rule did not hold the blind set |
 | Q83 | No help-prompt change ships from ticket 51. Of four variants over 12 runs, the best (a heading list of the sent sections) scored +0.9 ± 1.9 points on the bar, inside drift. A prompt change ships on a measured gain, not on passing the guard. The cause is word overlap between the question and a sibling section's names, not position. All four stay recorded as measured alternatives (ticket 51 ruling) |
+| Q84 | Three bar runs held at 74.5–75.5% (tickets 46 and 53), and round three gained nothing net. The bar is now 75%, replacing Q59's 80%. Two keys gain the section they are answered right from: `memory-2` and `world-editor-openings-2`, reopening Q79's key ruling on ticket 53's evidence. Ticket 54 fixes the `here-make-tool` regression, applies the keys, rescores tickets 46 and 53, and measures the final bar. Then the spec closes. Open misses go to the backlog below, with no further bar runs |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
@@ -326,3 +327,18 @@ A good test here calls the module through its public operations and asserts on w
 - The default cloud model ignores `seed` and drifts between batches, so every probe batch needs its own control.
 - Small models can invent steps when a section is thin. The "How to…" sections are the main defense, and the sources list lets the player check.
 - Two ADR files carry the number 0008 today. The new ADR takes the next free number.
+
+## Backlog
+
+Open after the bar closed at 75% (Q84). No ticket is written. Each needs a stated rule checked on the blind set.
+
+| Gap | Questions (ticket 53) | What was tried |
+|---|---|---|
+| 🔎 Search misses: the AI picks another page, or keyword ranks a sibling | `library-2`, `prompts-1`, `statcodeguide-2`, `memory-1`, `personas-1`, `follow-default-make`, `entities-2`, `persona-authoring-2`, `world-editor-openings-4`, `worldformat-3`, `world-editor-dictionary-1` | Page summaries in the pick list, a wrong-page parse rule (52), a keyword floor before the merge and contraction tokens (50). None held the blind set |
+| 🔤 Stemmer split: "randomly" and "random" stem apart | `world-editor-placeholders-2` | Not tried |
+| 🧭 Model answers from a sibling section that shares the question's words | `follow-backup-restore`, `saves-and-backup-2`, `formaquestion-1`, `glossary-1`, `statcodeguide-3`, `world-editor-entities-2`, `world-editor-stats-1` | Four prompt variants (51), all inside drift |
+| 🖥️ Task recall over an open screen trails no screen by 7–19 points | Recall probe, three screens | Q77 and Q78 gates |
+| 🌐 Questions in another language | 8 questions; AI picks lifted them to 75–80% | Out of the bar (Q61) |
+| 🧪 Semantic source: built, off, never measured live in the app | – | Ticket 39 offline only |
+| 🔁 A follow-up after a what's-new question keeps the release lead | No baseline case | Q65 |
+| 💾 Portable Electron build loses the model cache under a long exe path | – | Found in ticket 48 |
