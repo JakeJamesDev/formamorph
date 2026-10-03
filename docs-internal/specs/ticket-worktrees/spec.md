@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: ticket-worktrees — spec
-Status note: 9 tickets in issues/. 01–06 are ready-for-human. 08 (clean landings) and 09 (affected-only gates) came out of the pre-07 review and block 07. 07 is the Sonnet 5.5 acceptance run on a ticket the user names.
+Status note: 9 tickets in issues/. 01–06 are ready-for-human. 08 (clean landings) and 09 (affected-only gates) came out of the pre-07 review and block 07. 07 is the Sonnet 5.5 acceptance run on formaquestion-settings 19. The spec session closed on 2026-10-03, so intent questions for 07 and 09 go to the user. The full-suite safety net is a separate effort.
 
 Every `/implement` ticket runs in its own git worktree and lands on `main` as one commit. Hooks do the mechanical steps, so a smaller model such as Sonnet 5.5 can run the flow without hand-built git commands. Designed in a discussion session on 2026-10-02. A live probe in this repo checked the Claude Code behavior that the design depends on.
 
