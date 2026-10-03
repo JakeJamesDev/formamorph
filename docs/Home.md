@@ -26,7 +26,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 🧍 **[Avatars](Avatars)** | Your 3D player model — importing a VRM file, Character Customization, the details and license, and how it differs from an entity's 3D model and your Profile Image |
 | 🚪 **[Starting a Game](Starting-a-Game)** | Everything before page one — Enter World, Quick Start, starting traits, the starting location and Library Additions |
 | 🎮 **[How to Play](How-to-Play)** | Taking a turn — actions, choices, `[bracket]` direction, images, re-generate, edit, rewind, the side panels and the game menu |
-| ❓ **[Formaquestion](Formaquestion)** | The help window in the app — the **Help** tab and F1, asking a question, searching this guide, reading a page, and moving the window |
+| ❓ **[Formaquestion](Formaquestion)** | The help window in the app — the **Help** tab and F1, asking a question, searching this guide, reading a page, moving the window, and changing its settings |
 | 💾 **[Saves and Backup](Saves-and-Backup)** | Save, load, Autosave, save files, Backup & Restore of your worlds, saves, library entities and library dictionaries, where your data lives, and app updates |
 | 🧠 **[Story Memory](Memory)** | How a long story is remembered, and how to pin, edit or write its memories yourself |
 | 🎭 **[Entities in Play](Entities)** | Who the story tracks as present — including the entities it invents mid-scene, and how to remove one it got wrong |

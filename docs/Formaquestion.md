@@ -89,6 +89,96 @@ To see the contents and a section side by side, select **Wide View** in the titl
 
 With the keyboard, press Tab until the **Help** tab has focus. Then press the arrow keys.
 
+## How to Use a Different AI for Help
+<!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, pick endpoint, small model -->
+
+1. Select the gear in the Formaquestion title bar.
+2. Select the **Endpoint** tab.
+3. In the editor, select **Add New Preset**.
+4. Enter the endpoint, token and model of the other AI.
+5. Set **Answer Endpoint** to the new preset.
+
+Your game keeps its own AI. To send the **AI Picks** request to a small, fast model, set **Pick Endpoint** the same way. See [Endpoint](#endpoint).
+
+## How to Turn On Reasoning for Help
+<!-- keywords: thinking, think harder, reasoning model, hard question, effort, reasoning level, show thinking, think before answering, better answers, deep answer, slow answers, thinking block -->
+
+1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
+2. Select the **Reasoning** checkbox.
+3. Pick a level in the list that appears.
+4. Ask a question. The **Thinking** block above the answer shows how the AI reasoned.
+
+Answers take longer with reasoning on. The row shows a note instead of the checkbox when your model cannot reason. See [General](#general).
+
+## How to Turn On Semantic Search
+<!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download -->
+
+1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
+2. Select the **Semantic Search** checkbox.
+3. Wait while the app downloads the small model. A progress bar shows on the row.
+4. Ask a question. When the download is done, the search also finds sections by meaning.
+
+If the download fails, the checkbox clears and **Retry** shows. Until the model is ready, questions use the other sources.
+
+## How to Write Your Own Help Prompt
+<!-- keywords: change how answers read, custom prompt, edit the help prompt, answer style, shorter answers, tone of help, duplicate default, rewrite instructions, reset prompt, compare to default, prompt chips -->
+
+1. Select the gear in the Formaquestion title bar.
+2. Select the **Prompts** tab.
+3. Select **Duplicate & Edit**, or **Add New Preset…** in the preset list.
+4. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips that the app reads back.
+5. Close the dialog and ask a question. The next request uses your text.
+
+**Default** is read-only, so your copy is the one you edit. Select **Compare to Default** to see what a new release changed, or **Reset to Default** to start again. See [Prompts](#prompts).
+
+## How to Add a Tool to Formaquestion
+<!-- keywords: custom tool, own tool, new function, chat assistant, world lookup, create a tool, tool for help, function call, my tools, script tool, give the ai a function, extend the assistant -->
+
+1. Select the gear in the Formaquestion title bar.
+2. Select the **Tools** tab.
+3. Under **My Tools**, select **New Tool**.
+4. Fill in **Definition**, **Parameters** and **Handler**.
+5. Select **Save Tool**. The new Tool is on.
+6. Open a world in the game or the editor.
+7. Ask a question that needs the Tool.
+
+Your AI calls the Tool when the question needs what it returns. The endpoint must take function calls. See [Tools](#tools).
+
+## How to Move a Custom Preset to Another Device
+<!-- keywords: export preset, import preset, back up help prompts, share my prompts, copy to a new pc, transfer, preset file, help-preset.json, send to a friend, sync prompts, new computer -->
+
+1. On the first device, open the **Prompts** tab.
+2. Select your custom preset.
+3. Select **Export**. Formamorph saves a `.help-preset.json` file.
+4. Copy the file to the other device.
+5. On the other device, open the **Prompts** tab.
+6. Select **Import** and choose the file.
+
+The import adds the preset and selects it. See [The Preset File](#the-preset-file).
+
+## How to See What the App Sent for a Question
+<!-- keywords: debug a question, wrong answer, why this answer, inspect the request, see the prompt, trace, missing section, request log, export json, bug report, what was sent to the ai -->
+
+1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
+2. Select the **Show AI Context** checkbox.
+3. Ask a question.
+4. Select **AI Context** in the title bar.
+
+The dialog lists each question, newest first, with the request cards. See [AI Context](#ai-context).
+
+## How to Use Formaquestion as a Plain Chat
+<!-- keywords: chat assistant, no guide, ordinary chat, talk to the ai, turn off search, no sources, bare question, general chatbot, roleplay assistant, stop the guide, only my question -->
+
+1. Select the gear in the Formaquestion title bar. The **General** tab opens first.
+2. Clear **Keyword Search**.
+3. Clear **AI Picks**.
+4. Clear **Semantic Search**.
+5. Clear **Use the Open Screen**.
+6. Select the **Tools** tab and check that **read_guide** is off.
+7. Ask a question.
+
+The request now holds your question alone. The answer has no note that it is not from the guide. To give the chat a purpose, write your own prompt and add Tools. Set **History Length** to the number of earlier exchanges you want it to keep.
+
 ---
 
 ## The Window
@@ -182,7 +272,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 ### General
 <!-- keywords: reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
 
-The **General** tab sets how your AI answers, how a question finds its guide sections, and what the request holds.
+The **General** tab sets how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in three groups: **Answer**, **Search** and **Request**.
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -190,7 +280,7 @@ The **General** tab sets how your AI answers, how a question finds its guide sec
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
 | **AI Picks** | On | Sends one more request for each question, in which your AI picks guide sections from the list of headings |
-| **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the switch goes off and **Retry** starts it again. Until the model is ready, questions use the other sources. |
+| **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. |
 | **Use the Open Screen** | On | Sends the screen you have open and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 | **Show AI Context** | Off | Adds an **AI Context** button to the title bar. It shows what each question sent to your AI. See [AI Context](#ai-context). |
@@ -219,12 +309,6 @@ Under the two settings is the same preset editor as **Settings** → **AI Endpoi
 - Its preset list chooses the preset to edit. It does not change where the game or help sends requests.
 - **Add New Preset** adds a copy of the preset you are editing, and opens it in the editor.
 - A change to a preset applies everywhere that preset is used, the game included.
-
-**How to send help to a different AI:**
-
-1. Open **Formaquestion Settings**, then the **Endpoint** tab.
-2. In the editor, select **Add New Preset**, and enter the endpoint, token and model of the other AI.
-3. Set **Answer Endpoint** to the new preset.
 
 ### Prompts
 <!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only, export preset, import preset, preset file, move preset, another device -->
@@ -267,19 +351,9 @@ The **Answer** prompt has an **Options** row under it in the list of prompts:
 
 Each preset has its own options, and a copy of a preset takes them. **Default** shows them read-only, so each release updates them. A box that is off uses the default. The **Picks** request keeps its own values.
 
-**How to change a help prompt:**
+#### The Preset File
 
-1. Open **Formaquestion Settings**, then the **Prompts** tab.
-2. Select **Duplicate & Edit**, or **Add New Preset…** in the preset list.
-3. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips the app reads back.
-4. Close the settings and ask a question. The next request uses the new text.
-
-**How to move a help preset to another device:**
-
-1. On the first device, select your custom preset, then select **Export**. Formamorph saves a `.help-preset.json` file.
-2. On the other device, open the **Prompts** tab, select **Import**, and choose the file.
-
-The file holds the three prompts, the answer options, your **My Tools**, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
+See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset-to-another-device) for the steps. The file holds the three prompts, the answer options, your **My Tools**, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
 
 - If you already have a preset with that name, the import adds a number to the new name.
 - If you already have a Tool with that name, the import skips that Tool and names it. Your Tool keeps its own switch.
@@ -306,7 +380,8 @@ The **Tools** tab lists the functions your AI can call while it answers. It uses
 
 A function goes out only when the **Answer Endpoint** takes function calls. If it doesn't, or the app hasn't confirmed it yet, the tab shows a note, and each question goes out as one request with no function. The default cloud endpoint takes no function calls.
 
-**How to let your AI read more of the guide:**
+#### How to Let Your AI Read More of the Guide
+<!-- keywords: lookup mode, read more sections, local model, function calls, read_guide, deeper answers, search the guide itself, tool calls, bigger context -->
 
 1. Set **Answer Endpoint** to a model that takes function calls, such as a local model.
 2. Open the **Tools** tab, select **read_guide**, and turn on **Enabled**.
@@ -322,13 +397,8 @@ A function goes out only when the **Answer Endpoint** takes function calls. If i
 
 A Tool that's on reads the world you have open, so text from that world can go to your **Answer Endpoint**. The tab says so under the list. In the game, a Tool reads the playthrough as a game Tool does. In the World Editor, it reads the world as you have it, unsaved edits included. With the World Editor open from the game, a Tool reads the editor's world until you close it. On the Main Menu, a Tool reads no world and returns its empty result.
 
-**How to make a Tool for help questions:**
-
-1. Open the **Tools** tab and select **New Tool** under **My Tools**.
-2. Fill in **Definition**, **Parameters** and **Handler**, then select **Save Tool**. The new Tool is on.
-3. Open a world in the game or the editor, and ask a question that needs it. Your AI calls the Tool when the question needs what it returns.
-
-**How to share Tools with the game's list:**
+#### How to Share Tools With the Game's List
+<!-- keywords: tool pack, tools.json, import tools, export tools, move a tool, gameplay tool, copy a tool, share a tool, pack file -->
 
 1. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.

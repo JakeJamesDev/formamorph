@@ -99,6 +99,19 @@ describe('hub sections in the bundled docs', () => {
     expect(ids.some((id) => id.startsWith('Glossary#') && id.endsWith('building-a-world'))).toBe(true);
   });
 
+  it.each([
+    ['how do I use a different AI for help?', 'Formaquestion#how-to-use-a-different-ai-for-help'],
+    ['how do I turn on reasoning for help?', 'Formaquestion#how-to-turn-on-reasoning-for-help'],
+    ['how do I turn on Semantic Search?', 'Formaquestion#how-to-turn-on-semantic-search'],
+    ['how do I write my own help prompt?', 'Formaquestion#how-to-write-your-own-help-prompt'],
+    ['how do I add a Tool to Formaquestion?', 'Formaquestion#how-to-add-a-tool-to-formaquestion'],
+    ['how do I move a custom preset to another device?', 'Formaquestion#how-to-move-a-custom-preset-to-another-device'],
+    ['how do I see what the app sent for a question?', 'Formaquestion#how-to-see-what-the-app-sent-for-a-question'],
+    ['how do I use Formaquestion as a plain chat?', 'Formaquestion#how-to-use-formaquestion-as-a-plain-chat'],
+  ])('finds the Formaquestion how-to in the top 5 for "%s"', (question, id) => {
+    expect(index.search(question, 5).map((s) => s.id)).toContain(id);
+  });
+
   it('still finds Settings#output for a question about what it holds', () => {
     expect(index.search('What does Settings → Output hold?', 5).map((s) => s.id)).toContain('Settings#output');
   });

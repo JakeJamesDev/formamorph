@@ -124,6 +124,8 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q86 | Ticket 54 passes the 75% bar: 77.5% over two batches with the new keys (77.3%, 77.7%). The effort's acceptance is met. New losses from other pages' pick lines go to the Backlog |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
+The [Formaquestion Settings spec](../formaquestion-settings/spec.md) replaces Q9 (fixed prompt, endpoint and reasoning; no Settings tab) and Q71 (the search sources are constants, not player settings).
+
 ## User Stories
 
 ### Opening the window
@@ -314,7 +316,7 @@ A good test here calls the module through its public operations and asserts on w
 - Any edit to a world, a save or a setting by the AI.
 - Reading the player's world or save to answer a question (Q2).
 - Stored conversation history.
-- An editable help prompt, a help endpoint route or a help Settings tab (Q9).
+- An editable help prompt, a help endpoint route or a help Settings tab (Q9). This is now in scope: see the [Formaquestion Settings spec](../formaquestion-settings/spec.md).
 - Embedding-based search.
 - An MCP server for outside AI apps.
 - A docs-gap report to the server.
