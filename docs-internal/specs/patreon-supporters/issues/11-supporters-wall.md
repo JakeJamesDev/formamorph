@@ -4,6 +4,7 @@ Status: ready-for-human
 Status note: Built. Server commits 9d5dccf and aeff7e2 in FormamorphServer, client commit b5ff0486. The wall excludes suspended accounts (spec session ruling): a wall name must open a profile. Live look at both viewports and themes was done with computed styles and one mobile screenshot.
 Base: 6f2f5727
 Blocked by: 04, 08
+Deliberate exception: "Each name uses the shared name components" is met in part. [SupportersPage.tsx](../../../../site/pages/SupportersPage.tsx) builds the name anchor itself and reuses the shared `SupporterBadge`, `UserAvatar` and `SUPPORTER_NAME_STYLES`. `UserName` opens the in-app profile through the profile store, which the site does not have, and the site `ProfilePage` makes the same call. The name links to `/u/<name>` instead.
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
 Repo: FormamorphServer, then formamorph
