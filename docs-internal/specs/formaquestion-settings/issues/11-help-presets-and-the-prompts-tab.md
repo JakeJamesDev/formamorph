@@ -15,7 +15,7 @@ A power user changes the help prompts, as they change the gameplay prompts (Q8, 
 - Formaquestion has its own preset list, apart from the gameplay prompt presets.
 - One built-in preset, **Default**, is read-only. Its text comes from the code, so each release updates it for every player who has no custom preset.
 - A player duplicates a preset to get a custom one, and can rename and delete a custom preset.
-- A preset holds three texts: the answer prompt, the pick prompt and the lookup prompt. It holds nothing else.
+- A preset holds three texts: the answer prompt, the pick prompt and the lookup prompt. It holds nothing else, until ticket 13 adds the answer options (Q58). A prompt option of a later ticket goes in the preset the same way.
 - The store and the active preset id are device settings.
 
 **The Prompts tab.**
