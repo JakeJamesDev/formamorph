@@ -7,7 +7,8 @@ import { NON_GUIDE_PAGES, pageNameOf } from './docsChecks';
 import { otherPagesLinked, SECTION_CHAR_LIMIT } from './docsIndex';
 import { SECTION_CUT_MARKER } from './sectionParts';
 
-const DOCS_FOLDER = Object.keys(import.meta.glob('../../../docs/*.md')).map(pageNameOf);
+// The query keeps vitest's related-test walk from parsing each page as a module.
+const DOCS_FOLDER = Object.keys(import.meta.glob('../../../docs/*.md', { query: '?raw' })).map(pageNameOf);
 
 const index = bundledDocsIndex();
 const contents = index.contents();

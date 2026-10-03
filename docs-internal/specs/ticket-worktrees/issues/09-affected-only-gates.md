@@ -1,11 +1,11 @@
 # 09: Affected-Only Ticket Gates
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 Repo: ~/.claude (prepare command) and formamorph (gate config, protocol, test classification)
-Spec: ../spec.md (Rulings Q11, Q29, Q41)
+Spec: ../spec.md (Rulings Q11, Q29, Q41, Q42, Q43)
 
 Model rationale: a test-selection change where a wrong call lets a regression land silently. Deciding which tests escape the module graph needs judgment.
 
@@ -32,7 +32,7 @@ The list lives in one place, and a check fails when a new disk-reading test file
 ## Acceptance criteria
 
 - [ ] `{base}` in a gate command is replaced with the full `main` sha that prepare rebased onto. A test proves it, and the guard is proven by mutation.
-- [ ] Formamorph's gate config runs `vitest run --changed {base}` plus the always-run list, lint on the changed files, and full typecheck and build.
+- [ ] Formamorph's gate config runs `vitest related --run` on the changed files, their path-trigger and CommonJS hits, and the always-run list (Q42, Q43), lint on the changed files, and full typecheck and build.
 - [ ] Every test file that reads files from disk is classified, with a one-line reason for each always-run entry.
 - [ ] A check fails when a disk-reading test file is unclassified, and that is proven by adding one.
 - [ ] A change to `src/test/setup.ts` runs the full suite. A change to one component runs only its related tests plus the always-run list. Both are shown with real runs.

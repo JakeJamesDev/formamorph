@@ -130,6 +130,16 @@ export default defineConfig({
     // e2e/ belongs to Playwright; .scratch/ contains untracked working copies and experiments.
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.scratch/**', '.claude/worktrees/**'],
     setupFiles: ['./src/test/setup.ts'],
+    // A change to one of these makes `--changed` and `related` run the full suite. They replace vitest's `**/`
+    // defaults, which can't match inside a ticket worktree: picomatch's `**` skips the `.claude` folder.
+    forceRerunTriggers: [
+      'package.json',
+      'package-lock.json',
+      'vite.config.js',
+      'src/lib/docs/changelogSlice.ts',
+      'tsconfig*.json',
+      '.env*',
+    ].map((file) => path.resolve(__dirname, file).replace(/\\/g, '/')),
     css: false,
     // A new jsdom per file is a large share of the suite's CPU, so plain .ts tests run in node. A .ts test
     // that needs the DOM opts in with `// @vitest-environment jsdom`.
