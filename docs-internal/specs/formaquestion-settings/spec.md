@@ -329,3 +329,5 @@ Other checks:
 - A custom answer prompt that drops the marker chip removes the general-knowledge notice for covered questions too. That is the power user's choice.
 - With Tools on and a world open, a help request can carry world text to the help endpoint. The Tools tab states this next to the first Tool the player turns on.
 - Two ADR files carry the number 0008 today. The new ADR takes the next free number.
+- New docs text moves the keyword ranking. The bundled-docs ranking test that expects the Settings Output section for a question about what that section holds sits one rank from its edge, and ticket 18's first draft of an AI Context section, with the words "settings", "output" and "holds", pushed it out of the top five. A fall of that test is a real search regression for players, not a wording problem: report it with the ranks, and do not reword a correct section only to keep the test green.
+- Ticket 18 moved the game view's AI Context export into a shared export button and a pure export helper. The game's export file is unchanged; Formaquestion's writes one entry per question, with the question and its trace.
