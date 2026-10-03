@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { PatreonSection } from '@/components/PatreonSection';
 import { AccountPage } from './AccountPage';
 import { leaveTo } from '../leaveSite';
 import { at, res, resetAccountPage, signIn } from '../test/support';
@@ -251,5 +252,28 @@ describe('a suspended account', () => {
 
     expect((await screen.findByRole('button', { name: 'Unlink' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('checkbox', { name: 'Show Supporter Flair' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('a slow first read', () => {
+  it('cannot overwrite a newer read that already answered', async () => {
+    let failFirst: (error: Error) => void = () => {};
+    let reads = 0;
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (!String(url).includes(ROUTE)) return res({ success: true, user: {} });
+      reads += 1;
+      // The first read hangs; the focus read answers at once.
+      if (reads === 1) return new Promise<Response>((_, reject) => { failFirst = reject; });
+      return ok(SUPPORTER);
+    });
+    render(<PatreonSection openAuthorize={() => {}} refreshOnFocus />);
+
+    fireEvent.focus(window);
+    expect(await screen.findByText('Supporter+')).toBeTruthy();
+
+    await act(async () => { failFirst(new Error('offline')); });
+
+    expect(screen.getByText('Supporter+')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Try Again' })).toBeNull();
   });
 });
