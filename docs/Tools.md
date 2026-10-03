@@ -78,7 +78,7 @@ The AI decides when to call a Tool. The Tool's **Description** tells it when. Ea
 To see the calls, turn on **Show Silent Requests** in Settings → **Display**. The status line then shows **Looking up…** while the AI calls Tools. In the AI Context inspector, a request that called Tools has a **Tool Rounds** section with each call and its result. See [The AI Context Inspector](How-to-Play#the-ai-context-inspector).
 
 ## Endpoints Without Tool Support
-<!-- keywords: unsupported model, not compatible, capability check, backend ignores it, which models work, note replaces checkbox, falls back to summaries, local model limits -->
+<!-- keywords: unsupported model, not compatible, capability check, backend ignores it, which models work, note replaces checkbox, falls back to summaries, local model limits, tool calling, function calling, tool use -->
 
 The app sends Tools only to an endpoint and model that it knows support them. It learns this from the server's model list, such as the `tool_use` flag in LM Studio, or from a one-time check. An LM Studio model without the `tool_use` flag gets no Tools.
 
