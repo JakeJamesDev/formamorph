@@ -1,6 +1,8 @@
 # 05: Shared Sorts
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Client `22d8db3a`, review fold-in `46ecbcc8`; server `c330882`, tiebreak fix `ff7587e`. The sort seam and tab wiring landed in ticket 03's commit `83625b11`.
+Base: 773f369a
 Blocked by: 01
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -13,10 +15,10 @@ Reasoning effort: medium
 
 The server whitelist adds `oldest` (created first) and `active` (`updated_at` latest first). Every sort ends on the newest tiebreak. `votes` on Bugs falls back to newest. The presentation module holds one sort list with labels and a per-type function for the sorts each type offers.
 
-- [ ] Server: `oldest` and `active` return the expected order with the tiebreak; `votes` on Bugs falls back to newest
-- [ ] Client: staff Bugs shows Sort with Newest, Oldest, Recently active
-- [ ] Client: Suggestions show those three plus Most voted
-- [ ] Client: users see Sort on Bugs and Suggestions, in Mine and Everyone's
-- [ ] Client: default sorts match Q17
-- [ ] Server tests over supertest; client tests at the tab seam
-- [ ] Changelog line under In Progress (client); the deploy log is the user's
+- [x] Server: `oldest` and `active` return the expected order with the tiebreak; `votes` on Bugs falls back to newest
+- [x] Client: staff Bugs shows Sort with Newest, Oldest, Recently active
+- [x] Client: Suggestions show those three plus Most voted
+- [x] Client: users see Sort on Bugs and Suggestions, in Mine and Everyone's
+- [x] Client: default sorts match Q17
+- [x] Server tests over supertest; client tests at the tab seam
+- [x] Changelog line under In Progress (client); the deploy log is the user's

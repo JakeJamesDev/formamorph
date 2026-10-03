@@ -14,10 +14,10 @@ Reasoning effort: medium
 
 The client sends the list in one request. The per-status fan-out, its `truncated` result, and the list's incomplete-page warning go away.
 
-- [ ] Server: a status list returns the union of those statuses, newest first, with an exact `total`
-- [ ] Server: invalid values drop; all-invalid means unfiltered; one status works as before
-- [ ] Server: status list combines with category and scope
-- [ ] Client: `FeedbackService.list` sends one request with the comma-separated list
-- [ ] Client: the fan-out, `truncated`, and the warning are gone
-- [ ] Server tests over supertest; client test at the `FeedbackService.list` seam with fetch mocked
-- [ ] Changelog line under In Progress (client); the deploy log is the user's
+- [x] Server: a status list returns the union of those statuses, newest first, with an exact `total`
+- [x] Server: invalid values drop; all-invalid means unfiltered; one status works as before
+- [x] Server: status list combines with category and scope
+- [x] Client: `FeedbackService.list` sends one request with the comma-separated list
+- [x] Client: the fan-out, `truncated`, and the warning are gone
+- [x] Server tests over supertest; client test at the `FeedbackService.list` seam with fetch mocked
+- [x] Changelog line under In Progress (client); the deploy log is the user's
