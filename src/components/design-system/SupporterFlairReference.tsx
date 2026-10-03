@@ -3,10 +3,10 @@ import { Meta, SectionTitle } from '@/components/ui/typography';
 import { RoleBadge } from '@/components/RoleBadge';
 import { SupporterBadge } from '@/components/SupporterBadge';
 import { UserAvatar, type AvatarSize } from '@/components/UserAvatar';
-import { SUPPORTER_LABELS, SUPPORTER_NAME_STYLES, supporterRing, type SupporterTier } from '@/lib/supporterFlair';
+import { SUPPORTER_LABELS, SUPPORTER_NAME_STYLES, SUPPORTER_TIERS, supporterRing, type SupporterTier } from '@/lib/supporterFlair';
 import { cn } from '@/lib/utils';
 
-const TIERS: readonly SupporterTier[] = ['supporter', 'supporter_plus'];
+const TIERS = SUPPORTER_TIERS;
 const SIZES: readonly AvatarSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
 type Sample = { name: string; tier?: SupporterTier; role?: string };
@@ -62,7 +62,7 @@ function Sample() {
         <div className="flex flex-wrap gap-4">{TIERS.map((tier) => <Swatch key={tier} tier={tier} />)}</div>
       </div>
       <div className="space-y-2">
-        <Meta>Badges beside the staff badges</Meta>
+        <Meta>Badges Beside the Staff Badges</Meta>
         <div className="flex flex-wrap items-center gap-2">
           {TIERS.map((tier) => <SupporterBadge key={tier} tier={tier} />)}
           <RoleBadge role="mod" />
@@ -78,7 +78,7 @@ function Sample() {
         </div>
       </div>
       <div className="space-y-2">
-        <Meta>Profile Image rings</Meta>
+        <Meta>Profile Image Rings</Meta>
         <div className="flex flex-wrap items-center gap-4">
           {TIERS.map((tier) => (
             <div key={tier} className="flex items-center gap-3 p-1">
@@ -88,7 +88,7 @@ function Sample() {
         </div>
       </div>
       <div className="space-y-2">
-        <Meta>In a thread</Meta>
+        <Meta>In a Thread</Meta>
         <div className="space-y-2 rounded-md border border-border bg-card p-3">
           {THREAD.map((sample) => <ThreadRow key={sample.name} {...sample} />)}
         </div>
