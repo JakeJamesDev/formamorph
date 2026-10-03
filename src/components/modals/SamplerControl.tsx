@@ -48,6 +48,7 @@ export function SamplerControl({ id, label, hint, info, custom, value, defaultVa
           step={step}
           disabled={disabled || !custom}
           onValueChange={(v) => onValueChange(v[0])}
+          aria-label={label}
         />
         <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">
           {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">{fallbackLabel}</span>}

@@ -45,6 +45,12 @@ export const PROMPTS_COPY = {
     pick: { label: 'Picks', hint: 'Tells your AI how to pick guide sections from the heading list' },
     lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
   },
+  options: {
+    title: 'Options',
+    hint: 'Apply to the answer request of every preset. The Picks request keeps its own values.',
+    temperature: { label: 'Custom Temperature', hint: 'Sets how freely the answer words its steps' },
+    repetitionPenalty: { label: 'Custom Repetition Penalty', hint: 'Sets how hard the answer avoids repeated words' },
+  },
   readOnly: (name: string) => `${name} is read-only`,
   reset: { label: 'Reset to Default', hint: 'Returns this prompt to the text of this release' },
 } as const;

@@ -16,6 +16,7 @@ import {
 import { HELP_PROMPT_CHIPS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { randomUUID } from '@/lib/uuid';
+import { AnswerOptions } from './AnswerOptions';
 import { PROMPTS_COPY } from './formaquestionSettingsTabs';
 
 const ADD_PRESET = '__add__';
@@ -126,6 +127,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
             )}
             className="min-h-0 flex-1"
           />
+          {key === 'answer' && <AnswerOptions settings={settings} onChange={onChange} />}
         </div>
       </div>
 

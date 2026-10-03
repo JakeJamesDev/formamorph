@@ -294,6 +294,7 @@ export async function* askHelp({
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
     maxTokensOverride: settings.answerMaxTokens,
+    samplerOverride: { temperature: settings.answerTemperature, repetitionPenalty: settings.answerRepetitionPenalty },
     ...(lookup && { tools: [DOCS_LOOKUP] }),
   });
   let text = '';

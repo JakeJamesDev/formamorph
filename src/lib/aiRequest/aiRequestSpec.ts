@@ -7,7 +7,7 @@ import {
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { reasoningDialectBody, reasoningDialectBudgetFloor, type ReasoningBodyFields } from '@/lib/reasoningDialect';
-import { resolvePromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
+import { resolvePromptSampler, type PromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { customMaxOutput, type PromptMaxOutputMap } from '@/lib/promptMaxOutput';
 
@@ -61,6 +61,8 @@ export interface AiCall<TTool extends OfferedFunction = OfferedFunction> {
   requestType: AIRequestType;
   /** Overrides the target's own output cap for the answer. */
   maxTokensOverride?: number | null;
+  /** Sampler values for this call, ahead of the pin and the endpoint. A prompt's own Custom setting still wins. */
+  samplerOverride?: Partial<Record<PromptSampler, number>>;
   /** The functions this prompt offers: its Tools, or an app-internal function. Sent only where the target's record says it takes them. */
   tools?: readonly TTool[];
 }
@@ -121,10 +123,12 @@ function resolveSampler(
   requestType: AIRequestType,
   localEngine: boolean,
   target: AiEndpointTarget,
-  sampler: 'temperature' | 'repetitionPenalty',
+  sampler: PromptSampler,
+  override?: number,
 ): ResolvedSampler {
   const setting = snapshot.promptSamplers[requestType]?.[sampler];
   if (setting?.custom) return { value: setting.value, source: 'prompt' };
+  if (override !== undefined) return { value: override, source: 'prompt' };
 
   const globalValue = sampler === 'temperature' ? snapshot.genTemperature : snapshot.genRepetitionPenalty;
   const promptValue = resolvePromptSampler(requestType, sampler, {}, globalValue, localEngine);
@@ -141,10 +145,11 @@ function resolveSamplers(
   snapshot: AiSettingsSnapshot,
   requestType: AIRequestType,
   target: AiEndpointTarget,
+  override?: AiCall['samplerOverride'],
 ): { temperature: ResolvedSampler; repetitionPenalty: ResolvedSampler } {
   return {
-    temperature: resolveSampler(snapshot, requestType, target.localEngine, target, 'temperature'),
-    repetitionPenalty: resolveSampler(snapshot, requestType, target.localEngine, target, 'repetitionPenalty'),
+    temperature: resolveSampler(snapshot, requestType, target.localEngine, target, 'temperature', override?.temperature),
+    repetitionPenalty: resolveSampler(snapshot, requestType, target.localEngine, target, 'repetitionPenalty', override?.repetitionPenalty),
   };
 }
 
@@ -247,7 +252,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   const { requestType } = call;
   const localEngine = target.localEngine;
   const { fields: reasoningFields, maxTokens } = resolveReasoning(snapshot, call, target);
-  const { temperature, repetitionPenalty } = resolveSamplers(snapshot, requestType, target);
+  const { temperature, repetitionPenalty } = resolveSamplers(snapshot, requestType, target, call.samplerOverride);
   const externalOverrides = target.samplerOverrides;
   const tools = offeredTools(call, target);
 
@@ -293,7 +298,7 @@ export function buildAiRequestSpec<TTool extends OfferedFunction = OfferedFuncti
   call: AiCall<TTool>,
 ): AiRequestSpec<RequestMessage, TTool> {
   const target = snapshot.resolveTarget(call.requestType);
-  const samplers = resolveSamplers(snapshot, call.requestType, target);
+  const samplers = resolveSamplers(snapshot, call.requestType, target, call.samplerOverride);
   const reasoning = resolveReasoning(snapshot, call, target);
   return {
     url: target.url,

@@ -252,6 +252,16 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 
+The **Answer** prompt has an **Options** panel under its editor:
+
+| Option | Default | What it does |
+|---|---|---|
+| **Max Output** | 800 tokens | Sets how long an answer can run |
+| **Custom Temperature** | 0.2 | Sets how freely the answer words its steps |
+| **Custom Repetition Penalty** | 1 | Sets how hard the answer avoids repeated words |
+
+The options apply to the answer request of every preset, **Default** included, and this device keeps them. A box that is off uses the default. The **Picks** request keeps its own values.
+
 **How to change a help prompt:**
 
 1. Open **Formaquestion Settings**, then the **Prompts** tab.
