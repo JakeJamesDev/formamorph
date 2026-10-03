@@ -6,7 +6,7 @@ import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { openSseReply, sseFrame, sseReply, textSnapshot } from '@/test/aiTextFixtures';
 import { stubHelpStream } from '@/test/helpFixtures';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
-import { HELP_HISTORY_EXCHANGES } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { languageDirective } from '@/lib/languages';
 import { turnActivity } from '@/lib/turnActivity';
 import type { ImageAttachment } from '@/types';
@@ -148,10 +148,11 @@ describe('useHelpChat', () => {
     expect(result.current.exchanges.every((exchange) => !exchange.answer.includes(GENERAL_KNOWLEDGE_MARKER))).toBe(true);
   });
 
-  it(`keeps every exchange in view while a request carries only the last ${HELP_HISTORY_EXCHANGES}`, async () => {
+  it(`keeps every exchange in view while a request carries only the last ${DEFAULT_HELP_SETTINGS.historyLength}`, async () => {
     const fetchSpy = stubHelpStream(sseReply('Done.'));
     const { result } = renderHook(() => useHelpChat(index, ai));
-    const total = HELP_HISTORY_EXCHANGES + 2;
+    const { historyLength } = DEFAULT_HELP_SETTINGS;
+    const total = historyLength + 2;
     for (let n = 0; n < total; n++) {
       act(() => { result.current.ask(`question ${n}`); });
       await waitFor(() => expect(result.current.busy).toBe(false));
@@ -160,7 +161,7 @@ describe('useHelpChat', () => {
     expect(result.current.exchanges.map((exchange) => exchange.question)).toEqual(Array.from({ length: total }, (_, n) => `question ${n}`));
     const earlier = sentMessages(fetchSpy, total - 1).slice(1, -1).filter((message) => message.role === 'user');
     expect(earlier.map((message) => message.content)).toEqual(
-      Array.from({ length: HELP_HISTORY_EXCHANGES }, (_, n) => `question ${total - 1 - HELP_HISTORY_EXCHANGES + n}`),
+      Array.from({ length: historyLength }, (_, n) => `question ${total - 1 - historyLength + n}`),
     );
   });
 

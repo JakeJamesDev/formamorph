@@ -3,13 +3,14 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { reasoningCapabilityFromLevels } from '@/lib/reasoningEffort';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { isPickRequest } from '@/test/helpFixtures';
+import { helpSettings, isPickRequest } from '@/test/helpFixtures';
 import type { ImageAttachment } from '@/types';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { HELP_PICK_MAX_TOKENS, HELP_PICK_SYSTEM_PROMPT, pickList } from './helpPicks';
 import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import type { HelpEmbedder } from './helpSemantic';
-import { askHelp, HELP_SCORE_FLOOR, type HelpEvent, type HelpQuestion, type HelpSources } from './helpSession';
+import { askHelp, HELP_SCORE_FLOOR, type HelpEvent, type HelpQuestion } from './helpSession';
+import type { HelpSources } from './helpSettings';
 import { encodeVector, sectionTexts, type SectionVectorsFile } from './sectionVectors';
 
 // Each source finds its own section for "import": the keyword search finds the one section that holds the
@@ -62,7 +63,7 @@ const bodyOf = (spy: ReturnType<typeof vi.fn<Responder>>, call = 0) =>
 
 async function ask(question: string, over: Partial<HelpQuestion>): Promise<{ events: HelpEvent[]; sources: string[]; done: Extract<HelpEvent, { type: 'done' }> }> {
   const events: HelpEvent[] = [];
-  for await (const event of askHelp({ question, snapshot: textSnapshot(), index, ...over })) events.push(event);
+  for await (const event of askHelp({ question, settings: helpSettings(), snapshot: textSnapshot(), index, ...over })) events.push(event);
   const done = events.at(-1);
   if (done?.type !== 'done') throw new Error('the question did not end');
   return { events, sources: done.sources.map((section) => section.id), done };
@@ -95,14 +96,14 @@ describe('each search source', () => {
     [{ keyword: true, aiPicks: true, semantic: true }, [KEYWORD_HIT, PICKED, NEAREST]],
   ];
 
-  it.each(MIXES)('runs only when its own switch is on: %o', async (searchSources, expected) => {
+  it.each(MIXES)('runs only when its own switch is on: %o', async (sources, expected) => {
     const server = endpoint();
     const embedder = embedderOf();
-    const result = await ask('import', { fetchImpl: server.fetchImpl, embedder, searchSources });
+    const result = await ask('import', { fetchImpl: server.fetchImpl, embedder, settings: helpSettings({ sources }) });
 
     expect(result.sources).toEqual(expected);
-    expect(server.picks).toHaveBeenCalledTimes(searchSources.aiPicks ? 1 : 0);
-    expect(embedder.embed).toHaveBeenCalledTimes(searchSources.semantic ? 1 : 0);
+    expect(server.picks).toHaveBeenCalledTimes(sources.aiPicks ? 1 : 0);
+    expect(embedder.embed).toHaveBeenCalledTimes(sources.semantic ? 1 : 0);
     expect(server.answers).toHaveBeenCalledTimes(1);
     expect(result.done.text).toBe('Select **Import**.');
   });
@@ -203,7 +204,7 @@ describe('the pick request', () => {
     expect(zebras.search(question).map((section) => section.id)).toContain('Horse#coats');
     expect(zebras.search(question, 5, undefined, { floor: HELP_SCORE_FLOOR }).map((section) => section.id)).not.toContain('Horse#coats');
 
-    const alone = await ask(question, { index: zebras, fetchImpl: endpoint().fetchImpl, searchSources: { aiPicks: false } });
+    const alone = await ask(question, { index: zebras, fetchImpl: endpoint().fetchImpl, settings: helpSettings({ sources: { aiPicks: false } }) });
     expect(alone.sources).not.toContain('Horse#coats');
     const merged = await ask(question, { index: zebras, fetchImpl: endpoint({ picks: () => sseResponse(sseReply('Mule › Loads')) }).fetchImpl });
     expect(merged.sources).toContain('Horse#coats');
@@ -256,7 +257,7 @@ describe('the merged ranking', () => {
     });
 
     it('keeps the release sections first with the keyword source off', async () => {
-      const { sources } = await ask(question, { index: withLog, fetchImpl: endpoint().fetchImpl, searchSources: { keyword: false } });
+      const { sources } = await ask(question, { index: withLog, fetchImpl: endpoint().fetchImpl, settings: helpSettings({ sources: { keyword: false } }) });
       expect(sources).toEqual([...release, PICKED]);
     });
   });
@@ -361,7 +362,7 @@ describe('Stop while the semantic source opens its model', () => {
     });
     const server = endpoint();
     const { events } = await ask('import', {
-      fetchImpl: server.fetchImpl, embedder: embedderOf({ open }), signal: controller.signal, searchSources: { aiPicks: false, semantic: true },
+      fetchImpl: server.fetchImpl, embedder: embedderOf({ open }), signal: controller.signal, settings: helpSettings({ sources: { aiPicks: false, semantic: true } }),
     });
 
     expect(events).toEqual([{ type: 'done', text: '', sources: [], lead: undefined, stopped: true, flagged: false, nearest: [] }]);
@@ -370,12 +371,12 @@ describe('Stop while the semantic source opens its model', () => {
 });
 
 describe('the semantic source', () => {
-  const semanticOnly = { keyword: false, aiPicks: false, semantic: true };
+  const semanticOnly = helpSettings({ sources: { keyword: false, aiPicks: false, semantic: true } });
 
   it('is skipped when the embedding model is not on the device: nothing is embedded and no vectors load', async () => {
     const server = endpoint();
     const embedder = embedderOf({ open: vi.fn(async () => false) });
-    const { sources } = await ask('import', { fetchImpl: server.fetchImpl, embedder, searchSources: { semantic: true } });
+    const { sources } = await ask('import', { fetchImpl: server.fetchImpl, embedder, settings: helpSettings({ sources: { semantic: true } }) });
 
     expect(embedder.open).toHaveBeenCalledTimes(1);
     expect(embedder.embed).not.toHaveBeenCalled();
@@ -390,7 +391,7 @@ describe('the semantic source', () => {
     ['the vectors are from another model', embedderOf({ vectors: vi.fn(async () => vectorsFile({ [NEAREST]: [1, 0] }, 'other/model')) })],
   ])('is skipped when %s, and the other sources still answer', async (_name, embedder) => {
     const server = endpoint();
-    const { sources } = await ask('import', { fetchImpl: server.fetchImpl, embedder, searchSources: { semantic: true } });
+    const { sources } = await ask('import', { fetchImpl: server.fetchImpl, embedder, settings: helpSettings({ sources: { semantic: true } }) });
     expect(sources).toEqual([KEYWORD_HIT, PICKED]);
     expect(server.answers).toHaveBeenCalledTimes(1);
   });
@@ -398,7 +399,7 @@ describe('the semantic source', () => {
   it('embeds the question, and for a follow-up the earlier question with it', async () => {
     const embed = vi.fn(async (texts: string[]) => texts.map(() => Float32Array.of(1, 0)));
     await ask('and then?', {
-      fetchImpl: endpoint().fetchImpl, embedder: embedderOf({ embed }), searchSources: semanticOnly,
+      fetchImpl: endpoint().fetchImpl, embedder: embedderOf({ embed }), settings: semanticOnly,
       history: [{ question: 'How do I rewind?', answer: 'Select **Rewind**.' }],
     });
     expect(embed.mock.calls).toEqual([[['and then?', 'How do I rewind? and then?']]]);
@@ -406,7 +407,7 @@ describe('the semantic source', () => {
 
   it('leaves out a section whose text changed after its vector was built', async () => {
     const changed = createDocsIndex({ pages: { ...PAGES, Memory: PAGES.Memory.replace('Select **Edit**', 'Select **Change**') } });
-    const { sources } = await ask('import', { index: changed, fetchImpl: endpoint().fetchImpl, embedder: embedderOf(), searchSources: semanticOnly });
+    const { sources } = await ask('import', { index: changed, fetchImpl: endpoint().fetchImpl, embedder: embedderOf(), settings: semanticOnly });
     expect(sources).toEqual([KEYWORD_HIT]);
   });
 });

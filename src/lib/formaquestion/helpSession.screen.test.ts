@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot } from '@/test/aiTextFixtures';
-import { pastPicks } from '@/test/helpFixtures';
+import { helpSettings, pastPicks } from '@/test/helpFixtures';
 import { askHelp, type HelpQuestion } from './helpSession';
 
 // The model picks a section on the open screen's page and one on another page; no question below holds a
@@ -22,7 +22,7 @@ const DISPLAY_TAB: Surface = { screen: 'mainMenu', dialog: 'settings', tabs: ['s
 
 async function sources(question: string, picked: string, over: Partial<HelpQuestion> = {}): Promise<string[]> {
   const fetchImpl = pastPicks(() => sseResponse(sseReply('It shows the look.')), picked);
-  for await (const event of askHelp({ question, snapshot: textSnapshot(), index, surface: DISPLAY_TAB, fetchImpl, ...over })) {
+  for await (const event of askHelp({ question, settings: helpSettings(), snapshot: textSnapshot(), index, surface: DISPLAY_TAB, fetchImpl, ...over })) {
     if (event.type === 'done') return event.sources.map((section) => section.id);
   }
   throw new Error('the question did not end');
@@ -35,7 +35,7 @@ describe('a question that points at the open screen', () => {
 
   it('runs on the keyword search alone when every pick is off the screen\'s page', async () => {
     const offOnly = await sources('what is going on here?', 'Memory › How to Edit a Note');
-    expect(offOnly).toEqual(await sources('what is going on here?', BOTH, { searchSources: { aiPicks: false } }));
+    expect(offOnly).toEqual(await sources('what is going on here?', BOTH, { settings: helpSettings({ sources: { aiPicks: false } }) }));
     expect(offOnly).not.toContain(OFF_PAGE);
   });
 

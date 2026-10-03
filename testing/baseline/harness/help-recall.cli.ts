@@ -42,6 +42,7 @@ import { CHANGELOG_PAGE, FAVORED_PAGE_WEIGHT, type DocSection, type DocsIndex } 
 import { guideSections, type GuideSection } from '@/lib/formaquestion/guideSections';
 import { HELP_PICK_MAX_TOKENS, HELP_PICK_SYSTEM_PROMPT, pickList, pickMessage, readPicks } from '@/lib/formaquestion/helpPicks';
 import { askHelp, HELP_SECTION_LIMIT, helpSearch, helpSections, type EarlierExchange, type HelpQuestion } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { mergeRanks, rankByVector } from '@/lib/formaquestion/rankMerge';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
@@ -157,7 +158,7 @@ async function firstAnswers(target: ProbeTarget, rules: Pick<HelpQuestion, 'scre
   await pool(firsts.map((c) => async () => {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        for await (const event of askHelp({ question: c.question, snapshot: probeSnapshot(target), index, surface: c.surface, ...rules, fetchImpl: sessionFetch(noUsage()) })) {
+        for await (const event of askHelp({ question: c.question, settings: DEFAULT_HELP_SETTINGS, snapshot: probeSnapshot(target), index, surface: c.surface, ...rules, fetchImpl: sessionFetch(noUsage()) })) {
           if (event.type === 'done') exchanges.set(c.id, { question: c.question, answer: event.text, flagged: event.flagged, sources: event.sources, lead: event.lead });
         }
         return;
@@ -361,7 +362,7 @@ if (arms.some(isAiArm)) {
           ? withoutEarlierAnswer(sessionFetch(usage), PICKS.lines, { question: c.question, earlier: history.at(-1)?.question, earlierAnswer: history.at(-1)?.answer, where: hint?.where })
           : sessionFetch(usage);
         const asked = performance.now();
-        const search = await helpSearch({ question: c.question, history, snapshot: probeSnapshot(target), index, hint, screenRule: arm !== 'keep-old', fetchImpl });
+        const search = await helpSearch({ question: c.question, history, settings: DEFAULT_HELP_SETTINGS, snapshot: probeSnapshot(target), index, hint, screenRule: arm !== 'keep-old', fetchImpl });
         found.set(`${arm}|${c.id}`, { search, ms: performance.now() - asked, usage });
       })), parallel);
       shippedFailed += [...found.values()].filter(({ usage }) => usage.requests === 0).length;

@@ -1,6 +1,7 @@
 # 04: Help settings as one value
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: d8273706
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -9,7 +10,7 @@ Reasoning effort: high
 
 A prefactor with no behavior change. It starts after Formaquestion ticket 46 is `ready-for-human` (Q4), because it edits the help session that the bar run measures.
 
-- **A help settings module.** One pure module, with no React, defines the Formaquestion settings as one value with defaults. This ticket adds the fields that replace constants of today: the three search source switches, lookup mode, the history length, the answer cap, and the answer samplers. Later tickets add their own fields.
+- **A help settings module.** One pure module, with no React, defines the Formaquestion settings as one value with defaults. This ticket adds the fields that replace constants of today: the three search source switches, lookup mode, the history length and the answer cap. Later tickets add their own fields. The answer samplers are not in this ticket: today they are a request-kind pin that the pick request shares, so ticket 13 adds the field together with the call-level override that separates the two (Q50).
 - **The help session reads that value.** A help question carries the settings. The session reads no setting from a constant. The constants become the defaults of the module, with the same values.
 - **The window passes the defaults.** Nothing is stored yet, and no control exists yet.
 - **Tests and probes pass their own value.** The per-question overrides of today (the source switches, lookup mode) fold into the settings value. The probe harnesses keep their arms.

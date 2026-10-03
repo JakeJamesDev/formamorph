@@ -56,7 +56,8 @@ import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { pickList } from '@/lib/formaquestion/helpPicks';
 import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
-import { askHelp, HELP_DOCS_CHAR_BUDGET, HELP_MAX_TOKENS, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { askHelp, HELP_DOCS_CHAR_BUDGET, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
 import { mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
@@ -150,9 +151,9 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
     ? withoutEarlierAnswer(sessionFetch(usage), PICK_LINES, { question: c.question, earlier: previous?.question, earlierAnswer: previous?.answer, where: surfaceHint(c.surface, index)?.where })
     : sessionFetch(usage);
   const session = askHelp({
-    question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index, lookup,
+    question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
+    settings: { ...DEFAULT_HELP_SETTINGS, lookup, ...(arm === 'keyword-only' && { sources: { ...DEFAULT_HELP_SETTINGS.sources, aiPicks: false } }) },
     snapshot: probeSnapshot(target, lookup), fetchImpl,
-    ...(arm === 'keyword-only' && { searchSources: { aiPicks: false } }),
     ...(arm === 'keep-old' && { screenRule: false }),
     ...(arm === 'howto-old' && { howToRule: false }),
   });
@@ -179,7 +180,7 @@ ${exchange.answer}` : exchange.answer },
     { role: 'user', content: helpUserMessage(c.question, sections, hint?.where) },
   ];
   const spec = buildAiRequestSpec(probeSnapshot(target, false), {
-    systemPrompt: helpSystemPrompt(c.language ?? '', HELP_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS,
+    systemPrompt: helpSystemPrompt(c.language ?? '', HELP_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_SETTINGS.answerMaxTokens,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
   if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);
@@ -197,7 +198,7 @@ async function askNoDocs(target: ProbeTarget, c: BaselineCase, history: EarlierE
     { role: 'user', content: [...(where ? [`The player asks from this screen: ${where}.`] : []), `Question: ${c.question}`].join('\n\n') },
   ];
   const spec = buildAiRequestSpec(probeSnapshot(target, false), {
-    systemPrompt: helpSystemPrompt(c.language ?? '', NO_DOCS_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: HELP_MAX_TOKENS,
+    systemPrompt: helpSystemPrompt(c.language ?? '', NO_DOCS_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_SETTINGS.answerMaxTokens,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
   if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);

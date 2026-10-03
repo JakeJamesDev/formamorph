@@ -15,31 +15,11 @@ import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { requestPicks } from './helpPicks';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
+// Type-only: the session reads every setting from the question, never from this module's defaults.
+import type { HelpSettings } from './helpSettings';
 import { mergeRanks } from './rankMerge';
 import { surfaceHint, type SurfaceHint } from './surfaceHint';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT, helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
-
-/**
- * Switches lookup mode on for every help question. Off ships (ADR-0009). Not a player setting, and in no
- * preset or export.
- */
-export const HELP_LOOKUP_MODE = false;
-
-/** The keyword search source: the Docs Index search, with the docs' keyword lines. */
-export const HELP_KEYWORD_SOURCE = true;
-
-/** The AI picks search source: one request before the answer, in which the model picks sections from the guide's headings. */
-export const HELP_AI_PICKS_SOURCE = true;
-
-/** The semantic search source: sections ranked by meaning. It runs only when the embedding model is on the device. */
-export const HELP_SEMANTIC_SOURCE = false;
-
-/** The search sources of a help question. The rankings of the ones that are on merge into one. Not player settings, and in no preset or export. */
-export interface HelpSources {
-  keyword: boolean;
-  aiPicks: boolean;
-  semantic: boolean;
-}
 
 /** The fewest sections of each source's ranking the merge reads; a search that asks for more gets more. */
 const HELP_MERGE_DEPTH = 50;
@@ -59,12 +39,6 @@ export const HELP_SCORE_FLOOR = 0.2;
 /** The most characters of docs section text the lookup calls of one question return together, in addition to the prompt's. */
 export const HELP_LOOKUP_CHAR_BUDGET = 12_000;
 
-/** The answer cap in tokens: room for a long list of steps. */
-export const HELP_MAX_TOKENS = 800;
-
-/** The most earlier exchanges one help request carries, newest kept. */
-export const HELP_HISTORY_EXCHANGES = 4;
-
 /** An earlier question of the conversation and the answer text it got. */
 export interface EarlierExchange {
   question: string;
@@ -83,16 +57,14 @@ export interface HelpQuestion {
   history?: readonly EarlierExchange[];
   /** The AI Language setting. */
   language?: string;
+  /** The Formaquestion settings. The window passes the stored value; tests and probes pass their own. */
+  settings: HelpSettings;
   snapshot: AiSettingsSnapshot;
   index: DocsIndex;
   /** What the player has open when they send. Its mapped section leads the docs; an excluded Surface adds nothing. */
   surface?: Surface;
   /** The images the player attached to this question. They go on the question alone, never on history. */
   images?: readonly ImageAttachment[];
-  /** Overrides `HELP_LOOKUP_MODE` for this question: tests and the probe's lookup arm. */
-  lookup?: boolean;
-  /** Overrides the search source switches for this question: tests and a probe's arm. */
-  searchSources?: Partial<HelpSources>;
   /** Off lets every pick count on a question that points at the open screen: tests and a probe's control arm. */
   screenRule?: boolean;
   /** Off adds the open page's how-tos to every question: tests and a probe's control arm. */
@@ -114,9 +86,12 @@ export type HelpEvent =
    */
   | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[] };
 
-/** The earlier exchanges a request carries: the newest that got answer text, at most the cap. */
-function keptHistory(history: readonly EarlierExchange[]): EarlierExchange[] {
-  return history.filter((exchange) => exchange.answer.trim()).slice(-HELP_HISTORY_EXCHANGES);
+/** The exchanges that got answer text. */
+const answered = (history: readonly EarlierExchange[]): EarlierExchange[] => history.filter((exchange) => exchange.answer.trim());
+
+/** The earlier exchanges a request carries: the newest that got answer text, at most the History Length. */
+function keptHistory(history: readonly EarlierExchange[], historyLength: number): EarlierExchange[] {
+  return historyLength > 0 ? answered(history).slice(-historyLength) : [];
 }
 
 /**
@@ -132,8 +107,7 @@ function topicOf({ sources = [], lead, flagged }: EarlierExchange): DocSection |
 const followUpQuery = (previous: EarlierExchange, question: string) => `${previous.question} ${question}`;
 
 /** Every query the docs block of a question searches for. */
-function helpQueries(question: string, history: readonly EarlierExchange[]): string[] {
-  const previous = keptHistory(history).at(-1);
+function helpQueries(question: string, previous: EarlierExchange | undefined): string[] {
   return previous ? [question, followUpQuery(previous, question)] : [question];
 }
 
@@ -177,12 +151,13 @@ const POINTS_AT_SCREEN = /\b(?:here|this|these)\b/i;
  * other hit under the score floor of its own search stays out.
  */
 export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead, howToRule = true }: {
+  /** The exchanges the request carries. The newest with answer text is the one a follow-up continues. */
   history?: readonly EarlierExchange[];
   budget?: number;
   lead?: DocSection;
   howToRule?: HelpQuestion['howToRule'];
 } = {}): DocSection[] {
-  const previous = keptHistory(history).at(-1);
+  const previous = answered(history).at(-1);
   const options = { onSurface: lead !== undefined, floor: HELP_SCORE_FLOOR };
   const hits = previous
     ? [...index.search(question, 1, topicOf(previous), options), ...index.search(followUpQuery(previous, question), HELP_SECTION_LIMIT, undefined, options)]
@@ -203,15 +178,15 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   return kept;
 }
 
-/** The earlier exchanges as chat messages: the question, and the answer as the model wrote it, marker included. */
-function historyMessages(history: readonly EarlierExchange[]): RequestMessage[] {
-  return keptHistory(history).flatMap((exchange): RequestMessage[] => [
+/** The kept exchanges as chat messages: the question, and the answer as the model wrote it, marker included. */
+function historyMessages(kept: readonly EarlierExchange[]): RequestMessage[] {
+  return kept.flatMap((exchange): RequestMessage[] => [
     { role: 'user', content: exchange.question },
     { role: 'assistant', content: exchange.flagged ? `${GENERAL_KNOWLEDGE_MARKER}\n${exchange.answer}` : exchange.answer },
   ]);
 }
 
-export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'snapshot' | 'index' | 'searchSources' | 'screenRule' | 'embedder' | 'signal' | 'fetchImpl'> {
+export interface HelpSearchQuestion extends Pick<HelpQuestion, 'question' | 'history' | 'settings' | 'snapshot' | 'index' | 'screenRule' | 'embedder' | 'signal' | 'fetchImpl'> {
   /** The open screen and its section. */
   hint?: SurfaceHint | null;
 }
@@ -230,16 +205,16 @@ function screenPicks(question: string, picks: DocSection[], lead: DocSection | u
  * screen rule empties, or a semantic source with no model on the device. The keyword search alone is the
  * index's own search, with its score floor.
  */
-export async function helpSearch({ question, history = [], snapshot, index, hint, searchSources, screenRule = true, embedder, signal, fetchImpl }: HelpSearchQuestion): Promise<DocsIndex> {
-  const on: HelpSources = { keyword: HELP_KEYWORD_SOURCE, aiPicks: HELP_AI_PICKS_SOURCE, semantic: HELP_SEMANTIC_SOURCE, ...searchSources };
+export async function helpSearch({ question, history = [], settings, snapshot, index, hint, screenRule = true, embedder, signal, fetchImpl }: HelpSearchQuestion): Promise<DocsIndex> {
+  const on = settings.sources;
   // The embedder takes no stop signal, so Stop ends the wait for it here.
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
-  const previous = keptHistory(history).at(-1);
+  const previous = keptHistory(history, settings.historyLength).at(-1);
   const [allPicks, semantic] = await Promise.all([
     on.aiPicks
       ? requestPicks(index, { question, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, snapshot, { signal, fetchImpl }).catch(() => [])
       : [],
-    on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, history), embedder), stopped]) : null,
+    on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), embedder), stopped]) : null,
   ]);
   const picks = screenRule ? screenPicks(question, allPicks, hint?.section) : allPicks;
   const keyword: SectionRanking = (query, limit, favor, onSurface) => index.search(query, limit, favor, { onSurface });
@@ -256,34 +231,35 @@ export async function helpSearch({ question, history = [], snapshot, index, hint
  * them. AI picks sends one request of its own first; when that fails, the other sources find the sections,
  * and the answer request is still sent once.
  *
- * - Lookup mode, only while `HELP_LOOKUP_MODE` is on and the endpoint is known to take function calls: the
+ * - Lookup mode, only while the lookup setting is on and the endpoint is known to take function calls: the
  *   model reads more sections through the docs lookup.
  * - Retrieval mode, everywhere else: one request. The capability check does not run.
  *
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', snapshot, index, surface, images = [], lookup: lookupOn = HELP_LOOKUP_MODE, searchSources, screenRule, howToRule, embedder, signal, fetchImpl,
+  question, history = [], language = '', settings, snapshot, index, surface, images = [], screenRule, howToRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = surfaceHint(surface, index);
-  const search = await helpSearch({ question, history, snapshot, index, hint, searchSources, screenRule, embedder, signal, fetchImpl });
+  const kept = keptHistory(history, settings.historyLength);
+  const search = await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl });
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [] };
     return;
   }
-  const inPrompt = helpSections(search, question, { history, lead: hint?.section, howToRule });
-  const lookupMode = lookupOn && toolsSupported(snapshot.resolveTarget('help').reasoning);
+  const inPrompt = helpSections(search, question, { history: kept, lead: hint?.section, howToRule });
+  const lookupMode = settings.lookup && toolsSupported(snapshot.resolveTarget('help').reasoning);
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
   const spec = buildAiRequestSpec(snapshot, {
     systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
-    messages: withImageParts([...historyMessages(history), {
+    messages: withImageParts([...historyMessages(kept), {
       role: 'user',
       content: lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where),
     }], images),
     requestType: 'help',
-    maxTokensOverride: HELP_MAX_TOKENS,
+    maxTokensOverride: settings.answerMaxTokens,
     ...(lookup && { tools: [DOCS_LOOKUP] }),
   });
   let text = '';
@@ -308,7 +284,7 @@ export async function* askHelp({
         throw new Error(`The model sent an empty answer (finish reason: ${event.result.finishReason ?? 'none'})`);
       }
       const flagged = isGeneralKnowledge(answer.marked, sources.length);
-      const nearest = flagged ? helpSections(search, question, { history }) : [];
+      const nearest = flagged ? helpSections(search, question, { history: kept }) : [];
       yield { type: 'done', text: answer.text, sources, lead: hint?.section, stopped, flagged, nearest };
     }
   }

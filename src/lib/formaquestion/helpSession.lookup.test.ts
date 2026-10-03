@@ -6,9 +6,10 @@ import { languageDirective } from '@/lib/languages';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import { toolSchema } from '@/lib/tools/toolSchema';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { pastPicks } from '@/test/helpFixtures';
+import { helpSettings, pastPicks } from '@/test/helpFixtures';
 import { DOCS_LOOKUP, DOCS_LOOKUP_CALL_LIMIT } from './docsLookup';
 import { askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_LOOKUP_CHAR_BUDGET, type HelpEvent, type HelpQuestion } from './helpSession';
+import { DEFAULT_HELP_SETTINGS } from './helpSettings';
 
 const PAGES = {
   Stats: '# 📊 Stats\n\nStats are numbers.\n\n## How to Add a Stat\n\n1. Open the **Stats** tab.\n2. Select **Add Stat**.\n',
@@ -50,7 +51,7 @@ const script = (...replies: (string[] | (() => Response))[]): FetchSpy => {
 };
 
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, snapshot: CAPABLE, index, lookup: true, fetchImpl: pastPicks(fetchImpl), ...over });
+  askHelp({ question, settings: helpSettings({ lookup: true }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];
@@ -73,9 +74,9 @@ const allIds = index.contents().flatMap((page) => page.sections.map((section) =>
 describe('lookup mode, as shipped', () => {
   it('offers no lookup function on a tool-capable endpoint, and sends the retrieval request', async () => {
     const shipped = script(sseReply('Select **Add Trait**.'));
-    await collect(ask(TRAIT, shipped, { lookup: undefined }));
+    await collect(ask(TRAIT, shipped, { settings: DEFAULT_HELP_SETTINGS }));
     const retrieval = script(sseReply('Select **Add Trait**.'));
-    await collect(ask(TRAIT, retrieval, { lookup: false }));
+    await collect(ask(TRAIT, retrieval, { settings: helpSettings({ lookup: false }) }));
 
     expect(bodyOf(shipped).tools).toBeUndefined();
     expect(bodyOf(shipped)).toEqual(bodyOf(retrieval));

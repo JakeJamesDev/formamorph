@@ -7,7 +7,8 @@ import { stripReasoningLive } from '@/lib/aiResponse';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { createDocsLookup, DOCS_LOOKUP, sectionBlock } from '@/lib/formaquestion/docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
-import { HELP_DOCS_CHAR_BUDGET, HELP_MAX_TOKENS, HELP_SECTION_LIMIT, helpSections, type HelpEvent } from '@/lib/formaquestion/helpSession';
+import { HELP_DOCS_CHAR_BUDGET, HELP_SECTION_LIMIT, helpSections, type HelpEvent } from '@/lib/formaquestion/helpSession';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 
 const SYSTEM_PROMPT = [
   'You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide.',
@@ -59,7 +60,7 @@ export async function* askHelpContentsLookup({ question, snapshot, index, fetchI
     systemPrompt: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: user }],
     requestType: 'help',
-    maxTokensOverride: HELP_MAX_TOKENS,
+    maxTokensOverride: DEFAULT_HELP_SETTINGS.answerMaxTokens,
     tools: [LOOKUP],
   });
   for await (const event of streamAiToolLoop(spec, { fetchImpl, execute: lookup.execute })) {

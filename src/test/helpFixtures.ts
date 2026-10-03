@@ -1,8 +1,13 @@
 import { vi } from 'vitest';
 import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPicks';
+import { DEFAULT_HELP_SETTINGS, type HelpSettings, type HelpSources } from '@/lib/formaquestion/helpSettings';
 import { sseReply, sseResponse } from './aiTextFixtures';
 
 type Responder = (url: string, init: RequestInit) => Response | Promise<Response>;
+
+/** The default help settings with the named fields changed; `sources` changes only the switches it names. */
+export const helpSettings = ({ sources, ...over }: Partial<Omit<HelpSettings, 'sources'>> & { sources?: Partial<HelpSources> } = {}): HelpSettings =>
+  ({ ...DEFAULT_HELP_SETTINGS, ...over, sources: { ...DEFAULT_HELP_SETTINGS.sources, ...sources } });
 
 /** A pick reply that copies no line of the list, so the other search sources alone find the sections. */
 export const NO_PICK = 'No section of the list answers the question.';
