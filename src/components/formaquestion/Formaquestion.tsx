@@ -28,6 +28,7 @@ import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
 import { useHelpChat } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
+import { useSemanticSearch } from './useSemanticSearch';
 import { usePointerDrag, type PointerDrag } from './usePointerDrag';
 
 const WINDOW_ID = 'formaquestion-window';
@@ -111,6 +112,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   // The conversation lives here, so it outlives the window. The AI check runs only while the window is open.
   const [settings, changeSettings] = useHelpSettings();
+  const semantic = useSemanticSearch(settings, changeSettings);
   const chat = useHelpChat(index, useHelpAi(open), settings);
 
   // A dialog opened from the window. On the sheet it fills the screen, so the sheet hides under it and keeps its state.
@@ -338,6 +340,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         onTabChange={setSettingsTab}
         settings={settings}
         onChange={changeSettings}
+        semantic={semantic}
       />
     </>,
     layer,

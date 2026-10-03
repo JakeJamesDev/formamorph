@@ -186,6 +186,7 @@ The **General** tab sets how a question finds its guide sections, and what the r
 |---|---|---|
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
 | **AI Picks** | On | Sends one more request for each question, in which your AI picks guide sections from the list of headings |
+| **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the switch goes off and **Retry** starts it again. Until the model is ready, questions use the other sources. |
 | **Use the Open Screen** | On | Sends the screen you have open and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 
