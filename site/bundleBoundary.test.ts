@@ -18,11 +18,13 @@ const COMMUNITY_PAGE = resolve(SITE, 'pages', 'CommunityPage.tsx');
 const ALLOWED = [
   '@/services/AuthService',
   '@/services/AgeGateService',
+  '@/services/PatreonService',
   '@/services/PolicyService',
   '@/services/UserService',
   '@/components/ui/',
   '@/components/UserAvatar',
   '@/components/theme-provider',
+  '@/components/PatreonSection',
   '@/components/RoleBadge',
   '@/components/community/AgeGateDialog',
   '@/components/community/ProfileStats',
@@ -146,7 +148,8 @@ describe('the site entry stays out of the game bundle', () => {
     // The list above is a denylist, so it only catches the ways in that somebody has already thought
     // of. This is the backstop: a leaf that starts dragging a subsystem along shows up as a jump here
     // even when nothing it pulls is named. Raise the ceiling deliberately, having looked at what moved.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(51);
+    // 57: the Patreon section and the leaves it reads (its service, `supporterFlair`, `useMountedRef`, the checkbox).
+    expect(reachableFromSite().size).toBeLessThanOrEqual(57);
   });
 
   it('reaches the shielded layer helper through the dialog wrappers, and nothing behind it', () => {

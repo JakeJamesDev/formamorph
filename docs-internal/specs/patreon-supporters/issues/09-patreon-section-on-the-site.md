@@ -1,6 +1,7 @@
 # 09: Patreon Section on the Site Account Page
 
-Status: ready-for-agent
+Status: in-progress
+Base: 9e8df9af
 Blocked by: 03, 04
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
