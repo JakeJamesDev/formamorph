@@ -14,6 +14,7 @@ A power user moves a custom assistant between devices with one file (Q11, Q39).
 - a version field and the app version
 - the preset name
 - the three prompt texts
+- the answer options: temperature, repetition penalty and Max Output (Q58)
 - the player's Formaquestion Tools
 - the function and Tool switches
 
@@ -37,7 +38,7 @@ Recommended model rationale: a new export shape with a version, and an import th
 
 ## Acceptance criteria
 
-- [ ] Export then import on a clean profile gives the same three texts, the same Tools and the same switches.
+- [ ] Export then import on a clean profile gives the same three texts, the same answer options, the same Tools and the same switches.
 - [ ] The file holds no endpoint, token or other setting (a test reads the exported keys against the field list).
 - [ ] A name conflict on the preset and on a Tool resolves with no data loss.
 - [ ] A file of an unknown version or a broken shape is refused, and no preset, Tool or switch changes.

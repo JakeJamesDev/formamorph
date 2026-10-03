@@ -99,6 +99,7 @@ Settled with the user on 2026-10-02. A later ruling that refines an earlier one 
 | Q55 | Ticket 09's reasoning details. (a) The help reasoning row keeps the Global level, as a game prompt does. The stored default is the shipped help default: switch off, level Global, budget 75%. With the switch off, the answer request sends reasoning off whatever Settings → Output → Native Reasoning says, so the measured default holds (Q4, Q5). (b) The Thinking block shows any reasoning text that arrives, native or inline, also with the setting off, because an endpoint that refuses off still reasons. Refines Q16. (c) A vLLM-dialect endpoint before its first reply shows the full field, as the Output row does; only a model ruled out shows the unavailable note. (d) The General row has its own label, Reasoning, its own description and an ⓘ that explains Global; the shared field takes its copy as props. From the ticket 09 session |
 | Q56 | "Follow Active" is the spec's name for the concept, not UI text. Both help selects show the row text the Settings select uses, "Use Active Endpoint (<name>)", so one concept has one term. The pick select's extra row reads "Same as Answer (<name>)". Docs use the UI text. From the ticket 07 session |
 | Q57 | Help's reveal timing is computed per answer from the default pace and help's own minimums, and passed to the renderer as a prop. There is no second stored timing value and no help pacer. From the ticket 10 session |
+| Q58 | The answer options (temperature 0.2, repetition penalty 1, Max Output 800) belong to the help preset, not the device settings. The Default preset shows them read-only, so each release updates them for players on it, and a duplicate copies them. They show as an Options row nested under Answer in the Prompts rail. Reverses Q10 and Q43 for these three fields; every other setting stays a device setting. The preset file carries them (ticket 17). The user's ruling, made in the ticket 13 session (e8b2f425) |
 | Q50 | The answer samplers join the help settings value in ticket 13, not ticket 04. They are a request-kind pin today that the pick request shares, so they need a call-level sampler override; ticket 13 adds the field, the override and the controls together, and the pick request keeps the pin. From the ticket 04 session |
 
 ### Rulings of the Formaquestion spec that this effort replaces
@@ -213,11 +214,11 @@ Settled with the user on 2026-10-02. A later ruling that refines an earlier one 
 ### Help presets
 
 - The preset store follows the gameplay prompt preset store: built-in presets are read-only and read their text from code, and user presets hold edited text. There is one built-in preset, Default.
-- A preset holds three texts: answer, pick, lookup. A prompt counts as edited when its text differs from the default text.
+- A preset holds three texts (answer, pick, lookup) and the answer options: temperature, repetition penalty and Max Output (Q58). A prompt counts as edited when its text differs from the default text.
 - The answer prompt and the lookup prompt name the general-knowledge marker and the lookup function through chips. The pick prompt's reply-format rules are a chip. The chip vocabulary is a new, small vocabulary for the prompt editor.
 - The user message of each request stays built by the app. It is not editable.
 - Compare to Default reuses the prompt diff viewer.
-- The preset file is a new export shape. It carries a version field, the preset name, the three texts, the Formaquestion user Tools and the Tool switches. It carries no endpoint, no token and no other device setting.
+- The preset file is a new export shape. It carries a version field, the preset name, the three texts, the answer options, the Formaquestion user Tools and the Tool switches. It carries no endpoint, no token and no other device setting.
 - Import adds the Tools to the Formaquestion list under the existing Tool import plan (rename on a name conflict), and applies the switches to the device settings.
 
 ### Help session
@@ -225,7 +226,7 @@ Settled with the user on 2026-10-02. A later ruling that refines an earlier one 
 - The help session takes its settings as one value in the question. It reads no setting from a constant and no setting from a context. The window passes the stored settings; tests and probes pass their own.
 - The answer request and the pick request resolve their endpoints from the help settings: a preset id, Follow Active, or Same as Answer for picks. The resolver is the pure endpoint resolver that per-prompt routing uses.
 - The rule that forces reasoning off for every editor request kind no longer covers the answer request. The answer request reads the help reasoning setting. The pick request stays at off.
-- The answer request reads its samplers and its Max Output from the help settings.
+- The answer request reads its samplers and its Max Output from the active help preset (Q58).
 - When the settings leave no way for a section to reach the model, the user message is the question alone, and the answer is not flagged (Q41, scoped by Q51). A search that runs and misses keeps the empty guide block and the flag.
 - Use the Open Screen off removes the screen section and the screen line. The Surface is still read for AI Context.
 - The answer request offers the functions that are on: the guide lookup, the help dice roll and Formaquestion user Tools.
