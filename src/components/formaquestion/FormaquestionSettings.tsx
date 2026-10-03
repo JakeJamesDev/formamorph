@@ -1,11 +1,11 @@
 import { Settings } from 'lucide-react';
 import { CheckRow, Row, Section } from '@/components/SettingsRows';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, dialogFullHeightMobile } from '@/components/ui/dialog';
+import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
-import { cn } from '@/lib/utils';
 import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 
 function GeneralTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
@@ -65,11 +65,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
       <DialogContent
         surface="formaquestionSettings"
         aria-describedby={undefined}
-        className={cn(
-          'flex flex-col overflow-hidden sm:max-w-[900px]',
-          dialogFullHeightMobile,
-          'max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:border-0 sm:h-[90dvh]',
-        )}
+        className={SETTINGS_DIALOG_SIZE}
       >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Formaquestion Settings</DialogTitle>

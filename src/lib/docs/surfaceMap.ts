@@ -201,8 +201,10 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
   formaquestionSettings: FORMAQUESTION_SETTINGS,
   'formaquestionSettings.general': { page: 'Formaquestion', anchor: 'general' },
-  // The other tabs' tickets give each its own section.
-  ...Object.fromEntries((['endpoint', 'prompts', 'tools'] as const).map((tab) => [`formaquestionSettings.${tab}`, FORMAQUESTION_SETTINGS])),
+  // These tabs have no section of their own yet.
+  'formaquestionSettings.endpoint': FORMAQUESTION_SETTINGS,
+  'formaquestionSettings.prompts': FORMAQUESTION_SETTINGS,
+  'formaquestionSettings.tools': FORMAQUESTION_SETTINGS,
 
   avatar: { page: 'Avatars', anchor: 'character-customization' },
   modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },

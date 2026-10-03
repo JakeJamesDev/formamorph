@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 import type { DragHandlers } from './usePointerDrag';
 
 /**
- * The Formaquestion window's frame: a title bar that moves it, the Wide View and Close controls, the
- * content, and a corner grip that resizes it. The gear opens Formaquestion Settings. The caller places it and owns the moves. As a mobile sheet
- * it has no frame lines and a larger Close.
+ * The Formaquestion window's frame: a title bar that moves it, the settings gear, the Wide View and Close
+ * controls, the content, and a corner grip that resizes it. The caller places it and owns the moves. As a
+ * mobile sheet it has no frame lines and a larger Close.
  */
 export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutRef<'section'> & {
   wide?: boolean;
