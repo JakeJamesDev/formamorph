@@ -121,6 +121,7 @@ The docs become complete and correct as part of this effort. A test then keeps e
 | Q83 | No help-prompt change ships from ticket 51. Of four variants over 12 runs, the best (a heading list of the sent sections) scored +0.9 ± 1.9 points on the bar, inside drift. A prompt change ships on a measured gain, not on passing the guard. The cause is word overlap between the question and a sibling section's names, not position. All four stay recorded as measured alternatives (ticket 51 ruling) |
 | Q84 | Three bar runs held at 74.5–75.5% (tickets 46 and 53), and round three gained nothing net. The bar is now 75%, replacing Q59's 80%. Two keys gain the section they are answered right from: `memory-2` and `world-editor-openings-2`, reopening Q79's key ruling on ticket 53's evidence. Ticket 54 fixes the `here-make-tool` regression, applies the keys, rescores tickets 46 and 53, and measures the final bar. Then the spec closes. Open misses go to the backlog below, with no further bar runs |
 | Q85 | Ticket 54 ships no fix for `here-make-tool` or `tools-2`. Ticket 52's line was not the cause: the pick reply varies between a how-to and its reference section, and a newer `Formaquestion#tools` keyword line takes `tools-2`'s slot. Both go to the Backlog, and the bar is judged as built (ticket 54 ruling) |
+| Q86 | Ticket 54 passes the 75% bar: 77.5% over two batches with the new keys (77.3%, 77.7%). The effort's acceptance is met. New losses from other pages' pick lines go to the Backlog |
 | Q44 | Variant D, the frameless chat overlay, is out of scope. The user has later plans for it. The prototype branch keeps it as the reference (ticket 14) |
 
 ## User Stories
@@ -344,4 +345,5 @@ Open after the bar closed at 75% (Q84). No ticket is written. Each needs a state
 | 🔁 A follow-up after a what's-new question keeps the release lead | No baseline case | Q65 |
 | 💾 Portable Electron build loses the model cache under a long exe path | – | Found in ticket 48 |
 | 🎲 The pick reply names a reference section instead of its how-to, so the how-to misses the on-page step | `here-make-tool` | Found in ticket 54; the reply shifts with other pages' pick lines |
-| 📄 A newer docs section's keyword line takes a keyed section's slot | `tools-2` (`Formaquestion#tools` over `Tools#endpoints-without-tool-support`) | Found in ticket 54 |
+| 📄 A newer docs section's keyword line takes a keyed section's slot and draws the answer | `tools-2` (`Formaquestion#tools` over `Tools#endpoints-without-tool-support`; co-occurrence only, no ablation) | Found in ticket 54 |
+| 🔀 The pick list is a shared input: new lines on one page move picks on other pages | `library-1` 10/10 → 0/10 and `follow-group-add` 7/10 → 0/10 after new `Formaquestion.md` lines; `here-make-tool` | Found in ticket 54. Any docs ticket should run the recall probe before it lands |
