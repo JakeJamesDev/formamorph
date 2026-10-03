@@ -1,6 +1,8 @@
 # 03: Prepare Command
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in the ~/.claude repo, commit a9267fa (hooks/ticket-prepare.py, tests in hooks/test_prepare.py, mutation runner hooks/verify_prepare.py).
+Base: b3907384
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
