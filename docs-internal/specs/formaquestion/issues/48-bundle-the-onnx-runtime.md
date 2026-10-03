@@ -1,6 +1,6 @@
 # 48: Bundle the ONNX runtime
 
-Status: ready-for-human
+Status: done
 Status note: Electron model cache traced to the probe's profile path; no code change
 Base: 04087632
 Blocked by: 44

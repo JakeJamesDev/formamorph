@@ -1,6 +1,6 @@
 # 54: Close-out
 
-Status: ready-for-human
+Status: done
 Status note: Pass. 77.5% grounded-correct over two batches against the 75% bar (Q84). Two keys gained a section; tickets 46 and 53 rescore to 76.6% and 76.4%. The AI Picks reply causes the `here-make-tool` loss, not ticket 52's line. No fix ships (Q85).
 Base: 2dd6581a
 Blocked by: 53

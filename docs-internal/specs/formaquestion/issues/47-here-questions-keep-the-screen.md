@@ -1,6 +1,6 @@
 # 47: "Here" questions keep the screen
 
-Status: ready-for-human
+Status: done
 Status note: Built and measured. "Here" answers 97% vs 90% before, task 69% vs 70%, same batch. Task recall over an open screen is low in every arm; see Seen, not fixed.
 Base: aed678cc
 Blocked by: 44

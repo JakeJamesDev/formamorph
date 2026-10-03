@@ -1,6 +1,6 @@
 # 50: Right page, wrong section
 
-Status: ready-for-human
+Status: done
 Status note: No rule ships (Q80). Two rules reached two of the five keyed sections, but blind recall dropped and the bar did not move. Causes and measured alternatives are in the Handover.
 Base: c040ee84
 Blocked by: 46

@@ -1,6 +1,6 @@
 # 40: Regressions with the right section sent
 
-Status: ready-for-human
+Status: done
 Base: aabf1297
 Blocked by: 37
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

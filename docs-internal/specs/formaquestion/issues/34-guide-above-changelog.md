@@ -1,6 +1,6 @@
 # 34: Guide sections above the changelog
 
-Status: ready-for-human
+Status: done
 Base: c857e073
 Blocked by: 26
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -1,6 +1,6 @@
 # 46: Help baseline against the bar, second run
 
-Status: ready-for-human
+Status: done
 Status note: Fail. 75.5% grounded-correct over two batches against the 80% bar. Blind recall@5 is 87.9%. The worst questions and their causes are in the Handover.
 Base: 773f369a
 Blocked by: 43, 44, 45, 47, 49

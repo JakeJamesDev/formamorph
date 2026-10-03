@@ -1,6 +1,6 @@
 # 36: Filler words do not match
 
-Status: ready-for-human
+Status: done
 Base: 42e291ed
 Blocked by: 34
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

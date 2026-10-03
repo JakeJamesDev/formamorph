@@ -1,6 +1,6 @@
 # 16: Formaquestion window, guide and search
 
-Status: ready-for-human
+Status: done
 Base: 09b3a024
 Blocked by: 14, 15
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)

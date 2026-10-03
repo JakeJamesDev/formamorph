@@ -1,6 +1,6 @@
 # 43: Word map in the docs
 
-Status: ready-for-human
+Status: done
 Base: 199c2b26
 Blocked by: 39
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

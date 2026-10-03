@@ -1,8 +1,8 @@
 # Spec: Formaquestion, In-App Help That Answers from the Docs
 
-Status: ready-for-agent
+Status: done
 Spec session: formaquestion — spec
-Status note: 54 tickets in issues/. Three bar runs held at 74.5–75.5%; the bar is now 75% (Q84). Ticket 54 fixes one regression, fixes two keys and measures the final bar; then the spec closes, with open misses in the Backlog section. Ticket 37 failed the 80% bar (51.3%); 38 demotes hub sections, 40 explained six regressions, 41 and 42 fix them (Q69), and 39 then compares recall approaches on a blind set for the user's pick (Q67). 32 and 33 are follow-ups from the effort review; 32 and 34–36 fix the search misses from ticket 26's baseline, and 37 measures the result against the bar (Q59). 33 runs after the search tickets. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
+Status note: Closed 2026-10-03. All 54 tickets landed; ticket 54 (1806dcfc) passed the 75% bar at 77.5% grounded-correct over two batches (Q86). Open misses live in the Backlog section and need new tickets; they do not reopen this spec. History: ticket 37 failed the 80% bar (51.3%); 38 demotes hub sections, 40 explained six regressions, 41 and 42 fix them (Q69), and 39 then compares recall approaches on a blind set for the user's pick (Q67). 32 and 33 are follow-ups from the effort review; 32 and 34–36 fix the search misses from ticket 26's baseline, and 37 measures the result against the bar (Q59). 33 runs after the search tickets. 29 and 30 are follow-ups from the ticket 23 and 24 reviews; 31 ships lookup mode off (Q53). 27 fixes search in player words and 28 tunes lookup mode; both gate 26. 01 gates the docs tickets 02–12, which run in parallel; 13 closes coverage. 14 (prototype) and 15 gate the window (16). 26 sets the probe bar and waits for 13, 22, 23, 24, 27 and 28.
 
 ## Problem Statement
 

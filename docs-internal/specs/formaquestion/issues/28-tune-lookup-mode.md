@@ -1,6 +1,6 @@
 # 28: Tune lookup mode
 
-Status: ready-for-human
+Status: done
 Base: 31488ec8
 Blocked by: 22
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

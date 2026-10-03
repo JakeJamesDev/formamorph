@@ -1,6 +1,6 @@
 # 04: Docs for Memory, the cast, Personas, connecting an AI, Android and Stat Code
 
-Status: ready-for-human
+Status: done
 Base: 6f6228d7
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

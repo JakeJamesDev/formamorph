@@ -1,6 +1,6 @@
 # 08: New pages, Prompts and Tools
 
-Status: ready-for-human
+Status: done
 Base: b3288c9a
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -1,6 +1,6 @@
 # 10: New page, Community Creations
 
-Status: ready-for-human
+Status: done
 Base: cf0a2553
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -1,6 +1,6 @@
 # 22: Docs lookup function
 
-Status: ready-for-human
+Status: done
 Status note: Built and probed on MeroMero. Three decisions wait for the user: whether lookup mode stays, how many hits its prompt holds, and the contents list. The test gate needs one clean run after the stat-code-entities sessions commit.
 Base: 15319e49
 Blocked by: 20 — Ask a question

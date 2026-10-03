@@ -1,6 +1,6 @@
 # 35: Follow-ups keep their topic
 
-Status: ready-for-human
+Status: done
 Base: 378213d1
 Blocked by: 32
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

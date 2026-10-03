@@ -1,6 +1,6 @@
 # 51: Answer from the right section
 
-Status: ready-for-human
+Status: done
 Status note: No prompt change ships (Q83). Four variants stayed inside drift; the arms stay in the help baseline.
 Base: d9abe002
 Blocked by: 46

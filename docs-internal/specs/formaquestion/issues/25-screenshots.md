@@ -1,6 +1,6 @@
 # 25: Screenshots on a help question
 
-Status: ready-for-human
+Status: done
 Base: 9a010b82
 Blocked by: 20 — Ask a question
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

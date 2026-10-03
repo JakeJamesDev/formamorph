@@ -1,6 +1,6 @@
 # 06: New pages, How to Play and Starting a Game
 
-Status: ready-for-human
+Status: done
 Base: 618cf31e
 Blocked by: 01 — Docs checks and surface map
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

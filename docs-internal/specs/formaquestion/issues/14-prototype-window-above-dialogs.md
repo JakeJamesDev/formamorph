@@ -1,6 +1,6 @@
 # 14: Prototype, the window above dialogs
 
-Status: ready-for-human
+Status: done
 Status note: Prototype built and proven on `prototype/formaquestion-window` (`f11cfe43`). The layering works. ✅ Approved by the user on 2026-10-01: window A at two widths, the movable edge tab with a stored place, the motion, and the layering approach. Variant D is out of scope for this spec; the user has later plans for it. See Approval at the end of Answer.
 Base: 9edac2fd
 Blocked by: None (can start immediately)

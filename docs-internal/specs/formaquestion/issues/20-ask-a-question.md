@@ -1,6 +1,6 @@
 # 20: Ask a question
 
-Status: ready-for-human
+Status: done
 Base: 7faccf49
 Blocked by: 16
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)

@@ -1,6 +1,6 @@
 # 23: Surface hint in the request
 
-Status: ready-for-human
+Status: done
 Status note: Built in f75f1263 plus a review fold-in. Labels are derived from ids, not read from the UI; see Handover.
 Base: 8fa13c68
 Blocked by: 18, 20
