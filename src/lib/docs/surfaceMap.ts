@@ -202,8 +202,8 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   formaquestionSettings: FORMAQUESTION_SETTINGS,
   'formaquestionSettings.general': { page: 'Formaquestion', anchor: 'general' },
   'formaquestionSettings.endpoint': { page: 'Formaquestion', anchor: 'endpoint' },
-  // These tabs have no section of their own yet.
-  'formaquestionSettings.prompts': FORMAQUESTION_SETTINGS,
+  'formaquestionSettings.prompts': { page: 'Formaquestion', anchor: 'prompts' },
+  // This tab has no section of its own yet.
   'formaquestionSettings.tools': FORMAQUESTION_SETTINGS,
 
   avatar: { page: 'Avatars', anchor: 'character-customization' },

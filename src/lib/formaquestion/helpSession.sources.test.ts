@@ -6,8 +6,8 @@ import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget
 import { isPickRequest } from '@/test/helpFixtures';
 import type { ImageAttachment } from '@/types';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
-import { HELP_PICK_MAX_TOKENS, HELP_PICK_SYSTEM_PROMPT, pickList } from './helpPicks';
-import { HELP_SYSTEM_PROMPT } from './helpPrompt';
+import { HELP_PICK_MAX_TOKENS, pickList } from './helpPicks';
+import { HELP_PICK_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT } from './helpPrompt';
 import type { HelpEmbedder } from './helpSemantic';
 import { askHelp, HELP_SCORE_FLOOR, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSources } from './helpSettings';

@@ -13,17 +13,6 @@ export const HELP_PICK_LIMIT = 5;
 /** The cap of a pick reply in tokens: room for the copied lines. */
 export const HELP_PICK_MAX_TOKENS = 150;
 
-/** The fixed pick prompt. The contract is positive and names no sample line a small model can copy. */
-export const HELP_PICK_SYSTEM_PROMPT = [
-  'You are the librarian of the Formamorph player guide. Formamorph is a text adventure app. A player asks a question, and you pick the guide sections that answer it.',
-  '',
-  'The message lists every section of the guide, one on each line: the page, then the headings down to the section.',
-  '',
-  '- Pick the sections whose text answers the question, the best one first.',
-  `- Pick ${HELP_PICK_LIMIT} sections at most.`,
-  '- Reply with the lines of your picks alone, one on each line, each copied as the list writes it.',
-].join('\n');
-
 /** The sections a model picks from: one line for each whole guide section. */
 export function pickList(index: DocsIndex): { lines: string[]; sections: DocSection[][] } {
   const whole = guideSections(index).filter((entry) => !entry.laterPart);
@@ -32,6 +21,8 @@ export function pickList(index: DocsIndex): { lines: string[]; sections: DocSect
 
 export interface PickQuestion {
   question: string;
+  /** The pick prompt as the request carries it: the active preset's text, chips rendered. */
+  prompt: string;
   /** The question before this one, for a follow-up. */
   earlier?: string;
   /** The answer the earlier question got, so the model reads what "it" or "that one" means. */
@@ -41,7 +32,7 @@ export interface PickQuestion {
 }
 
 /** The one user message of a pick request: the section list, then the question. */
-export function pickMessage(lines: readonly string[], { question, earlier, earlierAnswer, where }: PickQuestion): string {
+export function pickMessage(lines: readonly string[], { question, earlier, earlierAnswer, where }: Omit<PickQuestion, 'prompt'>): string {
   return [
     `<sections>\n${lines.join('\n')}\n</sections>`,
     ...(where ? [`The player asks from this screen: ${where}.`] : []),
@@ -92,7 +83,7 @@ export async function requestPicks(
 ): Promise<DocSection[]> {
   const { lines, sections } = pickList(index);
   const reply = await requestAiText(snapshot, {
-    systemPrompt: HELP_PICK_SYSTEM_PROMPT,
+    systemPrompt: ask.prompt,
     messages: [{ role: 'user', content: pickMessage(lines, ask) }],
     requestType: 'help',
     maxTokensOverride: HELP_PICK_MAX_TOKENS,

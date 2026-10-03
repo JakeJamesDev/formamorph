@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPicks';
+import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { sseReply, sseResponse } from './aiTextFixtures';
 
 type Responder = (url: string, init: RequestInit) => Response | Promise<Response>;
