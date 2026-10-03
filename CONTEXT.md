@@ -28,6 +28,14 @@ _Avoid_: resolver, source
 The help window that a player can open on every screen. It holds the player docs, a search over them, and a field to ask a question that the connected AI answers from the docs. It only answers: it never navigates and never edits a world, a save or a setting. A request carries the docs and the current Surface, and nothing from a world or a save, unless the player turns on a Formaquestion Tool, which reads the open world.
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
+**Mascot**:
+The optional character beside the Formaquestion chat. It is a rig: a base image and an ordered list of layers, each an expression (one at a time, picked by the AI through the face call) or a state (any number stacked), each drawing its overlay images in order. The app sets its look at three moments through picks (Initial, Idle, Thinking). On by default, and it implies the minimal chrome.
+_Avoid_: avatar, assistant character, sprite
+
+**Voice**:
+The Mascot's prompt text: the line a help chip sends while the mascot is on, so the answers sound like the character. Travels in the mascot card.
+_Avoid_: persona (the player-slot entity), personality, tone setting
+
 **Docs Index**:
 The player docs bundled into the app, split into sections at their headings, with three operations: list the contents, search by keyword, and get sections by id. It needs no network and no model. Help topics are not in it.
 _Avoid_: knowledge base, embeddings, docs database
@@ -54,7 +62,7 @@ _Avoid_: character (too narrow)
 
 **Persona**:
 The entity that fills the player slot for a playthrough. It comes from the player's library or from the world's entities that carry the Persona mark. A save names one, or an explicit None.
-_Avoid_: player character, user
+_Avoid_: player character, user, the Mascot's Voice
 
 **Opening**:
 One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration, and an Others Opening or a Self Opening.

@@ -9,7 +9,7 @@ Reasoning effort: medium
 
 The default rig becomes what the user tuned in-app, not what ticket 01 guessed.
 
-- The user edits the rig on the Mascot tab: layers, overlays, order, switches, the three picks, the Mask, the Persona and the transition. When they say the rig is ready, this ticket reads the stored help settings on their device (or a mascot card they export) and writes that rig into the default rig in code, with the bundled assets in place of stored image ids.
+- The user edits the rig on the Mascot tab: layers, overlays, order, switches, the three picks, the Mask, the Voice and the transition. When they say the rig is ready, this ticket reads the stored help settings on their device (or a mascot card they export) and writes that rig into the default rig in code, with the bundled assets in place of stored image ids.
 - Nothing is built for authoring defaults; the tab is the authoring tool (Q32).
 - Reset on the tab restores the new default.
 

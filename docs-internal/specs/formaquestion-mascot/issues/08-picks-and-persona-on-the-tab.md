@@ -1,4 +1,4 @@
-# 08: Picks and Persona on the tab
+# 08: Picks and Voice on the tab
 
 Status: ready-for-agent
 Blocked by: 05, 07
@@ -11,7 +11,7 @@ The player chooses the app's three looks and the character's voice.
 
 - Three pick rows, Initial, Idle and Thinking, each an expression dropdown and a state dropdown. Each lists enabled layers of its kind only.
 - A warning row names the picks that point at a disabled or missing layer; such a pick is kept and draws nothing for that layer.
-- A Persona field that feeds the chip.
+- A Voice field that feeds the chip.
 
 Spec: Q7, Q21, Q25; Implementation → Mascot tab.
 
@@ -21,5 +21,5 @@ Recommended model rationale: form rows over an existing codec and rule.
 
 - [ ] Each dropdown lists enabled layers of its kind and nothing else.
 - [ ] Disabling a picked layer keeps the pick, blanks that layer in the preview and shows the warning; re-enabling clears it.
-- [ ] The Persona field's text reaches the request through the chip.
+- [ ] The Voice field's text reaches the request through the chip.
 - [ ] The four gates are green.

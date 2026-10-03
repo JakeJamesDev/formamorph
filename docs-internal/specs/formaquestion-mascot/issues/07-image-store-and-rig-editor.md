@@ -10,7 +10,7 @@ Reasoning effort: high
 The player edits the rig on a Mascot tab.
 
 - A new IndexedDB store on the shared helper holds player images by id, as the model store does: add returns an id, get returns the blob, delete removes one. Not a cache; nothing drops it. Bundled assets never enter it.
-- A fifth tab, Mascot, after Tools, with a Surface and a dev-route entry. The switch row moves here from the General tab. Rows: the switch; the rig preview; the base image; the layer list; Reset. Picks, Persona and Mask come in tickets 08 and 09.
+- A fifth tab, Mascot, after Tools, with a Surface and a dev-route entry. The switch row moves here from the General tab. Rows: the switch; the rig preview; the base image; the layer list; Reset. Picks, Voice and Mask come in tickets 08 and 09.
 - The layer list is reorderable; each row shows name, kind (expression or state), switch and its overlays; expanding shows the overlay list, itself reorderable, with add and remove.
 - Image upload reuses the existing upload control; a file goes to the store; a pasted link is refused.
 - Removing an overlay, a layer or the base deletes images no other layer references. Reset restores the default rig and deletes the player's images.
