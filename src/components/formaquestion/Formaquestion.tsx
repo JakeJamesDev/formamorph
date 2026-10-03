@@ -354,7 +354,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           data-fq-sheet={sheet ? '' : undefined}
           onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
           sheet={sheet}
-          onOpenAiContext={settings.showAiContext ? () => openDialog('aiContext') : undefined}
+          onOpenAiContext={() => openDialog('aiContext')}
+          onClear={chat.exchanges.length > 0 ? chat.clear : undefined}
+          menuContainer={layer}
           onOpenSettings={() => openDialog('settings')}
           onClose={closeWindow}
           {...(sheet ? {

@@ -64,6 +64,12 @@ const motionOf = (page: Page) => helpWindow(page).evaluate((el) => {
 
 const windowAnimations = (page: Page) => page.evaluate(() => (window as unknown as { fqAnimations: number }).fqAnimations);
 
+/** Opens an item of the window's title bar menu. */
+async function pickMenuItem(page: Page, name: string): Promise<void> {
+  await helpWindow(page).getByRole('button', { name: 'More Actions' }).click();
+  await page.getByRole('menuitem', { name }).click();
+}
+
 async function openHelp(page: Page): Promise<void> {
   await page.keyboard.press('F1');
   await expect(askField(page)).toBeVisible();
@@ -189,21 +195,15 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(searchField(page)).toHaveValue('endpoint preset');
   });
 
-  test('the gear opens Formaquestion Settings under the window, and the player uses both', async ({ page }) => {
+  test('Formaquestion Settings opens from the menu, the window waits closed, and comes back with its text', async ({ page }) => {
     await openApp(page);
     await openHelp(page);
-    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
+    await askField(page).click();
+    await page.keyboard.type('kept across the settings');
+    await pickMenuItem(page, 'Settings');
     const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
     await expect(help).toBeVisible();
-    await help.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-    const box = await settledBox(page);
-    const onTop = await helpWindow(page).evaluate((el, { x, y }) => document.elementFromPoint(x, y)?.closest('#formaquestion-window') === el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-    expect(onTop, 'the window is above the settings').toBe(true);
-    await moveWindowClearOf(page, help);
-
-    await askField(page).click();
-    await page.keyboard.type('typed above the settings');
-    await expect(askField(page)).toHaveValue('typed above the settings');
+    await expect(helpWindow(page)).toBeHidden();
     const picks = help.getByRole('checkbox', { name: 'AI Picks' });
     await picks.click();
     await expect(picks).toHaveAttribute('aria-checked', 'false');
@@ -212,38 +212,25 @@ test.describe('Formaquestion on a desktop screen', () => {
     await page.keyboard.press('Escape');
     await expect(help).toBeHidden();
     await expect(helpWindow(page)).toBeVisible();
-    await expect(askField(page)).toHaveValue('typed above the settings');
+    await expect(askField(page)).toHaveValue('kept across the settings');
+    await expect(askField(page)).toBeFocused();
   });
 
-  test('the AI Context button opens AI Context under the window, and the player uses both', async ({ page }) => {
+  test('AI Context opens from the menu, the window waits closed, and comes back with its text', async ({ page }) => {
     await openApp(page);
     await openHelp(page);
-    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
-    const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
-    await help.getByRole('checkbox', { name: 'Show AI Context' }).click();
-    await page.keyboard.press('Escape');
-    await expect(help).toBeHidden();
-
-    await helpWindow(page).getByRole('button', { name: 'AI Context' }).click();
+    await askField(page).click();
+    await page.keyboard.type('kept across AI Context');
+    await pickMenuItem(page, 'AI Context');
     const context = page.getByRole('dialog', { name: 'AI Context' });
     await expect(context).toBeVisible();
-    await context.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-    const box = await settledBox(page);
-    const onTop = await helpWindow(page).evaluate((el, { x, y }) => document.elementFromPoint(x, y)?.closest('#formaquestion-window') === el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
-    expect(onTop, 'the window is above AI Context').toBe(true);
-    // The dialog fills the screen, so the window moves clear of one control, not of the dialog. With no
-    // question asked, Close is the one control that is on.
-    const close = context.getByRole('button', { name: 'Close' });
-    await moveWindowClearOf(page, close);
-
-    await askField(page).click();
-    await page.keyboard.type('typed above AI Context');
-    await expect(askField(page)).toHaveValue('typed above AI Context');
+    await expect(helpWindow(page)).toBeHidden();
     await expect(context.getByRole('button', { name: 'Collapse all' })).toBeDisabled();
-    await close.click();
+
+    await context.getByRole('button', { name: 'Close' }).click();
     await expect(context).toBeHidden();
     await expect(helpWindow(page)).toBeVisible();
-    await expect(askField(page)).toHaveValue('typed above AI Context');
+    await expect(askField(page)).toHaveValue('kept across AI Context');
   });
 
   test('Escape from the window closes the dialog, keeps the window and its search text, and leaves focus in the window', async ({ page }) => {
@@ -809,13 +796,13 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await expect(model).toHaveValue('typed-before-help');
   });
 
-  test('the gear hides the sheet under Formaquestion Settings, and the sheet comes back as it was', async ({ page }) => {
+  test('Settings in the menu hides the sheet under Formaquestion Settings, and the sheet comes back as it was', async ({ page }) => {
     await openApp(page);
     await openSheet(page);
     await showSearch(page);
     await searchField(page).fill('endpoint');
 
-    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
+    await pickMenuItem(page, 'Settings');
     const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
     await expect(help).toBeVisible();
     await help.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
@@ -832,18 +819,13 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await expect(searchField(page)).toHaveValue('endpoint');
   });
 
-  test('the AI Context button hides the sheet under AI Context, and the sheet comes back as it was', async ({ page }) => {
+  test('AI Context in the menu hides the sheet under AI Context, and the sheet comes back as it was', async ({ page }) => {
     await openApp(page);
     await openSheet(page);
-    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
-    const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
-    await help.getByRole('checkbox', { name: 'Show AI Context' }).click();
-    await help.getByRole('button', { name: 'Close' }).click();
-    await expect(help).toBeHidden();
     await showSearch(page);
     await searchField(page).fill('endpoint');
 
-    await helpWindow(page).getByRole('button', { name: 'AI Context' }).click();
+    await pickMenuItem(page, 'AI Context');
     const context = page.getByRole('dialog', { name: 'AI Context' });
     await expect(context).toBeVisible();
     await context.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));

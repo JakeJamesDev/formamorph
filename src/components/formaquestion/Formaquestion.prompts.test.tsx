@@ -9,6 +9,7 @@ import { helpSettingsCodec, helpSettingsOf } from '@/lib/formaquestion/helpSetti
 import { addPreset, emptyStore, presetStoreCodec, PROMPT_TEXT_KEYS, type PromptValues } from '@/lib/promptPresets';
 import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
+import { openHelpSettings } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import type { HelpAi } from './useHelpAi';
 
@@ -85,7 +86,7 @@ describe('the help preset on the device', () => {
     renderReporting(<Formaquestion loadIndex={loadFixture} />);
     fireEvent.click(screen.getByRole('button', { name: 'Help' }));
     await screen.findByRole('textbox', { name: 'Ask a Question' });
-    await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
+    await openHelpSettings();
     const dialog = screen.getByRole('dialog', { name: 'Formaquestion Settings' });
     await userEvent.click(within(dialog).getByRole('tab', { name: 'Prompts' }));
     expect(within(dialog).getByRole('combobox', { name: 'Preset' })).toHaveTextContent('Default');

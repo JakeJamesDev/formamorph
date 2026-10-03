@@ -9,7 +9,10 @@ export interface PointerDrag<Press> {
   end: (press: Press) => void;
 }
 
-/** Tracks one press from pointer down to release, with the pointer captured. */
+/**
+ * Tracks one press from pointer down to release, with the pointer captured. A press on content that a child
+ * renders elsewhere in the DOM, such as a menu, reaches the handlers through the React tree and is ignored.
+ */
 export function usePointerDrag<Press>({ start, move, end }: PointerDrag<Press>): DragHandlers {
   const press = useRef<Press | null>(null);
   const release = () => {
@@ -19,6 +22,7 @@ export function usePointerDrag<Press>({ start, move, end }: PointerDrag<Press>):
   };
   return {
     onPointerDown: (event) => {
+      if (!event.currentTarget.contains(event.target as Node)) return;
       const next = start(event);
       if (next === null) return;
       event.currentTarget.setPointerCapture(event.pointerId);

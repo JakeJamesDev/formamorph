@@ -8,7 +8,7 @@ import { getRevealTiming } from '@/lib/revealTimingStore';
 import { useSentenceReveal } from '@/lib/useSentenceReveal';
 import { sseFrame } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream } from '@/test/helpFixtures';
+import { openHelpSettings, stubHelpStream } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const SETTINGS_KEY = 'FORMAMORPH_helpSettings';
@@ -69,7 +69,7 @@ afterEach(() => {
 describe('Answer Reveal', () => {
   it('sets the next answer from the dialog, and leaves narration alone', async () => {
     await openAsk();
-    await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
+    await openHelpSettings();
     const settings = screen.getByRole('dialog', { name: 'Formaquestion Settings' });
     await userEvent.click(within(settings).getByRole('button', { name: /choose reveal animation/i }));
     const dialog = await screen.findByRole('dialog', { name: 'Answer Reveal' });
@@ -141,7 +141,7 @@ describe('Answer Reveal', () => {
   it('resets help to the defaults from the dialog', async () => {
     storeReveal({ fade: false, blur: true, easing: REVEAL_EASINGS[2].value });
     await openAsk();
-    await userEvent.click(screen.getByRole('button', { name: 'Formaquestion Settings' }));
+    await openHelpSettings();
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Formaquestion Settings' })).getByRole('button', { name: /choose reveal animation/i }));
     const dialog = await screen.findByRole('dialog', { name: 'Answer Reveal' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Reset to defaults' }));
