@@ -24,7 +24,7 @@ The section is one shared component, so that ticket 10 can put the same section 
 ## Acceptance criteria
 
 - [ ] The account page has a Patreon section in its list of sections.
-- [ ] **Link Patreon** calls the start route and sends the browser to Patreon. On return, the page reads the result and shows the new state. A refused link (the Patreon account is linked elsewhere) shows a clear message.
+- [ ] **Link Patreon** calls the start route and sends the browser to Patreon. On return, the page reads the result and, for a pending link, calls the confirm route with the one-shot token from the URL and the signed-in bearer. A signed-out visitor signs in first, and the token survives that. A refused link (`taken`, or a bearer that does not match the pending account) shows a clear message.
 - [ ] The toggle sets the flair through the server and shows the saved state.
 - [ ] **Unlink** asks for confirmation, then returns the section to Not linked.
 - [ ] **Become a Supporter** opens the project's Patreon page.

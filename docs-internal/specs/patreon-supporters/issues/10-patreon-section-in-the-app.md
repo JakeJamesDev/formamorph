@@ -18,7 +18,7 @@ A signed-in member opens the User Profile dialog, goes to the **Settings** tab, 
 - [ ] The Settings tab shows the shared Patreon section from ticket 09 with the same three states.
 - [ ] **Link Patreon** opens Patreon's approval page outside the app: a new tab on the web, the system browser on desktop and Android.
 - [ ] The section reads the status again when the app window gets focus or becomes visible. It needs no restart.
-- [ ] After the callback, the site's account page tells the member to return to the app.
+- [ ] After the callback, the site's account page asks the member to sign in if needed, confirms the link, and tells the member to return to the app.
 - [ ] The toggle and Unlink work as on the site.
 - [ ] The dev-router entry for the Settings tab shows the section.
 - [ ] Tests cover the open-outside call and the status read on focus. Every async write checks the mounted ref.
