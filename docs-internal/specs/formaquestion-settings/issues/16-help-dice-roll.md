@@ -1,6 +1,6 @@
 # 16: Help dice roll
 
-Status: ready-for-human
+Status: done
 Base: 63cac65a
 Blocked by: 14
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
