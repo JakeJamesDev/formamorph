@@ -1,6 +1,8 @@
 # 04: Landing on Exit
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in the ~/.claude repo, commit 9b23992 (hooks/worktree-landing.py, tests in hooks/test_landing.py, mutation runner hooks/verify_landing.py, one settings.json entry).
+Base: 15075bd3
 Blocked by: 01, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
