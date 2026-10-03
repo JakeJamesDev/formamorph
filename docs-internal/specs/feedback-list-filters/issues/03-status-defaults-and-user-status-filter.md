@@ -1,6 +1,6 @@
 # 03: Status Defaults and User Status Filter
 
-Status: ready-for-human
+Status: done
 Base: 773f369a
 Blocked by: 01, 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

@@ -1,6 +1,6 @@
 # 07: Filter Row Layout Build
 
-Status: ready-for-human
+Status: done
 Base: e35ca129
 Blocked by: 06
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

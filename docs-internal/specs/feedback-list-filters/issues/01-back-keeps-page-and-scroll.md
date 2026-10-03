@@ -1,6 +1,6 @@
 # 01: Back Keeps Page and Scroll
 
-Status: ready-for-human
+Status: done
 Base: 83ac9a5f
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

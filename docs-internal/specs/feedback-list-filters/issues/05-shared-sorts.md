@@ -1,6 +1,6 @@
 # 05: Shared Sorts
 
-Status: ready-for-human
+Status: done
 Status note: Client `22d8db3a`, review fold-in `46ecbcc8`; server `c330882`, tiebreak fix `ff7587e`. The sort seam and tab wiring landed in ticket 03's commit `83625b11`.
 Base: 773f369a
 Blocked by: 01

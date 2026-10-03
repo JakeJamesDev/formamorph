@@ -1,6 +1,6 @@
 # 06: Filter Row Layout Prototype
 
-Status: ready-for-human
+Status: done
 Base: 8dd31366
 Blocked by: 03, 04, 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
