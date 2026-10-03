@@ -1,6 +1,7 @@
 # 01: Worktree Entry for /implement
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: abd4cf3b
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
