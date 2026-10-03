@@ -253,7 +253,7 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 
-The **Answer** prompt has an **Options** panel under its editor:
+The **Answer** prompt has an **Options** row under it in the list of prompts:
 
 | Option | Default | What it does |
 |---|---|---|

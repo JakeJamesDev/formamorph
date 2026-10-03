@@ -13,6 +13,16 @@ function Harness({ initial }: { initial: HelpSettingsChange }) {
   return <PromptsTab settings={settings} onChange={(change) => setSettings((current) => helpSettingsOf(change, current))} />;
 }
 
+const rail = () => within(screen.getByRole('navigation', { name: 'Prompts' }));
+
+/** Renders the tab and opens the Options row under Answer. */
+async function renderOptions(initial: HelpSettingsChange = {}) {
+  render(<Harness initial={initial} />);
+  const user = userEvent.setup();
+  await user.click(rail().getByRole('button', { name: 'Options' }));
+  return user;
+}
+
 const panel = () => screen.getByRole('region', { name: 'Options' });
 const box = (name: string) => within(panel()).getByRole('checkbox', { name });
 const slider = (name: string) => within(panel()).getByRole('slider', { name });
@@ -20,18 +30,23 @@ const slider = (name: string) => within(panel()).getByRole('slider', { name });
 beforeEach(() => { localStorage.clear(); });
 
 describe('the answer Options panel', () => {
-  it('shows on the answer prompt alone, and leaves the Default preset unlocked', async () => {
+  it('opens from a row under Answer, replaces the editor, and leaves the Default preset unlocked', async () => {
     render(<Harness initial={{}} />);
     const user = userEvent.setup();
+    expect(screen.queryByRole('region', { name: 'Options' })).toBeNull();
+    await user.click(rail().getByRole('button', { name: 'Options' }));
+    expect(screen.queryByRole('textbox', { name: 'Answer Prompt' })).toBeNull();
     expect(box('Custom Temperature')).toBeEnabled();
     await user.click(box('Custom Temperature'));
     expect(slider('Custom Temperature')).toBeEnabled();
-    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Picks' }));
+    await user.click(rail().getByRole('button', { name: 'Picks' }));
     expect(screen.queryByRole('region', { name: 'Options' })).toBeNull();
+    await user.click(rail().getByRole('button', { name: 'Answer' }));
+    expect(screen.getByRole('textbox', { name: 'Answer Prompt' })).toBeInTheDocument();
   });
 
-  it('reads Custom for a stored value off the default, and shows the stored value', () => {
-    render(<Harness initial={{ answerTemperature: 0.7, answerRepetitionPenalty: 1.1, answerMaxTokens: 400 }} />);
+  it('reads Custom for a stored value off the default, and shows the stored value', async () => {
+    await renderOptions({ answerTemperature: 0.7, answerRepetitionPenalty: 1.1, answerMaxTokens: 400 });
     expect(box('Custom Temperature')).toBeChecked();
     expect(box('Custom Repetition Penalty')).toBeChecked();
     expect(box('Max Output')).toBeChecked();
@@ -40,8 +55,7 @@ describe('the answer Options panel', () => {
   });
 
   it('writes a slider move to the setting, and returns the default when the box clears', async () => {
-    render(<Harness initial={{}} />);
-    const user = userEvent.setup();
+    const user = await renderOptions();
     await user.click(box('Custom Temperature'));
     slider('Custom Temperature').focus();
     await user.keyboard('{ArrowRight}');
@@ -51,8 +65,7 @@ describe('the answer Options panel', () => {
   });
 
   it('keeps the values when the player changes the help preset', async () => {
-    render(<Harness initial={{ answerTemperature: 0.7 }} />);
-    const user = userEvent.setup();
+    const user = await renderOptions({ answerTemperature: 0.7 });
     await user.click(screen.getByRole('button', { name: 'Duplicate Preset' }));
     expect(help.presets.activeId).not.toBe(DEFAULT_HELP_SETTINGS.presets.activeId);
     expect(help.answerTemperature).toBe(0.7);

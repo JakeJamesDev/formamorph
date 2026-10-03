@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Copy, GitCompare, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
@@ -32,6 +32,9 @@ const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
   lookup: helpChipVocabulary(HELP_PROMPT_CHIPS.lookup),
 };
 
+/** The select value of the Options row, which shares the answer prompt's key. */
+const OPTIONS_VALUE = 'options';
+
 type Pending = { kind: 'add' } | { kind: 'rename' } | { kind: 'delete' } | { kind: 'reset'; key: HelpPromptKey } | null;
 
 /**
@@ -44,8 +47,10 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   const active = activeHelpPreset(store);
   const readOnly = isDefaultHelpPresetActive(store);
   const [key, setKey] = useState<HelpPromptKey>('answer');
+  const [showOptions, setShowOptions] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [comparing, setComparing] = useState(false);
+  const open = (next: HelpPromptKey, options: boolean) => { setKey(next); setShowOptions(options); setComparing(false); };
   const setStore = (next: HelpPresetStore) => onChange({ presets: next });
   const duplicate = (name: string) => setStore(duplicateHelpPreset(store, active.id, randomUUID(), name));
   const copyName = `${active.name} (copy)`;
@@ -90,54 +95,69 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
       <p className="-mt-2 flex-shrink-0 text-helper text-muted-foreground">{PROMPTS_COPY.preset.hint}</p>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
-        <Select value={key} onValueChange={(value) => setKey(value as HelpPromptKey)}>
+        <Select value={showOptions ? OPTIONS_VALUE : key} onValueChange={(value) => open(value === OPTIONS_VALUE ? 'answer' : value as HelpPromptKey, value === OPTIONS_VALUE)}>
           <SelectTrigger aria-label="Prompt" className="md:hidden">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PROMPT_KEYS.map((id) => <SelectItem key={id} value={id}>{PROMPTS_COPY.prompts[id].label}</SelectItem>)}
+            {PROMPT_KEYS.map((id) => (
+              <Fragment key={id}>
+                <SelectItem value={id}>{PROMPTS_COPY.prompts[id].label}</SelectItem>
+                {id === 'answer' && <SelectItem value={OPTIONS_VALUE}>{PROMPTS_COPY.options.title}</SelectItem>}
+              </Fragment>
+            ))}
           </SelectContent>
         </Select>
         <nav aria-label="Prompts" className="hidden w-[160px] shrink-0 flex-col border-r pr-3 md:flex">
           {PROMPT_KEYS.map((id) => (
-            <CompactSelectionRow key={id} selected={key === id} showCheck={false} aria-pressed={undefined} aria-current={key === id ? 'true' : undefined} onClick={() => { setKey(id); setComparing(false); }}>
-              {PROMPTS_COPY.prompts[id].label}
-            </CompactSelectionRow>
+            <Fragment key={id}>
+              <CompactSelectionRow selected={key === id && !showOptions} showCheck={false} aria-pressed={undefined} aria-current={key === id && !showOptions ? 'true' : undefined} onClick={() => open(id, false)}>
+                {PROMPTS_COPY.prompts[id].label}
+              </CompactSelectionRow>
+              {id === 'answer' && (
+                <CompactSelectionRow className="pl-6" selected={showOptions} showCheck={false} aria-pressed={undefined} aria-current={showOptions ? 'true' : undefined} onClick={() => open('answer', true)}>
+                  {PROMPTS_COPY.options.title}
+                </CompactSelectionRow>
+              )}
+            </Fragment>
           ))}
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <PromptField
-            key={`${active.id}:${key}`}
-            label={prompt.label}
-            ariaLabel={`${prompt.label} Prompt`}
-            hint={prompt.hint}
-            value={active.prompts[key]}
-            onChange={(text) => setStore(editHelpPrompt(store, active.id, key, text))}
-            vocabulary={VOCABULARIES[key]}
-            readOnly={readOnly}
-            readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
-            onRequestEdit={() => duplicate(copyName)}
-            labelAside={!readOnly && (
-              <div className="flex items-center gap-2">
-                <Tip tip={edited ? COMPARE_COPY.action.hint : COMPARE_COPY.action.same} labelsChild={false}>
-                  <Button variant="outline" size="sm" className="h-7 px-2" disabled={!edited} onClick={() => setComparing(true)}>
-                    <GitCompare className="mr-1 h-3.5 w-3.5" aria-hidden /> {COMPARE_COPY.action.label}
-                  </Button>
-                </Tip>
-                <Tip tip={PROMPTS_COPY.reset.hint} labelsChild={false}>
-                  <Button
-                    variant="outline" size="sm" className="h-7 px-2"
-                    disabled={!edited}
-                    onClick={() => setPending({ kind: 'reset', key })}
-                  >
-                    <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden /> {PROMPTS_COPY.reset.label}
-                  </Button>
-                </Tip>
-              </div>
-            )}
-            className="min-h-0 flex-1"
-          />
-          {key === 'answer' && <AnswerOptions settings={settings} onChange={onChange} />}
+          {showOptions ? (
+            <AnswerOptions settings={settings} onChange={onChange} />
+          ) : (
+            <PromptField
+              key={`${active.id}:${key}`}
+              label={prompt.label}
+              ariaLabel={`${prompt.label} Prompt`}
+              hint={prompt.hint}
+              value={active.prompts[key]}
+              onChange={(text) => setStore(editHelpPrompt(store, active.id, key, text))}
+              vocabulary={VOCABULARIES[key]}
+              readOnly={readOnly}
+              readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
+              onRequestEdit={() => duplicate(copyName)}
+              labelAside={!readOnly && (
+                <div className="flex items-center gap-2">
+                  <Tip tip={edited ? COMPARE_COPY.action.hint : COMPARE_COPY.action.same} labelsChild={false}>
+                    <Button variant="outline" size="sm" className="h-7 px-2" disabled={!edited} onClick={() => setComparing(true)}>
+                      <GitCompare className="mr-1 h-3.5 w-3.5" aria-hidden /> {COMPARE_COPY.action.label}
+                    </Button>
+                  </Tip>
+                  <Tip tip={PROMPTS_COPY.reset.hint} labelsChild={false}>
+                    <Button
+                      variant="outline" size="sm" className="h-7 px-2"
+                      disabled={!edited}
+                      onClick={() => setPending({ kind: 'reset', key })}
+                    >
+                      <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden /> {PROMPTS_COPY.reset.label}
+                    </Button>
+                  </Tip>
+                </div>
+              )}
+              className="min-h-0 flex-1"
+            />
+          )}
         </div>
       </div>
 
