@@ -1,6 +1,6 @@
 # 04: Help settings as one value
 
-Status: ready-for-human
+Status: done
 Base: d8273706
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)

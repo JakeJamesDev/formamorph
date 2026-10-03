@@ -1,6 +1,6 @@
 # 09: Reasoning and the Thinking block
 
-Status: ready-for-human
+Status: done
 Base: 80b99256
 Blocked by: 02, 05, 08
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
