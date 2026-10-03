@@ -362,7 +362,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           onOpenChange={setDevCompare}
           label="Answer"
           defaultText={DEFAULT_HELP_PROMPTS.answer}
-          text={DEFAULT_HELP_PROMPTS.answer.replace('Take each fact', 'Take every fact').replace(HELP_CHIP.marker, '')}
+          text={`Be brief.
+${DEFAULT_HELP_PROMPTS.answer.replace(HELP_CHIP.marker, '')}`}
         />
       )}
     </>,

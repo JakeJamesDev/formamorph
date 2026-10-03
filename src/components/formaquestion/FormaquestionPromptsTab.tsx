@@ -100,7 +100,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         </Select>
         <nav aria-label="Prompts" className="hidden w-[160px] shrink-0 flex-col border-r pr-3 md:flex">
           {PROMPT_KEYS.map((id) => (
-            <CompactSelectionRow key={id} selected={key === id} showCheck={false} aria-pressed={undefined} aria-current={key === id ? 'true' : undefined} onClick={() => setKey(id)}>
+            <CompactSelectionRow key={id} selected={key === id} showCheck={false} aria-pressed={undefined} aria-current={key === id ? 'true' : undefined} onClick={() => { setKey(id); setComparing(false); }}>
               {PROMPTS_COPY.prompts[id].label}
             </CompactSelectionRow>
           ))}
