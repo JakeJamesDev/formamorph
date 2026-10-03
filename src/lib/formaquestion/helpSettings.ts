@@ -38,12 +38,6 @@ export interface HelpSettings {
   readonly openScreen: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
   readonly historyLength: number;
-  /** The answer cap in tokens: room for a long list of steps. */
-  readonly answerMaxTokens: number;
-  /** The answer request's temperature. The pick request keeps its pin. */
-  readonly answerTemperature: number;
-  /** The answer request's repetition penalty. The pick request keeps its pin. */
-  readonly answerRepetitionPenalty: number;
   /** The answer request's reasoning switch and strength. The pick request never reasons. */
   readonly reasoning: PromptReasoningSetting;
   /** The answer request's reasoning budget, in percent of the endpoint's Max Output. */
@@ -66,9 +60,6 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   lookup: false,
   openScreen: true,
   historyLength: 4,
-  answerMaxTokens: 800,
-  answerTemperature: 0.2,
-  answerRepetitionPenalty: 1,
   reasoning: defaultPromptReasoningSetting('help'),
   reasoningBudget: defaultReasoningBudgetPct('help'),
   sourcesOpen: true,
@@ -85,17 +76,12 @@ export function helpSettingsOf({ sources, reveal, ...change }: HelpSettingsChang
   return { ...base, ...change, sources: { ...base.sources, ...sources }, reveal: { ...base.reveal, ...reveal } };
 }
 
-/** The ranges the answer sampler fields take. */
-export const HELP_TEMPERATURE_RANGE = { min: 0, max: 2, step: 0.05 } as const;
-export const HELP_REPETITION_PENALTY_RANGE = { min: 1, max: 1.5, step: 0.02 } as const;
-
 /** The most earlier exchanges the History Length field takes. */
 export const HELP_HISTORY_MAX = 20;
 
 type Check = (value: unknown) => boolean;
 const isBool: Check = (value) => typeof value === 'boolean';
 const isBetween = (min: number, max: number): Check => (value) => Number.isInteger(value) && (value as number) >= min && (value as number) <= max;
-const isNumberIn = ({ min, max }: { min: number; max: number }): Check => (value) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 const isCount = (max: number): Check => isBetween(0, max);
 
 /** A preset id, or null for Follow Active. */
@@ -121,9 +107,6 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       lookup: isBool,
       openScreen: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
-      answerMaxTokens: (value) => Number.isInteger(value) && (value as number) > 0,
-      answerTemperature: isNumberIn(HELP_TEMPERATURE_RANGE),
-      answerRepetitionPenalty: isNumberIn(HELP_REPETITION_PENALTY_RANGE),
       reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,
       reasoningBudget: isBetween(MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT),
       sourcesOpen: isBool,

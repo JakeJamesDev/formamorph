@@ -261,7 +261,7 @@ The **Answer** prompt has an **Options** row under it in the list of prompts:
 | **Custom Temperature** | 0.2 | Sets how freely the answer words its steps |
 | **Custom Repetition Penalty** | 1 | Sets how hard the answer avoids repeated words |
 
-The options apply to the answer request of every preset, **Default** included, and this device keeps them. A box that is off uses the default. The **Picks** request keeps its own values.
+Each preset has its own options, and a copy of a preset takes them. **Default** shows them read-only, so each release updates them. A box that is off uses the default. The **Picks** request keeps its own values.
 
 **How to change a help prompt:**
 
