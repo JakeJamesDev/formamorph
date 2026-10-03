@@ -4,6 +4,7 @@ import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { askHelp } from '@/lib/formaquestion/helpSession';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
+import type { HelpTrace } from '@/lib/formaquestion/helpTrace';
 import { helpWorld } from '@/lib/formaquestion/helpWorld';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
@@ -36,6 +37,8 @@ export interface HelpExchange {
   flagged: boolean;
   /** The search's sections for the question, shown under a flagged answer. */
   nearest: readonly DocSection[];
+  /** What the question sent, for AI Context. Absent until the search is done, and for a question no AI answered. */
+  trace?: HelpTrace;
 }
 
 export interface HelpChat {
@@ -111,7 +114,8 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
         }
         const { snapshot, language } = aiRef.current;
         for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, world, signal: controller.signal })) {
-          if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, flagged: event.flagged });
+          if (event.type === 'trace') change({ trace: event.trace });
+          else if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, flagged: event.flagged });
           else change({ answer: event.text, reasoning: event.reasoning, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }
       } catch (error) {

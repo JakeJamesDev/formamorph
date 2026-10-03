@@ -2,7 +2,7 @@
  * The AI picks search source: one plain chat request lists every guide section heading, and the model copies
  * the lines of the sections that answer the question. It offers no function, so every endpoint takes it.
  */
-import { requestAiText } from '@/lib/aiRequest/aiText';
+import { requestAiText, type AiTextOptions } from '@/lib/aiRequest/aiText';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { guideSections } from './guideSections';
@@ -73,13 +73,13 @@ export function readPicks(reply: string, lines: readonly string[]): number[] {
 /**
  * Asks the model which guide sections answer the question, best first; none when the reply copies no line.
  * It sends as the help kind, so its temperature and penalty are pinned and reasoning is off. Throws the
- * request pipeline's errors, and an `AbortError` when stopped.
+ * request pipeline's errors, and an `AbortError` when stopped. `observe` gets the request and its reply.
  */
 export async function requestPicks(
   index: DocsIndex,
   ask: PickQuestion,
   snapshot: AiSettingsSnapshot,
-  options: { signal?: AbortSignal; fetchImpl?: typeof fetch } = {},
+  options: AiTextOptions = {},
 ): Promise<DocSection[]> {
   const { lines, sections } = pickList(index);
   const reply = await requestAiText(snapshot, {

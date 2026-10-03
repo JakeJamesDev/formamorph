@@ -1,6 +1,6 @@
 # 18: AI Context
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 05
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

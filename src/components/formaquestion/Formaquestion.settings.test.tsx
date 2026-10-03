@@ -79,8 +79,8 @@ describe('Formaquestion Settings', () => {
 
     expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools']);
     expect(within(dialog).getByRole('tab', { name: 'General' })).toHaveAttribute('data-state', 'active');
-    // Reasoning, Keyword Search, AI Picks, Semantic Search, Use the Open Screen.
-    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'true', 'false', 'true']);
+    // Reasoning, Keyword Search, AI Picks, Semantic Search, Use the Open Screen, Show AI Context.
+    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'true', 'false', 'true', 'false']);
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
     // jsdom loads no stylesheet, so it reads the open dialog's `pointer-events: none` on the body and not the

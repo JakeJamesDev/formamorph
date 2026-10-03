@@ -27,7 +27,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
 import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
-import { ActionIcon } from '@/lib/actionIcons';
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -151,6 +150,7 @@ import { applyStatResponse, createStatRequest, readStatResponse, statResponseCha
 import { resolveEntityTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { toDebugEndpoint } from "../lib/promptEndpoints";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
+import { AiContextExportButton } from "@/components/aiContext/AiContextExportButton";
 import type { AiRequestRecord } from "@/lib/aiContext/requestRecord";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
@@ -1175,14 +1175,6 @@ const GameViewer = ({
     const slug = (worldOverview?.name || "world").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
     downloadBlob(new Blob([story], { type }), `story-${slug}.${format}`);
     setIsExportModalOpen(false);
-  };
-
-  // Export the full AI-context turn history (exactly the structure the debug viewer renders) as JSON,
-  // so it can be handed off for inspection.
-  const handleExportDebugContext = () => {
-    const blob = new Blob([JSON.stringify(debugTurns, null, 2)], { type: "application/json" });
-    const slug = (worldOverview?.name || "world").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-    downloadBlob(blob, `ai-context-${slug}.json`);
   };
 
   // Re-generate the current turn: restore the snapshot from *before* it (which also rewinds the
@@ -5168,18 +5160,8 @@ const GameViewer = ({
                     />
                     Current context only
                   </label>
-                  <Tip tip="Download the full turn history as JSON" labelsChild={false}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 flex-shrink-0 gap-1.5"
-                      onClick={handleExportDebugContext}
-                      disabled={debugTurns.length === 0}
-                    >
-                      <ActionIcon.export className="h-4 w-4" />
-                      Export
-                    </Button>
-                  </Tip>
+                  {/* The full turn history, exactly the structure this viewer draws, for a bug report. */}
+                  <AiContextExportButton data={debugTurns} name={worldOverview?.name || "world"} tip="Download the full turn history as JSON" disabled={debugTurns.length === 0} />
                 </div>
                 {showSilentRequests && currentSummary && (
                   <div className="flex-shrink-0 rounded-md border border-border bg-muted/40 p-2 text-meta">

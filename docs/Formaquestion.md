@@ -99,6 +99,7 @@ Formaquestion is one window for the whole app. It shows above every dialog, and 
 | Control | What it does |
 |---|---|
 | Title bar | Drag it to move the window |
+| **AI Context** | Shows what each question sent to your AI. It shows only with **Show AI Context** on. See [AI Context](#ai-context) |
 | **Formaquestion Settings** | Opens the settings of Formaquestion. See [Formaquestion Settings](#formaquestion-settings) |
 | **Wide View** | Changes between the narrow and the wide layout |
 | **Close** | Closes the window |
@@ -192,6 +193,7 @@ The **General** tab sets how your AI answers, how a question finds its guide sec
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the switch goes off and **Retry** starts it again. Until the model is ready, questions use the other sources. |
 | **Use the Open Screen** | On | Sends the screen you have open and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
+| **Show AI Context** | Off | Adds an **AI Context** button to the title bar. It shows what each question sent to your AI. See [AI Context](#ai-context). |
 
 With **Keyword Search**, **AI Picks** and **Use the Open Screen** all off, no guide section can reach your AI. The request then holds your question alone, and the answer has no note that it is not from the guide.
 
@@ -314,6 +316,28 @@ A Tool that's on reads the world you have open, so text from that world can go t
 1. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
+## AI Context
+<!-- keywords: debug a question, see the request, inspect help, wrong section, trace, export json, bug report, search block, samplers, request card -->
+
+**AI Context** shows what each question of the conversation sent to your AI, and what came back. Use it to find why an answer went wrong: a section the search missed, or a prompt you changed.
+
+1. Select the gear in the title bar, and turn on **Show AI Context** on the **General** tab.
+2. Select **AI Context** in the title bar.
+
+The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-ai-context-inspector). It lists the questions of the conversation, newest first. The Formaquestion window stays above it.
+
+| Block | What it shows |
+|---|---|
+| **Search** | The screen you had open and whether **Use the Open Screen** was on, the help preset, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
+| **Request N: AI Picks** | The **AI Picks** request, and the lines your AI picked |
+| **Request N: Answer** | The answer request, its **Tool Rounds** when the lookup ran, its reasoning, and the answer as your AI wrote it |
+
+- A request card has the same blocks as a request in the game's inspector. Its header names the endpoint that served it, its reasoning fields, its **Max Tokens**, and its sampler values. A **Custom Prompt** mark shows when the prompt of that request differs from the default text.
+- **Collapse all** and **Expand all** fold or open every block.
+- **Export** downloads every question and its trace as a `.json` file, for a bug report.
+- The app records the trace of every question, so a question you asked before you turned the switch on is in the dialog too.
+- **Clear** on the **Ask** tab removes the traces with the conversation. A reload empties them.
+
 ## On Mobile
 <!-- keywords: full screen sheet, small screen, keyboard covers, slides in, touch, no resizing -->
 
@@ -323,7 +347,7 @@ On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the
 - The sheet opens above an open dialog. When you close the sheet, the dialog is as you left it.
 - The keyboard does not open until you select a field. With the keyboard open, the sheet fits the space above it.
 - The sheet has no **Wide View**, and you cannot move it or change its size.
-- **Formaquestion Settings** fills the screen, so the sheet hides while it is open. When you close the settings, the sheet shows again as you left it, and an answer that was coming in continues.
+- **Formaquestion Settings** and **AI Context** fill the screen, so the sheet hides while one is open. When you close it, the sheet shows again as you left it, and an answer that was coming in continues.
 - On Android, the back action closes the sheet first, before a dialog under it.
 
 ## The Help Tab

@@ -24,12 +24,13 @@ import { FormaquestionFrame } from './FormaquestionFrame';
 import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { FormaquestionSettings } from './FormaquestionSettings';
+import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
-import { useHelpChat } from './useHelpChat';
+import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
 import { useSemanticSearch } from './useSemanticSearch';
 import { usePointerDrag, type PointerDrag } from './usePointerDrag';
@@ -37,7 +38,7 @@ import { usePointerDrag, type PointerDrag } from './usePointerDrag';
 const WINDOW_ID = 'formaquestion-window';
 
 /** The dialogs the window opens. */
-type FormaquestionDialog = 'settings';
+type FormaquestionDialog = 'settings' | 'aiContext';
 
 /** Close animation length in ms. It matches `data-[state=closed]:duration-150` in `WINDOW_MOTION`. */
 const CLOSE_MS = 150;
@@ -279,6 +280,16 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setDialog('settings');
     setDevCompare(true);
   }, [devRoute]);
+  // `#dev?modal=formaquestionAiContext` opens the window and AI Context on a canned question with a trace.
+  // The sample loads on demand, so it stays out of the shipped bundle.
+  const [devTrace, setDevTrace] = useState<HelpExchange[] | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestionAiContext' || !index) return;
+    setOpen(true);
+    setDialog('aiContext');
+    void import('@/lib/devHelpTraceSample').then(({ devHelpTraceSample }) => { if (mountedRef.current) setDevTrace([devHelpTraceSample(index)]); });
+  }, [devRoute, index, mountedRef]);
+  const tracedExchanges = devTrace ?? chat.exchanges;
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestion') return;
     setOpen(true);
@@ -324,6 +335,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           data-fq-sheet={sheet ? '' : undefined}
           onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
           sheet={sheet}
+          onOpenAiContext={settings.showAiContext ? () => setDialog('aiContext') : undefined}
           onOpenSettings={() => setDialog('settings')}
           onClose={closeWindow}
           {...(sheet ? {
@@ -355,6 +367,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         onChange={changeSettings}
         semantic={semantic}
         answerTarget={ai.answerTarget}
+      />
+      <FormaquestionAiContext
+        open={dialog === 'aiContext' && !suspended}
+        onOpenChange={(next) => setDialog(next ? 'aiContext' : null)}
+        exchanges={tracedExchanges}
       />
       {import.meta.env.DEV && (
         <HelpPromptCompareDialog

@@ -215,6 +215,37 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(askField(page)).toHaveValue('typed above the settings');
   });
 
+  test('the AI Context button opens AI Context under the window, and the player uses both', async ({ page }) => {
+    await openApp(page);
+    await openHelp(page);
+    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
+    const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
+    await help.getByRole('checkbox', { name: 'Show AI Context' }).click();
+    await page.keyboard.press('Escape');
+    await expect(help).toBeHidden();
+
+    await helpWindow(page).getByRole('button', { name: 'AI Context' }).click();
+    const context = page.getByRole('dialog', { name: 'AI Context' });
+    await expect(context).toBeVisible();
+    await context.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const box = await settledBox(page);
+    const onTop = await helpWindow(page).evaluate((el, { x, y }) => document.elementFromPoint(x, y)?.closest('#formaquestion-window') === el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    expect(onTop, 'the window is above AI Context').toBe(true);
+    // The dialog fills the screen, so the window moves clear of one control, not of the dialog. With no
+    // question asked, Close is the one control that is on.
+    const close = context.getByRole('button', { name: 'Close' });
+    await moveWindowClearOf(page, close);
+
+    await askField(page).click();
+    await page.keyboard.type('typed above AI Context');
+    await expect(askField(page)).toHaveValue('typed above AI Context');
+    await expect(context.getByRole('button', { name: 'Collapse all' })).toBeDisabled();
+    await close.click();
+    await expect(context).toBeHidden();
+    await expect(helpWindow(page)).toBeVisible();
+    await expect(askField(page)).toHaveValue('typed above AI Context');
+  });
+
   test('Escape from the window closes the dialog, keeps the window and its search text, and leaves focus in the window', async ({ page }) => {
     await openHelpOverSettings(page);
     await searchField(page).click();
@@ -797,6 +828,31 @@ test.describe('Formaquestion on a mobile-size screen', () => {
 
     await help.getByRole('button', { name: 'Close' }).click();
     await expect(help).toBeHidden();
+    await expect(helpWindow(page)).toBeVisible();
+    await expect(searchField(page)).toHaveValue('endpoint');
+  });
+
+  test('the AI Context button hides the sheet under AI Context, and the sheet comes back as it was', async ({ page }) => {
+    await openApp(page);
+    await openSheet(page);
+    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
+    const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
+    await help.getByRole('checkbox', { name: 'Show AI Context' }).click();
+    await help.getByRole('button', { name: 'Close' }).click();
+    await expect(help).toBeHidden();
+    await showSearch(page);
+    await searchField(page).fill('endpoint');
+
+    await helpWindow(page).getByRole('button', { name: 'AI Context' }).click();
+    const context = page.getByRole('dialog', { name: 'AI Context' });
+    await expect(context).toBeVisible();
+    await context.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    await expect(helpWindow(page)).toBeHidden();
+    const dialogOnTop = await context.evaluate((el) => el.contains(document.elementFromPoint(187, 400)));
+    expect(dialogOnTop, 'AI Context is on top at the center of the screen').toBe(true);
+
+    await context.getByRole('button', { name: 'Close' }).click();
+    await expect(context).toBeHidden();
     await expect(helpWindow(page)).toBeVisible();
     await expect(searchField(page)).toHaveValue('endpoint');
   });

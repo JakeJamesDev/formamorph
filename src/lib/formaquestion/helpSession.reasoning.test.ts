@@ -39,7 +39,7 @@ async function bodies(change: HelpSettingsChange, snapshot: AiSettingsSnapshot, 
   });
   const events: HelpEvent[] = [];
   for await (const event of askHelp({ question: 'How do I add a trait?', settings: helpSettingsOf(change), snapshot, index, fetchImpl: fetchImpl as unknown as typeof fetch })) {
-    events.push(event);
+    if (event.type !== 'trace') events.push(event);
   }
   return { pick: sent.pick[0], answer: sent.answer[0], events };
 }

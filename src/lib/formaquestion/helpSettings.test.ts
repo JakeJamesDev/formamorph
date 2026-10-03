@@ -25,6 +25,7 @@ describe('the default help settings', () => {
       // No Tool and no switch, so the request bodies of the bar run are unchanged.
       tools: [],
       toolSwitches: {},
+      showAiContext: false,
     });
   });
 });
@@ -58,6 +59,8 @@ describe('the stored help settings', () => {
     expect(stored({ historyLength: HELP_HISTORY_MAX }).historyLength).toBe(HELP_HISTORY_MAX);
     expect(stored({ sourcesOpen: 'no' }).sourcesOpen).toBe(true);
     expect(stored({ sourcesOpen: false }).sourcesOpen).toBe(false);
+    expect(stored({ showAiContext: 'yes' }).showAiContext).toBe(false);
+    expect(stored({ showAiContext: true }).showAiContext).toBe(true);
     expect(stored({ sources: null })).toEqual(DEFAULT_HELP_SETTINGS);
     expect(stored({})).toEqual(DEFAULT_HELP_SETTINGS);
   });

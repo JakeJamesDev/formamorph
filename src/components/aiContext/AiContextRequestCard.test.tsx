@@ -72,6 +72,13 @@ describe('AiContextRequestCard', () => {
     expect(screen.getByText('Open the menu and choose Save.').tagName).toBe('MARK');
   });
 
+  it("draws the caller's chips after the endpoint chips", () => {
+    render(<AiContextRequestCard record={record} index={0} isOpen={allOpen} onOpenChange={() => {}} chips={<span>Custom Prompt</span>} />);
+    const header = screen.getByText('Request 1: answer').parentElement!;
+    const texts = [...header.querySelectorAll('span')].map((span) => span.textContent);
+    expect(texts.indexOf('Custom Prompt')).toBeGreaterThan(texts.indexOf('Max Tokens 800'));
+  });
+
   it('says so when a search folds the card', () => {
     render(<AiContextRequestCard record={record} index={0} folded isOpen={() => false} onOpenChange={() => {}} />);
     expect(screen.getByText('· no matches')).toBeTruthy();
