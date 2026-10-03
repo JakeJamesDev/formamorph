@@ -54,3 +54,9 @@ export const PROMPTS_COPY = {
   readOnly: (name: string) => `${name} is read-only`,
   reset: { label: 'Reset to Default', hint: 'Returns this prompt to the text of this release' },
 } as const;
+
+export const COMPARE_COPY = {
+  action: { label: 'Compare to Default', hint: 'Shows how this prompt differs from the text of this release', same: 'This prompt matches the default text' },
+  title: (label: string) => `${label} Prompt vs. Default`,
+  legend: { lead: 'Text you', mid: 'to the default is tinted. Text you', tail: 'from it is struck through.' },
+} as const;

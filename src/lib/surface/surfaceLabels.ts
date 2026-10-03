@@ -75,6 +75,7 @@ const ENTRIES: [string, string][] = [
   ['likePrompt', 'Like Prompt'],
   ['formaquestion', 'Formaquestion'],
   ['formaquestionSettings', 'Formaquestion Settings'],
+  ['formaquestionCompare', 'Compare to Default'],
   ['designSystemGroupPicker.picker', 'Add To Group'],
   ['designSystemGroupPicker.create', 'Create New Group'],
 

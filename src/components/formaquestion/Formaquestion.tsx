@@ -24,6 +24,9 @@ import { FormaquestionFrame } from './FormaquestionFrame';
 import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { FormaquestionSettings } from './FormaquestionSettings';
+import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
+import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
+import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
 import { useHelpChat } from './useHelpChat';
@@ -267,6 +270,15 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setSettingsTab(asFormaquestionSettingsTab(devRoute.tab) ?? 'general');
     setDialog('settings');
   }, [devRoute]);
+  // `#dev?modal=formaquestionCompare` opens the settings and the compare view on a canned custom answer prompt.
+  const [devCompare, setDevCompare] = useState(false);
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestionCompare') return;
+    setOpen(true);
+    setSettingsTab('prompts');
+    setDialog('settings');
+    setDevCompare(true);
+  }, [devRoute]);
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestion') return;
     setOpen(true);
@@ -344,6 +356,15 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         semantic={semantic}
         answerTarget={ai.answerTarget}
       />
+      {import.meta.env.DEV && (
+        <HelpPromptCompareDialog
+          open={devCompare}
+          onOpenChange={setDevCompare}
+          label="Answer"
+          defaultText={DEFAULT_HELP_PROMPTS.answer}
+          text={DEFAULT_HELP_PROMPTS.answer.replace('Take each fact', 'Take every fact').replace(HELP_CHIP.marker, '')}
+        />
+      )}
     </>,
     layer,
   );

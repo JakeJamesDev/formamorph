@@ -225,7 +225,7 @@ Under the two settings is the same preset editor as **Settings** → **AI Endpoi
 3. Set **Answer Endpoint** to the new preset.
 
 ### Prompts
-<!-- keywords: help prompt, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only -->
+<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only -->
 
 The **Prompts** tab holds the help prompts: the text that tells your AI how to answer. The prompts are in a preset, apart from the prompt presets of your game. A change to the game's preset never changes help.
 
@@ -239,6 +239,7 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 - **Duplicate & Edit** in the notice above a Default prompt makes a copy of the preset and opens it for edits. The **Duplicate** button beside the preset list does the same. **Add New Preset…** in the list asks for a name first.
 - A custom preset has **Rename** and **Delete** beside the list. When you delete the preset in use, help goes back to **Default**.
 - **Reset to Default** above a custom prompt returns that one prompt to the text of this release. A custom preset does not get the updates of a release on its own.
+- **Compare to Default** above a custom prompt opens a diff of your text against the text of this release. Text you added is tinted. Text you removed is struck through. **Raw** shows your text as it is. The button is off for a prompt that equals the default.
 - This device keeps the presets, with the other Formaquestion settings.
 
 Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chips are the parts the app reads back or names elsewhere:

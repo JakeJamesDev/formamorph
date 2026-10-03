@@ -61,6 +61,45 @@ export function PromptDiffModeToggle({
   );
 }
 
+/**
+ * Two prompt texts as one flowing document: `base` is the default, `text` the changed one. `renderChips`
+ * draws the chips of a run; the diff keeps each chip whole, so no run holds half of one.
+ */
+export function PromptDiffView({
+  base, text, mode, renderChips,
+}: {
+  base: string;
+  text: string;
+  mode: PromptDiffMode;
+  renderChips: (value: string) => ReactNode;
+}) {
+  const parts = useMemo(
+    () => (mode === 'changes' ? promptWordDiff(base, text) : null), [base, text, mode],
+  );
+
+  if (!parts) return <pre className={PROMPT_PRE_CLASS}>{renderChips(text)}</pre>;
+
+  return (
+    <pre className={PROMPT_PRE_CLASS}>
+      {parts.map((part, i) =>
+        part.added ? (
+          <ins key={i} className="no-underline bg-emerald-500/25 rounded-[2px]">{renderChips(part.value)}</ins>
+        ) : part.removed ? (
+          <del
+            key={i}
+            // A chip is inline-flex, which the strikethrough does not reach, so it takes its own.
+            className="bg-red-500/10 text-red-600 dark:text-red-400 line-through decoration-red-500/70 rounded-[2px] [&_[data-chip]]:line-through"
+          >
+            {renderChips(part.value)}
+          </del>
+        ) : (
+          <span key={i}>{renderChips(part.value)}</span>
+        ),
+      )}
+    </pre>
+  );
+}
+
 export function PromptDiff({
   kind, text, mode, placeholders = NO_PLACEHOLDERS, owners,
 }: {
@@ -71,10 +110,6 @@ export function PromptDiff({
   placeholders?: readonly Placeholder[];
   owners?: PlaceholderOwners;
 }) {
-  const base = SHIPPED_PROMPT_DEFAULTS[kind];
-  const parts = useMemo(
-    () => (mode === 'changes' ? promptWordDiff(base, text) : null), [base, text, mode],
-  );
   const vocab = useMemo<ChipVocabulary>(() => {
     const inner = placeholderVocabulary(placeholders, { owners });
     const known = new Set(placeholders.map((p) => p.id));
@@ -83,27 +118,13 @@ export function PromptDiff({
       display: (t) => (known.has(decodePlaceholderToken(t)?.id ?? '') ? inner.display?.(t) : UNKNOWN_PLACEHOLDER_LABEL),
     };
   }, [placeholders, owners]);
-  const chips = (value: string) => withPlaceholderChips(value, vocab);
-
-  if (!parts) return <pre className={PROMPT_PRE_CLASS}>{chips(text)}</pre>;
 
   return (
-    <pre className={PROMPT_PRE_CLASS}>
-      {parts.map((part, i) =>
-        part.added ? (
-          <ins key={i} className="no-underline bg-emerald-500/25 rounded-[2px]">{chips(part.value)}</ins>
-        ) : part.removed ? (
-          <del
-            key={i}
-            // A chip is inline-flex, which the strikethrough does not reach, so it takes its own.
-            className="bg-red-500/10 text-red-600 dark:text-red-400 line-through decoration-red-500/70 rounded-[2px] [&_[data-chip]]:line-through"
-          >
-            {chips(part.value)}
-          </del>
-        ) : (
-          <span key={i}>{chips(part.value)}</span>
-        ),
-      )}
-    </pre>
+    <PromptDiffView
+      base={SHIPPED_PROMPT_DEFAULTS[kind]}
+      text={text}
+      mode={mode}
+      renderChips={(value) => withPlaceholderChips(value, vocab)}
+    />
   );
 }
