@@ -1,6 +1,7 @@
 # 07: Supporter Flair Patterns in the Showcase
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: aade0d2e
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -25,10 +26,10 @@ This ticket ends at `ready-for-human`. The user approves or changes the patterns
 
 ## Acceptance criteria
 
-- [ ] The two tokens exist in both themes and meet the text contrast rule of the design system on every background a username sits on.
-- [ ] The showcase has a Supporter Flair section with the badges, the colored names, and the rings.
-- [ ] The tier colors do not read as any staff badge tint.
-- [ ] The design-system document describes the patterns and when to use them.
-- [ ] The glossary has the five terms. Copy says Profile Image, never avatar.
-- [ ] `verify-ui` evidence of the showcase section in both themes.
-- [ ] Four gates green.
+- [x] The two tokens exist in both themes and meet the text contrast rule of the design system on every background a username sits on.
+- [x] The showcase has a Supporter Flair section with the badges, the colored names, and the rings.
+- [x] The tier colors do not read as any staff badge tint.
+- [x] The design-system document describes the patterns and when to use them.
+- [x] The glossary has the five terms. Copy says Profile Image, never avatar.
+- [x] `verify-ui` evidence of the showcase section in both themes.
+- [x] Four gates green.

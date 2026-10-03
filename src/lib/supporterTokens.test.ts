@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { SUPPORTER_BADGE_STYLES } from '@/lib/supporterFlair';
 
 type Vars = Record<string, string>;
 type Block = { selectors: string[]; vars: Vars };
@@ -49,10 +50,14 @@ const contrast = (a: Rgb, b: Rgb) => {
 
 const mix = (from: Rgb, to: Rgb, amount: number): Rgb => from.map((v, i) => v * (1 - amount) + to[i] * amount) as Rgb;
 
-/** The surfaces a username or a badge rests on. Hover fills are left out: High Contrast's is a mid gray. */
-const SURFACES = ['background', 'card', 'popover', 'muted'];
-/** The strongest badge tint in `SUPPORTER_BADGE_STYLES`. */
-const STRONGEST_TINT = 0.15;
+/** The surfaces a username or a badge rests on. */
+const SURFACES = ['background', 'card', 'popover', 'muted', 'accent', 'secondary'];
+/** High Contrast fills these two with mid grays that no hue clears at 4.5:1. */
+const SKIPPED = new Set(['highcontrast/accent', 'highcontrast/secondary']);
+/** The strongest tint in the badge classes, read from them so the two cannot drift apart. */
+const STRONGEST_TINT = Math.max(
+  ...Object.values(SUPPORTER_BADGE_STYLES).flatMap((classes) => [...classes.matchAll(/bg-supporter[\w-]*\/(\d+)/g)].map(([, n]) => Number(n) / 100)),
+);
 const TEXT_CONTRAST = 4.5;
 
 describe.each(['supporter', 'supporter-plus'])('the %s color token', (token) => {
@@ -61,6 +66,7 @@ describe.each(['supporter', 'supporter-plus'])('the %s color token', (token) => 
     for (const { name, vars } of palettes(mode)) {
       const color = toRgb(varsOf(mode === 'light' ? ':root' : '.dark')[token]);
       for (const surface of SURFACES) {
+        if (SKIPPED.has(`${name.split('/')[1]}/${surface}`)) continue;
         const bg = toRgb(vars[surface]);
         const worst = Math.min(contrast(color, bg), contrast(color, mix(bg, color, STRONGEST_TINT)));
         if (worst < TEXT_CONTRAST) failures.push(`${name}/${surface}: ${worst.toFixed(2)}`);
@@ -74,6 +80,10 @@ describe.each(['supporter', 'supporter-plus'])('the %s color token', (token) => 
 describe('the contrast check itself', () => {
   it('fails a color that is too faint for the surface', () => {
     expect(contrast(toRgb('12 80% 60%'), toRgb('0 0% 100%'))).toBeLessThan(TEXT_CONTRAST);
+  });
+
+  it('reads the strongest badge tint from the badge classes', () => {
+    expect(STRONGEST_TINT).toBe(0.15);
   });
 
   it('reads every palette in both modes', () => {

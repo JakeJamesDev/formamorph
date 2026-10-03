@@ -1090,9 +1090,15 @@ Supporter Flair marks an account that supports the project on Patreon. It is a p
 - Show no flair on a stored name snapshot, such as a contest podium.
 - Do not use the tier colors for anything else. They mean support and nothing more.
 
+### States
+
+The badge, the name color, and the ring are static. They have no hover, focus, or disabled state. A name that opens a profile keeps the focus ring of `UserName`.
+
 ### Contrast
 
-Each token meets 4.5:1 as text on the background, card, popover, and muted surface of every palette, in both modes. It meets the same ratio under its strongest badge tint. [`supporterTokens.test.ts`](../src/lib/supporterTokens.test.ts) reads [`src/index.css`](../src/index.css) and checks every palette. Hover fills are not part of the check: the High Contrast hover fill is a mid gray that no hue clears.
+Each token meets 4.5:1 as text on the background, card, popover, muted, accent, and secondary surface of every palette, in both modes. It meets the same ratio under its strongest badge tint. [`supporterTokens.test.ts`](../src/lib/supporterTokens.test.ts) reads [`src/index.css`](../src/index.css) and checks every palette. The High Contrast accent and secondary fills are mid grays that no hue clears, so the check skips those two.
+
+The Admin badge takes the palette's primary color. In Rose and Bubble Gum the primary is near the Supporter+ hue, so the two tags can look alike there. The outline and the icon keep them apart.
 
 ### Production mapping
 

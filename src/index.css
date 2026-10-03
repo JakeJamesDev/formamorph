@@ -60,9 +60,7 @@
     --gold: 42 88% 30%;
     --silver: 215 14% 40%;
     --bronze: 22 62% 36%;
-    /* Supporter Flair tiers. Set once and never per theme: a tier color is a rank, and a palette rotating it
-       would blur it against the palette's own primary. Checked against every palette surface in
-       supporterTokens.test.ts. */
+    /* Supporter Flair tier colors: one pair per mode, never per palette. supporterTokens.test.ts checks contrast. */
     --supporter: 12 80% 30%;
     --supporter-plus: 318 75% 30%;
     /* Theme-independent dark scrim for overlays on imagery + modal backdrops (light text must stay readable). */
@@ -108,8 +106,8 @@
     --gold: 45 92% 60%;
     --silver: 214 16% 76%;
     --bronze: 25 72% 58%;
-    --supporter: 12 85% 80%;
-    --supporter-plus: 318 75% 80%;
+    --supporter: 12 85% 84%;
+    --supporter-plus: 318 75% 85%;
     --overlay: 0 0% 0%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
