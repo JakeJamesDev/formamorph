@@ -100,7 +100,7 @@ A stored world also has an `id`. Export leaves it out, and import gives the worl
 > ⚠️ **Import refuses a world without `worldOverview`, `stats`, `locations`, `entities`, `traits` and `statUpdates`.** An empty list is enough.
 
 ## Versions and Older Files
-<!-- keywords: backward compatible, legacy, outdated world, upgrade, deprecated keys, renamed properties, compatibility, converted automatically, migration -->
+<!-- keywords: backward compatible, legacy, outdated world, upgrade, deprecated keys, renamed properties, compatibility, converted automatically, migration, old version, old file -->
 
 Import runs every world through a migration. The migration changes an older shape into the current one, so a file from any version loads. These older forms still load:
 

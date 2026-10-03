@@ -158,7 +158,7 @@ The `{` menu lists two chips under **Built-in**, above your own placeholders. Th
 Type the typed form in any prose field, and it becomes the chip. In trait text the player carries, **Character Name** reads as **Player Name**. See [The Player Name Chip](Persona-Authoring#the-player-name-chip) and [The Character Name Chip](Persona-Authoring#the-character-name-chip).
 
 ## The roll stays for the playthrough
-<!-- keywords: change mid game, persist, stays the same, reroll, decided when, after loading, fresh result, locked in -->
+<!-- keywords: change mid game, persist, stays the same, reroll, decided when, after loading, fresh result, locked in, random -->
 
 > 💡 A Wildcard rolls **one time, when a game starts**, and the save keeps the result. The stranger with gray eyes on turn one still has them on turn ninety. A loaded save changes nothing. A new game rolls again.
 
