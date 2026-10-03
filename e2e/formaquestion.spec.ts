@@ -583,16 +583,27 @@ test.describe('Formaquestion on a desktop screen', () => {
     expect(await settledBox(page)).toEqual(placed);
   });
 
-  /** A text endpoint that answers every request with `answer`, and records each request body. */
-  async function openWithAi(page: Page, answer: string): Promise<{ messages: { role: string; content: string }[] }[]> {
-    const bodies: { messages: { role: string; content: string }[] }[] = [];
+  type HelpBody = { max_tokens: number; messages: { role: string; content: string }[] };
+
+  /** `HELP_PICK_MAX_TOKENS` in helpPicks.ts. The node loader cannot import that module: it pulls in the wordlist JSON. */
+  const PICK_MAX_TOKENS = 150;
+
+  /**
+   * A text endpoint that answers every answer request with `answer` and every AI Picks request with a reply
+   * that picks nothing, so the keyword search alone finds the sections. It records each request body by kind.
+   */
+  async function openWithAi(page: Page, answer: string): Promise<{ answers: HelpBody[]; picks: HelpBody[] }> {
+    const bodies = { answers: [] as HelpBody[], picks: [] as HelpBody[] };
     await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
     await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
     await page.route('**/chat/completions', async (route) => {
-      bodies.push(route.request().postDataJSON());
-      const half = Math.ceil(answer.length / 2);
+      const body = route.request().postDataJSON() as HelpBody;
+      const pick = body.max_tokens === PICK_MAX_TOKENS;
+      (pick ? bodies.picks : bodies.answers).push(body);
+      const text = pick ? 'No section of the list answers the question.' : answer;
+      const half = Math.ceil(text.length / 2);
       const frame = (content: string) => `data: ${JSON.stringify({ choices: [{ delta: { content }, finish_reason: null }] })}\n\n`;
-      await route.fulfill({ contentType: 'text/event-stream', body: `${frame(answer.slice(0, half))}${frame(answer.slice(half))}data: [DONE]\n\n` });
+      await route.fulfill({ contentType: 'text/event-stream', body: `${frame(text.slice(0, half))}${frame(text.slice(half))}data: [DONE]\n\n` });
     });
     await openApp(page, { FORMAMORPH_endpointUrl: 'http://127.0.0.1:5190/v1/chat/completions' });
     return bodies;
@@ -614,9 +625,11 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(conversation(page).getByRole('listitem')).toHaveCount(2);
     await expect(conversation(page)).toContainText('Select New Blueprint.');
     await expect(settings(page)).toBeVisible();
-    expect(bodies).toHaveLength(1);
-    expect(bodies[0].messages.map((message) => message.role)).toEqual(['system', 'user']);
-    expect(bodies[0].messages[1].content).toContain('## How to Make a Blueprint');
+    // One AI Picks request, then one answer request that carries the sections the search found.
+    expect(bodies.picks).toHaveLength(1);
+    expect(bodies.answers).toHaveLength(1);
+    expect(bodies.answers[0].messages.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(bodies.answers[0].messages[1].content).toContain('## How to Make a Blueprint');
 
     const sources = conversation(page).getByRole('group', { name: 'Sources' });
     await sources.getByRole('button', { name: /How to Make a Blueprint/ }).click();
@@ -651,7 +664,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     await page.keyboard.press('Enter');
     await expect(conversation(page).getByRole('group', { name: 'Sources' })).toHaveCount(2);
 
-    const followUp = bodies[1].messages;
+    const followUp = bodies.answers[1].messages;
     expect(followUp.map((message) => message.role)).toEqual(['system', 'user', 'assistant', 'user']);
     expect(followUp[1].content).toBe('How do I make a blueprint?');
     expect(followUp[3].content).toContain('## How to Make a Blueprint');
