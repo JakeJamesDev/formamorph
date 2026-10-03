@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DeleteAccountDialog } from '@/components/menu/DeleteAccountDialog';
 import { ProfileAvatarEditor } from '@/components/menu/ProfileAvatarEditor';
+import { PatreonSection, type PatreonReturn } from '@/components/PatreonSection';
 import AuthService from '@/services/AuthService';
 import { Field } from '../components/AccountForm';
 import { NoteLine, type Note } from '../components/NoteLine';
@@ -10,8 +11,16 @@ import { SiteLayout } from '../components/SiteLayout';
 import { leaveTo } from '../leaveSite';
 import { signInTo } from '../nextPath';
 
+/** What Patreon's callback redirect put in the address, or null when the reader did not just come back from it. */
+const readPatreonReturn = (): PatreonReturn | null => {
+  const query = new URLSearchParams(window.location.search);
+  const result = query.get('patreon');
+
+  return result ? { result, token: query.get('token') } : null;
+};
+
 /** Where a reader with no session goes, and what brings them back here afterwards. */
-const SIGN_IN = signInTo('/account');
+const signInPath = () => signInTo(`/account${window.location.search}`);
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -314,10 +323,17 @@ export function AccountPage() {
   // A suspended account can sign in and read, but the server refuses every write it could make here.
   const suspended = user?.status === 'suspended';
   const [deleting, setDeleting] = useState(false);
+  // Read once on arrival: the query is cleared below, and the confirm token is spent on its first use.
+  const [patreonReturn] = useState(readPatreonReturn);
 
   useEffect(() => {
-    if (!arrivedSignedIn) leaveTo(SIGN_IN);
+    // A signed-out reader keeps the query through sign-in, so the confirm token survives it.
+    if (!arrivedSignedIn) leaveTo(signInPath());
   }, [arrivedSignedIn]);
+
+  useEffect(() => {
+    if (arrivedSignedIn && patreonReturn) window.history.replaceState(null, '', window.location.pathname);
+  }, [arrivedSignedIn, patreonReturn]);
 
   // A sign-out in another tab arrives through the shared keys, and this page is then somebody else's.
   // The reader's own deletion ends the session too, but that flow is still on screen saying when the
@@ -351,6 +367,7 @@ export function AccountPage() {
       <div className="space-y-8">
         <AvatarSection username={user?.username ?? null} suspended={suspended} />
         <EmailSection suspended={suspended} />
+        <PatreonSection openAuthorize={leaveTo} returned={patreonReturn} suspended={suspended} />
         <PasswordSection suspended={suspended} />
         <DeleteSection suspended={suspended} open={deleting} onOpenChange={setDeleting} />
       </div>

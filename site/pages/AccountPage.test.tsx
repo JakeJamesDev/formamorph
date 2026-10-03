@@ -29,10 +29,12 @@ const asked = (fragment: string) =>
  * on arrival — so a password test's reply would arrive at `/auth/me` and be adopted as the account.
  */
 const routeFetch = (routes: Record<string, Response>) => {
+  // The Patreon section reads its status on arrival. A test about another section sees it not linked.
+  const all: Record<string, Response> = { '/users/me/patreon': res({ success: true, data: { linked: false } }), ...routes };
   vi.mocked(fetch).mockImplementation(async (url) => {
-    const fragment = Object.keys(routes).find((key) => String(url).includes(key));
+    const fragment = Object.keys(all).find((key) => String(url).includes(key));
     if (!fragment) throw new Error(`No stub for ${String(url)}`);
-    return routes[fragment];
+    return all[fragment];
   });
 };
 
@@ -125,7 +127,7 @@ describe('changing the password', () => {
   });
 
   it('shows a refusal verbatim, because the two that happen are both actionable', async () => {
-    vi.mocked(fetch).mockResolvedValue(res({ error: 'Current password is incorrect' }, false, 400));
+    routeFetch({ '/auth/change-password': res({ error: 'Current password is incorrect' }, false, 400) });
     render(<AccountPage />);
 
     changePassword();

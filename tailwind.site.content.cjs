@@ -56,6 +56,7 @@ const COMMUNITY_FILES = [
  */
 const FILES = [
   'src/components/EntityPlaceholderArt.tsx',
+  'src/components/PatreonSection.tsx',
   'src/components/RoleBadge.tsx',
   'src/components/UserAvatar.tsx',
   'src/components/theme-provider.tsx',
@@ -83,12 +84,15 @@ const FILES = [
   'src/lib/roles.ts',
   'src/lib/serverAssets.ts',
   'src/lib/serverDate.ts',
+  'src/lib/supporterFlair.ts',
   'src/lib/thumbAspect.ts',
   'src/lib/useCachedThumbnail.tsx',
+  'src/lib/useMountedRef.ts',
   'src/lib/useResetOnOpen.ts',
   'src/lib/utils.ts',
   'src/services/AuthService.ts',
   'src/services/AgeGateService.ts',
+  'src/services/PatreonService.ts',
   'src/services/PolicyService.ts',
   'src/services/responseError.ts',
   'src/services/UserService.ts',
