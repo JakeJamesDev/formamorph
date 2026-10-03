@@ -13,11 +13,11 @@ The minimal chat layout from the window prototype, a bare column with no frame, 
 
 ## Solution
 
-Formaquestion gets an optional **Mascot**: a layered character that stands beside the chat. It waves when the window first opens in an app load, shows a thinking face from the moment a question is sent until the answer's first word, and takes the face the AI picks for its answer through a function call. A persona line in the prompt makes the answers match the face.
+Formaquestion gets an optional **Mascot**: a layered character that stands beside the chat. It waves when the window first opens in an app load, shows a thinking face from the moment a question is sent until the answer's first word, and takes the face the AI picks for its answer through a function call. A Voice line in the prompt makes the answers match the face.
 
 The mascot is a **rig** the player can change: a base image and an ordered list of layers. Each layer is an **expression** (one at a time, the AI's to pick) or a **state** (any number stacked), and each holds a list of overlay images drawn in order on top of the base. A **Mask** crop defines a head-only view for narrow screens and for a desktop toggle.
 
-A **Mascot** tab in Formaquestion Settings holds the switch, the rig editor, the three picks (Initial, Idle, Thinking), the Mask and the Persona. A rig exports as a `.webp` card that shows its Initial look and carries the whole rig inside.
+A **Mascot** tab in Formaquestion Settings holds the switch, the rig editor, the three picks (Initial, Idle, Thinking), the Mask and the Voice. A rig exports as a `.webp` card that shows its Initial look and carries the whole rig inside.
 
 With the mascot on, the window uses the minimal chrome: the chat column alone, the mascot as its own floating piece to the left, and the guide reader as a floating piece to the right when a source name is clicked. The mascot is on by default. Formaquestion is unreleased, so no player loses a layout they had.
 
@@ -48,19 +48,20 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q19 | Overlays are drawn stretched to the base size |
 | Q20 | The Mask is set by dragging a box on the rig preview |
 | Q21 | A pick that names a disabled layer is kept, draws nothing for that layer, and the tab shows a warning. The pick dropdowns list enabled layers only |
-| Q22 | A chip in the help prompt, like Markdown Guidance, sends a persona line while the mascot is on and nothing while it is off. Off sends today's prompt exactly |
+| Q22 | A chip in the help prompt, like Markdown Guidance, sends a Voice line while the mascot is on and nothing while it is off. Off sends today's prompt exactly |
 | Q23 | A source-name click opens the reader piece, right of the chat |
 | Q24 | Mobile shows the masked head left of the pill row. Desktop toggles head and full from the pill |
-| Q25 | The chip's text is the Persona field on the Mascot tab |
+| Q25 | The chip's text is the Voice field on the Mascot tab |
 | Q26 | The chip is a prompt change. Proof is the help bar run, mascot on against mascot off, on cloud |
 | Q27 | The card carries every layer image in full |
 | Q28 | Default on applies to everyone. Formaquestion has never shipped, so there is no migration |
-| Q29 | The Persona travels in the card with the rig |
+| Q29 | The Voice travels in the card with the rig |
 | Q30 | Thinking holds until the first content token. A face call before that is stored and shows when the text starts. Refines Q12 and Q18 |
 | Q31 | A face change plays a transition. The transition mode and its tuning are part of the rig and travel in the card. The defaults are settled by a prototype first |
-| Q32 | The default rig ticket 01 ships is provisional: twelve composite word-named faces, three arm states, and a drafted Persona. The user tunes the real defaults in-app once the tab exists, and a follow-up ticket extracts those settings into code. No extra UI for authoring defaults |
+| Q32 | The default rig ticket 01 ships is provisional: twelve composite word-named faces, three arm states, and a drafted Voice. The user tunes the real defaults in-app once the tab exists, and a follow-up ticket extracts those settings into code. No extra UI for authoring defaults |
 | Q33 | Expressions are composite whole faces, one row each. A part the arm must cover (the :O mouth under the thinking hand) rides in the arm state, because one row cannot sit both under and over another row. The format stays a flat list |
 | Q34 | The minimal chrome's pill is grip, today's ⋮ menu (Clear Conversation, AI Context, Settings) and Close; the head toggle joins it in its ticket. Until the reader piece lands, a docs request with the mascot on opens the heading in the wiki, as with the window unmounted |
+| Q35 | The mascot's prompt text is the **Voice**, never Persona, which the glossary holds for the player-slot entity. The landed rig field is renamed in the Voice chip ticket; nothing shipped |
 
 ## User Stories
 
@@ -103,7 +104,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 29. As a player, I want to choose the Initial, Idle and Thinking looks from my own layers, so that the app's moments use my faces.
 30. As a player, I want a warning when a pick names a layer I disabled, so that I know why the face is blank.
 31. As a player, I want to draw the Mask by dragging a box on the preview, so that the head view shows the part I choose.
-32. As a player, I want a Persona field, so that the answers sound like my character.
+32. As a player, I want a Voice field, so that the answers sound like my character.
 33. As a player, I want to reset the rig to the default, so that I can start over.
 34. As a player, I want my images to survive a reload and a large rig, so that the browser's small settings storage does not lose them.
 
@@ -122,7 +123,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 
 35. As a player, I want to export my mascot as an image file that shows it, so that I can share it in one file.
 36. As a player, I want to import a mascot card, so that I can use a character someone else made.
-37. As a player, I want the import to bring the persona and the picks with the art, so that the character arrives whole.
+37. As a player, I want the import to bring the Voice and the picks with the art, so that the character arrives whole.
 38. As a player, I want an import to replace my rig all at once or not at all, so that a bad file leaves my rig alone.
 39. As a player, I want an import of a bad file to say what is wrong, so that I can fix the file.
 
@@ -131,20 +132,20 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 40. As a player, I want the AI to know it has a face and which faces exist, so that it picks one that fits.
 41. As a player, I want the AI's answers to match the character's voice, so that the face and the words agree.
 42. As a player with the mascot off, I want the help prompt to be exactly what it is today, so that the mascot costs nothing when off.
-43. As a player with a custom help preset, I want to add the mascot chip to my prompt, so that my preset gets the persona too.
+43. As a player with a custom help preset, I want to add the mascot chip to my prompt, so that my preset gets the Voice too.
 44. As a developer, I want each face call in the AI Context trace, so that I can see when the model used it.
-45. As a developer, I want proof that the persona chip does not hurt answer quality, so that default on is safe.
+45. As a developer, I want proof that the Voice chip does not hurt answer quality, so that default on is safe.
 
 ## Implementation Decisions
 
 ### Mascot module
 
 - One new pure module holds the rig model, its codec and its composition. It has no React and no DOM.
-- A rig is a base image reference, an ordered list of layers, a Mask, three picks and a Persona text. A layer has an id, a name, a kind (expression or state), an enabled switch and an ordered list of image references. An image reference is an id in the mascot image store, or a bundled asset name for the default rig. A pick holds a layer id for its expression and a layer id for its state, either of which may be empty.
+- A rig is a base image reference, an ordered list of layers, a Mask, three picks and a Voice text. A layer has an id, a name, a kind (expression or state), an enabled switch and an ordered list of image references. An image reference is an id in the mascot image store, or a bundled asset name for the default rig. A pick holds a layer id for its expression and a layer id for its state, either of which may be empty.
 - The composition is one pure function. It takes the rig, the phase (initial, thinking, answering) and the AI's expression, and returns the ordered list of images to draw: the base, then the overlays of each active layer in list order. Active means: in the initial phase, the Initial pick's two layers; in the thinking phase, the Thinking pick's two layers; in the answering phase, the AI's expression if set, else the Idle pick's expression, plus the Idle pick's state in both cases. A disabled layer is never active. The function carries no other rule (Q2, Q11, Q21).
 - The codec reads a stored rig field by field. A bad layer drops; a bad pick clears; a missing Mask reads as the whole base. The default rig is the fallback for a missing or unreadable value.
 - The warning rule is a pure function: the picks that name a disabled or missing layer.
-- The default rig is built from bundled assets cut from the author's layered file. Its Persona text lives in code. The provisional rig (Q32, Q33): three arm states, Wave = [Wave, No Thinking], Rest = [No Wave, No Thinking], Thinking = [:O, No Wave, Thinking arm]; twelve composite faces with word names (Happy, Excited, Surprised, Pondering, Confused, Sad, Sleepy, Smitten, Dizzy, Wink, Flustered, Unimpressed); picks Initial = (none, Wave), Idle = (none, Rest), Thinking = (Pondering, Thinking). States first in the list, then the faces. The real defaults come from the user's in-app tuning, extracted by a later ticket.
+- The default rig is built from bundled assets cut from the author's layered file. Its Voice text lives in code. The provisional rig (Q32, Q33): three arm states, Wave = [Wave, No Thinking], Rest = [No Wave, No Thinking], Thinking = [:O, No Wave, Thinking arm]; twelve composite faces with word names (Happy, Excited, Surprised, Pondering, Confused, Sad, Sleepy, Smitten, Dizzy, Wink, Flustered, Unimpressed); picks Initial = (none, Wave), Idle = (none, Rest), Thinking = (Pondering, Thinking). States first in the list, then the faces. The real defaults come from the user's in-app tuning, extracted by a later ticket.
 
 ### Transition
 
@@ -160,7 +161,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 ### Help settings
 
 - The help settings value gains the mascot switch and the rig. The mascot switch defaults to on (Q15). The settings codec parses the rig through the mascot codec.
-- The three picks and the Persona are part of the rig, not separate device settings, so the card carries them (Q29).
+- The three picks and the Voice are part of the rig, not separate device settings, so the card carries them (Q29).
 
 ### Mascot image store
 
@@ -172,8 +173,8 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 
 - The help session gains one fixed function, the face call, offered beside the guide lookup and the help dice roll while the mascot is on and at least one expression is enabled. Its one parameter is the face name, with the enabled expressions' names as the enum. The capability gate of ADR-0008 applies: on an endpoint that takes no functions, nothing is offered and the window's phases still run.
 - Its handler yields a new session event that names the face. The answer events are unchanged. The trace records the call as it records every tool round, so AI Context shows it.
-- A new help chip stands for the persona. While the mascot is on, the chip sends the rig's Persona text; while it is off, or the Persona is empty, it sends nothing and leaves no blank line, as Markdown Guidance does. The Default help preset's answer prompt gains the chip. A custom preset that lacks the chip sends no persona (no chip, no injection).
-- The question carries the mascot switch and the Persona, as it carries every other setting: the session reads no context.
+- A new help chip stands for the Voice. While the mascot is on, the chip sends the rig's Voice text; while it is off, or the Voice is empty, it sends nothing and leaves no blank line, as Markdown Guidance does. The Default help preset's answer prompt gains the chip. A custom preset that lacks the chip sends no Voice (no chip, no injection).
+- The question carries the mascot switch and the Voice, as it carries every other setting: the session reads no context.
 - The reserved-name rule of ADR-0010 covers the face call's name, through the fixed-function list.
 
 ### Window
@@ -190,7 +191,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 ### Mascot tab
 
 - A fifth tab, Mascot, after Tools. It reports its Surface and gets a dev-route entry.
-- Rows: the switch; the Persona field; the rig preview with the Mask drag; the base image; the layer list; the three picks; the transition mode with its tuning and a Play button that runs it on the preview; Export, Import and Reset.
+- Rows: the switch; the Voice field; the rig preview with the Mask drag; the base image; the layer list; the three picks; the transition mode with its tuning and a Play button that runs it on the preview; Export, Import and Reset.
 - The layer list is a reorderable list. Each row shows the name, the kind, the switch and its overlays. Expanding a row shows the overlay list, itself reorderable, with add and remove.
 - Image upload reuses the existing image upload control. A file goes to the mascot image store; a link is refused, because the store holds blobs.
 - The pick dropdowns list enabled layers only, filtered by kind. A warning row names the picks that point at a disabled or missing layer (Q21).
@@ -199,7 +200,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 
 ### Mascot card
 
-- The card is a `.webp` that renders the Initial composition, with the rig in the image metadata as the entity card does. The metadata holds a marker, a version, the rig with every image as base64 (Q27), the picks and the Persona.
+- The card is a `.webp` that renders the Initial composition, with the rig in the image metadata as the entity card does. The metadata holds a marker, a version, the rig with every image as base64 (Q27), the picks and the Voice.
 - Parse is strict and names the bad field. Import replaces the whole rig or nothing: images go to the store first, the rig applies last.
 - The card is an export shape. A version field guards it from the first release.
 
@@ -214,7 +215,7 @@ A good test calls a module through its public operations and asserts on what a p
 
 Three seams:
 
-- **Help session (existing seam).** Drive it with the fake fetch option and a settings value. Cover: the face call offered only with the mascot on and only on an endpoint that takes functions; its enum equals the enabled expression names and changes when a layer is disabled; the persona chip text in the request body with the mascot on, and the body byte-equal to today's with it off; a face call yields the face event, and a second call in one answer yields a second; the trace records the call. Prior art: the help session tests and the tool loop tests.
+- **Help session (existing seam).** Drive it with the fake fetch option and a settings value. Cover: the face call offered only with the mascot on and only on an endpoint that takes functions; its enum equals the enabled expression names and changes when a layer is disabled; the Voice chip text in the request body with the mascot on, and the body byte-equal to today's with it off; a face call yields the face event, and a second call in one answer yields a second; the trace records the call. Prior art: the help session tests and the tool loop tests.
 - **Mascot module (new seam).** Pure tests of the composition: each phase draws the right overlays in list order; a disabled layer draws nothing; the AI's expression replaces the Idle expression and keeps the Idle state; an empty pick draws the base alone. The codec: a bad layer drops and the others stay; a missing value reads as the default rig; a rig without a transition reads as the default's. The warning rule. The timing function: None is a step; Dissolve ends at full opacity; Jelly starts and ends at scale one, dips below one, passes above one, and settles within its duration, for the default tuning and the range ends. The card: a round trip through build and parse, transition included; a file with an unknown version or a bad field is refused by name. Prior art: the help settings codec tests, the preset file tests, the entity card tests, the stat bar animation tests.
 - **Window and tab (component seam).** Thin tests: the initial look on the first open and not on the second; thinking on send; Idle at the first content token with no call; a face event before any content text keeps Thinking and the face shows at the first content token; the next send clears it; the pill toggle swaps full and head; the tab lists layers in order, the kind, the switches and the warning; the pick dropdowns hide disabled layers; Reset restores the default. Tests that mount Formaquestion keep the one mocked seam to the settings providers.
 
@@ -224,7 +225,7 @@ Other checks:
 - Playwright covers what jsdom cannot: the Mask drag, the three pieces side by side, the reader piece opening from a source name, the mobile head, the open motion with the mascot on, and the transition itself by per-frame sampling of the mascot's painted scale, because the Browser pane does not composite. Reduced motion under emulation swaps at once.
 - Each guard is proven: reinstate the old behavior and confirm the test fails.
 - Unmount during a stream leaves no timer, fetch or object URL behind; the suite's exit code is the check.
-- The persona chip is a prompt change. The help bar run goes out twice on cloud, mascot on and mascot off, with its in-batch control, and the on run must hold the bar (Q26). The probe harness gains the mascot switch and the Persona as inputs, as it takes the other help settings. The face call's description is new prompt text too, so the local arm reports how often the model sets a face on a plain help question.
+- The Voice chip is a prompt change. The help bar run goes out twice on cloud, mascot on and mascot off, with its in-batch control, and the on run must hold the bar (Q26). The probe harness gains the mascot switch and the Voice as inputs, as it takes the other help settings. The face call's description is new prompt text too, so the local arm reports how often the model sets a face on a plain help question.
 - The source scan of the surface registry covers the new tab.
 
 ## Out of Scope
@@ -233,7 +234,7 @@ Other checks:
 - Blinking, idle motion, lip sync, or motion inside a layer. The transition moves the whole mascot on a face change and nothing else.
 - More than one rig per device. Reset and import replace the one rig.
 - Sharing a rig through the community server.
-- A persona that changes the game's narration. The chip is a help chip.
+- A Voice that changes the game's narration. The chip is a help chip.
 - The minimal chrome as a choice with the mascot off (Q5).
 - A head view that is not a crop: a second rig for the head.
 - Pointing art. The layered file holds no pointing layer.

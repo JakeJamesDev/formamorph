@@ -9,7 +9,7 @@ Reasoning effort: high
 
 The player exports the mascot as one image and imports another's.
 
-- Export writes a `.webp` that renders the Initial composition, with the rig in the image metadata as an entity card does: a marker, a version, the rig with every image in full as base64, the picks, the Mask, the transition and the Persona.
+- Export writes a `.webp` that renders the Initial composition, with the rig in the image metadata as an entity card does: a marker, a version, the rig with every image in full as base64, the picks, the Mask, the transition and the Voice.
 - Import parses strictly and names the bad field. It replaces the whole rig or nothing: images go to the store first, the rig applies last; a failure leaves the current rig and store as they were.
 - The card is a new export shape with a version from its first release.
 
