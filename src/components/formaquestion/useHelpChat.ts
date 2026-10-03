@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toastAiRequestFailure } from '@/lib/aiRequest/aiRequestFailureToast';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
-import { askHelp } from '@/lib/formaquestion/helpSession';
+import { askHelp, type HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
 import type { HelpTrace } from '@/lib/formaquestion/helpTrace';
 import { helpWorld } from '@/lib/formaquestion/helpWorld';
@@ -41,6 +41,8 @@ export interface HelpExchange {
   nearest: readonly DocSection[];
   /** What the question sent, for AI Context. Absent until the search is done, and for a question no AI answered. */
   trace?: HelpTrace;
+  /** What the question waits on, while it is `writing` with no answer text. */
+  stage?: HelpStage;
 }
 
 export interface HelpChat {
@@ -108,6 +110,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
           const stopped = new Promise<'stopped'>((resolve) => {
             controller.signal.addEventListener('abort', () => resolve('stopped'), { once: true });
           });
+          change({ stage: 'checking' });
           const found = await Promise.race([aiRef.current.revalidate(), stopped]);
           if (found !== true) {
             change({ status: found === 'stopped' ? 'stopped' : 'no-ai' });
@@ -125,8 +128,9 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
         };
         for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, world, signal: controller.signal })) {
           if (event.type === 'trace') change({ trace: event.trace });
+          else if (event.type === 'stage') change({ stage: event.stage });
           else if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, event.text !== ''), flagged: event.flagged });
-          else change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, true), sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
+          else change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, true), sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered', stage: undefined });
         }
       } catch (error) {
         if (!mountedRef.current) return;

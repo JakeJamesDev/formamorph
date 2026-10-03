@@ -64,7 +64,8 @@ const bodyOf = (spy: ReturnType<typeof vi.fn<Responder>>, call = 0) =>
 
 async function ask(question: string, over: Partial<HelpQuestion>): Promise<{ events: HelpEvent[]; sources: string[]; done: Extract<HelpEvent, { type: 'done' }> }> {
   const events: HelpEvent[] = [];
-  for await (const event of askHelp({ question, settings: helpSettingsOf(), snapshot: textSnapshot(), index, ...over })) events.push(event);
+  // The stage events have their own test file.
+  for await (const event of askHelp({ question, settings: helpSettingsOf(), snapshot: textSnapshot(), index, ...over })) if (event.type !== 'stage') events.push(event);
   const done = events.at(-1);
   if (done?.type !== 'done') throw new Error('the question did not end');
   return { events, sources: done.sources.map((section) => section.id), done };

@@ -92,7 +92,15 @@ export interface HelpQuestion {
   fetchImpl?: typeof fetch;
 }
 
+/**
+ * What a question waits on before its answer text. `checking` is the reachability check the chat runs
+ * before the question; the rest come from the question as stage events, each when it starts.
+ */
+export type HelpStage = 'checking' | 'searching' | 'picking' | 'waiting' | 'lookingUp';
+
 export type HelpEvent =
+  /** A new stage started. The next stage, or the first answer text, ends it. */
+  | { type: 'stage'; stage: HelpStage }
   /** The answer so far. `flagged` once the general-knowledge marker came in. `reasoning` is the model's, native or inline. */
   | { type: 'answer'; text: string; flagged: boolean; reasoning: string }
   /**
@@ -356,6 +364,9 @@ export async function* askHelp({
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
+  // The keyword search is instant. The pick request and the semantic ranking take time, and picks take the name.
+  if (record && settings.sources.aiPicks) yield { type: 'stage', stage: 'picking' };
+  else if (record && settings.sources.semantic) yield { type: 'stage', stage: 'searching' };
   const search = record ? await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl, record }) : index;
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [], reasoning: '' };
@@ -403,6 +414,7 @@ export async function* askHelp({
     requests: [...(record?.pick ? [record.pick] : []), requestTrace('Answer', spec, customAnswer, result, rounds)],
   });
   yield { type: 'trace', trace: traceOf() };
+  yield { type: 'stage', stage: 'waiting' };
   let text = '';
   let marked = false;
   // Native reasoning of every round, inline reasoning of earlier rounds, and this round's content.
@@ -415,6 +427,7 @@ export async function* askHelp({
     if (event.type === 'toolRound') {
       rounds.push(event.round);
       yield { type: 'trace', trace: traceOf() };
+      yield { type: 'stage', stage: 'waiting' };
     } else if (event.type === 'toolCalls') {
       // What the model wrote before a call is not the answer, but its inline reasoning still is reasoning.
       earlierInline = joinReasoning(earlierInline, extractReasoningLive(content));
@@ -422,6 +435,7 @@ export async function* askHelp({
       if (text || marked) yield { type: 'answer', text: '', flagged: false, reasoning };
       text = '';
       marked = false;
+      yield { type: 'stage', stage: 'lookingUp' };
     } else if (event.type === 'reasoning' || event.type === 'delta') {
       if (event.type === 'reasoning') native = event.text;
       else content = event.content;

@@ -210,6 +210,8 @@ F1 does one of three things:
 
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
+Until the answer starts, a line under your question says what it waits on: **Checking your AI…** for a connection check, **Picking sections…** for the **AI Picks** request, **Searching the guide…** for **Semantic Search**, **Waiting for your AI…** for the answer request, and **Looking up…** while the AI reads more of the guide. While the model reasons, the **Thinking** header shows the wait instead.
+
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
 - **Thinking**, above an answer, shows how the AI reasoned, when your model reasons. It starts closed. Open or close one, and later answers start the same way.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
