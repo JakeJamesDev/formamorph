@@ -288,18 +288,20 @@ The file holds the three prompts, the answer options, your **My Tools**, and the
 - A file from a different version, or a file that is not complete, is refused. Nothing changes.
 
 ### Tools
-<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text -->
+<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text, dice, roll, random number -->
+
 
 The **Tools** tab lists the functions your AI can call while it answers. It uses the layout of **Settings** → **Tools**: the list on the left, and the selected function on the right. **Built-In** holds the functions that ship with the app. **My Tools** holds the Tools you make for help questions.
 
 | Function | Default | What it does |
 |---|---|---|
 | **read_guide** | Off | The guide lookup. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. |
+| **roll** | Off | A dice roll. Ask your AI to roll, such as "roll two six-sided dice", and it rolls and gives you the total. |
 
 - **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
-- **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default of 3.
+- **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default: 3 for **read_guide**, 4 for **roll**.
 - The panel also shows the text your AI reads about the function, and its parameters.
-- The guide lookup is part of the app. You can't edit, copy or delete it.
+- **read_guide** and **roll** are part of the app. You can't edit, copy or delete them.
 - The **Tools** switch under **Settings** → **Output** does not apply to Formaquestion.
 
 A function goes out only when the **Answer Endpoint** takes function calls. If it doesn't, or the app hasn't confirmed it yet, the tab shows a note, and each question goes out as one request with no function. The default cloud endpoint takes no function calls.
@@ -312,7 +314,7 @@ A function goes out only when the **Answer Endpoint** takes function calls. If i
 
 **My Tools.** Make your own Tools for help questions, and Formaquestion can work as a chat assistant for the world you have open. They are a list of their own: a Tool you make here never goes to a game prompt, and a Tool from **Settings** → **Tools** does not show here.
 
-- **New Tool** opens the same editor as **Settings** → **Tools**. See [The Tool Editor](Tools#the-tool-editor). A Tool can't take the name of a built-in function, such as **read_guide**.
+- **New Tool** opens the same editor as **Settings** → **Tools**. See [The Tool Editor](Tools#the-tool-editor). A Tool can't take the name of a built-in function: **read_guide** or **roll**.
 - **Enabled** turns a Tool on or off. A Tool you save here starts on, and a Tool from a Tool pack is off until you turn it on. A help preset file sets the switches of its own Tools. This device keeps the switches.
 - **Max Calls per Request** caps the calls for one question. Leave it blank for the default of 4. There is no **Offered To**, because one request takes every Tool that is on.
 - **Edit** and **Delete** act on the selected Tool. **Delete** can't be undone.

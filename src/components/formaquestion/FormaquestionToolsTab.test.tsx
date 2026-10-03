@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, getDefaultNormalizer, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
-import { DEFAULT_HELP_SETTINGS, HELP_LOOKUP_CALL_LIMIT_MAX, helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { HELP_ROLL } from '@/lib/formaquestion/helpRoll';
+import { DEFAULT_HELP_SETTINGS, HELP_CALL_LIMIT_MAX, helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { helpWorld } from '@/lib/formaquestion/helpWorld';
 import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { sentenceShapeViolation } from '@/test/copyShape';
@@ -37,9 +38,9 @@ const enabledBox = () => screen.getByRole('checkbox', { name: 'Enabled' });
 afterEach(() => vi.clearAllMocks());
 
 describe('the Formaquestion Tools tab', () => {
-  it('lists the guide lookup under Built-In and My Tools with New Tool, and no preset select', () => {
+  it('lists the guide lookup and the dice roll under Built-In and My Tools with New Tool, and no preset select', () => {
     renderTab();
-    expect(listed()).toEqual([DOCS_LOOKUP.name, 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, 'New Tool']);
     expect(screen.getByText('My Tools')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import Tools' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Export Tools' })).toBeDisabled();
@@ -68,19 +69,63 @@ describe('the Formaquestion Tools tab', () => {
     renderTab();
     expect(limitBox()).toHaveValue('');
     expect(limitBox()).toHaveAttribute('placeholder', String(DEFAULT_HELP_SETTINGS.lookupCallLimit));
-    expect(limitBox()).toHaveAccessibleDescription(`Takes up to ${HELP_LOOKUP_CALL_LIMIT_MAX} calls. Leave blank for the default of ${DEFAULT_HELP_SETTINGS.lookupCallLimit}.`);
+    expect(limitBox()).toHaveAccessibleDescription(`Takes up to ${HELP_CALL_LIMIT_MAX} calls. Leave blank for the default of ${DEFAULT_HELP_SETTINGS.lookupCallLimit}.`);
     await user.type(limitBox(), '5');
     expect(help.lookupCallLimit).toBe(5);
     expect(limitBox()).toHaveValue('5');
     await user.clear(limitBox());
     expect(help.lookupCallLimit).toBe(DEFAULT_HELP_SETTINGS.lookupCallLimit);
     await user.type(limitBox(), '99');
-    expect(help.lookupCallLimit).toBe(HELP_LOOKUP_CALL_LIMIT_MAX);
+    expect(help.lookupCallLimit).toBe(HELP_CALL_LIMIT_MAX);
   });
 
-  it('offers no edit, copy or delete action on the guide lookup', () => {
-    renderTab({ lookup: true });
-    for (const name of ['Edit', 'Duplicate', 'Delete']) expect(screen.queryByRole('button', { name })).toBeNull();
+  it('offers no edit, copy or delete action on the guide lookup or the dice roll', async () => {
+    const user = userEvent.setup();
+    renderTab({ lookup: true, roll: true });
+    for (const row of [DOCS_LOOKUP.name, HELP_ROLL.name]) {
+      await user.click(list().getByRole('button', { name: row }));
+      for (const name of ['Edit', 'Duplicate', 'Delete']) expect(screen.queryByRole('button', { name }), `${row}: ${name}`).toBeNull();
+    }
+  });
+
+  describe('the dice roll', () => {
+    const selectRoll = async (user: ReturnType<typeof userEvent.setup>) => user.click(list().getByRole('button', { name: HELP_ROLL.name }));
+
+    it('shows its own description and the catalog roll’s parameter', async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await selectRoll(user);
+      expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(HELP_ROLL.name);
+      // The description is one line per field, as the model reads it.
+      expect(screen.getByText(HELP_ROLL.description, { normalizer: getDefaultNormalizer({ collapseWhitespace: false }) })).toBeInTheDocument();
+      expect(screen.getByText(HELP_ROLL.params[0].description)).toBeInTheDocument();
+    });
+
+    it('turns on and off with its own switch, off by default, and leaves the lookup as it was', async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await selectRoll(user);
+      const enabled = screen.getByRole('checkbox', { name: 'Enabled' });
+      expect(enabled).not.toBeChecked();
+      await user.click(enabled);
+      expect(help).toMatchObject({ roll: true, lookup: false });
+      await user.click(enabled);
+      expect(help.roll).toBe(false);
+    });
+
+    it('sets its own Max Calls per Request, and a blank field is the catalog roll’s default', async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await selectRoll(user);
+      expect(limitBox()).toHaveValue('');
+      expect(limitBox()).toHaveAttribute('placeholder', String(DEFAULT_HELP_SETTINGS.rollCallLimit));
+      await user.type(limitBox(), '7');
+      expect(help).toMatchObject({ rollCallLimit: 7, lookupCallLimit: DEFAULT_HELP_SETTINGS.lookupCallLimit });
+      await user.clear(limitBox());
+      expect(help.rollCallLimit).toBe(DEFAULT_HELP_SETTINGS.rollCallLimit);
+      await user.type(limitBox(), '99');
+      expect(help.rollCallLimit).toBe(HELP_CALL_LIMIT_MAX);
+    });
   });
 
   it('says so when the answer endpoint does not take function calls, and never names the Output switch', () => {
@@ -103,7 +148,7 @@ describe('the player’s Formaquestion Tools', () => {
   it('list under My Tools, off by default, with Max Calls per Request and no Offered To', async () => {
     const user = userEvent.setup();
     renderTab({ tools: [FIND_PERSON] });
-    expect(listed()).toEqual([DOCS_LOOKUP.name, FIND_PERSON.name, 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, FIND_PERSON.name, 'New Tool']);
     await user.click(list().getByRole('button', { name: FIND_PERSON.name }));
     expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(FIND_PERSON.name);
     expect(enabledBox()).not.toBeChecked();
@@ -158,7 +203,7 @@ describe('the player’s Formaquestion Tools', () => {
     const [made] = help.tools;
     expect(made).toMatchObject({ name: 'find_person', offeredTo: [] });
     expect(help.toolSwitches).toEqual({ [made.id]: true });
-    expect(listed()).toEqual([DOCS_LOOKUP.name, 'find_person', 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, 'find_person', 'New Tool']);
   });
 
   it('open in the editor from Edit, with the Tool’s own name', async () => {
