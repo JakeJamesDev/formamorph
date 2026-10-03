@@ -25,7 +25,7 @@ It carries no endpoint, no token and no other device setting. Build the file fro
 **Import.** An action beside the preset select.
 
 - The preset joins the list under its name, with a suffix on a name conflict, and becomes active.
-- The Tools join the Formaquestion list under the Tool import plan: a rename on a name conflict.
+- The Tools join the Formaquestion list under the Tool import plan: a Tool whose name the list already holds is skipped and named in the message (Q60). The switch of a skipped Tool is not applied; the stored Tool keeps its own.
 - The switches apply to the device settings, for the Tools of the file and the fixed functions only.
 - A file with an unknown version, a missing field or a wrong type is refused with a message. Nothing is applied in part.
 - A chip that this build does not know reads as plain text.
@@ -40,7 +40,7 @@ Recommended model rationale: a new export shape with a version, and an import th
 
 - [ ] Export then import on a clean profile gives the same three texts, the same answer options, the same Tools and the same switches.
 - [ ] The file holds no endpoint, token or other setting (a test reads the exported keys against the field list).
-- [ ] A name conflict on the preset and on a Tool resolves with no data loss.
+- [ ] A name conflict on the preset gets a suffix; a name conflict on a Tool skips that Tool and names it. Nothing already stored changes.
 - [ ] A file of an unknown version or a broken shape is refused, and no preset, Tool or switch changes.
 - [ ] The Default preset has no export action.
 - [ ] A changelog line is in In Progress.
