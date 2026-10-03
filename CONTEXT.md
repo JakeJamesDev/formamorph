@@ -83,6 +83,26 @@ _Avoid_: model (in copy), VRM (the file format, not the thing)
 The image on an account, shown beside a username. Code calls it an avatar; copy never does.
 _Avoid_: avatar (in copy), profile picture, user image
 
+**Supporter**:
+An account linked to a Patreon membership at the $5 tier. The server reads the tier from Patreon and keeps it current.
+_Avoid_: patron, subscriber, donor, backer
+
+**Supporter+**:
+The $10 tier. It has its own badge style, its own name color, and the top section of the Supporters wall.
+_Avoid_: premium, pro, supporter plus (in copy)
+
+**Supporter Flair**:
+What a Supporter shows to other people: a badge, a tier name color, a Profile Image ring, and a place on the Supporters wall. One toggle, **Show Supporter Flair**, hides all of it. No feature depends on it, and a staff account shows only its staff badge.
+_Avoid_: perks, rewards, supporter status
+
+**Supporters wall**:
+The page on formamorph.ai that lists linked accounts with a tier, Supporter+ first and longer tenure first. It never lists a Patreon member who did not link.
+_Avoid_: hall of fame, donor list, credits
+
+**Patreon link**:
+The tie between one Formamorph account and one Patreon user, made in the account settings after the member approves it on Patreon. Unlink removes it at once.
+_Avoid_: Patreon login, connection (the AI endpoint word), integration
+
 **Permissive License**:
 The verdict that a VRM's embedded 1.0 metadata grants every right the community catalog needs — everyone may use it, it may be redistributed, modified copies may be redistributed, and commercial use is allowed. Read from the file, never declared. A gate on publishing, not a badge.
 _Avoid_: license check (the act), open license, free

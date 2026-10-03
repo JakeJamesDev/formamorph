@@ -307,3 +307,19 @@ describe('filter row reference', () => {
     expect(within(userTab).getByRole('button', { name: 'Reset Filters' })).toBeDisabled();
   });
 });
+
+describe('supporter flair reference', () => {
+  it('shows badges, names, and ringed Profile Images in both themes beside the staff badges', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Supporter Flair' }));
+
+    for (const theme of ['Light Theme', 'Dark Theme']) {
+      const panel = screen.getByRole('region', { name: theme });
+      expect(within(panel).getAllByText('Supporter').length).toBeGreaterThan(0);
+      expect(within(panel).getAllByText('Supporter+').length).toBeGreaterThan(0);
+      for (const staff of ['Mod', 'Dev', 'Admin']) expect(within(panel).getAllByText(staff).length).toBeGreaterThan(0);
+      expect(panel.querySelectorAll('[class*="ring-supporter"]').length).toBeGreaterThan(0);
+    }
+  });
+});
