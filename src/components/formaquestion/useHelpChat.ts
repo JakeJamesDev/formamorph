@@ -28,6 +28,8 @@ export interface HelpExchange {
   answer: string;
   /** The model's reasoning so far, native or inline. */
   reasoning: string;
+  /** How long the reasoning took, from its first text to the answer's first text. Absent while it runs. */
+  reasoningMs?: number;
   status: HelpStatus;
   /** The docs sections that reached the model. */
   sources: readonly DocSection[];
@@ -113,10 +115,18 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
           }
         }
         const { snapshot, language } = aiRef.current;
+        // The reasoning time runs from its first text to the answer's first text, or to the end.
+        let reasoningAt = 0;
+        let reasoningMs: number | undefined;
+        const timeReasoning = (reasoning: string, answered: boolean) => {
+          if (reasoning && !reasoningAt) reasoningAt = performance.now();
+          if (reasoningAt && answered && reasoningMs === undefined) reasoningMs = Math.round(performance.now() - reasoningAt);
+          return reasoningMs;
+        };
         for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, world, signal: controller.signal })) {
           if (event.type === 'trace') change({ trace: event.trace });
-          else if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, flagged: event.flagged });
-          else change({ answer: event.text, reasoning: event.reasoning, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
+          else if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, event.text !== ''), flagged: event.flagged });
+          else change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, true), sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }
       } catch (error) {
         if (!mountedRef.current) return;

@@ -73,8 +73,8 @@ afterEach(() => {
 });
 
 describe('Formaquestion Settings', () => {
-  it('opens from the gear on General, with four tabs, and the window stays usable above it', async () => {
-    const { field } = await openAsk();
+  it('opens from the gear on General, with four tabs, and the window waits closed until the dialog closes', async () => {
+    await openAsk();
     const dialog = await openSettings();
 
     expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools']);
@@ -83,11 +83,12 @@ describe('Formaquestion Settings', () => {
     expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'true', 'false', 'true', 'false']);
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
-    // jsdom loads no stylesheet, so it reads the open dialog's `pointer-events: none` on the body and not the
-    // window's `pointer-events-auto`. Playwright checks the press; this checks focus and typing.
-    await userEvent.setup({ pointerEventsCheck: 0 }).type(field, 'Still here');
-    expect(field).toHaveValue('Still here');
-    expect(settingsDialog()).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Formaquestion' })).toHaveAttribute('data-state', 'closed');
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());
+    expect(screen.getByRole('dialog', { name: 'Formaquestion' })).toHaveAttribute('data-state', 'open');
+    expect(screen.getByRole('textbox', { name: 'Ask a Question' })).toHaveFocus();
   });
 
   it('reports the dialog and its tab to the surface registry', async () => {

@@ -1,13 +1,13 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react';
-import { CircleHelp, PanelLeftClose, PanelLeftOpen, ScrollText, Settings, X } from 'lucide-react';
+import { CircleHelp, PanelLeft, ScrollText, Settings, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { DragHandlers } from './usePointerDrag';
 
 /**
- * The Formaquestion window's frame: a title bar that moves it, the AI Context button, the settings gear,
- * the Wide View and Close controls, the content, and a corner grip that resizes it. The caller places it
+ * The Formaquestion window's frame: a title bar that moves it, the AI Context button, the Wide View toggle,
+ * the settings gear, the Close control, the content, and a corner grip that resizes it. The caller places it
  * and owns the moves. As a mobile sheet it has no frame lines and larger controls.
  */
 export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutRef<'section'> & {
@@ -53,11 +53,6 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
             </Button>
           </Tip>
         )}
-        <Tip tip="Formaquestion Settings">
-          <Button variant="ghost" size="icon" aria-label="Formaquestion Settings" onClick={onOpenSettings} className={sheet ? 'h-12 w-12' : 'h-8 w-8'}>
-            <Settings className="h-4 w-4" />
-          </Button>
-        </Tip>
         {onSwapWidth && (
           <Tip tip="Wide View">
             <Button
@@ -67,14 +62,27 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
               onClick={onSwapWidth}
               className={cn('h-8 w-8', wide && 'bg-accent text-accent-foreground')}
             >
-              {wide ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+              <PanelLeft className="h-4 w-4" />
             </Button>
           </Tip>
         )}
-        <Tip tip={sheet ? 'Close' : 'Close (F1)'}>
-          <Button variant="ghost" size="icon" aria-label="Close Formaquestion" onClick={onClose} className={sheet ? 'h-12 w-12' : 'h-8 w-8'}>
-            <X className="h-4 w-4" />
+        <Tip tip="Formaquestion Settings">
+          <Button variant="ghost" size="icon" aria-label="Formaquestion Settings" onClick={onOpenSettings} className={sheet ? 'h-12 w-12' : 'h-8 w-8'}>
+            <Settings className="h-4 w-4" />
           </Button>
+        </Tip>
+        <Tip tip={sheet ? 'Close' : 'Close (F1)'}>
+          <button
+            type="button"
+            aria-label="Close Formaquestion"
+            onClick={onClose}
+            className={cn(
+              'inline-flex items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+              sheet ? 'h-12 w-12' : 'h-8 w-8',
+            )}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </Tip>
       </div>
     </header>

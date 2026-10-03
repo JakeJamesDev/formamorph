@@ -35,7 +35,9 @@ async function send(field: HTMLElement, question: string) {
 const REASONING = 'The player wants the Traits page.';
 /** A native reasoning model: the scratchpad streams in its own field, then the answer. */
 const reasoned = () => [sseFrame({ reasoning_content: REASONING }), ...sseReply('Select **Add Trait**.')];
-const thinkingToggles = () => within(conversation()).getAllByRole('button', { name: 'Thinking' });
+/** The toggle reads "Thinking…" while the model reasons, then "Thought for Ns". */
+const THINKING = /^(Thinking…|Thought for \d+s)$/;
+const thinkingToggles = () => within(conversation()).getAllByRole('button', { name: THINKING });
 
 beforeEach(() => {
   localStorage.clear();
@@ -52,12 +54,15 @@ describe('the Thinking block of an answer', () => {
     stubHelpStream(reasoned());
     const field = await openAsk();
     await send(field, 'How do I add a trait?');
-    const toggle = await within(conversation()).findByRole('button', { name: 'Thinking' });
+    const toggle = await within(conversation()).findByRole('button', { name: THINKING });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(conversation()).not.toHaveTextContent(REASONING);
+    // The chevron points right while closed and down while open.
+    expect(toggle.querySelector('svg')).not.toHaveClass('rotate-90');
 
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle.querySelector('svg')).toHaveClass('rotate-90');
     expect(conversation()).toHaveTextContent(REASONING);
     // Above the answer text.
     const text = conversation().textContent!;
@@ -69,14 +74,14 @@ describe('the Thinking block of an answer', () => {
     const field = await openAsk();
     await send(field, 'How do I add a trait?');
     await within(conversation()).findByRole('button', { name: 'Sources' });
-    expect(within(conversation()).queryByRole('button', { name: 'Thinking' })).toBeNull();
+    expect(within(conversation()).queryByRole('button', { name: THINKING })).toBeNull();
   });
 
   it('shows inline reasoning in the block and keeps it out of the answer text', async () => {
     stubHelpStream(sseReply('<think>Check the Traits tab.</think>Select **Add Trait**.'));
     const field = await openAsk();
     await send(field, 'How do I add a trait?');
-    await userEvent.click(await within(conversation()).findByRole('button', { name: 'Thinking' }));
+    await userEvent.click(await within(conversation()).findByRole('button', { name: THINKING }));
     const block = within(conversation()).getByRole('group', { name: 'Thinking' });
     expect(block).toHaveTextContent('Check the Traits tab.');
     expect(conversation().textContent!.match(/Check the Traits tab\./g)).toHaveLength(1);
@@ -86,7 +91,7 @@ describe('the Thinking block of an answer', () => {
     stubHelpStream(reasoned());
     const field = await openAsk();
     await send(field, 'How do I add a trait?');
-    await userEvent.click(await within(conversation()).findByRole('button', { name: 'Thinking' }));
+    await userEvent.click(await within(conversation()).findByRole('button', { name: THINKING }));
     expect(stored()).toMatchObject({ thinkingOpen: true, sourcesOpen: true });
     expect(within(conversation()).getByRole('button', { name: 'Sources' })).toHaveAttribute('aria-expanded', 'true');
 
@@ -103,12 +108,12 @@ describe('the Thinking block of an answer', () => {
     stubHelpStream(reasoned());
     const field = await openAsk();
     await send(field, 'How do I add a trait?');
-    await userEvent.click(await within(conversation()).findByRole('button', { name: 'Thinking' }));
+    await userEvent.click(await within(conversation()).findByRole('button', { name: THINKING }));
     cleanup();
 
     const again = await openAsk();
     await send(again, 'How do I add a trait?');
-    expect(await within(conversation()).findByRole('button', { name: 'Thinking' })).toHaveAttribute('aria-expanded', 'true');
+    expect(await within(conversation()).findByRole('button', { name: THINKING })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('keeps the waiting line while the model reasons and no answer text exists', async () => {
@@ -126,11 +131,14 @@ describe('the Thinking block of an answer', () => {
     stubHelpStream(() => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
     const field = await openAsk();
     await send(field, 'How do I add a trait?');
-    await within(conversation()).findByRole('button', { name: 'Thinking' });
+    // The header pulses while the model reasons, and the time shows once the answer starts.
+    await within(conversation()).findByRole('button', { name: 'Thinking…' });
     expect(conversation()).toHaveTextContent('Writing an answer…');
 
     await act(async () => { finish(); });
     await vi.waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
     expect(conversation()).not.toHaveTextContent('Writing an answer…');
+    expect(within(conversation()).getByRole('button', { name: /^Thought for \d+s$/ })).toBeInTheDocument();
+    expect(within(conversation()).queryByRole('button', { name: 'Thinking…' })).toBeNull();
   });
 });

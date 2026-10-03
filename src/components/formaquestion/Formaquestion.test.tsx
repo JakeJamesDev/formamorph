@@ -377,6 +377,25 @@ describe('the window on the screen', () => {
     expect(frame().style.width).toBe(`${WIDE_WIDTH}px`);
   });
 
+  it('orders the title bar controls Wide View, Settings, Close, and Wide View keeps one icon in both states', async () => {
+    setScreenWidth(1600);
+    vi.stubGlobal('innerHeight', 900);
+    await openSearch();
+    const header = frame().querySelector('header')!;
+    const order = () => {
+      const buttons = within(header).getAllByRole('button');
+      return ['Wide View', 'Formaquestion Settings', 'Close Formaquestion'].map((name) => buttons.indexOf(within(header).getByRole('button', { name })));
+    };
+    expect(order()).toEqual([0, 1, 2]);
+
+    const wideView = within(header).getByRole('button', { name: 'Wide View' });
+    const icon = wideView.querySelector('svg')!.getAttribute('class');
+    await userEvent.click(wideView);
+    expect(wideView).toHaveAttribute('aria-pressed', 'true');
+    expect(wideView.querySelector('svg')!.getAttribute('class')).toBe(icon);
+    expect(order()).toEqual([0, 1, 2]);
+  });
+
   it('swaps to the wide layout and back with Wide View, keeps the open section, and stores the width', async () => {
     setScreenWidth(1600);
     vi.stubGlobal('innerHeight', 900);

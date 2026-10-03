@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent } from 'react';
-import { ChevronDown, ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
+import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { ChevronRight, Eraser, Info, SendHorizontal, Square } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import { ReasoningBody } from '@/components/game/ReasoningBlock';
+import { ReasoningBody, ThinkingLabel } from '@/components/game/ReasoningBlock';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,6 +18,7 @@ import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpS
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
+import { useAutoGrowTextarea } from '@/lib/useAutoGrowTextarea';
 import { cn } from '@/lib/utils';
 import { SectionRows } from './GuideParts';
 import { FOCUS_RING, readerComponents } from './readerLinks';
@@ -29,6 +30,10 @@ const FALLBACK_RESULT_LIMIT = 5;
 
 /** How near the end, in pixels, the conversation must be for new text to keep it at the end. */
 const FOLLOW_SLACK = 48;
+
+/** The ask field's one-line height, which matches the Send button, and the height it grows to before it scrolls. */
+const ASK_FIELD_LINE_H = 40;
+const ASK_FIELD_MAX_H = 240;
 
 /** The line above the docs search that takes the place of an answer, or of the rest of one. */
 function fallbackLine(status: Extract<HelpStatus, 'no-ai' | 'failed'>, partial: boolean, matched: boolean): string {
@@ -61,8 +66,8 @@ function GeneralKnowledgeNotice() {
   );
 }
 
-/** The toggle of a foldable block under or above an answer. */
-function FoldToggle({ open, label, onToggle }: { open: boolean; label: string; onToggle: () => void }) {
+/** The toggle of a foldable block under or above an answer. The chevron points down while the block is open. */
+function FoldToggle({ open, label, onToggle }: { open: boolean; label: ReactNode; onToggle: () => void }) {
   return (
     <button
       type="button"
@@ -70,15 +75,17 @@ function FoldToggle({ open, label, onToggle }: { open: boolean; label: string; o
       onClick={onToggle}
       className={cn('flex w-fit items-center gap-1 rounded text-meta text-muted-foreground', FOCUS_RING)}
     >
-      <ChevronDown aria-hidden className={cn('h-3 w-3 shrink-0', open && 'rotate-180')} />
+      <ChevronRight aria-hidden className={cn('h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none', open && 'rotate-90')} />
       {label}
     </button>
   );
 }
 
-/** The model's reasoning, muted, above its answer. */
-function Thinking({ text, settings, onSettingsChange }: {
+/** The model's reasoning, muted, above its answer. The header pulses until the answer text starts. */
+function Thinking({ text, ms, active, settings, onSettingsChange }: {
   text: string;
+  ms: number;
+  active: boolean;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
 }) {
@@ -87,7 +94,7 @@ function Thinking({ text, settings, onSettingsChange }: {
   if (!text) return null;
   return (
     <div role="group" aria-label="Thinking" className="flex flex-col gap-1">
-      <FoldToggle open={fold.open} label="Thinking" onToggle={fold.toggle} />
+      <FoldToggle open={fold.open} label={<ThinkingLabel active={active} ms={ms} />} onToggle={fold.toggle} />
       {fold.open && <ReasoningBody text={text} className="[&_:first-child]:mt-0" />}
     </div>
   );
@@ -100,7 +107,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
 }) {
-  const { answer, reasoning, status, sources, question, flagged, nearest } = exchange;
+  const { answer, reasoning, reasoningMs, status, sources, question, flagged, nearest } = exchange;
   // A flagged answer lists the nearest sections in place of its sources.
   const listed = flagged ? nearest : sources;
   const listLabel = flagged ? 'Nearest Sections' : 'Sources';
@@ -119,7 +126,7 @@ function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   );
   return (
     <div className="flex flex-col gap-2 text-label">
-      <Thinking text={reasoning} settings={settings} onSettingsChange={onSettingsChange} />
+      <Thinking text={reasoning} ms={reasoningMs ?? 0} active={status === 'writing' && !answer} settings={settings} onSettingsChange={onSettingsChange} />
       {flagged && answer && <GeneralKnowledgeNotice />}
       {answer && (
         <div data-reveal className="[&_:first-child]:mt-0" style={revealVars(spec) as CSSProperties}>
@@ -220,6 +227,7 @@ function AskField({ draft, onDraftChange, chat }: {
 }) {
   const { busy, held, readsImages, pending, setPending, ask, stop } = chat;
   const { attaching, dragOver, attachFiles, intakeProps } = useAttachmentIntake({ enabled: readsImages, pending, setPending });
+  const grow = useAutoGrowTextarea(draft, ASK_FIELD_LINE_H, ASK_FIELD_MAX_H);
   const question = draft.trim();
   const canSend = !busy && !held && question.length > 0;
   const send = () => {
@@ -243,14 +251,14 @@ function AskField({ draft, onDraftChange, chat }: {
           <AttachImagesButton attaching={attaching} onFiles={(files) => void attachFiles(files)} variant="outline" className="shrink-0" />
         )}
         <Textarea
+          {...grow.fieldProps}
           data-fq-autofocus=""
           aria-label="Ask a Question"
           placeholder="Ask a Question"
           value={draft}
-          rows={2}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={onKeyDown}
-          className="min-h-[44px] resize-none"
+          className={cn('h-10 min-h-10 resize-none leading-normal', grow.stateClass)}
         />
         {busy ? (
           <Tip tip="Stop">
