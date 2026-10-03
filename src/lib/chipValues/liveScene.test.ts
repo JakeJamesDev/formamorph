@@ -153,13 +153,14 @@ describe('the live adapter', () => {
       expect(chipValues(liveChipScene(cast))['<ENTITIES>']).not.toContain('traits');
     });
 
-    it("joins the played entity's owned traits to the player's", () => {
+    it("renders the played entity's owned traits in the Persona chip, resolved for it", () => {
       const scar: Trait = { id: 'scar', name: 'Scarred', aiDescription: '{{char}} carries a scar.', statChanges: [] };
       const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traits: [scar] };
       const values = chipValues(liveChipScene({
         ...cast, persona: { source: 'world', entity: wren }, ownedTraits: { wren: { chosen: ['scar'] } },
       }));
-      expect(values['<TRAITS DESCRIPTION>']).toBe('Sea Legs: Steady on any deck.\nScarred: Wren carries a scar.');
+      expect(values['<TRAITS DESCRIPTION>']).toBe('Sea Legs: Steady on any deck.');
+      expect(values['<PERSONA>']).toContain('  traits:\n    Scarred: Wren carries a scar.');
     });
   });
 
@@ -192,9 +193,9 @@ describe('the live adapter', () => {
       expect(chipValues(liveChipScene(real(null)))['<ENTITIES>']).not.toContain('Paladin');
     });
 
-    it("joins the played world persona's linked trait to the player's, named for the persona", () => {
+    it("renders the played world persona's linked trait in the Persona chip, named for the persona", () => {
       const values = chipValues(liveChipScene(real({ source: 'world', entity: wren }, { ownedTraits: { wren: { chosen: ['paladin'] } } })));
-      expect(values['<TRAITS DESCRIPTION>']).toBe('Paladin: Wren swore the oath.');
+      expect(values['<PERSONA>']).toContain('  traits:\n    Paladin: Wren swore the oath.');
     });
 
     it("names the player in the player's group text", () => {

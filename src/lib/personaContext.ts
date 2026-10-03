@@ -1,4 +1,4 @@
-import { expandScopedTokens, renderEntityRoster, type ContextOpts } from './locationContext';
+import { expandScopedTokens, renderEntityRoster, type OwnedTraitsInForce, type RosterOpts } from './locationContext';
 import type { ResolvedPersona } from './persona';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 
@@ -8,10 +8,11 @@ export const knownPersonaLine = (name: string): string =>
 
 /**
  * The `<PERSONA>` chip's value: the entity the player plays, as one entity block. Full and Summary are the
- * entity builder's own rendering, so a persona reads exactly like a cast member; a world persona adds the
- * known-person line. Name is the name and pronouns only, for use inside a sentence.
+ * entity builder's own rendering, its owned traits in force included, so a persona reads exactly like a cast
+ * member; a world persona adds the known-person line. Name is the name and pronouns only, for use inside a
+ * sentence.
  */
-export function buildPersonaContext(persona: ResolvedPersona | null, opts: ContextOpts = {}): string {
+export function buildPersonaContext(persona: ResolvedPersona | null, opts: RosterOpts = {}): string {
   if (!persona) return NONE_PLACEHOLDER;
   const { entity } = persona;
   if (opts.nameOnly) {
@@ -23,6 +24,6 @@ export function buildPersonaContext(persona: ResolvedPersona | null, opts: Conte
 }
 
 /** Every `<PERSONA>` token (content × format) mapped to its value. */
-export function personaContextValues(persona: ResolvedPersona | null): Record<string, string> {
-  return expandScopedTokens('<PERSONA>', { '': (opts) => buildPersonaContext(persona, opts) });
+export function personaContextValues(persona: ResolvedPersona | null, ownedTraits?: OwnedTraitsInForce): Record<string, string> {
+  return expandScopedTokens('<PERSONA>', { '': (opts) => buildPersonaContext(persona, { ...opts, ownedTraits }) });
 }

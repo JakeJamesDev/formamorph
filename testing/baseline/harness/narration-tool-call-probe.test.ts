@@ -107,17 +107,16 @@ describe('description experiment controls', () => {
     expect(variant).toEqual(baseline);
   });
 
-  it('relabels entity summaries without changing the location, cached lore, or request controls', () => {
+  it('gets summary labels from production, so the summary-label arm matches its baseline', () => {
     const input = { caseId: 'summary-label', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { roleOnly: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
     const baseline = prepareNarrationToolCallCase(input).request;
     const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, summaryLabel: true } }).request;
-    const system = variant.messages[0].content!;
+    const system = baseline.messages[0].content!;
     expect(system).toContain('- **Bram**\n  - **summary:**');
     expect(system).toContain('- **Odette**\n  - **summary:**');
     expect(system).toContain('- **Rope Ferry**\n  - **summary:**');
     expect(system.match(/\*\*summary:\*\*/g)).toHaveLength(3);
-    variant.messages[0].content = system.replaceAll('  - **summary:**', '  - **description:**');
     expect(variant).toEqual(baseline);
   });
 
@@ -324,8 +323,8 @@ describe('narration tool-call probe preparation', () => {
     const system = prepared.request.messages[0].content;
     expect(system).toContain('## Entity information');
     expect(system).toContain('Submit the finished story through write');
-    expect(system).toContain("- **Bram**\n  - **description:** The one-armed ferryman who won't cross after dark.");
-    expect(system).toContain('- **Odette**\n  - **description:** The scarred eel-smoker waiting to cross; distrusts strangers.');
+    expect(system).toContain("- **Bram**\n  - **summary:** The one-armed ferryman who won't cross after dark.");
+    expect(system).toContain('- **Odette**\n  - **summary:** The scarred eel-smoker waiting to cross; distrusts strangers.');
     expect(system).not.toContain('his left sleeve is pinned up');
     expect(system).not.toContain('green glass bead braided into her hair');
     expect(system).not.toMatch(/<[A-Z][A-Z _-]*(?:\|[^>\n]+)?>/);

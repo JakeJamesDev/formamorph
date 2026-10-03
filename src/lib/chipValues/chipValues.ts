@@ -67,21 +67,14 @@ export function chipValues(scene: ChipScene): Record<string, string> {
   };
 
   const traitIds = scene.traits.map((trait) => trait.id);
-  // The played entity's owned traits are the player's too, after the world's.
-  const played = scene.persona?.entity;
-  const playedIds = (played && scene.ownedTraits?.[played.id]) || [];
   const values: Record<string, string> = {
     [WORLD.token]: scene.overview,
     ...statChipValues(scene.stats),
-    ...familyValues(TRAITS, (sel) => {
-      const format = chipFormat(sel.format);
-      const blocks = [
-        buildTraitContext(traitIds, scene.traits, scene.traitGroups, format),
-        played ? buildTraitContext(playedIds, played.traits ?? [], played.traitGroups ?? [], format) : '',
-      ].filter(Boolean);
-      return blocks.length ? blocks.join('\n') : NONE_PLACEHOLDER;
-    }),
-    ...personaContextValues(scene.persona),
+    ...familyValues(TRAITS, (sel) => (
+      buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format)) || NONE_PLACEHOLDER
+    )),
+    // The played entity's owned traits render in its own block, as a cast member's do.
+    ...personaContextValues(scene.persona, scene.ownedTraits),
     ...familyValues(DICTIONARY, (sel) => {
       const position = sel.variant === 'before' ? 'before' : 'after';
       const entries = scene.lore.filter((entry) => (entry.position ?? 'after') === position);

@@ -15,6 +15,9 @@
 // `--linked` builds the same traits as Templates originals that each bearer links, with `{{char}}` in place of
 // the owner's name, through the bearer resolver. It prints whether its chips match the owned build byte for byte.
 //
+// `--placement` keeps every owned trait in force in both arms and moves only the played persona's: `before`
+// lists them after the world traits in the Traits chip, `after` nests them in the Persona chip.
+//
 // Usage: npx vite-node testing/baseline/harness/owned-traits-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 12] [--max 600] [--only narr-bram,plan-odette] [--pool 4]
 //          [--dump] [--show] [--linked]
@@ -25,6 +28,9 @@ import { resolveBearers } from '@/lib/bearers';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { withBearerTrees } from '@/lib/ownedTraitsInPlay';
+import { personaContextValues } from '@/lib/personaContext';
+import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
+import { buildTraitContext } from '@/lib/traitTree';
 import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { resolveEntityTexts, resolveOwnedTraitTexts } from '@/lib/resolveWorldNames';
@@ -43,6 +49,7 @@ const maxTokens = Number(argVal('--max', '600'));
 const pool = Number(argVal('--pool', '4'));
 const only = argVal('--only', '');
 const ARMS = ['before', 'after'] as const;
+const placement = args.includes('--placement');
 const SEED = 515151;
 
 const BASELINE = path.resolve('testing/baseline');
@@ -107,7 +114,16 @@ function buildCtx(linked: boolean) {
     persona: { source: 'world', entity: played },
     ownedTraits: arm === 'after' ? inForce : {},
   });
-  return { before: ctxFor('before'), after: ctxFor('after') };
+  const after = ctxFor('after');
+  if (!placement) return { before: ctxFor('before'), after };
+  // The played persona's traits after the world's in the Traits chip, and a Persona chip with none.
+  const personaBlock = (token: string) => buildTraitContext(inForce[persona.id] ?? [], played.traits ?? [], played.traitGroups ?? [],
+    token.includes('xml') ? 'xml' : token.includes('markdown') ? 'markdown' : 'simple');
+  const bare = personaContextValues({ source: 'world', entity: played });
+  const before = Object.fromEntries(Object.entries(after).map(([token, value]) => [token,
+    token.startsWith('<TRAITS DESCRIPTION') ? (value === NONE_PLACEHOLDER ? personaBlock(token) : `${value}\n${personaBlock(token)}`)
+    : token in bare ? bare[token] : value]));
+  return { before, after };
 }
 const CTX = buildCtx(args.includes('--linked'));
 if (args.includes('--linked')) {
@@ -187,6 +203,7 @@ if (args.includes('--dump')) {
     console.log(`\n--- ${arm}: Traits chip\n${CTX[arm]['<TRAITS DESCRIPTION|markdown>']}`);
     console.log(`--- ${arm}: Entities chip\n${CTX[arm]['<ENTITIES|markdown>']}`);
     console.log(`--- ${arm}: Entities summary chip\n${CTX[arm]['<ENTITIES|summary.markdown>']}`);
+    console.log(`--- ${arm}: Persona chip\n${CTX[arm]['<PERSONA|markdown>']}`);
   }
   process.exit(0);
 }
