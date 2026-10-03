@@ -388,7 +388,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
               style="height: 40px;"
             >
               <textarea
-                class="absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 h-10 overflow-hidden whitespace-nowrap"
+                class="absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden whitespace-nowrap h-10"
                 placeholder="Type your action... [square brackets] direct the story as the author"
                 rows="1"
                 style="overflow-y: hidden;"
@@ -980,7 +980,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               style="height: 40px;"
             >
               <textarea
-                class="absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 h-10 overflow-hidden whitespace-nowrap"
+                class="absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden whitespace-nowrap h-10"
                 placeholder="Type your action... [square brackets] direct the story as the author"
                 rows="1"
                 style="overflow-y: hidden;"

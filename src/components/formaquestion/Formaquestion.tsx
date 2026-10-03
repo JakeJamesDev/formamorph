@@ -121,9 +121,12 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const chat = useHelpChat(index, ai, settings);
 
   // A dialog opened from the window. On the sheet it fills the screen, so the sheet hides under it and keeps its state.
+  // On the desktop the window closes while the dialog is open, and opens again when the dialog closes.
   const [dialog, setDialog] = useState<FormaquestionDialog | null>(null);
   const [settingsTab, setSettingsTab] = useState<FormaquestionSettingsTab>('general');
   const covered = sheet && dialog !== null;
+  // Set while the window waits behind a dialog, with the element focus goes back to when the window closes.
+  const reopen = useRef<{ focus: HTMLElement | null } | null>(null);
 
   // A resize keeps the window on the screen. At a mobile width the sheet shows and the box waits unchanged.
   useEffect(() => {
@@ -158,6 +161,22 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const closeWindow = useCallback(() => {
     aimAtTab();
     setOpen(false);
+  }, [aimAtTab]);
+
+  const openDialog = useCallback((kind: FormaquestionDialog) => {
+    setDialog(kind);
+    if (sheet || !open) return;
+    reopen.current = { focus: returnFocusRef.current };
+    closeWindow();
+  }, [sheet, open, closeWindow]);
+  const closeDialog = useCallback(() => {
+    setDialog(null);
+    const waiting = reopen.current;
+    reopen.current = null;
+    if (!waiting) return;
+    returnFocusRef.current = waiting.focus;
+    aimAtTab();
+    setOpen(true);
   }, [aimAtTab]);
 
   // A "Learn more" link or a notice asks for a docs heading. The window opens now and shows it once the
@@ -335,8 +354,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           data-fq-sheet={sheet ? '' : undefined}
           onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
           sheet={sheet}
-          onOpenAiContext={settings.showAiContext ? () => setDialog('aiContext') : undefined}
-          onOpenSettings={() => setDialog('settings')}
+          onOpenAiContext={settings.showAiContext ? () => openDialog('aiContext') : undefined}
+          onOpenSettings={() => openDialog('settings')}
           onClose={closeWindow}
           {...(sheet ? {
             className: cn('app-viewport pointer-events-auto', SHEET_MOTION[origin?.edge ?? 'right'], covered && 'invisible'),
@@ -360,7 +379,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       )}
       <FormaquestionSettings
         open={dialog === 'settings' && !suspended}
-        onOpenChange={(next) => setDialog(next ? 'settings' : null)}
+        onOpenChange={(next) => (next ? setDialog('settings') : closeDialog())}
         tab={settingsTab}
         onTabChange={setSettingsTab}
         settings={settings}
@@ -370,7 +389,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       />
       <FormaquestionAiContext
         open={dialog === 'aiContext' && !suspended}
-        onOpenChange={(next) => setDialog(next ? 'aiContext' : null)}
+        onOpenChange={(next) => (next ? setDialog('aiContext') : closeDialog())}
         exchanges={tracedExchanges}
       />
       {import.meta.env.DEV && (

@@ -30,6 +30,7 @@ import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubble
 import { rewriteTurnAction } from '@/lib/turnHistory';
 import { copyWithToast } from '@/lib/clipboard';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
+import { useAutoGrowTextarea } from '@/lib/useAutoGrowTextarea';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
@@ -421,49 +422,25 @@ const ActionInput = ({
   placeholder: string;
   disabled: boolean;
 }) => {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const [focused, setFocused] = useState(false);
   // The wrapper mirrors the grown height so the box is real layout, not an overlay: the row above it moves
   // up instead of being covered, which is what lets it clear the on-screen keyboard.
-  const [height, setHeight] = useState(ACTION_INPUT_LINE_H);
-
-  // Size the textarea to its content while focused (bounded, then scroll); reset to the one-line anchor when
-  // blurred. Runs on every value/focus change so growth tracks typing.
-  React.useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (!focused) {
-      el.style.height = "";
-      el.style.overflowY = "hidden";
-      setHeight(ACTION_INPUT_LINE_H);
-      return;
-    }
-    el.style.height = "auto";
-    const h = Math.min(Math.max(el.scrollHeight, ACTION_INPUT_LINE_H), ACTION_INPUT_MAX_H);
-    el.style.height = `${h}px`;
-    el.style.overflowY = el.scrollHeight > ACTION_INPUT_MAX_H ? "auto" : "hidden";
-    setHeight(h);
-  }, [value, focused]);
+  const { height, focused, stateClass, fieldProps } = useAutoGrowTextarea(value, ACTION_INPUT_LINE_H, ACTION_INPUT_MAX_H);
 
   return (
     <div className="relative flex-grow mr-2 flex-shrink-0" style={{ height }} data-testid="action-input-wrap">
       <textarea
-        ref={ref}
-        rows={1}
+        {...fieldProps}
         value={value}
         onChange={onChange}
         onKeyDown={onKeyDown}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
           // ring-inset (no ring-offset): the focus glow draws inside the box so the overflow-hidden panel
           // walls can't clip it (the box sits flush against them).
           "absolute inset-x-0 bottom-0 w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-helper leading-normal placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-          focused
-            ? "z-20 shadow-lg whitespace-pre-wrap"
-            : "h-10 overflow-hidden whitespace-nowrap",
+          stateClass,
+          focused ? "z-20 shadow-lg" : "h-10",
         )}
       />
     </div>
