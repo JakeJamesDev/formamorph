@@ -1,6 +1,7 @@
 # 12: Compare to Default
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: abd4cf3b
 Blocked by: 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
