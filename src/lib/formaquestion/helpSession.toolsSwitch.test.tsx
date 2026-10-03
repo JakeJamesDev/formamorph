@@ -6,6 +6,7 @@ import { useHelpAi } from '@/components/formaquestion/useHelpAi';
 import { useHelpChat, type HelpChat } from '@/components/formaquestion/useHelpChat';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
+import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseReply, textTarget } from '@/test/aiTextFixtures';
 import { stubHelpStream } from '@/test/helpFixtures';
@@ -19,7 +20,7 @@ let chat: HelpChat;
 function Window() {
   settings = useSettings();
   const ai = useHelpAi(false);
-  chat = useHelpChat(index, { ...ai, snapshot: { ...ai.snapshot, resolveTarget: () => capable } });
+  chat = useHelpChat(index, { ...ai, snapshot: { ...ai.snapshot, resolveTarget: () => capable } }, DEFAULT_HELP_SETTINGS);
   return null;
 }
 

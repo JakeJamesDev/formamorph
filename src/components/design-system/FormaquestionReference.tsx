@@ -92,7 +92,7 @@ function SampleWindow() {
   const chat = useSampleChat();
   const style = useMemo(() => ({ width: wide ? WIDE_WIDTH : NARROW_WIDTH, height: 480 }), [wide]);
   return (
-    <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onClose={() => {}} className="relative max-w-full" style={style}>
+    <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full" style={style}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} chat={chat} />
     </FormaquestionFrame>
   );
@@ -103,7 +103,7 @@ function SampleSheet() {
   const [view, changeView] = useGuideView();
   const chat = useSampleChat();
   return (
-    <FormaquestionFrame sheet onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
+    <FormaquestionFrame sheet onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} chat={chat} />
     </FormaquestionFrame>
   );

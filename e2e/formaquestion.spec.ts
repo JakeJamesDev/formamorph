@@ -189,6 +189,32 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(searchField(page)).toHaveValue('endpoint preset');
   });
 
+  test('the gear opens Formaquestion Settings under the window, and the player uses both', async ({ page }) => {
+    await openApp(page);
+    await openHelp(page);
+    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
+    const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
+    await expect(help).toBeVisible();
+    await help.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const box = await settledBox(page);
+    const onTop = await helpWindow(page).evaluate((el, { x, y }) => document.elementFromPoint(x, y)?.closest('#formaquestion-window') === el, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    expect(onTop, 'the window is above the settings').toBe(true);
+    await moveWindowClearOf(page, help);
+
+    await askField(page).click();
+    await page.keyboard.type('typed above the settings');
+    await expect(askField(page)).toHaveValue('typed above the settings');
+    const picks = help.getByRole('checkbox', { name: 'AI Picks' });
+    await picks.click();
+    await expect(picks).toHaveAttribute('aria-checked', 'false');
+    expect(await focusOwner(page)).toBe('dialog');
+
+    await page.keyboard.press('Escape');
+    await expect(help).toBeHidden();
+    await expect(helpWindow(page)).toBeVisible();
+    await expect(askField(page)).toHaveValue('typed above the settings');
+  });
+
   test('Escape from the window closes the dialog, keeps the window and its search text, and leaves focus in the window', async ({ page }) => {
     await openHelpOverSettings(page);
     await searchField(page).click();
@@ -750,6 +776,29 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await expect(helpWindow(page)).toHaveCount(0);
     await expect(settings(page)).toBeVisible();
     await expect(model).toHaveValue('typed-before-help');
+  });
+
+  test('the gear hides the sheet under Formaquestion Settings, and the sheet comes back as it was', async ({ page }) => {
+    await openApp(page);
+    await openSheet(page);
+    await showSearch(page);
+    await searchField(page).fill('endpoint');
+
+    await helpWindow(page).getByRole('button', { name: 'Formaquestion Settings' }).click();
+    const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
+    await expect(help).toBeVisible();
+    await help.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    await expect(helpWindow(page)).toBeHidden();
+    const dialogOnTop = await help.evaluate((el) => el.contains(document.elementFromPoint(187, 400)));
+    expect(dialogOnTop, 'the settings are on top at the center of the screen').toBe(true);
+    const keyword = help.getByRole('checkbox', { name: 'Keyword Search' });
+    await keyword.click();
+    await expect(keyword).toHaveAttribute('aria-checked', 'false');
+
+    await help.getByRole('button', { name: 'Close' }).click();
+    await expect(help).toBeHidden();
+    await expect(helpWindow(page)).toBeVisible();
+    await expect(searchField(page)).toHaveValue('endpoint');
   });
 
   test('with the keyboard open, the sheet and its field stay in the visible area', async ({ page }) => {
