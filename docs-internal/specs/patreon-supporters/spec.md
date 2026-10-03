@@ -183,6 +183,7 @@ Rulings from ticket 03 (2026-10-02):
 - The author object gains one field, `supporter`. It is null or `{ tier, since }`. `tier` is `supporter` or `supporter_plus`. `since` is the pledge start or null.
 - The server decides who shows flair. `supporter` is null when the account has no tier, when the flair toggle is off, and when the account is staff (Q2).
 - `supporter` is always read live (A4). Feedback keeps its role snapshot, and the supporter field does not join it.
+- **Ruling from ticket 04 (2026-10-02):** the staff rule follows the `role` the same payload shows. Where the payload snapshots the role (feedback), the snapshot decides; everywhere else the live role decides. A name never carries a staff badge and a supporter badge together, and a reply snapshotted as normal shows flair even when the account is staff today. The membership itself stays live.
 - The field is additive. Old clients ignore it.
 
 ### Account routes (server)
