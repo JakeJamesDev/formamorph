@@ -1,7 +1,7 @@
 # 06: Hourly Reconcile and Token Refresh
 
 Status: ready-for-human
-Status note: Built in FormamorphServer 3ed8b05 (server base 16f1202). The token pair lives in an internal settings key, `patreon_creator_tokens`, that the staff settings routes answer 404 for. The first read refreshes the environment pair, so the server learns `expires_in` at once. A failed early refresh keeps the current token. New env value: `PATREON_CREATOR_REFRESH_TOKEN`. Server suite: 2046 tests green in 25 s.
+Status note: Built in FormamorphServer 3ed8b05 and ad0f01d (server base 16f1202). The token pair lives in an internal settings key, `patreon_creator_tokens`, that the staff settings routes answer 404 for. The first read refreshes the environment pair, so the server learns `expires_in` at once. A failed early refresh keeps the current token. A stored pair without `expires_in` counts as not expiring and refreshes only on a refusal. New env value: `PATREON_CREATOR_REFRESH_TOKEN`. Server suite: 2056 tests green in 33 s.
 Base: aade0d2e
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
