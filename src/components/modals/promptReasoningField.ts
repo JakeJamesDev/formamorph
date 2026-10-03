@@ -24,6 +24,8 @@ export interface PromptReasoningFieldProps {
   copy?: ReasoningFieldCopy | null;
   /** The switch's element id, so two fields never share one. */
   id?: string;
+  /** The switch's accessible name, where the row around the field carries the visible label. */
+  switchLabel?: string;
 }
 
 /** What the reasoning field reads off a resolved endpoint. */

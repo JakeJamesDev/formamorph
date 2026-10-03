@@ -83,14 +83,64 @@ describe('the reasoning of a help question', () => {
     }
   });
 
-  it('sends the default settings as the help kind sent them before it had a reasoning setting', async () => {
-    // Bodies recorded at the base commit of this change, with the game reasoning hard everywhere.
+  it('sends reasoning off on both requests with the default settings, whatever the game reasons', async () => {
+    const withoutMessages = ({ messages: _messages, ...rest }: Body) => rest;
     const openrouter = await bodies({}, gameReasons(reasoner('openrouter')));
-    expect(openrouter.answer).toMatchObject({ max_tokens: 800, reasoning: { effort: 'none' } });
-    expect(openrouter.pick).toMatchObject({ reasoning: { effort: 'none' } });
+    expect(withoutMessages(openrouter.answer)).toMatchInlineSnapshot(`
+      {
+        "max_tokens": 800,
+        "model": "m",
+        "reasoning": {
+          "effort": "none",
+        },
+        "repeat_penalty": 1,
+        "repetition_penalty": 1,
+        "stream": true,
+        "temperature": 0.2,
+      }
+    `);
+    expect(withoutMessages(openrouter.pick)).toMatchInlineSnapshot(`
+      {
+        "max_tokens": 150,
+        "model": "m",
+        "reasoning": {
+          "effort": "none",
+        },
+        "repeat_penalty": 1,
+        "repetition_penalty": 1,
+        "stream": true,
+        "temperature": 0.2,
+      }
+    `);
     const engine = await bodies({}, gameReasons(reasoner('engine', { localEngine: true })));
-    expect(engine.answer).toMatchObject({ max_tokens: 800, thinking_budget_tokens: 0 });
-    expect(engine.pick).toMatchObject({ thinking_budget_tokens: 0 });
+    expect(withoutMessages(engine.answer)).toMatchInlineSnapshot(`
+      {
+        "max_tokens": 800,
+        "min_p": 0.05,
+        "model": "m",
+        "repeat_penalty": 1,
+        "repetition_penalty": 1,
+        "stream": true,
+        "temperature": 0.2,
+        "thinking_budget_tokens": 0,
+        "top_k": 40,
+        "top_p": 0.95,
+      }
+    `);
+    expect(withoutMessages(engine.pick)).toMatchInlineSnapshot(`
+      {
+        "max_tokens": 150,
+        "min_p": 0.05,
+        "model": "m",
+        "repeat_penalty": 1,
+        "repetition_penalty": 1,
+        "stream": true,
+        "temperature": 0.2,
+        "thinking_budget_tokens": 0,
+        "top_k": 40,
+        "top_p": 0.95,
+      }
+    `);
   });
 
   it('sends the native reasoning text with the answer events', async () => {

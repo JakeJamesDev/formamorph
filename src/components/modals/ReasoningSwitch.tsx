@@ -21,8 +21,10 @@ export type ReasoningStrength<L extends string> =
  * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
  * and engine share; what sits beside it depends on the engine. `id` labels the switch for assistive tech.
  */
-export function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, strength, disabled, lockedOn }: {
+export function ReasoningSwitch<L extends string>({ id, label = SETTINGS_COPY.nativeReasoning.label, enabled, onEnabledChange, strength, disabled, lockedOn }: {
   id: string;
+  /** The switch's accessible name, matching the visible label of its row. */
+  label?: string;
   enabled: boolean;
   onEnabledChange: (on: boolean) => void;
   /** Absent where the target takes neither a level nor a budget, so the switch is the whole control. */
@@ -43,7 +45,7 @@ export function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange
           checked={lockedOn || enabled}
           disabled={disabled || lockedOn}
           onCheckedChange={(c) => onEnabledChange(c === true)}
-          aria-label={SETTINGS_COPY.nativeReasoning.label}
+          aria-label={label}
         />
       </span>
       {strength?.kind === 'level' && (

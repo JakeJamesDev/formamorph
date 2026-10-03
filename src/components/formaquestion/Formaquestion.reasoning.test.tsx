@@ -37,7 +37,7 @@ async function openSettings() {
   return settingsDialog();
 }
 
-const reasoningSwitch = (dialog: HTMLElement) => within(dialog).getAllByRole('checkbox')[0];
+const reasoningSwitch = (dialog: HTMLElement) => within(dialog).getByRole('checkbox', { name: 'Reasoning' });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
@@ -76,7 +76,7 @@ describe('the Reasoning row', () => {
   it('shows the field for a model that awaits proof: its switch, with no level the wire would drop', async () => {
     ai.current = reasoningAi({ ...reasoningCapabilityFromLevels(['none', 'low', 'high'], 'probe'), dialect: 'vllm' });
     const dialog = await openSettings();
-    expect(within(dialog).getAllByRole('checkbox')).toHaveLength(5);
+    expect(reasoningSwitch(dialog)).toBeInTheDocument();
     expect(within(dialog).queryByRole('combobox')).toBeNull();
     expect(within(dialog).queryByText(REASONING_NOTES.never)).toBeNull();
   });
@@ -86,7 +86,6 @@ describe('the Reasoning row', () => {
     const dialog = await openSettings();
     expect(within(dialog).getByText(REASONING_NOTES.never)).toBeInTheDocument();
     expect(within(dialog).queryByRole('combobox')).toBeNull();
-    // Keyword Search, AI Picks, Semantic Search, Use the Open Screen: no reasoning switch.
-    expect(within(dialog).getAllByRole('checkbox')).toHaveLength(4);
+    expect(within(dialog).queryByRole('checkbox', { name: 'Reasoning' })).toBeNull();
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { reasoningExpandPref, setReasoningExpandPref } from '@/lib/reasoningCollapsePref';
+import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 /**
@@ -38,10 +39,17 @@ export function ReasoningBlock({ text, ms, active }: { text: string; ms: number;
         )}
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-1 border-l-2 border-border pl-3 text-helper leading-snug text-muted-foreground [&_h1]:text-helper [&_h2]:text-helper [&_h3]:text-helper [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
-          <MarkdownRenderer text={text} />
-        </div>
+        <ReasoningBody text={text} className="mt-1" />
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+/** A model's reasoning as markdown, muted and smaller than the text it precedes. */
+export function ReasoningBody({ text, className }: { text: string; className?: string }) {
+  return (
+    <div className={cn('border-l-2 border-border pl-3 text-helper leading-snug text-muted-foreground [&_h1]:text-helper [&_h2]:text-helper [&_h3]:text-helper [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1', className)}>
+      <MarkdownRenderer text={text} />
+    </div>
   );
 }

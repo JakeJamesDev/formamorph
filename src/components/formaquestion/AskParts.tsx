@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Eraser, Info, SendHorizontal, Square } from 
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
+import { ReasoningBody } from '@/components/game/ReasoningBlock';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,11 +88,7 @@ function Thinking({ text, settings, onSettingsChange }: {
   return (
     <div role="group" aria-label="Thinking" className="flex flex-col gap-1">
       <FoldToggle open={fold.open} label="Thinking" onToggle={fold.toggle} />
-      {fold.open && (
-        <div className="border-l-2 border-border pl-3 text-helper leading-snug text-muted-foreground [&_:first-child]:mt-0 [&_h1]:text-helper [&_h2]:text-helper [&_h3]:text-helper [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
-          <MarkdownRenderer text={text} />
-        </div>
-      )}
+      {fold.open && <ReasoningBody text={text} className="[&_:first-child]:mt-0" />}
     </div>
   );
 }
