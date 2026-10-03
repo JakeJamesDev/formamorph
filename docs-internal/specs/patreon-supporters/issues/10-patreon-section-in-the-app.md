@@ -1,6 +1,7 @@
 # 10: Patreon Section in the App
 
-Status: ready-for-agent
+Status: in-progress
+Base: b6c69c76
 Blocked by: 01, 09
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

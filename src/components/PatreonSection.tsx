@@ -70,6 +70,8 @@ interface PatreonSectionProps {
   returned?: PatreonReturn | null;
   /** A suspended account can read its status, but the server refuses every write. */
   suspended?: boolean;
+  /** Reads the status again when the window gets focus or becomes visible. For the app, where the link finishes in another window. */
+  refreshOnFocus?: boolean;
   className?: string;
 }
 
@@ -79,7 +81,7 @@ interface PatreonSectionProps {
  * One component for the site's account page and the app's Settings tab. It talks to the account service
  * only, so it stays inside the site bundle boundary.
  */
-export function PatreonSection({ openAuthorize, returned = null, suspended = false, className }: PatreonSectionProps) {
+export function PatreonSection({ openAuthorize, returned = null, suspended = false, refreshOnFocus = false, className }: PatreonSectionProps) {
   const mounted = useMountedRef();
   // `undefined` while the first read is out, `null` when it failed.
   const [status, setStatus] = useState<PatreonStatus | null | undefined>(undefined);
@@ -89,6 +91,9 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
   const [attempt, setAttempt] = useState(0);
   // The confirm token is spent on any attempt, so each read runs once even when StrictMode re-runs effects.
   const ran = useRef(-1);
+  // Read by the focus listener, so a refresh never lands on top of a write in flight.
+  const busyRef = useRef(false);
+  busyRef.current = busy;
 
   useEffect(() => {
     if (ran.current === attempt) return;
@@ -105,6 +110,7 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
         const next = held ? await PatreonService.confirm(held) : await PatreonService.getStatus();
         if (!mounted.current) return;
         setStatus(next);
+        if (held) setNotice({ kind: 'success', text: 'Patreon is linked. If you started in the app, return to it.' });
         // A `taken`, `denied`, `expired` or `failed` redirect stored no link; its message still applies.
         if (stated) setNotice(stated);
       } catch (failure) {
@@ -129,6 +135,25 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
     void settle();
   }, [mounted, returned, attempt]);
 
+  useEffect(() => {
+    if (!refreshOnFocus) return;
+
+    const refresh = () => {
+      if (document.visibilityState === 'hidden' || busyRef.current) return;
+      PatreonService.getStatus().then(
+        (next) => { if (mounted.current && !busyRef.current) setStatus(next); },
+        () => { /* The next focus tries again; the last status stays on screen. */ },
+      );
+    };
+
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [refreshOnFocus, mounted]);
+
   /** Run one write, show its failure on the section, and adopt the status it returns. */
   const write = async (action: () => Promise<PatreonStatus>, failure: string) => {
     setNotice(null);
@@ -148,8 +173,10 @@ export function PatreonSection({ openAuthorize, returned = null, suspended = fal
     setBusy(true);
     try {
       const url = await PatreonService.startLink();
-      // Left busy on success: the browser is leaving for Patreon.
-      if (mounted.current) openAuthorize(url);
+      if (!mounted.current) return;
+      openAuthorize(url);
+      // The app stays open beside the browser. The site is leaving for Patreon, so it stays busy.
+      if (refreshOnFocus) setBusy(false);
     } catch (error) {
       if (!mounted.current) return;
       setNotice({ kind: 'error', text: (error as Error).message || 'Could not start the link.' });
