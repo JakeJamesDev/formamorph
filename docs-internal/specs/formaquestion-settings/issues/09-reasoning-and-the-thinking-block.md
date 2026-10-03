@@ -22,6 +22,7 @@ A player with a reasoning model lets it think about a help question, and reads t
 
 - An answer with reasoning text shows a Thinking block above the answer text.
 - It follows the Sources rule from ticket 08, with its own stored default. The first default is closed.
+- Ticket 08 built that rule as one reusable hook (`useFoldRule`) and stores the Sources default as a field of the help settings value. Reuse the hook, and add the Thinking default as a second field of that value and its codec (Q53). No separate storage key.
 - An answer takes the default when its first reasoning text arrives.
 - While the model reasons and no answer text exists, the waiting line stays.
 
