@@ -20,7 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext';
 import {
-  REVEAL_EASINGS, REVEAL_DIRECTIONS, REVEAL_SCALE_MODES, revealActive, revealAnimName, revealVars,
+  REVEAL_EASINGS, REVEAL_DIRECTIONS, REVEAL_RANGES, REVEAL_SCALE_MODES, revealActive, revealAnimName, revealVars,
   DEFAULT_REVEAL_EASING, DEFAULT_REVEAL_FADE, DEFAULT_REVEAL_MOVE, DEFAULT_REVEAL_MOVE_DIRECTION,
   DEFAULT_REVEAL_MOVE_DISTANCE, DEFAULT_REVEAL_SCALE, DEFAULT_REVEAL_SCALE_MODE, DEFAULT_REVEAL_SCALE_DIRECTION,
   DEFAULT_REVEAL_SCALE_AMOUNT, DEFAULT_REVEAL_BLUR, DEFAULT_REVEAL_BLUR_AMOUNT,
@@ -50,7 +50,7 @@ const COPY = {
     resetDescription: 'Reset all narration reveal settings to their defaults?',
   },
   answer: {
-    title: 'Answer reveal',
+    title: 'Answer Reveal',
     srDescription: 'Preview the answer reveal and tune its animation.',
     noEffects: 'No effects. Answers show with no animation.',
     speed: 'Answers reveal at a default pace, but never go faster than these floors.',
@@ -230,7 +230,7 @@ function RevealAnimationDialog({ open, onOpenChange, source, kind }: { open: boo
                 </label>
                 <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Distance: {revealMoveDistance.toFixed(2)}em</span>
-                  <Slider value={[revealMoveDistance]} min={0.1} max={2} step={0.05} onValueChange={(v) => setRevealMoveDistance(v[0])} />
+                  <Slider value={[revealMoveDistance]} {...REVEAL_RANGES.moveDistance} onValueChange={(v) => setRevealMoveDistance(v[0])} />
                 </label>
               </div>
             )}
@@ -262,7 +262,7 @@ function RevealAnimationDialog({ open, onOpenChange, source, kind }: { open: boo
                 )}
                 <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Start scale: {revealScaleAmount.toFixed(2)}</span>
-                  <Slider value={[revealScaleAmount]} min={0.05} max={0.9} step={0.05} onValueChange={(v) => setRevealScaleAmount(v[0])} />
+                  <Slider value={[revealScaleAmount]} {...REVEAL_RANGES.scaleAmount} onValueChange={(v) => setRevealScaleAmount(v[0])} />
                 </label>
               </div>
             )}
@@ -279,7 +279,7 @@ function RevealAnimationDialog({ open, onOpenChange, source, kind }: { open: boo
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-6">
                 <label className="flex flex-col gap-1 text-label">
                   <span className="text-muted-foreground">Amount: {revealBlurAmount}px</span>
-                  <Slider value={[revealBlurAmount]} min={1} max={12} step={1} onValueChange={(v) => setRevealBlurAmount(v[0])} />
+                  <Slider value={[revealBlurAmount]} {...REVEAL_RANGES.blurAmount} onValueChange={(v) => setRevealBlurAmount(v[0])} />
                 </label>
               </div>
             )}
@@ -309,11 +309,11 @@ function RevealAnimationDialog({ open, onOpenChange, source, kind }: { open: boo
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="flex flex-col gap-1 text-label">
                 <span className="text-muted-foreground">Min fade duration: {revealMinDuration === 0 ? 'Unlimited' : `${revealMinDuration}ms`}</span>
-                <Slider value={[revealMinDuration]} min={0} max={1400} step={50} onValueChange={(v) => setRevealMinDuration(v[0])} />
+                <Slider value={[revealMinDuration]} {...REVEAL_RANGES.minDuration} onValueChange={(v) => setRevealMinDuration(v[0])} />
               </label>
               <label className="flex flex-col gap-1 text-label">
                 <span className="text-muted-foreground">Min word stagger: {revealMinStagger === 0 ? 'Unlimited' : `${revealMinStagger}ms`}</span>
-                <Slider value={[revealMinStagger]} min={0} max={150} step={5} onValueChange={(v) => setRevealMinStagger(v[0])} />
+                <Slider value={[revealMinStagger]} {...REVEAL_RANGES.minStagger} onValueChange={(v) => setRevealMinStagger(v[0])} />
               </label>
             </div>
             <label className="flex items-center gap-2 text-helper text-muted-foreground">
