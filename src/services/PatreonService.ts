@@ -42,6 +42,15 @@ async function request<T>(path: string, method: string, failure: string, body?: 
   return payload.data as T;
 }
 
+/** One row of the Supporters wall, in the order the server sends. */
+export interface Supporter {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  tier: SupporterTier;
+  since: string | null;
+}
+
 /** The account calls behind the Patreon section. */
 export const PatreonService = {
   /** Patreon's approval page for this account. The caller sends the browser there. */
@@ -60,4 +69,19 @@ export const PatreonService = {
     request<PatreonStatus>('', 'PATCH', 'Could not save the flair setting.', { showFlair }),
 
   unlink: () => request<PatreonStatus>('', 'DELETE', 'Could not unlink Patreon.'),
+
+  /** The public Supporters wall. Needs no sign-in. */
+  async getSupporters(): Promise<Supporter[]> {
+    const failure = 'Could not load the Supporters wall.';
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE_URL}/patreon/supporters`);
+    } catch {
+      throw new PatreonError(failure);
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new PatreonError(payload.error || failure, payload.code ?? null);
+    return payload.data as Supporter[];
+  },
 };

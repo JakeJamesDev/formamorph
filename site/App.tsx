@@ -6,6 +6,7 @@ import { OwnProfilePage } from './pages/OwnProfilePage';
 import { ProfilePage } from './pages/ProfilePage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { SupportersPage } from './pages/SupportersPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { profileUsername, useSiteLocation } from './router';
 
@@ -22,6 +23,7 @@ const ROUTES = {
   '/reset-password': { title: 'Reset Password · Formamorph', page: ResetPasswordPage },
   '/profile': { title: 'Your Profile · Formamorph', page: OwnProfilePage },
   '/account': { title: 'Your Account · Formamorph', page: AccountPage },
+  '/supporters': { title: 'Supporters · Formamorph', page: SupportersPage },
   '/verify-email': { title: 'Verify Email · Formamorph', page: VerifyEmailPage },
 } as const;
 
