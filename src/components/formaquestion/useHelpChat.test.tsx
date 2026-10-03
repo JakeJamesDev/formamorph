@@ -37,7 +37,7 @@ afterEach(() => {
 describe('useHelpChat', () => {
   it('takes one question at a time: a second ask while the first runs adds nothing and sends nothing', async () => {
     const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     act(() => {
       result.current.ask('How do I add a trait?');
       result.current.ask('And a stat?');
@@ -61,7 +61,7 @@ describe('useHelpChat', () => {
     const fetchSpy = stubHelpStream(sseReply('Unused.'));
     let finishCheck: (reachable: boolean) => void = () => {};
     const blocked: HelpAi = { ...ai, reachable: false, revalidate: () => new Promise((resolve) => { finishCheck = resolve; }) };
-    const { result } = renderHook(() => useHelpChat(index, blocked));
+    const { result } = renderHook(() => useHelpChat(index, blocked, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('How do I add a trait?'); });
     expect(result.current.busy).toBe(true);
 
@@ -78,7 +78,7 @@ describe('useHelpChat', () => {
 
   it('does nothing before the docs load', () => {
     const fetchSpy = stubHelpStream(sseReply('Unused.'));
-    const { result } = renderHook(() => useHelpChat(null, ai));
+    const { result } = renderHook(() => useHelpChat(null, ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('How do I add a trait?'); });
     expect(result.current.exchanges).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -87,7 +87,7 @@ describe('useHelpChat', () => {
 
   it('sends a follow-up with the earlier question and answer', async () => {
     const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('How do I add a trait?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
     act(() => { result.current.ask('and then?'); });
@@ -108,7 +108,7 @@ describe('useHelpChat', () => {
       sidebar: '- [Bench](Bench)\n- [Tools](Tools)\n',
     });
     stubHelpStream(sseReply('Select **Add Tool**.'));
-    const { result } = renderHook(() => useHelpChat(tools, ai));
+    const { result } = renderHook(() => useHelpChat(tools, ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('How do I make a tool?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
     act(() => { result.current.ask('how do I test it?'); });
@@ -120,7 +120,7 @@ describe('useHelpChat', () => {
   it('keeps a vague follow-up on the topic of the earlier answer, not on the page of the open screen', async () => {
     vi.spyOn(surfaceRegistry, 'get').mockReturnValue({ screen: 'worldEditor', dialog: null, tabs: [] });
     stubHelpStream(sseReply('Select **Add Tool**.'));
-    const { result } = renderHook(() => useHelpChat(bundledDocsIndex(), ai));
+    const { result } = renderHook(() => useHelpChat(bundledDocsIndex(), ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('How do I make a tool?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
     act(() => { result.current.ask('how do I test it?'); });
@@ -134,7 +134,7 @@ describe('useHelpChat', () => {
 
   it('shows a flagged answer without its marker, and sends the marker back with it on a follow-up', async () => {
     const fetchSpy = stubHelpStream(sseReply(`${GENERAL_KNOWLEDGE_MARKER}\nLight scatters.`));
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('Why is the sky blue?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
     expect(result.current.exchanges[0]).toMatchObject({ answer: 'Light scatters.', flagged: true });
@@ -150,7 +150,7 @@ describe('useHelpChat', () => {
 
   it(`keeps every exchange in view while a request carries only the last ${DEFAULT_HELP_SETTINGS.historyLength}`, async () => {
     const fetchSpy = stubHelpStream(sseReply('Done.'));
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     const { historyLength } = DEFAULT_HELP_SETTINGS;
     const total = historyLength + 2;
     for (let n = 0; n < total; n++) {
@@ -167,7 +167,7 @@ describe('useHelpChat', () => {
 
   it('writes the answer in the AI Language', async () => {
     const fetchSpy = stubHelpStream(sseReply('Selecciona **Add Trait**.'));
-    const { result } = renderHook(() => useHelpChat(index, { ...ai, language: 'Spanish' }));
+    const { result } = renderHook(() => useHelpChat(index, { ...ai, language: 'Spanish' }, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('How do I add a trait?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
     expect(sentMessages(fetchSpy, 0)[0].content).toContain(languageDirective('answers', 'Spanish'));
@@ -176,7 +176,7 @@ describe('useHelpChat', () => {
   it('clears the conversation and ends the answer that is coming in', async () => {
     const reply = openSseReply([sseFrame({ content: '1. Select' })]);
     const fetchSpy = stubHelpStream(reply.respond);
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.ask('How do I add a trait?'); });
     await waitFor(() => expect(result.current.exchanges[0]?.answer).toBe('1. Select'));
 
@@ -197,7 +197,7 @@ describe('useHelpChat', () => {
 
   it('holds Send while a game turn generates, and sends once the turn ends', async () => {
     const fetchSpy = stubHelpStream(sseReply('Done.'));
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     act(() => { turnActivity.set(true); });
     expect(result.current.held).toBe(true);
     act(() => { result.current.ask('How do I add a trait?'); });
@@ -214,7 +214,7 @@ describe('useHelpChat', () => {
 
   it('sends the pending images with the question, keeps them on its exchange, and leaves none pending', async () => {
     const fetchSpy = stubHelpStream(sseReply('That is the **Traits** tab.'));
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.setPending(() => [screenshot('a'), screenshot('b')]); });
     act(() => { result.current.ask('What is this?'); });
     expect(result.current.pending).toEqual([]);
@@ -226,7 +226,7 @@ describe('useHelpChat', () => {
 
   it('sends a follow-up without the images of the earlier question', async () => {
     const fetchSpy = stubHelpStream(sseReply('Done.'));
-    const { result } = renderHook(() => useHelpChat(index, ai));
+    const { result } = renderHook(() => useHelpChat(index, ai, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.setPending(() => [screenshot('a')]); });
     act(() => { result.current.ask('What is this?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));
@@ -239,7 +239,7 @@ describe('useHelpChat', () => {
 
   it('sends no image when the model does not read images', async () => {
     const fetchSpy = stubHelpStream(sseReply('Done.'));
-    const { result } = renderHook(() => useHelpChat(index, { ...ai, readsImages: false }));
+    const { result } = renderHook(() => useHelpChat(index, { ...ai, readsImages: false }, DEFAULT_HELP_SETTINGS));
     act(() => { result.current.setPending(() => [screenshot('a')]); });
     act(() => { result.current.ask('What is this?'); });
     await waitFor(() => expect(result.current.busy).toBe(false));

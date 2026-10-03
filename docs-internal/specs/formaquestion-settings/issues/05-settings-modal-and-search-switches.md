@@ -1,6 +1,7 @@
 # 05: Settings modal and search switches
 
-Status: ready-for-agent
+Status: in-progress
+Base: 68416c28
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

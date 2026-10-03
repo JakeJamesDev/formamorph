@@ -21,6 +21,7 @@ import { DICTIONARY_BOOK_PANEL_TABS } from '@/views/dictionaryBookPanelTabs';
 import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { FORMAQUESTION_TABS } from '@/components/formaquestion/formaquestionTabs';
+import { FORMAQUESTION_SETTINGS_TABS } from '@/components/formaquestion/formaquestionSettingsTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
@@ -265,12 +266,16 @@ describe('dev-router coverage guard', () => {
     // localModel is deliberately excluded (it lives inside Settings, not as a standalone modal). worldEditor
     // is an in-place MainMenu modal (no longer a top-level view).
     expect(DEV_MODALS).toEqual([
-      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion',
+      'settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion', 'formaquestionSettings',
     ]);
   });
 
   it('ledger lists exactly the Formaquestion window tabs', () => {
     expect([...DEV_MODAL_TABS.formaquestion]).toEqual(FORMAQUESTION_TABS.map((tab) => tab.value));
+  });
+
+  it('ledger lists exactly the Formaquestion Settings tabs', () => {
+    expect([...DEV_MODAL_TABS.formaquestionSettings]).toEqual(FORMAQUESTION_SETTINGS_TABS.map((tab) => tab.value));
   });
 });
 

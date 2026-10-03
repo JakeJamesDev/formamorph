@@ -10,6 +10,7 @@ import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
 import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { createGuide } from '@/lib/formaquestion/guide';
+import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
@@ -21,12 +22,18 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame } from './FormaquestionFrame';
 import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
+import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
+import { FormaquestionSettings } from './FormaquestionSettings';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
 import { useHelpChat } from './useHelpChat';
+import { useHelpSettings } from './useHelpSettings';
 import { usePointerDrag, type PointerDrag } from './usePointerDrag';
 
 const WINDOW_ID = 'formaquestion-window';
+
+/** The dialogs the window opens. */
+type FormaquestionDialog = 'settings';
 
 /** Close animation length in ms. It matches `data-[state=closed]:duration-150` in `WINDOW_MOTION`. */
 const CLOSE_MS = 150;
@@ -103,7 +110,13 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const guide = useMemo(() => (index ? createGuide(index) : null), [index]);
 
   // The conversation lives here, so it outlives the window. The AI check runs only while the window is open.
-  const chat = useHelpChat(index, useHelpAi(open));
+  const [settings, changeSettings] = useHelpSettings();
+  const chat = useHelpChat(index, useHelpAi(open), settings);
+
+  // A dialog opened from the window. On the sheet it fills the screen, so the sheet hides under it and keeps its state.
+  const [dialog, setDialog] = useState<FormaquestionDialog | null>(null);
+  const [settingsTab, setSettingsTab] = useState<FormaquestionSettingsTab>('general');
+  const covered = sheet && dialog !== null;
 
   // A resize keeps the window on the screen. At a mobile width the sheet shows and the box waits unchanged.
   useEffect(() => {
@@ -152,7 +165,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [suspended, open, openWindow]);
 
   // The Android back action closes the window before any dialog under it.
-  useBackStop(open && !suspended ? closeWindow : undefined, windowRef);
+  useBackStop(open && !suspended && !covered ? closeWindow : undefined, windowRef);
 
   // The window stays mounted while its close animation runs. `present` drops when the animation ends.
   const [present, setPresent] = useState(false);
@@ -243,7 +256,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [suspended, open, openWindow, closeWindow, focusWindow]);
 
   // DEV: `#dev?modal=formaquestion&tab=guide&subtab=<section id>&mode=wide` opens the window in one jump.
+  // `#dev?modal=formaquestionSettings&tab=general` opens the window and its settings.
   const devRoute = useDevRoute();
+  useEffect(() => {
+    if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestionSettings') return;
+    setOpen(true);
+    setSettingsTab(asFormaquestionSettingsTab(devRoute.tab) ?? 'general');
+    setDialog('settings');
+  }, [devRoute]);
   useEffect(() => {
     if (!import.meta.env.DEV || devRoute?.modal !== 'formaquestion') return;
     setOpen(true);
@@ -289,9 +309,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           data-fq-sheet={sheet ? '' : undefined}
           onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
           sheet={sheet}
+          onOpenSettings={() => setDialog('settings')}
           onClose={closeWindow}
           {...(sheet ? {
-            className: `app-viewport pointer-events-auto ${SHEET_MOTION[origin?.edge ?? 'right']}`,
+            className: cn('app-viewport pointer-events-auto', SHEET_MOTION[origin?.edge ?? 'right'], covered && 'invisible'),
           } : {
             wide,
             onSwapWidth: swap,
@@ -310,6 +331,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} />
         </FormaquestionFrame>
       )}
+      <FormaquestionSettings
+        open={dialog === 'settings' && !suspended}
+        onOpenChange={(next) => setDialog(next ? 'settings' : null)}
+        tab={settingsTab}
+        onTabChange={setSettingsTab}
+        settings={settings}
+        onChange={changeSettings}
+      />
     </>,
     layer,
   );

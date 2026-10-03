@@ -55,6 +55,7 @@ const ACCOUNT_DELETION = community('account-deletion');
 const BUGS_AND_SUGGESTIONS = community('bugs-and-suggestions');
 const THE_LIBRARY_TABS: Required<DocTarget> = { page: 'Library', anchor: 'the-library-tabs' };
 const THE_GROUP_DIALOGS: Required<DocTarget> = { page: 'Library', anchor: 'the-group-dialogs' };
+const FORMAQUESTION_SETTINGS: Required<DocTarget> = { page: 'Formaquestion', anchor: 'formaquestion-settings' };
 
 /** The docs heading for each player-facing surface. */
 export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
@@ -198,6 +199,10 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'formaquestion.ask': { page: 'Formaquestion', anchor: 'ask' },
   'formaquestion.search': { page: 'Formaquestion', anchor: 'search' },
   'formaquestion.guide': { page: 'Formaquestion', anchor: 'guide' },
+  formaquestionSettings: FORMAQUESTION_SETTINGS,
+  'formaquestionSettings.general': { page: 'Formaquestion', anchor: 'general' },
+  // The other tabs' tickets give each its own section.
+  ...Object.fromEntries((['endpoint', 'prompts', 'tools'] as const).map((tab) => [`formaquestionSettings.${tab}`, FORMAQUESTION_SETTINGS])),
 
   avatar: { page: 'Avatars', anchor: 'character-customization' },
   modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },

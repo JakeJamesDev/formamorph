@@ -234,30 +234,34 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
  * - Lookup mode, only while the lookup setting is on and the endpoint is known to take function calls: the
  *   model reads more sections through the docs lookup.
  * - Retrieval mode, everywhere else: one request. The capability check does not run.
+ * - A bare question, when every source is off, lookup mode is off and the open screen adds no section: the
+ *   question alone, with no search. A search that runs and misses still sends the empty guide block.
  *
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
   question, history = [], language = '', settings, snapshot, index, surface, images = [], screenRule, howToRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
-  const hint = surfaceHint(surface, index);
+  const hint = settings.openScreen ? surfaceHint(surface, index) : null;
   const kept = keptHistory(history, settings.historyLength);
-  const search = await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl });
+  const lookupMode = settings.lookup && toolsSupported(snapshot.resolveTarget('help').reasoning);
+  // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
+  const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
+  const search = bare ? index : await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl });
   if (signal?.aborted) {
     yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [] };
     return;
   }
-  const inPrompt = helpSections(search, question, { history: kept, lead: hint?.section, howToRule });
-  const lookupMode = settings.lookup && toolsSupported(snapshot.resolveTarget('help').reasoning);
+  const inPrompt = bare ? [] : helpSections(search, question, { history: kept, lead: hint?.section, howToRule });
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
+  const userMessage = bare
+    ? question
+    : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
   const spec = buildAiRequestSpec(snapshot, {
     systemPrompt: helpSystemPrompt(language, lookup ? HELP_LOOKUP_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT),
-    messages: withImageParts([...historyMessages(kept), {
-      role: 'user',
-      content: lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where),
-    }], images),
+    messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
     maxTokensOverride: settings.answerMaxTokens,
     ...(lookup && { tools: [DOCS_LOOKUP] }),
@@ -274,7 +278,7 @@ export async function* askHelp({
       const next = readMarker(stripReasoningLive(event.content));
       if (next.text === text && next.marked === marked) continue;
       ({ text, marked } = next);
-      yield { type: 'answer', text, flagged: marked };
+      yield { type: 'answer', text, flagged: marked && !bare };
     } else if (event.type === 'done') {
       const sources = [...(lookup?.fetched() ?? []), ...inPrompt];
       const stopped = event.result.finishReason === ABORTED_FINISH_REASON;
@@ -283,7 +287,7 @@ export async function* askHelp({
       if (!answer.text && !stopped) {
         throw new Error(`The model sent an empty answer (finish reason: ${event.result.finishReason ?? 'none'})`);
       }
-      const flagged = isGeneralKnowledge(answer.marked, sources.length);
+      const flagged = !bare && isGeneralKnowledge(answer.marked, sources.length);
       const nearest = flagged ? helpSections(search, question, { history: kept }) : [];
       yield { type: 'done', text: answer.text, sources, lead: hint?.section, stopped, flagged, nearest };
     }

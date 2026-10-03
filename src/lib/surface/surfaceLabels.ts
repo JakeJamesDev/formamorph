@@ -11,6 +11,7 @@ import { HUB_LABEL, OVERVIEW_LABEL, PROMPT_LABELS, SURFACE_LABELS as PROMPT_SURF
 import { BENCH_TABS } from '@/lib/testBench/benchTabs';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { FORMAQUESTION_TABS } from '@/components/formaquestion/formaquestionTabs';
+import { FORMAQUESTION_SETTINGS_TABS } from '@/components/formaquestion/formaquestionSettingsTabs';
 import { SETTINGS_ENDPOINT_TABS, SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { TOOL_EDIT_TABS } from '@/components/modals/toolsView';
 import { DICTIONARY_BOOK_PANEL_TABS } from '@/views/dictionaryBookPanelTabs';
@@ -73,6 +74,7 @@ const ENTRIES: [string, string][] = [
   ['worldPrompts', 'Custom Prompts'],
   ['likePrompt', 'Like Prompt'],
   ['formaquestion', 'Formaquestion'],
+  ['formaquestionSettings', 'Formaquestion Settings'],
   ['designSystemGroupPicker.picker', 'Add To Group'],
   ['designSystemGroupPicker.create', 'Create New Group'],
 
@@ -98,6 +100,7 @@ const ENTRIES: [string, string][] = [
   ...tabsOf('entityEditorEntity', ENTITY_PANEL_TABS.filter((tab) => tab.value !== 'traits' && tab.value !== 'placeholders')),
   ...tabsOf('dictionaryEditor', DICTIONARY_EDITOR_TABS),
   ...tabsOf('formaquestion', FORMAQUESTION_TABS),
+  ...tabsOf('formaquestionSettings', FORMAQUESTION_SETTINGS_TABS),
   ...tabsOf('mainMenu', [
     { value: 'worlds', label: BROWSE_TAB_LABELS.world.many },
     { value: 'entities', label: BROWSE_TAB_LABELS.entity.many },

@@ -3,7 +3,7 @@ import { toastAiRequestFailure } from '@/lib/aiRequest/aiRequestFailureToast';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { openDocs } from '@/lib/formaquestion/docsOpener';
 import { askHelp } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
+import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { turnActivity, useTurnGenerating } from '@/lib/turnActivity';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -57,7 +57,7 @@ export interface HelpChat {
  * and ends with the app. A question carries the earlier exchanges, so a follow-up works. Its images go
  * with it alone and are never stored.
  */
-export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
+export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpSettings): HelpChat {
   const [exchanges, setExchanges] = useState<HelpExchange[]>([]);
   const [pending, setPending] = useState<ImageAttachment[]>([]);
   const pendingRef = useRef(pending);
@@ -70,14 +70,17 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
   // Read when the player sends, so a question uses the settings of that moment.
   const aiRef = useRef(ai);
   aiRef.current = ai;
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   useEffect(() => () => running.current?.abort(), []);
 
   const ask = useCallback((question: string) => {
     if (!index || running.current || turnActivity.get()) return;
     const history = exchangesRef.current;
-    // The Surface at send time, before any wait.
+    // The Surface and the settings at send time, before any wait.
     const surface = surfaceRegistry.get();
+    const sentSettings = settingsRef.current;
     const controller = new AbortController();
     running.current = controller;
     const id = crypto.randomUUID();
@@ -103,8 +106,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi): HelpChat {
           }
         }
         const { snapshot, language } = aiRef.current;
-        // Nothing stores the help settings yet, so every question carries the defaults.
-        for await (const event of askHelp({ question, history, language, settings: DEFAULT_HELP_SETTINGS, snapshot, index, surface, images, signal: controller.signal })) {
+        for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, signal: controller.signal })) {
           if (event.type === 'answer') change({ answer: event.text, flagged: event.flagged });
           else change({ answer: event.text, sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered' });
         }

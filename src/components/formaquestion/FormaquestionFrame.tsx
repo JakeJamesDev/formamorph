@@ -1,5 +1,5 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react';
-import { CircleHelp, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { CircleHelp, PanelLeftClose, PanelLeftOpen, Settings, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -7,7 +7,7 @@ import type { DragHandlers } from './usePointerDrag';
 
 /**
  * The Formaquestion window's frame: a title bar that moves it, the Wide View and Close controls, the
- * content, and a corner grip that resizes it. The caller places it and owns the moves. As a mobile sheet
+ * content, and a corner grip that resizes it. The gear opens Formaquestion Settings. The caller places it and owns the moves. As a mobile sheet
  * it has no frame lines and a larger Close.
  */
 export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutRef<'section'> & {
@@ -15,13 +15,14 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
   /** Shows the Wide View control. */
   onSwapWidth?: () => void;
   sheet?: boolean;
+  onOpenSettings: () => void;
   onClose: () => void;
   /** Pointer handlers for the title bar. */
   move?: DragHandlers;
   /** Pointer handlers for the corner grip. */
   resize?: DragHandlers;
   children: ReactNode;
-}>(({ wide = false, onSwapWidth, sheet = false, onClose, move, resize, className, children, ...props }, ref) => (
+}>(({ wide = false, onSwapWidth, sheet = false, onOpenSettings, onClose, move, resize, className, children, ...props }, ref) => (
   <section
     ref={ref}
     role="dialog"
@@ -43,6 +44,11 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
       <CircleHelp aria-hidden className="h-4 w-4 text-muted-foreground" />
       <h2 className="text-label font-semibold">Formaquestion</h2>
       <div className="ml-auto flex items-center gap-1">
+        <Tip tip="Formaquestion Settings">
+          <Button variant="ghost" size="icon" aria-label="Formaquestion Settings" onClick={onOpenSettings} className={sheet ? 'h-12 w-12' : 'h-8 w-8'}>
+            <Settings className="h-4 w-4" />
+          </Button>
+        </Tip>
         {onSwapWidth && (
           <Tip tip="Wide View">
             <Button
