@@ -71,6 +71,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q42 | A pick keeps its layer when that layer changes kind. The layer still draws, the dropdown shows its name as unlisted, and no warning shows. Q21's warning covers blank faces only |
 | Q43 | Transition details: Dissolve has a duration only (default 250 ms, the Jelly range); the default rig uses Jelly at the prototype's defaults and keeps both modes' tuning; a restart mid-transition eases from the current frame with no jump; the tab's Play runs Thinking to the preview's look; range-end tests check the dip and peak only where the tuning is above 0: at squash 0 there is no dip before the peak, though the settle still swings around 1; at overshoot 0 the curve stays at or below 1 |
 | Q44 | Card details: bundled images embed as bytes too, identical images once; the gate is a kind marker and an integer version, with the app version written beside them; import replaces the rig only, never the mascot switch, and confirms like Reset; parse refuses the whole card on any bad field and names its path; a pick naming a missing layer is allowed |
+| Q45 | The Voice framing's wording is not fixed by Q39; its intent is: no chatty opener, the guide's names, the marker rule unbroken, and never "in your words". Ticket 16 may merge the ordering into one line and runs both candidates as arms in its one batch |
 
 ## User Stories
 
