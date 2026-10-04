@@ -52,6 +52,7 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 | Q45 | "How to Add a Self Opening" routes to the entity's Openings tab; with no entity open it lands on the Entities tab (Q26) |
 | Q46 | "How to Enter a Contest" stays on the Publish dialog's World tab |
 | Q47 | "How to Publish a Prompt Preset" stays on the preset's Overview |
+| Q48 | A route line sits only at the index's section level (`#` and `##`). The index splits no deeper, so a line under a `###` heading would fold into its parent and the first line would win; the index refuses a line that is not directly under its section's heading, and the source test checks surface-map targets at section level only (38 targets are `###` and get no line). A parent that describes one screen or dialog gets its own route on purpose, naming the common ancestor, never a child's route by accident (ticket 08 question; (b), splitting at a routed `###`, was refused because it changes section ids and the pick list) |
 
 ## User Stories
 
@@ -114,6 +115,7 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 - A new offline probe in the baseline harness: for each keyed task and here question, the keyed section's route against the question's expected surface. The expected surface is a new field on the question key, authored once. Output: a table per kind with hit, miss and no-route counts, and the misses by name. No model runs.
 - The first run reports; the bar is the user's to set after (Q20).
 - **Ticket 05 landed 2026-10-04 (`5ffe1dff`).** `npm run probe:help-route`, no model. 87 keys with an expected surface or none. First run: task 62 of 75 (83%; surfaced 48 of 59, none-expected 14 of 16), here 6 of 12 (50%). Of the 13 task problems, 4 are one level of granularity (the route is the parent of the control's surface), 7 are sections without a route line (5 reference sections, 2 how-tos ticket 03 left out), 2 are no-surface flows that route to their first screen. Six here keys point at reference sections, which carry no route by design.
+- **Ticket 08 landed 2026-10-04 (`ac9cba55`).** 90 route lines added, 4 moved, 2 removed; every surface-map section the index cuts carries its surface's route, and the source test fails a missing or different one. Nine parent sections carry a deliberate ancestor route; seven stay routeless because their children sit on different screens. **Bar met (Q39): surfaced task 55 of 59 (93%)**, all task 92%, here 12 of 12. The six remaining problems are four `###` reference sections that are no index section (Q48) and the two no-surface flows, reported only. Recall probe: known 85.8%, blind 86.6%, cloud drift; the pick list is text-identical.
 
 ### Shape and settings
 
