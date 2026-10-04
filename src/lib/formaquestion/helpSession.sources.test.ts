@@ -132,9 +132,9 @@ describe('the pick request', () => {
     );
   });
 
-  it('keeps its pinned samplers and cap when the answer options of the preset change', async () => {
+  it('keeps its own samplers and cap when the Answer options of the preset change', async () => {
     const server = endpoint();
-    await ask('import', { fetchImpl: server.fetchImpl, settings: helpSettingsOf({ presets: editHelpOptions(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', { temperature: 1.1, repetitionPenalty: 1.3, maxTokens: 321 }) }) });
+    await ask('import', { fetchImpl: server.fetchImpl, settings: helpSettingsOf({ presets: editHelpOptions(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', 'answer', { temperature: 1.1, repetitionPenalty: 1.3, maxTokens: 321 }) }) });
 
     expect(bodyOf(server.picks)).toMatchObject({ temperature: 0.2, repetition_penalty: 1, repeat_penalty: 1, max_tokens: HELP_PICK_MAX_TOKENS });
     expect(bodyOf(server.answers)).toMatchObject({ temperature: 1.1, repetition_penalty: 1.3, repeat_penalty: 1.3, max_tokens: 321 });

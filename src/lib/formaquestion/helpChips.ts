@@ -9,6 +9,8 @@ import type { PromptSegment } from '@/lib/promptTemplate';
 import { DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { HELP_PICK_LIMIT } from './helpPicks';
+import type { HelpPromptKey } from './helpPrompt';
+import type { HelpSettings } from './helpSettings';
 
 /** A help chip's token in the stored text. */
 export const HELP_CHIP = {
@@ -28,6 +30,10 @@ export interface HelpChipValues {
 }
 
 const NO_VALUES: HelpChipValues = { voice: '' };
+
+/** The chip values a prompt's request sends: the rig's Voice, trimmed, while the mascot is on; the pick request sends none. */
+export const helpChipValues = (prompt: HelpPromptKey, { mascot, rig }: Pick<HelpSettings, 'mascot' | 'rig'>): HelpChipValues =>
+  (prompt !== 'pick' && mascot ? { voice: rig.voice.trim() } : NO_VALUES);
 
 /** A chip sends a fixed `text`, or the question's `value` of that name in its `frame`. An empty value sends nothing. */
 type HelpChipEntry = { label: string; hint: string } & ({ text: string } | { value: keyof HelpChipValues; frame: (value: string) => string });
@@ -121,6 +127,10 @@ export function renderHelpPrompt(text: string, values: HelpChipValues = NO_VALUE
     .map((segment) => (segment.type === 'text' ? segment.value : isHelpChip(segment.token) ? chipText(segment.token, values) : segment.token))
     .join('');
 }
+
+/** Each chip's token mapped to the text it sends with `values`, for a prompt's Preview. */
+export const helpChipPreview = (values: HelpChipValues): Record<string, string> =>
+  Object.fromEntries(TOKENS.map((token) => [token, chipText(token, values)]));
 
 // One palette entry for every help chip: the family is a few app texts, not a scene.
 const HELP_CHIP_COLOR = HIGHLIGHT_PALETTE[7];

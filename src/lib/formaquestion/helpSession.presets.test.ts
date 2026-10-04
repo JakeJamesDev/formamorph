@@ -4,7 +4,8 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { HELP_CHIP } from './helpChips';
-import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE, type HelpPresetStore } from './helpPresets';
+import { HELP_PICK_MAX_TOKENS } from './helpPicks';
+import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, editHelpPrompt, EMPTY_HELP_PRESET_STORE, type HelpPresetStore } from './helpPresets';
 import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_PICK_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT } from './helpPrompt';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from './helpSettings';
@@ -80,6 +81,50 @@ describe('the help prompts of a question', () => {
     const presets = { ...custom({ answer: 'Mine.' }), activeId: DEFAULT_HELP_PRESET_ID };
     await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ presets }) });
     expect(systemOf(fetchImpl, 1)).toBe(VOICED_HELP_PROMPT);
+  });
+});
+
+describe('the options of each request', () => {
+  type Samplers = { temperature?: unknown; repetition_penalty?: unknown; repeat_penalty?: unknown; max_tokens?: unknown };
+  const samplersOf = (spy: FetchSpy, call: number): Samplers => {
+    const { temperature, repetition_penalty, repeat_penalty, max_tokens } = JSON.parse(spy.mock.calls[call][1].body as string) as Samplers;
+    return { temperature, repetition_penalty, repeat_penalty, max_tokens };
+  };
+  const wire = ({ temperature, repetitionPenalty, maxTokens }: { temperature: number; repetitionPenalty: number; maxTokens: number }): Samplers =>
+    ({ temperature, repetition_penalty: repetitionPenalty, repeat_penalty: repetitionPenalty, max_tokens: maxTokens });
+  const ANSWER = { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 };
+  const PICK = { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 };
+  const LOOKUP = { temperature: 0.6, repetitionPenalty: 1.2, maxTokens: 1500 };
+  /** A custom preset whose three blocks all differ, active. */
+  const blocks = (): HelpPresetStore => {
+    let store = duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine');
+    store = editHelpOptions(store, 'mine', 'answer', ANSWER);
+    store = editHelpOptions(store, 'mine', 'pick', PICK);
+    return editHelpOptions(store, 'mine', 'lookup', LOOKUP);
+  };
+
+  it('send the values of the Default preset: the help pins, the pick cap and the answer cap', async () => {
+    const plain = answers();
+    await sent('How do I add a trait?', plain);
+    expect(samplersOf(plain, 0)).toEqual({ temperature: 0.2, repetition_penalty: 1, repeat_penalty: 1, max_tokens: HELP_PICK_MAX_TOKENS });
+    expect(samplersOf(plain, 1)).toEqual({ temperature: 0.2, repetition_penalty: 1, repeat_penalty: 1, max_tokens: 800 });
+    const lookup = answers();
+    await sent('How do I add a trait?', lookup, { settings: helpSettingsOf({ lookup: true }), snapshot: CAPABLE });
+    expect(samplersOf(lookup, 1)).toEqual({ temperature: 0.2, repetition_penalty: 1, repeat_penalty: 1, max_tokens: 800 });
+  });
+
+  it('send the pick block on the pick request and the answer block on the answer request', async () => {
+    const fetchImpl = answers();
+    await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ presets: blocks() }) });
+    expect(samplersOf(fetchImpl, 0)).toEqual(wire(PICK));
+    expect(samplersOf(fetchImpl, 1)).toEqual(wire(ANSWER));
+  });
+
+  it('send the lookup block on the answer request in lookup mode', async () => {
+    const fetchImpl = answers();
+    await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ presets: blocks(), lookup: true }), snapshot: CAPABLE });
+    expect(samplersOf(fetchImpl, 0)).toEqual(wire(PICK));
+    expect(samplersOf(fetchImpl, 1)).toEqual(wire(LOOKUP));
   });
 });
 

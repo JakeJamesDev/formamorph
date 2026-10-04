@@ -6,11 +6,12 @@ import { requestAiText, type AiTextOptions } from '@/lib/aiRequest/aiText';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
 import type { DocSection, DocsIndex } from '@/lib/docs/docsIndex';
 import { guideSections } from './guideSections';
+import type { HelpRequestOptions } from './helpPresets';
 
 /** The most sections one pick reply names. */
 export const HELP_PICK_LIMIT = 5;
 
-/** The cap of a pick reply in tokens: room for the copied lines. */
+/** The Default preset's cap of a pick reply in tokens: room for the copied lines. */
 export const HELP_PICK_MAX_TOKENS = 150;
 
 /** The sections a model picks from: one line for each whole guide section. */
@@ -72,13 +73,14 @@ export function readPicks(reply: string, lines: readonly string[]): number[] {
 
 /**
  * Asks the model which guide sections answer the question, best first; none when the reply copies no line.
- * It sends as the help kind, so its temperature and penalty are pinned and reasoning is off. Throws the
+ * It sends as the help kind with reasoning off, and with the samplers and cap the caller gives. Throws the
  * request pipeline's errors, and an `AbortError` when stopped. `observe` gets the request and its reply.
  */
 export async function requestPicks(
   index: DocsIndex,
   ask: PickQuestion,
   snapshot: AiSettingsSnapshot,
+  { temperature, repetitionPenalty, maxTokens }: HelpRequestOptions,
   options: AiTextOptions = {},
 ): Promise<DocSection[]> {
   const { lines, sections } = pickList(index);
@@ -86,7 +88,8 @@ export async function requestPicks(
     systemPrompt: ask.prompt,
     messages: [{ role: 'user', content: pickMessage(lines, ask) }],
     requestType: 'help',
-    maxTokensOverride: HELP_PICK_MAX_TOKENS,
+    maxTokensOverride: maxTokens,
+    samplerOverride: { temperature, repetitionPenalty },
   }, options);
   return readPicks(reply, lines).flatMap((at) => sections[at]);
 }

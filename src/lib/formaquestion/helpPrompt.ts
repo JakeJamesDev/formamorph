@@ -15,6 +15,9 @@ export interface HelpPromptTexts {
 
 export type HelpPromptKey = keyof HelpPromptTexts;
 
+/** The prompts in rail order. */
+export const HELP_PROMPT_KEYS: readonly HelpPromptKey[] = ['answer', 'pick', 'lookup'];
+
 /** The answer rules both help prompts share. */
 const ANSWER_RULES = [
   '- When the player asks how to do a task, answer with every step of that task as a numbered list, in the order the guide gives.',

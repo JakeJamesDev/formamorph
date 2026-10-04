@@ -1,21 +1,30 @@
 /**
  * The help preset store: the three help prompts as one named set. The Default preset is read-only and reads
- * its text and answer options from the code, so each release updates it for every player who has no custom
- * preset. A custom preset stores its own three texts and its answer options. The store is a device setting, apart from the gameplay prompt presets.
+ * its texts and options from the code, so each release updates it for every player who has no custom
+ * preset. A custom preset stores its own three texts and three option blocks. The store is a device
+ * setting, apart from the gameplay prompt presets.
  */
+import { HELP_PICK_MAX_TOKENS } from './helpPicks';
 import { DEFAULT_HELP_PROMPTS, type HelpPromptKey, type HelpPromptTexts } from './helpPrompt';
 
-/** The answer request's sampler values and cap. A preset holds them, so the Default preset's follow the code. */
-export interface HelpAnswerOptions {
+/** One request's sampler values and cap. A preset holds them, so the Default preset's follow the code. */
+export interface HelpRequestOptions {
   readonly temperature: number;
   readonly repetitionPenalty: number;
-  /** The answer cap in tokens: room for a long list of steps. */
   readonly maxTokens: number;
 }
 
-export const DEFAULT_HELP_ANSWER_OPTIONS: HelpAnswerOptions = { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 };
+/** One option block per prompt: each prompt's request sends its own. */
+export type HelpPresetOptions = { readonly [K in HelpPromptKey]: HelpRequestOptions };
 
-/** The ranges the answer option fields take. */
+/** The answer caps leave room for a long list of steps; the pick cap, for the copied lines. */
+export const DEFAULT_HELP_OPTIONS: HelpPresetOptions = {
+  answer: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
+  pick: { temperature: 0.2, repetitionPenalty: 1, maxTokens: HELP_PICK_MAX_TOKENS },
+  lookup: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 },
+};
+
+/** The ranges the option fields take. */
 export const HELP_TEMPERATURE_RANGE = { min: 0, max: 2, step: 0.05 } as const;
 export const HELP_REPETITION_PENALTY_RANGE = { min: 1, max: 1.5, step: 0.02 } as const;
 
@@ -23,7 +32,7 @@ export interface HelpPreset {
   readonly id: string;
   readonly name: string;
   readonly prompts: HelpPromptTexts;
-  readonly options: HelpAnswerOptions;
+  readonly options: HelpPresetOptions;
 }
 
 /** The active preset id and every custom preset. The Default preset is virtual, never stored. */
@@ -39,7 +48,12 @@ export const DEFAULT_HELP_PRESET_NAME = 'Default';
 export const EMPTY_HELP_PRESET_STORE: HelpPresetStore = { activeId: DEFAULT_HELP_PRESET_ID, presets: [] };
 
 /** The Default preset, from the code of this build. */
-export const defaultHelpPreset = (): HelpPreset => ({ id: DEFAULT_HELP_PRESET_ID, name: DEFAULT_HELP_PRESET_NAME, prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_ANSWER_OPTIONS });
+export const defaultHelpPreset = (): HelpPreset => ({ id: DEFAULT_HELP_PRESET_ID, name: DEFAULT_HELP_PRESET_NAME, prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_OPTIONS });
+
+/** One block per prompt, each made by `block`. */
+export const mapHelpOptions = (block: (key: HelpPromptKey) => HelpRequestOptions): HelpPresetOptions => ({ answer: block('answer'), pick: block('pick'), lookup: block('lookup') });
+
+const copyOptions = (options: HelpPresetOptions): HelpPresetOptions => mapHelpOptions((key) => ({ ...options[key] }));
 
 const customOf = (store: HelpPresetStore, id: string): HelpPreset | undefined => store.presets.find((preset) => preset.id === id);
 
@@ -57,8 +71,8 @@ export const isDefaultHelpPresetActive = (store: HelpPresetStore): boolean => cu
 /** The three texts the help session sends, chips in place. */
 export const activeHelpPrompts = (store: HelpPresetStore): HelpPromptTexts => activeHelpPreset(store).prompts;
 
-/** The answer options the help session sends. */
-export const activeHelpOptions = (store: HelpPresetStore): HelpAnswerOptions => activeHelpPreset(store).options;
+/** The option blocks the help session sends. */
+export const activeHelpOptions = (store: HelpPresetStore): HelpPresetOptions => activeHelpPreset(store).options;
 
 /** True when a prompt's text differs from the default text. */
 export const isHelpPromptEdited = (prompts: HelpPromptTexts, key: HelpPromptKey): boolean => prompts[key] !== DEFAULT_HELP_PROMPTS[key];
@@ -71,7 +85,7 @@ export function selectHelpPreset(store: HelpPresetStore, id: string): HelpPreset
 /** Adds a copy of the preset `sourceId` names under `id` and `name`, and selects it. */
 export function duplicateHelpPreset(store: HelpPresetStore, sourceId: string, id: string, name: string): HelpPresetStore {
   const source = helpPresetOf(store, sourceId);
-  return { activeId: id, presets: [...store.presets, { id, name, prompts: { ...source.prompts }, options: { ...source.options } }] };
+  return { activeId: id, presets: [...store.presets, { id, name, prompts: { ...source.prompts }, options: copyOptions(source.options) }] };
 }
 
 /** The store with one custom preset changed. The Default preset refuses the change, so the store is returned as it is. */
@@ -85,9 +99,9 @@ export function editHelpPrompt(store: HelpPresetStore, id: string, key: HelpProm
   return withCustom(store, id, (preset) => ({ ...preset, prompts: { ...preset.prompts, [key]: text } }));
 }
 
-/** Sets answer options of a custom preset. */
-export const editHelpOptions = (store: HelpPresetStore, id: string, change: Partial<HelpAnswerOptions>): HelpPresetStore =>
-  withCustom(store, id, (preset) => ({ ...preset, options: { ...preset.options, ...change } }));
+/** Sets options of one prompt's block in a custom preset. */
+export const editHelpOptions = (store: HelpPresetStore, id: string, key: HelpPromptKey, change: Partial<HelpRequestOptions>): HelpPresetStore =>
+  withCustom(store, id, (preset) => ({ ...preset, options: { ...preset.options, [key]: { ...preset.options[key], ...change } } }));
 
 /** Returns one prompt of a custom preset to the default text. */
 export const resetHelpPrompt = (store: HelpPresetStore, id: string, key: HelpPromptKey): HelpPresetStore =>
@@ -112,15 +126,20 @@ const isNumberIn = ({ min, max }: { min: number; max: number }) => (value: unkno
 const isTemperature = isNumberIn(HELP_TEMPERATURE_RANGE);
 const isPenalty = isNumberIn(HELP_REPETITION_PENALTY_RANGE);
 
-/** Stored answer options, each bad or missing field read as its default. */
-function readOptions(value: unknown): HelpAnswerOptions {
+/** A stored option block, each bad or missing field read as the Default's. */
+function readStoredBlock(value: unknown, { temperature, repetitionPenalty, maxTokens }: HelpRequestOptions): HelpRequestOptions {
   const stored = isRecord(value) ? value : {};
-  const { temperature, repetitionPenalty, maxTokens } = DEFAULT_HELP_ANSWER_OPTIONS;
   return {
     temperature: isTemperature(stored.temperature) ? stored.temperature : temperature,
     repetitionPenalty: isPenalty(stored.repetitionPenalty) ? stored.repetitionPenalty : repetitionPenalty,
     maxTokens: Number.isInteger(stored.maxTokens) && (stored.maxTokens as number) > 0 ? (stored.maxTokens as number) : maxTokens,
   };
+}
+
+/** Stored option blocks, each read on its own. */
+function readOptions(value: unknown): HelpPresetOptions {
+  const stored = isRecord(value) ? value : {};
+  return mapHelpOptions((key) => readStoredBlock(stored[key], DEFAULT_HELP_OPTIONS[key]));
 }
 
 /** A stored preset with its id, a name and three texts; anything else is dropped. */

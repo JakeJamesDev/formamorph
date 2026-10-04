@@ -357,19 +357,21 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 
-The **Answer** prompt has an **Options** row under it in the list of prompts:
+Each prompt editor has an **Edit** tab and a **Preview** tab. **Preview** shows the prompt as your AI gets it, with each chip replaced by its text. **Mascot Voice** shows your mascot's Voice while the mascot is on.
+
+Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Picks** to the **AI Picks** request, and **Lookup** to the answer request when your AI can call **read_guide**.
 
 | Option | Default | What it does |
 |---|---|---|
-| **Max Output** | 800 tokens | Sets how long an answer can run |
-| **Custom Temperature** | 0.2 | Sets how freely the answer words its steps |
-| **Custom Repetition Penalty** | 1 | Sets how hard the answer avoids repeated words |
+| **Max Output** | 800 tokens for **Answer** and **Lookup**, 150 for **Picks** | Sets how long the reply can run |
+| **Custom Temperature** | 0.2 | Sets how freely the reply is worded |
+| **Custom Repetition Penalty** | 1 | Sets how hard the reply avoids repeated words |
 
-Each preset has its own options, and a copy of a preset takes them. **Default** shows them read-only, so each release updates them. A box that is off uses the default. The **Picks** request keeps its own values.
+Each preset has its own options, and a copy of a preset takes them. **Default** shows them read-only, so each release updates them. A box that is off uses the default.
 
 #### The Preset File
 
-See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset-to-another-device) for the steps. The file holds the three prompts, the answer options, your **My Tools**, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
+See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset-to-another-device) for the steps. The file holds the three prompts, the options of each prompt, your **My Tools**, and the switches and **Max Calls per Request** of the **Tools** tab. It holds no endpoint, token or other setting.
 
 - If you already have a preset with that name, the import adds a number to the new name.
 - If you already have a Tool with that name, the import skips that Tool and names it. Your Tool keeps its own switch.
