@@ -29,6 +29,13 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 | Q20 | The route probe reports first. The user sets the bar after the first run |
 | Q23 | The button sits beside the Sources expander in the answer's footer row, in both chromes |
 | Q24 | After navigating, the desktop window stays open. The mobile sheet closes |
+| Q25 | Ticket 01's first route data covers the Settings, Prompts and Tools pages. A how-to there gets the surface it describes, even one outside Settings; one with no single surface gets no line and a listed reason. Every other page is ticket 03's (2026-10-04, ticket 01 question) |
+| Q26 | A surface bound to an item the request cannot name (an entity panel, a publish dialog, an editor item panel) resolves to its nearest openable ancestor (ticket 02 question) |
+| Q27 | A World Editor surface opens the editor on the selected library world. With no world selected it opens the Library screen; a help jump never creates a world (ticket 02 question; spec-session call, flagged to the user) |
+| Q28 | The editor's unsaved prompt runs only when a request would close the editor. Settings and the help window stack over it; another editor tab only switches the tab (ticket 02 question) |
+| Q29 | A game surface requested while no game runs opens the Load Game dialog (ticket 02 question) |
+| Q30 | Formaquestion surfaces resolve as view-any. The help window consumes them itself: it switches its tab or opens its own Settings. Ticket 02 ships the resolver entries; ticket 04 ships the consuming side (ticket 02 question) |
+| Q31 | From a running game, a World Editor surface opens the in-game editor on the game's world, with no leave prompt. The leave prompt is only for surfaces the game screen cannot host (ticket 02 question) |
 
 ## User Stories
 
@@ -60,7 +67,8 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 ### Route tags in the docs
 
 - A how-to section carries one HTML comment line, the same shape as the keyword line: `<!-- route: <surface id> -->`. The id is a surface id from the surface map: a screen or dialog name, or `<ledger key>.<tab>`.
-- The docs index parses the line as it parses keywords, strips it from the section text, and stores it on the section. A split section's parts inherit it. A section without a line has no route.
+- The docs index parses the line as it parses keywords, strips it from the section text, and stores it on the section. A section cut at block boundaries by the size split passes it to every part; a section cut at sub-headings keeps it on the heading that holds the line, as keyword lines do. A section without a line has no route. A second route line in one section, or an empty one, is refused.
+- **Ticket 01 landed 2026-10-04 (`99c71351`).** 15 routes: Settings 6, Prompts 6, Tools 3. "How to Turn On Tools" has no line: it spans the Output and Tools tabs. Calls open to a one-line edit: "How to Publish a Prompt Preset" → the preset Overview (the publish dialog is item-bound); "How to Use a Preset for One World" → the Enter World dialog. No recall probe: comment lines change no section text; ticket 03 owns it.
 - A source test over the bundled docs refuses any route that is not a surface id, and refuses a route on an excluded surface (staff and dev surfaces).
 - The route is index data, not search data: it never joins the search phrases.
 

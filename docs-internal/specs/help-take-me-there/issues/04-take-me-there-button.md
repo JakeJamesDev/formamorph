@@ -14,7 +14,9 @@ An answer whose top source has a route gets a Take Me There button, and a click 
 - The trace carries the chosen route per answer, so AI Context names it.
 - The label is "Take Me There", in the help voice. The button appears once the answer is done.
 
-Spec: Q18, Q23, Q24; Implementation → Help session and window.
+- A Formaquestion surface (the window's own tabs, its Settings tabs, Compare, AI Context) is consumed by the window itself: it switches its tab or opens its own Settings, and sends no app-level request (Q30).
+
+Spec: Q18, Q23, Q24, Q30; Implementation → Help session and window.
 
 Recommended model rationale: component work across two chromes, the mobile sheet and the trace, on top of a fresh seam.
 
