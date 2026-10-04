@@ -34,6 +34,60 @@ export function maskFromDrag(from: MascotPoint, to: MascotPoint, base: MascotSiz
   return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
+/** A Mask handle: a corner or side by compass point, or `move` for the box's middle. */
+export type MaskGrip = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'move';
+
+/** The edges each handle holds: -1 the left or top edge, 1 the right or bottom, 0 neither. */
+const GRIP_EDGES: { readonly [G in Exclude<MaskGrip, 'move'>]: { readonly x: -1 | 0 | 1; readonly y: -1 | 0 | 1 } } = {
+  nw: { x: -1, y: -1 }, n: { x: 0, y: -1 }, ne: { x: 1, y: -1 }, e: { x: 1, y: 0 },
+  se: { x: 1, y: 1 }, s: { x: 0, y: 1 }, sw: { x: -1, y: 1 }, w: { x: -1, y: 0 },
+};
+
+export const MASK_GRIPS: readonly Exclude<MaskGrip, 'move'>[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+
+export const isMaskGrip = (name: string): name is MaskGrip => name === 'move' || (MASK_GRIPS as readonly string[]).includes(name);
+
+/** `value` held to `[low, high]`; an empty range keeps `current`. */
+const clampOrKeep = (value: number, low: number, high: number, current: number): number =>
+  high < low ? current : Math.min(Math.max(value, low), high);
+
+/** One axis of a handle drag: the edge pair after moving the held edge, inside `[0, size]` and at least the minimum apart. */
+function moveEdges(start: number, end: number, edge: -1 | 0 | 1, delta: number, size: number): [number, number] {
+  if (edge < 0) return [clampOrKeep(start + delta, 0, end - MIN_SIDE, start), end];
+  if (edge > 0) return [start, clampOrKeep(end + delta, start + MIN_SIDE, size, end)];
+  return [start, end];
+}
+
+/** The Mask after a handle moves by `delta` base pixels, inside the base, at least the minimum size, in whole pixels. */
+export function moveMaskGrip(mask: MascotMask, grip: MaskGrip, delta: MascotPoint, base: MascotSize): MascotMask {
+  const dx = Math.round(delta.x);
+  const dy = Math.round(delta.y);
+  if (grip === 'move') {
+    return {
+      ...mask,
+      x: clampOrKeep(mask.x + dx, 0, base.width - mask.width, mask.x),
+      y: clampOrKeep(mask.y + dy, 0, base.height - mask.height, mask.y),
+    };
+  }
+  const edges = GRIP_EDGES[grip];
+  const [left, right] = moveEdges(mask.x, mask.x + mask.width, edges.x, dx, base.width);
+  const [top, bottom] = moveEdges(mask.y, mask.y + mask.height, edges.y, dy, base.height);
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+const ARROWS: ReadonlyMap<string, MascotPoint> = new Map([
+  ['ArrowLeft', { x: -1, y: 0 }], ['ArrowRight', { x: 1, y: 0 }], ['ArrowUp', { x: 0, y: -1 }], ['ArrowDown', { x: 0, y: 1 }],
+]);
+
+/** The step an arrow key gives a focused handle: one base pixel, ten with Shift. Null off the handle's axis. */
+export function gripKeyDelta(grip: MaskGrip, key: string, shift: boolean): MascotPoint | null {
+  const arrow = ARROWS.get(key);
+  if (!arrow) return null;
+  if (grip !== 'move' && ((arrow.x !== 0 && GRIP_EDGES[grip].x === 0) || (arrow.y !== 0 && GRIP_EDGES[grip].y === 0))) return null;
+  const step = shift ? 10 : 1;
+  return { x: arrow.x * step, y: arrow.y * step };
+}
+
 /** The Mask cut to the base. No Mask, or one wholly off the base, is the whole base. */
 export function fitMask(mask: MascotMask | null, base: MascotSize): MascotMask {
   const whole = { x: 0, y: 0, width: base.width, height: base.height };
@@ -48,6 +102,12 @@ export function fitMask(mask: MascotMask | null, base: MascotSize): MascotMask {
 /** The head view's box at a height: the Mask's aspect. */
 export function headSize(mask: MascotMask, height: number): { w: number; h: number } {
   return { w: (height * mask.width) / mask.height, h: height };
+}
+
+/** The head view's box at a height, shrunk at the Mask's aspect when it runs past `maxWidth`. */
+export function headSizeWithin(mask: MascotMask, height: number, maxWidth: number): { w: number; h: number } {
+  const size = headSize(mask, height);
+  return size.w <= maxWidth ? size : { w: maxWidth, h: (maxWidth * mask.height) / mask.width };
 }
 
 /** Where the whole base draws so that the Mask fills the piece. */
