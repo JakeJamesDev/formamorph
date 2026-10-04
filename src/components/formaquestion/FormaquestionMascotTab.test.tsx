@@ -588,6 +588,33 @@ describe('the Mask', () => {
     else fireEvent.pointerCancel(target, { pointerId: 1 });
   }
 
+  describe('the preview row', () => {
+    const piece = () => document.querySelector<HTMLElement>('[data-fq-piece="mascot"][data-fq-view="full"]')!;
+    const rowWidth = (width: number) => {
+      const real = HTMLElement.prototype.getBoundingClientRect;
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        return this.hasAttribute('data-fq-preview-row') ? DOMRect.fromRect({ width, height: 240 }) : real.call(this);
+      });
+    };
+
+    it('draws the mascot at the full 240px while the row has room for it and the 128px Head View slot', () => {
+      rowWidth(340);
+      mount();
+      laidOut();
+      expect(piece().style.height).toBe('240px');
+    });
+
+    it('shrinks the mascot to the room the Head View leaves, and keeps the Head View beside it', () => {
+      rowWidth(250);
+      mount();
+      laidOut();
+      // 250 less the 128px slot and the 12px gap leaves 110px, so 110 by 146.67 at the 888:1184 aspect.
+      expect(piece().style.width).toBe('110px');
+      expect(parseFloat(piece().style.height)).toBeCloseTo(146.67, 2);
+      expect(piece().parentElement!.parentElement).toBe(head().closest('[data-fq-preview-row]'));
+    });
+  });
+
   it('fits the Head View of a wide Mask to its slot, shorter at the Mask aspect', () => {
     mount({ ...DEFAULT_MASCOT_RIG, mask: { x: 0, y: 0, width: 888, height: 200 } });
     laidOut();

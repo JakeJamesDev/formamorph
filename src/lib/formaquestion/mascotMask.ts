@@ -99,6 +99,12 @@ export function fitMask(mask: MascotMask | null, base: MascotSize): MascotMask {
   return width > 0 && height > 0 ? { x, y, width, height } : whole;
 }
 
+/** The base's box at a height, shrunk at the base's aspect when it runs past `maxWidth`. */
+export function sizeWithin(base: MascotSize, height: number, maxWidth: number): { w: number; h: number } {
+  const w = (height * base.width) / base.height;
+  return w <= maxWidth ? { w, h: height } : { w: maxWidth, h: (maxWidth * base.height) / base.width };
+}
+
 /** The head view's box at a height: the Mask's aspect. */
 export function headSize(mask: MascotMask, height: number): { w: number; h: number } {
   return { w: (height * mask.width) / mask.height, h: height };
