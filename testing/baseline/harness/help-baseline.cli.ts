@@ -14,6 +14,7 @@
 //              before ticket 47
 //   howto-old  with `--howto-old`: retrieval where the open page's how-tos join every question, as before ticket 49
 //   lookup     with `--lookup`: the help session in lookup mode, on an endpoint that takes function calls
+//   mascot-off with `--mascot-off`: retrieval with the Mascot off, so a Voice is measured against no Voice in one batch
 //   old        with `--old`: retrieval with the surface section outside the block: its length comes off the
 //              budget before the search, and the 5-section limit covers the search hits only
 //   rank-old   with `--rank-old`: retrieval with the changelog ranked like a guide page, as before ticket 34
@@ -25,7 +26,7 @@
 //   floor-alt  with `--floor-alt N`: retrieval with the score floor at N, to compare two floors
 //   v-goal, v-close, v-labels, v-order  with `--variants a,b`: retrieval with the answer request rewritten as
 //              `help-answer-variants.ts` says, as measured in ticket 51
-//   no-docs    the control: the same model, samplers, screen line and language, with no guide text
+//   no-docs    the control: the same model, samplers, screen line and language, with no guide text and no Voice
 //
 // A follow-up runs after its first question in the same arm and run, with that answer as the history.
 // The request body comes from the app's AI Request Spec, so the sampler pins are the app's. The probe adds
@@ -48,6 +49,7 @@
 //
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
 //          [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--howto-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--floor-old] [--floor-alt 0.35] [--variants v-goal,v-close,v-labels,v-order] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
+//          [--mascot on|off] [--voice TEXT] [--mascot-off]  (the Mascot switch, on as shipped, and the rig's Voice, the default rig's when absent)
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -57,10 +59,12 @@ import { BUNDLED_DOCS, bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { pickList } from '@/lib/formaquestion/helpPicks';
-import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
+import { DEFAULT_HELP_PROMPTS, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
+import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
 import { askHelp, HELP_DOCS_CHAR_BUDGET, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
 import { DEFAULT_HELP_ANSWER_OPTIONS } from '@/lib/formaquestion/helpPresets';
 import { helpSettingsOf } from '@/lib/formaquestion/helpSettings';
+import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
 import { mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
@@ -84,8 +88,12 @@ const variantArgs = argVal('--variants', '').split(',').filter(Boolean);
 const unknownVariant = variantArgs.find((variant) => !isVariant(variant));
 if (unknownVariant) throw new Error(`--variants takes ${ANSWER_VARIANTS.join(', ')}, not ${unknownVariant}`);
 const variants = variantArgs.filter(isVariant);
+const mascotArg = argVal('--mascot', 'on');
+if (mascotArg !== 'on' && mascotArg !== 'off') throw new Error(`--mascot takes on or off, not ${mascotArg}`);
+/** The Mascot settings every session arm carries. */
+const mascotSettings = { mascot: mascotArg === 'on', rig: { ...DEFAULT_MASCOT_RIG, voice: argVal('--voice', DEFAULT_MASCOT_RIG.voice) } };
 
-type Arm = AnswerVariant | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'no-docs';
+type Arm = AnswerVariant | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'mascot-off' | 'no-docs';
 
 interface Sample extends Usage {
   /** The time from the question to the end of the answer, in milliseconds. A saved batch can have none. */
@@ -106,6 +114,8 @@ interface Batch {
   arms: Arm[];
   /** The ids of the questions the batch was run for. A first question that only gives a follow-up its history is not one. */
   picked?: string[];
+  /** The Mascot switch and the Voice the session arms carried. A batch from before the Mascot has none. */
+  mascot?: { on: boolean; voice: string };
   rows: Row[];
 }
 
@@ -161,7 +171,7 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
     : isVariant(arm) ? answerVariant(sessionFetch(usage), arm) : sessionFetch(usage);
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
-    settings: helpSettingsOf({ lookup, ...(arm === 'keyword-only' && { sources: { aiPicks: false } }) }),
+    settings: helpSettingsOf({ lookup, ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), ...(arm === 'keyword-only' && { sources: { aiPicks: false } }) }),
     snapshot: probeSnapshot(target, lookup), fetchImpl,
     ...(arm === 'keep-old' && { screenRule: false }),
     ...(arm === 'howto-old' && { howToRule: false }),
@@ -189,7 +199,7 @@ ${exchange.answer}` : exchange.answer },
     { role: 'user', content: helpUserMessage(c.question, sections, hint?.where) },
   ];
   const spec = buildAiRequestSpec(probeSnapshot(target, false), {
-    systemPrompt: helpSystemPrompt(c.language ?? '', HELP_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens,
+    systemPrompt: helpSystemPrompt(c.language ?? '', renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: mascotSettings.mascot ? mascotSettings.rig.voice.trim() : '' })), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
   if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);
@@ -237,7 +247,7 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...variants, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...variants, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), ...(args.includes('--mascot-off') ? ['mascot-off' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 
@@ -273,11 +283,11 @@ async function runBatch(): Promise<Batch> {
     }
   }
 
-  console.log(`help-baseline · ${target.endpoint} · model ${target.model} · ${cases.length} questions × ${arms.length} arms × ${runs} runs`);
+  console.log(`help-baseline · ${target.endpoint} · model ${target.model} · mascot ${mascotArg} · ${cases.length} questions × ${arms.length} arms × ${runs} runs`);
   const started = Date.now();
   const rows = (await pool(jobs, parallel)).flat();
   console.log(`${rows.length} answers in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
-  return { endpoint: target.endpoint, model: target.model, runs, arms, picked: asked.map((c) => c.id), rows };
+  return { endpoint: target.endpoint, model: target.model, runs, arms, picked: asked.map((c) => c.id), mascot: { on: mascotSettings.mascot, voice: mascotSettings.rig.voice }, rows };
 }
 
 const batch = rescoreFile ? JSON.parse(readFileSync(rescoreFile, 'utf8')) as Batch : await runBatch();
@@ -321,7 +331,8 @@ const summaryCells = (s: Summary, arm: Arm) => {
 
 const report: string[] = [];
 const failed = batch.rows.filter((r) => r.error);
-report.push(`# Help baseline\n\n${batch.endpoint} · model \`${batch.model}\` · ${batch.runs} runs per arm · ${scored.length} answers scored, ${failed.length} failed`);
+const mascotLine = batch.mascot ? ` · mascot ${batch.mascot.on ? 'on' : 'off'}` : '';
+report.push(`# Help baseline\n\n${batch.endpoint} · model \`${batch.model}\`${mascotLine} · ${batch.runs} runs per arm · ${scored.length} answers scored, ${failed.length} failed`);
 for (const arm of batch.arms) {
   const ofArm = scored.filter((r) => r.arm === arm);
   const kindRows = (Object.keys(KIND_LABELS) as ReportKind[]).filter((kind) => ofArm.some((r) => r.kind === kind));

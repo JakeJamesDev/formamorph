@@ -5,11 +5,12 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
 import { HELP_PICK_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { helpSettingsCodec, helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { addPreset, emptyStore, presetStoreCodec, PROMPT_TEXT_KEYS, type PromptValues } from '@/lib/promptPresets';
 import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { openHelpSettings } from '@/test/helpFixtures';
+import { openHelpSettings, VOICED_HELP_PROMPT } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import type { HelpAi } from './useHelpAi';
 
@@ -58,6 +59,22 @@ describe('the help preset on the device', () => {
     await ask('How do I add a trait?');
     expect(spy).toHaveBeenCalledTimes(2);
     expect(systemOf(spy, 0)).toBe(HELP_PICK_SYSTEM_PROMPT);
+    expect(systemOf(spy, 1)).toBe(VOICED_HELP_PROMPT);
+  });
+
+  const captain = { ...DEFAULT_MASCOT_RIG, voice: 'Speak like a ship captain.' };
+
+  it("sends the stored rig's Voice with the Mascot on", async () => {
+    localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ rig: captain })));
+    const spy = stubRequests();
+    await ask('How do I add a trait?');
+    expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
+  });
+
+  it("sends the prompt with no Voice while the Mascot is off", async () => {
+    localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ rig: captain, mascot: false })));
+    const spy = stubRequests();
+    await ask('How do I add a trait?');
     expect(systemOf(spy, 1)).toBe(HELP_SYSTEM_PROMPT);
   });
 
@@ -78,7 +95,7 @@ describe('the help preset on the device', () => {
     const spy = stubRequests();
     await ask('How do I add a trait?');
     expect(systemOf(spy, 0)).toBe(HELP_PICK_SYSTEM_PROMPT);
-    expect(systemOf(spy, 1)).toBe(HELP_SYSTEM_PROMPT);
+    expect(systemOf(spy, 1)).toBe(VOICED_HELP_PROMPT);
   });
 
   it('opens the Prompts tab on the stored preset, read-only for Default', async () => {

@@ -1,9 +1,17 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
+import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import type { Tool } from '@/types';
 import { sseReply, sseResponse } from './aiTextFixtures';
+
+/** The default answer prompt as a player who changed nothing sends it: the mascot on, with the default Voice. */
+export const VOICED_HELP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: DEFAULT_MASCOT_RIG.voice });
+
+/** The default lookup prompt as a player who changed nothing sends it. */
+export const VOICED_LOOKUP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.lookup, { voice: DEFAULT_MASCOT_RIG.voice });
 
 /** Stores help settings with the Mascot off, so the window has the framed chrome. Fields pass as given, bad ones included. */
 export function storeFramedWindow(fields: Record<string, unknown> = {}) {

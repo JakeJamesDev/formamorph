@@ -141,6 +141,9 @@ function helpSnapshot(snapshot: AiSettingsSnapshot, routes: readonly string[], r
 /** The reasoning parts that came in, as one text. */
 const joinReasoning = (...parts: string[]): string => parts.filter(Boolean).join('\n\n');
 
+/** The Voice a question sends: the rig's, trimmed, while the mascot is on, else none. */
+const voiceOf = ({ mascot, rig }: HelpSettings): string => (mascot ? rig.voice.trim() : '');
+
 /** The sampler values a request body carried, in the settings' names. The engine spells the penalty `repeat_penalty`. */
 function samplersOf(body: AiRequestBody): HelpSamplers {
   const sent: Record<string, unknown> = { ...body, repetition_penalty: body.repetition_penalty ?? body.repeat_penalty };
@@ -405,7 +408,7 @@ export async function* askHelp({
   const execute: ToolExecutor<OfferedFunction> = (fn, argumentsText, callSignal) =>
     (isTool(fn) ? runTool(fn, argumentsText, callSignal) : internal.get(fn.id)!(fn, argumentsText, callSignal));
   const spec = buildAiRequestSpec(answerSnapshot, {
-    systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer)),
+    systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer, { voice: voiceOf(settings) })),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
     maxTokensOverride: options.maxTokens,

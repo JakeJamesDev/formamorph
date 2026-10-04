@@ -27,7 +27,7 @@ const rig = (change: Partial<MascotRig> = {}): MascotRig => ({
     idle: { expression: 'smile', state: 'rest' },
     thinking: { expression: 'think', state: 'point' },
   },
-  persona: 'Cheerful.',
+  voice: 'Cheerful.',
   transition: { mode: 'none' },
   ...change,
 });
@@ -186,11 +186,11 @@ describe('parseMascotRig', () => {
     expect(parseMascotRig(value)).toBe(DEFAULT_MASCOT_RIG);
   });
 
-  it("takes the default rig's base, layers, persona and transition for missing or bad fields", () => {
-    const parsed = parseMascotRig({ base: { kind: 'bundled', name: 'nope' }, layers: 'many', persona: 7 });
+  it("takes the default rig's base, layers, voice and transition for missing or bad fields", () => {
+    const parsed = parseMascotRig({ base: { kind: 'bundled', name: 'nope' }, layers: 'many', voice: 7 });
     expect(parsed.base).toEqual(DEFAULT_MASCOT_RIG.base);
     expect(parsed.layers).toEqual(DEFAULT_MASCOT_RIG.layers);
-    expect(parsed.persona).toBe(DEFAULT_MASCOT_RIG.persona);
+    expect(parsed.voice).toBe(DEFAULT_MASCOT_RIG.voice);
     expect(parsed.transition).toEqual(DEFAULT_MASCOT_RIG.transition);
   });
 
@@ -199,9 +199,9 @@ describe('parseMascotRig', () => {
     expect(parseMascotRig({ ...stored(), picks }).picks).toEqual({ initial: empty, idle: empty, thinking: empty });
   });
 
-  it("keeps a stored base and an empty persona", () => {
-    const parsed = parseMascotRig({ ...stored(), base: { kind: 'stored', id: 'mine' }, persona: '' });
+  it("keeps a stored base and an empty voice", () => {
+    const parsed = parseMascotRig({ ...stored(), base: { kind: 'stored', id: 'mine' }, voice: '' });
     expect(parsed.base).toEqual({ kind: 'stored', id: 'mine' });
-    expect(parsed.persona).toBe('');
+    expect(parsed.voice).toBe('');
   });
 });

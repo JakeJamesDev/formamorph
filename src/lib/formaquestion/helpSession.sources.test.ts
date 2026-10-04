@@ -3,11 +3,11 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { reasoningCapabilityFromLevels } from '@/lib/reasoningEffort';
 import { EMBEDDING_MODEL_ID } from '@/lib/memoryRelevance';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { isPickRequest } from '@/test/helpFixtures';
+import { isPickRequest, VOICED_HELP_PROMPT } from '@/test/helpFixtures';
 import type { ImageAttachment } from '@/types';
 import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { HELP_PICK_MAX_TOKENS, pickList } from './helpPicks';
-import { HELP_PICK_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT } from './helpPrompt';
+import { HELP_PICK_SYSTEM_PROMPT } from './helpPrompt';
 import type { HelpEmbedder } from './helpSemantic';
 import { askHelp, HELP_SCORE_FLOOR, type HelpEvent, type HelpQuestion } from './helpSession';
 import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, EMPTY_HELP_PRESET_STORE } from './helpPresets';
@@ -79,7 +79,7 @@ describe('the search sources, as shipped', () => {
 
     expect(server.order).toEqual(['pick', 'answer']);
     expect(sources).toEqual([KEYWORD_HIT, PICKED]);
-    expect(bodyOf(server.answers).messages[0].content).toBe(HELP_SYSTEM_PROMPT);
+    expect(bodyOf(server.answers).messages[0].content).toBe(VOICED_HELP_PROMPT);
     expect(bodyOf(server.answers).messages[1].content).toContain('## How to Rewind a Turn');
     expect(embedder.open).not.toHaveBeenCalled();
   });

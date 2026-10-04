@@ -138,7 +138,7 @@ describe('the mascot', () => {
   });
 
   it('survives the codec with a changed rig', () => {
-    const rig = { ...DEFAULT_MASCOT_RIG, persona: 'Terse.', layers: DEFAULT_MASCOT_RIG.layers.slice(0, 2) };
+    const rig = { ...DEFAULT_MASCOT_RIG, voice: 'Terse.', layers: DEFAULT_MASCOT_RIG.layers.slice(0, 2) };
     const settings = helpSettingsOf({ mascot: false, rig });
     expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings))).toEqual(settings);
   });

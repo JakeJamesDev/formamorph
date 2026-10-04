@@ -336,6 +336,7 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 | **Lookup Function** | Lookup | The name of the function your AI calls to read more guide sections |
 | **Pick Limit** | Picks | The most sections one pick reply names. The app reads that many picks at most, whatever the prompt says. |
 | **Reply Format** | Picks | The rule for how the pick reply is written, so the app can read the picks |
+| **Mascot Voice** | Answer, Lookup | Your mascot's Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 

@@ -86,7 +86,8 @@ describe('the face call', () => {
     await collect(ask(off, { mascot: false }));
     const noFaces = script(sseReply('Select **Add Trait**.'));
     const expressionIds = DEFAULT_MASCOT_RIG.layers.filter((row) => row.kind === 'expression').map((row) => row.id);
-    await collect(ask(noFaces, { rig: without(...expressionIds) }));
+    // A blank Voice keeps the Voice chip out, so the two requests can differ only by the face call.
+    await collect(ask(noFaces, { rig: { ...without(...expressionIds), voice: '' } }));
     expect(bodyOf(off)).not.toHaveProperty('tools');
     expect(bodyOf(noFaces)).toEqual(bodyOf(off));
   });

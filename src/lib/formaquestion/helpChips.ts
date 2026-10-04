@@ -1,6 +1,6 @@
 /**
  * The chips of the help prompts: the parts the app reads back or names elsewhere, so a power user cannot
- * retype them by accident. Each chip stands for one fixed text, and a prompt with no chip gets none of it.
+ * retype them by accident. Each chip stands for one text, and a prompt with no chip gets none of it.
  */
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { plainVocabulary } from '@/lib/chipVocabulary';
@@ -16,16 +16,25 @@ export const HELP_CHIP = {
   lookupFunction: '<LOOKUP_FUNCTION>',
   pickLimit: '<PICK_LIMIT>',
   replyFormat: '<REPLY_FORMAT>',
+  voice: '<VOICE>',
 } as const;
 
 export type HelpChipToken = (typeof HELP_CHIP)[keyof typeof HELP_CHIP];
 
-interface HelpChipEntry {
-  label: string;
-  hint: string;
-  /** The text the chip sends. */
-  text: string;
+/** The chip texts that come with each question. */
+export interface HelpChipValues {
+  /** The Mascot's Voice while the mascot is on, else empty. */
+  readonly voice: string;
 }
+
+const NO_VALUES: HelpChipValues = { voice: '' };
+
+/** A chip sends a fixed `text`, or the question's `value` of that name in its `frame`. An empty value sends nothing. */
+type HelpChipEntry = { label: string; hint: string } & ({ text: string } | { value: keyof HelpChipValues; frame: (value: string) => string });
+
+/** The Voice with the lines that keep the guide's steps and names above its tone. */
+const frameVoice = (voice: string): string =>
+  `Speak in this voice: ${voice}\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.`;
 
 /** Each chip: its label on the chip, its tooltip, and the text it sends. */
 export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
@@ -49,6 +58,12 @@ export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
     hint: 'Sets how the pick reply is written, so the picks can be read',
     text: '- Reply with the lines of your picks alone, one on each line, each copied as the list writes it.',
   },
+  [HELP_CHIP.voice]: {
+    label: 'Mascot Voice',
+    hint: "Sends your mascot's Voice while the mascot is on",
+    value: 'voice',
+    frame: frameVoice,
+  },
 };
 
 const TOKENS = Object.keys(HELP_CHIPS) as HelpChipToken[];
@@ -69,12 +84,45 @@ export function parseHelpPrompt(text: string): PromptSegment[] {
   return segments;
 }
 
-/** The prompt as the request carries it: each chip replaced by its text. */
-export function renderHelpPrompt(text: string): string {
-  return parseHelpPrompt(text).map((segment) => (segment.type === 'variable' && isHelpChip(segment.token) ? HELP_CHIPS[segment.token].text : segment.type === 'text' ? segment.value : segment.token)).join('');
+function chipText(token: HelpChipToken, values: HelpChipValues): string {
+  const entry = HELP_CHIPS[token];
+  if ('text' in entry) return entry.text;
+  const value = values[entry.value];
+  return value && entry.frame(value);
 }
 
-// One palette entry for every help chip: the family is four fixed texts, not a scene.
+/** A line that holds one chip alone, with the chip's text empty. */
+function isEmptyChipLine(line: string, values: HelpChipValues): boolean {
+  const token = line.trim();
+  return isHelpChip(token) && chipText(token, values) === '';
+}
+
+/** The lines without each empty chip line. A line that stood as its own paragraph takes one blank line with it. */
+function dropEmptyChipLines(lines: readonly string[], values: HelpChipValues): string[] {
+  const kept: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!isEmptyChipLine(lines[i], values)) {
+      kept.push(lines[i]);
+      continue;
+    }
+    const blankBefore = kept.length === 0 || kept[kept.length - 1].trim() === '';
+    const blankAfter = i === lines.length - 1 || lines[i + 1].trim() === '';
+    if (!blankBefore || !blankAfter) continue;
+    if (i < lines.length - 1) i++;
+    else kept.pop();
+  }
+  return kept;
+}
+
+/** The prompt as the request carries it: each chip replaced by its text, and each empty chip line gone. */
+export function renderHelpPrompt(text: string, values: HelpChipValues = NO_VALUES): string {
+  const kept = dropEmptyChipLines(text.split('\n'), values).join('\n');
+  return parseHelpPrompt(kept)
+    .map((segment) => (segment.type === 'text' ? segment.value : isHelpChip(segment.token) ? chipText(segment.token, values) : segment.token))
+    .join('');
+}
+
+// One palette entry for every help chip: the family is a few app texts, not a scene.
 const HELP_CHIP_COLOR = HIGHLIGHT_PALETTE[7];
 
 /** The chip family of one help prompt editor. The palette offers `chips`, the chips that prompt reads back. */
