@@ -51,8 +51,9 @@ describe('the bundled Docs Index', () => {
 
   it('routes each how-to on the Settings pages', () => {
     const howTos = sections.filter((s) => ['Settings', 'Prompts', 'Tools'].includes(s.page) && s.heading.startsWith('How to '));
-    // How to Turn On Tools spans the Output and Tools tabs, so it names no single surface.
-    expect(howTos.filter((s) => s.route === undefined).map((s) => s.id)).toEqual(['Tools#how-to-turn-on-tools']);
+    expect(howTos.filter((s) => s.route === undefined).map((s) => s.id)).toEqual([]);
+    // How to Turn On Tools routes to the Output tab, where its first step is.
+    expect(index.get(['Tools#how-to-turn-on-tools'])[0]?.route).toBe('settings.output');
     expect(index.get(['Settings#how-to-restore-default-worlds'])[0]?.route).toBe('settings.data');
   });
 

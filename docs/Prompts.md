@@ -1,5 +1,6 @@
 # 📜 Prompts
 <!-- keywords: prompt engineering, templates, instructions sent, where is the tab, tab missing, ai behavior, writing style rules -->
+<!-- route: settings.prompts -->
 
 The **Prompts** tab in Settings holds the text the app sends to the AI for each request. A **prompt preset** is one full set of that text, with its per-prompt options. The app sends the prompts of the active preset.
 
@@ -34,7 +35,7 @@ The app saves each change at once. To go back to the shipped text, select **Rese
 
 ## How to Route a Prompt to Another Endpoint
 <!-- keywords: different model, second model, small model, faster, separate api, two models, per task, cheaper, multiple backends, mix providers, assign, split work, reachable, dual setup -->
-<!-- route: settings.prompts -->
+<!-- route: settingsPromptSurfaces.options -->
 
 You can send one prompt to a different text endpoint, such as a small fast model for **Choices**. First add the endpoint as a preset on the **Endpoints** tab. See [Text](Settings#text).
 
@@ -92,6 +93,7 @@ While you play a world with its own preset, the **Prompts** tab edits that world
 
 ## Prompt Presets
 <!-- keywords: xml, experimental, which to choose, difference between, rename, delete, reset all, built in list, what is included, script warning -->
+<!-- route: settings.prompts -->
 
 The **Preset** list holds four built-in presets, then your own presets.
 
@@ -155,6 +157,7 @@ The **Import Preset** dialog shows warnings before you import. A preset with a S
 
 ## The Prompts
 <!-- keywords: what each does, pipeline, missing from list, not showing, director, storyboard, diary, scene tags, order of requests, which runs when -->
+<!-- route: settingsPrompts.narration -->
 
 The list on the left groups the prompts by the job they do. A prompt shows only while its feature is on. When you turn a feature off, its prompt is not in the list, and the app sends nothing for it.
 
@@ -180,6 +183,7 @@ The settings in the last column are in Settings → **Output**, and **Enable Ima
 
 ## The Surfaces of a Prompt
 <!-- keywords: anatomy, per prompt temperature, max length, history length, how many turns, reasoning budget, recap message, full request map, attachments option, thinking effort -->
+<!-- route: settings.prompts -->
 
 Select a prompt to open its **Anatomy**. The rows under the prompt open its other surfaces. On a narrow screen, one list at the top holds the prompts and the surfaces.
 
@@ -256,6 +260,7 @@ The editor has **Undo** and **Redo** buttons. **Edit full screen** opens the edi
 
 ## World Prompts and the Diff Viewer
 <!-- keywords: custom prompt notice, compare, green and red, what changed, authors instructions, ignore, use mine instead, overrides my preset, raw, side by side -->
+<!-- route: worldPrompts -->
 
 A world can bring its own **Narration**, **Choices** or **Stats** prompt. An author writes them under **Custom Prompts** in the World Editor's **Overview** tab. See [World Editor Overview](World-Editor-Overview). A world prompt takes the place of your preset's prompt for that pass.
 

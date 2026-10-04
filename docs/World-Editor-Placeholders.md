@@ -1,5 +1,6 @@
 # 🧩 World Editor: Placeholders
 <!-- keywords: random text, fill in blanks, mad libs, dynamic wording, reusable snippets -->
+<!-- route: worldEditor.placeholders -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -203,6 +204,7 @@ A [blueprint chip](#blueprint-chips) works only in the text of an original trait
 
 ## Placeholders that belong to an entity or a dictionary
 <!-- keywords: npc own variables, travels with card, portable, exported together, lorebook own list, private to one, owner -->
+<!-- route: worldEditorEntity.placeholders -->
 
 An entity, a dictionary book and a library persona can each have their own placeholders, on their **Placeholders** tab. These placeholders travel with their owner in an entity card, a dictionary file and a published listing. They show under their owner in the list, not in a group.
 

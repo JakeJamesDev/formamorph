@@ -1,5 +1,6 @@
 # ⚙️ Settings
 <!-- keywords: options, preferences, configuration, config, gear icon, customize app -->
+<!-- route: settings -->
 
 Settings controls how the app looks, what the AI writes each turn, which AI it connects to, and some stored data. Your settings stay on this device.
 
@@ -90,6 +91,7 @@ In the tables below, **Advanced** marks a row that shows in Advanced mode only.
 
 ## Display
 <!-- keywords: dark mode, night theme, color scheme, mute music, background image, translate, other language, typing animation, accent color, show thoughts -->
+<!-- route: settings.display -->
 
 What you see and hear.
 
@@ -146,6 +148,7 @@ These settings change the story text only, not the rest of the app.
 
 ## Output
 <!-- keywords: slow turns, speed up, too many requests, disable stats, auto move, parallel, npc diaries, extra passes, performance, describe new npcs -->
+<!-- route: settings.output -->
 
 What the AI makes each turn, and what it carries forward. Most of these settings add or remove a request per turn. More requests give more features but make each turn slower.
 
@@ -223,6 +226,7 @@ See [When Each Memory Happened](Memory#when-each-memory-happened).
 
 ## Endpoints
 <!-- keywords: temperature, samplers, creativity, response length, cut off, context size, gpu layers, out of memory, api key, repetitive text -->
+<!-- route: settings.endpoints -->
 
 Which AI the app connects to. The tab has its own tabs: **Text**, **Image** and, in Advanced mode, **Tag Prompt**. To set up a text endpoint, follow [Connect Your Own AI](Connect-Your-Own-AI).
 
@@ -295,6 +299,7 @@ The **Image** section sets how each image is made.
 
 ## Data
 <!-- keywords: clear cache, free up space, tutorial again, show tips again, wipe downloaded pictures, guided tour, auto saving toggle, housekeeping -->
+<!-- route: settings.data -->
 
 Saves, the Authoring Tour, and stored data. To back up your worlds, saves, library entities and library dictionaries, use [Backup & Restore](Saves-and-Backup#the-backup--restore-dialog) in the main menu's **Menu**. See [How to Make a Backup](Saves-and-Backup#how-to-make-a-backup).
 

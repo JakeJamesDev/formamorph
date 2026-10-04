@@ -81,6 +81,7 @@ Your pick stays when you switch tabs. A broken pin on your **Testing as** pick s
 
 ## Issues
 <!-- keywords: ignore a warning, suppress, silence a finding, bring back hidden warning, world too large, file size meter, linter, simple mode hides findings -->
+<!-- route: worldEditorBench.issues -->
 
 The **Issues** tab is the World Doctor. It checks your world's structure: broken links, unused placeholders, stats that start out of range and more. It never judges your writing.
 
@@ -99,6 +100,7 @@ In Simple mode, findings about hidden fields fold into one line. Switch to Advan
 
 ## Triggers
 <!-- keywords: vector search, similarity matching, rag, near miss, name detection test, quoted names ignored, lore token budget, chat history depth -->
+<!-- route: worldEditorBench.triggers -->
 
 The **Triggers** tab is the Activation Tester. Paste text, and it shows what that text makes fire.
 
@@ -113,6 +115,7 @@ Matching warnings from **Issues** show on the rows they name, with the same **Fi
 
 ## AI Context
 <!-- keywords: prompt size, context window, token budget, exits from here, unreachable place, where can players travel, sent in full, per location cost -->
+<!-- route: worldEditorBench.aiContext -->
 
 The **AI Context** tab shows what the AI gets from the location in the **at** list.
 
@@ -123,6 +126,7 @@ The **AI Context** tab shows what the AI gets from the location in the **at** li
 
 ## Opening
 <!-- keywords: odds of each intro, probability, likelihood of repeat, raw first request, perks at start, try different stat levels, what wildcards rolled, custom presets ignored -->
+<!-- route: worldEditorBench.opening -->
 
 The **Opening** tab shows turn one of a new game for your **Testing as** pick.
 

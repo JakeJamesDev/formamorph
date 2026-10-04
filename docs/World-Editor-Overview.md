@@ -1,5 +1,6 @@
 # 🌍 World Editor: Overview
 <!-- keywords: general info, metadata, main tab, world properties, basic details, two columns -->
+<!-- route: worldEditor.overview -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 

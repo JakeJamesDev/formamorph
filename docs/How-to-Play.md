@@ -180,6 +180,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 ## The Game Screen
 <!-- keywords: interface, hud, ui overview, hide panels, distraction free, mute music, status line, where is everything, immersive -->
+<!-- route: gameViewer -->
 
 | Area | What it holds |
 |---|---|
@@ -213,6 +214,7 @@ No actions show while the AI writes a turn.
 
 ## The Side Panel Tabs
 <!-- keywords: author note, inventory, reminder for ai, event history, edit my stats, cheat stats, toggle trait, always tell ai, sidebar, standing facts -->
+<!-- route: gameViewer -->
 
 | Tab | What it is |
 |---|---|
@@ -252,6 +254,7 @@ The **Logs** tab lists what the game changed: your starting traits and location,
 
 ## The Entity Dialog
 <!-- keywords: npc profile, character sheet, portrait, bio, unknown name, who is this, click a name, cast details -->
+<!-- route: entity -->
 
 Select a name in the **Entities** tab to open it. On desktop with the avatar showing, the first select shows that entity's picture in the panel.
 
@@ -261,6 +264,7 @@ An entity the story hasn't revealed yet shows as its alias or *Unknown*, and doe
 
 ## The Change Location Dialog
 <!-- keywords: world map, zoom, pan, places tree, sub areas, pin marker, minimap, overview of places -->
+<!-- route: location -->
 
 | Tab | What it shows |
 |---|---|
@@ -286,6 +290,7 @@ Select the **Menu** button at the top right.
 
 ## Narration Layout
 <!-- keywords: difference between, paginated, continuous, scrolling feed, what each shows, jump to newest, dashed bubbles -->
+<!-- route: gameViewerLayout.pages -->
 
 | Layout | How the story reads |
 |---|---|
@@ -298,6 +303,7 @@ The layout, the quote color and the narration font are in **Settings** → **Dis
 
 ## The AI Context Inspector
 <!-- keywords: which lore triggered, raw reasoning, tool calls, export log json, find in prompt, debug window, request list, legend -->
+<!-- route: aiContext -->
 
 The inspector shows exactly what the game sent to the AI each turn, and what came back. Use it to learn why the story did something.
 
@@ -313,6 +319,7 @@ Each request lists its **Raw Input**, **Tool Rounds**, **Raw Reasoning** and **R
 
 ## Error Details
 <!-- keywords: diagnostics, toast, error code, what went wrong, red popup, failure info, paste in discord, technical info -->
+<!-- route: errorDetails -->
 
 Most error messages have a **View Details →** link. The **Error Details** dialog shows the error and the full diagnostics behind it.
 
@@ -323,6 +330,7 @@ Most error messages have a **View Details →** link. The **Error Details** dial
 
 ## The Demo AI Notice
 <!-- keywords: free model, badge, trial, default narrator, popup at start, weak ai, upgrade, no setup -->
+<!-- route: demoAI -->
 
 In the browser and on Android, Formamorph starts on the **Demo AI**, a small free model that needs no setup. The first time you start a game on it, **You're Playing on the Demo AI** opens. A **Demo AI** badge at the top right of the story opens it again.
 
@@ -336,6 +344,7 @@ A stronger model writes better narration and keeps each entity consistent. See [
 
 ## The Like Prompt
 <!-- keywords: enjoying popup, heart, rate this world, thumbs up, upvote, stop asking, favorite, review -->
+<!-- route: likePrompt -->
 
 After 15 turns in a world you downloaded from Community Creations, a card under the story asks *Enjoying …?*
 

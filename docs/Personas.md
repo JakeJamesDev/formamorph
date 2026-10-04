@@ -130,6 +130,7 @@ Some worlds have a **Custom Persona**. It takes **None**'s place in the list, wi
 
 ## Change It in Game
 <!-- keywords: memories use wrong name, legacy save identity, deleted identity warning, edits reach old saves, returns next turn, side panel row -->
+<!-- route: persona -->
 
 A row above **Stats**, **Traits** and **Location** shows your persona's portrait and name, or **None**. Select **Change** to open **Change Persona** and pick again.
 

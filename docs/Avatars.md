@@ -66,6 +66,7 @@ To remove it, select **Remove your profile image**. With no picture, your initia
 
 ## Character Customization
 <!-- keywords: creator screen, rotate the model, spin view, stop it moving, sliders missing, clothing recolor, body grows with stats, hide model in game, transformation -->
+<!-- route: avatar -->
 
 **Character Customization** opens between the **Enter World** dialog and the game, in a world with **3D Player Avatar** on. It fills the screen: the viewer on the left and the controls on the right. On mobile, the controls are in a sheet. Select **Customize** to open it.
 
@@ -94,6 +95,7 @@ A world author can tie body sliders to a stat. As the stat changes, the Avatar's
 
 ## The Avatar Details Dialog
 <!-- keywords: model info, metadata, properties, inspect file, vrm version, remove a model, saves using it, right click options -->
+<!-- route: modelDetails -->
 
 Select an Avatar's tile on the **Avatars** tab to open its details. The dialog's title is the Avatar's name. The viewer is on the left. On mobile, select **Details & sliders** to open the controls.
 

@@ -1,5 +1,6 @@
 # 📊 World Editor: Stats
 <!-- keywords: gauges, meters, hit points, mana, gold, score, resource bars, numbers -->
+<!-- route: worldEditor.stats -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -85,6 +86,7 @@ In Simple mode the panel shows the basic fields with no tabs.
 
 ## The fields
 <!-- keywords: minimum maximum, starting amount, regeneration, heal over time, decay per hour, hunger drain, avatar body changes, stop ai raising, freeze value, off until unlocked -->
+<!-- route: worldEditorStat.details -->
 
 | Field | What it does |
 |---|---|
@@ -120,6 +122,7 @@ A percentage stat shows only the first two, because its Max is always 100.
 
 ## Stat Descriptors
 <!-- keywords: no status red, gap in coverage, which band wins, raw or percent, scales with max, above top tier, label missing, coverage bar -->
+<!-- route: worldEditorStat.descriptors -->
 
 A descriptor turns a number into a word, such as `Winded` or `Exhausted`. The AI gets that word when the chip's **Descriptor** piece is on. A descriptor takes placeholder chips, so a band can name the rolled town or the rolled rival.
 
@@ -145,6 +148,7 @@ When you switch, your numbers convert, so no band moves. The choice only changes
 
 ## Dynamic Value Calculation
 <!-- keywords: javascript, script, formula, derived from another, automatic math, custom logic, programming, ai change overwritten, code box, computed -->
+<!-- route: worldEditorStat.code -->
 
 The **Code** tab holds two code boxes. Each box takes JavaScript, and each has its own **Test Code** and **Templates** buttons. **Templates** opens a list of code shapes to insert.
 

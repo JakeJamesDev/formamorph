@@ -1,5 +1,6 @@
 # 🗺️ World Editor: Locations
 <!-- keywords: scenes, environments, world geography, where player is, venues -->
+<!-- route: worldEditor.locations -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -98,6 +99,7 @@ When the AI's answer doesn't match a connected place, the game discards it and o
 
 ## List and Canvas
 <!-- keywords: graph view, node editor, visual diagram, fullscreen, tidy layout, boxes overlap, unreachable marker, right-click menu, flowchart -->
+<!-- route: worldEditorLocations.list -->
 
 The **Locations** tab has two views. Switch between them with **List** and **Canvas**.
 
@@ -112,6 +114,7 @@ Nothing on the canvas moves until you move it or ask for a layout. With nothing 
 
 ## The panel
 <!-- keywords: backdrop, wallpaper, scenery picture, looping noise, atmosphere audio, generate scenery, rain sfx -->
+<!-- route: worldEditorLocation.details -->
 
 Select a location in the list to open its panel. The tab you pick stays open when you select another location.
 
@@ -154,6 +157,7 @@ The **✨ toolbar** beside **AI-Facing Summary** can write a draft from your AI-
 
 ## Entities
 <!-- keywords: who is here, npcs in room, assign characters, populate, residents, occupants, put npc here -->
+<!-- route: worldEditorLocation.presence -->
 
 The **Entities** picker on the **Presence** tab lists who's at this location. Each entity stores its own locations, so an edit here changes the entity's **Locations** field. It's the same link, and you can set it from either side.
 
@@ -210,6 +214,7 @@ One Connection is one link, so it shows on **both** locations' panels. Change it
 
 ## Placeholder Pins
 <!-- keywords: wording per area, child doesnt inherit, reverts on leaving, local override, climate by region -->
+<!-- route: worldEditorLocation.pins -->
 
 **Advanced mode only.** A pin on the **Pins** tab keeps a [placeholder](World-Editor-Placeholders#pins) at one value while the player is here. For example, the *Fen* pins Weather to *fog*. When the player leaves, the playthrough's own roll shows again. A sub-location doesn't get its parent's pins.
 

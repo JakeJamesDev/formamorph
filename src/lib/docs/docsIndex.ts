@@ -75,15 +75,19 @@ interface SplitSection extends DocSection {
   route?: string;
 }
 
-/** A section's text without its keyword and route lines, and what they held. A blank line the removal doubles goes too. */
+/**
+ * A section's text without its keyword and route lines, and what they held. A blank line the removal doubles
+ * goes too. A route line under a sub-heading the section holds is not the section's: it stays in the text.
+ */
 function takeTagLines(text: string): { text: string; keywords: string[]; route?: string } {
   const lines = text.split('\n');
   const drop = new Set<number>();
   const keywords: string[] = [];
   let route: string | undefined;
+  const subHeading = docHeadings(text).find((heading) => heading.line > 0)?.line ?? Infinity;
   forEachProseLine(text, (source, line) => {
     const keyword = KEYWORD_LINE.exec(source);
-    const routeLine = ROUTE_LINE.exec(source);
+    const routeLine = line < subHeading ? ROUTE_LINE.exec(source) : null;
     if (keyword) keywords.push(keyword[1]);
     else if (routeLine) route ||= routeLine[1] || undefined;
     else return;

@@ -1,5 +1,6 @@
 # 📖 World Editor: Dictionary
 <!-- keywords: knowledge base, background facts, setting bible -->
+<!-- route: worldEditor.dictionary -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -48,6 +49,7 @@ An entry's Value doesn't activate other entries, unless the other entry is **Rec
 
 ## The entry panel
 <!-- keywords: constant, always on, regular expression, pattern, partial word, capital letters, two conditions, cascade, fires too often, must not contain -->
+<!-- route: worldEditor.dictionary -->
 
 Select an entry to open its panel. **Trigger Keywords** and **Value** are all most entries need. Each other control solves one specific problem.
 
@@ -105,6 +107,7 @@ By default, Background comes earlier in the prompt than Foreground. **You contro
 
 ## Books
 <!-- keywords: multiple lorebooks, disable whole set, player turns off, reorder, split by topic -->
+<!-- route: worldEditorBook.details -->
 
 Books group related entries. The order of the books sets the order of the injected entries. Disable a book to turn off every entry in it.
 
@@ -121,6 +124,7 @@ In Simple mode the panel shows the Details fields with no tabs. The tab you pick
 
 ## In the library
 <!-- keywords: standalone lorebook, reusable across worlds, cover, edit outside world, my lorebooks, rename -->
+<!-- route: dictionaryEditor -->
 
 A dictionary in your library is always one book, so its editor has no row for the book. It has three tabs.
 

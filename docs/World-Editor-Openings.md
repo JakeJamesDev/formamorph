@@ -34,7 +34,7 @@ To add an opening to a location or an entity, select **Add Opening to** and its 
 
 ## How to Add a Self Opening
 <!-- keywords: first message, greeting, intro, persona start, play as, player character start, protagonist beginning, main character opener, pov beginning, hero backstory opener, when i am them, own storyline kickoff -->
-<!-- route: worldEditor.entities -->
+<!-- route: worldEditorEntity.openings -->
 
 A Self opening starts the game for a player who plays as the entity.
 
@@ -130,6 +130,7 @@ An entity at no starting location shows a **No Starting Location** badge. A loca
 
 ## Location Openings
 <!-- keywords: start per place, room specific intro, area greeting, different per spawn, place based beginning, parent not inherited -->
+<!-- route: worldEditorLocation.openings -->
 
 A location has its own **Openings** tab, its last tab. The rows work the same as the world's openings.
 
@@ -157,6 +158,7 @@ A location has its own **Openings** tab, its last tab. The rows work the same as
 
 ## Entity Openings
 <!-- keywords: npc greeting, character speaks first, npc first message, greeting never shows, card greetings, npc intro rules, added from library -->
+<!-- route: worldEditorEntity.openings -->
 
 **Advanced mode only** in the World Editor. The library entity editor always shows it. The **Openings** tab is the last tab. It gives an entity its own openings, so it can start the scene in its own voice. The rows work the same as the world's openings above.
 

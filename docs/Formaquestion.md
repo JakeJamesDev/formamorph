@@ -85,6 +85,7 @@ To go back to the list of pages, select **Contents** above the section.
 
 ## How to Get Help for the Screen You Have Open
 <!-- keywords: this page, current, where am i, context, here, contextual, this dialog, this menu, relevant section, what am i seeing, explain this tab, suggested topic -->
+<!-- route: formaquestion -->
 
 1. Open the screen, dialog or tab that you need help with.
 2. Open Formaquestion.
@@ -285,6 +286,7 @@ The request now holds your question alone. The answer has no note that it is not
 
 ## The Window
 <!-- keywords: f1 key behavior, stays on top, remembers position, off screen, focus cursor, narrow or wide, disappeared, always visible, chat style, minimal, full, framed window, bare column -->
+<!-- route: formaquestion -->
 
 Formaquestion is one window for the whole app. It shows above every dialog, and it keeps its conversation, its search text and its open section while the app is open.
 
@@ -312,6 +314,7 @@ F1 does one of three things:
 
 ## Ask
 <!-- keywords: privacy, what is sent, reads my saves, hallucinate, inaccurate, general knowledge note, history lost, send disabled, which model answers, reload -->
+<!-- route: formaquestion.ask -->
 
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
@@ -341,6 +344,7 @@ An answer can be wrong. Use **Sources** to check it against the guide.
 
 ## Search
 <!-- keywords: ranking, results order, plural, nothing found, release notes, minimum letters, latest changes, scoring -->
+<!-- route: formaquestion.search -->
 
 The **Search** tab finds sections by the words you type. It needs no network and no AI.
 
@@ -358,6 +362,7 @@ In the wide layout, the results replace the contents on the left while the searc
 
 ## Guide
 <!-- keywords: chapter list, part numbers, on this page, internal links, external website, expand page, collapse -->
+<!-- route: formaquestion.guide -->
 
 The **Guide** tab lists each page of this guide. Select a page to show or hide its sections.
 
@@ -369,6 +374,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 
 ## Formaquestion Settings
 <!-- keywords: gear, options, configure help, help settings, turn off search, plain chat -->
+<!-- route: formaquestionSettings -->
 
 **Formaquestion Settings** opens from **Settings** in the **⋮** menu of the Formaquestion title bar. The window closes while the settings are open and opens again when you close them. It has five tabs: **General**, **Endpoint**, **Prompts**, **Tools** and **Mascot**.
 
@@ -377,6 +383,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 
 ### General
 <!-- keywords: chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
+<!-- route: formaquestionSettings.general -->
 
 The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Chat Style** and **Scrim Opacity** are in **Window**.
 
@@ -398,6 +405,7 @@ When a search runs and finds no section, the answer still gets that note.
 
 ### Endpoint
 <!-- keywords: different model, other endpoint, separate ai, small model for picks, help endpoint, answer endpoint, pick endpoint, follow active, same as answer -->
+<!-- route: formaquestionSettings.endpoint -->
 
 The **Endpoint** tab sets where help questions go. Help can use a different AI than your game.
 
@@ -420,6 +428,7 @@ The two settings share one row. Under them is the same preset editor as **Settin
 
 ### Prompts
 <!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only, export preset, import preset, preset file, move preset, another device -->
+<!-- route: formaquestionSettings.prompts -->
 
 The **Prompts** tab holds the help prompts: the text that tells your AI how to answer. The prompts are in a preset, apart from the prompt presets of your game. A change to the game's preset never changes help.
 
@@ -474,6 +483,7 @@ See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset
 
 ### Tools
 <!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text, dice, roll, random number -->
+<!-- route: formaquestionSettings.tools -->
 
 
 The **Tools** tab lists the functions your AI can call while it answers. It uses the layout of **Settings** → **Tools**: the list on the left, and the selected function on the right. **Built-In** holds the functions that ship with the app. **My Tools** holds the Tools you make for help questions.
@@ -493,7 +503,6 @@ A function goes out only when the **Answer Endpoint** takes function calls. If i
 
 #### How to Let Your AI Read More of the Guide
 <!-- keywords: lookup mode, read more sections, local model, function calls, read_guide, deeper answers, search the guide itself, tool calls, bigger context -->
-<!-- route: formaquestionSettings -->
 
 1. Set **Answer Endpoint** to a model that takes function calls, such as a local model.
 2. Open the **Tools** tab, select **read_guide**, and check that **Enabled** is on. It starts on.
@@ -513,13 +522,13 @@ A Tool that's on reads the world you have open, so text from that world can go t
 
 #### How to Share Tools With the Game's List
 <!-- keywords: tool pack, tools.json, import tools, export tools, move a tool, gameplay tool, copy a tool, share a tool, pack file -->
-<!-- route: formaquestionSettings.tools -->
 
 1. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
 ### Mascot
 <!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window -->
+<!-- route: formaquestionSettings.mascot -->
 
 The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions.
 
@@ -600,6 +609,7 @@ The mascot plays its transition each time its look changes: from the Initial Loo
 
 ## AI Context
 <!-- keywords: debug a question, see the request, inspect help, wrong section, trace, export json, bug report, search block, samplers, request card -->
+<!-- route: formaquestionAiContext -->
 
 **AI Context** shows what each question of the conversation sent to your AI, and what came back. Use it to find why an answer went wrong: a section the search missed, or a prompt you changed.
 
