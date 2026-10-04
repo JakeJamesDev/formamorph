@@ -1,34 +1,59 @@
 import { Pencil, RotateCcw, Trash2, type LucideIcon } from 'lucide-react';
 import { ActionIcon } from '@/lib/actionIcons';
 
-/** One action in the Prompts preset header. The desktop row and the narrow overflow menu render the same list. */
+/** One action in a preset header. The desktop row and the narrow overflow menu render the same list. */
 export interface PresetHeaderAction {
-  key: 'rename' | 'export' | 'publish' | 'reset' | 'delete';
+  key: 'duplicate' | 'rename' | 'import' | 'export' | 'publish' | 'reset' | 'delete';
   label: string;
   icon: LucideIcon;
   section: 'file' | 'destructive';
   run: () => void;
+  /** Asked before `run`. The header owns the dialog and returns focus to its opener on cancel. */
+  confirm?: { title: string; description: string };
 }
 
-/** The handlers, each already bound to the active preset. */
+/** A destructive handler and the confirm text that names what it changes. */
+export interface ConfirmedHandler {
+  run: () => void;
+  description: string;
+}
+
+/** The handlers, each already bound to the active preset. An absent handler removes its action. */
 export interface PresetHeaderHandlers {
-  rename: () => void;
-  export: () => void;
-  /** Absent while publishing is unavailable, such as when signed out. */
+  duplicate?: () => void;
+  rename?: () => void;
+  import?: () => void;
+  export?: () => void;
   publish?: () => void;
-  reset: () => void;
-  delete: () => void;
+  reset?: ConfirmedHandler;
+  delete?: ConfirmedHandler;
 }
 
-/** The header actions in menu order: file actions, then destructive. A built-in preset gets Export only. */
+type ActionDef = Omit<PresetHeaderAction, 'run' | 'confirm'> & { confirmTitle?: string };
+
+// Menu order: file actions, then destructive.
+const ACTION_DEFS: ActionDef[] = [
+  { key: 'duplicate', label: 'Duplicate', icon: ActionIcon.copy, section: 'file' },
+  { key: 'rename', label: 'Rename', icon: Pencil, section: 'file' },
+  { key: 'import', label: 'Import', icon: ActionIcon.import, section: 'file' },
+  { key: 'export', label: 'Export', icon: ActionIcon.export, section: 'file' },
+  { key: 'publish', label: 'Publish', icon: ActionIcon.publish, section: 'file' },
+  { key: 'reset', label: 'Reset', icon: RotateCcw, section: 'destructive', confirmTitle: 'Reset Preset' },
+  { key: 'delete', label: 'Delete', icon: Trash2, section: 'destructive', confirmTitle: 'Delete Preset' },
+];
+
+// A built-in preset updates with each release, so it keeps only the actions that leave it unchanged.
+const BUILT_IN_KEYS = new Set<PresetHeaderAction['key']>(['duplicate', 'import', 'export']);
+
+/** The header actions in menu order, for the handlers the surface passes. */
 export function presetHeaderActions(builtIn: boolean, h: PresetHeaderHandlers): PresetHeaderAction[] {
   const actions: PresetHeaderAction[] = [];
-  if (!builtIn) actions.push({ key: 'rename', label: 'Rename', icon: Pencil, section: 'file', run: h.rename });
-  actions.push({ key: 'export', label: 'Export', icon: ActionIcon.export, section: 'file', run: h.export });
-  if (!builtIn && h.publish) actions.push({ key: 'publish', label: 'Publish', icon: ActionIcon.publish, section: 'file', run: h.publish });
-  if (!builtIn) {
-    actions.push({ key: 'reset', label: 'Reset', icon: RotateCcw, section: 'destructive', run: h.reset });
-    actions.push({ key: 'delete', label: 'Delete', icon: Trash2, section: 'destructive', run: h.delete });
+  for (const { confirmTitle, ...def } of ACTION_DEFS) {
+    if (builtIn && !BUILT_IN_KEYS.has(def.key)) continue;
+    const handler = h[def.key];
+    if (!handler) continue;
+    if (typeof handler === 'function') actions.push({ ...def, run: handler });
+    else if (confirmTitle) actions.push({ ...def, run: handler.run, confirm: { title: confirmTitle, description: handler.description } });
   }
   return actions;
 }

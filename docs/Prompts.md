@@ -19,7 +19,7 @@ The built-in presets are read-only. To change a prompt, make your own preset fir
 3. Type a name in the **New Preset** dialog.
 4. Select **Save**.
 
-The new preset is a copy of the preset that was active, and it is now the active preset. To copy a built-in preset in one step, select **Duplicate & Edit** on its read-only notice. The copy is named "*preset name* (copy)".
+The new preset is a copy of the preset that was active, and it is now the active preset. To copy a preset in one step, select the **Duplicate** button next to the **Preset** list, or **Duplicate & Edit** on a read-only notice. The copy is named "*preset name* (copy)".
 
 ## How to Edit a Prompt
 <!-- keywords: change, rewrite, customize, system, instructions, tweak, modify, writing style, tone, longer responses, ai behavior, rules, restore shipped text, preview result, second person, narrator personality -->
@@ -56,7 +56,7 @@ To send the prompt to the active endpoint again, select **Use Active Endpoint**.
 
 To add a preset that someone shared:
 
-1. Open the **Preset** list and select **Import Preset…**.
+1. Select the **Import** button next to the **Preset** list.
 2. Paste the share code, or select **Choose file…** and pick the `.json` file.
 3. Read the warnings and the preset's Overview, then set its **Name**.
 4. Select **Import**. When you selected the checkbox to overwrite a preset with the same name, the button reads **Overwrite**.
@@ -113,11 +113,13 @@ A preset holds:
 - which Tools are on. See [Tools](Tools).
 - the **Overview**, on your own presets
 
-The buttons next to the **Preset** list act on the active preset. On a narrow screen they are in the **Preset Actions** menu.
+The icon buttons next to the **Preset** list manage your presets. Point at an icon to see its name. On a narrow screen they are in the **Preset Actions** menu.
 
 | Button | What it does |
 |---|---|
+| **Duplicate** | Makes an editable copy named "*preset name* (copy)" and selects it. Built-in presets have it too. |
 | **Rename** | Changes your preset's name |
+| **Import** | Adds a preset from a share code or a `.json` file. See [How to Share a Prompt Preset](#how-to-share-a-prompt-preset). |
 | **Export** | Opens the share code and the `.json` download. Built-in presets have it too. |
 | **Publish** | Lists your preset in Community Creations. Shows while you are logged in. |
 | **Reset** | Sets every prompt in your preset back to its shipped text |

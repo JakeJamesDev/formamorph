@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
@@ -45,6 +46,9 @@ async function openMenu() {
     .map((n) => (n.getAttribute('role') === 'separator' ? '---' : n.textContent));
 }
 
+/** A desktop header icon, named by its tooltip. */
+const rowButton = (name: string) => within(screen.getByTestId('preset-header-row')).getByRole('button', { name });
+
 const confirmIn = async (title: string) => {
   const dialog = await screen.findByRole('alertdialog');
   expect(dialog.textContent).toContain(title);
@@ -61,19 +65,8 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
 });
 
-describe('Settings → Prompts: preset header overflow menu', () => {
-  it('lists Rename, Export, then Reset and Delete for a user preset', async () => {
-    seed('mine');
-    openPrompts();
-    expect(await openMenu()).toEqual(['Rename', 'Export', '---', 'Reset', 'Delete']);
-  });
-
-  it('lists Export only for a built-in preset', async () => {
-    seed('default');
-    openPrompts();
-    expect(await openMenu()).toEqual(['Export']);
-  });
-
+// Order, menu contents, the built-in subset and focus return live in PresetHeader.test.tsx.
+describe('Settings → Prompts: preset header', () => {
   it('closes the menu, then confirms Delete before it deletes', async () => {
     seed('mine');
     openPrompts();
@@ -95,6 +88,7 @@ describe('Settings → Prompts: preset header overflow menu', () => {
 
   it.each([
     ['Rename', 'Rename Preset'],
+    ['Import', 'Import Preset'],
     ['Export', 'Export “Mine”'],
   ])('opens the %s dialog from the menu', async (item, title) => {
     seed('mine');
@@ -104,74 +98,49 @@ describe('Settings → Prompts: preset header overflow menu', () => {
     expect(await screen.findByRole('dialog', { name: title })).toBeTruthy();
   });
 
-  const cancelConfirm = async () => {
-    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Cancel' }));
-  };
-
-  it('returns focus to the desktop Reset button when its confirm is canceled', async () => {
-    seed('mine');
+  it('duplicates a built-in preset as an editable copy and selects it', async () => {
+    seed('default');
     openPrompts();
-    const reset = within(screen.getByTestId('preset-header-row')).getByRole('button', { name: 'Reset' });
-    // A browser focuses a clicked button; jsdom does not.
-    reset.focus();
-    fireEvent.click(reset);
-    await cancelConfirm();
-    await waitFor(() => expect(document.activeElement).toBe(reset));
+    fireEvent.click(rowButton('Duplicate'));
+    const select = within(screen.getByTestId('preset-header-row')).getByRole('combobox', { name: 'Preset' });
+    await waitFor(() => expect(select.textContent).toBe('Default (copy)'));
+    // An editable copy offers the actions a built-in lacks.
+    expect(rowButton('Rename')).toBeTruthy();
   });
 
-  it('returns focus to the ⋯ button when a confirm opened from the menu is canceled', async () => {
+  it('lists presets and "Add New Preset…" in the select, with no import row', async () => {
     seed('mine');
     openPrompts();
-    await openMenu();
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset' }));
-    await cancelConfirm();
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Preset Actions' })));
-  });
-
-  it('keeps the desktop row: Delete, Reset, the selector, Rename, Export', () => {
-    seed('mine');
-    openPrompts();
-    const row = screen.getByTestId('preset-header-row');
-    // Both widths render in jsdom; CSS hides the ⋯ button at md and the row buttons below it.
-    const names = Array.from(row.querySelectorAll('button'))
-      .filter((n) => n.getAttribute('aria-label') !== 'Preset Actions')
-      .map((n) => (n.getAttribute('role') === 'combobox' ? 'selector' : n.textContent));
-    expect(names).toEqual(['Delete', 'Reset', 'selector', 'Rename', 'Export']);
+    // A Radix select opens on the full pointer sequence, which fireEvent does not send.
+    await userEvent.click(within(screen.getByTestId('preset-header-row')).getByRole('combobox', { name: 'Preset' }));
+    const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    expect(options).toContain('Mine');
+    expect(options.at(-1)).toBe('Add New Preset…');
+    expect(options).not.toContain('Import Preset…');
   });
 });
 
 describe('Settings → Prompts: Publish', () => {
   const signIn = () => vi.spyOn(AuthService, 'isAuthenticated').mockReturnValue(true);
-  const rowNames = () => Array.from(screen.getByTestId('preset-header-row').querySelectorAll('button'))
-    .filter((n) => n.getAttribute('aria-label') !== 'Preset Actions')
-    .map((n) => (n.getAttribute('role') === 'combobox' ? 'selector' : n.textContent));
 
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(WorldStorageService, 'getUserWorlds').mockResolvedValue([]);
   });
 
-  it('puts Publish after Export in the menu and beside it on desktop for a user preset', async () => {
+  it('offers Publish on a user preset once signed in', async () => {
     signIn();
     seed('mine');
     openPrompts();
-    expect(rowNames()).toEqual(['Delete', 'Reset', 'selector', 'Rename', 'Export', 'Publish']);
-    expect(await openMenu()).toEqual(['Rename', 'Export', 'Publish', '---', 'Reset', 'Delete']);
-  });
-
-  it('has no Publish for a built-in preset', async () => {
-    signIn();
-    seed('default');
-    openPrompts();
-    expect(rowNames()).not.toContain('Publish');
-    expect(await openMenu()).toEqual(['Export']);
+    expect(rowButton('Publish')).toBeTruthy();
+    expect(await openMenu()).toContain('Publish');
   });
 
   it('blocks publish while Models is empty and leads to the Overview', async () => {
     signIn();
     seed('mine');
     openPrompts();
-    fireEvent.click(within(screen.getByTestId('preset-header-row')).getByRole('button', { name: 'Publish' }));
+    fireEvent.click(rowButton('Publish'));
 
     const block = await screen.findByRole('alertdialog');
     expect(block.textContent).toContain('Models');
@@ -192,7 +161,7 @@ describe('Settings → Prompts: Publish', () => {
     };
     localStorage.setItem(PROMPTS_KEY, presetStoreCodec.serialize(store));
     openPrompts();
-    fireEvent.click(within(screen.getByTestId('preset-header-row')).getByRole('button', { name: 'Publish' }));
+    fireEvent.click(rowButton('Publish'));
 
     expect(await screen.findByRole('dialog', { name: 'Publish Prompt' })).toBeTruthy();
     expect(screen.queryByRole('alertdialog')).toBeNull();

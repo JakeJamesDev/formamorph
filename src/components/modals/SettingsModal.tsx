@@ -76,8 +76,8 @@ import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { PresetHeaderMenu } from './PresetHeaderMenu';
-import { presetHeaderActions, type PresetHeaderAction } from '@/lib/presetHeaderActions';
+import { PresetHeader } from '@/components/presetHeader/PresetHeader';
+import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt, OPENING_SCENE_CUE } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
@@ -530,53 +530,38 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // Preset name dialog (Add / Rename); the "Add New Preset…" select option opens it in add mode.
   const [presetDialog, setPresetDialog] = useState<{ mode: 'add' | 'rename' } | null>(null);
   const ADD_PRESET_SENTINEL = '__add_preset__';
-  const IMPORT_PRESET_SENTINEL = '__import_preset__';
   const [exportShared, setExportShared] = useState<SharedPreset | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const activePresetName = [...builtinPresets, ...promptPresets].find((p) => p.id === activePresetId)?.name ?? '';
   const handlePresetSelect = (v: string) => {
     if (v === ADD_PRESET_SENTINEL) setPresetDialog({ mode: 'add' });
-    else if (v === IMPORT_PRESET_SENTINEL) setImportOpen(true);
     else selectPreset(v);
   };
-  const [presetConfirm, setPresetConfirm] = useState<Extract<PresetHeaderAction['key'], 'reset' | 'delete'> | null>(null);
-  // The confirms are controlled, so they return focus to what opened them by hand.
-  const presetConfirmOpener = useRef<Element | null>(null);
-  const askPresetConfirm = (kind: NonNullable<typeof presetConfirm>) => {
-    presetConfirmOpener.current = document.activeElement;
-    setPresetConfirm(kind);
-  };
-  const presetConfirmProps = {
-    onOpenChange: (open: boolean) => { if (!open) setPresetConfirm(null); },
-    onCloseAutoFocus: (event: Event) => {
-      const opener = presetConfirmOpener.current;
-      presetConfirmOpener.current = null;
-      if (!(opener instanceof HTMLElement) || !opener.isConnected) return;
-      event.preventDefault();
-      opener.focus();
-    },
-  };
+  // `addPreset` clones the active values and selects the result, so a copy needs no dialog.
+  const duplicatePreset = () => addPreset(`${activePresetName} (copy)`);
   const presetPublish = usePresetPublish(() => {
     setOverviewOpen(true);
     setFocusModels((n) => n + 1);
   });
   const presetActions = presetHeaderActions(activePresetIsBuiltIn, {
+    duplicate: duplicatePreset,
     rename: () => setPresetDialog({ mode: 'rename' }),
+    import: () => setImportOpen(true),
     export: () => setExportShared(exportActivePreset(APP_VERSION)),
     ...(presetPublish.canPublish ? { publish: presetPublish.start } : {}),
-    reset: () => askPresetConfirm('reset'),
-    delete: () => askPresetConfirm('delete'),
+    reset: {
+      run: () => resetPreset(activePresetId),
+      description: `Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`,
+    },
+    delete: {
+      run: () => deletePreset(activePresetId),
+      description: `Delete the "${activePresetName}" preset? This can't be undone.`,
+    },
   });
-  const presetRowButton = (a: PresetHeaderAction) => (
-    <Button key={a.key} variant="outline" size="sm" className="hidden md:inline-flex" onClick={a.run}>{a.label}</Button>
-  );
   const handlePresetNameSubmit = (name: string) => {
     if (presetDialog?.mode === 'add') addPreset(name);
     else if (presetDialog?.mode === 'rename') renamePreset(activePresetId, name);
   };
-  // A built-in can't be edited, so the way forward is a copy of it. `addPreset` already clones the active
-  // values and selects the result, so this is the whole gesture — no dialog in the way.
-  const duplicateForEditing = () => addPreset(`${activePresetName} (copy)`);
   // Short enough for one line on mobile; the notice puts the whole sentence on hover.
   const readOnlyReason = activePresetIsBuiltIn ? `${activePresetName} is read-only` : undefined;
 
@@ -1423,10 +1408,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           <TabsContent ref={promptsPanelRef} value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
             <PromptsShell morph={promptsMorph} sourceRef={promptsPanelRef} title="Prompts">
             {/* Built-in presets are read-only; selecting one switches the whole prompt set. */}
-            <div className="flex items-center gap-2 flex-shrink-0" data-testid="preset-header-row">
-              <span className="text-helper text-muted-foreground">Preset</span>
-              {/* Desktop mirrors the menu around the selector: destructive actions outermost on the left. */}
-              {presetActions.filter((a) => a.section === 'destructive').reverse().map(presetRowButton)}
+            <PresetHeader
+              label="Preset"
+              actions={presetActions}
+              testId="preset-header-row"
+              select={
               <Select value={activePresetId} onValueChange={handlePresetSelect}>
                 <SelectTrigger aria-label="Preset" className="flex-1 min-w-0">
                   <SelectValue />
@@ -1440,25 +1426,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   ))}
                   <SelectSeparator />
                   <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
-                  <SelectItem value={IMPORT_PRESET_SENTINEL}>Import Preset…</SelectItem>
                 </SelectContent>
               </Select>
-              {presetActions.filter((a) => a.section === 'file').map(presetRowButton)}
-              <PresetHeaderMenu actions={presetActions} className="md:hidden" />
-            </div>
-            <ConfirmDialog
-              open={presetConfirm === 'delete'}
-              {...presetConfirmProps}
-              title="Delete Preset"
-              description={`Delete the "${activePresetName}" preset? This can't be undone.`}
-              onConfirm={() => deletePreset(activePresetId)}
-            />
-            <ConfirmDialog
-              open={presetConfirm === 'reset'}
-              {...presetConfirmProps}
-              title="Reset Preset"
-              description={`Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`}
-              onConfirm={() => resetPreset(activePresetId)}
+              }
             />
             {/* While a pinned world is open the selector edits that world's pin, not the global choice —
                 say so, or picking a preset here looks like it silently did nothing to the rest of the app. */}
@@ -1577,7 +1547,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     samplers={samplerControls}
                     disabled={activePresetIsBuiltIn}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                   />
                 </ScrollArea>
               )}
@@ -1634,7 +1604,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                             previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                             readOnly={activePresetIsBuiltIn}
@@ -1652,7 +1622,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1669,7 +1639,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1686,7 +1656,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={choicesPreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1703,7 +1673,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1720,7 +1690,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1737,7 +1707,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1754,7 +1724,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1771,7 +1741,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1788,7 +1758,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1805,7 +1775,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1822,7 +1792,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1839,7 +1809,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1856,7 +1826,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1873,7 +1843,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1890,7 +1860,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}
-                    onRequestEdit={duplicateForEditing}
+                    onRequestEdit={duplicatePreset}
                     fullscreen={promptsFullscreen}
                     onRequestFullscreen={promptsMorph.toggle}
                     readOnly={activePresetIsBuiltIn}
@@ -1962,7 +1932,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               onToggleFullscreen={toolsMorph.toggle}
               appVersion={APP_VERSION}
               openWorld={toolWorld}
-              // Selection only: Add and Import open dialogs that live in the Prompts tab.
+              // Selection only: Add opens a dialog that lives in the Prompts tab.
               presetSelector={(
                 <div className="flex items-center gap-2">
                   <span className="text-helper text-muted-foreground">Preset</span>
