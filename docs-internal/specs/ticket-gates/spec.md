@@ -1,6 +1,7 @@
 # Spec: Ticket Gates
 
 Status: ready-for-agent
+Spec session: ticket-gates — spec
 
 ## Problem Statement
 
