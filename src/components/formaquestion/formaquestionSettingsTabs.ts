@@ -1,3 +1,5 @@
+import { RESET_COMPARE_COPY } from '@/components/prompt/promptResetCompareCopy';
+
 /** The tabs of Formaquestion Settings, in order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_SETTINGS_TABS = [
   { value: 'general', label: 'General' },
@@ -197,6 +199,5 @@ export const TOOLS_COPY = {
 
 export const COMPARE_COPY = {
   action: { label: 'Compare to Default', hint: 'Shows how this prompt differs from the text of this release', same: 'This prompt matches the default text' },
-  title: (label: string) => `${label} Prompt vs. Default`,
-  legend: { lead: 'Text you', mid: 'to the default is tinted. Text you', tail: 'from it is struck through.' },
+  title: (label: string) => RESET_COMPARE_COPY.compare.title(`${label} Prompt`),
 } as const;

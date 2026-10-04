@@ -32,6 +32,7 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   formaquestionSettings: { host: 'any' },
   formaquestionAiContext: { host: 'any' },
   formaquestionCompare: { ancestor: 'formaquestionSettings.prompts' },
+  settingsCompare: { ancestor: 'settings.prompts' },
 
   menu: { host: 'mainMenu' },
   intro: { host: 'mainMenu' },
