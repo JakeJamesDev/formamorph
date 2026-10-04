@@ -6,6 +6,8 @@
 //   alt      with `--alt FILE`: the docs arm with the system prompt from FILE, to compare two wordings
 //   before   with `--before REF`: the docs arm with the sections the Docs Index at commit REF finds, to
 //            compare a search change
+//   session  with `--session`: the app's help session in retrieval mode, with the lookup arm's settings and
+//            endpoint and the lookup off. The control for the lookup switch: same search sources, same face call
 //   lookup   with `--lookup`: the app's help session in lookup mode, on an endpoint that takes function
 //            calls. The model reads the sections it picks, in more than one round
 //   lookup22 with `--lookup22`: the lookup arm with ticket 22's request (lookupControl.ts), the control for a
@@ -18,8 +20,9 @@
 //
 // Checks, all by text match, none by a model:
 //   retrieval   the expected section is among the sections sent (docs arm; the same for every run)
-//   reached     the expected section is among the answer's sources (lookup arm; per run), with the
-//               lookup calls and the requests of the question
+//   reached     the expected section is among the answer's sources (session arms; per run), with the
+//               function calls and the requests of the question, and the tokens in per request kind
+//               (pick, answer, face, lookup)
 //   facts       share of the keyed control names in the answer; `complete` = all of them
 //   bold        share of the keyed names written in bold, as the guide writes them
 //   steps       the answer has a numbered list
@@ -29,11 +32,11 @@
 //   flagged     the app's general-knowledge flag: the answer has the marker, or no section reached the model.
 //               Wanted on a case with no section and on the mismatch arm, and a fault on a covered case
 //   first       of the marked answers, the share with the marker on the first line, where the prompt asks.
-//               Not on the lookup arm, whose session removes the marker
+//               Not on the session arms, whose session removes the marker
 //
 // Usage: npx vite-node testing/baseline/harness/help-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 5] [--only backup-docs,regen-player]
-//          [--parallel 4] [--alt FILE] [--before REF] [--lookup] [--flag] [--show]
+//          [--parallel 4] [--alt FILE] [--before REF] [--session] [--lookup] [--lookup22] [--flag] [--show]
 //          [--cases FILE]  (a case with no `wording` counts as player wording, no `facts` as none)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -42,7 +45,8 @@ import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { HELP_SYSTEM_PROMPT, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { askHelp, helpSections } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_ANSWER_OPTIONS } from '@/lib/formaquestion/helpPresets';
+import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { DEFAULT_HELP_OPTIONS } from '@/lib/formaquestion/helpPresets';
 import { helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { mean, pct, probeSnapshot } from './help-probe-shared';
 import { askHelpContentsLookup } from './lookupControl';
@@ -62,6 +66,7 @@ const only = argVal('--only', '');
 const show = args.includes('--show');
 const altFile = argVal('--alt', '');
 const beforeRef = argVal('--before', '');
+const withSession = args.includes('--session');
 const withLookup = args.includes('--lookup');
 const withLookup22 = args.includes('--lookup22');
 const withFlag = args.includes('--flag');
@@ -74,12 +79,12 @@ interface HelpCase {
   section?: string;
   facts: string[];
 }
-type Arm = 'docs' | 'no-docs' | 'alt' | 'before' | 'lookup' | 'lookup22' | 'mismatch';
+type Arm = 'docs' | 'no-docs' | 'alt' | 'before' | 'session' | 'lookup' | 'lookup22' | 'mismatch';
 const ARMS: Arm[] = [
-  'docs', ...(altFile ? ['alt' as const] : []), ...(beforeRef ? ['before' as const] : []), ...(withLookup ? ['lookup' as const] : []), ...(withLookup22 ? ['lookup22' as const] : []), ...(withFlag ? ['mismatch' as const] : []), 'no-docs',
+  'docs', ...(altFile ? ['alt' as const] : []), ...(beforeRef ? ['before' as const] : []), ...(withSession ? ['session' as const] : []), ...(withLookup ? ['lookup' as const] : []), ...(withLookup22 ? ['lookup22' as const] : []), ...(withFlag ? ['mismatch' as const] : []), 'no-docs',
 ];
-/** An arm that runs a help session with function calls, and reports the sections it reached. */
-const isLookup = (arm: Arm) => arm === 'lookup' || arm === 'lookup22';
+/** An arm that runs a help session, and reports the sections it reached. */
+const isSession = (arm: Arm) => arm === 'session' || arm === 'lookup' || arm === 'lookup22';
 const ALT_SYSTEM_PROMPT = altFile ? readFileSync(altFile, 'utf8').trim() : '';
 
 const BASELINE = path.resolve('testing/baseline');
@@ -131,13 +136,25 @@ interface Sample {
   finish: string | null;
   /** The docs sections that reached the model. */
   sentSections: number;
-  /** Lookup arm: the session's flag, since the session removes the marker. */
+  /** Session arms: the session's flag, since the session removes the marker. */
   flagged?: boolean;
-  /** Lookup arm: the answer's sources, the lookup calls the model made, and the requests sent. */
+  /** Session arms: the answer's sources, the function calls the model made, and the requests sent. */
   sources?: string[];
   calls?: string[];
   requests?: number;
+  /** Session arms: the requests and tokens in of each request kind. */
+  kinds?: Partial<Record<RequestKind, KindTally>>;
 }
+
+/**
+ * What a session request is for: the AI Picks request, the first answer request, or the round after a lookup
+ * call or another call. A round after a lookup call and another call counts as lookup. With the default
+ * settings, the only other call is the face call.
+ */
+type RequestKind = 'pick' | 'answer' | 'face' | 'lookup';
+const REQUEST_KINDS: RequestKind[] = ['pick', 'answer', 'face', 'lookup'];
+interface KindTally { requests: number; promptTokens: number }
+const NO_TALLY: KindTally = { requests: 0, promptTokens: 0 };
 
 interface Completion {
   choices?: { message?: { content?: string | null; tool_calls?: { id?: string; function: { name: string; arguments: string } }[] }; finish_reason?: string }[];
@@ -148,25 +165,35 @@ interface Completion {
 const lookupSnapshot = probeSnapshot({ endpoint, model, token }, true);
 
 /**
- * One question through a help session in lookup mode: the app's, or ticket 22's. Each request of the session
+ * One question through a help session: the app's in either mode, or ticket 22's. Each request of the session
  * goes out with streaming off, so the token counts come back, and returns to the session as the stream it expects.
  */
-async function lookupRequest(arm: Arm, c: HelpCase): Promise<Sample> {
+async function sessionRequest(arm: Arm, c: HelpCase): Promise<Sample> {
   let promptTokens = 0;
   let answerTokens = 0;
   let requests = 0;
   const calls: string[] = [];
+  const kinds: NonNullable<Sample['kinds']> = {};
+  // The pick request offers no function. With the default settings, every answer request offers the face call.
+  let nextAnswerKind: RequestKind = 'answer';
   const fetchImpl = (async (url: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(init?.body as string) as Record<string, unknown>;
+    const isAnswer = body.tools !== undefined;
+    const kind: RequestKind = isAnswer ? nextAnswerKind : 'pick';
     const response = await fetch(url, { ...init, body: JSON.stringify({ ...body, stream: false, reasoning_effort: 'none' }) });
     if (!response.ok) return response;
     requests++;
     const json = await response.json() as Completion;
-    promptTokens += json.usage?.prompt_tokens ?? 0;
+    const tokensIn = json.usage?.prompt_tokens ?? 0;
+    promptTokens += tokensIn;
     answerTokens += json.usage?.completion_tokens ?? 0;
+    const tally = kinds[kind] ??= { ...NO_TALLY };
+    tally.requests++;
+    tally.promptTokens += tokensIn;
     const choice = json.choices?.[0];
     const toolCalls = choice?.message?.tool_calls ?? [];
     calls.push(...toolCalls.map((call) => call.function.arguments));
+    if (isAnswer && toolCalls.length > 0) nextAnswerKind = toolCalls.some((call) => call.function.name === DOCS_LOOKUP.name) ? 'lookup' : 'face';
     const frame = (delta: Record<string, unknown>, finish: string | null = null) =>
       `data: ${JSON.stringify({ choices: [{ delta, finish_reason: finish }] })}\n\n`;
     const frames = [
@@ -182,22 +209,22 @@ async function lookupRequest(arm: Arm, c: HelpCase): Promise<Sample> {
   let sources: string[] = [];
   let flagged = false;
   const request = { question: c.question, snapshot: lookupSnapshot, index, fetchImpl };
-  const session = arm === 'lookup22' ? askHelpContentsLookup(request) : askHelp({ ...request, settings: helpSettingsOf({ lookup: true }) });
+  const session = arm === 'lookup22' ? askHelpContentsLookup(request) : askHelp({ ...request, settings: helpSettingsOf({ lookup: arm === 'lookup' }) });
   for await (const event of session) {
     if (event.type !== 'done') continue;
     answer = event.text;
     sources = event.sources.map((section) => section.id);
     flagged = event.flagged;
   }
-  return { answer, promptTokens, answerTokens, finish: null, sentSections: sources.length, flagged, sources, calls, requests };
+  return { answer, promptTokens, answerTokens, finish: null, sentSections: sources.length, flagged, sources, calls, requests, kinds };
 }
 
 async function request(arm: Arm, c: HelpCase): Promise<Sample> {
-  if (isLookup(arm)) return lookupRequest(arm, c);
+  if (isSession(arm)) return sessionRequest(arm, c);
   const sections = arm === 'no-docs' ? [] : helpSections(indexOf(arm), (arm === 'mismatch' ? mismatchPartner(c) : c).question);
   const spec = buildAiRequestSpec(snapshot, arm !== 'no-docs'
-    ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens }
-    : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens });
+    ? { systemPrompt: arm === 'alt' ? ALT_SYSTEM_PROMPT : HELP_SYSTEM_PROMPT, messages: [{ role: 'user', content: helpUserMessage(c.question, sections) }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens }
+    : { systemPrompt: NO_DOCS_SYSTEM_PROMPT, messages: [{ role: 'user', content: `Question: ${c.question}` }], requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens });
   const response = await fetch(spec.url, {
     method: 'POST',
     headers: spec.headers,
@@ -297,15 +324,18 @@ console.log(`${rows.length} requests in ${((Date.now() - started) / 1000).toFixe
 
 /** The metrics of one arm over a set of cases, as printable cells. */
 function summarize(arm: Arm, caseIds: ReadonlySet<string>) {
-  const scored = rows.filter((r) => caseIds.has(r.caseId) && r.arm === arm && r.score && r.sample);
+  const ran = rows.filter((r) => caseIds.has(r.caseId) && r.arm === arm);
+  const scored = ran.filter((r) => r.score && r.sample);
   const scores = scored.map((r) => r.score as Score);
-  const n = scores.length;
+  // A failed run counts against every share.
+  const n = ran.length;
   const share = (pick: (s: Score) => boolean) => pct(scores.filter(pick).length, n);
+  const sum = (value: (s: Score) => number) => scores.reduce((total, s) => total + value(s), 0);
   return {
     n,
-    facts: pct(mean(scores.map((s) => s.facts)) * n, n),
+    facts: pct(sum((s) => s.facts), n),
     complete: share((s) => s.complete),
-    bold: pct(mean(scores.map((s) => s.bold)) * n, n),
+    bold: pct(sum((s) => s.bold), n),
     steps: share((s) => s.steps),
     declined: share((s) => s.declined),
     invented: mean(scores.map((s) => s.invented)).toFixed(2),
@@ -313,10 +343,16 @@ function summarize(arm: Arm, caseIds: ReadonlySet<string>) {
     flagged: share((s) => s.flagged),
     first: pct(scores.filter((s) => s.first === true).length, scores.filter((s) => s.first !== null).length),
     tokens: `${Math.round(mean(scored.map((r) => r.sample?.promptTokens ?? 0)))}/${Math.round(mean(scored.map((r) => r.sample?.answerTokens ?? 0)))}`,
-    // Lookup arm: the runs whose sources hold the expected section, then lookup calls and requests per question.
+    // Session arms: the runs whose sources hold the expected section, then calls and requests per question.
     reached: pct(scored.filter((r) => { const want = caseById.get(r.caseId)?.section; return !!want && r.sample?.sources?.includes(want); }).length, n),
     calls: mean(scored.map((r) => r.sample?.calls?.length ?? 0)).toFixed(1),
     requests: mean(scored.map((r) => r.sample?.requests ?? 1)).toFixed(1),
+    // Session arms: per request kind, the requests and the tokens in per question.
+    kinds: REQUEST_KINDS.map((kind) => {
+      const tallies = scored.map((r) => r.sample?.kinds?.[kind] ?? NO_TALLY);
+      return `${kind} ${mean(tallies.map((t) => t.requests)).toFixed(1)}×${Math.round(mean(tallies.map((t) => t.promptTokens)))}`;
+    }).join(' '),
+    failed: n - scored.length,
   };
 }
 const caseById = new Map(cases.map((c) => [c.id, c]));
@@ -326,11 +362,11 @@ for (const c of cases) {
   for (const arm of ARMS) {
     const m = summarize(arm, new Set([c.id]));
     const hit = retrievalByIndex.get(indexOf(arm))?.get(c.id)?.hit;
-    const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : isLookup(arm) ? m.reached : hit ? 'yes' : ' NO';
+    const sent = arm === 'no-docs' ? '   ' : hit === null ? ' –' : isSession(arm) ? m.reached : hit ? 'yes' : ' NO';
     console.log([
       c.id.padEnd(24), arm.padEnd(8), sent.padEnd(4),
       m.facts, m.complete.padStart(8), m.bold, m.steps.padStart(5), m.declined.padStart(8), m.invented.padStart(8), m.flagged.padStart(7), `  ${m.tokens}`,
-      ...(isLookup(arm) ? [`  ${m.calls} calls, ${m.requests} requests`] : []),
+      ...(isSession(arm) ? [`  ${m.calls} calls, ${m.requests} requests`] : []),
     ].join(' '));
   }
 }
@@ -342,8 +378,8 @@ function totals(label: string, arm: Arm, keep: (c: HelpCase) => boolean) {
   console.log([
     `${label} · ${arm}`.padEnd(44), `n=${m.n}`.padEnd(6),
     `facts ${m.facts}`, `complete ${m.complete}`, `bold ${m.bold}`, `steps ${m.steps}`,
-    `declined ${m.declined}`, `invented ${m.invented}`, `flagged ${m.flagged}`, `first ${m.first}`, `empty ${m.empty}`, `tok ${m.tokens}`,
-    ...(isLookup(arm) ? [`reached ${m.reached}`, `calls ${m.calls}`, `requests ${m.requests}`] : []),
+    `declined ${m.declined}`, `invented ${m.invented}`, `flagged ${m.flagged}`, `first ${m.first}`, `empty ${m.empty}`, `failed ${m.failed}`, `tok ${m.tokens}`,
+    ...(isSession(arm) ? [`reached ${m.reached}`, `calls ${m.calls}`, `requests ${m.requests}`, `tok in by kind ${m.kinds}`] : []),
   ].join('  '));
 }
 

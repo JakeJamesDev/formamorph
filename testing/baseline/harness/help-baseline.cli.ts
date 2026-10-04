@@ -65,7 +65,7 @@ import { pickList } from '@/lib/formaquestion/helpPicks';
 import { DEFAULT_HELP_PROMPTS, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
 import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
 import { askHelp, HELP_DOCS_CHAR_BUDGET, helpSections, type EarlierExchange } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_ANSWER_OPTIONS } from '@/lib/formaquestion/helpPresets';
+import { DEFAULT_HELP_OPTIONS } from '@/lib/formaquestion/helpPresets';
 import { helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
@@ -210,7 +210,7 @@ ${exchange.answer}` : exchange.answer },
     { role: 'user', content: helpUserMessage(c.question, sections, hint?.where) },
   ];
   const spec = buildAiRequestSpec(probeSnapshot(target, false), {
-    systemPrompt: helpSystemPrompt(c.language ?? '', renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: mascotSettings.mascot ? mascotSettings.rig.voice.trim() : '' })), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens,
+    systemPrompt: helpSystemPrompt(c.language ?? '', renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: mascotSettings.mascot ? mascotSettings.rig.voice.trim() : '' })), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
   if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);
@@ -228,7 +228,7 @@ async function askNoDocs(target: ProbeTarget, c: BaselineCase, history: EarlierE
     { role: 'user', content: [...(where ? [`The player asks from this screen: ${where}.`] : []), `Question: ${c.question}`].join('\n\n') },
   ];
   const spec = buildAiRequestSpec(probeSnapshot(target, false), {
-    systemPrompt: helpSystemPrompt(c.language ?? '', NO_DOCS_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens,
+    systemPrompt: helpSystemPrompt(c.language ?? '', NO_DOCS_SYSTEM_PROMPT), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
   if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);
