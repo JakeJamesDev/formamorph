@@ -42,6 +42,7 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 | Q35 | A flagged answer (not from the guide) gets no button: its top source is not what it describes (ticket 04 question) |
 | Q36 | The button renders only on an answer whose status is answered. A stopped answer, a failed one or the no-AI fallback gets none. "Top source" is the first source of the done event: the looked-up section in lookup mode, else the first prompt section. A route the resolver refuses shows no button (ticket 04 question) |
 | Q37 | "Top source" skips the open screen's lead section: the route comes from the first source that is not the lead, as the follow-up topic rule does; the lead counts only when it is the only source. Refines Q36. Found in use 2026-10-04: with Use the Open Screen on, the lead led the sources and the button never showed. Ticket 07 |
+| Q38 | A walkthrough section with numbered steps carries a route and names its tab in its first lines, like a how-to. Found in use 2026-10-04: "Example: RPG Classes" was the top hit for a class question, had no route, and never said Traits, so the answer copied the example without the tab. A scan of every stepped non-how-to section found it to be the only walkthrough; the rest describe mechanics. Docs pass on main, with the recall probe |
 
 ## User Stories
 
