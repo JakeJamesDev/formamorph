@@ -81,6 +81,10 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q45 | The preview's Head View sits in a fixed 128px slot; a wide Mask's preview head shrinks to fit that width, shorter than its usual height. Without the fixed slot, a width change mid-drag slid the centered preview up to 70px under the pointer. The window's head view is unchanged (ticket 07, user) |
 | Q46 | Q6 reopens on evidence: ticket 28's re-probe after the keyword work had retrieval at 48 of 48 complete (1,653 tokens in) against lookup's 45 of 48 (3,090), and ADR 0009 shipped the lookup off on that. Q6 rested on ticket 22's older numbers. The default stays on until ticket 13 re-probes on today's docs; the result decides, and ADR 0009 is amended to match (user, 2026-10-04) |
 | Q47 | Ticket 13's arms both run through the help session with today's default settings; the only difference is the lookup switch. Tokens are reported per request kind (pick, face, answer). Harness edits are in the ticket's scope; "no code change" means product code (ticket 13) |
+| Q48 | The readability setting is labeled **Backdrop**, a 0–100% slider. Hint: "Shades the screen behind the chat so the text stands out". "Scrim opacity" stays the field's code name only (user, 2026-10-04) |
+| Q49 | The request where the AI chooses guide sections is **Search** everywhere the player sees it: Search Endpoint, the Search prompt and its options, AI Context. The General tab switch becomes **AI Search**. "Pick" leaves player-facing copy; code names may follow (user, 2026-10-04) |
+| Q50 | Search section hints: Keyword Search "Matches the words in your question to guide sections"; AI Search "Asks your AI to choose the sections before answering. One extra request."; Semantic Search "Finds sections by meaning, not exact words. Downloads a small model once." Search Endpoint hint: "Runs the search request. A small, fast model is enough." (user, 2026-10-04) |
+| Q51 | The Mascot tab's controls column drops the label column: the Base Image and the layer list take the full column width under their own headings, so layer rows have room for names and overlays (user, 2026-10-04) |
 
 ## User Stories
 
