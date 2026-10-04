@@ -384,13 +384,14 @@ describe('the Chat Style', () => {
 
   async function pickInMenu(style: string) {
     await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
-    await userEvent.click(await screen.findByRole('menuitemradio', { name: style }));
+    await userEvent.click(within(await screen.findByRole('group', { name: 'Chat Style' })).getByRole('menuitemradio', { name: style }));
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
   }
 
   async function checkedInMenu() {
     await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
-    const checked = (await screen.findAllByRole('menuitemradio')).filter((item) => item.getAttribute('aria-checked') === 'true');
+    const checked = within(await screen.findByRole('group', { name: 'Chat Style' })).getAllByRole('menuitemradio')
+      .filter((item) => item.getAttribute('aria-checked') === 'true');
     await userEvent.keyboard('{Escape}');
     return checked.map((item) => item.textContent);
   }
@@ -559,6 +560,103 @@ describe('the Mascot below', () => {
     expect(px(holder.top)).toBe(px(frame.top) + px(frame.height));
     expect(px(holder.top) + px(holder.height)).toBe(window.innerHeight - MARGIN);
     expect(px(holder.left) + px(piece.style.width) / 2).toBeCloseTo(px(frame.left) + px(frame.width) / 2);
+  });
+});
+
+describe('the Mascot Position', () => {
+  const stored = () => localStorage.getItem(PLACEMENT_KEY);
+  const menuPosition = async () => {
+    await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
+    return screen.findByRole('group', { name: 'Mascot Position' });
+  };
+  const checkedIn = (group: HTMLElement) =>
+    within(group).getAllByRole('menuitemradio').filter((item) => item.getAttribute('aria-checked') === 'true').map((item) => item.textContent);
+  async function generalDialog() {
+    await openHelpSettings();
+    return screen.findByRole('dialog', { name: 'Formaquestion Settings' });
+  }
+
+  beforeEach(() => {
+    localStorage.removeItem(PLACEMENT_KEY);
+  });
+
+  it('puts the row after Chat Style with Beside, Below and Auto, and Auto chosen', async () => {
+    await openWindow();
+    const dialog = await generalDialog();
+    const rows = within(dialog).getAllByRole('radiogroup').map((group) => group.getAttribute('aria-label'));
+    expect(rows.indexOf('Mascot Position')).toBe(rows.indexOf('Chat Style') + 1);
+    const row = within(within(dialog).getByRole('radiogroup', { name: 'Mascot Position' }));
+    expect(row.getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Beside', 'Below', 'Auto']);
+    expect(row.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('writes the device store from the row, and the menu marks the new value', async () => {
+    await openWindow();
+    const dialog = await generalDialog();
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Below' }));
+    expect(stored()).toBe('below');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
+    const group = await menuPosition();
+    expect(within(group).getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual(['Beside', 'Below', 'Auto']);
+    expect(checkedIn(group)).toEqual(['Below']);
+  });
+
+  it('writes the device store from the menu, and the row marks the new value', async () => {
+    await openWindow();
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Beside' }));
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    expect(stored()).toBe('beside');
+    const dialog = await generalDialog();
+    expect(within(dialog).getByRole('radio', { name: 'Beside' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('stores the cap height when Below is picked over a column taller than the cap', async () => {
+    const tall = Math.round(window.innerHeight * 0.9);
+    localStorage.setItem(BOX_KEY, JSON.stringify({ x: 40, y: 0, minimal: { w: 380, h: tall }, full: { w: 560, h: tall } }));
+    await openWindow();
+    loadBase();
+    expect(parseFloat(column().style.height)).toBe(tall);
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Below' }));
+    await waitFor(() => expect(parseFloat(column().style.height)).toBe(window.innerHeight * MASCOT_BELOW_CAP));
+    const box = JSON.parse(localStorage.getItem(BOX_KEY)!) as { minimal: { h: number } };
+    expect(box.minimal.h).toBe(window.innerHeight * MASCOT_BELOW_CAP);
+  });
+
+  it('keeps the stored height when Below is picked while no Mascot is drawn', async () => {
+    const tall = Math.round(window.innerHeight * 0.9);
+    storeFramedWindow({ chatStyle: 'minimal', mascot: false });
+    localStorage.setItem(BOX_KEY, JSON.stringify({ x: 40, y: 0, minimal: { w: 380, h: tall }, full: { w: 560, h: tall } }));
+    localStorage.setItem(PLACEMENT_KEY, 'beside');
+    await openWindow();
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Below' }));
+    await waitFor(() => expect(stored()).toBe('below'));
+    expect(parseFloat(column().style.height)).toBe(tall);
+    expect(JSON.parse(localStorage.getItem(BOX_KEY)!).minimal.h).toBe(tall);
+  });
+
+  it('leaves the column alone when Auto is picked over a tall column', async () => {
+    const tall = Math.round(window.innerHeight * 0.9);
+    localStorage.setItem(BOX_KEY, JSON.stringify({ x: 40, y: 0, minimal: { w: 380, h: tall }, full: { w: 560, h: tall } }));
+    localStorage.setItem(PLACEMENT_KEY, 'beside');
+    await openWindow();
+    loadBase();
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Auto' }));
+    await waitFor(() => expect(stored()).toBe('auto'));
+    expect(JSON.parse(localStorage.getItem(BOX_KEY)!).minimal.h).toBe(tall);
+  });
+
+  it('shows no Position choices in the menu of the mobile sheet', async () => {
+    vi.stubGlobal('innerWidth', 375);
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+    storeFramedWindow({ chatStyle: 'full', mascot: true });
+    await openWindow();
+    expect(helpWindow()).toHaveAttribute('data-fq-sheet');
+    await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
+    await screen.findByRole('group', { name: 'Chat Style' });
+    expect(screen.queryByRole('group', { name: 'Mascot Position' })).toBeNull();
   });
 });
 

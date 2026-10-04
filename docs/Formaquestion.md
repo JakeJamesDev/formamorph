@@ -142,6 +142,21 @@ The backdrop is a panel behind the bare chat column, in the color of the app. A 
 
 The arrow shows when the end of the conversation is more than half a window height away. It goes away when you get near the end. After you select it, new text keeps scrolling into view as it arrives. The framed window and the bare column both have the arrow. See [Ask](#ask).
 
+## How to Put the Mascot Under the Chat
+<!-- keywords: mascot below, mascot under the chat, mascot beside, mascot position, move the mascot, short chat, tall chat, mascot stands, beside or below -->
+<!-- route: formaquestionSettings.general -->
+
+1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column.
+2. Under **Mascot Position**, select **Beside**, **Below** or **Auto**.
+
+You can also set it in the **Window** group of the **General** tab. Both places change the same setting, and this device keeps it.
+
+- **Beside** stands the mascot next to the chat, on the side with more room.
+- **Below** stands the mascot under the chat. The chat stops growing at a set share of the screen height, so the mascot always has room. If the chat is taller when you select **Below**, it shrinks to that height.
+- **Auto** stands the mascot under the chat while the chat is at most that tall, and beside it when the chat grows taller. The mascot moves the moment the chat crosses the line.
+- The reader stays beside the chat.
+- The **⋮** menu of the mobile-size sheet has no **Mascot Position** choices, since the sheet shows no mascot.
+
 ## How to Change the Size of the Mascot
 <!-- keywords: bigger mascot, smaller mascot, scale, resize mascot, mascot too big, mascot too small, size slider, auto size, fit the chat, percent -->
 <!-- route: formaquestionSettings.mascot -->
@@ -294,7 +309,7 @@ Formaquestion is one window for the whole app. It shows above every dialog, and 
 |---|---|
 | Title bar | Drag it to move the window |
 | **Wide View** | Changes between the narrow and the wide layout. It stays lit while the wide view is on |
-| **⋮** | Opens a menu with **Clear Conversation**, the **Chat Style** choices, **AI Context** and **Settings** |
+| **⋮** | Opens a menu with **Clear Conversation**, the **Chat Style** choices, the **Mascot Position** choices, **AI Context** and **Settings**. The mobile-size sheet has no **Mascot Position** choices. |
 | **Close** | Closes the window |
 | Bottom right corner | Drag it to change the size of the window |
 
@@ -385,11 +400,12 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 <!-- keywords: chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
 <!-- route: formaquestionSettings.general -->
 
-The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Chat Style** and **Backdrop** are in **Window**.
+The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Chat Style**, **Mascot Position** and **Backdrop** are in **Window**.
 
 | Setting | Default | What it does |
 |---|---|---|
 | **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Minimal** with the **Mascot** on. The **⋮** menu has the same three choices. |
+| **Mascot Position** | Auto | Sets whether the mascot stands beside or under the chat: **Beside**, **Below** or **Auto**. **Auto** stands the mascot under a short chat and beside a tall one. The **⋮** menu has the same three choices. |
 | **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Minimal** style. Set 0 for none. |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
@@ -555,7 +571,7 @@ The tab has two columns on a wide dialog. The preview stays in view on the left,
 
 | Row | What it does |
 |---|---|
-| **Mascot** | Shows a character beside a bare chat column. On by default. |
+| **Mascot** | Shows the mascot with a bare chat column. On by default. |
 | **Voice** | Tells your AI how help answers sound while the mascot is on. The **Mascot Voice** chip sends this text. |
 | **Preview** | Shows the Idle look, or what you select. Select a layer to see the base with all of that layer's overlays. Select one overlay to see the base with that overlay alone. Drag the Mask on it to set the head view. The **Scale** slider, the **Transition** rows and **Play** are in the same box. |
 | **Scale** | Sizes the mascot beside the chat. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. |
