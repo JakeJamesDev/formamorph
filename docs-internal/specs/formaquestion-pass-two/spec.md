@@ -66,6 +66,8 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q30 | The stored window box has never shipped, so no old-shape read (constraint: no compat for an unreleased form). An old or unreadable box reads as nothing and the window opens at the default box (ticket 02) |
 | Q31 | Mascot tab split at lg (1024px). Under it the preview widget comes first and the whole tab scrolls as one; at lg and wider the preview column is pinned and only the controls scroll. Refined from md on evidence: just above md the dialog is ~770px, the controls column 358px, and layer rows overflow with names at 0–5px; at lg the dialog sits at its 900px cap (ticket 06) |
 | Q32 | Expansion is selection on the Mascot tab: a layer row's click expands and selects it, collapsing returns the preview to Idle; an overlay click (row or thumbnail) selects it and expands its layer; a second click on the selected overlay returns to the layer; removing the selected overlay falls back to the layer (ticket 06) |
+| Q33 | The help preset file has never shipped, so its version stays 1 and the shape changes in place with no reader for the earlier form. A file without the Pick or Lookup block fails naming the block (ticket 09) |
+| Q34 | Option blocks need no Compare or Reset buttons: the per-field Custom checkboxes are the reset and restore the Default's values. Compare to Default stays a text diff (ticket 09) |
 
 ## User Stories
 
@@ -130,8 +132,8 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 ### Help presets and the preset file
 
 - A help preset's options become one block per prompt: Answer, Pick and Lookup each hold temperature, repetition penalty and Max Output. The Default preset's Pick and Lookup options follow the code and equal today's pinned values for those requests. A custom preset stores all three (Q5).
-- The preset file carries the three blocks. Its version bumps; a file of the earlier version imports with Pick and Lookup at the Default's values. **Export-shape change: remind the user in the response.**
-- The help session reads each request's options from its own block. Compare to Default and Reset to Default cover the three blocks.
+- The preset file carries the three blocks at version 1; the file has never shipped, so no earlier form is read (Q33). **Export-shape change: remind the user in the response.**
+- The help session reads each request's options from its own block. The per-field Custom checkboxes restore the Default's values; no block-level Compare or Reset (Q34).
 
 ### Prompts tab
 
