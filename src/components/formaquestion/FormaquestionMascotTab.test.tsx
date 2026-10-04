@@ -12,6 +12,34 @@ import { addMascotImage, clearMascotImages, getMascotImage } from '@/lib/formaqu
 import { MascotTab } from './FormaquestionMascotTab';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { Blob as NodeBlob } from 'node:buffer';
+import { toast } from 'react-toastify';
+import { downloadBlob } from '@/lib/downloadBlob';
+import { embedEntityCard } from '@/lib/entityCard';
+import { buildMascotCardData } from '@/lib/formaquestion/mascotCard';
+import { readMascotCard } from '@/lib/formaquestion/mascotCardFile';
+import { mascotImageIds } from '@/lib/formaquestion/mascotRigEdits';
+import { tinyWebp as webp } from '@/test/webpFixture';
+
+/** Holds an import's store step until a test lets it go, and records the rigs it stored. */
+const importGate = vi.hoisted(() => ({ wait: Promise.resolve(), stored: [] as MascotRig[] }));
+
+vi.mock('@/lib/downloadBlob', () => ({ downloadBlob: vi.fn() }));
+vi.mock('@/lib/formaquestion/mascotCardFile', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/formaquestion/mascotCardFile')>();
+  const { tinyWebp } = await import('@/test/webpFixture');
+  return {
+    ...real,
+    // jsdom decodes no image, so the card's look is a stand-in WebP; the card data is the real export's.
+    exportMascotCard: (rig: MascotRig) => real.exportMascotCard(rig, { render: async () => ({ bytes: tinyWebp(), width: 1, height: 1 }) }),
+    storeMascotCard: async (card: Parameters<typeof real.storeMascotCard>[0]) => {
+      await importGate.wait;
+      const rig = await real.storeMascotCard(card);
+      importGate.stored.push(rig);
+      return rig;
+    },
+  };
+});
 
 let current: HelpSettings;
 
@@ -413,5 +441,112 @@ describe('the Voice', () => {
     await userEvent.clear(voice);
     await userEvent.type(voice, 'Dry and brief.');
     expect(current.rig.voice).toBe('Dry and brief.');
+  });
+});
+
+describe('the mascot card', () => {
+  /** A card file whose images are the given texts standing in for pixels. */
+  function cardFile(rig: MascotRig, edit: (json: string) => string = (json) => json): File {
+    const data = buildMascotCardData(rig, (ref) => `data:image/png;base64,${btoa(ref.kind === 'stored' ? ref.id : ref.name)}`, '3.0.1');
+    return new File([embedEntityCard(webp(), edit(JSON.stringify(data)), { w: 1, h: 1 })], 'friend.webp', { type: 'image/webp' });
+  }
+
+  const cardRig: MascotRig = {
+    ...DEFAULT_MASCOT_RIG,
+    base: stored('friend-body'),
+    layers: [{ id: 'hi', name: 'Hi', kind: 'state', enabled: true, images: [stored('friend-arm')] }],
+    picks: { initial: { expression: null, state: 'hi' }, idle: { expression: null, state: 'hi' }, thinking: { expression: null, state: null } },
+    voice: 'Gruff.',
+  };
+
+  const upload = (file: File) => userEvent.upload(screen.getByTestId('mascot-card-input'), file);
+
+  /** Holds the next import's store step; call the result to let it go. */
+  function holdImport(): () => void {
+    let release = () => undefined as void;
+    importGate.wait = new Promise<void>((resolve) => { release = resolve; });
+    return release;
+  }
+
+  beforeEach(() => {
+    importGate.wait = Promise.resolve();
+    importGate.stored = [];
+  });
+
+  const confirm = async () => userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
+
+  /** The import's stored images, once its store step has run, and whether each is gone again. */
+  async function importedImagesGone(): Promise<boolean[]> {
+    await waitFor(() => expect(importGate.stored).toHaveLength(1));
+    return Promise.all([...mascotImageIds(importGate.stored[0])].map(async (id) => (await getMascotImage(id)) === null));
+  }
+
+  it('imports a card after a confirmation, replacing the rig and deleting the old images', async () => {
+    const old = await addMascotImage(png());
+    mount({ ...DEFAULT_MASCOT_RIG, base: stored(old) });
+    await upload(cardFile(cardRig));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(within(dialog).getByText(MASCOT_COPY.card.confirmTitle)).toBeInTheDocument();
+    expect(current.rig.base).toEqual(stored(old));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(current.rig.voice).toBe('Gruff.'));
+    expect(current.rig.layers.map((row) => row.name)).toEqual(['Hi']);
+    // The store's bytes round-trip in mascotCardFile.test; jsdom's Blob does not survive the fake store's clone.
+    const ids = [current.rig.base, ...current.rig.layers[0].images].map((ref) => (ref as { kind: string; id: string }));
+    expect(ids.every((ref) => ref.kind === 'stored')).toBe(true);
+    for (const ref of ids) expect(await getMascotImage(ref.id)).not.toBeNull();
+    await waitFor(async () => expect(await getMascotImage(old)).toBeNull());
+  });
+
+  it('keeps the rig when the confirmation is canceled', async () => {
+    mount();
+    await upload(cardFile(cardRig));
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(current.rig).toEqual(DEFAULT_MASCOT_RIG);
+  });
+
+  it('names the bad field of a refused card, asks nothing and changes nothing', async () => {
+    const error = vi.spyOn(toast, 'error');
+    mount();
+    await upload(cardFile(cardRig, (json) => json.replace('"voice":"Gruff."', '"voice":5')));
+    await waitFor(() => expect(error).toHaveBeenCalledTimes(1));
+    render(<>{error.mock.calls[0][0] as React.ReactNode}</>);
+    expect(screen.getByText('This mascot card has a missing or bad field: rig.voice.')).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(current.rig).toEqual(DEFAULT_MASCOT_RIG);
+  });
+
+  it('exports the rig as mascot.webp', async () => {
+    // The fake store clones a jsdom Blob to an empty object; Node's Blob keeps its bytes, as a browser's store does.
+    const id = await addMascotImage(new NodeBlob(['pixels'], { type: 'image/png' }) as unknown as Blob);
+    mount({ ...cardRig, base: stored(id), layers: [] });
+    await userEvent.click(screen.getByRole('button', { name: MASCOT_COPY.card.export }));
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
+    const [blob, name] = vi.mocked(downloadBlob).mock.calls[0];
+    expect(name).toBe('mascot.webp');
+    expect((await readMascotCard(blob)).rig.voice).toBe('Gruff.');
+  });
+
+  it('drops an import that a Reset overtakes, and deletes the images it stored', async () => {
+    mount();
+    const release = holdImport();
+    await upload(cardFile(cardRig));
+    await confirm();
+    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    await confirm();
+    release();
+    await waitFor(async () => expect(await importedImagesGone()).toEqual([true, true]));
+    expect(current.rig).toEqual(DEFAULT_MASCOT_RIG);
+  });
+
+  it('drops an import that lands after the tab closes, and deletes the images it stored', async () => {
+    const { unmount } = mount();
+    const release = holdImport();
+    await upload(cardFile(cardRig));
+    await confirm();
+    unmount();
+    release();
+    await waitFor(async () => expect(await importedImagesGone()).toEqual([true, true]));
   });
 });
