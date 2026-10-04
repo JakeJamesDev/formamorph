@@ -64,6 +64,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q35 | The mascot's prompt text is the **Voice**, never Persona, which the glossary holds for the player-slot entity. The landed rig field is renamed in the Voice chip ticket; nothing shipped |
 | Q36 | The Initial look ends on the first send and on nothing else. A dialog's close-and-reopen, or the player closing and reopening the window, keeps it. Refines Q9 and Q10 |
 | Q37 | The Voice chip sits in both the Answer and the Lookup prompt of the Default preset, as its own paragraph after the intro line and before the rules; never in the Pick prompt. Token `<VOICE>`, label Mascot Voice |
+| Q38 | Rig editor details: the preview draws Idle, or the base plus one layer's overlays while that row is expanded; removing the base returns to the bundled base; a new layer is an enabled expression with no overlays, named and kinded in its expanded body; the URL field is hidden on this tab; Reset confirms, removing a layer or an overlay does not |
 
 ## User Stories
 
