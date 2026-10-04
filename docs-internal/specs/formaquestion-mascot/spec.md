@@ -162,6 +162,11 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 - The system's reduced-motion preference forces None. The tab says so when it applies.
 - The transition and its tuning travel in the card (Q31). A card from an earlier version without one reads as the default.
 - A prototype settles the Jelly defaults and the tuning ranges before the ticket, on its own branch, with a standalone page that plays the swap on the default rig under sliders.
+- **Jelly ruling (ticket 10, 2026-10-03).** Settled on the prototype page at `prototype/jelly-transition` (`src/prototype/jelly/`, `/jelly.html` on a Vite dev server at that checkout). Ticket 11 lifts `jellyTiming.ts`, adds the opacity output and the None and Dissolve modes, and keeps the Jelly curve as it is. "Scale" in the Jelly test wording means the height scale; the width moves the other way.
+  - Defaults: duration 450 ms, squash 0.18, overshoot 0.12, settle count 2.
+  - Ranges: duration 150–1200 ms (step 10), squash 0–0.5 (step 0.01), overshoot 0–0.5 (step 0.01), settle count 0–4 (step 1).
+  - Shape: the run splits into `2.5 + settle` half-cycles of equal length. The first eases the height from 1 to `1 − squash` (cosine). The second eases from the dip to `1 + overshoot` (cosine); the composition swaps at its start, so the new face stretches up. The settle swings are a damped cosine from the overshoot, with 5% of the overshoot left on the last swing, and a final quarter swing lands at 1. The width moves against the height by a fixed 0.5 of the height offset. Opacity stays 1. Past the duration the frame is the rest frame.
+  - At the defaults: dip to 82% at 100 ms, peak at 112% at 200 ms, rest at 450 ms.
 
 ### Help settings
 
