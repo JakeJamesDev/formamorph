@@ -652,78 +652,79 @@ export function MascotTab({ settings, onChange }: {
               />
             </Row>
           </Section>
-          <Section title="Rig">
-            <Row top {...MASCOT_COPY.base}>
-              <ImageUpload
-                id="fq-mascot-base"
-                // The bundled base leaves the slot empty, so a click or a drop uploads yours.
-                value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
-                onFile={(file) => void store([file], (current, [ref]) => setMascotBase(current, ref))}
-                onChange={(value) => { if (value === '') edit(removeMascotBase); }}
-              />
-            </Row>
-            <Row top {...MASCOT_COPY.layers}>
-              <div className="grid gap-2">
-                <EditorDndContext onDragEnd={handleLayerDragEnd}>
-                  <StableSortableContext items={rig.layers} strategy={verticalListSortingStrategy}>
-                    {/* Shrinks with the narrow controls column, so a long name truncates instead of pushing Remove out. */}
-                    <EditorRowList className="min-w-0">
-                      {rig.layers.map((layer) => {
-                        const own = shown?.layer.id === layer.id ? shown : null;
-                        const pickOverlay = (index: number) => setSelection((was) => selectOverlay(was, layer.id, index));
-                        return (
-                          <SortableLayer
-                            key={layer.id}
+          {/* Base Image and Layers drop the label column, so a layer row has the whole column for its name. */}
+          <Section title={MASCOT_COPY.base.label} hint={MASCOT_COPY.base.hint}>
+            <ImageUpload
+              id="fq-mascot-base"
+              // The bundled base leaves the slot empty, so a click or a drop uploads yours.
+              value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
+              onFile={(file) => void store([file], (current, [ref]) => setMascotBase(current, ref))}
+              onChange={(value) => { if (value === '') edit(removeMascotBase); }}
+            />
+          </Section>
+          <Section title={MASCOT_COPY.layers.label} hint={MASCOT_COPY.layers.hint}>
+            <div className="grid gap-2">
+              <EditorDndContext onDragEnd={handleLayerDragEnd}>
+                <StableSortableContext items={rig.layers} strategy={verticalListSortingStrategy}>
+                  {/* Shrinks with the narrow controls column, so a long name truncates instead of pushing Remove out. */}
+                  <EditorRowList className="min-w-0">
+                    {rig.layers.map((layer) => {
+                      const own = shown?.layer.id === layer.id ? shown : null;
+                      const pickOverlay = (index: number) => setSelection((was) => selectOverlay(was, layer.id, index));
+                      return (
+                        <SortableLayer
+                          key={layer.id}
+                          layer={layer}
+                          expanded={own !== null}
+                          selected={own?.overlay === null}
+                          urlOf={urlOf}
+                          onSelect={() => setSelection((was) => selectLayer(was, layer.id))}
+                          onToggle={() => setSelection((was) => toggleLayer(was, layer.id))}
+                          onSelectOverlay={pickOverlay}
+                          onPatch={patchLayer(layer.id)}
+                          onRemove={() => {
+                            edit((current) => removeMascotLayer(current, layer.id));
+                            setSelection((was) => selectionAfterLayerRemove(was, layer.id));
+                          }}
+                        >
+                          <LayerBody
                             layer={layer}
-                            expanded={own !== null}
-                            selected={own?.overlay === null}
                             urlOf={urlOf}
-                            onSelect={() => setSelection((was) => selectLayer(was, layer.id))}
-                            onToggle={() => setSelection((was) => toggleLayer(was, layer.id))}
+                            selectedOverlay={own?.overlay ?? null}
                             onSelectOverlay={pickOverlay}
                             onPatch={patchLayer(layer.id)}
-                            onRemove={() => {
-                              edit((current) => removeMascotLayer(current, layer.id));
-                              setSelection((was) => selectionAfterLayerRemove(was, layer.id));
+                            onAddFiles={(files) => void store(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
+                            onRemoveOverlay={(index) => {
+                              edit((current) => removeMascotOverlay(current, layer.id, index));
+                              setSelection((was) => selectionAfterRemove(was, layer.id, index));
                             }}
-                          >
-                            <LayerBody
-                              layer={layer}
-                              urlOf={urlOf}
-                              selectedOverlay={own?.overlay ?? null}
-                              onSelectOverlay={pickOverlay}
-                              onPatch={patchLayer(layer.id)}
-                              onAddFiles={(files) => void store(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
-                              onRemoveOverlay={(index) => {
-                                edit((current) => removeMascotOverlay(current, layer.id, index));
-                                setSelection((was) => selectionAfterRemove(was, layer.id, index));
-                              }}
-                              onMoveOverlay={(from, to) => {
-                                edit((current) => moveMascotOverlay(current, layer.id, from, to));
-                                setSelection((was) => selectionAfterMove(was, layer.id, from, to));
-                              }}
-                            />
-                          </SortableLayer>
-                        );
-                      })}
-                    </EditorRowList>
-                  </StableSortableContext>
-                </EditorDndContext>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="justify-self-start"
-                  onClick={() => {
-                    const id = randomUUID();
-                    edit((current) => addMascotLayer(current, id));
-                    setSelection({ layerId: id, overlay: null });
-                  }}
-                >
-                  <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
-                </Button>
-                {error && <p className="text-helper text-destructive">{error}</p>}
-              </div>
-            </Row>
+                            onMoveOverlay={(from, to) => {
+                              edit((current) => moveMascotOverlay(current, layer.id, from, to));
+                              setSelection((was) => selectionAfterMove(was, layer.id, from, to));
+                            }}
+                          />
+                        </SortableLayer>
+                      );
+                    })}
+                  </EditorRowList>
+                </StableSortableContext>
+              </EditorDndContext>
+              <Button
+                variant="outline"
+                size="sm"
+                className="justify-self-start"
+                onClick={() => {
+                  const id = randomUUID();
+                  edit((current) => addMascotLayer(current, id));
+                  setSelection({ layerId: id, overlay: null });
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
+              </Button>
+              {error && <p className="text-helper text-destructive">{error}</p>}
+            </div>
+          </Section>
+          <Section title="Rig">
             {MASCOT_PICK_NAMES.map((pick) => (
               <Row key={pick} {...MASCOT_COPY.picks[pick]}>
                 <div className="flex gap-2">
