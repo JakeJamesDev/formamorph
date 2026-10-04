@@ -22,12 +22,12 @@ function Harness({ initial }: { initial: HelpSettingsChange }) {
   return <PromptsTab settings={settings} onChange={(change) => setSettings((current) => helpSettingsOf(change, current))} />;
 }
 
-/** A device with "Buddy" active, one Tool on, and lookup off at 6 calls (off differs from the default). */
+/** A device with "Buddy" active, one Tool on, and lookup on at 6 calls. */
 const buddy = (): HelpSettingsChange => ({
   presets: editHelpPrompt(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'b', 'Buddy'), 'b', 'answer', 'Be a buddy.'),
   tools: [helpTool()],
   toolSwitches: { 'h-1': true },
-  lookup: false,
+  lookup: true,
   lookupCallLimit: 6,
 });
 
@@ -76,7 +76,7 @@ describe('the preset file on the Prompts tab', () => {
     expect(activeHelpPreset(help.presets).prompts.answer).toBe('Be a buddy.');
     expect(help.tools.map((t) => t.name)).toEqual(['find_person']);
     expect(help.toolSwitches[help.tools[0].id]).toBe(true);
-    expect({ lookup: help.lookup, limit: help.lookupCallLimit }).toEqual({ lookup: false, limit: 6 });
+    expect({ lookup: help.lookup, limit: help.lookupCallLimit }).toEqual({ lookup: true, limit: 6 });
     expect(screen.getByRole('combobox', { name: 'Preset' })).toHaveTextContent('Buddy');
     expect(toast.success).toHaveBeenCalledWith('Imported the “Buddy” preset');
   });

@@ -13,7 +13,7 @@ describe('the default help settings', () => {
       sources: { keyword: true, aiPicks: true, semantic: false },
       answerEndpoint: null,
       pickEndpoint: SAME_AS_ANSWER,
-      lookup: true,
+      lookup: false,
       lookupCallLimit: 3,
       roll: false,
       rollCallLimit: 4,

@@ -54,14 +54,14 @@ describe('the Formaquestion Tools tab', () => {
     for (const param of DOCS_LOOKUP.params) expect(screen.getByText(param.description)).toBeInTheDocument();
   });
 
-  it('turns lookup mode off and on with the row’s switch, on by default', async () => {
+  it('turns lookup mode on and off with the row’s switch, off by default', async () => {
     const user = userEvent.setup();
     renderTab();
-    expect(enabledBox()).toBeChecked();
-    await user.click(enabledBox());
-    expect(help.lookup).toBe(false);
+    expect(enabledBox()).not.toBeChecked();
     await user.click(enabledBox());
     expect(help.lookup).toBe(true);
+    await user.click(enabledBox());
+    expect(help.lookup).toBe(false);
   });
 
   it('shows a brief line for the lookup row within 12 words, in help-copy shape', () => {
@@ -115,7 +115,7 @@ describe('the Formaquestion Tools tab', () => {
       const enabled = screen.getByRole('checkbox', { name: 'Enabled' });
       expect(enabled).not.toBeChecked();
       await user.click(enabled);
-      expect(help).toMatchObject({ roll: true, lookup: true });
+      expect(help).toMatchObject({ roll: true, lookup: false });
       await user.click(enabled);
       expect(help.roll).toBe(false);
     });
@@ -171,7 +171,7 @@ describe('the player’s Formaquestion Tools', () => {
     await user.click(list().getByRole('button', { name: FIND_PERSON.name }));
     await user.click(enabledBox());
     expect(help.toolSwitches).toEqual({ 'h-1': true });
-    expect(help.lookup).toBe(true);
+    expect(help.lookup).toBe(false);
     await user.click(enabledBox());
     expect(help.toolSwitches).toEqual({ 'h-1': false });
   });

@@ -18,8 +18,8 @@ const capable = textTarget({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools
 
 let settings: ReturnType<typeof useSettings>;
 let chat: HelpChat;
-// Mascot and lookup are off by default here, so the face call and the lookup stay out of the offered functions.
-function Window({ help = helpSettingsOf({ mascot: false, lookup: false }) }: { help?: HelpSettings }) {
+// The Mascot is off, so the face call stays out of the offered functions.
+function Window({ help = helpSettingsOf({ mascot: false }) }: { help?: HelpSettings }) {
   settings = useSettings();
   const ai = useHelpAi(false, help);
   chat = useHelpChat(index, { ...ai, snapshot: { ...ai.snapshot, resolveTarget: () => capable } }, help);

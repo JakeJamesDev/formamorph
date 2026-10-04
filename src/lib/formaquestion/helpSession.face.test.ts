@@ -56,7 +56,7 @@ const script = (...replies: string[][]): FetchSpy => {
 };
 
 const ask = (fetchImpl: FetchSpy, settings: HelpSettingsChange = {}, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question: 'How do I add a trait?', settings: helpSettingsOf({ lookup: false, ...settings }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
+  askHelp({ question: 'How do I add a trait?', settings: helpSettingsOf(settings), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];
