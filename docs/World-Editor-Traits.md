@@ -411,8 +411,9 @@ It shows a note when:
 
 ## Example: RPG Classes
 <!-- keywords: class system, dnd, job system, spells per class, worked sample, walkthrough, fantasy roles, step by step build, emberwatch -->
+<!-- route: worldEditor.traits -->
 
-A world where the player and some entities have a class.
+A world where the player and some entities have a class. The steps run on the **Traits** tab with Advanced mode on, except step 3, which runs on the **Placeholders** tab.
 
 1. **Add a Blueprints group.** Add a **Classes** group set to **Exactly One**, with *Paladin*, *Cleric* and *Wizard*, and drag it into Blueprints. Add a **Spells** group with *Smite* the same way, and set *Smite* to require *Paladin*.
 2. **Link Classes and Spells to Albus.** Select the link, then check **Enabled by Default** on *Paladin*. Albus starts as a Paladin, and Smite unlocks for him.
