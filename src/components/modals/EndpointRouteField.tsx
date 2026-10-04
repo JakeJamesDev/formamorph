@@ -1,6 +1,7 @@
 import { HintInfo } from '@/components/SettingsRows';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
-import { EndpointReachabilityBadge, type ReachabilityTarget } from './EndpointReachabilityBadge';
+import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
+import type { ReachabilityTarget } from '@/lib/useEndpointReachable';
 
 /** Sentinel for the Use Active Endpoint row — Radix Select cannot hold an empty-string value, and "unpinned" is
  *  stored as an absent entry rather than an id. */

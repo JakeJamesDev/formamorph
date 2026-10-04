@@ -1,20 +1,14 @@
-import { useEndpointReachable } from '@/lib/useEndpointReachable';
+import { useEndpointReachable, type ReachabilityTarget } from '@/lib/useEndpointReachable';
 import { cn } from '@/lib/utils';
-
-/** The endpoint a badge probes. `enabled` false draws nothing and sends no probe. */
-export interface ReachabilityTarget {
-  url: string;
-  apiToken: string;
-  model: string;
-  enabled: boolean;
-}
 
 /**
  * Whether one named endpoint is actually answering. `unknownModel` is a reachable server that can't serve the
  * configured model, so it reads as a warning rather than an outage.
  */
 export function EndpointReachabilityBadge({ target }: { target: ReachabilityTarget }) {
-  const { status, checking, recheck } = useEndpointReachable(target.url, target.apiToken, target.model, target.enabled);
+  const { status, checking, recheck } = useEndpointReachable(
+    target.url, target.apiToken, target.model, target.enabled, target.provider ?? 'text',
+  );
   if (!target.enabled) return null;
 
   const state = checking
@@ -22,7 +16,11 @@ export function EndpointReachabilityBadge({ target }: { target: ReachabilityTarg
     : status === 'ok'
       ? { dot: 'bg-success', text: 'Reachable', tone: 'text-muted-foreground' }
       : status === 'unknownModel'
-        ? { dot: 'bg-warning', text: `Reachable, but no "${target.model}"`, tone: 'text-warning' }
+        ? {
+          dot: 'bg-warning',
+          text: target.model.trim() ? `Reachable, but no "${target.model}"` : 'Reachable, but no model',
+          tone: 'text-warning',
+        }
         : status === 'unreachable'
           ? { dot: 'bg-destructive', text: "Didn't answer", tone: 'text-destructive' }
           : { dot: 'bg-muted-foreground', text: 'Not checked', tone: 'text-muted-foreground' };

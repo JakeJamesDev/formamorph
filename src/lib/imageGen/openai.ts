@@ -26,9 +26,12 @@ export function parseOpenAIResponse(json: unknown): string {
   throw new Error('No image in OpenAI response');
 }
 
+/** The model sent when the preset names none. */
+export const OPENAI_DEFAULT_MODEL = 'gpt-image-1';
+
 export const openaiProvider: ImageProvider = async (params: ImageGenParams, opts: ImageGenOpts) => {
   const body = {
-    model: params.model || 'gpt-image-1',
+    model: params.model || OPENAI_DEFAULT_MODEL,
     prompt: params.prompt,
     n: 1,
     size: nearestOpenAISize(params.width, params.height),

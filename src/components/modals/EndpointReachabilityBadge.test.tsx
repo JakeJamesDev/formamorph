@@ -22,10 +22,22 @@ describe('EndpointReachabilityBadge', () => {
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 
+  it('says "no model" rather than quoting an empty name when the preset names none', () => {
+    reachable({ status: 'unknownModel', checking: false });
+    render(<EndpointReachabilityBadge target={{ ...target, model: ' ' }} />);
+    expect(screen.getByText('Reachable, but no model')).toBeInTheDocument();
+  });
+
   it('probes the endpoint it is given', () => {
     reachable({ status: 'ok', checking: false });
     render(<EndpointReachabilityBadge target={target} />);
-    expect(useEndpointReachable).toHaveBeenLastCalledWith('http://llama.test/v1', '', 'gemma', true);
+    expect(useEndpointReachable).toHaveBeenLastCalledWith('http://llama.test/v1', '', 'gemma', true, 'text');
+  });
+
+  it('probes an image target with its provider', () => {
+    reachable({ status: 'ok', checking: false });
+    render(<EndpointReachabilityBadge target={{ ...target, provider: 'invokeai' }} />);
+    expect(useEndpointReachable).toHaveBeenLastCalledWith('http://llama.test/v1', '', 'gemma', true, 'invokeai');
   });
 
   it('draws nothing for a disabled target', () => {

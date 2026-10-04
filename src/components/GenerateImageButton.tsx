@@ -17,6 +17,8 @@ import { type ImageCap } from '@/lib/imageOptim';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
+import { EndpointReachabilityBadge } from '@/components/modals/EndpointReachabilityBadge';
+import { imageReachabilityTarget } from '@/lib/imageGen/probe';
 
 /** The preset's own prefix as hint text. Labelled, because an empty box showing tags reads as "nothing is
  *  being sent" rather than "this is what you already get on top of whatever you type". */
@@ -255,6 +257,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
                   ))}
                 </SelectContent>
               </Select>
+              <EndpointReachabilityBadge target={imageReachabilityTarget(settings)} />
             </div>
             {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you
                 already get" rather than "nothing is being sent". */}

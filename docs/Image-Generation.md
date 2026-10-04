@@ -223,6 +223,17 @@ The icon buttons next to **Preset** manage your presets. Point at an icon to see
 
 The first preset is **Default**, and you can edit it. The **Generate image** dialog in the World Editor has its own **Preset** picker. **Enable Image Generation** and the **Tag Prompt** are the same for all presets.
 
+Under **Preset**, on the **Image** tab and in the **Generate image** dialog, a badge shows whether the preset's server answers. Select **Recheck** to test again after you start the server.
+
+| Badge | What it means |
+|---|---|
+| **Reachable** | The server answered |
+| **Reachable, but no "*model*"** | The server answered, but its model list doesn't have your **Model**. Check the model name. |
+| **Reachable, but no model** | The InvokeAI server answered, but **Model** is empty. Pick an installed model. |
+| **Didn't answer** | The server is off, the address is wrong, or CORS blocks the app |
+
+The check reads ComfyUI's node list, or the model list of InvokeAI, Automatic1111 / Forge and OpenAI-compatible servers. It never generates an image, so it costs no credits. NovelAI has no free check, so it shows no badge. OpenAI-compatible servers show a badge in the desktop app only.
+
 ## One GPU for Text and Images
 <!-- keywords: vram, out of memory, unable to type, input locked, takes forever, queue order, lag, both models loaded, why so slow -->
 
