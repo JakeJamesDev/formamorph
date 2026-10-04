@@ -27,7 +27,7 @@ export interface HelpSources {
   readonly semantic: boolean;
 }
 
-/** The Pick Endpoint choice that sends picks where answers go. */
+/** The Search Endpoint choice that sends the search request where answers go. */
 export const SAME_AS_ANSWER = 'same-as-answer';
 
 /** Every setting a help question carries. */

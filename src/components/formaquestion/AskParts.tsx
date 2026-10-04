@@ -42,7 +42,7 @@ const ASK_FIELD_MAX_H = 240;
 const STAGE_LINE: Record<HelpStage, string> = {
   checking: 'Checking your AI…',
   searching: 'Searching the guide…',
-  picking: 'Picking sections…',
+  picking: 'Searching with your AI…',
   waiting: 'Waiting for your AI…',
   lookingUp: 'Looking up…',
 };

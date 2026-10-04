@@ -80,7 +80,7 @@ describe('Formaquestion Settings', () => {
 
     expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools', 'Mascot']);
     expect(within(dialog).getByRole('tab', { name: 'General' })).toHaveAttribute('data-state', 'active');
-    // Reasoning, Keyword Search, AI Picks, Semantic Search, Use the Open Screen.
+    // Reasoning, Keyword Search, AI Search, Semantic Search, Use the Open Screen.
     expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'true', 'false', 'true']);
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
@@ -122,7 +122,7 @@ describe('Formaquestion Settings', () => {
     await openAsk();
     const again = await openSettings();
     expect(within(again).getByRole('checkbox', { name: 'Keyword Search' })).toHaveAttribute('aria-checked', 'false');
-    expect(within(again).getByRole('checkbox', { name: 'AI Picks' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(again).getByRole('checkbox', { name: 'AI Search' })).toHaveAttribute('aria-checked', 'true');
     expect(within(again).getByRole('checkbox', { name: 'Use the Open Screen' })).toHaveAttribute('aria-checked', 'false');
     expect(within(again).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(7);
   });
@@ -132,7 +132,7 @@ describe('Formaquestion Settings', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked', 'SecurityError'); });
     const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
-    await setChecks({ 'AI Picks': false });
+    await setChecks({ 'AI Search': false });
     await send(field, 'How do I add a trait?');
     await within(conversation()).findByRole('group', { name: 'Sources' });
 
@@ -193,10 +193,10 @@ describe('the guide lookup switch on the Tools tab', () => {
 });
 
 describe('the General settings in the request', () => {
-  it('AI Picks off sends no pick request', async () => {
+  it('AI Search off sends no pick request', async () => {
     const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
-    await setChecks({ 'AI Picks': false });
+    await setChecks({ 'AI Search': false });
     await send(field, 'How do I add a trait?');
     await within(conversation()).findByRole('group', { name: 'Sources' });
 
@@ -253,7 +253,7 @@ describe('the General settings in the request', () => {
   it('with every source and the open screen off, sends the question alone and shows no notice and no Nearest Sections', async () => {
     const fetchSpy = stubHelpStream(sseReply(`${GENERAL_KNOWLEDGE_MARKER}\nLight scatters.`));
     const { field } = await openAsk();
-    await setChecks({ 'Keyword Search': false, 'AI Picks': false, 'Use the Open Screen': false });
+    await setChecks({ 'Keyword Search': false, 'AI Search': false, 'Use the Open Screen': false });
     await send(field, 'Why is the sky blue?');
     await waitFor(() => expect(conversation()).toHaveTextContent('Light scatters.'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument());

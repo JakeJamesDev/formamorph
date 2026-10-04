@@ -531,12 +531,12 @@ describe('the Scrim', () => {
     expect(scrim()!.style.opacity).toBe('0.6');
   });
 
-  it('follows the Scrim Opacity slider at once and keeps the value across a remount', async () => {
+  it('follows the Backdrop slider at once and keeps the value across a remount', async () => {
     storeFramedWindow({ chatStyle: 'minimal' });
     const { view } = await openWindow();
     await openHelpSettings();
     const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
-    const slider = within(dialog).getByRole('slider', { name: 'Scrim Opacity' });
+    const slider = within(dialog).getByRole('slider', { name: 'Backdrop' });
     expect(slider).toHaveAttribute('aria-valuenow', '60');
     slider.focus();
     await userEvent.keyboard('{ArrowRight}');

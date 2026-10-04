@@ -41,7 +41,7 @@ function Harness({ initial }: { initial: HelpSettingsChange }) {
 
 const renderTab = (initial: HelpSettingsChange = {}) => render(<SettingsProvider><Harness initial={initial} /></SettingsProvider>);
 
-/** The two selects of the tab, in order: Answer Endpoint, Pick Endpoint. */
+/** The two selects of the tab, in order: Answer Endpoint, Search Endpoint. */
 const selects = () => {
   const [answer, pick] = screen.getAllByRole('combobox');
   return { answer, pick };

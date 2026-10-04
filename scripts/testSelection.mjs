@@ -26,6 +26,7 @@ export const ALWAYS_RUN = {
   'site/bundleBoundary.test.ts': 'scans the site and app sources for imports',
   'site/supporterTokens.test.ts': 'reads the app and site stylesheets',
   'src/components/FullscreenShell.test.tsx': 'reads view sources and src/index.css',
+  'src/components/formaquestion/searchNaming.test.ts': 'reads AskParts.tsx, helpSession.ts and three docs pages, which it does not import',
   'src/components/menu/WebVersionChangelog.test.tsx': 'reads src/index.css',
   'src/lib/aiRequest/localEngineImageDrop.test.ts': 'reads electron/llmEngine.cjs',
   'src/lib/bundledFingerprint.test.ts': 'scans src/defaultworlds and reads the shipped avatars',

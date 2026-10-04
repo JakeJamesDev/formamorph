@@ -105,7 +105,7 @@ describe('AI Context in Formaquestion', () => {
     const question = within(dialog).getByRole('group', { name: 'How do I add a trait?' });
     expect(within(question).getByText('Search')).toBeInTheDocument();
     expect(within(question).getByText(`Sources on: ${AI_CONTEXT_COPY.sources.keyword}, ${AI_CONTEXT_COPY.sources.aiPicks}`)).toBeInTheDocument();
-    expect(within(question).getByText('Request 1: AI Picks')).toBeInTheDocument();
+    expect(within(question).getByText('Request 1: AI Search')).toBeInTheDocument();
     expect(within(question).getByText('Request 2: Answer')).toBeInTheDocument();
     // The endpoint, the samplers and the reasoning of each request show on its card.
     expect(within(question).getAllByText('cloud · m')).toHaveLength(2);
@@ -160,7 +160,7 @@ describe('AI Context in Formaquestion', () => {
     expect(download.mock.calls[0][1]).toBe('ai-context-formaquestion.json');
     const exported = JSON.parse(await blobText(download.mock.calls[0][0])) as { question: string; trace: { requests: { record: { type: string } }[] } }[];
     expect(exported.map((entry) => entry.question)).toEqual(['How do I add a trait?']);
-    expect(exported[0].trace.requests.map((request) => request.record.type)).toEqual(['AI Picks', 'Answer']);
+    expect(exported[0].trace.requests.map((request) => request.record.type)).toEqual(['AI Search', 'Answer']);
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'AI Context' })).toBeNull());
 
@@ -240,7 +240,7 @@ describe('AI Context in Formaquestion', () => {
     await screen.findByRole('button', { name: 'Stop' });
     const dialog = await openAiContext();
     // The trace arrives once the answer request is built, while its reply is still open.
-    await within(dialog).findByText('Request 1: AI Picks');
+    await within(dialog).findByText('Request 1: AI Search');
 
     // The unmount ends the request; the stream's reader closes it, so nothing writes to the gone state.
     view.unmount();

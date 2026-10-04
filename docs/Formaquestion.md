@@ -129,9 +129,9 @@ You can also set it in the **Window** group of the **General** tab. Both places 
 <!-- route: formaquestionSettings.general -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
-2. Under **Window**, move **Scrim Opacity**.
+2. Under **Window**, move **Backdrop**.
 
-The scrim is a panel behind the bare chat column, in the color of the app. A higher value hides more of the screen behind the text. The setting runs from 0 to 100% in steps of 5, and starts at 60%. Set 0 to draw no panel. The panel shows whenever the **Minimal** style shows, also under **Auto** with the mascot on.
+The backdrop is a panel behind the bare chat column, in the color of the app. A higher value hides more of the screen behind the text. The setting runs from 0 to 100% in steps of 5, and starts at 60%. Set 0 to draw no panel. The panel shows whenever the **Minimal** style shows, also under **Auto** with the mascot on.
 
 ## How to Return to the Newest Answer
 <!-- keywords: scroll down, jump to the end, long conversation, old messages, bottom, latest answer, down arrow, scroll to end, lost my place, newest message -->
@@ -166,7 +166,7 @@ The preview does not change with **Scale**. The window does. This device keeps t
 To draw a new box, drag on the preview outside the current one. With the keyboard, press Tab to a handle, then press an arrow key to move it one pixel. Shift with an arrow key moves it ten pixels. The handles fade while your pointer is away, unless one has focus or you are dragging. On a touch screen they stay drawn. See [The Mask](#the-mask).
 
 ## How to Use a Different AI for Help
-<!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, pick endpoint, small model -->
+<!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, search endpoint, small model -->
 <!-- route: formaquestionSettings.endpoint -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
@@ -174,7 +174,7 @@ To draw a new box, drag on the preview outside the current one. With the keyboar
 3. In the editor, select **Add New Preset**. The new preset is a copy of the one under the heading, and **Answer Endpoint** moves to it.
 4. Enter the endpoint, token and model of the other AI.
 
-Your game keeps its own AI. The editor always edits the preset that **Answer Endpoint** uses. To edit another preset, set **Answer Endpoint** to it first. To send the **AI Picks** request to a small, fast model, set **Pick Endpoint** to a preset. See [Endpoint](#endpoint).
+Your game keeps its own AI. The editor always edits the preset that **Answer Endpoint** uses. To edit another preset, set **Answer Endpoint** to it first. To send the **AI Search** request to a small, fast model, set **Search Endpoint** to a preset. See [Endpoint](#endpoint).
 
 ## How to Edit the Preset That Help Uses
 <!-- keywords: change the endpoint settings, edit the model, edit the url, change the token, which preset am I editing, endpoint editor heading, answer preset, copy a preset, tune a variant, delete a preset, follow active, editor has no list -->
@@ -216,18 +216,18 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Prompts** tab.
 3. Select **Duplicate & Edit**, or **Add New Preset…** in the preset list.
-4. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips that the app reads back.
+4. Select **Answer**, **Search** or **Lookup**, and edit the text. Keep the chips that the app reads back.
 5. Close the dialog and ask a question. The next request uses your text.
 
 **Default** is read-only, so your copy is the one you edit. Select **Compare to Default** to see what a new release changed, or **Reset to Default** to start again. Select **Preview** above a prompt to read it as your AI gets it. See [Prompts](#prompts).
 
 ## How to Change the Length of a Help Reply
-<!-- keywords: tokens, token limit, temperature, repetition penalty, shorter replies, longer answers, creative, sampler, pick options, lookup options, custom checkbox, reply length, cut off answer -->
+<!-- keywords: tokens, token limit, temperature, repetition penalty, shorter replies, longer answers, creative, sampler, search options, lookup options, custom checkbox, reply length, cut off answer -->
 <!-- route: formaquestionSettings.prompts -->
 
 1. Open the **Prompts** tab in **Formaquestion Settings**.
 2. Select a custom preset. **Default** shows its options read-only.
-3. Select **Options** under **Answer**, **Picks** or **Lookup**.
+3. Select **Options** under **Answer**, **Search** or **Lookup**.
 4. Check **Max Output**, **Custom Temperature** or **Custom Repetition Penalty**, then set a value.
 
 Each prompt has its own options for its own request. Clear a box to return that field to the value of **Default**. The preset file carries the options. See [Prompts](#prompts).
@@ -274,7 +274,7 @@ The dialog shows one question per page, the newest first, with its request cards
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Clear **Keyword Search**.
-3. Clear **AI Picks**.
+3. Clear **AI Search**.
 4. Clear **Semantic Search**.
 5. Clear **Use the Open Screen**.
 6. Select the **Tools** tab and check that **read_guide** is off.
@@ -318,7 +318,7 @@ F1 does one of three things:
 
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
-Until the answer starts, a line under your question says what it waits on: **Checking your AI…** for a connection check, **Picking sections…** for the **AI Picks** request, **Searching the guide…** for **Semantic Search**, **Waiting for your AI…** for the answer request, and **Looking up…** while the AI reads more of the guide. While the model reasons, the **Thinking** header shows the wait instead.
+Until the answer starts, a line under your question says what it waits on: **Checking your AI…** for a connection check, **Searching with your AI…** for the **AI Search** request, **Searching the guide…** for **Semantic Search**, **Waiting for your AI…** for the answer request, and **Looking up…** while the AI reads more of the guide. While the model reasons, the **Thinking** header shows the wait instead.
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
 - **Take Me There**, next to **Sources**, opens the screen that the top source describes. See [How to Go to the Screen an Answer Describes](#how-to-go-to-the-screen-an-answer-describes).
@@ -326,7 +326,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again. **History Length** sets how many.
-- Before the answer, the app sends one more short request, while **AI Picks** is on. In it, your AI gets the list of every guide heading and picks the sections that answer your question. The answer then uses those picks together with the sections that the search finds. When that request fails or picks no section, the answer uses the search alone.
+- Before the answer, the app sends one more short request, while **AI Search** is on. In it, your AI gets the list of every guide heading and chooses the sections that answer your question. The answer then uses those sections together with the sections that the other searches find. When that request fails or chooses no section, the answer uses the other searches alone.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
 - With **Image Attachments** on, a question can carry up to 4 images, the same as an action. **Attach images** shows next to the field, and a paste or a drop on the field adds an image. The images go with that question only, and the app does not store them.
 - **Clear Conversation**, in the **⋮** menu, removes every question and answer, and ends an answer that is coming in.
@@ -382,29 +382,29 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - This device keeps each setting. The settings are not in a backup or an export.
 
 ### General
-<!-- keywords: chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
+<!-- keywords: chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
 <!-- route: formaquestionSettings.general -->
 
-The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Chat Style** and **Scrim Opacity** are in **Window**.
+The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Chat Style** and **Backdrop** are in **Window**.
 
 | Setting | Default | What it does |
 |---|---|---|
 | **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Minimal** with the **Mascot** on. The **⋮** menu has the same three choices. |
-| **Scrim Opacity** | 60% | Sets how solid the panel behind a bare chat column is, from 0 to 100% in steps of 5. The panel shows with the **Minimal** style. Set 0 for no panel. |
-| **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Picks** request never reasons. For a model that cannot reason, a note shows in place of the control. |
+| **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Minimal** style. Set 0 for none. |
+| **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
-| **AI Picks** | On | Sends one more request for each question, in which your AI picks guide sections from the list of headings |
+| **AI Search** | On | Sends one more request for each question, in which your AI chooses guide sections from the list of headings |
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. |
 | **Use the Open Screen** | On | Sends the screen you have open and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 
-With **Keyword Search**, **AI Picks** and **Use the Open Screen** all off, no guide section can reach your AI. The request then holds your question alone, and the answer has no note that it is not from the guide.
+With **Keyword Search**, **AI Search** and **Use the Open Screen** all off, no guide section can reach your AI. The request then holds your question alone, and the answer has no note that it is not from the guide.
 
 When a search runs and finds no section, the answer still gets that note.
 
 ### Endpoint
-<!-- keywords: different model, other endpoint, separate ai, small model for picks, help endpoint, answer endpoint, pick endpoint, follow active, same as answer -->
+<!-- keywords: different model, other endpoint, separate ai, small model for search, help endpoint, answer endpoint, search endpoint, follow active, same as answer -->
 <!-- route: formaquestionSettings.endpoint -->
 
 The **Endpoint** tab sets where help questions go. Help can use a different AI than your game.
@@ -412,7 +412,7 @@ The **Endpoint** tab sets where help questions go. Help can use a different AI t
 | Setting | Default | What it does |
 |---|---|---|
 | **Answer Endpoint** | **Use Active Endpoint** | Sends your questions to this endpoint for answers |
-| **Pick Endpoint** | **Same as Answer** | Sends the **AI Picks** request to this endpoint. A small, fast model works well here. |
+| **Search Endpoint** | **Same as Answer** | Sends the **AI Search** request to this endpoint. A small, fast model works well here. |
 
 - **Use Active Endpoint** follows the endpoint you pick in **Settings** → **AI Endpoints**.
 - A preset you choose shows whether it answers. Select **Recheck** to check again.
@@ -427,7 +427,7 @@ The two settings share one row. Under them is the same preset editor as **Settin
 - A change to a preset applies everywhere that preset is used, the game included.
 
 ### Prompts
-<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, pick prompt, lookup prompt, read-only, export preset, import preset, preset file, move preset, another device -->
+<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, search prompt, lookup prompt, read-only, export preset, import preset, preset file, move preset, another device -->
 <!-- route: formaquestionSettings.prompts -->
 
 The **Prompts** tab holds the help prompts: the text that tells your AI how to answer. The prompts are in a preset, apart from the prompt presets of your game. A change to the game's preset never changes help.
@@ -435,7 +435,7 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 | Prompt | What it does |
 |---|---|
 | **Answer** | Tells your AI how to answer from the guide sections in the request |
-| **Picks** | Tells your AI how to pick guide sections from the list of headings, for the **AI Picks** request |
+| **Search** | Tells your AI how to choose guide sections from the list of headings, for the **AI Search** request |
 | **Lookup** | Tells your AI how to answer when it can read more sections through the lookup function |
 
 - **Default** is read-only. Its text comes from the app, so each release updates it.
@@ -453,19 +453,19 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 |---|---|---|
 | **Not in Guide Marker** | Answer, Lookup | The line your AI writes first when the guide does not cover the question. The app reads that line and shows the notice above the answer. |
 | **Lookup Function** | Lookup | The name of the function your AI calls to read more guide sections |
-| **Pick Limit** | Picks | The most sections one pick reply names. The app reads that many picks at most, whatever the prompt says. |
-| **Reply Format** | Picks | The rule for how the pick reply is written, so the app can read the picks |
+| **Search Limit** | Search | The most sections one search reply names. The app reads that many sections at most, whatever the prompt says. |
+| **Reply Format** | Search | The rule for how the search reply is written, so the app can read it |
 | **Mascot Voice** | Answer, Lookup | Your mascot's Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 
 Each prompt editor has an **Edit** tab and a **Preview** tab. **Preview** shows the prompt as your AI gets it, with each chip replaced by its text. **Mascot Voice** shows your mascot's Voice while the mascot is on.
 
-Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Picks** to the **AI Picks** request, and **Lookup** to the answer request when your AI can call **read_guide**.
+Each prompt has an **Options** row under it in the list of prompts. The options apply to that prompt's request: **Answer** to the answer request, **Search** to the **AI Search** request, and **Lookup** to the answer request when your AI can call **read_guide**.
 
 | Option | Default | What it does |
 |---|---|---|
-| **Max Output** | 800 tokens for **Answer** and **Lookup**, 150 for **Picks** | Sets how long the reply can run |
+| **Max Output** | 800 tokens for **Answer** and **Lookup**, 150 for **Search** | Sets how long the reply can run |
 | **Custom Temperature** | 0.2 | Sets how freely the reply is worded |
 | **Custom Repetition Penalty** | 1 | Sets how hard the reply avoids repeated words |
 
@@ -620,7 +620,7 @@ The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-a
 | Block | What it shows |
 |---|---|
 | **Search** | The screen you had open and whether **Use the Open Screen** was on, the help preset, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
-| **Request N: AI Picks** | The **AI Picks** request, and the lines your AI picked |
+| **Request N: AI Search** | The **AI Search** request, and the lines your AI chose |
 | **Request N: Answer** | The answer request, its **Tool Rounds** when the lookup ran, its reasoning, and the answer as your AI wrote it |
 
 - A request card has the same blocks as a request in the game's inspector. Its header names the endpoint that served it, its reasoning fields, its **Max Tokens**, and its sampler values. A **Custom Prompt** mark shows when the prompt of that request differs from the default text.

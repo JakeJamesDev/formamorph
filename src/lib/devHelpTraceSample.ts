@@ -27,7 +27,7 @@ export function devHelpTraceSample(index: DocsIndex, question = 'How do I add a 
     requests: [
       {
         record: {
-          type: 'AI Picks',
+          type: 'AI Search',
           messages: [{ role: 'system', content: 'Pick the guide sections that answer the question.' }, { role: 'user', content: `<sections>\n…\n</sections>\n\nQuestion: ${question}` }],
           response: picks.map((section) => `${section.page} › ${section.label}`).join('\n'),
           endpoint: { ...endpoint, maxTokens: 150 },

@@ -57,9 +57,9 @@ describe('the Prompts tab on the Default preset', () => {
     const user = userEvent.setup();
     const rail = screen.getByRole('navigation', { name: 'Prompts' });
     expect(editor('Answer Prompt')).toHaveTextContent('Not in Guide Marker');
-    await user.click(within(rail).getByRole('button', { name: 'Picks' }));
-    const picks = editor('Picks Prompt');
-    expect(picks).toHaveTextContent('Pick Limit');
+    await user.click(within(rail).getByRole('button', { name: 'Search' }));
+    const picks = editor('Search Prompt');
+    expect(picks).toHaveTextContent('Search Limit');
     expect(picks).toHaveTextContent('Reply Format');
     await user.click(within(rail).getByRole('button', { name: 'Lookup' }));
     expect(editor('Lookup Prompt')).toHaveTextContent('Lookup Function');
@@ -67,7 +67,7 @@ describe('the Prompts tab on the Default preset', () => {
 
   it.each([
     ['Answer', [GENERAL_KNOWLEDGE_MARKER, frameVoice(DEFAULT_MASCOT_RIG.voice)]],
-    ['Picks', [`Pick ${HELP_PICK_LIMIT} sections at most.`, '- Reply with the lines of your picks alone']],
+    ['Search', [`Pick ${HELP_PICK_LIMIT} sections at most.`, '- Reply with the lines of your picks alone']],
     ['Lookup', [GENERAL_KNOWLEDGE_MARKER, `with ${DOCS_LOOKUP.name}.`, frameVoice(DEFAULT_MASCOT_RIG.voice)]],
   ])('gives the %s prompt Edit and Preview, no Values, and previews its chips as sent', async (label, sent) => {
     renderTab();
@@ -81,10 +81,10 @@ describe('the Prompts tab on the Default preset', () => {
     expect(preview.textContent).not.toMatch(/<[A-Z_]+>/);
   });
 
-  it('previews no Voice in the Picks prompt, as its request sends none', async () => {
+  it('previews no Voice in the Search prompt, as its request sends none', async () => {
     renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'pick', `Pick well.\n${HELP_CHIP.voice}`) });
     const user = userEvent.setup();
-    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Picks' }));
+    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Search' }));
     await user.click(screen.getByRole('tab', { name: 'Preview' }));
     const preview = screen.getByTestId('prompt-preview');
     expect(preview.textContent).toContain('Pick well.');
@@ -154,7 +154,7 @@ describe('the Prompts tab on a custom preset', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: COMPARE_COPY.title('Answer') })).toBeNull());
 
-    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Picks' }));
+    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Search' }));
     expect(compare()).toBeDisabled();
   });
 
@@ -166,8 +166,8 @@ describe('the Prompts tab on a custom preset', () => {
   it('keeps an edited text when the active prompt changes in the rail', async () => {
     renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'pick', 'Pick well.') });
     const user = userEvent.setup();
-    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Picks' }));
-    expect(editor('Picks Prompt')).toHaveTextContent('Pick well.');
+    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Search' }));
+    expect(editor('Search Prompt')).toHaveTextContent('Pick well.');
     expect(resetButton()).toBeEnabled();
   });
 

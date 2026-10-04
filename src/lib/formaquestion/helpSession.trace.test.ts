@@ -62,7 +62,7 @@ describe('the trace of a help question', () => {
     expect(ids(query.merged)[0]).toBe('Traits#how-to-add-a-trait');
     expect(ids(trace.sent)).toContain('Traits#how-to-add-a-trait');
 
-    expect(trace.requests.map((request) => request.record.type)).toEqual(['AI Picks', 'Answer']);
+    expect(trace.requests.map((request) => request.record.type)).toEqual(['AI Search', 'Answer']);
     const [pick, answer] = trace.requests;
     expect(pick.record.response).toBe(TRAIT_LINE);
     expect(pick.record.messages[1].content).toContain('<sections>');
@@ -94,7 +94,7 @@ describe('the trace of a help question', () => {
     expect(query.sources.map((source) => source.source)).toEqual(['keyword', 'aiPicks']);
     expect(query.sources[0].sections.length).toBeGreaterThan(0);
     expect(query.sources[1].sections).toEqual([]);
-    expect(trace.requests.map((request) => request.record.type)).toEqual(['AI Picks', 'Answer']);
+    expect(trace.requests.map((request) => request.record.type)).toEqual(['AI Search', 'Answer']);
     expect(trace.requests[0].record.response).toBe(NO_PICK);
   });
 

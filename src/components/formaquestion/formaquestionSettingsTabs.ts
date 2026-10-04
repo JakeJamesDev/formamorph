@@ -26,8 +26,8 @@ export const GENERAL_COPY = {
     ],
   },
   scrimOpacity: {
-    label: 'Scrim Opacity',
-    hint: 'Draws a panel behind a bare chat column. Set 0 for none.',
+    label: 'Backdrop',
+    hint: 'Shades the screen behind the chat so the text stands out',
   },
   reasoning: {
     label: 'Reasoning',
@@ -35,9 +35,9 @@ export const GENERAL_COPY = {
     info: '**Global** follows the **Native Reasoning** row under Settings → Output, its switch included. **Model Default** sends no hint. Only applies to models with native reasoning.',
   },
   answerReveal: { label: 'Answer Reveal', hint: 'Sets how each answer appears as it streams' },
-  keyword: { label: 'Keyword Search', hint: 'Finds guide sections that share words with your question' },
-  aiPicks: { label: 'AI Picks', hint: 'Lets your AI pick guide sections. Costs one more request per question.' },
-  semantic: { label: 'Semantic Search', hint: 'Finds guide sections by meaning. Downloads a small model once.' },
+  keyword: { label: 'Keyword Search', hint: 'Matches the words in your question to guide sections' },
+  aiPicks: { label: 'AI Search', hint: 'Asks your AI to choose the sections before answering. One extra request.' },
+  semantic: { label: 'Semantic Search', hint: 'Finds sections by meaning, not exact words. Downloads a small model once.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the screen you have open and its guide section' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
 } as const;
@@ -137,13 +137,13 @@ export const AI_CONTEXT_COPY = {
   sent: 'sent',
   route: 'Take Me There',
   customPrompt: { label: 'Custom Prompt', tip: 'Differs from the default text' },
-  sources: { keyword: 'Keyword Search', aiPicks: 'AI Picks', semantic: 'Semantic Search' },
+  sources: { keyword: 'Keyword Search', aiPicks: 'AI Search', semantic: 'Semantic Search' },
 } as const;
 
 /** The copy of the Endpoint tab. */
 export const ENDPOINT_COPY = {
   answer: { label: 'Answer Endpoint', description: 'Sends your questions to this endpoint for answers' },
-  pick: { label: 'Pick Endpoint', description: 'Sends the "AI Picks" request here. A small, fast model works well.' },
+  pick: { label: 'Search Endpoint', description: 'Runs the search request. A small, fast model is enough.' },
   followsActive: 'Follows the endpoint picked on the **AI Endpoints** tab of Settings. Switch endpoints there and this follows.',
   sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
   presetHint: 'Edits the preset Answer uses. The game uses the same presets.',
@@ -154,7 +154,7 @@ export const PROMPTS_COPY = {
   preset: { label: 'Preset', hint: 'Picks the preset that help questions use. Default updates with each release.' },
   prompts: {
     answer: { label: 'Answer', hint: 'Tells your AI how to answer from the guide sections' },
-    pick: { label: 'Picks', hint: 'Tells your AI how to pick guide sections from the heading list' },
+    pick: { label: 'Search', hint: 'Tells your AI how to choose guide sections from the heading list' },
     lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
   },
   options: {
@@ -168,9 +168,9 @@ export const PROMPTS_COPY = {
         repetitionPenalty: 'Sets how hard the answer avoids repeated words',
       },
       pick: {
-        hint: 'Sets how this preset runs the Picks request',
-        temperature: 'Sets how freely your AI picks guide sections',
-        repetitionPenalty: 'Sets how hard the pick reply avoids repeated words',
+        hint: 'Sets how this preset runs the search request',
+        temperature: 'Sets how freely your AI chooses guide sections',
+        repetitionPenalty: 'Sets how hard the search reply avoids repeated words',
       },
       lookup: {
         hint: 'Sets how this preset runs the answer request with the lookup function',
