@@ -22,6 +22,7 @@ To check a world before you play it, see [🧪 Test Bench](Test-Bench).
 
 ## How to Switch Editor Mode
 <!-- keywords: simple, advanced, more options, hidden settings, show all, expert, tab is missing, fields not showing, beginner view, basic layout, unlock extra tabs, power user, fewer options -->
+<!-- route: worldEditor -->
 
 1. Open a world in the World Editor.
 2. In the header, select **Simple** or **Advanced**.
@@ -30,6 +31,7 @@ The app remembers your pick for every world. You can't switch while the Authorin
 
 ## How to Find and Replace Text
 <!-- keywords: search, ctrl+f, rename everywhere, change all, swap a word, bulk rename, substitute, ctrl+h, mass edit, fix typo everywhere, global rename -->
+<!-- route: worldEditor -->
 
 1. Select the magnifier button in the header, or press **Ctrl+F**. Press **Ctrl+H** to open it with the replace row.
 2. Type in the **Find** box. Select **Match case** or **Match whole word** to narrow the search.
@@ -39,6 +41,7 @@ The app remembers your pick for every world. You can't switch while the Authorin
 
 ## How to Restart the Authoring Tour
 <!-- keywords: tutorial, guide, walkthrough, help, intro, learn, onboarding, show me around, beginner lesson -->
+<!-- route: settings.data -->
 
 1. Open **Settings**, then select the **Data** tab.
 2. Under **Authoring**, select **Start Authoring Tour**.
@@ -47,6 +50,7 @@ The tour opens the World Editor on a new world. Your other worlds don't change.
 
 ## How to Save or Discard Your Changes
 <!-- keywords: unsaved, cancel, undo, exit, leave, throw away, revert, keep, lost my work, close without storing, back out, abandon edits, quit editor, apply edits, back arrow -->
+<!-- route: worldEditor -->
 
 1. Select the back arrow at the top left of the editor.
 2. In the **Unsaved changes** dialog, select **Save & Exit** to keep your changes. Select **Exit Without Saving** to discard them.

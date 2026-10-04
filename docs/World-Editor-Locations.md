@@ -12,6 +12,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 ## How to Add a Location
 <!-- keywords: place, area, room, map, create, new place, zone, region, town, city, building, dungeon, scene, environment, spot, venue -->
+<!-- route: worldEditor.locations -->
 
 1. Open the **Locations** tab.
 2. Type the location's name in the **Search or add new locations** box.
@@ -23,6 +24,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 ## How to Nest a Location
 <!-- keywords: sublocation, child, inside, parent, hierarchy, room in building, indent, subfolder, tree, contain, put within, floors, district, drag under, un-nest, group places -->
+<!-- route: worldEditor.locations -->
 
 **In the list:**
 
@@ -38,6 +40,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 ## How to Connect Two Locations
 <!-- keywords: link, path, route, travel, road, door, map, one-way, exit, passage, portal, bridge, adjacent, neighbor, hallway, arrow -->
+<!-- route: worldEditor.locations -->
 
 **In the panel:**
 
@@ -51,6 +54,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 ## How to Set a Starting Location
 <!-- keywords: spawn, begin, point, first place, where game opens, initial, default place, origin, let player choose -->
+<!-- route: worldEditorLocation.details -->
 
 1. Select the location, then open its **Details** tab.
 2. Check **Starting Location**.
@@ -58,6 +62,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 ## How to Pin a Placeholder to a Location
 <!-- keywords: place, fixed value, override, wildcard, variable, per place, weather per area, depends on where, local wording, text by room, force while here, area specific -->
+<!-- route: worldEditorLocation.pins -->
 
 **Advanced mode only.**
 

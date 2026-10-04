@@ -7,6 +7,7 @@ You play by writing what you do. The AI narrator writes what happens next. The s
 
 ## How to Take an Action
 <!-- keywords: play, type, write, do something, move, respond, reply, input, send, enter, talk, say, message box, text field, submit, stop generating, cancel response, interrupt, new line, chat with npc, command -->
+<!-- route: gameViewer -->
 
 1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
 2. Write what you do, in the first person: *I ask her where the road leads.*
@@ -18,6 +19,7 @@ While the AI writes, the **Send** button turns red and becomes **Stop generating
 
 ## How to Use a Choice
 <!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine, suggested actions, multiple choice, quick replies, prewritten, ctrl click, append, long press, tap answer -->
+<!-- route: gameViewer -->
 
 1. Read the choices under the story. Each one is a ready-made action.
 2. Select a choice. Its text replaces what is in the action box.
@@ -27,6 +29,7 @@ To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on M
 
 ## How to Continue the Story
 <!-- keywords: keep going, go on, next, more, proceed, advance, wait, skip turn, do nothing, pass, idle, empty message, nudge, let it play out, auto advance, without acting -->
+<!-- route: gameViewer -->
 
 1. Select **[Continue the Story]** under the choices. It shows once page one is on screen and the AI is done.
 2. Send the action.
@@ -35,6 +38,7 @@ The text is in brackets, so the narrator reads it as a push to keep going, not a
 
 ## How to Turn Choices Off
 <!-- keywords: disable, hide, remove, options, suggestions, buttons, stop suggesting, free text only, no multiple choice, get rid of, write everything myself, re-enable, fewer requests -->
+<!-- route: settings.output -->
 
 1. Select the **?** button beside the action box. The **How to Play** dialog opens.
 2. Open the **Choices** tab.
@@ -44,6 +48,7 @@ The same checkbox is in **Settings** → **Output** → **Turn Extras**. With ch
 
 ## How to Direct the Story
 <!-- keywords: brackets, ooc, out of character, author, control, steer, force, outcome, tell the ai, square brackets, god mode, meta command, guarantee success, time skip, set tone, override, system note, make npc do, instruct narrator, plot -->
+<!-- route: gameViewer -->
 
 1. In the action box, write your action as usual.
 2. Add what should happen in square brackets: *I climb on behind her. [She agrees, and they ride off.]*
@@ -69,6 +74,7 @@ The attach button shows after the game starts, not on the opening turn.
 
 ## How to Re-generate a Turn
 <!-- keywords: redo, retry, reroll, try again, different answer, last, swipe, did not like, regen, new response, another version, bad output, refresh, alternate, new options, do over -->
+<!-- route: gameViewer -->
 
 1. Find the latest turn's action row, under its narration.
 2. Select **Re-generate Narration**.
@@ -79,6 +85,7 @@ To re-roll only the choices, select **Re-generate Choices** beside them.
 
 ## How to Edit Narration
 <!-- keywords: change, fix, rewrite, correct, ai text, response, reply, typo, modify story text, alter output, retcon, amend, wrong detail, what ai wrote, bot message, manually adjust -->
+<!-- route: editText -->
 
 1. On a turn's action row, select **Edit**.
 2. Change the text in the **Edit Text** dialog. **Edit full screen** gives the editor the whole window.
@@ -88,6 +95,7 @@ Saving rewrites the turn's narration. The game reads the edited text for entitie
 
 ## How to Edit Your Action
 <!-- keywords: change, fix, typo, rewrite, my message, input, correct, what i typed, my post, sent by mistake, amend, own line, user turn, remove picture, after sending -->
+<!-- route: gameViewer -->
 
 1. Right-click your action line, or press and hold it on a touch screen.
 2. Select **Edit**.
@@ -98,6 +106,7 @@ Only the action text and its images change. The narration stays as it is.
 
 ## How to Rewind to an Earlier Turn
 <!-- keywords: undo, go back, rollback, roll back, revert, previous, delete, restore, reset, take back, backtrack, erase turns, remove last messages, start over from, branch, mistake, time travel, wipe later -->
+<!-- route: gameViewer -->
 
 1. Go back to the turn you want to keep. In Pages, use the page buttons. In Chat, scroll up.
 2. On that turn's action row, select **Rewind to Here**. The latest turn has no **Rewind to Here**, so go back at least one turn.
@@ -107,6 +116,7 @@ Only the action text and its images change. The narration stays as it is.
 
 ## How to Read Earlier Turns
 <!-- keywords: history, scroll back, previous pages, past, log, look back, page number, reread, old messages, what happened before, review, backlog, first turn, browse story -->
+<!-- route: gameViewer -->
 
 1. In Pages, select **Previous**, or a page number under the story.
 2. To jump far back, select the current page number, type a page in the box, and select **Go**.
@@ -116,6 +126,7 @@ An earlier page is read-only. The side panel shows a banner, *Viewing turn n of 
 
 ## How to Change Location
 <!-- keywords: travel, move, go somewhere, map, place, teleport, walk, leave, fast travel, navigate, room, area, zone, relocate, wrong scene, visit -->
+<!-- route: location -->
 
 1. In the right panel, open the **Location** tab.
 2. Select **Current Location**. The **Change Location** dialog opens.
@@ -125,6 +136,7 @@ You move at once. Travel costs no turn and writes no narration. The narrator can
 
 ## How to Export the Story
 <!-- keywords: save as text, download, txt, markdown, copy, transcript, share, print, log, novel, archive, read later, ebook, document, pdf, keep the text, post online -->
+<!-- route: export -->
 
 1. Select the **More narration options** button at the top right of the story.
 2. Select **Export Story**.
@@ -134,6 +146,7 @@ The file holds every turn's narration. Markdown keeps the formatting; plain text
 
 ## How to See What the AI Read
 <!-- keywords: context, prompt, debug, inspector, raw, request, sent, tokens, log, behind the scenes, payload, full input, troubleshoot, what model saw, why did it, under the hood, api call -->
+<!-- route: aiContext -->
 
 1. Select the **Show the full AI context sent each turn** button at the top left. On mobile, open the **Menu** and select **AI Context**.
 2. Use the turn pager to pick a turn.
@@ -143,6 +156,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 ## How to Read a Turn Aloud
 <!-- keywords: tts, text to speech, voice, speak, audio, narrator voice, listen, kokoro, sound, narrate, spoken, hear, audiobook, out loud, voice acting, webgpu, playback speed, blind -->
+<!-- route: gameViewer -->
 
 1. On the latest turn's action row, select **Text to Speech**. The **Text to Speech** dialog opens.
 2. Select **Load Model**. The voice model runs in your browser and needs WebGPU.
@@ -153,6 +167,7 @@ See [The AI Context Inspector](#the-ai-context-inspector) for the search and the
 
 ## How to Report an Error
 <!-- keywords: bug, crash, problem, failed, copy, details, send feedback, broken, something went wrong, issue, not working, glitch, support, tell developers, stack trace, contact -->
+<!-- route: errorDetails -->
 
 1. On an error message, select **View Details →**. The **Error Details** dialog opens.
 2. Select **Copy** to copy the full details, or **Report Bug** to send them.

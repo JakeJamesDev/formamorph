@@ -7,6 +7,7 @@ An Avatar is a 3D model of you, the player. It is a VRM file. You keep your Avat
 
 ## How to Import an Avatar
 <!-- keywords: add, load, upload, vrm, glb, 3d model, character model, vroid, file, bring in my model, custom body, booth, vrchat model, blender export, use own mesh, duplicate warning -->
+<!-- route: mainMenu.models -->
 
 1. On the main menu, select the **Avatars** tab.
 2. Select **Import Avatar**. On a narrow screen, the button is in the **Menu** button at the top center.
@@ -18,6 +19,7 @@ You can also add a file during **Character Customization**: select **Add .vrm**.
 
 ## How to Customize Your Avatar
 <!-- keywords: change, edit, hair, body, colors, appearance, look, character creator, 3d model, skin tone, eye shade, hairstyle, outfit recolor, body sliders, proportions, dress up, makeover -->
+<!-- route: avatar -->
 
 You customize an Avatar when you start a game in a world with a 3D model.
 
@@ -30,6 +32,7 @@ Your choices are kept in the game and its saves. The Avatar in your library does
 
 ## How to Check an Avatar's License
 <!-- keywords: allowed, permission, rights, terms of use, copyright, share, redistribute, commercial, credit, vroid hub, legal to upload, who made it, attribution needed, ownership, usage rules, says not shareable, am i allowed -->
+<!-- route: modelDetails -->
 
 1. On the **Avatars** tab, select the Avatar's tile. Its details open.
 2. Open **Details**.
@@ -40,6 +43,7 @@ If it shows **Not shareable**, a line under it names what the file does not allo
 
 ## How to Export an Avatar
 <!-- keywords: download, save to file, get the file, back up, vrm file, copy out, extract model, send to a friend, move to other device, transfer, take out of app, keep offline copy -->
+<!-- route: mainMenu.models -->
 
 1. On the **Avatars** tab, select the Avatar's tile.
 2. Select **Export**.
@@ -48,6 +52,7 @@ You get the file as you imported it: a `.vrm` file, or `.glb` for a file with no
 
 ## How to Change Your Profile Image
 <!-- keywords: picture, photo, pfp, icon, account picture, upload, crop, display pic, user portrait, animated gif, account face, take off my pic, reposition, initial letter shown -->
+<!-- route: profile -->
 
 You need a Community Creations account.
 

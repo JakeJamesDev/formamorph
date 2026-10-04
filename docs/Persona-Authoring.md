@@ -9,6 +9,7 @@ How your world meets the player's persona: playable entities, the **Allowed Pers
 
 ## How to Make an Entity Playable
 <!-- keywords: play as, character, player character, pov, selectable, let players be npc, premade heroes, pregens, controllable, protagonist option, roster of heroes, only when chosen -->
+<!-- route: worldEditorEntity.profile -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and select the entity.
@@ -20,6 +21,7 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 
 ## How to Make a Custom Persona
 <!-- keywords: player character, create your own, own character, name yourself, blank character, self insert, character creation, generic hero, give player a race, class for protagonist, builder at start, nameless template, player gets perks -->
+<!-- route: worldEditor.entities -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Entities** tab, and add or select the entity. Name it, such as *Wanderer*.
@@ -30,6 +32,7 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 
 ## How to Choose Who the Player Can Be
 <!-- keywords: allowed, restrict, limit, character select, play as, starting character, allowed personas, force a protagonist, lock choices, ban outside characters, only my cast, whitelist, fixed hero, preselect for newcomers -->
+<!-- route: worldEditor.overview -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Overview** tab.

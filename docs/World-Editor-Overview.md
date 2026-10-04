@@ -7,6 +7,7 @@ The **Overview** tab holds the world's own details: its name, its library card, 
 
 ## How to Set the World's Images
 <!-- keywords: thumbnail, cover, picture, banner, art, upload, icon, photo, logo, card artwork, drag and drop, illustration, paste a url, ai made artwork, preview graphic -->
+<!-- route: worldEditor.overview -->
 
 1. Open the **Overview** tab.
 2. Under **Thumbnail**, select the frame (**Click to upload image**) and pick a file. You can also drop a file on the frame.
@@ -18,6 +19,7 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 
 ## How to Add Background Music
 <!-- keywords: sound, audio, song, mp3, soundtrack, ambient, bgm, tune, playlist, ost, wav ogg, melody, jukebox -->
+<!-- route: worldEditor.overview -->
 
 1. Open the **Overview** tab.
 2. Under **Background Music**, select **Add Sound** and pick an audio file.

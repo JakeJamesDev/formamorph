@@ -7,6 +7,7 @@ Formaquestion is the help window. You can ask it a question, search this guide a
 
 ## How to Open Formaquestion
 <!-- keywords: help, assistant, f1, faq, support, guide window, question mark, get assistance, shortcut key, hotkey, side tab, stuck, dismiss -->
+<!-- route: formaquestion -->
 
 1. Select the **Help** tab on the edge of the screen, or press F1.
 2. To close the window, select **Close** at its top right. On Android, you can also use the back action.
@@ -15,6 +16,7 @@ The window stays open when you go to a different screen or open a dialog. You ca
 
 ## How to Ask a Question
 <!-- keywords: help, ai help, chat, assistant, support, faq, answer, chatbot, citations, where it came from, query, explain to me, bot, inquire -->
+<!-- route: formaquestion.ask -->
 
 1. Open Formaquestion.
 2. Select the **Ask** tab. In the wide layout, the conversation is on the right.
@@ -26,6 +28,7 @@ Your AI writes the answer from the guide sections that match your question. To e
 
 ## How to Ask a Follow-Up Question
 <!-- keywords: more, another, next, keep, continue, conversation, clear, new topic, reset chat, start over, thread, wipe history, remembers previous -->
+<!-- route: formaquestion.ask -->
 
 1. Ask a question.
 2. After the answer, type your next question in **Ask a Question**, such as "and then?".
@@ -35,6 +38,7 @@ The AI gets your earlier questions and its answers, so you do not have to say th
 
 ## How to Ask About a Screenshot
 <!-- keywords: image, picture, paste, upload, attach, what is this, screen capture, photo, snip, print screen, vision model, clipboard, identify button, show my screen, drag file -->
+<!-- route: formaquestion.ask -->
 
 1. Turn on **Image Attachments**. See [Settings](Settings).
 2. Open Formaquestion and select the **Ask** tab.
@@ -46,6 +50,7 @@ Your model must read images. The screenshot goes with that question only. A foll
 
 ## How to Search the Guide
 <!-- keywords: find, look up, docs, wiki, manual, help, without ai, offline, keyword, documentation, results list, topic, query box, no network, filter -->
+<!-- route: formaquestion.search -->
 
 1. Open Formaquestion.
 2. Select the **Search** tab.
@@ -56,6 +61,7 @@ The best matches are first. Each result shows the section, its page and the star
 
 ## How to Read a Guide Page
 <!-- keywords: docs, wiki, manual, browse, contents, table of contents, help, chapters, topic list, article, index, all topics, back to list, documentation pages -->
+<!-- route: formaquestion.guide -->
 
 1. Open Formaquestion.
 2. Select the **Guide** tab.
@@ -75,6 +81,7 @@ The row is the first item on the **Search** tab and on the **Guide** tab. It nam
 
 ## How to Move and Resize the Window
 <!-- keywords: drag, bigger, smaller, size, position, wide view, layout, title bar, corner handle, in the way, covers the screen, side by side, split, enlarge, relocate -->
+<!-- route: formaquestion -->
 
 1. Drag the title bar to move the window.
 2. Drag the bottom right corner to change its size.
@@ -91,6 +98,7 @@ With the keyboard, press Tab until the **Help** tab has focus. Then press the ar
 
 ## How to Use a Different AI for Help
 <!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, pick endpoint, small model -->
+<!-- route: formaquestionSettings.endpoint -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Endpoint** tab.
@@ -102,6 +110,7 @@ Your game keeps its own AI. To send the **AI Picks** request to a small, fast mo
 
 ## How to Turn On Reasoning for Help
 <!-- keywords: thinking, think harder, reasoning model, hard question, effort, reasoning level, show thinking, think before answering, better answers, deep answer, slow answers, thinking block -->
+<!-- route: formaquestionSettings.general -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Select the **Reasoning** checkbox.
@@ -112,6 +121,7 @@ Answers take longer with reasoning on. The row shows a note instead of the check
 
 ## How to Turn On Semantic Search
 <!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download -->
+<!-- route: formaquestionSettings.general -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Select the **Semantic Search** checkbox.
@@ -122,6 +132,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 
 ## How to Write Your Own Help Prompt
 <!-- keywords: change how answers read, custom prompt, edit the help prompt, answer style, shorter answers, tone of help, duplicate default, rewrite instructions, reset prompt, compare to default, prompt chips -->
+<!-- route: formaquestionSettings.prompts -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Prompts** tab.
@@ -133,6 +144,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 
 ## How to Add a Tool to Formaquestion
 <!-- keywords: custom tool, own tool, new function, chat assistant, world lookup, create a tool, tool for help, function call, my tools, script tool, give the ai a function, extend the assistant -->
+<!-- route: formaquestionSettings.tools -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Tools** tab.
@@ -146,6 +158,7 @@ Your AI calls the Tool when the question needs what it returns. The endpoint mus
 
 ## How to Move a Custom Preset to Another Device
 <!-- keywords: export preset, import preset, back up help prompts, share my prompts, copy to a new pc, transfer, preset file, help-preset.json, send to a friend, sync prompts, new computer -->
+<!-- route: formaquestionSettings.prompts -->
 
 1. On the first device, open the **Prompts** tab.
 2. Select your custom preset.
@@ -158,6 +171,7 @@ The import adds the preset and selects it. See [The Preset File](#the-preset-fil
 
 ## How to See What the App Sent for a Question
 <!-- keywords: debug a question, wrong answer, why this answer, inspect the request, see the prompt, trace, missing section, request log, export json, bug report, what was sent to the ai -->
+<!-- route: formaquestionAiContext -->
 
 1. Ask a question.
 2. Select **⋮** in the Formaquestion title bar, then **AI Context**.
@@ -166,6 +180,7 @@ The dialog shows one question per page, the newest first, with its request cards
 
 ## How to Use Formaquestion as a Plain Chat
 <!-- keywords: chat assistant, no guide, ordinary chat, talk to the ai, turn off search, no sources, bare question, general chatbot, roleplay assistant, stop the guide, only my question -->
+<!-- route: formaquestionSettings.general -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Clear **Keyword Search**.
@@ -382,6 +397,7 @@ A function goes out only when the **Answer Endpoint** takes function calls. If i
 
 #### How to Let Your AI Read More of the Guide
 <!-- keywords: lookup mode, read more sections, local model, function calls, read_guide, deeper answers, search the guide itself, tool calls, bigger context -->
+<!-- route: formaquestionSettings -->
 
 1. Set **Answer Endpoint** to a model that takes function calls, such as a local model.
 2. Open the **Tools** tab, select **read_guide**, and turn on **Enabled**.
@@ -399,6 +415,7 @@ A Tool that's on reads the world you have open, so text from that world can go t
 
 #### How to Share Tools With the Game's List
 <!-- keywords: tool pack, tools.json, import tools, export tools, move a tool, gameplay tool, copy a tool, share a tool, pack file -->
+<!-- route: formaquestionSettings.tools -->
 
 1. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.

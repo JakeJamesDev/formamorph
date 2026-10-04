@@ -14,6 +14,7 @@ Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} str
 
 ## How to Make a Placeholder
 <!-- keywords: wildcard, variable, random, macro, template, curly braces, random value, brace menu, list of options, randomizer, snippet, pick from list, constant -->
+<!-- route: worldEditor.placeholders -->
 
 1. Switch the World Editor to Advanced mode, and open the **Placeholders** tab.
 2. Type the name in the search box, such as *Eye Color*.
@@ -26,6 +27,7 @@ Or type `{` in a field and the new name, then pick **New Placeholder "…"** in 
 
 ## How to Weight Values
 <!-- keywords: chance, probability, odds, rarity, random, likely, percent, more often, rare, common, frequency, bias, favor, never pick, ratio -->
+<!-- route: worldEditor.placeholders -->
 
 A Wildcard with two values or more can weight them.
 
@@ -38,6 +40,7 @@ In the **Multiline** style, each value has its own weight box. Weight 0 keeps th
 
 ## How to Pin a Value
 <!-- keywords: fixed, lock, force, condition, override, trait, location, always same, set when, depends on, tie to perk, stop random, hard set, conditional text -->
+<!-- route: worldEditor -->
 
 A pin keeps a placeholder at one value while a condition is true. To pin from a trait:
 
@@ -56,6 +59,7 @@ To see or add every pin aimed at one placeholder:
 
 ## How to Override a Copy
 <!-- keywords: blueprint, per entity, change for one, entity version, customize, npc own options, adjust npc wording, restore, undo edits, different outfit, extra option, remove option, character specific -->
+<!-- route: worldEditor.placeholders -->
 
 A copy is an entity's own version of a [blueprint](#blueprints). It appears by itself when a trait needs it.
 
