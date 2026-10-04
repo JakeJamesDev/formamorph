@@ -1,5 +1,6 @@
 # 🎭 Entities in Play
 <!-- keywords: companions, party members, side characters, who counts as there, supporting roles -->
+<!-- route: gameViewer.entities -->
 
 Who the story counts as present with you: the cast the author wrote, the entities you add from your library, and the ones the story invents as it goes.
 

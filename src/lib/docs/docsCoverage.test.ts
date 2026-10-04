@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { HELP_TOPICS } from '@/lib/helpTopics';
 import {
   docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, keywordLineProblems, routeLineProblems,
-  surfaceCoverageProblems, HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
+  surfaceCoverageProblems, surfaceRouteProblems, HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
+  type SurfaceRouteInput,
 } from './docsChecks';
+import { createDocsIndex } from './docsIndex';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, SURFACE_MAP } from './surfaceMap';
 
 const DOCS: DocsPages = Object.fromEntries(
@@ -54,6 +56,10 @@ describe('docs coverage of the app', () => {
 
   it('points every route line at a surface players see', () => {
     expect(routeLineProblems(DOCS, { surfaceIds: SURFACE_IDS, exclusions: SURFACE_EXCLUSIONS })).toEqual([]);
+  });
+
+  it('gives every surface-map section the route of its surface', () => {
+    expect(surfaceRouteProblems({ map: SURFACE_MAP, exclusions: SURFACE_EXCLUSIONS, index: createDocsIndex({ pages: DOCS }) })).toEqual([]);
   });
 });
 
@@ -308,5 +314,66 @@ describe('routeLineProblems', () => {
   it('checks no route line inside code or outside the guide', () => {
     const pages = { P: '# P\n\n```md\n<!-- route: nope -->\n```\n', 'Writing-Guide': '# W\n\n<!-- route: nope -->\n' };
     expect(routeLineProblems(pages, surfaces)).toEqual([]);
+  });
+});
+
+describe('surfaceRouteProblems', () => {
+  const stats = { page: 'P', anchor: 'stats' };
+  const panel = { page: 'P', anchor: 'the-panel' };
+  const routed = (statsLine: string, panelLine: string) => ({
+    P: `# P\n\n## Stats\n${statsLine}\n\nText.\n\n## The Panel\n${panelLine}\n\nText.\n`,
+  });
+  const input = (pages: DocsPages, overrides: Partial<SurfaceRouteInput> = {}): SurfaceRouteInput => ({
+    map: { stats, 'stats.panel': panel },
+    exclusions: {},
+    index: createDocsIndex({ pages }),
+    ...overrides,
+  });
+
+  it('passes a target whose route line names its surface', () => {
+    expect(surfaceRouteProblems(input(routed('<!-- route: stats -->', '<!-- route: stats.panel -->')))).toEqual([]);
+  });
+
+  it('fails a target with no route line', () => {
+    expect(surfaceRouteProblems(input(routed('<!-- route: stats -->', '')))).toEqual([
+      'P#the-panel is the section of stats.panel but has no route line',
+    ]);
+  });
+
+  it('fails a target whose route names another surface', () => {
+    expect(surfaceRouteProblems(input(routed('<!-- route: stats.panel -->', '<!-- route: stats.panel -->')))).toEqual([
+      'P#stats is the section of stats but its route is stats.panel',
+    ]);
+  });
+
+  it('reads the route line only up to the next heading', () => {
+    const pages = { P: '# P\n\n## Stats\n\nText.\n\n## The Panel\n<!-- route: stats -->\n<!-- route: stats.panel -->\n' };
+    expect(surfaceRouteProblems(input(pages))).toEqual([
+      'P#stats is the section of stats but has no route line',
+      'P#the-panel is the section of stats.panel but its route is stats',
+    ]);
+  });
+
+  it('accepts any of the surfaces that share one section', () => {
+    const shared = { map: { stats: panel, 'stats.panel': panel } };
+    expect(surfaceRouteProblems(input({ P: '# P\n\n## The Panel\n<!-- route: stats.panel -->\n' }, shared))).toEqual([]);
+    expect(surfaceRouteProblems(input({ P: '# P\n\n## The Panel\n<!-- route: other -->\n' }, shared))).toEqual([
+      'P#the-panel is the section of stats, stats.panel but its route is other',
+    ]);
+  });
+
+  it('skips an excluded surface', () => {
+    const pages = routed('<!-- route: stats -->', '');
+    expect(surfaceRouteProblems(input(pages, { exclusions: { 'stats.panel': 'dev' } }))).toEqual([]);
+  });
+
+  it('leaves a target that is not a heading, or not on a page, to the coverage check', () => {
+    expect(surfaceRouteProblems(input({ P: '# P\n\n## Stats\n<!-- route: stats -->\n' }))).toEqual([]);
+    expect(surfaceRouteProblems(input({}))).toEqual([]);
+  });
+
+  it('skips a target the index folds into the section above it', () => {
+    const pages = { P: '# P\n\n## Stats\n<!-- route: stats -->\n\n### The Panel\n\nText.\n' };
+    expect(surfaceRouteProblems(input(pages))).toEqual([]);
   });
 });

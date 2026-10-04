@@ -91,6 +91,7 @@ During play, the **How to Play** help has the same **Memory Summaries** checkbox
 
 ## The Memory Tab
 <!-- keywords: ledger, crossed out, faded lines, filters, list in sidebar, recent divider, greyed out, icons meaning -->
+<!-- route: gameViewer.memory -->
 
 Open the side panel's **Memory** tab during play to see the whole ledger. Faded, struck-through lines are the ones the story let go.
 
@@ -107,6 +108,7 @@ Memories under the **Recent** divider still go to the AI word for word, so a pin
 
 ## The Memory Manager
 <!-- keywords: full editor, regenerate summary, resummarize, badges, trash, browse all, yours badge, popup, big list -->
+<!-- route: memoryManager -->
 
 **Manage Memories** opens the **Memories** dialog, the full editor. Each memory has these buttons:
 

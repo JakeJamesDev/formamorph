@@ -1,5 +1,6 @@
 # 🛠️ World Editor
 <!-- keywords: build my own game, worldbuilding, scenario maker, create a setting, campaign creator, write own adventure -->
+<!-- route: worldEditor -->
 
 A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
 
@@ -96,6 +97,7 @@ To undo a replace, exit without saving. That also drops your other changes since
 
 ## The Authoring Tour
 <!-- keywords: wizard, guided setup, use example button, next button stuck, end early, first world helper, in play pane, resume lesson -->
+<!-- route: worldEditorTour.world-name -->
 
 The Authoring Tour builds a new world with you, one field at a time. It runs in Simple mode.
 

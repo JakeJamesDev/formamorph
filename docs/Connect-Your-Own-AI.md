@@ -131,6 +131,7 @@ The desktop app also connects to a local server or a hosted service. The steps a
 
 ## The Set Up Your AI Dialog
 <!-- keywords: first launch popup, no model found, ai unreachable, onboarding, wizard, detected hardware, model too big, start playing button, skip for now -->
+<!-- route: aiSetup -->
 
 On the desktop app, a **Set up your AI** dialog opens when the engine has no model to run. It also opens when you enter a world and the AI can't be reached.
 

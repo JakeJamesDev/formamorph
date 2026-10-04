@@ -137,6 +137,7 @@ The browser often can't do this. Chrome asks a public web page's permission befo
 
 ## ⬅️ The Back Button
 <!-- keywords: swipe gesture, exit app, quit, navigation key, accidentally closed, hardware key, close popup -->
+<!-- route: exitApp -->
 
 The hardware **back** button closes what is on top, one layer at a time: a dialog, then a menu, then a full-screen editor.
 

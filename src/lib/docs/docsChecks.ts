@@ -189,6 +189,39 @@ export function routeLineProblems(pages: DocsPages, { surfaceIds, exclusions }: 
   return problems;
 }
 
+export interface SurfaceRouteInput {
+  /** The docs heading for each surface id. */
+  map: Partial<Record<string, Required<DocTarget>>>;
+  /** Surfaces players never see, with the reason. */
+  exclusions: Partial<Record<string, string>>;
+  /** The Docs Index over the pages: a section is what a player's answer carries, route included. */
+  index: { get(ids: readonly string[]): { route?: string }[] };
+}
+
+/**
+ * Surface-map sections the index holds whose route is missing, or names a surface other than the ones the map
+ * ties to the section. A section tied to one surface carries that id. A target the index does not cut out as a
+ * section, such as a `###` inside a `##`, is skipped, as are missing headings, which the coverage check reports.
+ */
+export function surfaceRouteProblems({ map, exclusions, index }: SurfaceRouteInput): string[] {
+  const surfacesBySection = new Map<string, { target: Required<DocTarget>; ids: string[] }>();
+  for (const [id, target] of Object.entries(map)) {
+    if (!target || exclusions[id] !== undefined) continue;
+    const section = surfacesBySection.get(docTargetId(target)) ?? { target, ids: [] };
+    section.ids.push(id);
+    surfacesBySection.set(docTargetId(target), section);
+  }
+  const problems: string[] = [];
+  for (const [sectionId, { ids }] of surfacesBySection) {
+    const section = index.get([sectionId])[0];
+    if (!section) continue;
+    const subject = `${sectionId} is the section of ${ids.join(', ')}`;
+    if (section.route === undefined) problems.push(`${subject} but has no route line`);
+    else if (!ids.includes(section.route)) problems.push(`${subject} but its route is ${section.route}`);
+  }
+  return problems;
+}
+
 const GLOSSARY_PAGE = 'Glossary';
 const TABLE_SEPARATOR = /^\|[\s:|-]+\|$/;
 

@@ -1,5 +1,6 @@
 # 🧰 Tools
 <!-- keywords: plugins, extensions, is it safe, tab is missing, ai looks things up, agent abilities, mcp -->
+<!-- route: settings.tools -->
 
 A **Tool** is a function the AI can call during a request. It gets information the AI does not have, such as the full entry of an entity. The app runs the Tool and sends the result back, and the AI then writes its reply.
 
@@ -9,6 +10,7 @@ The **Tools** tab in Settings lists the built-in Tools and your own Tools. It sh
 
 ## How to Turn On Tools
 <!-- keywords: function calling, calling, enable, ai call, let the ai use, functions, activate, switch on lookups, nothing gets called, checkbox greyed, per prompt set, which prompts get it, filled dot meaning -->
+<!-- route: settings.output -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.
@@ -132,6 +134,7 @@ The lookup Tools return an empty `matches` list when nothing matches. Matching i
 
 ## The Tool Editor
 <!-- keywords: naming rules, boolean, enum dropdown, string or integer, canned response, nothing found message, time limit, what code can access, three behavior kinds -->
+<!-- route: settings.tools -->
 
 **New Tool** and **Edit** open the editor. It has three tabs, with **Try It** next to them. **Cancel** closes it without a save.
 

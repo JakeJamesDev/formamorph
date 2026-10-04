@@ -1,5 +1,6 @@
 # 🧬 World Editor: Traits
 <!-- keywords: character creation, feats, flaws, classes races, starting options, boons, talents -->
+<!-- route: worldEditor.traits -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -99,6 +100,7 @@ A blank **AI-Facing Description** is fine for a name that explains itself, such 
 
 ## The Panel
 <!-- keywords: pins tab missing, stats tab missing, owned by line, details tab, four tabs -->
+<!-- route: worldEditorTrait.details -->
 
 Select a trait to open its panel.
 
@@ -113,6 +115,7 @@ On an entity's own trait, the **Details** tab starts with the line **Owned by** 
 
 ## Availability
 <!-- keywords: curse, cursed item, passive, forced on, secret bonus, preselected, switch mid game, innate, cant turn off -->
+<!-- route: worldEditorTrait.availability -->
 
 The **Availability** tab sets who controls the trait and when it can be active.
 
@@ -147,6 +150,7 @@ A **Hidden** trait can carry **Stat Changes**, and visible stat bars move. Use i
 
 ## Stat Changes
 <!-- keywords: bonus, buff, debuff, modifier, penalty, extra hp, raise cap, boost, adds not sets -->
+<!-- route: worldEditorTrait.stats -->
 
 Each row changes one stat while the trait is active. A row has a stat, a number, and the field to change. Select **Add Stat Change** to add a row.
 
@@ -170,6 +174,7 @@ A disabled stat isn't shown to the player or sent to the AI. Its Regen and code 
 
 ## Placeholder Pins
 <!-- keywords: appearance from choice, force a word, lock random text, returns when off, type custom text, hair by perk -->
+<!-- route: worldEditorTrait.pins -->
 
 **Advanced mode only.** A pin keeps a [placeholder](World-Editor-Placeholders#pins) at one value while the trait is active. For example, a *Redhead* trait pins Hair Color to *copper*. The playthrough keeps its own roll, and the roll comes back when the trait is switched off.
 
@@ -248,6 +253,7 @@ A requirement that names an entity describes a relationship to someone else. Whe
 
 ## Entity Traits
 <!-- keywords: npc perks, npc abilities, give character a class, companion skills, name the holder, can npcs have stats, move to character -->
+<!-- route: worldEditorEntity.traits -->
 
 An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.
 

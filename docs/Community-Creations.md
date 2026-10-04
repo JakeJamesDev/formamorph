@@ -92,6 +92,7 @@ In a game, **Send Feedback** in the menu opens the form directly. See [Bugs and 
 
 ## Opening Community Creations
 <!-- keywords: age check, nsfw warning, 18 plus, age verification, mature popup, age gate, keeps asking my age, disclaimer, logged out after declining -->
+<!-- route: community -->
 
 Select **Community Creations** on the main menu. The window opens on the **Worlds** tab. The **Back** button closes it.
 
@@ -108,6 +109,7 @@ The dialog has no close button. After **Decline**, the app asks again the next t
 
 ## Browsing
 <!-- keywords: block a creator, blacklist tags, mute an uploader, most popular, top rated, newest first, genre categories, look up by name, unhide, version history of world -->
+<!-- route: community -->
 
 ### The Tabs
 
@@ -241,6 +243,7 @@ Comments have no replies. **Load more** shows older comments. You must log in to
 
 ## Profiles and Following
 <!-- keywords: subscribe to creator, alerts for uploads, watch a user, user page, everything by one person, stop subscribing, who i subscribe to, fans count -->
+<!-- route: profile -->
 
 ### An Author's Profile
 
@@ -256,6 +259,7 @@ The **Notifications** tab of your **User Profile** dialog is the follow feed. It
 
 ## Publishing
 <!-- keywords: unpublish, take down my upload, upload size cap, too big to upload, tos agreement, share a character, wrong title shown, remove from store, discord picture warning -->
+<!-- route: publish -->
 
 ### Where to Publish Each Kind
 
@@ -321,6 +325,7 @@ Deleting a world from your library does not delete its listing.
 
 ## Contests
 <!-- keywords: leaderboard, final standings, deadline, voting period, trophy, medal, event popup, hide event notice, ranking, who came first -->
+<!-- route: community.contest -->
 
 The **Contest** tab lists the entries of one contest. When several contests exist, pick one in the **Contest** menu. **Rules** opens the contest's rules.
 
@@ -432,6 +437,7 @@ A suspended account can't be deleted from here. Select **Open Feedback** to ask 
 
 ## Bugs and Suggestions
 <!-- keywords: ticket status, track my ticket, known issues, roadmap, upvote an idea, dev response, planned features, what data is sent -->
+<!-- route: feedbackHub -->
 
 Select the round **Feedback** button at the bottom left of the main menu. It shows when you are logged in. The steps to send one are in [How to Report a Bug or Suggest Something](#how-to-report-a-bug-or-suggest-something).
 

@@ -1,5 +1,6 @@
 # 🎭 World Editor: Entities
 <!-- keywords: characters, npcs, monsters, companions, cast list, items objects, bots -->
+<!-- route: worldEditor.entities -->
 
 > 🛠️ Part of the [World Editor](WorldEditor) guide.
 
@@ -29,6 +30,7 @@ To add a copy of an entity from your library, select **Add Entity** at the botto
 
 ## How to Import a SillyTavern Card
 <!-- keywords: character, tavern, png, chub, st, bring in, load character, character card, janitor, v2 card, tavernai, bot file, convert card, risu, upload card, lorebook comes along -->
+<!-- route: worldEditor.entities -->
 
 1. On the Main Menu, open the library's **Entities** tab.
 2. Select **Import Entity**.
@@ -57,6 +59,7 @@ The world's **Openings** checkbox turns on by itself once an opening has text, u
 
 ## The panel
 <!-- keywords: pronouns, gender, profile tab, cast or playable, category, can player be them, five tabs -->
+<!-- route: worldEditorEntity.profile -->
 
 Select an entity to open its panel.
 
@@ -92,6 +95,7 @@ An entity reaches the AI only through a location. An entity in no location never
 
 ## Descriptions and summaries
 <!-- keywords: bio, backstory, personality, appearance, short version, auto generate text, sparkle button, condensed -->
+<!-- route: worldEditorEntity.descriptions -->
 
 | Field | Who reads it | Notes |
 |---|---|---|
@@ -178,6 +182,7 @@ When these openings are in the draw, **Re-generate** on page one shows another g
 
 ## In the library
 <!-- keywords: standalone character, edit outside world, reusable npc, my characters list, saved character editor, credit and labels -->
+<!-- route: entityEditor -->
 
 Open an entity in the library's **Entities** tab, and its editor has three tabs.
 

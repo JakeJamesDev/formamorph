@@ -1,5 +1,6 @@
 # 📚 Library
 <!-- keywords: home screen, my collection, world list, dashboard, start screen, installed content -->
+<!-- route: mainMenu -->
 
 The library is the main menu's board of everything on this device: your worlds, entities, dictionaries and avatars. Each one is a tile. You can size tiles, move them and put them in Groups.
 
@@ -60,7 +61,7 @@ To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-impo
 
 ## How to Make a Group
 <!-- keywords: folder, create folder, organize, sort, collection, category, new folder, stack, bundle, tidy up, declutter, directory, drawer, drag onto another, combine -->
-<!-- route: mainMenu -->
+<!-- route: mainMenu.worlds -->
 
 1. Right-click a tile. On a touch screen, press and hold it.
 2. Select **Create New Group…**.
@@ -100,7 +101,7 @@ A tile that shares a row or a column with the target pushes the tiles between th
 
 ## How to Change a Tile's Size
 <!-- keywords: bigger, smaller, resize, large, small, medium, grid, enlarge, shrink, thumbnail, icon, compact, name hidden, scale -->
-<!-- route: mainMenu -->
+<!-- route: mainMenu.worlds -->
 
 1. Right-click the tile.
 2. Under **Tile Size**, select **Small**, **Medium** or **Large**.
@@ -128,6 +129,7 @@ The Group's tiles go back to the board. In the grid view, each tile goes to the 
 
 ## The Library Tabs
 <!-- keywords: categories, sections, create new world, new button, personas switch, bottom bar, switch between lists -->
+<!-- route: mainMenu.worlds -->
 
 | Tab | What it holds | Select a tile to… |
 |---|---|---|
@@ -156,6 +158,7 @@ The board has no sort or search.
 
 ## Groups
 <!-- keywords: folders, subfolder, nested, open folder, zoom out, preset for folder, how many inside -->
+<!-- route: mainMenu -->
 
 A Group holds tiles of one tab. Its tile shows a small image of its board, and a count of its tiles.
 

@@ -288,6 +288,21 @@ describe('Docs Index route line', () => {
     expect(section.markdown).toContain(ROUTE);
   });
 
+  it('takes no route line from under a sub-heading the section holds', () => {
+    const pages = { A: `# A\n\n## Part\n\nIntro.\n\n### One\n${ROUTE}\n\nText.\n` };
+    const [section] = createDocsIndex({ pages }).get(['A#part']);
+    expect(section.route).toBeUndefined();
+    expect(section.markdown).toContain(ROUTE);
+  });
+
+  it('gives a sub-heading its own route when the index cuts the section there', () => {
+    const filler = Array.from({ length: 700 }, (_, i) => `word${i}`).join(' ');
+    const page = ['# Big', '', '## Part', '', 'Intro.', '', '### One', ROUTE, '', filler, '', '### Two', '', filler].join('\n');
+    const index = createDocsIndex({ pages: { Big: page } });
+    expect(index.get(['Big#one'])[0].route).toBe('settings.display');
+    expect(index.get(['Big#part'])[0].route).toBeUndefined();
+  });
+
   it('counts no route line toward the size limit', () => {
     const route = `<!-- route: ${'x'.repeat(SECTION_CHAR_LIMIT)} -->`;
     const index = createDocsIndex({ pages: { Big: `# Big\n\n## Part\n${route}\n\nIntro.\n\n### One\n\nText.\n` } });

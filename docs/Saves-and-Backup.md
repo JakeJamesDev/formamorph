@@ -105,6 +105,7 @@ The autosave is not in this list. You cannot save over it.
 
 ## The Load Game Dialog
 <!-- keywords: erase a slot, rename, world not installed, wrong world, old version, compatibility, convert, reorder, game time, remove old -->
+<!-- route: menu -->
 
 **Load Game** has a folder for each world that has saves. In the game, the folder of the current world is first, with **(current)**. Each folder shows how many saves it has and when you last played.
 
@@ -159,6 +160,7 @@ To turn it off, clear **Autosave** in the **Saves** section of the [Settings](Se
 
 ## The Backup & Restore Dialog
 <!-- keywords: what is included, settings not included, avatars missing, optimize, downscale, invalid file, select all, compress pictures, skip duplicates -->
+<!-- route: backup -->
 
 Open it from the main menu's **Menu** button. It has three buttons: **Backup**, **Restore** and **Close**.
 

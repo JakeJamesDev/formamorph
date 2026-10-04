@@ -90,6 +90,7 @@ Under the buttons:
 
 ## The Enter World Dialog
 <!-- keywords: setup screen, pre game menu, new game options, categories button, skipped, nothing to choose, back out, creation screen -->
+<!-- route: enterWorld -->
 
 The dialog shows the world's name at the top and a category list on the left. On a narrow screen, a **Categories** button shows the list.
 
@@ -182,6 +183,7 @@ Then, in order, these can open:
 
 ## The Welcome Animation
 <!-- keywords: splash screen, logo, startup, title sequence, boot screen, see it again -->
+<!-- route: intro -->
 
 The first time you open Formamorph, a short animation spells out the name, then fades into the main menu. To see it again, select the **©** line at the bottom of the main menu. Its tooltip reads **Replay intro**.
 
