@@ -16,7 +16,7 @@ import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAd
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS } from '@/components/modals/settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_NOTES } from '@/components/modals/settingsCopy';
 import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningRuledOut, toolsSupported, defaultPromptReasoningSetting, resolveReasoningBudgetPct, nativeReasoningSuppressed, type PromptReasoningSetting } from '@/lib/reasoningEffort';
@@ -1102,8 +1102,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               </Select>
               }
             />
-            <EndpointReachabilityBadge target={imageReachabilityTarget(settings)} />
-            {/* Global kill switch: hides every "Generate with AI" image button, and everything below it here.
+            {/* One `text-meta` line tall in every state (same line-height as the badge), so a probe never moves the rows below. */}
+            <div data-testid="image-reachability-slot" className="flex-shrink-0 min-w-0 h-[calc(1rem*var(--fm-line-height,1))]">
+              <EndpointReachabilityBadge target={imageReachabilityTarget(settings)} />
+            </div>
+            {/* Global kill switch: hides every "Generate with AI" image button and disables everything below it here.
                 On the same row grid as Face Fix further down, so all three checkboxes share a label column. */}
             <div className="flex-shrink-0">
               <CheckRow
@@ -1113,8 +1116,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 {...rowCopy('enableImageGeneration')}
               />
             </div>
-            {!imageGenDisabled && (<>
+            {imageGenDisabled && (
+              <p className="flex-shrink-0 text-helper text-muted-foreground">{SETTINGS_NOTES.imageGenerationOff}</p>
+            )}
             <ScrollArea className="flex-1 min-h-0">
+            {/* Inside the scroller, so the rows still scroll while off. `inert` covers the tag fields,
+                which are contenteditable and ignore `disabled`. */}
+            <fieldset
+              disabled={imageGenDisabled}
+              {...(imageGenDisabled ? { inert: '' } : {})}
+              className="m-0 min-w-0 border-0 p-0 [&[inert]_[contenteditable]]:opacity-50"
+            >
             <div className="grid gap-6">
               <Section title="Connection">
               <Row htmlFor="imageProvider" {...rowCopy('imageProvider')}>
@@ -1356,8 +1368,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               )}
               </Section>
             </div>
+            </fieldset>
             </ScrollArea>
-            </>)}
               </TabsContent>
               {!imageGenDisabled && advanced && (
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sentenceShapeViolation } from '@/test/copyShape';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingCopy, type SettingOptionCopy } from './settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_NOTES, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingCopy, type SettingOptionCopy } from './settingsCopy';
 
 /**
  * The Settings modal's copy rules, asserted rather than reviewed. Their point is that consistency
@@ -61,6 +61,14 @@ describe('settings copy', () => {
     const bad = entries.flatMap(([k, c]) => {
       const why = sentenceShapeViolation(c.description);
       return why ? [`${k}: ${c.description} (${why})`] : [];
+    });
+    expect(bad).toEqual([]);
+  });
+
+  it('writes every note as sentences that end in a period', () => {
+    const bad = Object.entries(SETTINGS_NOTES).flatMap(([k, note]) => {
+      const why = sentenceShapeViolation(note);
+      return why ? [`${k}: ${note} (${why})`] : [];
     });
     expect(bad).toEqual([]);
   });
