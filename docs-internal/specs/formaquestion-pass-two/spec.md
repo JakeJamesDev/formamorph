@@ -108,6 +108,8 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q72 | Nothing but the line stays usable while the Mascot is off (user, 2026-10-04) |
 | Q73 | The Image endpoint tab takes the same off state: Enable Image Generation stays on the tab, and with it off everything below stays mounted and disabled with the same one-line note, instead of unmounting (user, 2026-10-04) |
 | Q74 | The image reachability badge gets a fixed slot, constant height and reserved width in every state, so a toggle or a probe rerun never shifts the rows around it (user, 2026-10-04) |
+| Q75 | The Settings off state, everywhere: the scroll window hides while its rows stay mounted and disabled, the frame keeps its size, and one status text sits centered in it, plain muted text, no chip, no overlay, with a status region always mounted. Copy is a status sentence then a recovery sentence that quotes the control's label: "Image generation is off. Select “Enable Image Generation” to turn it on." Mascot: "The Mascot is off. Select “General” to turn it on.", with General a link. Replaces the one-line note in Q69 and Q73 (user, ticket 23, 2026-10-04, landed 003acb1c) |
+| Q76 | The preset header disables too while the feature is off, on the Mascot tab and the Image tab alike. Only the switch itself (General for Mascot, the tab's checkbox for Image) stays usable. Image needs a follow-up to match (user, 2026-10-04) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
@@ -204,7 +206,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 
 ### Mascot tab
 
-- Above the columns: the preset row (Q60 as refined by Q68: the switch lives on General). With the Mascot off, a single line with a link to General sits above the row and the rest of the tab is disabled (Q69, Q72). The line's link is a tab change and runs the dirty-draft prompt (Q71). The "View full screen" icon button ends the preset row (Q62).
+- Above the columns: the preset row (Q60 as refined by Q68: the switch lives on General). With the Mascot off, the tab takes the Settings off state (Q75): the preset header disables (Q76), the columns' window hides with its rows mounted and disabled, and the centered status text carries the link to General. The link is a tab change and runs the dirty-draft prompt (Q71). The "View full screen" icon button ends the preset row (Q62).
 - Each column is a ScrollArea with a flex-resolved height (Q61). The preview column scrolls only when the screen is too short (Q35).
 - The preset row is the shared preset header (Q64). Full screen reuses the shared panel shell and morph hook the Formaquestion Prompts tab hosts: the tab's root is the morph source, the shell wraps the whole tab, and Exit hands the panel back in place with focus on the toggle. The dialog's own tabs and footer stay out of the full-screen view; Save and Cancel travel with the tab since they belong to it.
 - The tab is two columns from the modal's wide layout: the preview column is fixed and does not scroll; the controls column scrolls. Under the mobile breakpoint the preview sits above the scrolling controls (Q14).
@@ -266,6 +268,7 @@ Other checks:
 - The mascot spec's Q5 (mascot implies minimal) is refined: Auto keeps that rule; Minimal and Full pin.
 - The Endpoint editor's old select existed so a player could edit a preset other than Answer's. After Q4 that path is Settings → Endpoint, which edits every preset.
 - The readability prototype ships first; its ruling lands in this spec before the ticket that builds the setting.
+- **Unverified (ticket 23):** hiding the off-state window with `display:none` may reset its scroll position when the feature comes back on. No test covers it.
 - **Probe shares count failed runs (ticket 13):** the help probe's shares now use every run as the denominator, failed runs included. Totals from earlier tickets excluded failed runs, so compare across tickets only when both batches had none.
 - **Open gap (ticket 09):** the Preview tab shows an empty line where an empty Voice chip sits, while the request drops that line. Closing it means line-dropping in the shared prompt field preview, which gameplay prompts also use. Named, not built; needs the user's call.
 - The Lookup row copy, in the help voice: it runs on endpoints that accept functions, reads guide sections during the answer, and roughly quadruples input tokens per question.
