@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
@@ -34,13 +34,16 @@ function stubRequests() {
   return spy;
 }
 
-async function ask(question: string) {
+/** Waits for the answer request, the second one after the pick. The rendered reply splits its text across bold, so a text find never matches. */
+const answered = (spy: ReturnType<typeof vi.fn>) => waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+
+async function ask(spy: ReturnType<typeof vi.fn>, question: string) {
   renderReporting(<Formaquestion loadIndex={loadFixture} />);
   fireEvent.click(screen.getByRole('button', { name: 'Help' }));
   const field = await screen.findByRole('textbox', { name: 'Ask a Question' });
   await userEvent.type(field, question);
   await userEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await screen.findByText('Open the **Traits** tab.', { exact: false }).catch(() => undefined);
+  await answered(spy);
 }
 
 beforeEach(() => {
@@ -56,7 +59,7 @@ afterEach(() => {
 describe('the help preset on the device', () => {
   it('sends the Default texts when nothing is stored', async () => {
     const spy = stubRequests();
-    await ask('How do I add a trait?');
+    await ask(spy, 'How do I add a trait?');
     expect(spy).toHaveBeenCalledTimes(2);
     expect(systemOf(spy, 0)).toBe(HELP_PICK_SYSTEM_PROMPT);
     expect(systemOf(spy, 1)).toBe(VOICED_HELP_PROMPT);
@@ -67,7 +70,7 @@ describe('the help preset on the device', () => {
   it("sends the stored rig's Voice with the Mascot on", async () => {
     localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ rig: captain })));
     const spy = stubRequests();
-    await ask('How do I add a trait?');
+    await ask(spy, 'How do I add a trait?');
     expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
   });
 
@@ -81,18 +84,19 @@ describe('the help preset on the device', () => {
     await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
     const voice = await within(dialog).findByRole('textbox', { name: 'Voice' });
     await userEvent.clear(voice);
-    await userEvent.type(voice, 'Speak like a ship captain.');
+    // One paste, not 26 keystrokes: each keystroke re-renders the whole Mascot tab, and the field's value is what the prompt reads.
+    await userEvent.paste('Speak like a ship captain.');
     await userEvent.keyboard('{Escape}');
     await userEvent.type(await screen.findByRole('textbox', { name: 'Ask a Question' }), 'How do I add a trait?');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await screen.findByText('Open the **Traits** tab.', { exact: false }).catch(() => undefined);
+    await answered(spy);
     expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
   });
 
   it("sends the prompt with no Voice while the Mascot is off", async () => {
     localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ rig: captain, mascot: false })));
     const spy = stubRequests();
-    await ask('How do I add a trait?');
+    await ask(spy, 'How do I add a trait?');
     expect(systemOf(spy, 1)).toBe(HELP_SYSTEM_PROMPT);
   });
 
@@ -102,7 +106,7 @@ describe('the help preset on the device', () => {
     presets = editHelpPrompt(presets, 'mine', 'pick', 'Pick well.');
     localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ presets })));
     const spy = stubRequests();
-    await ask('How do I add a trait?');
+    await ask(spy, 'How do I add a trait?');
     expect(systemOf(spy, 0)).toBe('Pick well.');
     expect(systemOf(spy, 1)).toBe('Be brief. Write [NOT IN GUIDE] first when the guide is silent.');
   });
@@ -111,7 +115,7 @@ describe('the help preset on the device', () => {
     const values = Object.fromEntries(PROMPT_TEXT_KEYS.map((key) => [key, 'Game text.'])) as PromptValues;
     localStorage.setItem('FORMAMORPH_promptPresets', presetStoreCodec.serialize(addPreset(emptyStore, 'game', 'Game', values, 'markdown')));
     const spy = stubRequests();
-    await ask('How do I add a trait?');
+    await ask(spy, 'How do I add a trait?');
     expect(systemOf(spy, 0)).toBe(HELP_PICK_SYSTEM_PROMPT);
     expect(systemOf(spy, 1)).toBe(VOICED_HELP_PROMPT);
   });
