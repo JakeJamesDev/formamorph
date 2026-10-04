@@ -23,7 +23,7 @@ vi.mock('@/lib/imageGen/probe', async (importOriginal) => ({
 
 const IMAGE_KEY = 'FORMAMORPH_imageEndpointPresets';
 const OFF_KEY = 'FORMAMORPH_imageGenDisabled';
-const OFF_LABEL = 'Image generation is off';
+const OFF_LABEL = 'Image generation is off. Select “Enable Image Generation” to turn it on.';
 
 function seed(overrides: Partial<ImageEndpointValues>) {
   localStorage.setItem(IMAGE_KEY, imageEndpointPresetCodec.serialize({
@@ -57,7 +57,7 @@ beforeEach(() => {
 });
 
 describe('Settings → AI Endpoints → Image: off state', () => {
-  it('keeps the connection rows mounted and disabled under the label, and the switch still toggles', async () => {
+  it('keeps the connection rows mounted, disabled and hidden under the label, and the switch still toggles', async () => {
     seed({ provider: 'comfyui', endpoint: 'http://comfy.test', model: '' });
     localStorage.setItem(OFF_KEY, 'true');
     probeImageEndpoint.mockResolvedValue('ok');
@@ -67,13 +67,13 @@ describe('Settings → AI Endpoints → Image: off state', () => {
     for (const id of ['imageProvider', 'imageEndpoint', 'imageApiToken']) {
       expect(byId(id), id).toBeDisabled();
     }
+    // jsdom loads no CSS, so the hiding class is the claim here; the e2e spec proves it paints hidden.
+    expect(byId('imageEndpoint').closest('.hidden')).not.toBeNull();
     for (const name of ['Steps', 'CFG Scale']) {
-      expect(screen.getByRole('spinbutton', { name }), name).toBeDisabled();
+      expect(screen.getByRole('spinbutton', { name, hidden: true }), name).toBeDisabled();
     }
-    expect(screen.getByRole('button', { name: 'How to Set Up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'How to Set Up', hidden: true })).toBeDisabled();
     expect(toggle()).toBeEnabled();
-    // Tag fields are contenteditable and ignore `disabled`, so the group is inert as well.
-    expect(byId('imageEndpoint').closest('fieldset')).toHaveAttribute('inert');
     expect(toggle().closest('fieldset')).toBeNull();
 
     fireEvent.click(toggle());
@@ -81,14 +81,15 @@ describe('Settings → AI Endpoints → Image: off state', () => {
     for (const id of ['imageProvider', 'imageEndpoint', 'imageApiToken']) {
       expect(byId(id), id).toBeEnabled();
     }
-    expect(byId('imageEndpoint').closest('fieldset')).not.toHaveAttribute('inert');
+    expect(byId('imageEndpoint').closest('.hidden')).toBeNull();
 
     fireEvent.click(toggle());
     expect(await screen.findByText(OFF_LABEL)).toBeTruthy();
     expect(byId('imageEndpoint')).toBeDisabled();
+    expect(byId('imageEndpoint').closest('.hidden')).not.toBeNull();
   });
 
-  it('draws the label over the scroller, announced and out of the way of the wheel', async () => {
+  it('draws the label alone in the frame that holds the rows, announced', async () => {
     seed({ provider: 'comfyui', endpoint: 'http://comfy.test', model: '' });
     localStorage.setItem(OFF_KEY, 'true');
     probeImageEndpoint.mockResolvedValue('ok');
@@ -96,12 +97,10 @@ describe('Settings → AI Endpoints → Image: off state', () => {
 
     const label = await screen.findByText(OFF_LABEL);
     expect(label.closest('[role="status"]')).not.toBeNull();
-    // Outside the viewport, so it holds still while the rows scroll under it.
-    expect(label.closest('[data-radix-scroll-area-viewport]')).toBeNull();
-    // The same box holds the scroller, so the label centers on what the reader sees.
     const frame = screen.getByTestId('image-scroll-frame');
     expect(frame.contains(label)).toBe(true);
     expect(frame.contains(byId('imageEndpoint'))).toBe(true);
+    expect(label).toBeVisible();
   });
 
   it('shows no label and enabled rows while image generation is on', () => {

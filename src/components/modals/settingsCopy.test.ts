@@ -65,12 +65,16 @@ describe('settings copy', () => {
     expect(bad).toEqual([]);
   });
 
-  it('gives every note the sentence shape, a lone sentence with no period', () => {
+  it('gives every note the sentence shape: a lone sentence has no period, a longer note ends with one', () => {
     const bad = Object.entries(SETTINGS_NOTES).flatMap(([k, note]) => {
       const why = sentenceShapeViolation(note);
       return why ? [`${k}: ${note} (${why})`] : [];
     });
     expect(bad).toEqual([]);
+  });
+
+  it('quotes the Enable Image Generation label exactly in its off note', () => {
+    expect(SETTINGS_NOTES.imageGenerationOff).toContain(`“${SETTINGS_COPY.enableImageGeneration.label}”`);
   });
 
   it('keeps every description within one line of the description column', () => {

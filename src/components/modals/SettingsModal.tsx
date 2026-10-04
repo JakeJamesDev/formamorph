@@ -1116,24 +1116,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 {...rowCopy('enableImageGeneration')}
               />
             </div>
-            {/* The off label floats over the scroller, so it takes no layout space and no row moves. */}
-            <div data-testid="image-scroll-frame" className="relative flex min-h-0 flex-1 flex-col">
-            {/* Always mounted, so a screen reader announces the label when it fills in. */}
-            <div role="status" className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-              {imageGenDisabled && (
-                <span className="rounded-md border bg-background px-3 py-1.5 text-helper shadow-sm">
-                  {SETTINGS_NOTES.imageGenerationOff}
-                </span>
-              )}
+            {/* The frame keeps its size, so the off label takes the rows' place and nothing moves. The rows stay
+                mounted, hidden and disabled, so their state and any detected server data survive a toggle.
+                The status region is always mounted, so a screen reader announces the label when it fills in. */}
+            <div data-testid="image-scroll-frame" className="flex min-h-0 flex-1 flex-col">
+            <div role="status" className={cn('flex items-center justify-center px-6 text-center', imageGenDisabled && 'min-h-0 flex-1')}>
+              {imageGenDisabled && <p className="text-helper text-muted-foreground">{SETTINGS_NOTES.imageGenerationOff}</p>}
             </div>
-            <ScrollArea className="flex-1 min-h-0">
-            {/* Inside the scroller, so the rows still scroll while off. `inert` covers the tag fields, which
-                are contenteditable and ignore `disabled`. The group mutes once, so controls skip their own dim. */}
-            <fieldset
-              disabled={imageGenDisabled}
-              {...(imageGenDisabled ? { inert: '' } : {})}
-              className="m-0 min-w-0 border-0 p-0 [&[inert]]:opacity-50 [&[inert]_:disabled]:!opacity-100"
-            >
+            {/* A class, not the `hidden` attribute: the root's `flex` utility overrides `[hidden]`. */}
+            <ScrollArea className={cn('flex-1 min-h-0', imageGenDisabled && 'hidden')}>
+            <fieldset disabled={imageGenDisabled} className="m-0 min-w-0 border-0 p-0">
             <div className="grid gap-6">
               <Section title="Connection">
               <Row htmlFor="imageProvider" {...rowCopy('imageProvider')}>
