@@ -1,6 +1,6 @@
 # 09: Formaquestion full screen
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 08
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

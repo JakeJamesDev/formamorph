@@ -44,8 +44,8 @@ import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { FullscreenShell } from "@/components/FullscreenShell";
-import { useMorphFullscreen, type MorphFullscreen } from "@/lib/useMorphFullscreen";
+import { PromptsShell } from "@/components/PromptsShell";
+import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -188,46 +188,6 @@ function PromptOptionsPanel({ endpoint, attachments, maxOutput, verbatim, reason
         {reasoning && <PromptReasoningField {...reasoning} disabled={disabled} />}
         {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
       </div>
-    </>
-  );
-}
-
-/**
- * The Prompts panel, either in place or filling the screen. Fullscreen belongs to the whole panel rather
- * than to PromptField so the rail comes with it — the editor alone in a full-screen window loses the very
- * navigation that makes a long prompt findable.
- *
- * The caller owns the morph and hands the fields `morph.mounted` as their fullscreen flag. That flag
- * stays up through the closing trip, so the panel keeps its full-screen form while the box shrinks —
- * driven from a separate boolean, the fields snapped to their windowed layout inside the still-shrinking
- * window the moment the toggle was pressed.
- *
- * Toggling re-parents the panel into the overlay, so the editor is rebuilt from its value: the text is
- * safe (it is controlled) but the undo stack starts fresh on either side of the toggle.
- */
-function PromptsShell({ morph, sourceRef, title, children }: {
-  morph: MorphFullscreen;
-  /** The window's name: the tab it grows out of. */
-  title: string;
-  /** The tab panel the rail sits in — what the window grows out of. */
-  sourceRef: React.RefObject<HTMLElement | null>;
-  children: React.ReactNode;
-}) {
-  if (!morph.mounted) return <>{children}</>;
-  // A panel, not a field: nothing inside it carries a caption, so this is the one window that has to name
-  // itself. While closing, the children are already back in the tab panel and the shell above them is just
-  // the fading panel.
-  return (
-    <>
-      {!morph.contentInOverlay && children}
-      <FullscreenShell
-        morph={morph}
-        title={title}
-        showTitle
-        returnFocus={() => sourceRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"], button[aria-label="View full screen"]')}
-      >
-        {morph.contentInOverlay ? children : null}
-      </FullscreenShell>
     </>
   );
 }
