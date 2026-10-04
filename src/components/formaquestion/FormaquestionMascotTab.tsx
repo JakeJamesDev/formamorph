@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Plus, RotateCcw, X } from 'lucide-react';
+import { Info, Plus, RotateCcw, X } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -11,19 +11,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { ImageUpload } from '@/lib/UtilityComponents';
 import { randomUUID } from '@/lib/uuid';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import {
-  DEFAULT_MASCOT_RIG, composeMascot, type MascotImageRef, type MascotLayer, type MascotLayerKind, type MascotMask, type MascotRig,
+  DEFAULT_MASCOT_RIG, MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotPickWarnings, type MascotImageRef, type MascotLayer,
+  type MascotLayerKind, type MascotMask, type MascotPickName, type MascotPickWarning, type MascotRig,
 } from '@/lib/formaquestion/mascot';
 import { cropFrame, fitMask, headSize, maskFromDrag, type MascotPoint, type MascotSize } from '@/lib/formaquestion/mascotMask';
 import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
 import { addMascotImage, clearMascotImages, deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import {
-  addMascotLayer, addMascotOverlays, mascotImageRefs, moveMascotLayer, moveMascotOverlay, orphanedMascotImages, removeMascotBase,
-  removeMascotLayer, removeMascotOverlay, setMascotBase, updateMascotLayer, type MascotLayerPatch,
+  addMascotLayer, addMascotOverlays, mascotImageRefs, mascotPickOptions, moveMascotLayer, moveMascotOverlay, orphanedMascotImages,
+  removeMascotBase, removeMascotLayer, removeMascotOverlay, setMascotBase, setMascotPick, updateMascotLayer, type MascotLayerPatch,
 } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
 import { usePointerDrag } from './usePointerDrag';
@@ -168,6 +171,52 @@ function SortableLayer({ layer, expanded, urlOf, onToggle, onPatch, onRemove, ch
   );
 }
 
+/** The Select value of an empty pick slot. Radix keeps the empty string for "no value". */
+const NO_LAYER = 'none';
+
+/** One pick slot: the enabled layers of its kind. A slot that names any other layer shows that layer's name, unlisted. */
+function PickSelect({ rig, pick, slot, onPick }: {
+  rig: MascotRig;
+  pick: MascotPickName;
+  slot: MascotLayerKind;
+  onPick: (layerId: string | null) => void;
+}) {
+  const layerId = rig.picks[pick][slot];
+  const options = mascotPickOptions(rig, slot);
+  const listed = layerId === null || options.some((row) => row.id === layerId);
+  const kept = rig.layers.find((row) => row.id === layerId);
+  return (
+    // An unlisted layer selects nothing, so the placeholder shows its name.
+    <Select value={layerId === null ? NO_LAYER : listed ? layerId : ''} onValueChange={(value) => onPick(value === NO_LAYER ? null : value)}>
+      <SelectTrigger aria-label={`${MASCOT_COPY.picks[pick].label} ${MASCOT_COPY.kind[slot]}`} className="min-w-0 flex-1">
+        <SelectValue placeholder={kept?.name ?? MASCOT_COPY.missingLayer} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NO_LAYER}>{MASCOT_COPY.noLayer}</SelectItem>
+        {options.map((row) => <SelectItem key={row.id} value={row.id}>{row.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** Names each pick slot that draws nothing, with the layer it keeps. */
+function PickWarnings({ rig, warnings }: { rig: MascotRig; warnings: readonly MascotPickWarning[] }) {
+  const nameOf = (id: string) => rig.layers.find((row) => row.id === id)?.name ?? MASCOT_COPY.missingLayer;
+  return (
+    <div data-fq-pick-warning="" className="flex items-start gap-2 rounded-md border border-warning/50 bg-warning/10 px-2 py-1.5 text-helper">
+      <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+      <div>
+        <p>{MASCOT_COPY.pickWarning}</p>
+        <ul className="list-disc pl-4">
+          {warnings.map(({ pick, slot, layerId }) => (
+            <li key={`${pick}-${slot}`}>{`${MASCOT_COPY.picks[pick].label} ${MASCOT_COPY.kind[slot]}: ${nameOf(layerId)}`}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 /**
  * The Mascot tab of Formaquestion Settings: the switch and the rig editor. Player images go to the mascot
  * image store; an edit that leaves an image unreferenced deletes it.
@@ -223,6 +272,7 @@ export function MascotTab({ settings, onChange }: {
     void clearMascotImages().catch((cause: unknown) => console.error('Could not clear the mascot images:', cause));
   };
 
+  const warnings = mascotPickWarnings(rig);
   const shownLayer = rig.layers.find((row) => row.id === expanded);
   // An answer with no face from the AI draws the Idle look.
   const preview = shownLayer ? [rig.base, ...shownLayer.images] : composeMascot(rig, 'answering', null);
@@ -256,6 +306,14 @@ export function MascotTab({ settings, onChange }: {
       <div className="grid gap-6 py-4">
         <Section title="Mascot">
           <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
+          <Row top htmlFor="fq-mascot-voice" {...MASCOT_COPY.voice}>
+            <Textarea
+              id="fq-mascot-voice"
+              rows={3}
+              value={rig.voice}
+              onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice })); }}
+            />
+          </Row>
         </Section>
         <Section title="Rig">
           <Row {...MASCOT_COPY.preview}>
@@ -347,6 +405,16 @@ export function MascotTab({ settings, onChange }: {
               {error && <p className="text-helper text-destructive">{error}</p>}
             </div>
           </Row>
+          {MASCOT_PICK_NAMES.map((pick) => (
+            <Row key={pick} {...MASCOT_COPY.picks[pick]}>
+              <div className="flex gap-2">
+                {MASCOT_LAYER_KINDS.map((slot) => (
+                  <PickSelect key={slot} rig={rig} pick={pick} slot={slot} onPick={(layerId) => edit((current) => setMascotPick(current, pick, slot, layerId))} />
+                ))}
+              </div>
+            </Row>
+          ))}
+          {warnings.length > 0 && <Row><PickWarnings rig={rig} warnings={warnings} /></Row>}
           <Row hint={MASCOT_COPY.reset.hint}>
             <Button variant="outline" size="sm" onClick={() => setConfirmReset(true)}>
               <RotateCcw className="mr-1 h-4 w-4" />{MASCOT_COPY.reset.label}
