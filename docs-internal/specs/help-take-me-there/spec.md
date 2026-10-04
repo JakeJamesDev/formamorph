@@ -11,7 +11,7 @@ An AI-driven jump is not an option for most players: the default cloud endpoint 
 
 ## Solution
 
-Every how-to section in the player docs carries a **route**: the id of the screen, dialog or tab it explains. When an answer's top source carries a route, the answer gets a **Take Me There** button beside its Sources expander. A click opens that surface. Leaving a running game, or a World Editor with unsaved edits, asks first. On desktop the help window stays open above the new surface; on mobile the sheet closes.
+Every how-to section in the player docs carries a **route**: the id of the screen, dialog or tab it explains. When an answer's top source (its first source other than the open screen's lead, Q37) carries a route, the answer gets a **Take Me There** button beside its Sources expander. A click opens that surface. Leaving a running game, or a World Editor with unsaved edits, asks first. On desktop the help window stays open above the new surface; on mobile the sheet closes.
 
 No AI call is involved. The link is derived from the docs, so it works on the cloud, costs no tokens, and never fires on a question the model misread.
 
@@ -96,12 +96,15 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 - The answer footer renders the Take Me There button beside the Sources expander when the top source carries a route (Q18, Q23). Both chromes render it. A click sends the navigation request; on mobile it also closes the sheet (Q24).
 - AI Context names the route per answer ("Take Me There: <surface id>", or none). It reads the same route function the button uses; the trace stores no copy.
 - **Ticket 04 landed 2026-10-04 (`4774586e`).** The changelog line is ticket 06's.
+- **Ticket 07 landed 2026-10-04 (`d9a78491`).** The route skips the lead (Q37).
+- **Ticket 06 landed 2026-10-04 (`2e27f3f3`).** The Formaquestion page gains "How to Go to the Screen an Answer Describes" and a Take Me There bullet; Playwright covers the jump to the Settings Display tab and the refused jump from a game, both mutation-checked; the changelog line is in. Recall probe after: known 84.5%, blind 87.2% (interval touches ticket 03's); the walkthrough commit landed between the runs, and a later run after it read 84.7 / 87.7, so the drop is cloud drift.
 - The button label is settled copy in the help voice: "Take Me There".
 
 ### Probe
 
 - A new offline probe in the baseline harness: for each keyed task and here question, the keyed section's route against the question's expected surface. The expected surface is a new field on the question key, authored once. Output: a table per kind with hit, miss and no-route counts, and the misses by name. No model runs.
 - The first run reports; the bar is the user's to set after (Q20).
+- **Ticket 05 landed 2026-10-04 (`5ffe1dff`).** `npm run probe:help-route`, no model. 87 keys with an expected surface or none. First run: task 62 of 75 (83%; surfaced 48 of 59, none-expected 14 of 16), here 6 of 12 (50%). Of the 13 task problems, 4 are one level of granularity (the route is the parent of the control's surface), 7 are sections without a route line (5 reference sections, 2 how-tos ticket 03 left out), 2 are no-surface flows that route to their first screen. Six here keys point at reference sections, which carry no route by design.
 
 ### Shape and settings
 
@@ -128,10 +131,20 @@ Other checks:
 
 - An AI-driven navigation function. A later ticket after the link proves itself (Q7).
 - Auto-navigation without a click.
-- Routes for sections that are not how-to sections.
+- Routes for sections that are neither how-tos nor stepped walkthroughs (Q38). Reference sections carry none, so a "what is this panel" answer gets no button.
 - A link per source. Only the top source carries the button (Q18).
 - Highlighting the control on the opened surface.
 - Routes into the community site or the desktop shell.
+
+## Open Decisions
+
+The user's calls, in the order they matter. None blocks the close.
+
+1. **The route bar (Q20).** First run: task 83%, here 50%. Set it over surfaced questions, all questions, or not at all.
+2. **Reference sections for here questions.** Six of 12 here keys point at a tab or dialog reference section, which carries no route by design (Q38). Either those sections get a route line, or here questions stay out of the bar.
+3. **Granularity.** Four task misses route to the parent of the control's surface (the Library screen for a Worlds-tab tile menu, the Prompts tab for a preset's Options). A one-line docs edit each, or accepted as is.
+4. **Ticket 01 and 03 judgment calls.** Listed in their Answers: "How to Publish a Prompt Preset" → the preset Overview; "How to Use a Preset for One World" → Enter World; "How to Turn On Tools" has no route (could take `settings`); and eight more on the ticket 03 list.
+5. **Fall-through rule.** Today the route stops at the first non-lead source. A fall-through to the first routed source among the sent sections would link more answers at the cost of some wrong-surface links. Held until the docs show what is left (Q38 context).
 
 ## Further Notes
 
