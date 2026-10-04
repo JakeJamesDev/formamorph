@@ -7,6 +7,7 @@ The library is the main menu's board of everything on this device: your worlds, 
 
 ## How to Import a World
 <!-- keywords: load, open, add, bring in, json file, upload, install, file, downloaded, scenario, adventure file, story pack, from discord, received from friend, sideload content, custom game -->
+<!-- route: mainMenu.worlds -->
 
 1. On the **Worlds** tab, select **Import World**.
 2. Select one or more world `.json` files.
@@ -16,6 +17,7 @@ One file opens its world dialog. More files add their tiles. If the world brings
 
 ## How to Export a World
 <!-- keywords: save to file, download, back up, json, share file, copy, send to friend, scenario file, give to someone, embed images, smaller filesize, transfer to other pc, extract, distribute -->
+<!-- route: mainMenu.worlds -->
 
 1. On the **Worlds** tab, select the world.
 2. Select **Export World**.
@@ -26,6 +28,7 @@ You get a `.json` file with the world's name.
 
 ## How to Import an Entity
 <!-- keywords: character card, png card, chub, load character, add character, upload, tavern card, npc file, bot, janitorai, v2 spec, companion, risu -->
+<!-- route: mainMenu.entities -->
 
 1. On the **Entities** tab, select **Import Entity**.
 2. Select one or more files. These work:
@@ -37,6 +40,7 @@ A lorebook inside a SillyTavern card also comes in, as a dictionary. If you impo
 
 ## How to Import a Dictionary
 <!-- keywords: lorebook, sillytavern, load, add, upload, json, world info, worldbook, lore file, codex, knowledge base, encyclopedia -->
+<!-- route: mainMenu.dictionaries -->
 
 1. On the **Dictionaries** tab, select **Import Dictionary**.
 2. Select one or more `.json` files. A Formamorph dictionary and a SillyTavern World Info lorebook both work.
@@ -45,6 +49,7 @@ If you import one file that names worlds, a review opens. See [Importing an Enti
 
 ## How to Export an Entity or a Dictionary
 <!-- keywords: character card, lorebook, save to file, download, share, webp, json, send to friend, extract, bot, portrait image, single item backup, lore pack -->
+<!-- route: mainMenu -->
 
 1. Select the tile. Its editor opens.
 2. Select **Export** at the bottom of the editor.
@@ -55,6 +60,7 @@ To import or export an avatar, see [How to Import an Avatar](Avatars#how-to-impo
 
 ## How to Make a Group
 <!-- keywords: folder, create folder, organize, sort, collection, category, new folder, stack, bundle, tidy up, declutter, directory, drawer, drag onto another, combine -->
+<!-- route: mainMenu -->
 
 1. Right-click a tile. On a touch screen, press and hold it.
 2. Select **Create New Group…**.
@@ -66,6 +72,7 @@ You can also drag one tile onto the near half of another tile and hold it there.
 
 ## How to Add a Tile to a Group
 <!-- keywords: folder, put in, move into, organize, sort, collection, drop onto, file away, assign, include in, place inside -->
+<!-- route: mainMenu -->
 
 1. Right-click the tile.
 2. Under **Add To Group**, select a Group. Only three Groups show there. To see all of them, select **Add To Group…** and find the Group by name.
@@ -74,6 +81,7 @@ You can also drag the tile onto the near half of a Group's tile, hold it, and re
 
 ## How to Remove a Tile from a Group
 <!-- keywords: folder, take out, move out, ungroup, pull out, back to main, separate, unassign, eject -->
+<!-- route: mainMenu -->
 
 1. Open the Group.
 2. Right-click the tile, then select **Remove From Group**.
@@ -82,6 +90,7 @@ The tile goes to the end of the board. Formamorph removes a Group that has no ti
 
 ## How to Move a Tile
 <!-- keywords: drag, reorder, rearrange, sort, organize, swap, position, change order, arrange, shuffle, relocate, red ring, put first, icon placement -->
+<!-- route: mainMenu -->
 
 1. Drag the tile. On a touch screen, press and hold it first.
 2. Hold it over the far half of another tile. The tiles show where the tile will go.
@@ -91,6 +100,7 @@ A tile that shares a row or a column with the target pushes the tiles between th
 
 ## How to Change a Tile's Size
 <!-- keywords: bigger, smaller, resize, large, small, medium, grid, enlarge, shrink, thumbnail, icon, compact, name hidden, scale -->
+<!-- route: mainMenu -->
 
 1. Right-click the tile.
 2. Under **Tile Size**, select **Small**, **Medium** or **Large**.
@@ -99,6 +109,7 @@ A **Small** tile hides its name. Point to it to see the name. **Tile Size** show
 
 ## How to Rename a Group
 <!-- keywords: folder, name, change name, title, relabel, label, retitle, call it something -->
+<!-- route: mainMenu -->
 
 1. Select the Group to open it.
 2. Select its name at the top, and type a new one.
@@ -106,6 +117,7 @@ A **Small** tile hides its name. Point to it to see the name. **Tile Size** show
 
 ## How to Delete a Group
 <!-- keywords: folder, remove, ungroup, get rid of, disband, dissolve, erase, break apart, trash, lose contents -->
+<!-- route: mainMenu -->
 
 1. Right-click the Group.
 2. Select **Delete Group**.

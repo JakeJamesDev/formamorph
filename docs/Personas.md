@@ -7,6 +7,7 @@ A persona is who you are in the story. It gives the AI your name, your pronouns 
 
 ## How to Make a Persona
 <!-- keywords: create, player character, play as, my character, user character, self, profile, original character, oc, describe myself, character sheet, my backstory, new identity, roleplay identity, build a hero -->
+<!-- route: mainMenu.entities -->
 
 1. Open the library's **Entities** tab.
 2. Select **New Entity**, or open an entity you already have.
@@ -18,6 +19,7 @@ No copy is made. The entity is now one of your personas, and you can still add i
 
 ## How to Set a Default Persona
 <!-- keywords: always, main character, preferred, usual, favorite, automatic, preselected, primary, go to identity, remember my choice, unset, standard pick, same one each game -->
+<!-- route: mainMenu.entities -->
 
 1. Open the library's **Entities** tab.
 2. Right-click a persona tile.
@@ -27,6 +29,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 
 ## How to Pick a Persona
 <!-- keywords: choose, select, play as, character select, who to play, which character, roster, at game start, type my name, name myself, nameless, playing as nobody, before the story -->
+<!-- route: enterWorld -->
 
 1. On the main menu, select a world.
 2. Select **Enter World**.
@@ -37,6 +40,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 
 ## How to Change Persona During Play
 <!-- keywords: switch, swap, mid-game, different character, edit name, rename, already started, ongoing story, become someone else, wrong name fix, replace protagonist, halfway through, body swap -->
+<!-- route: persona -->
 
 1. In the side panel, find the persona row above the **Stats**, **Traits** and **Location** tabs.
 2. Select **Change**. The **Change Persona** dialog opens.
@@ -45,6 +49,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 
 ## How to Import SillyTavern Personas
 <!-- keywords: tavern, st, user avatars, backup, migrate, bring over, convert from other app, transfer profiles, old frontend, portraits folder, carry across, switching apps, existing profiles -->
+<!-- route: mainMenu.entities -->
 
 1. In SillyTavern, open **Persona Management** and select **Backup**. Your browser downloads `personas_<date>.json`.
 2. Find your avatar images in the `User Avatars` folder inside your SillyTavern user folder. On a default install it is `data/default-user/User Avatars`.

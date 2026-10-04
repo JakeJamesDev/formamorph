@@ -23,6 +23,7 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 
 ## How to Edit a Memory
 <!-- keywords: change, fix, rewrite, summary, correct, wrong, remember, inaccurate recap, misremembered, alter, amend, pencil, revert, modify history, search for one -->
+<!-- route: memoryManager -->
 
 1. During play, open the side panel's **Memory** tab.
 2. Select **Manage Memories**. The **Memories** dialog opens.
@@ -35,6 +36,7 @@ The story always keeps your version. To go back to the story's own words, select
 
 ## How to Add a Memory
 <!-- keywords: remember, new, write, fact, note, summary, make ai remember, custom entry, manual, promise, backstory, insert event, teach, permanent detail, never lose -->
+<!-- route: memoryManager -->
 
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
@@ -46,6 +48,7 @@ Memories you write are always kept. The story never judges them.
 
 ## How to Pin or Forget a Memory
 <!-- keywords: keep, remove, delete, lock, important, remember, drop, discard, always include, prioritize, force, irrelevant, stop mentioning, ignore, star, exclude, unpin -->
+<!-- route: gameViewer.memory -->
 
 1. Open the side panel's **Memory** tab.
 2. Find the memory.
@@ -56,6 +59,7 @@ Memories you wrote have no pin button, because the story never lets them go.
 
 ## How to Undo Your Memory Changes
 <!-- keywords: reset, revert, restore, deleted, bring back, original, messed up, mistake, undelete, recover removed, start fresh, cancel edits, trash -->
+<!-- route: memoryManager -->
 
 1. Open the side panel's **Memory** tab.
 2. Select **Manage Memories**.
@@ -66,6 +70,7 @@ To bring back one deleted memory instead, select the **Deleted** filter chip, th
 
 ## How to Turn Memory Off
 <!-- keywords: disable, summaries, stop, faster, remove, fewer requests, speed up, no recap, save tokens, skip, switch off, cheaper, too slow -->
+<!-- route: settings.output -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
@@ -76,6 +81,7 @@ During play, the **How to Play** help has the same **Memory Summaries** checkbox
 
 ## How to Date Each Memory
 <!-- keywords: time, timestamp, day, calendar, clock, when it happened, how long ago, time passing, hours, chronology, time of day, elapsed, story date -->
+<!-- route: settings.output -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.

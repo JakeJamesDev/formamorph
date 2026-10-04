@@ -14,6 +14,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 
 ## How to Add a Stat
 <!-- keywords: attribute, health, hp, meter, number, bar, create, new, variable, gauge, mana, counter, currency, gold, score, hunger, resource, skill level, track money -->
+<!-- route: worldEditor.stats -->
 
 1. Open the **Stats** tab.
 2. Type the stat's name in the **Search or add new stats** box.
@@ -26,6 +27,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 
 ## How to Make a Stat a Percentage
 <!-- keywords: percent, 0 to 100, ratio, show as %, fraction, out of hundred, completion meter, locked range -->
+<!-- route: worldEditorStat.details -->
 
 1. Select the stat.
 2. On the **Details** tab, set **Type** to **Percentage**.
@@ -33,6 +35,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 
 ## How to Hide a Stat
 <!-- keywords: secret, invisible, hidden from player, ai only, conceal, behind the scenes, private, dont show bar, internal counter, gm only, background tracker, remove from sidebar -->
+<!-- route: worldEditorStat.details -->
 
 **Advanced mode only.**
 
@@ -43,6 +46,7 @@ The player no longer sees the stat. The AI still reads it, and its Regen and cod
 
 ## How to Add a Stat Descriptor
 <!-- keywords: label, band, threshold, level, word, text for value, range, status, tier, stage, bracket, adjective, name for low health, state names, milestone -->
+<!-- route: worldEditorStat.descriptors -->
 
 **Advanced mode only.**
 

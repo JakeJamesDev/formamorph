@@ -7,6 +7,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 
 ## How to See Who Is in the Scene
 <!-- keywords: characters, npcs, people, present, list, cast, nearby, who is here, around me, in the room, party roster, look someone up, view their bio, current company -->
+<!-- route: gameViewer.entities -->
 
 1. During play, open the side panel's **Entities** tab. On desktop, select **Entities** above the panel if the avatar shows.
 2. Read the list. Your persona heads it, marked **(You)**.
@@ -14,6 +15,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 
 ## How to Add Your Own Entities to a Game
 <!-- keywords: characters, npcs, bring, include, library, custom characters, extra, import, my oc, bring a companion, guest star, crossover, insert into any world, keep picks next time, extra lorebooks -->
+<!-- route: enterWorld -->
 
 1. On the main menu, select a world.
 2. Select **Enter World**.
@@ -24,6 +26,7 @@ Who the story counts as present with you: the cast the author wrote, the entitie
 
 ## How to Remove a Cast Member
 <!-- keywords: delete, character, npc, get rid of, kick out, drop, wrong name listed, not a real person, clean up list, false positive, dismiss, bogus entry, trash button missing -->
+<!-- route: gameViewer.entities -->
 
 1. During play, open the side panel's **Entities** tab.
 2. Find the entry and select its trash button, **Remove** followed by its name.
@@ -33,6 +36,7 @@ Only story-invented entities and Library Additions have the button. See [Removin
 
 ## How to Get Descriptions for New Entities
 <!-- keywords: characters, npcs, invented, auto describe, profile, details, generate, blank bio, empty entry, who is this person, made up people, auto backstory, write up strangers, nothing to read -->
+<!-- route: settings.output -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.

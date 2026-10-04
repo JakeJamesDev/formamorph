@@ -14,6 +14,7 @@ A trait is a fact about the player that doesn't change. Stats change all the tim
 
 ## How to Make a Trait
 <!-- keywords: perk, feature, quirk, attribute, ability, background, create, new, characteristic, feat, flaw, talent, skill, class, race, species, boon, disadvantage, starting option -->
+<!-- route: worldEditor.traits -->
 
 1. Open the **Traits** tab.
 2. To name the trait as you add it, type the name in the search box.
@@ -27,6 +28,7 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 
 ## How to Require Another Trait
 <!-- keywords: prerequisite, depends on, needs, only if, condition, unlock, gate, locked until, skill tree, subclass, chain, tied to, restrict, exclusive to class -->
+<!-- route: worldEditorTrait.availability -->
 
 1. Select the trait.
 2. Open the **Availability** tab.
@@ -39,6 +41,7 @@ To remove a target, select the **×** on its chip.
 
 ## How to Set a Pick Count
 <!-- keywords: limit, cap, how many, choose one, max, min, exactly one, radio, multiple, mutually exclusive, single choice, one of, at least two, force selection, mandatory, slots, required choice -->
+<!-- route: worldEditor.traits -->
 
 1. Select a trait group. To add one, switch to Advanced mode, select **+**, then **Add Group**.
 2. Open the **Pick Count** list and pick **Any**, **Exactly One**, **Up to One** or **Custom**.
@@ -47,6 +50,7 @@ To remove a target, select the **×** on its chip.
 
 ## How to Make a Blueprint
 <!-- keywords: template, reusable, shared trait, base, prototype, copy for entities, npc only, not for player, master version, common pool, define once, library of classes -->
+<!-- route: worldEditor.traits -->
 
 **Advanced mode only.**
 
@@ -58,6 +62,7 @@ The item is now a blueprint. The player never picks it directly. Entities get it
 
 ## How to Link to a Blueprint
 <!-- keywords: give to entity, assign, share, attach, reuse, template, npc class, apply to characters, same perk several npcs, hand out, drag onto character, tick boxes -->
+<!-- route: worldEditor.traits -->
 
 **Advanced mode only.**
 
@@ -69,6 +74,7 @@ Or drag the item from **Blueprints** onto an entity's node in the tree. The orig
 
 ## How to Override a Linked Trait
 <!-- keywords: change for one entity, per entity, customize, template, exception, adjust for one npc, different for one npc, undo my edits, reset, restore original, edit master, local change -->
+<!-- route: worldEditor.traits -->
 
 1. In the **Traits** tab, open the entity's node and select the link row. It shows a link icon.
 2. Open the tab that holds the field: **Availability**, **Stats** or **Pins**.

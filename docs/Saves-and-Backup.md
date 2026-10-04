@@ -7,6 +7,7 @@ A save keeps one game's progress. A backup keeps your worlds, saves, library ent
 
 ## How to Save a Game
 <!-- keywords: progress, keep, file, store, checkpoint, quit, stop playing, manual, slot, bookmark, come back later, overwrite, preserve, session, avoid losing -->
+<!-- route: gameViewer -->
 
 1. In the game, select the **Menu** button at the top right.
 2. Select **Save Game**.
@@ -18,6 +19,7 @@ The **Logs** tab records *Game saved as …*. To keep scene images in the save, 
 
 ## How to Load a Game
 <!-- keywords: continue, resume, open save, pick up, saved, return, carry on, previous session, where i left off, old playthrough, reopen story, last time, slot, yesterday -->
+<!-- route: menu -->
 
 1. Open **Load Game**:
    - In the game, select **Menu**, then **Load Game**.
@@ -29,6 +31,7 @@ A save from a world that is not on this device does not load from the main menu.
 
 ## How to Export a Save
 <!-- keywords: download, file, share, transfer, move, copy, json, another device, send to friend, sync, pc to phone, extract, portable, single playthrough, offload -->
+<!-- route: menu -->
 
 1. Open **Load Game**.
 2. Select the world's folder.
@@ -38,6 +41,7 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 
 ## How to Import a Save
 <!-- keywords: upload, open file, transfer, move, bring in, another device, json, load from disk, received, sync, phone to pc, add playthrough, from friend, multiple at once -->
+<!-- route: menu -->
 
 1. Open **Load Game**.
 2. Select the **Import** button.
@@ -47,6 +51,7 @@ Each save goes into the folder of its world. The dialog opens that folder, and a
 
 ## How to Make a Backup
 <!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, archive, snapshot, switch browser, before clearing cache, format pc, full dump, bulk, sync devices, protect data -->
+<!-- route: backup -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Backup** button.
@@ -58,6 +63,7 @@ Make a backup before you update the app or move to a new device. See [What a Bac
 
 ## How to Restore a Backup
 <!-- keywords: recover, bring back, get back, import, reinstall, new device, lost data, migrate, load archive, everything gone, wiped, merge, duplicates, disappeared, old computer, put back -->
+<!-- route: backup -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Restore** button, then select a backup `.json` file.
@@ -69,6 +75,7 @@ Restore adds to what you have. It never erases an item that is not in the backup
 
 ## How to Update the Desktop App
 <!-- keywords: new version, upgrade, latest, download, patch, install, mac, windows, out of date, outdated, auto updater, newer release, dmg, pc client, linux -->
+<!-- route: mainMenu -->
 
 1. On the main menu, look at the version number at the bottom left. It shows **— Update Available!** when a newer release is out.
 2. Select the version number. The update dialog opens.

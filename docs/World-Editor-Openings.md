@@ -18,6 +18,7 @@ After an Opening Narration, the input box is empty. A written page one works lik
 
 ## How to Add an Others Opening
 <!-- keywords: first message, greeting, intro, start, starting scene, scene, opener, prologue, kickoff, beginning, initial prompt, hook, first turn -->
+<!-- route: worldEditor.overview -->
 
 An Others opening is the normal kind. Every opening starts as one.
 
@@ -33,6 +34,7 @@ To add an opening to a location or an entity, select **Add Opening to** and its 
 
 ## How to Add a Self Opening
 <!-- keywords: first message, greeting, intro, persona start, play as, player character start, protagonist beginning, main character opener, pov beginning, hero backstory opener, when i am them, own storyline kickoff -->
+<!-- route: worldEditor.entities -->
 
 A Self opening starts the game for a player who plays as the entity.
 

@@ -9,6 +9,7 @@ This page describes the `.json` file of a Formamorph **world**: the file **Expor
 
 ## How to Edit a World File by Hand
 <!-- keywords: json, text editor, manual, raw, modify, notepad, tweak, fields, vscode, outside the app, bulk change, reimport, duplicate created, wont overwrite, open exported, hack -->
+<!-- route: mainMenu.worlds -->
 
 1. In the main menu, select the world. In its [world dialog](Starting-a-Game#the-world-dialog), select **Export World**.
 2. Open the `.json` file in a text editor. Make your changes.

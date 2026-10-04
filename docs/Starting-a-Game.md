@@ -7,6 +7,7 @@ A new game starts at **Enter World**. One dialog holds every choice before page 
 
 ## How to Start a Game
 <!-- keywords: play, new, begin, enter, launch, new story, new run, playthrough, adventure, campaign, scenario, restart from scratch, open a world, fresh save -->
+<!-- route: mainMenu.worlds -->
 
 1. On the main menu, open the library's **Worlds** tab and select a world. The world dialog opens.
 2. Select **Enter World**.
@@ -20,6 +21,7 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 
 ## How to Start with the Defaults
 <!-- keywords: quick, skip, fast, jump in, random, no setup, instant play, one click, bypass creation, just play, auto pick, straight in, without choosing -->
+<!-- route: mainMenu.worlds -->
 
 1. On the main menu, select a world.
 2. Select **Quick Start**. In portrait it is the icon beside **Enter World**.
@@ -28,6 +30,7 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 
 ## How to Pick Starting Traits
 <!-- keywords: choose, character creation, options, class, race, perks, background, skills, abilities, attributes, species, feats, start button disabled, greyed out, customize character -->
+<!-- route: enterWorld -->
 
 1. In the **Enter World** dialog, open a category under **Starting Traits**.
 2. Select the traits you want. A round button allows one pick in its group; a checkbox allows several.
@@ -37,12 +40,14 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 
 ## How to Pick a Starting Location
 <!-- keywords: choose, spawn, begin, random, place, starting area, first room, initial zone, start point, where do i start, home town, origin -->
+<!-- route: enterWorld -->
 
 1. In the **Enter World** dialog, open **Starting Location**.
 2. Select a location, or **Random** to let the world choose.
 
 ## How to Choose a Game's Dictionaries
 <!-- keywords: lorebooks, include, order, library additions, enable, world info, codex, reorder, priority, remember my picks, disable, extra knowledge -->
+<!-- route: enterWorld -->
 
 1. In the **Enter World** dialog, open **Library Additions**.
 2. Under **Dictionaries**, select the checkbox of each dictionary this game should use. Clear one to leave it out.
@@ -51,6 +56,7 @@ For the **Persona** category, see [How to Pick a Persona](Personas#how-to-pick-a
 
 ## How to Read the Introduction Again
 <!-- keywords: readme, intro, show, see, info, description, author message, welcome text, reopen, missed it, stop popup, world notes, hide on entry, creator instructions -->
+<!-- route: enterWorld -->
 
 1. Select **Enter World** on the world.
 2. In the **Enter World** dialog, select **Introduction** at the top.

@@ -7,6 +7,7 @@ How a world's entities and dictionaries follow a library item, and what that lin
 
 ## How to Link a Copy to Your Library
 <!-- keywords: save entity, sync, connect, share between worlds, reuse, item, attach to original, use character elsewhere, same character two worlds, store for later, bind to master, keep copies matching, reattach -->
+<!-- route: worldEditor -->
 
 1. In the World Editor, open the entity or dictionary.
 2. Select **Save to Library**. The copy is saved as a library item and follows it.
@@ -15,6 +16,7 @@ For an independent copy of an item you already have, open the copy's menu and se
 
 ## How to Update a Linked Copy
 <!-- keywords: sync, refresh, new version, get changes, outdated, behind, pull, see differences, diff, merge edits, stale copy, overwrite with original, bring up to date, preserve my edits -->
+<!-- route: mainMenu -->
 
 1. In the library, right-click the entity or dictionary tile. Or, in the World Editor, open the linked copy's menu.
 2. Select **Check for Updates**. If a world is behind, **Update Available** opens.
@@ -26,6 +28,7 @@ A linked copy of your own item also updates the next time you open its world.
 
 ## How to Publish Linked Content
 <!-- keywords: required, dependencies, include, share, upload, entities with world, bundle together, prerequisites, ship characters along, pack lorebooks in, hidden from store, refused retry, requirements list -->
+<!-- route: publish.world -->
 
 1. On the main menu, select your world.
 2. Select **Publish World**.
@@ -36,6 +39,7 @@ A linked copy of your own item also updates the next time you open its world.
 
 ## How to Offer an Entity or Dictionary as an Add-on
 <!-- keywords: extra, optional, dlc, mod, share, compatible, expansion pack, plugin, addon, fan made extension, submit to someones world, character pack, bonus content -->
+<!-- route: publish -->
 
 1. In the library, open the entity or dictionary.
 2. Select **Publish**.
@@ -45,6 +49,7 @@ A linked copy of your own item also updates the next time you open its world.
 
 ## How to Review Add-ons for Your World
 <!-- keywords: approve, decline, accept, reject, moderate, offers, pending submissions, deny a request, allow fan content, curate extras, vet contributions, endorse, incoming requests -->
+<!-- route: manageAddons -->
 
 1. In Community Creations, find your own published world.
 2. Select **Manage Add-ons**.
@@ -53,6 +58,7 @@ A linked copy of your own item also updates the next time you open its world.
 
 ## How to Repair a Missing Source
 <!-- keywords: broken link, fix, deleted, relink, error, unlink, unable to start world, play button disabled, author took it down, orphaned copy, dead reference, no longer exists, swap for another -->
+<!-- route: worldEditorBench.issues -->
 
 1. In the World Editor, open the [Test Bench](Test-Bench#issues)'s **Issues** list.
 2. Select **Check Sources**.
