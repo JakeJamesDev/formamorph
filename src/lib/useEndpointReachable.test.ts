@@ -11,6 +11,10 @@ vi.mock('./useAiReachable', async () => {
   const actual = await vi.importActual<typeof import('./useAiReachable')>('./useAiReachable');
   return { ...actual, probeEndpoint: (...args: [string, string, string]) => probe(...args) };
 });
+const imageProbe = vi.fn<(provider: string, url: string, token: string, model: string) => Promise<EndpointProbe>>();
+vi.mock('./imageGen/probe', () => ({
+  probeImageEndpoint: (...args: [string, string, string, string]) => imageProbe(...args),
+}));
 
 const UP = 'http://up.test/v1';
 const DOWN = 'http://down.test/v1';
@@ -19,6 +23,8 @@ beforeEach(() => {
   resetEndpointReachableCache();
   probe.mockReset();
   probe.mockImplementation(async (url) => (url === DOWN ? 'unreachable' : 'ok'));
+  imageProbe.mockReset();
+  imageProbe.mockResolvedValue('unknownModel');
 });
 
 describe('useEndpointReachable', () => {
@@ -96,5 +102,31 @@ describe('useEndpointReachable', () => {
     await act(async () => { resolveSlow('unreachable'); });
 
     expect(result.current.status).toBe('ok');
+  });
+
+  it('routes an image provider to its own probe, not the text probe', async () => {
+    const { result } = renderHook(() => useEndpointReachable(UP, 'tok', 'm', true, 'invokeai'));
+    await waitFor(() => expect(result.current.status).toBe('unknownModel'));
+    expect(imageProbe).toHaveBeenCalledWith('invokeai', UP, 'tok', 'm');
+    expect(probe).not.toHaveBeenCalled();
+  });
+
+  it('keys the cache on the provider, so one host and model under two providers are two targets', async () => {
+    const text = renderHook(() => useEndpointReachable(UP, '', 'm'));
+    await waitFor(() => expect(text.result.current.status).toBe('ok'));
+    const image = renderHook(() => useEndpointReachable(UP, '', 'm', true, 'a1111'));
+    await waitFor(() => expect(image.result.current.status).toBe('unknownModel'));
+    const other = renderHook(() => useEndpointReachable(UP, '', 'm', true, 'comfyui'));
+    await waitFor(() => expect(other.result.current.status).toBe('unknownModel'));
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(imageProbe).toHaveBeenCalledTimes(2);
+  });
+
+  it('serves a second surface showing the same image preset from one probe', async () => {
+    const settingsSelect = renderHook(() => useEndpointReachable(UP, '', 'm', true, 'comfyui'));
+    await waitFor(() => expect(settingsSelect.result.current.status).toBe('unknownModel'));
+    const gamePicker = renderHook(() => useEndpointReachable(UP, '', 'm', true, 'comfyui'));
+    expect(gamePicker.result.current.status).toBe('unknownModel');
+    expect(imageProbe).toHaveBeenCalledTimes(1);
   });
 });

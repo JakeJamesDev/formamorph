@@ -62,6 +62,8 @@ import { numInput } from '@/lib/numInput';
 import { FieldError } from '@/components/ui/typography';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import { EndpointRouteField } from './EndpointRouteField';
+import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
+import { imageReachabilityTarget } from '@/lib/imageGen/probe';
 import { TextEndpointEditor } from './TextEndpointEditor';
 import { activePresetEditor } from './textEndpointEditorModel';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
@@ -1122,6 +1124,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               </Select>
               }
             />
+            <EndpointReachabilityBadge target={imageReachabilityTarget(settings)} />
             {/* Global kill switch: hides every "Generate with AI" image button, and everything below it here.
                 On the same row grid as Face Fix further down, so all three checkboxes share a label column. */}
             <div className="flex-shrink-0">

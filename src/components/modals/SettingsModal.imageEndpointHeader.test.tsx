@@ -15,6 +15,12 @@ vi.mock('@/lib/embeddingWorkerClient', () => ({
   disposeEmbeddingModel: () => {},
 }));
 
+// The header's badge probes the image server; its answers are covered in the badge test.
+vi.mock('@/lib/imageGen/probe', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/imageGen/probe')>()),
+  probeImageEndpoint: () => Promise.resolve('ok'),
+}));
+
 const IMAGE_KEY = 'FORMAMORPH_imageEndpointPresets';
 const storedStore = () => imageEndpointPresetCodec.parse(localStorage.getItem(IMAGE_KEY)!);
 

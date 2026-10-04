@@ -55,7 +55,7 @@ describe('EndpointRouteField', () => {
 
   it('probes the target it is given and shows its badge', () => {
     renderField('llama');
-    expect(useEndpointReachable).toHaveBeenLastCalledWith('http://llama.test/v1', '', 'gemma', true);
+    expect(useEndpointReachable).toHaveBeenLastCalledWith('http://llama.test/v1', '', 'gemma', true, 'text');
     expect(screen.getByText('Reachable')).toBeInTheDocument();
   });
 
