@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { NON_GUIDE_PAGES } from '../src/lib/docs/docsChecks';
 import { docHeadings } from '../src/lib/docs/headingAnchors';
 import { gotoDev, openApp, openWorldEditor } from './app';
+import { expectScrollArrow, stubLongAnswer } from './scrollArrow';
 
 /**
  * Formaquestion: the Help tab and the help window, in the shielded layer above every dialog.
@@ -660,6 +661,16 @@ test.describe('Formaquestion on a desktop screen', () => {
     const field = (await askField(page).boundingBox())!;
     const frame = await settledBox(page);
     expect(field.y + field.height).toBeLessThanOrEqual(frame.y + frame.height);
+  });
+
+  test('the scroll arrow shows above the question field once the player scrolls up, and a click returns to the end', async ({ page }) => {
+    await stubLongAnswer(page);
+    await openApp(page, { FORMAMORPH_endpointUrl: 'http://127.0.0.1:5190/v1/chat/completions' });
+    await openHelp(page);
+    await askField(page).fill('How do I make a blueprint?');
+    await page.keyboard.press('Enter');
+    await expect(conversation(page).getByRole('listitem')).toHaveCount(40);
+    await expectScrollArrow(helpWindow(page), askField(page));
   });
 
   test('a follow-up carries the first exchange, the conversation survives a screen change, and a reload empties it', async ({ page }) => {

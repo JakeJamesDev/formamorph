@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { Answer } from './AskParts';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
 import { ResizeGrip } from './FormaquestionFrame';
+import { ScrollArrow } from './ScrollArrow';
 import { FormaquestionMenu, type MenuActions } from './FormaquestionMenu';
 import type { HelpChat } from './useHelpChat';
 import type { DragHandlers } from './usePointerDrag';
@@ -131,7 +132,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   menu: MenuProps;
   onClose: () => void;
 }) {
-  const { viewportRef, onScroll } = useFollowEnd(chat.exchanges);
+  const { viewportRef, onScroll, away, toEnd } = useFollowEnd(chat.exchanges);
   // The grip takes a strip under the ask field, clear of the Send button.
   return (
     <div data-fq-piece="column" className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2', resize && 'pb-3')}>
@@ -140,11 +141,12 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
         <Pill move={move} large={large} headToggle={headToggle} menu={menu} onClose={onClose} />
         {headSide === 'right' && head}
       </div>
+      <div className="relative min-h-0 flex-1">
       <div
         ref={viewportRef}
         onScroll={onScroll}
         data-fq-scroll="conversation"
-        className="min-h-0 flex-1 overflow-y-auto [mask-image:linear-gradient(to_bottom,transparent,black_2rem)] [scrollbar-width:none]"
+        className="h-full overflow-y-auto [mask-image:linear-gradient(to_bottom,transparent,black_2rem)] [scrollbar-width:none]"
       >
         <div role="log" aria-label="Conversation" aria-busy={chat.busy} className="flex min-h-full flex-col justify-end gap-2 px-1 pb-1 pt-8">
           {!guide && (failed ? (
@@ -168,6 +170,8 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
             </div>
           ))}
         </div>
+      </div>
+      <ScrollArrow shown={away} onClick={toEnd} />
       </div>
       <AskPill draft={draft} onDraftChange={onDraftChange} chat={chat} />
       {resize && <ResizeGrip resize={resize} className="pointer-events-auto" />}
