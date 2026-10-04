@@ -1,6 +1,7 @@
 # Spec: Mascot Below
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-04. Tickets 01–02 done. Last landing cad6ecf9. Closed without gates.
 Spec session: mascot-below — spec
 
 ## Problem Statement
