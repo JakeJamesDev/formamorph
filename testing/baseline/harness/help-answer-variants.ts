@@ -5,6 +5,8 @@ import { HELP_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 export const ANSWER_VARIANTS = ['v-goal', 'v-close', 'v-labels', 'v-order'] as const;
 export type AnswerVariant = (typeof ANSWER_VARIANTS)[number];
 
+/** The answer prompt's first line. The Voice and the language directive leave it in place. */
+const ANSWER_INTRO = HELP_SYSTEM_PROMPT.split('\n')[0];
 const TAKE_LINE = '- Take each fact, each step and each name from the guide sections.';
 const CLOSE_LINE = 'Answer the question from the guide sections above.';
 const MATCH_TARGET = 'from the guide section whose heading names what the player asks about.';
@@ -50,8 +52,7 @@ export function rewriteAnswer(variant: AnswerVariant, system: string, user: stri
 export function answerVariant(fetchImpl: typeof fetch, variant: AnswerVariant): typeof fetch {
   return ((url: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: unknown }[] };
-    // The system prompt can carry the language directive after it.
-    if (!String(body.messages[0]?.content).startsWith(HELP_SYSTEM_PROMPT)) return fetchImpl(url, init);
+    if (!String(body.messages[0]?.content).startsWith(ANSWER_INTRO)) return fetchImpl(url, init);
     try {
       const last = body.messages.at(-1);
       if (typeof last?.content !== 'string') throw new Error(`${variant}: the question is not plain text`);

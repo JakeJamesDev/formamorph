@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
 import { HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { HELP_SYSTEM_PROMPT, helpSystemPrompt, helpUserMessage } from '@/lib/formaquestion/helpPrompt';
+import { VOICED_HELP_PROMPT } from '@/test/helpFixtures';
 import { answerVariant, rewriteAnswer, type AnswerVariant } from './help-answer-variants';
 
 const index = bundledDocsIndex();
@@ -63,6 +64,10 @@ describe('the answer variant fetch', () => {
 
   it('rewrites the answer request, with the language directive on its prompt too', () => {
     expect(sent(helpSystemPrompt('Spanish')).messages[1].content).toContain('The guide sections: ');
+  });
+
+  it('rewrites the answer request that carries the Voice', () => {
+    expect(sent(VOICED_HELP_PROMPT).messages[1].content).toContain('The guide sections: ');
   });
 
   it('sends every other request as it is', () => {

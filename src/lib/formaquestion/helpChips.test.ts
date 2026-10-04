@@ -38,11 +38,36 @@ const SENT_BEFORE = {
   ].join('\n'),
 };
 
+/** The lines the Voice chip sends for the Voice "Be warm.". */
+const FRAMED_WARM = [
+  'Speak in this voice: Be warm.',
+  'Keep that voice. Start with the answer, and write each step and control name as the guide writes it.',
+];
+
 describe('the default help prompts', () => {
   it('render to the texts the help session sent before they had chips', () => {
     expect(HELP_SYSTEM_PROMPT).toBe(SENT_BEFORE.answer);
     expect(HELP_PICK_SYSTEM_PROMPT).toBe(SENT_BEFORE.pick);
     expect(HELP_LOOKUP_SYSTEM_PROMPT).toBe(SENT_BEFORE.lookup);
+  });
+
+  it('send the Voice as the paragraph after the intro line of both answer prompts', () => {
+    const voice = { voice: 'Be warm.' };
+    expect(renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, voice)).toBe([
+      'You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide sections in the message.',
+      '',
+      ...FRAMED_WARM,
+      '',
+      SENT_BEFORE.answer.split('\n\n')[1],
+    ].join('\n'));
+    expect(renderHelpPrompt(DEFAULT_HELP_PROMPTS.lookup, voice)).toBe([
+      'You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide.',
+      '',
+      ...FRAMED_WARM,
+      '',
+      SENT_BEFORE.lookup.split('\n\n')[1],
+    ].join('\n'));
+    expect(renderHelpPrompt(DEFAULT_HELP_PROMPTS.pick, voice)).toBe(SENT_BEFORE.pick);
   });
 
   it('place each chip their request reads back, and no other', () => {
@@ -58,7 +83,26 @@ describe('a help chip', () => {
     expect(renderHelpPrompt(`Write ${HELP_CHIP.marker} first.`)).toBe(`Write ${GENERAL_KNOWLEDGE_MARKER} first.`);
     expect(renderHelpPrompt(`Call ${HELP_CHIP.lookupFunction}.`)).toBe(`Call ${DOCS_LOOKUP.name}.`);
     expect(renderHelpPrompt(`Pick ${HELP_CHIP.pickLimit} at most.`)).toBe(`Pick ${HELP_PICK_LIMIT} at most.`);
-    expect(renderHelpPrompt(HELP_CHIP.replyFormat)).toBe(HELP_CHIPS[HELP_CHIP.replyFormat].text);
+    expect(renderHelpPrompt(HELP_CHIP.replyFormat)).toBe('- Reply with the lines of your picks alone, one on each line, each copied as the list writes it.');
+  });
+
+  it('sends the Voice that comes with the question in its frame, in place', () => {
+    expect(renderHelpPrompt(`Intro.\n\n${HELP_CHIP.voice}\n\n- Rule.`, { voice: 'Be warm.' })).toBe(['Intro.', '', ...FRAMED_WARM, '', '- Rule.'].join('\n'));
+    expect(renderHelpPrompt(`Intro. ${HELP_CHIP.voice} Rule.`, { voice: 'Be warm.' })).toBe(`Intro. ${FRAMED_WARM.join('\n')} Rule.`);
+  });
+
+  it('leaves no blank line where an empty Voice stands alone on its line', () => {
+    const empty = { voice: '' };
+    expect(renderHelpPrompt(`Intro.\n\n${HELP_CHIP.voice}\n\n- Rule.`, empty)).toBe('Intro.\n\n- Rule.');
+    expect(renderHelpPrompt(`Intro.\n${HELP_CHIP.voice}\n- Rule.`, empty)).toBe('Intro.\n- Rule.');
+    expect(renderHelpPrompt(`  ${HELP_CHIP.voice} \n\nIntro.`, empty)).toBe('Intro.');
+    expect(renderHelpPrompt(`Intro.\n\n${HELP_CHIP.voice}`, empty)).toBe('Intro.');
+    expect(renderHelpPrompt(HELP_CHIP.voice, empty)).toBe('');
+    expect(renderHelpPrompt(`Intro. ${HELP_CHIP.voice}`, empty)).toBe('Intro. ');
+  });
+
+  it('sends no Voice when the question brings none', () => {
+    expect(renderHelpPrompt(`Intro.\n\n${HELP_CHIP.voice}\n\n- Rule.`)).toBe('Intro.\n\n- Rule.');
   });
 
   it('is the only way a prompt sends its text: a prompt with no chip sends none of it', () => {

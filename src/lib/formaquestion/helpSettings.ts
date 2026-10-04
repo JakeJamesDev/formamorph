@@ -67,7 +67,7 @@ export interface HelpSettings {
   readonly toolSwitches: ToolEnabledMap;
   /** The Mascot stands beside the chat, and the window takes the minimal chrome. */
   readonly mascot: boolean;
-  /** The Mascot's rig: its images by reference, its layers, picks, Mask and Persona. */
+  /** The Mascot's rig: its images by reference, its layers, picks, Mask and Voice. */
   readonly rig: MascotRig;
 }
 

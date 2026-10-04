@@ -3,11 +3,10 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { reasoningCapabilityFromLevels } from '@/lib/reasoningEffort';
 import { openSseReply, sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { pastPicks } from '@/test/helpFixtures';
+import { pastPicks, VOICED_HELP_PROMPT } from '@/test/helpFixtures';
 import { AiStreamError } from '@/lib/aiRequest/aiStream';
 import type { AIRequestType, ImageAttachment } from '@/types';
 import { languageDirective } from '@/lib/languages';
-import { HELP_SYSTEM_PROMPT } from './helpPrompt';
 import {
   askHelp, helpSections, HELP_DOCS_CHAR_BUDGET, HELP_SCORE_FLOOR, type EarlierExchange, type HelpEvent, type HelpQuestion,
 } from './helpSession';
@@ -429,9 +428,9 @@ describe('the AI Language', () => {
 
     const englishPrompt = bodyOf(english).messages[0].content;
     const spanishPrompt = bodyOf(spanish).messages[0].content;
-    expect(englishPrompt).toBe(HELP_SYSTEM_PROMPT);
-    expect(spanishPrompt.startsWith(HELP_SYSTEM_PROMPT)).toBe(true);
-    const added = spanishPrompt.slice(HELP_SYSTEM_PROMPT.length);
+    expect(englishPrompt).toBe(VOICED_HELP_PROMPT);
+    expect(spanishPrompt.startsWith(VOICED_HELP_PROMPT)).toBe(true);
+    const added = spanishPrompt.slice(VOICED_HELP_PROMPT.length);
     expect(added).toContain(languageDirective('answers', 'Spanish'));
     expect(added).toMatch(/control name exactly as the guide writes it/);
   });
@@ -439,7 +438,7 @@ describe('the AI Language', () => {
   it('adds no directive with no language set', async () => {
     const fetchImpl = replyWith(sseReply('Done.'));
     await collect(ask('How do I add a trait?', fetchImpl, { language: '  ' }));
-    expect(bodyOf(fetchImpl).messages[0].content).toBe(HELP_SYSTEM_PROMPT);
+    expect(bodyOf(fetchImpl).messages[0].content).toBe(VOICED_HELP_PROMPT);
   });
 });
 

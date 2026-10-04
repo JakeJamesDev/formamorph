@@ -64,8 +64,8 @@ export interface MascotRig {
   /** Null is the whole base. */
   readonly mask: MascotMask | null;
   readonly picks: { readonly [K in MascotPickName]: MascotPick };
-  /** The persona chip's text: how the help answers sound while the mascot is on. */
-  readonly persona: string;
+  /** The Voice chip's text: how the help answers sound while the mascot is on. */
+  readonly voice: string;
   readonly transition: MascotTransition;
 }
 
@@ -107,7 +107,7 @@ export const DEFAULT_MASCOT_RIG: MascotRig = {
     idle: { expression: null, state: 'rest' },
     thinking: { expression: 'pondering', state: 'thinking' },
   },
-  persona: 'You are the face of this help window: a cheerful, expressive guide who enjoys helping. Let that warmth show in your tone, and keep every answer accurate and brief.',
+  voice: 'Playful and cheerful, with a light touch of humor. Keep the fun in your word choice.',
   transition: { mode: 'none' },
 };
 
@@ -203,7 +203,7 @@ export function parseMascotRig(stored: unknown): MascotRig {
     layers: Array.isArray(stored.layers) ? parseLayers(stored.layers) : DEFAULT_MASCOT_RIG.layers,
     mask: parseMask(stored.mask),
     picks: { initial: parsePick(picks.initial), idle: parsePick(picks.idle), thinking: parsePick(picks.thinking) },
-    persona: typeof stored.persona === 'string' ? stored.persona : DEFAULT_MASCOT_RIG.persona,
+    voice: typeof stored.voice === 'string' ? stored.voice : DEFAULT_MASCOT_RIG.voice,
     transition: DEFAULT_MASCOT_RIG.transition,
   };
 }
