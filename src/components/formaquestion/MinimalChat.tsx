@@ -107,7 +107,7 @@ function AskPill({ draft, onDraftChange, chat }: { draft: string; onDraftChange:
  * The minimal chrome's chat column: a pill, the conversation as floating bubbles, and the ask field. No frame,
  * no title bar, no tabs. Older bubbles fade out at the top, and no scroll bar draws.
  */
-export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo, move, resize, large, head, headSide = 'left', headToggle, menu, onClose }: {
+export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo, move, resize, large, head, headSide = 'left', headToggle, menu, onClose, height }: {
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
@@ -134,11 +134,13 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   /** The ⋮ menu's actions, as the framed window's title bar menu takes them. */
   menu: MenuProps;
   onClose: () => void;
+  /** The column's height, when a taller Mascot makes the shared box taller. Unset fills the box. */
+  height?: number;
 }) {
   const { viewportRef, onScroll, away, toEnd } = useFollowEnd(chat.exchanges);
   // The grip takes a strip under the ask field, clear of the Send button.
   return (
-    <div data-fq-piece="column" className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2', resize && 'pb-3')}>
+    <div data-fq-piece="column" className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2', resize && 'pb-3')} style={height === undefined ? undefined : { height }}>
       <div className={cn('flex shrink-0 items-end gap-2', headSide === 'right' ? 'justify-start' : 'justify-end')}>
         {headSide === 'left' && head}
         <Pill move={move} large={large} headToggle={headToggle} menu={menu} onClose={onClose} />

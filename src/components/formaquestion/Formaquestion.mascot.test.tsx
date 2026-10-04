@@ -301,6 +301,53 @@ describe('the minimal chrome', () => {
   });
 });
 
+describe('the Mascot scale', () => {
+  const SCALE_KEY = 'formamorph.formaquestion.mascotScale';
+
+  it("sizes the Mascot to a stored percent of the base's pixel height, rising above the column, and the head view with it", async () => {
+    localStorage.setItem(SCALE_KEY, '50');
+    await openWindow();
+    loadBase();
+    expect(mascot()!.style.height).toBe('592px');
+    expect(mascot()!.style.width).toBe('444px');
+    // The default column is 560 tall; the shared box grows upward to the Mascot's height.
+    expect(column().style.height).toBe('560px');
+    expect(helpWindow().style.height).toBe('592px');
+    await userEvent.click(within(pill()).getByRole('button', { name: 'Show Head Only' }));
+    loadBase();
+    // The default Mask is 680 pixels tall.
+    expect(mascot()!.style.height).toBe('340px');
+  });
+
+  it('keeps a large head view within the column height', async () => {
+    localStorage.setItem(SCALE_KEY, '150');
+    await openWindow();
+    loadBase();
+    await userEvent.click(within(pill()).getByRole('button', { name: 'Show Head Only' }));
+    loadBase();
+    expect(mascot()!.style.height).toBe(column().style.height);
+  });
+
+  it('follows the Scale slider at once, and keeps the percent across a remount', async () => {
+    const { view } = await openWindow();
+    loadBase();
+    expect(mascot()!.style.height).toBe(helpWindow().style.height);
+    await openHelpSettings();
+    const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
+    within(dialog).getByRole('slider', { name: 'Scale' }).focus();
+    await userEvent.keyboard('{ArrowRight}');
+    await userEvent.keyboard('{Escape}');
+    expect(localStorage.getItem(SCALE_KEY)).toBe('25');
+    expect(mascot()!.style.height).toBe('296px');
+
+    view.unmount();
+    await openWindow();
+    loadBase();
+    expect(mascot()!.style.height).toBe('296px');
+  });
+});
+
 describe('the Mascot switch', () => {
   it('shows today\'s window while off', async () => {
     storeFramedWindow();

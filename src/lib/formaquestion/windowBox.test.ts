@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   boxOf, clampBox, defaultBox, defaultWindow, isWide, moveBox, movePieces, readStoredHeadView, readStoredWindow, resizeBox,
   resizePieces, swapWidth, windowLayout, withBox, writeStoredHeadView, writeStoredWindow,
+  headHeight, readStoredMascotScale, writeStoredMascotScale, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale,
   MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH, type StoredWindow, type Viewport, type WindowBox,
 } from './windowBox';
 
@@ -323,6 +324,97 @@ describe('the full layout', () => {
     expect(side).toBe('right');
     expect(column.x).toBe(100);
     expect(group).toEqual({ x: 100, y: 100, w: WIDE_WIDTH + mascot!.w, h: 600 });
+  });
+});
+
+describe('the Mascot scale', () => {
+  const ASPECT = 0.75;
+  const BASE_HEIGHT = 1200;
+  const scaled = (box: WindowBox, scale: MascotScale, viewport: Viewport = SCREEN, chrome: 'minimal' | 'full' = 'minimal') =>
+    windowLayout(chrome, box, viewport, { mascotAspect: ASPECT, baseHeight: BASE_HEIGHT, scale });
+
+  it('fits the Mascot to the column height under Auto', () => {
+    const box = { x: 1100, y: 200, w: NARROW_WIDTH, h: 560 };
+    expect(scaled(box, 'auto').mascot).toEqual({ w: 420, h: 560 });
+    expect(scaled({ ...box, h: 700 }, 'auto').mascot).toEqual({ w: 525, h: 700 });
+    expect(scaled({ x: 800, y: 100, w: WIDE_WIDTH, h: 600 }, 'auto', SCREEN, 'full').mascot).toEqual({ w: 450, h: 600 });
+  });
+
+  it("sizes the Mascot to the percent's share of the base's pixel height, at the base's aspect", () => {
+    const { mascot } = scaled({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 }, 40);
+    expect(mascot).toEqual({ w: 360, h: 480 });
+    expect(scaled({ x: 1100, y: 200, w: NARROW_WIDTH, h: 300 }, 40).mascot).toEqual({ w: 360, h: 480 });
+  });
+
+  it('keeps the shared box at the column while the Mascot is shorter, bottom-aligned', () => {
+    const { column, group } = scaled({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 }, 25);
+    expect(group).toEqual({ x: 1100 - 225, y: 200, w: 225 + NARROW_WIDTH, h: 560 });
+    expect(column).toEqual({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 });
+  });
+
+  it('rises above a shorter column and leaves the column where it is', () => {
+    const { column, mascot, group } = scaled({ x: 1100, y: 400, w: NARROW_WIDTH, h: 400 }, 50);
+    expect(column).toEqual({ x: 1100, y: 400, w: NARROW_WIDTH, h: 400 });
+    expect(mascot).toEqual({ w: 450, h: 600 });
+    expect(group).toEqual({ x: 1100 - 450, y: 200, w: 450 + NARROW_WIDTH, h: 600 });
+  });
+
+  it("clamps a tall percent to the room from the column's bottom up to the screen margin", () => {
+    const { column, mascot, group } = scaled({ x: 1100, y: 300, w: NARROW_WIDTH, h: 400 }, 150);
+    expect(column.y).toBe(300);
+    expect(mascot!.h).toBe(300 + 400 - 16);
+    expect(mascot!.w).toBeCloseTo(mascot!.h * ASPECT);
+    expect(group.y).toBe(16);
+  });
+
+  it('never clamps a percent below the column height', () => {
+    expect(scaled({ x: 1100, y: 0, w: NARROW_WIDTH, h: 560 }, 50).mascot).toEqual({ w: 420, h: 560 });
+  });
+
+  it('clamps a wide percent to the room beside the column, at the aspect', () => {
+    const narrow = { width: 700, height: 900 };
+    const { mascot, group } = scaled({ x: 300, y: 100, w: NARROW_WIDTH, h: 560 }, 150, narrow);
+    expect(mascot).toEqual({ w: 268, h: 268 / ASPECT });
+    expect(group.x).toBeGreaterThanOrEqual(0);
+  });
+
+  it('fits the column under a percent while the base size is unknown', () => {
+    expect(windowLayout('minimal', { x: 1100, y: 200, w: NARROW_WIDTH, h: 560 }, SCREEN, { mascotAspect: ASPECT, scale: 40 }).mascot).toEqual({ w: 420, h: 560 });
+  });
+
+  it('scales the head view with the percent, at most the column height, and keeps the fixed height under Auto', () => {
+    expect(headHeight('auto', 300, 560)).toBe(HEAD_HEIGHT);
+    expect(headHeight(50, 300, 560)).toBe(150);
+    expect(headHeight(150, 300, 560)).toBe(450);
+    expect(headHeight(150, 680, 560)).toBe(560);
+  });
+});
+
+describe('the stored Mascot scale', () => {
+  it('reads Auto until a percent is stored, and comes back as stored', () => {
+    expect(readStoredMascotScale()).toBe('auto');
+    writeStoredMascotScale(75);
+    expect(readStoredMascotScale()).toBe(75);
+    writeStoredMascotScale('auto');
+    expect(readStoredMascotScale()).toBe('auto');
+  });
+
+  it('clamps a stored percent to the slider range and reads damage as Auto', () => {
+    localStorage.setItem('formamorph.formaquestion.mascotScale', '400');
+    expect(readStoredMascotScale()).toBe(MASCOT_SCALE_MAX);
+    localStorage.setItem('formamorph.formaquestion.mascotScale', '3');
+    expect(readStoredMascotScale()).toBe(MASCOT_SCALE_MIN);
+    localStorage.setItem('formamorph.formaquestion.mascotScale', 'big');
+    expect(readStoredMascotScale()).toBe('auto');
+    localStorage.setItem('formamorph.formaquestion.mascotScale', '');
+    expect(readStoredMascotScale()).toBe('auto');
+  });
+
+  it('reads Auto and does not throw when storage is blocked', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    expect(() => writeStoredMascotScale(50)).not.toThrow();
+    expect(readStoredMascotScale()).toBe('auto');
   });
 });
 

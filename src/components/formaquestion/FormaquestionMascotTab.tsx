@@ -39,6 +39,7 @@ import {
   removeMascotBase, removeMascotLayer, removeMascotOverlay, setMascotBase, setMascotPick, updateMascotLayer, type MascotLayerPatch,
 } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
+import { MascotScaleRow } from './MascotScaleRow';
 import { usePointerDrag } from './usePointerDrag';
 import type { MascotReplay } from './useMascotMotion';
 import { useMascotImageUrls } from './useMascotImageUrls';
@@ -471,6 +472,7 @@ export function MascotTab({ settings, onChange }: {
               </div>
             </div>
           </Row>
+          <MascotScaleRow />
           <Row {...MASCOT_COPY.headView}>
             <div className="flex justify-center rounded-md border border-border bg-muted/30 p-2" style={{ minHeight: HEAD_HEIGHT + 16 }}>
               <MascotPiece

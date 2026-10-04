@@ -70,6 +70,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const SCALE_KEY = 'formamorph.formaquestion.mascotScale';
+
+describe('the Scale slider', () => {
+  afterEach(() => localStorage.clear());
+
+  it('starts at Auto, steps to a percent and back, and stores each on this device', async () => {
+    mount();
+    const slider = screen.getByRole('slider', { name: 'Scale' });
+    expect(screen.getByText('Auto')).toBeInTheDocument();
+    expect(slider).toHaveAttribute('aria-valuetext', 'Auto');
+    slider.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(localStorage.getItem(SCALE_KEY)).toBe('25');
+    expect(slider).toHaveAttribute('aria-valuetext', '25%');
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    await userEvent.keyboard('{End}');
+    expect(localStorage.getItem(SCALE_KEY)).toBe('150');
+    await userEvent.keyboard('{Home}');
+    expect(localStorage.getItem(SCALE_KEY)).toBe('auto');
+    expect(current).toEqual(expect.not.objectContaining({ scale: expect.anything() }));
+  });
+});
+
 describe('the layer list', () => {
   it('lists every layer in order with its kind and its switch', () => {
     mount();
@@ -390,7 +413,7 @@ describe('the transition rows', () => {
     expect(current.rig.transition.dissolve.durationMs).toBe(DISSOLVE_RANGES.durationMs.min);
 
     await userEvent.click(modeButton('None'));
-    expect(screen.queryByRole('slider')).toBeNull();
+    expect(screen.getAllByRole('slider').map((thumb) => thumb.getAttribute('aria-label'))).toEqual(['Scale']);
     await userEvent.click(modeButton('Jelly'));
     expect(current.rig.transition).toEqual({
       mode: 'jelly',
@@ -496,6 +519,16 @@ describe('the mascot card', () => {
     expect(ids.every((ref) => ref.kind === 'stored')).toBe(true);
     for (const ref of ids) expect(await getMascotImage(ref.id)).not.toBeNull();
     await waitFor(async () => expect(await getMascotImage(old)).toBeNull());
+  });
+
+  it('keeps the device scale through an import', async () => {
+    localStorage.setItem(SCALE_KEY, '75');
+    mount();
+    await upload(cardFile(cardRig));
+    await confirm();
+    await waitFor(() => expect(current.rig.voice).toBe('Gruff.'));
+    expect(localStorage.getItem(SCALE_KEY)).toBe('75');
+    expect(screen.getByText('75%')).toBeInTheDocument();
   });
 
   it('keeps the rig when the confirmation is canceled', async () => {
