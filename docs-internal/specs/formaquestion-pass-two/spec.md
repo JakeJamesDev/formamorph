@@ -88,6 +88,9 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q52 | Lookup Mode's default goes back to off (ticket 13's probe: both arms 48 of 48, lookup +7% tokens in, no outcome changed; the set is at the ceiling, so lookup stays a hedge the player turns on). Ticket 16 flips it and amends ADR 0009. Resolves Q6 and Q46 (user, 2026-10-04) |
 | Q53 | Mascots are presets, like help prompt presets: a dropdown at the top of the Mascot tab with Delete, Duplicate, Rename, Import, Export and Reset. The Default mascot is read-only and follows the code, so a player on it gets every change; Duplicate makes an editable copy. Reset puts the selected custom mascot back to the Default's rig and drops its own images, after a confirm; hidden on Default (user, 2026-10-04) |
 | Q54 | A card import adds a new mascot instead of replacing the current one. The card gains a name field; export writes the mascot's name, import reads it and falls back to the file name, and a name already in use gets a numbered suffix. The card has never shipped, so the shape changes in place (user, 2026-10-04) |
+| Q55 | The Mascot tab edits a draft. Save and Cancel sit in the footer; the preview shows the draft while the window keeps the saved mascot; images are dropped only at Save; switching mascots or closing with a dirty draft asks first. Undo and redo over the draft (Ctrl+Z, Ctrl+Shift+Z, drags and typing coalesce) come as a second small ticket (user, 2026-10-04) |
+| Q56 | The draft model is built inside ticket 17, so presets stand on it from the start (user, 2026-10-04) |
+| Q57 | Reset acts on the draft: one undoable step, nothing deleted until Save. It needs no confirm dialog, since Undo and Cancel both revert it. Refines Q53 (user, 2026-10-04) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
@@ -173,6 +176,14 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 - Duplicate copies the rig and shares its image ids. Delete and Reset remove images no remaining mascot references. Import adds a mascot named from the card or the file, with a numbered suffix on a clash, and selects it (Q54).
 - The card carries the mascot's name (Q54). Export-shape change: the card and the help settings value, both unreleased, change in place.
 - Scale and the head toggle stay device values, outside the presets.
+
+### Mascot draft
+
+- The tab edits a draft of the selected mascot, one immutable value. Save writes it to the store and then deletes images no mascot references; Cancel drops it. The preview and the Head View render the draft; the window, the face call and AI Context render the saved mascot until Save (Q55).
+- A dirty draft blocks a mascot switch, a tab change and the dialog's close behind the unsaved-changes prompt the World Editor uses: Save, Discard, or stay.
+- Uploads go to the image store at once so the draft can show them; an upload the player then cancels away is deleted with the other unreferenced images at the next Save or Cancel.
+- Reset replaces the draft with the Default's rig: one step, no confirm (Q57). Delete and Import act on the store and keep their confirms, since no draft covers them.
+- Undo and redo (follow-up ticket) are a history of draft snapshots. A slider drag or a typed run is one step, closed at pointer-up or blur; Reset is one step. Save clears the history.
 
 ### Mascot tab
 
