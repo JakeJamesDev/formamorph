@@ -7,7 +7,8 @@ import { parseHelpPrompt } from './helpChips';
 import {
   buildHelpPresetFile, HELP_PRESET_FILE_FIELDS, HELP_PRESET_FILE_VERSION, importHelpPresetFile, parseHelpPresetFile, type HelpPresetFile,
 } from './helpPresetFile';
-import { activeHelpPreset, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, editHelpPrompt } from './helpPresets';
+import { DEFAULT_HELP_PROMPTS } from './helpPrompt';
+import { activeHelpPreset, DEFAULT_HELP_OPTIONS, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, editHelpPrompt } from './helpPresets';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from './helpSettings';
 
 const script = (patch: Partial<Tool> = {}): Tool => helpTool({ id: 'h-s', name: 'roll_omen', handler: { kind: 'script', code: 'return "omen";' }, ...patch });
@@ -73,8 +74,10 @@ describe('buildHelpPresetFile', () => {
     });
   });
 
-  it('refuses the Default preset', () => {
-    expect(buildHelpPresetFile(customized(), DEFAULT_HELP_PRESET_ID, '9.9.9')).toBeNull();
+  it('builds the Default preset from the code of this build, and refuses an id no preset holds', () => {
+    const file = buildHelpPresetFile(customized(), DEFAULT_HELP_PRESET_ID, '9.9.9');
+    expect(file).toMatchObject({ name: 'Default', prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_OPTIONS });
+    expect(buildHelpPresetFile(customized(), 'ghost', '9.9.9')).toBeNull();
   });
 });
 

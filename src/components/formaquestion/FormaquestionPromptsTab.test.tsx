@@ -7,7 +7,7 @@ import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { frameVoice, HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { HELP_PICK_LIMIT } from '@/lib/formaquestion/helpPicks';
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
-import { activeHelpPreset, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
+import { activeHelpPreset, DEFAULT_HELP_OPTIONS, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { sentenceShapeViolation } from '@/test/copyShape';
@@ -30,6 +30,9 @@ const withMine = () => duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP
 const presetSelect = () => screen.getByRole('combobox', { name: 'Preset' });
 const editor = (name: string) => screen.getByRole('textbox', { name });
 const resetButton = () => screen.getByRole('button', { name: /Reset to Default/ });
+const headerRow = () => screen.getByTestId('help-preset-header-row');
+const headerButton = (name: string) => within(headerRow()).getByRole('button', { name });
+const queryHeaderButton = (name: string) => within(headerRow()).queryByRole('button', { name });
 const texts = () => activeHelpPreset(help.presets).prompts;
 
 async function choose(select: HTMLElement, option: string) {
@@ -47,8 +50,8 @@ describe('the Prompts tab on the Default preset', () => {
     expect(editor('Answer Prompt')).toHaveAttribute('contenteditable', 'false');
     expect(screen.getByText(PROMPTS_COPY.readOnly('Default'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Duplicate & Edit/ })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Rename Preset' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Delete Preset' })).toBeNull();
+    for (const name of ['Duplicate', 'Import', 'Export']) expect(headerButton(name), name).toBeInTheDocument();
+    for (const name of ['Rename', 'Reset', 'Delete']) expect(queryHeaderButton(name), name).toBeNull();
     expect(screen.queryByRole('button', { name: /Reset to Default/ })).toBeNull();
   });
 
@@ -109,8 +112,7 @@ describe('the Prompts tab on the Default preset', () => {
     expect(editor('Answer Prompt')).toHaveAttribute('contenteditable', 'true');
     expect(screen.queryByText(PROMPTS_COPY.readOnly('Default'))).toBeNull();
     expect(resetButton()).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Rename Preset' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Delete Preset' })).toBeInTheDocument();
+    for (const name of ['Rename', 'Reset', 'Delete']) expect(headerButton(name), name).toBeInTheDocument();
   });
 
   it('adds a preset under a typed name from the select', async () => {
@@ -158,6 +160,36 @@ describe('the Prompts tab on a custom preset', () => {
     expect(compare()).toBeDisabled();
   });
 
+  it('resets all three prompts and their options from the header after a confirm that names the preset', async () => {
+    let presets = editHelpPrompt(withMine(), 'mine', 'answer', 'Be brief.');
+    presets = editHelpPrompt(presets, 'mine', 'pick', 'Pick well.');
+    presets = editHelpPrompt(presets, 'mine', 'lookup', 'Look it up.');
+    presets = editHelpOptions(presets, 'mine', 'pick', { temperature: 1.2, maxTokens: 300 });
+    renderTab({ presets });
+    const user = userEvent.setup();
+
+    await user.click(headerButton('Reset'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain('"Mine"');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(texts().answer).toBe('Be brief.');
+    expect(headerButton('Reset')).toHaveFocus();
+
+    await user.click(headerButton('Reset'));
+    await user.click(await screen.findByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(texts()).toEqual(DEFAULT_HELP_PROMPTS));
+    expect(activeHelpPreset(help.presets).options).toEqual(DEFAULT_HELP_OPTIONS);
+    expect(presetSelect()).toHaveTextContent('Mine');
+  });
+
+  it('holds every action in the Preset Actions menu for a narrow screen', async () => {
+    renderTab({ presets: withMine() });
+    await userEvent.setup().click(within(headerRow()).getByRole('button', { name: 'Preset Actions' }));
+    const menu = await screen.findByRole('menu');
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Duplicate', 'Rename', 'Import', 'Export', 'Reset', 'Delete']);
+  });
+
   it('shows no Compare to Default on the Default preset', () => {
     renderTab();
     expect(screen.queryByRole('button', { name: /Compare to Default/ })).toBeNull();
@@ -174,7 +206,7 @@ describe('the Prompts tab on a custom preset', () => {
   it('renames through the dialog', async () => {
     renderTab({ presets: withMine() });
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Rename Preset' }));
+    await user.click(headerButton('Rename'));
     const dialog = await screen.findByRole('dialog');
     const name = within(dialog).getByRole('textbox');
     expect(name).toHaveValue('Mine');
@@ -187,7 +219,7 @@ describe('the Prompts tab on a custom preset', () => {
   it('deletes after a confirm and selects Default', async () => {
     renderTab({ presets: withMine() });
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Delete Preset' }));
+    await user.click(headerButton('Delete'));
     await user.click(await screen.findByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(presetSelect()).toHaveTextContent('Default'));
     expect(help.presets).toEqual(EMPTY_HELP_PRESET_STORE);

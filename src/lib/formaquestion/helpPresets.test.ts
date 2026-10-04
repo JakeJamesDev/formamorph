@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_HELP_PROMPTS } from './helpPrompt';
 import {
   activeHelpOptions, activeHelpPreset, activeHelpPrompts, DEFAULT_HELP_OPTIONS, DEFAULT_HELP_PRESET_ID, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, EMPTY_HELP_PRESET_STORE,
-  isDefaultHelpPresetActive, isHelpPromptEdited, parseHelpPresetStore, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
+  isDefaultHelpPresetActive, isHelpPromptEdited, parseHelpPresetStore, renameHelpPreset, resetHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from './helpPresets';
 
 const custom = (store: HelpPresetStore, id = 'mine') => duplicateHelpPreset(store, DEFAULT_HELP_PRESET_ID, id, 'Mine');
@@ -68,6 +68,21 @@ describe('the help preset store', () => {
     const reset = resetHelpPrompt(edited, 'mine', 'lookup');
     expect(activeHelpPrompts(reset).lookup).toBe(DEFAULT_HELP_PROMPTS.lookup);
     expect(isHelpPromptEdited(activeHelpPrompts(reset), 'lookup')).toBe(false);
+  });
+
+  it('resets all three prompts and their options of a custom preset, and leaves the others', () => {
+    let edited = editHelpPrompt(custom(EMPTY_HELP_PRESET_STORE), 'mine', 'answer', 'Answer briefly.');
+    edited = editHelpPrompt(edited, 'mine', 'pick', 'Pick well.');
+    edited = editHelpOptions(edited, 'mine', 'lookup', { temperature: 1.1, maxTokens: 300 });
+    const other = editHelpPrompt(duplicateHelpPreset(edited, 'mine', 'other', 'Other'), 'other', 'answer', 'Other text.');
+    const reset = resetHelpPreset(other, 'mine');
+    const mine = reset.presets.find((preset) => preset.id === 'mine');
+    expect(mine?.prompts).toEqual(DEFAULT_HELP_PROMPTS);
+    expect(mine?.options).toEqual(DEFAULT_HELP_OPTIONS);
+    expect(mine?.name).toBe('Mine');
+    expect(reset.presets.find((preset) => preset.id === 'other')?.prompts.answer).toBe('Other text.');
+    expect(reset.activeId).toBe('other');
+    expect(resetHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID)).toBe(EMPTY_HELP_PRESET_STORE);
   });
 
   it('renames a custom preset and keeps the selection', () => {
