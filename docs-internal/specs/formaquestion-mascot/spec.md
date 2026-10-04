@@ -66,6 +66,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q37 | The Voice chip sits in both the Answer and the Lookup prompt of the Default preset, as its own paragraph after the intro line and before the rules; never in the Pick prompt. Token `<VOICE>`, label Mascot Voice |
 | Q38 | Rig editor details: the preview draws Idle, or the base plus one layer's overlays while that row is expanded; removing the base returns to the bundled base; a new layer is an enabled expression with no overlays, named and kinded in its expanded body; the URL field is hidden on this tab; Reset confirms, removing a layer or an overlay does not |
 | Q39 | The Voice chip frames the Voice with fixed lines in code: a "speak in this voice" lead and a line that keeps the answer first and the guide's control names. Off or empty still sends nothing. The bar run compares mascot on and off inside one batch, with the no-docs control. Refines Q22, Q26 and Q37 after the first run missed the bar (off 77.1%, on 74.4%, bar 75%) |
+| Q40 | The head view sits left of the pill at the top of the column on both desktop and mobile, at a fixed height (96px desktop, 64px mobile) with width from the Mask's aspect. The desktop toggle is one pill button before the ⋮ menu. Its memory is its own device key beside the window box. No Clear Mask control: Reset restores the default Mask. Refines Q24 |
 
 ## User Stories
 
