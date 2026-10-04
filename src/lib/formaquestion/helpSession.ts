@@ -18,6 +18,7 @@ import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { renderHelpPrompt } from './helpChips';
+import { createFaceCall } from './helpFace';
 import { requestPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
 import { activeHelpOptions, activeHelpPreset, activeHelpPrompts, isHelpPromptEdited } from './helpPresets';
@@ -109,6 +110,8 @@ export type HelpEvent =
    * section among the sources.
    */
   | { type: 'done'; text: string; sources: DocSection[]; lead?: DocSection; stopped: boolean; flagged: boolean; nearest: DocSection[]; reasoning: string }
+  /** The AI set the Mascot's face: the layer id of an enabled expression of the rig. Each call yields one. */
+  | { type: 'face'; face: string }
   /**
    * What the question sent, for AI Context: once the search is done and the answer request is built, again
    * after each tool round, and once more with the reply. Each event carries the whole trace so far.
@@ -343,6 +346,8 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
  *   model reads more sections through the docs lookup.
  * - The help dice roll joins either mode while its setting is on and the endpoint is known to take function
  *   calls. It is no source, so it never decides the mode.
+ * - The face call joins either mode on the same gate while the Mascot is on and the rig has an enabled
+ *   expression. It is no source either.
  * - Retrieval mode, everywhere else: one request. The capability check does not run.
  * - A bare question, when every source is off, lookup mode is off and the open screen adds no section: the
  *   question alone, with no search. A search that runs and misses still sends the empty guide block.
@@ -361,6 +366,7 @@ export async function* askHelp({
   const takesFunctions = toolsSupported(answerSnapshot.resolveTarget('help').reasoning);
   const lookupMode = settings.lookup && takesFunctions;
   const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
+  const face = settings.mascot && takesFunctions ? createFaceCall(settings.rig) : null;
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
@@ -382,17 +388,22 @@ export async function* askHelp({
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
   const options = activeHelpOptions(settings.presets);
-  // The lookup first, then the dice roll, then the player's Tools. The lookup keeps its own executor; the roll
-  // and the Tools run on the one world snapshot of the question, which the roll does not read.
+  // The fixed functions first, then the player's Tools. The lookup and the face call keep their own executors;
+  // the roll and the Tools run on the one world snapshot of the question, which the roll does not read.
   const offered: OfferedFunction[] = [
     ...(lookup ? [{ ...DOCS_LOOKUP, callLimit: settings.lookupCallLimit }] : []),
     ...(settings.roll && takesFunctions ? [{ ...HELP_ROLL, callLimit: settings.rollCallLimit }] : []),
+    ...(face ? [face.fn] : []),
     ...playerTools,
   ];
   const runTool = snapshotToolExecutor(world);
-  // The one offered function without a handler is the lookup, and `offered` holds it only while `lookup` is set.
+  // The offered functions without a handler, by id: each is offered only while its executor is here.
+  const internal = new Map<string, ToolExecutor<OfferedFunction>>([
+    ...(lookup ? [[DOCS_LOOKUP.id, lookup.execute] as const] : []),
+    ...(face ? [[face.fn.id, face.execute] as const] : []),
+  ]);
   const execute: ToolExecutor<OfferedFunction> = (fn, argumentsText, callSignal) =>
-    (isTool(fn) ? runTool(fn, argumentsText, callSignal) : lookup!.execute(fn, argumentsText, callSignal));
+    (isTool(fn) ? runTool(fn, argumentsText, callSignal) : internal.get(fn.id)!(fn, argumentsText, callSignal));
   const spec = buildAiRequestSpec(answerSnapshot, {
     systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer)),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
@@ -425,6 +436,7 @@ export async function* askHelp({
   const reasoningNow = () => joinReasoning(native, earlierInline, extractReasoningLive(content));
   for await (const event of streamAiToolLoop(spec, { signal, fetchImpl, captureRounds: true, ...(offered.length > 0 && { execute }) })) {
     if (event.type === 'toolRound') {
+      for (const id of face?.takeFaces() ?? []) yield { type: 'face', face: id };
       rounds.push(event.round);
       yield { type: 'trace', trace: traceOf() };
       yield { type: 'stage', stage: 'waiting' };

@@ -50,8 +50,9 @@ const script = (...replies: (string[] | (() => Response))[]): FetchSpy => {
   });
 };
 
+// The Mascot is off, so the face call stays out of the offered functions.
 const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question, settings: helpSettingsOf({ lookup: true }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
+  askHelp({ question, settings: helpSettingsOf({ lookup: true, mascot: false }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];
@@ -78,7 +79,8 @@ describe('lookup mode, as shipped', () => {
     const retrieval = script(sseReply('Select **Add Trait**.'));
     await collect(ask(TRAIT, retrieval, { settings: helpSettingsOf({ lookup: false }) }));
 
-    expect(bodyOf(shipped).tools).toBeUndefined();
+    const names = ((bodyOf(shipped).tools ?? []) as { function: { name: string } }[]).map((tool) => tool.function.name);
+    expect(names).not.toContain(DOCS_LOOKUP.name);
     expect(bodyOf(shipped)).toEqual(bodyOf(retrieval));
   });
 });

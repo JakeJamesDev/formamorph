@@ -35,9 +35,9 @@ const ask = (question: string, fetchImpl: FetchSpy, over: Partial<HelpQuestion> 
   askHelp({ question, settings: DEFAULT_HELP_SETTINGS, snapshot: textSnapshot(), index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 /** The answer events of a question. The trace and stage events have their own test files. */
-async function collect(events: AsyncIterable<HelpEvent>): Promise<Exclude<HelpEvent, { type: 'trace' | 'stage' }>[]> {
-  const all: Exclude<HelpEvent, { type: 'trace' | 'stage' }>[] = [];
-  for await (const event of events) if (event.type !== 'trace' && event.type !== 'stage') all.push(event);
+async function collect(events: AsyncIterable<HelpEvent>): Promise<Exclude<HelpEvent, { type: 'trace' | 'stage' | 'face' }>[]> {
+  const all: Exclude<HelpEvent, { type: 'trace' | 'stage' | 'face' }>[] = [];
+  for await (const event of events) if (event.type !== 'trace' && event.type !== 'stage' && event.type !== 'face') all.push(event);
   return all;
 }
 

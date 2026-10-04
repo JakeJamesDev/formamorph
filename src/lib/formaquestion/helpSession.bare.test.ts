@@ -30,9 +30,9 @@ const bodyOf = (spy: FetchSpy, call = 0): Body => JSON.parse(spy.mock.calls[call
 
 async function ask(question: string, change: HelpSettingsChange, { reply = 'Light scatters.', ...over }: Partial<HelpQuestion> & { reply?: string } = {}) {
   const fetchImpl: FetchSpy = vi.fn(async () => sseResponse(sseReply(reply)));
-  const events: Exclude<HelpEvent, { type: 'trace' | 'stage' }>[] = [];
+  const events: Exclude<HelpEvent, { type: 'trace' | 'stage' | 'face' }>[] = [];
   for await (const event of askHelp({ question, settings: helpSettingsOf(change), snapshot: textSnapshot(), index, fetchImpl: asFetch(fetchImpl), ...over })) {
-    if (event.type !== 'trace' && event.type !== 'stage') events.push(event);
+    if (event.type !== 'trace' && event.type !== 'stage' && event.type !== 'face') events.push(event);
   }
   const done = events.at(-1);
   if (done?.type !== 'done') throw new Error('no done event');
@@ -92,7 +92,7 @@ describe('a question that a section can still reach', () => {
   });
 
   it('keeps the lookup request when every source is off and the endpoint takes function calls', async () => {
-    const { fetchImpl, done } = await ask('Why is the sky blue?', { ...PLAIN_CHAT, lookup: true }, { snapshot: LOOKUP });
+    const { fetchImpl, done } = await ask('Why is the sky blue?', { ...PLAIN_CHAT, lookup: true, mascot: false }, { snapshot: LOOKUP });
 
     expect(bodyOf(fetchImpl).messages.at(-1)?.content).not.toBe('Why is the sky blue?');
     expect(bodyOf(fetchImpl).tools).toHaveLength(1);

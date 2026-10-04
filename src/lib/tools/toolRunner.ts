@@ -46,7 +46,7 @@ function typeProblem(param: ToolParam): string {
 }
 
 /** The model's argument string checked against the Tool's parameters. Blank reads as no arguments. */
-function parseToolArgs(params: readonly ToolParam[], argsText: string): { args: ToolArgs } | { error: string } {
+export function parseToolArgs(params: readonly ToolParam[], argsText: string): { args: ToolArgs } | { error: string } {
   let raw: unknown = {};
   if (argsText.trim()) {
     try {

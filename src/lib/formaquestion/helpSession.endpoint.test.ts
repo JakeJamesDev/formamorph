@@ -109,9 +109,9 @@ describe('the help routes', () => {
   });
 
   it('offer the guide lookup by what the answer endpoint takes, not the active one', async () => {
-    const routed = await hosts({ lookup: true, answerEndpoint: 'big', pickEndpoint: SAME_AS_ANSWER });
+    const routed = await hosts({ lookup: true, mascot: false, answerEndpoint: 'big', pickEndpoint: SAME_AS_ANSWER });
     expect(routed.answerBodies[0].tools).toHaveLength(1);
-    const followed = await hosts({ lookup: true, pickEndpoint: 'big' });
+    const followed = await hosts({ lookup: true, mascot: false, pickEndpoint: 'big' });
     expect(followed.answerBodies[0].tools).toBeUndefined();
   });
 });

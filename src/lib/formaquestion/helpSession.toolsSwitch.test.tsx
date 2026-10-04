@@ -7,7 +7,7 @@ import { useHelpChat, type HelpChat } from '@/components/formaquestion/useHelpCh
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
-import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
+import { helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseReply, textTarget } from '@/test/aiTextFixtures';
 import { stubHelpStream } from '@/test/helpFixtures';
@@ -18,7 +18,8 @@ const capable = textTarget({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools
 
 let settings: ReturnType<typeof useSettings>;
 let chat: HelpChat;
-function Window({ help = DEFAULT_HELP_SETTINGS }: { help?: HelpSettings }) {
+// The Mascot is off, so the face call stays out of the offered functions.
+function Window({ help = helpSettingsOf({ mascot: false }) }: { help?: HelpSettings }) {
   settings = useSettings();
   const ai = useHelpAi(false, help);
   chat = useHelpChat(index, { ...ai, snapshot: { ...ai.snapshot, resolveTarget: () => capable } }, help);
@@ -57,7 +58,7 @@ describe('the Output → Tools switch', () => {
   });
 
   it('does not change the help request with the guide lookup on: the lookup function goes out with the switch on or off', async () => {
-    render(<SettingsProvider><Window help={helpSettingsOf({ lookup: true })} /></SettingsProvider>);
+    render(<SettingsProvider><Window help={helpSettingsOf({ lookup: true, mascot: false })} /></SettingsProvider>);
 
     act(() => settings.setToolsEnabled(true));
     const on = await helpRequestBody();

@@ -29,7 +29,7 @@ import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
 import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
-import { appLoadQuestion, mascotPhase } from './mascotPhase';
+import { appLoadQuestion, mascotFace, mascotPhase } from './mascotPhase';
 import { MinimalChat } from './MinimalChat';
 import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
@@ -408,7 +408,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: origin ? `${origin.x - layout.group.x}px ${origin.y - layout.group.y}px` : undefined,
           } : undefined}
         >
-          {layout && <MascotPiece images={composeMascot(settings.rig, phase, null)} size={layout.mascot} onAspect={setMascotAspect} />}
+          {layout && <MascotPiece images={composeMascot(settings.rig, phase, mascotFace(chat.exchanges.at(-1)))} size={layout.mascot} onAspect={setMascotAspect} />}
           <MinimalChat
             guide={guide}
             failed={failed}
