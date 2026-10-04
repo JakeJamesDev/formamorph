@@ -62,6 +62,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q33 | Expressions are composite whole faces, one row each. A part the arm must cover (the :O mouth under the thinking hand) rides in the arm state, because one row cannot sit both under and over another row. The format stays a flat list |
 | Q34 | The minimal chrome's pill is grip, today's ⋮ menu (Clear Conversation, AI Context, Settings) and Close; the head toggle joins it in its ticket. Until the reader piece lands, a docs request with the mascot on opens the heading in the wiki, as with the window unmounted |
 | Q35 | The mascot's prompt text is the **Voice**, never Persona, which the glossary holds for the player-slot entity. The landed rig field is renamed in the Voice chip ticket; nothing shipped |
+| Q36 | The Initial look ends on the first send and on nothing else. A dialog's close-and-reopen, or the player closing and reopening the window, keeps it. Refines Q9 and Q10 |
 
 ## User Stories
 
@@ -179,7 +180,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 
 ### Window
 
-- The window owns the mascot phase. Sending a question sets thinking and clears the AI's expression. A face event stores the AI's expression and changes nothing else. The first answer event with content text sets answering, and the stored expression shows then; with none stored, Idle shows (Q18, Q30). The first open in an app load starts in the initial phase and leaves it on the first send (Q8–Q10). The phase lives in the mounted window, which lives for the app load.
+- The window owns the mascot phase. Sending a question sets thinking and clears the AI's expression. A face event stores the AI's expression and changes nothing else. The first answer event with content text sets answering, and the stored expression shows then; with none stored, Idle shows (Q18, Q30). The window starts in the initial phase and leaves it on the first send, never on a close or reopen (Q8–Q10, Q36). The phase lives in the mounted window, which lives for the app load.
 - Turning the mascot off or on while the window is open swaps the chrome in place. The conversation and the phase carry over.
 - The thinking phase covers the pick request, the prefill and the reasoning text, because the session yields nothing until the pick is done and reasoning arrives without content text (Q18).
 - With the mascot on, the window renders the minimal chrome: the prototype's chat column, taken from the prototype branch. The frame, the title bar, the tabs and the resize grip do not render. The pill holds the drag grip, today's ⋮ menu (Clear Conversation, AI Context, Settings), the head toggle and Close (Q34).
