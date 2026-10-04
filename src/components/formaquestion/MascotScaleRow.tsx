@@ -1,7 +1,7 @@
 import { Slider } from '@/components/ui/slider';
 import { MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale } from '@/lib/formaquestion/windowBox';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
-import { setMascotScale, useMascotScale } from './useMascotScale';
+import { setMascotScale, useMascotScale } from './useMascotDevice';
 import { WidgetRow } from './WidgetRow';
 
 const STEP = 5;

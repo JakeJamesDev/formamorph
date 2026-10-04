@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { composeMascot, DEFAULT_MASCOT_RIG, type MascotPhase } from '@/lib/formaquestion/mascot';
 import { mascotImageUrl } from '@/lib/formaquestion/mascotAssets';
-import { NARROW_WIDTH, READER_GAP } from '@/lib/formaquestion/windowBox';
+import { MASCOT_BELOW_CAP, NARROW_WIDTH, READER_GAP } from '@/lib/formaquestion/windowBox';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
 import { HELP_FACE } from '@/lib/formaquestion/helpFace';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
@@ -31,6 +31,7 @@ const loadFixture = () => Promise.resolve(createDocsIndex({ pages: PAGES, sideba
 const REPLY_WITH_SOURCE = [sseFrame({ content: '1. Open the **Traits** tab.\n' }), ...sseReply('2. Select **Add Trait**.')];
 
 const BOX_KEY ='formamorph.formaquestion.window';
+const PLACEMENT_KEY = 'formamorph.formaquestion.mascotPlacement';
 /** The default base is 888 by 1184. */
 const ASPECT = 0.75;
 
@@ -103,6 +104,8 @@ beforeEach(async () => {
   ({ Formaquestion } = await import('./Formaquestion'));
   ({ openDocs } = await import('@/lib/formaquestion/docsOpener'));
   localStorage.clear();
+  // These tests read the Beside geometry; 'the Mascot below' starts from the Auto default.
+  localStorage.setItem(PLACEMENT_KEY, 'beside');
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {
@@ -310,8 +313,8 @@ describe('the Mascot scale', () => {
     loadBase();
     expect(mascot()!.style.height).toBe('592px');
     expect(mascot()!.style.width).toBe('444px');
-    // The default column is 560 tall; the shared box grows upward to the Mascot's height.
-    expect(column().style.height).toBe('560px');
+    // The default column is 60% of the screen height; the shared box grows upward to the Mascot's height.
+    expect(column().style.height).toBe(`${window.innerHeight * 0.6}px`);
     expect(helpWindow().style.height).toBe('592px');
     await userEvent.click(within(pill()).getByRole('button', { name: 'Show Head Only' }));
     loadBase();
@@ -494,6 +497,68 @@ describe('the Chat Style', () => {
     loadBase();
     expect(parseFloat(helpWindow().style.height)).toBe(minimalHeight - 60);
     expect(parseFloat(helpWindow().style.left) + parseFloat(mascot()!.style.width)).toBe(columnLeft);
+  });
+});
+
+describe('the Mascot below', () => {
+  const MARGIN = 16;
+  const px = (value: string) => parseFloat(value);
+
+  beforeEach(() => {
+    localStorage.removeItem(PLACEMENT_KEY);
+  });
+
+  it('stands her under a short column on Auto, filling the room to the screen margin', async () => {
+    await openWindow();
+    loadBase();
+    const group = helpWindow().style;
+    const columnHeight = px(column().style.height);
+    expect(columnHeight).toBeLessThanOrEqual(window.innerHeight * MASCOT_BELOW_CAP);
+    expect(px(group.top) + px(group.height)).toBe(window.innerHeight - MARGIN);
+    expect(px(mascot()!.style.height)).toBe(px(group.height) - columnHeight);
+    expect(px(mascot()!.style.width)).toBeCloseTo(px(mascot()!.style.height) * ASPECT);
+    expect(column().compareDocumentPosition(mascot()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('stands her beside once the column is dragged past the cap on Auto', async () => {
+    await openWindow();
+    loadBase();
+    const grip = column().querySelector<HTMLElement>('[data-fq-resize]')!;
+    fireEvent.pointerDown(grip, { button: 0, pointerId: 1, clientX: 900, clientY: 300 });
+    fireEvent.pointerMove(grip, { pointerId: 1, clientX: 900, clientY: 900 });
+    fireEvent.pointerUp(grip, { pointerId: 1 });
+    const columnHeight = px(column().style.height);
+    expect(columnHeight).toBeGreaterThan(window.innerHeight * MASCOT_BELOW_CAP);
+    expect(mascot()!.style.height).toBe(`${columnHeight}px`);
+    expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('stops the grip at the cap on Below', async () => {
+    localStorage.setItem(PLACEMENT_KEY, 'below');
+    await openWindow();
+    loadBase();
+    const grip = column().querySelector<HTMLElement>('[data-fq-resize]')!;
+    fireEvent.pointerDown(grip, { button: 0, pointerId: 1, clientX: 900, clientY: 300 });
+    fireEvent.pointerMove(grip, { pointerId: 1, clientX: 900, clientY: 900 });
+    fireEvent.pointerUp(grip, { pointerId: 1 });
+    expect(px(column().style.height)).toBe(window.innerHeight * MASCOT_BELOW_CAP);
+    const stored = JSON.parse(localStorage.getItem(BOX_KEY)!) as { minimal: { h: number } };
+    expect(stored.minimal.h).toBe(window.innerHeight * MASCOT_BELOW_CAP);
+  });
+
+  it('stands her under the full frame, centered', async () => {
+    storeFramedWindow({ chatStyle: 'full', mascot: true });
+    await openWindow();
+    const piece = document.querySelector<HTMLElement>('[data-fq-piece="mascot"]')!;
+    const base = piece.querySelector('[data-fq-look="new"] img')!;
+    Object.defineProperty(base, 'naturalWidth', { configurable: true, value: 888 });
+    Object.defineProperty(base, 'naturalHeight', { configurable: true, value: 1184 });
+    fireEvent.load(base);
+    const frame = helpWindow().style;
+    const holder = piece.parentElement!.style;
+    expect(px(holder.top)).toBe(px(frame.top) + px(frame.height));
+    expect(px(holder.top) + px(holder.height)).toBe(window.innerHeight - MARGIN);
+    expect(px(holder.left) + px(piece.style.width) / 2).toBeCloseTo(px(frame.left) + px(frame.width) / 2);
   });
 });
 

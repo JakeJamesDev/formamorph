@@ -17,7 +17,7 @@ import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
   boxOf, defaultWindow, type MascotSide, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
-  headHeight, writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
+  headHeight, writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, READER_GAP, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
   type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
 } from '@/lib/formaquestion/windowBox';
 import { chatChrome } from '@/lib/formaquestion/helpSettings';
@@ -42,7 +42,7 @@ import { MinimalChat } from './MinimalChat';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS } from '@/lib/formaquestion/helpPrompt';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
-import { useMascotScale } from './useMascotScale';
+import { useMascotPlacement, useMascotScale } from './useMascotDevice';
 import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
 import { useSemanticSearch } from './useSemanticSearch';
@@ -120,6 +120,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   /** The desktop shows the Mascot's head alone. The sheet always does. */
   const [headView, setHeadView] = useState(readStoredHeadView);
   const scale = useMascotScale();
+  const placement = useMascotPlacement();
   /** The section the minimal chrome's reader piece shows, or null while it is closed. */
   const [readerId, setReaderId] = useState<string | null>(null);
 
@@ -417,10 +418,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const mascotAspect = settings.mascot && mascotBase && !(minimal && showHead) ? mascotBase.width / mascotBase.height : null;
   // The side flips once as the column crosses the middle; the last side decides a tie.
   const sideRef = useRef<MascotSide>('left');
-  const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current, scale, baseHeight: mascotBase?.height };
+  const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current, scale, baseHeight: mascotBase?.height, placement };
   const layout = sheet ? null : windowLayout(chrome, box, viewport, pieces);
   if (layout) sideRef.current = layout.side;
   const side = layout?.side ?? 'left';
+  const below = layout?.placement === 'below';
+  // Below, she centers under the column; beside, she takes the side the reader leaves.
+  const mascotSide = below ? null : side;
+  const readerSide = layout?.readerSide ?? 'right';
   // A drag starts from the box as drawn, which a small screen can shift.
   const drawn = layout?.column ?? box;
   const boxDrag = (step: typeof movePieces): PointerDrag<BoxPress> => ({
@@ -465,6 +470,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const readerPiece = layout?.reader && guide && readerId && (
     <ReaderPiece guide={guide} sectionId={readerId} size={layout.reader} onOpen={setReaderId} onClose={() => setReaderId(null)} />
   );
+  // Below, the column's row holds the reader too.
+  const readerSpace = layout?.reader ? READER_GAP + layout.reader.w : 0;
   const head = minimal && settings.mascot && showHead && (
     <MascotPiece
       view="head"
@@ -474,6 +481,30 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : headHeight(scale, crop.height, layout?.column.h ?? HEAD_HEIGHT))}
       frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
       onBase={setMascotBase}
+    />
+  );
+
+  const chatColumn = (
+    <MinimalChat
+      guide={guide}
+      failed={failed}
+      onRetry={load}
+      chat={chat}
+      settings={settings}
+      onSettingsChange={changeSettings}
+      draft={view.draft}
+      onDraftChange={(draft) => changeView({ draft })}
+      onOpen={sheet ? openInWiki : setReaderId}
+      onGo={go}
+      move={sheet ? undefined : moveHandlers}
+      resize={sheet ? undefined : resizeHandlers}
+      large={sheet}
+      head={head}
+      headSide={side}
+      headToggle={sheet || !settings.mascot ? undefined : { showingHead: headView, onToggle: toggleHead }}
+      menu={{ ...menuActions, container: layer }}
+      onClose={closeWindow}
+      height={layout?.column.h}
     />
   );
 
@@ -500,7 +531,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
               // On the sheet a dim, blurred backdrop stands in for the frame, because the bubbles fill the screen.
               ? cn('app-viewport pointer-events-auto bg-background/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm', sheetMotion)
               // Only the pieces take presses; the gaps between them belong to the app.
-              : `pointer-events-none fixed items-end ${windowMotion}`,
+              : `pointer-events-none fixed ${below ? 'flex-col' : 'items-end'} ${windowMotion}`,
           )}
           style={layout ? {
             left: layout.group.x,
@@ -510,38 +541,44 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: originFrom(layout.group.x, layout.group.y),
           } : undefined}
         >
-          {side === 'left' && wholeMascot}
-          {side === 'right' && readerPiece}
-          <MinimalChat
-            guide={guide}
-            failed={failed}
-            onRetry={load}
-            chat={chat}
-            settings={settings}
-            onSettingsChange={changeSettings}
-            draft={view.draft}
-            onDraftChange={(draft) => changeView({ draft })}
-            onOpen={sheet ? openInWiki : setReaderId}
-            onGo={go}
-            move={sheet ? undefined : moveHandlers}
-            resize={sheet ? undefined : resizeHandlers}
-            large={sheet}
-            head={head}
-            headSide={side}
-            headToggle={sheet || !settings.mascot ? undefined : { showingHead: headView, onToggle: toggleHead }}
-            menu={{ ...menuActions, container: layer }}
-            onClose={closeWindow}
-            height={layout?.column.h}
-          />
-          {side === 'left' && readerPiece}
-          {side === 'right' && wholeMascot}
+          {layout && below ? (
+            <>
+              <div
+                className="flex shrink-0 items-end"
+                style={{
+                  marginLeft: layout.column.x - (readerSide === 'left' ? readerSpace : 0) - layout.group.x,
+                  width: layout.column.w + readerSpace,
+                  height: layout.column.h,
+                }}
+              >
+                {readerSide === 'left' && readerPiece}
+                {chatColumn}
+                {readerSide === 'right' && readerPiece}
+              </div>
+              <div className="mt-auto flex" style={{ marginLeft: (layout.mascotAt?.x ?? 0) - layout.group.x }}>{wholeMascot}</div>
+            </>
+          ) : (
+            <>
+              {mascotSide === 'left' && wholeMascot}
+              {readerSide === 'left' && readerPiece}
+              {chatColumn}
+              {readerSide === 'right' && readerPiece}
+              {mascotSide === 'right' && wholeMascot}
+            </>
+          )}
         </section>
       )}
       {shown && !minimal && layout && wholeMascot && (
         <div
           data-state={open ? 'open' : 'closed'}
           className={`pointer-events-none fixed flex items-end ${windowMotion}`}
-          style={{
+          style={below && layout.mascot && layout.mascotAt ? {
+            left: layout.mascotAt.x,
+            top: layout.mascotAt.y,
+            width: layout.mascot.w,
+            height: layout.mascot.h,
+            transformOrigin: originFrom(layout.mascotAt.x, layout.mascotAt.y),
+          } : {
             left: side === 'left' ? layout.group.x : layout.column.x + layout.column.w,
             top: layout.group.y,
             width: layout.group.w - layout.column.w,
