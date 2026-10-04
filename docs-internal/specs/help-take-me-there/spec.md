@@ -92,7 +92,8 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 
 - The help session is unchanged. The `done` event already names the sources; the window reads the top source's route from the guide index.
 - The answer footer renders the Take Me There button beside the Sources expander when the top source carries a route (Q18, Q23). Both chromes render it. A click sends the navigation request; on mobile it also closes the sheet (Q24).
-- The trace that AI Context shows gains the chosen route per answer, so the popup names it.
+- AI Context names the route per answer ("Take Me There: <surface id>", or none). It reads the same route function the button uses; the trace stores no copy.
+- **Ticket 04 landed 2026-10-04 (`4774586e`).** The changelog line is ticket 06's.
 - The button label is settled copy in the help voice: "Take Me There".
 
 ### Probe
@@ -112,7 +113,7 @@ Seams:
 
 - **Docs index (existing, pure).** A section with a route line stores the route and loses the line from its text; a part of a split section inherits it; a section without one has none; the line never enters the search phrases. The source test over the bundled docs refuses an unknown or excluded id. Prior art: the keyword-line tests in the docs index tests.
 - **Navigation request (new, one seam).** The resolver: a screen id resolves to the view alone; a dialog id to the view that hosts it plus the dialog; a tab id adds the tab; an unknown id resolves to nothing. The consumers, through the app's providers: a request opens the right view, dialog and tab; from a running game the prompt shows and a refusal changes nothing; a request for the open surface re-selects the tab. Prior art: the settings-open request tests in the main menu and game viewer tests.
-- **Window (component).** The button renders only when the top source has a route; it is absent for a routeless top source even when a later source has one; a click sends the request with that id; on mobile the sheet closes. The trace carries the route. Tests that mount Formaquestion keep the one mocked seam to the settings providers. Prior art: the Formaquestion ask and sources tests.
+- **Window (component).** The button renders only when the top source has a route; it is absent for a routeless top source even when a later source has one; a click sends the request with that id; on mobile the sheet closes. AI Context names the route. Tests that mount Formaquestion keep the one mocked seam to the settings providers. Prior art: the Formaquestion ask and sources tests.
 - **Probe (pure).** The scorer over a small fixture: hit, miss, no-route, and the table shape. Prior art: the help probe's rescore path.
 
 Other checks:
