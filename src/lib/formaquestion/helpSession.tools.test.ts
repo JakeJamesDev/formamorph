@@ -44,7 +44,8 @@ const script = (...replies: string[][]): FetchSpy => {
   });
 };
 
-const settings = (change: HelpSettingsChange = {}) => helpSettingsOf({ tools: [FIND_PERSON, WEATHER], toolSwitches: { 'h-1': true }, ...change });
+// The Mascot is off, so the face call stays out of the offered functions.
+const settings = (change: HelpSettingsChange = {}) => helpSettingsOf({ tools: [FIND_PERSON, WEATHER], toolSwitches: { 'h-1': true }, mascot: false, ...change });
 
 const ask = (fetchImpl: FetchSpy, over: Partial<HelpQuestion> = {}) =>
   askHelp({ question: 'Who is Wren?', settings: settings(), snapshot: endpoint(true), index, fetchImpl: pastPicks(fetchImpl), ...over });

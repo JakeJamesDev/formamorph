@@ -6,6 +6,7 @@ import { composeMascot, DEFAULT_MASCOT_RIG, type MascotPhase } from '@/lib/forma
 import { mascotImageUrl } from '@/lib/formaquestion/mascotAssets';
 import { NARROW_WIDTH, READER_GAP } from '@/lib/formaquestion/windowBox';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { HELP_FACE } from '@/lib/formaquestion/helpFace';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
@@ -49,8 +50,8 @@ function heldReply() {
   return {
     respond: () => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }),
     push: (frame: string) => act(() => { stream.enqueue(encoder.encode(frame)); }),
-    end: () => act(() => {
-      stream.enqueue(encoder.encode(sseFrame({}, 'stop')));
+    end: (finish = 'stop') => act(() => {
+      stream.enqueue(encoder.encode(sseFrame({}, finish)));
       stream.enqueue(encoder.encode('data: [DONE]\n\n'));
       stream.close();
     }),
@@ -344,6 +345,67 @@ describe('the Mascot phases', () => {
     await reply.end();
     await within(conversation()).findByText(/Open the Traits tab/);
     expect(drawn()).toEqual(look('answering'));
+  });
+
+  it('holds Thinking through a face call, shows the face at the first content token, swaps at once on a later call, and clears on the next send', async () => {
+    const reasoning = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' as const } };
+    ai.current = helpAi({ snapshot: textSnapshot(textTarget({ reasoning })), answerTarget: { reasoning, localEngine: false, maxTokens: undefined }, revalidate: vi.fn(async () => true) });
+    const faceCall = (face: string) => sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: HELP_FACE.name, arguments: JSON.stringify({ face }) } }] });
+    const second = heldReply();
+    const third = heldReply();
+    const next = heldReply();
+    const replies = [
+      () => sseResponse([faceCall('Happy'), sseFrame({}, 'tool_calls'), 'data: [DONE]\n\n']),
+      second.respond,
+      third.respond,
+      next.respond,
+    ];
+    let request = 0;
+    stubHelpStream(() => replies[request++]());
+    const faceLook = (id: string) => composeMascot(DEFAULT_MASCOT_RIG, 'answering', id).map(mascotImageUrl);
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(request).toBe(2));
+    expect(drawn()).toEqual(look('thinking'));
+
+    await second.push(sseFrame({ content: 'Open' }));
+    await waitFor(() => expect(drawn()).toEqual(faceLook('happy')));
+
+    await second.push(faceCall('Wink'));
+    await second.end('tool_calls');
+    await waitFor(() => expect(request).toBe(3));
+    expect(drawn()).toEqual(faceLook('wink'));
+    await third.push(sseFrame({ content: 'Open the Traits tab.' }));
+    await third.end();
+    await within(conversation()).findByText(/Open the Traits tab/);
+    expect(drawn()).toEqual(faceLook('wink'));
+
+    await send(field, 'And then?');
+    await waitFor(() => expect(request).toBe(4));
+    expect(drawn()).toEqual(look('thinking'));
+    await next.push(sseFrame({ content: 'Select Add Trait.' }));
+    await waitFor(() => expect(drawn()).toEqual(look('answering')));
+  });
+
+  it('rests, not on the stored face, when a question stops after a face call and before any content', async () => {
+    const reasoning = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' as const } };
+    ai.current = helpAi({ snapshot: textSnapshot(textTarget({ reasoning })), answerTarget: { reasoning, localEngine: false, maxTokens: undefined }, revalidate: vi.fn(async () => true) });
+    const held = heldReply();
+    let request = 0;
+    stubHelpStream(() => (request++ === 0
+      ? sseResponse([
+        sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: HELP_FACE.name, arguments: '{"face":"Happy"}' } }] }),
+        sseFrame({}, 'tool_calls'),
+        'data: [DONE]\n\n',
+      ])
+      : held.respond()));
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(request).toBe(2));
+    expect(drawn()).toEqual(look('thinking'));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
+    await waitFor(() => expect(drawn()).toEqual(look('answering')));
   });
 
   it('rests when a question stops before any content, and does not wave again after a clear', async () => {

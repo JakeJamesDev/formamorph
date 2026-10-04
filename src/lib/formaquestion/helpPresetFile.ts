@@ -47,7 +47,7 @@ export const HELP_PRESET_FILE_FIELDS: readonly (keyof HelpPresetFile)[] = ['form
 type SwitchKey = { [K in keyof HelpSettings]: HelpSettings[K] extends boolean ? K : never }[keyof HelpSettings];
 type LimitKey = { [K in keyof HelpSettings]: HelpSettings[K] extends number ? K : never }[keyof HelpSettings];
 
-/** Each fixed function's settings fields: one row per function of `HELP_FIXED_FUNCTIONS`. */
+/** The settings fields of each fixed function with a switch and a call limit. The face call has neither. */
 const FUNCTION_FIELDS: readonly { name: string; enabled: SwitchKey; maxCalls: LimitKey; max: number }[] = [
   { name: DOCS_LOOKUP.name, enabled: 'lookup', maxCalls: 'lookupCallLimit', max: HELP_CALL_LIMIT_MAX },
   { name: HELP_ROLL.name, enabled: 'roll', maxCalls: 'rollCallLimit', max: HELP_CALL_LIMIT_MAX },

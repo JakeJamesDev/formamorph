@@ -1,6 +1,6 @@
 # 04: Face call
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -21,8 +21,21 @@ Recommended model rationale: a new fixed function across the session, the tool l
 
 ## Acceptance criteria
 
-- [ ] The function is offered only with the mascot on, an enabled expression present, and an endpoint that takes functions; its enum changes when a layer is disabled.
-- [ ] A call yields the face event and a trace entry; two calls in one answer yield two events.
-- [ ] A face event before any content text keeps Thinking; the face shows at the first content token; a later call swaps at once; the next send clears it.
-- [ ] Probe numbers for the call rate on the local arm are in the ticket.
-- [ ] The four gates are green.
+- [x] The function is offered only with the mascot on, an enabled expression present, and an endpoint that takes functions; its enum changes when a layer is disabled.
+- [x] A call yields the face event and a trace entry; two calls in one answer yield two events.
+- [x] A face event before any content text keeps Thinking; the face shows at the first content token; a later call swaps at once; the next send clears it.
+- [x] Probe numbers for the call rate on the local arm are in the ticket.
+- [x] The four gates are green.
+
+## Probe results
+
+`testing/baseline/harness/help-face-probe.cli.ts`, 2026-10-03, local arm on MeroMero 31B (`g4-meromero-v2-31b-i1`), 3 runs per case per arm, arms interleaved. Default settings with the Mascot on. Control: the same request with the description cut to "Sets your face."
+
+| Arm | Plain questions (5 × 3) | "Thanks, that fixed it!" (× 3) | Call first, before any text | Face names in answer text | Errors |
+|---|---|---|---|---|---|
+| app | 15/15 (100%) | 3/3 | 18/18 | 0/18 | 0 |
+| bare | 10/15 (67%) | 3/3 | 13/13 of calls | 0/18 | 0 |
+
+- The description lifts the call rate from 67% to 100%. Every call came before the answer text, so each set face shows from the first content token.
+- Every call in both arms picked **Happy**, the first face in the list, including for "a side character keeps showing up and I want them gone". The rate is high, but the choice does not follow the mood. The face list order or the description may need work; this ticket measured the rate only.
+- Each call costs one extra request round before the answer.

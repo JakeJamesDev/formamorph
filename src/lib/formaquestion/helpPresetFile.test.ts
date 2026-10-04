@@ -9,7 +9,6 @@ import {
 } from './helpPresetFile';
 import { activeHelpPreset, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, editHelpPrompt } from './helpPresets';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from './helpSettings';
-import { HELP_FIXED_FUNCTIONS } from './helpTools';
 
 const script = (patch: Partial<Tool> = {}): Tool => helpTool({ id: 'h-s', name: 'roll_omen', handler: { kind: 'script', code: 'return "omen";' }, ...patch });
 
@@ -43,7 +42,8 @@ describe('buildHelpPresetFile', () => {
     expect(Object.keys(file).sort()).toEqual([...HELP_PRESET_FILE_FIELDS].sort());
     expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'lookup', 'pick']);
     expect(Object.keys(file.options).sort()).toEqual(['maxTokens', 'repetitionPenalty', 'temperature']);
-    expect(Object.keys(file.functions)).toEqual(HELP_FIXED_FUNCTIONS.map((fn) => fn.name));
+    // The face call has no switch and no call limit, so it has no row.
+    expect(Object.keys(file.functions)).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name]);
     expect(Object.keys(file.functions[DOCS_LOOKUP.name]).sort()).toEqual(['enabled', 'maxCalls']);
     for (const entry of file.tools) expect(Object.keys(entry).sort()).toEqual(['enabled', 'tool']);
   });
