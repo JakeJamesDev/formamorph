@@ -18,7 +18,8 @@ export const MIN_HEIGHT = 320;
 export const WIDE_FROM = 560;
 export const NARROW_WIDTH = 400;
 export const WIDE_WIDTH = 720;
-const DEFAULT_HEIGHT = 560;
+/** The default window's share of the screen height. */
+const DEFAULT_HEIGHT_SHARE = 0.6;
 /** Space the window keeps from the screen edge at its default place and at its largest size. */
 const SCREEN_MARGIN = 16;
 /** Room the default place leaves for the Help tab, which starts on the right edge. */
@@ -46,11 +47,12 @@ export function clampBox(box: WindowBox, viewport: Viewport): WindowBox {
 
 /** The narrow window at the bottom right, clear of the Help tab. */
 export function defaultBox(viewport: Viewport): WindowBox {
+  const h = viewport.height * DEFAULT_HEIGHT_SHARE;
   return clampBox({
     w: NARROW_WIDTH,
-    h: DEFAULT_HEIGHT,
+    h,
     x: viewport.width - NARROW_WIDTH - TAB_CLEARANCE,
-    y: viewport.height - DEFAULT_HEIGHT - CORNER_CLEARANCE,
+    y: viewport.height - h - CORNER_CLEARANCE,
   }, viewport);
 }
 
@@ -88,13 +90,21 @@ export const READER_GAP = 8;
 /** The window's two chromes: the bare chat column, and the framed window. */
 export type WindowChrome = 'minimal' | 'full';
 
-/** The side of the column or frame the Mascot stands on. The reader takes the other. */
+/** A side of the column or frame, for the Mascot beside it or the reader. */
 export type MascotSide = 'left' | 'right';
 
-/** The pieces drawn beside the column or frame. */
+/** Where the Mascot stands: beside the column, under it, or under it while the column is at most the cap. */
+export type MascotPlacement = 'beside' | 'below' | 'auto';
+
+/** The column's largest share of the screen height while the Mascot stands below it. Auto stands her below at or under it. */
+export const MASCOT_BELOW_CAP = 0.75;
+
+/** The pieces drawn around the column or frame. */
 export interface WindowPieces {
-  /** The whole Mascot's aspect, or null while it is not drawn beside the chat. */
+  /** The whole Mascot's aspect, or null while it is not drawn. */
   readonly mascotAspect: number | null;
+  /** Where the Mascot stands. Defaults to beside. */
+  readonly placement?: MascotPlacement;
   /** The reader piece, which only the minimal chrome draws. */
   readonly showReader?: boolean;
   /** The side the Mascot stands on now. It decides a tie between the two gaps. Defaults to left. */
@@ -105,15 +115,21 @@ export interface WindowPieces {
   readonly baseHeight?: number;
 }
 
-/** The pieces on the screen: the column or frame, the Mascot bottom-aligned at its wider-gap side, the reader at the other. */
+/** The pieces on the screen: the column or frame, the Mascot bottom-aligned beside or under it, and the reader beside it. */
 export interface WindowLayout {
   /** The stored box's part: it moves, and the device keeps it. */
   readonly column: WindowBox;
   readonly mascot: { readonly w: number; readonly h: number } | null;
+  /** The Mascot's top left corner on the screen, or null while she is not drawn. */
+  readonly mascotAt: { readonly x: number; readonly y: number } | null;
   readonly reader: { readonly w: number; readonly h: number } | null;
-  /** The side the Mascot stands on. The head view stands at the matching end of the pill. */
+  /** Where the Mascot stands this frame. Below, she is centered under the column. */
+  readonly placement: Exclude<MascotPlacement, 'auto'>;
+  /** The side with the wider free gap. Beside, the Mascot stands there; the head view stands at the matching end of the pill. */
   readonly side: MascotSide;
-  /** The box the pieces share: the column, widened by the Mascot on its side and the reader on the other. */
+  /** The side the reader stands on, at the column's height. */
+  readonly readerSide: MascotSide;
+  /** The box the pieces share. Below, its bottom edge sits at the screen margin. */
   readonly group: WindowBox;
 }
 
@@ -129,17 +145,23 @@ function widerSide(x: number, w: number, viewport: Viewport, current: MascotSide
  * narrow width. The Mascot stands on the side with the wider free gap. The reader takes the room it needs on
  * the other side, then the Mascot takes its scale's height at its aspect, less when the screen lacks the
  * room. A percent Mascot taller than the column rises above it; the column never moves for it (Q37). All
- * stay whole on the screen.
+ * stay whole on the screen. Below, or Auto at or under the cap, a whole Mascot stands under a column at most
+ * the cap's height instead.
  */
 export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Viewport, pieces: WindowPieces): WindowLayout {
-  const { mascotAspect, showReader = false, side: previous = 'left', scale = 'auto', baseHeight } = pieces;
+  const { mascotAspect, showReader = false, side: previous = 'left', scale = 'auto', baseHeight, placement = 'beside' } = pieces;
   const w = clamp(chrome === 'minimal' ? Math.min(box.w, NARROW_WIDTH) : box.w, MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
   const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
-  const y = clamp(box.y, 0, viewport.height - h);
   const side = widerSide(clamp(box.x, 0, viewport.width - w), w, viewport, previous);
   const room = Math.max(0, viewport.width - SCREEN_MARGIN * 2 - w);
   const readerSpace = showReader && chrome === 'minimal' ? Math.min(READER_GAP + READER_WIDTH, room) : 0;
   const readerW = Math.max(0, readerSpace - READER_GAP);
+  const cap = viewport.height * MASCOT_BELOW_CAP;
+  // Below needs a whole Mascot and a cap the smallest column fits under (Q12, Q13); the snap has no hysteresis (Q3).
+  if (mascotAspect && cap >= MIN_HEIGHT && (placement === 'below' || (placement === 'auto' && h <= cap))) {
+    return belowLayout({ ...box, w, h: Math.min(h, cap) }, viewport, { aspect: mascotAspect, cap, side, readerSpace, readerW, scale, baseHeight });
+  }
+  const y = clamp(box.y, 0, viewport.height - h);
   const wantedH = scale === 'auto' || !baseHeight ? h : Math.min((baseHeight * scale) / 100, Math.max(h, y + h - SCREEN_MARGIN));
   const mascotW = mascotAspect ? Math.min(wantedH * mascotAspect, room - readerSpace) : 0;
   const mascot = mascotAspect && mascotW > 0 ? { w: mascotW, h: mascotW / mascotAspect } : null;
@@ -150,9 +172,58 @@ export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Vie
   return {
     column: { x, y, w, h },
     mascot,
+    mascotAt: mascot && { x: side === 'left' ? x - mascot.w : x + w, y: y + h - mascot.h },
     reader: readerW > 0 ? { w: readerW, h } : null,
+    placement: 'beside',
     side,
+    readerSide: side === 'left' ? 'right' : 'left',
     group: { x: x - before, y: y + h - groupH, w: w + before + after, h: groupH },
+  };
+}
+
+interface BelowPieces {
+  readonly aspect: number;
+  readonly cap: number;
+  readonly side: MascotSide;
+  readonly readerSpace: number;
+  readonly readerW: number;
+  readonly scale: MascotScale;
+  readonly baseHeight?: number;
+}
+
+/**
+ * The column over the Mascot, the group's bottom edge at the screen margin. Under Auto scale she fills the room under
+ * the column, and the column stops where that room would drop under what the cap leaves. A percent Mascot
+ * clamps the column's top so she fits, and takes the room when even the top lacks it (Q6). She centers under
+ * the column; the reader stands on the wider side (Q7).
+ */
+function belowLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): WindowLayout {
+  const { aspect, cap, side, readerSpace, readerW, scale, baseHeight } = pieces;
+  const { w, h } = box;
+  const bottom = viewport.height - SCREEN_MARGIN;
+  const asked = scale === 'auto' || !baseHeight ? null : (baseHeight * scale) / 100;
+  const keep = asked === null ? bottom - cap : Math.min(asked, bottom - h);
+  const y = clamp(box.y, 0, bottom - h - keep);
+  const roomH = bottom - y - h;
+  // The reader takes its room first; she may hang past the column only into what is left on both sides.
+  const overhang = Math.max(0, Math.min((viewport.width - SCREEN_MARGIN * 2 - w) / 2, viewport.width - w - readerSpace));
+  const mascotW = Math.max(0, Math.min((asked === null ? roomH : Math.min(asked, roomH)) * aspect, w + overhang * 2));
+  const mascot = mascotW > 0 ? { w: mascotW, h: mascotW / aspect } : null;
+  const hang = Math.max(0, (mascotW - w) / 2);
+  const readerLeft = side === 'left' ? readerSpace : 0;
+  const readerRight = side === 'right' ? readerSpace : 0;
+  const x = clamp(box.x, Math.max(hang, readerLeft), viewport.width - w - Math.max(hang, readerRight));
+  const left = Math.min(x - readerLeft, x - hang);
+  const right = Math.max(x + w + readerRight, x + w + hang);
+  return {
+    column: { x, y, w, h },
+    mascot,
+    mascotAt: mascot && { x: x + (w - mascot.w) / 2, y: bottom - mascot.h },
+    reader: readerW > 0 ? { w: readerW, h } : null,
+    placement: 'below',
+    side,
+    readerSide: side,
+    group: { x: left, y, w: right - left, h: mascot ? bottom - y : h },
   };
 }
 
@@ -255,6 +326,27 @@ export function readStoredMascotScale(): MascotScale {
 export function writeStoredMascotScale(scale: MascotScale): void {
   try {
     localStorage.setItem(MASCOT_SCALE_KEY, String(scale));
+  } catch { /* blocked storage */ }
+}
+
+const MASCOT_PLACEMENT_KEY = 'formamorph.formaquestion.mascotPlacement';
+const MASCOT_PLACEMENTS: readonly string[] = ['beside', 'below', 'auto'] satisfies readonly MascotPlacement[];
+const isMascotPlacement = (value: unknown): value is MascotPlacement => typeof value === 'string' && MASCOT_PLACEMENTS.includes(value);
+
+/** The Mascot placement this device stored. Auto when nothing is stored, it is damaged, or storage is blocked. */
+export function readStoredMascotPlacement(): MascotPlacement {
+  try {
+    const stored = localStorage.getItem(MASCOT_PLACEMENT_KEY);
+    return isMascotPlacement(stored) ? stored : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+/** Stores the Mascot placement on this device. With storage blocked, it lasts for this visit only. */
+export function writeStoredMascotPlacement(placement: MascotPlacement): void {
+  try {
+    localStorage.setItem(MASCOT_PLACEMENT_KEY, placement);
   } catch { /* blocked storage */ }
 }
 

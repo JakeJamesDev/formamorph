@@ -3,8 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   boxOf, clampBox, defaultBox, defaultWindow, isWide, moveBox, movePieces, readStoredHeadView, readStoredWindow, resizeBox,
   resizePieces, swapWidth, windowLayout, withBox, writeStoredHeadView, writeStoredWindow,
-  headHeight, readStoredMascotScale, writeStoredMascotScale, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale,
-  MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH, type StoredWindow, type Viewport, type WindowBox,
+  headHeight, readStoredMascotScale, writeStoredMascotScale, readStoredMascotPlacement, writeStoredMascotPlacement, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale,
+  MASCOT_BELOW_CAP, MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH, type StoredWindow, type Viewport,
+  type WindowBox, type WindowPieces,
 } from './windowBox';
 
 const minimalLayout = (box: WindowBox, viewport: Viewport, mascotAspect: number | null, showReader = false) =>
@@ -49,6 +50,15 @@ describe('defaultBox', () => {
     expect(isWide(box)).toBe(false);
     expect(box.x + box.w).toBeLessThan(SCREEN.width - 32);
     expect(box.y + box.h).toBeLessThanOrEqual(SCREEN.height);
+  });
+
+  it('takes 60% of the screen height', () => {
+    expect(defaultBox(SCREEN).h).toBe(540);
+    expect(defaultBox({ width: 1600, height: 1400 }).h).toBe(840);
+  });
+
+  it('stays within the smallest size on a short screen', () => {
+    expect(defaultBox({ width: 1600, height: 450 }).h).toBe(MIN_HEIGHT);
   });
 
   it('fits a screen smaller than its default size', () => {
@@ -177,9 +187,10 @@ describe('the minimal layout', () => {
   const ASPECT = 0.75;
 
   it('puts the Mascot left of the column at the column height, and the shared box spans both', () => {
-    const { column, mascot, group } = minimalLayout({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    const { column, mascot, mascotAt, group } = minimalLayout({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
     expect(column).toEqual({ x: 1100, y: 200, w: NARROW_WIDTH, h: 560 });
     expect(mascot).toEqual({ w: 420, h: 560 });
+    expect(mascotAt).toEqual({ x: 680, y: 200 });
     expect(group).toEqual({ x: 680, y: 200, w: 420 + NARROW_WIDTH, h: 560 });
   });
 
@@ -189,10 +200,11 @@ describe('the minimal layout', () => {
   });
 
   it('stands the Mascot right of the column near the left edge, and the shared box spans both', () => {
-    const { column, mascot, group, side } = minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    const { column, mascot, mascotAt, group, side } = minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
     expect(side).toBe('right');
     expect(column.x).toBe(100);
     expect(mascot).toEqual({ w: 420, h: 560 });
+    expect(mascotAt).toEqual({ x: 100 + NARROW_WIDTH, y: 0 });
     expect(group).toEqual({ x: 100, y: 0, w: NARROW_WIDTH + 420, h: 560 });
   });
 
@@ -415,6 +427,152 @@ describe('the stored Mascot scale', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
     expect(() => writeStoredMascotScale(50)).not.toThrow();
     expect(readStoredMascotScale()).toBe('auto');
+  });
+});
+
+describe('the Mascot below', () => {
+  const ASPECT = 0.75;
+  const BASE_HEIGHT = 1200;
+  const CAP = SCREEN.height * MASCOT_BELOW_CAP;
+  const BOTTOM = SCREEN.height - 16;
+  const below = (box: WindowBox, extra: Partial<WindowPieces> = {}, chrome: 'minimal' | 'full' = 'minimal', viewport: Viewport = SCREEN) =>
+    windowLayout(chrome, box, viewport, { mascotAspect: ASPECT, placement: 'below', ...extra });
+
+  it('stands her under the column at the room height, the group bottom at the screen margin', () => {
+    const { column, mascot, mascotAt, group, placement } = below({ x: 1100, y: 100, w: NARROW_WIDTH, h: 400 });
+    expect(placement).toBe('below');
+    expect(column).toEqual({ x: 1100, y: 100, w: NARROW_WIDTH, h: 400 });
+    expect(mascot).toEqual({ w: 384 * ASPECT, h: 384 });
+    expect(mascotAt).toEqual({ x: 1100 + (NARROW_WIDTH - 384 * ASPECT) / 2, y: BOTTOM - 384 });
+    expect(group).toEqual({ x: 1100, y: 100, w: NARROW_WIDTH, h: BOTTOM - 100 });
+  });
+
+  it('draws the same variant under the frame', () => {
+    const { column, mascot, group } = below({ x: 600, y: 100, w: WIDE_WIDTH, h: 400 }, {}, 'full');
+    expect(column).toEqual({ x: 600, y: 100, w: WIDE_WIDTH, h: 400 });
+    expect(mascot).toEqual({ w: 384 * ASPECT, h: 384 });
+    expect(group.y + group.h).toBe(BOTTOM);
+  });
+
+  it('stands below at the cap and beside one pixel over under Auto', () => {
+    const at = { x: 1100, y: 0, w: NARROW_WIDTH, h: CAP };
+    expect(windowLayout('minimal', at, SCREEN, { mascotAspect: ASPECT, placement: 'auto' }).placement).toBe('below');
+    expect(windowLayout('minimal', { ...at, h: CAP + 1 }, SCREEN, { mascotAspect: ASPECT, placement: 'auto' }).placement).toBe('beside');
+  });
+
+  it('stands beside under Beside at any height', () => {
+    expect(below({ x: 1100, y: 0, w: NARROW_WIDTH, h: 400 }, { placement: 'beside' }).placement).toBe('beside');
+  });
+
+  it('caps the column at the cap', () => {
+    expect(below({ x: 1100, y: 0, w: NARROW_WIDTH, h: 800 }).column.h).toBe(CAP);
+  });
+
+  it('stops a resize past the cap at the cap', () => {
+    const start = { x: 1100, y: 0, w: NARROW_WIDTH, h: 500 };
+    expect(resizePieces('minimal', start, 0, 300, SCREEN, { mascotAspect: ASPECT, placement: 'below' })).toEqual({ ...start, h: CAP });
+  });
+
+  it('keeps her room at what the cap leaves when the column drags to the screen bottom', () => {
+    const { column, mascot } = below({ x: 1100, y: 800, w: NARROW_WIDTH, h: 400 });
+    expect(column.y + column.h).toBe(BOTTOM - (BOTTOM - CAP));
+    expect(mascot!.h).toBe(BOTTOM - CAP);
+    const moved = movePieces('minimal', { x: 1100, y: 100, w: NARROW_WIDTH, h: 400 }, 0, 700, SCREEN, { mascotAspect: ASPECT, placement: 'below' });
+    expect(moved.y).toBe(column.y);
+  });
+
+  it('sits the column at the top at the cap height', () => {
+    expect(below({ x: 1100, y: 300, w: NARROW_WIDTH, h: 800 }).column.y).toBe(0);
+  });
+
+  it('stands a percent Mascot at the bottom, and drops the column no further than lets her fit', () => {
+    const fits = below({ x: 1100, y: 100, w: NARROW_WIDTH, h: 400 }, { scale: 25, baseHeight: BASE_HEIGHT });
+    expect(fits.mascot).toEqual({ w: 225, h: 300 });
+    expect(fits.group.y + fits.group.h).toBe(BOTTOM);
+    expect(below({ x: 1100, y: 500, w: NARROW_WIDTH, h: 400 }, { scale: 25, baseHeight: BASE_HEIGHT }).column.y).toBe(BOTTOM - 400 - 300);
+  });
+
+  it('clamps a tall percent to the room under the column at the top', () => {
+    const { column, mascot } = below({ x: 1100, y: 300, w: NARROW_WIDTH, h: 400 }, { scale: 150, baseHeight: BASE_HEIGHT });
+    expect(column.y).toBe(0);
+    expect(column.h).toBe(400);
+    expect(mascot!.h).toBe(BOTTOM - 400);
+  });
+
+  it('centers her under the column and keeps her whole on the screen', () => {
+    const { column, mascot, group } = below({ x: 0, y: 0, w: NARROW_WIDTH, h: MIN_HEIGHT });
+    expect(mascot!.w).toBeGreaterThan(NARROW_WIDTH);
+    const hang = (mascot!.w - NARROW_WIDTH) / 2;
+    expect(column.x).toBe(hang);
+    expect(group.x).toBe(0);
+    expect(group.w).toBe(mascot!.w);
+  });
+
+  it('narrows her to the screen at her aspect', () => {
+    const narrow = { width: 500, height: 1400 };
+    const { mascot, group } = below({ x: 50, y: 0, w: NARROW_WIDTH, h: MIN_HEIGHT }, {}, 'minimal', narrow);
+    expect(mascot!.w).toBe(500 - 32);
+    expect(mascot!.h).toBe(mascot!.w / ASPECT);
+    expect(group.x).toBeGreaterThanOrEqual(0);
+    expect(group.x + group.w).toBeLessThanOrEqual(500);
+  });
+
+  it('keeps the reader beside the column at its height, on the wider side', () => {
+    const { column, reader, readerSide, group } = below({ x: 100, y: 100, w: NARROW_WIDTH, h: 400 }, { showReader: true });
+    expect(readerSide).toBe('right');
+    expect(reader).toEqual({ w: READER_WIDTH, h: 400 });
+    expect(group.x + group.w).toBe(column.x + column.w + READER_GAP + READER_WIDTH);
+    const left = below({ x: 1100, y: 100, w: NARROW_WIDTH, h: 400 }, { showReader: true });
+    expect(left.readerSide).toBe('left');
+    expect(left.group.x).toBe(left.column.x - READER_GAP - READER_WIDTH);
+  });
+
+  it('keeps the reader whole on the screen', () => {
+    const { column } = below({ x: 1500, y: 100, w: NARROW_WIDTH, h: 400 }, { showReader: true, side: 'left' });
+    expect(column.x - READER_GAP - READER_WIDTH).toBeGreaterThanOrEqual(0);
+    const right = below({ x: 0, y: 100, w: NARROW_WIDTH, h: 400 }, { showReader: true });
+    expect(right.column.x + right.column.w + READER_GAP + READER_WIDTH).toBeLessThanOrEqual(SCREEN.width);
+  });
+
+  it('stands beside at the smallest column height on a screen whose cap is under it', () => {
+    const short = { width: 1600, height: 420 };
+    const { column, placement } = below({ x: 1100, y: 0, w: NARROW_WIDTH, h: MIN_HEIGHT }, {}, 'minimal', short);
+    expect(placement).toBe('beside');
+    expect(column.h).toBe(MIN_HEIGHT);
+  });
+
+  it('is the Beside layout, uncapped, while no whole Mascot is drawn', () => {
+    const { column, placement, group } = windowLayout('minimal', { x: 1100, y: 0, w: NARROW_WIDTH, h: 800 }, SCREEN, { mascotAspect: null, placement: 'below' });
+    expect(placement).toBe('beside');
+    expect(column.h).toBe(800);
+    expect(group).toEqual(column);
+  });
+});
+
+describe('the stored Mascot placement', () => {
+  it('reads Auto until a placement is stored, and comes back as stored', () => {
+    expect(readStoredMascotPlacement()).toBe('auto');
+    writeStoredMascotPlacement('below');
+    expect(readStoredMascotPlacement()).toBe('below');
+    writeStoredMascotPlacement('beside');
+    expect(readStoredMascotPlacement()).toBe('beside');
+    writeStoredMascotPlacement('auto');
+    expect(readStoredMascotPlacement()).toBe('auto');
+  });
+
+  it('reads damage as Auto', () => {
+    localStorage.setItem('formamorph.formaquestion.mascotPlacement', 'above');
+    expect(readStoredMascotPlacement()).toBe('auto');
+    localStorage.setItem('formamorph.formaquestion.mascotPlacement', '');
+    expect(readStoredMascotPlacement()).toBe('auto');
+  });
+
+  it('reads Auto and does not throw when storage is blocked', () => {
+    writeStoredMascotPlacement('below');
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    expect(() => writeStoredMascotPlacement('beside')).not.toThrow();
+    expect(readStoredMascotPlacement()).toBe('auto');
   });
 });
 
