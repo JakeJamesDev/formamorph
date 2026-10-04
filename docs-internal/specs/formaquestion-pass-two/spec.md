@@ -86,6 +86,9 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q50 | Search section hints: Keyword Search "Matches the words in your question to guide sections"; AI Search "Asks your AI to choose the sections before answering. One extra request."; Semantic Search "Finds sections by meaning, not exact words. Downloads a small model once." Search Endpoint hint: "Runs the search request. A small, fast model is enough." (user, 2026-10-04) |
 | Q51 | The Mascot tab's controls column drops the label column: the Base Image and the layer list take the full column width under their own headings, so layer rows have room for names and overlays (user, 2026-10-04) |
 | Q52 | Lookup Mode's default goes back to off (ticket 13's probe: both arms 48 of 48, lookup +7% tokens in, no outcome changed; the set is at the ceiling, so lookup stays a hedge the player turns on). Ticket 16 flips it and amends ADR 0009. Resolves Q6 and Q46 (user, 2026-10-04) |
+| Q53 | Mascots are presets, like help prompt presets: a dropdown at the top of the Mascot tab with Delete, Duplicate, Rename, Import, Export and Reset. The Default mascot is read-only and follows the code, so a player on it gets every change; Duplicate makes an editable copy. Reset puts the selected custom mascot back to the Default's rig and drops its own images, after a confirm; hidden on Default (user, 2026-10-04) |
+| Q54 | A card import adds a new mascot instead of replacing the current one. The card gains a name field; export writes the mascot's name, import reads it and falls back to the file name, and a name already in use gets a numbered suffix. The card has never shipped, so the shape changes in place (user, 2026-10-04) |
+| Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
 
@@ -162,6 +165,14 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 
 - Answer and Pick render in one row of two route fields. Pick keeps its Same as Answer choice.
 - The editor has no select. It edits the preset the Answer route resolves to, under a heading "Edit <preset name>" that changes with Answer; with Follow Active, it edits the active preset and the heading says so. Add copies that preset, moves Answer to the copy, and the editor follows. Delete, where the shared editor allows it, moves Answer to Follow Active (Q4).
+
+### Mascot presets
+
+- The help settings value's single rig becomes a mascot preset store: an active id and the player's custom mascots, each a named rig. The Default mascot is virtual, read from the code, never stored, so it follows every release (Q53). The window, the face call's enum and the card export read the active mascot.
+- The top row of the Mascot tab is the preset row the Prompts tab has: a select listing Default and the custom mascots, then Duplicate and Import always, and Rename, Delete, Export and Reset on a custom mascot only. The Default's controls below the row are read-only, as the Default help prompts are.
+- Duplicate copies the rig and shares its image ids. Delete and Reset remove images no remaining mascot references. Import adds a mascot named from the card or the file, with a numbered suffix on a clash, and selects it (Q54).
+- The card carries the mascot's name (Q54). Export-shape change: the card and the help settings value, both unreleased, change in place.
+- Scale and the head toggle stay device values, outside the presets.
 
 ### Mascot tab
 
