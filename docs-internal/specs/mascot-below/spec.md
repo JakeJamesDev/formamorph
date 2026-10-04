@@ -33,6 +33,7 @@ The chat also opens at a fixed pixel height. On a small window it is most of the
 | Q10 | Under Below the column keeps its stored vertical position and she fills the room under it. That position clamps so her room is never less than what the cap leaves: the window height minus the cap minus the screen margin. At the cap height the column sits at the top. One constant drives the cap, the Auto rule and this floor. Under a percent scale the position clamps so her asked height fits; when it cannot fit even at the top, she shrinks to the room (Q6) (ticket 01) |
 | Q11 | Below, she centers under the column, and the column's horizontal position clamps so she stays whole on the screen, as the beside layout does (ticket 01) |
 | Q12 | The cap and the Below variant apply only while a whole Mascot is drawn. Mascot off or the head view leaves the column uncapped and the layout as today (ticket 01) |
+| Q13 | The column's minimum height wins over the cap. On a screen where the cap is under the minimum height, Below cannot be honored and resolves to beside there; the stored Position stays Below and a taller window brings her back under. Auto stays beside there, as today. No second cap value (ticket 01) |
 
 ## User Stories
 
