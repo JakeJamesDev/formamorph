@@ -92,6 +92,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q56 | The draft model is built inside ticket 17, so presets stand on it from the start (user, 2026-10-04) |
 | Q57 | Reset acts on the draft: one undoable step, nothing deleted until Save. It needs no confirm dialog, since Undo and Cancel both revert it. Refines Q53 (user, 2026-10-04) |
 | Q58 | The mascot preset row's buttons are icon-only, as the Prompts tab's row already is: ghost icon buttons with a tooltip and an accessible name each. The tooltip states the full function in the help voice, not one word: Duplicate "Make an editable copy of this mascot", Rename "Rename this mascot", Delete "Delete this mascot and its images", Import "Add a mascot from a card", Export "Save this mascot as a card", Reset "Put this mascot back to the Default". Reset uses the shared reset icon (user, 2026-10-04) |
+| Q59 | Ticket 17 details: Duplicate and Import prompt on a dirty draft like the select, Delete does not (its own confirm covers the draft); the import confirm is dropped since an import only adds, Delete keeps its confirm; Export writes the draft under the saved name; Rename and the Mascot switch write the store at once, outside the draft; Save and Cancel render only on the Mascot tab and are disabled while clean or on Default; on Default the rig controls, Mask handles and tuning sliders are disabled, Play works, and a line with a Duplicate button says it is read-only; Duplicate names the copy "<name> (copy)"; the store field is `mascotPresets` { activeId, mascots: [{ id, name, rig }] } and the old single rig field goes with no reader (ticket 17) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
@@ -183,7 +184,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 - The tab edits a draft of the selected mascot, one immutable value. Save writes it to the store and then deletes images no mascot references; Cancel drops it. The preview and the Head View render the draft; the window, the face call and AI Context render the saved mascot until Save (Q55).
 - A dirty draft blocks a mascot switch, a tab change and the dialog's close behind the unsaved-changes prompt the World Editor uses: Save, Discard, or stay.
 - Uploads go to the image store at once so the draft can show them; an upload the player then cancels away is deleted with the other unreferenced images at the next Save or Cancel.
-- Reset replaces the draft with the Default's rig: one step, no confirm (Q57). Delete and Import act on the store and keep their confirms, since no draft covers them.
+- Reset replaces the draft with the Default's rig: one step, no confirm (Q57). Delete acts on the store and keeps its confirm; Import only adds, so it has none (Q59).
 - Undo and redo (follow-up ticket) are a history of draft snapshots. A slider drag or a typed run is one step, closed at pointer-up or blur; Reset is one step. Save clears the history.
 
 ### Mascot tab
