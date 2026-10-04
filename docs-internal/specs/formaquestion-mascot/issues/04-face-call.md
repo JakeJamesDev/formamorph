@@ -12,6 +12,7 @@ The AI picks a face for its answer.
 - A fixed function, the face call, offered beside the guide lookup and the help dice roll while the mascot is on and at least one expression is enabled. Its one parameter is the face name; its enum is the enabled expressions' names. The capability gate of ADR-0008 applies; the reserved-name rule of ADR-0010 covers its name through the fixed-function list.
 - Its handler yields a new session event naming the face. The answer events are unchanged. The trace records the call, so AI Context shows it.
 - The window stores the face from the event and shows it at the first content token (Q30). A later call in the same answer swaps the face at once (Q12). The next send clears it (Q4).
+- Ticket 03 landed a latch on the exchange that sets once its first content text arrives, because a function call mid-answer clears the text written before it. The stored face keys off that same latch, not off the text being non-empty.
 - The function's description is new prompt text: the local arm reports how often the model sets a face on a plain help question, with an in-batch control.
 
 Spec: Q1, Q4, Q12, Q30; Implementation → Help session, Window.
