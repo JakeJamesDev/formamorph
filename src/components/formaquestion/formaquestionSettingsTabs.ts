@@ -25,6 +25,10 @@ export const GENERAL_COPY = {
       { value: 'full', label: 'Full' },
     ],
   },
+  scrimOpacity: {
+    label: 'Scrim Opacity',
+    hint: 'Draws a panel behind a bare chat column. Set 0 for none.',
+  },
   reasoning: {
     label: 'Reasoning',
     hint: 'Lets your AI reason before it answers. Answers take longer.',

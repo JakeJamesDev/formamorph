@@ -72,7 +72,14 @@ export interface HelpSettings {
   readonly rig: MascotRig;
   /** The window's chrome: Auto follows the Mascot switch; Minimal and Full pin it. */
   readonly chatStyle: ChatStyle;
+  /** The Scrim's opacity in percent: the panel of the app background behind the minimal column. 0 draws nothing. */
+  readonly scrimOpacity: number;
 }
+
+/** The Scrim opacity's range and step, in percent. */
+export const SCRIM_OPACITY_MIN = 0;
+export const SCRIM_OPACITY_MAX = 100;
+export const SCRIM_OPACITY_STEP = 5;
 
 export const CHAT_STYLES = ['auto', 'minimal', 'full'] as const;
 export type ChatStyle = (typeof CHAT_STYLES)[number];
@@ -105,6 +112,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   mascot: true,
   rig: DEFAULT_MASCOT_RIG,
   chatStyle: 'auto',
+  scrimOpacity: 60,
 };
 
 /** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
@@ -166,6 +174,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       mascot: isBool,
       rig: isRecord,
       chatStyle: isChatStyle,
+      scrimOpacity: (value) => isBetween(SCRIM_OPACITY_MIN, SCRIM_OPACITY_MAX)(value) && (value as number) % SCRIM_OPACITY_STEP === 0,
     });
     const storedSources = isRecord(sources) ? sources : {};
     const storedTools = parseHelpTools(tools);
