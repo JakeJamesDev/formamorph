@@ -1,26 +1,27 @@
 import { Fragment, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Copy, GitCompare, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { GitCompare, RotateCcw } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
+import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import PromptField from '@/components/prompt/PromptField';
 import { Button } from '@/components/ui/button';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tip } from '@/components/ui/tooltip';
-import { ActionIcon } from '@/lib/actionIcons';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { helpChipPreview, helpChipValues, helpChipVocabulary } from '@/lib/formaquestion/helpChips';
 import { buildHelpPresetFile, helpPresetFileName, importHelpPresetFile, parseHelpPresetFile } from '@/lib/formaquestion/helpPresetFile';
 import {
   activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, isDefaultHelpPresetActive,
-  isHelpPromptEdited, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
+  isHelpPromptEdited, renameHelpPreset, resetHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, HELP_PROMPT_KEYS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
+import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 import { randomUUID } from '@/lib/uuid';
@@ -47,12 +48,13 @@ const selectionOf = (value: string): { key: HelpPromptKey; options: boolean } | 
   return key && { key, options: value !== key };
 };
 
-type Pending = { kind: 'add' } | { kind: 'rename' } | { kind: 'delete' } | { kind: 'reset'; key: HelpPromptKey } | null;
+type Pending = { kind: 'add' } | { kind: 'rename' } | { kind: 'reset'; key: HelpPromptKey } | null;
 
 /**
- * The Prompts tab: the help preset select with duplicate, rename and delete, and the three prompts in a
- * rail, each with Edit | Preview and an Options row. The Default preset shows its prompts read-only with a
- * way to duplicate; a custom prompt resets to the default text. A custom preset exports to a help preset file, and a file imports as a new preset.
+ * The Prompts tab: the shared preset header, and the three prompts in a rail, each with Edit | Preview and
+ * an Options row. The Default preset shows its prompts read-only with a way to duplicate; a custom prompt
+ * resets to the default text, and the header resets the whole preset. A preset exports to a help preset
+ * file, and a file imports as a new preset.
  */
 export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
   const store = settings.presets;
@@ -97,54 +99,42 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
     }
   };
 
+  const presetActions = presetHeaderActions(readOnly, {
+    duplicate: () => duplicate(copyName),
+    rename: () => setPending({ kind: 'rename' }),
+    import: () => fileRef.current?.click(),
+    export: exportPreset,
+    reset: {
+      run: () => setStore(resetHelpPreset(store, active.id)),
+      description: `Reset every prompt and option in the "${active.name}" preset to its default value? This can't be undone.`,
+    },
+    delete: {
+      run: () => setStore(deleteHelpPreset(store, active.id)),
+      description: `Delete the "${active.name}" preset? This can't be undone.`,
+    },
+  });
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2" data-testid="help-preset-header-row">
-        <span className="text-helper text-muted-foreground">{PROMPTS_COPY.preset.label}</span>
-        {!readOnly && (
-          <Tip tip="Delete">
-            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Delete Preset" onClick={() => setPending({ kind: 'delete' })}>
-              <Trash2 className="h-4 w-4" aria-hidden />
-            </Button>
-          </Tip>
+      <PresetHeader
+        label={PROMPTS_COPY.preset.label}
+        actions={presetActions}
+        testId="help-preset-header-row"
+        select={(
+          <Select value={active.id} onValueChange={(value) => (value === ADD_PRESET ? setPending({ kind: 'add' }) : setStore(selectHelpPreset(store, value)))}>
+            <SelectTrigger aria-label={PROMPTS_COPY.preset.label} className="min-w-0 flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DEFAULT_HELP_PRESET_ID}>{DEFAULT_HELP_PRESET_NAME}</SelectItem>
+              {store.presets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>)}
+              <SelectSeparator />
+              <SelectItem value={ADD_PRESET}>Add New Preset…</SelectItem>
+            </SelectContent>
+          </Select>
         )}
-        <Select value={active.id} onValueChange={(value) => (value === ADD_PRESET ? setPending({ kind: 'add' }) : setStore(selectHelpPreset(store, value)))}>
-          <SelectTrigger aria-label={PROMPTS_COPY.preset.label} className="min-w-40 flex-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={DEFAULT_HELP_PRESET_ID}>{DEFAULT_HELP_PRESET_NAME}</SelectItem>
-            {store.presets.map((preset) => <SelectItem key={preset.id} value={preset.id}>{preset.name}</SelectItem>)}
-            <SelectSeparator />
-            <SelectItem value={ADD_PRESET}>Add New Preset…</SelectItem>
-          </SelectContent>
-        </Select>
-        <Tip tip="Duplicate">
-          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Duplicate Preset" onClick={() => duplicate(copyName)}>
-            <Copy className="h-4 w-4" aria-hidden />
-          </Button>
-        </Tip>
-        {!readOnly && (
-          <Tip tip="Rename">
-            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Rename Preset" onClick={() => setPending({ kind: 'rename' })}>
-              <Pencil className="h-4 w-4" aria-hidden />
-            </Button>
-          </Tip>
-        )}
-        <Tip tip="Import">
-          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Import Preset" onClick={() => fileRef.current?.click()}>
-            <ActionIcon.import className="h-4 w-4" aria-hidden />
-          </Button>
-        </Tip>
-        {!readOnly && (
-          <Tip tip="Export">
-            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Export Preset" onClick={exportPreset}>
-              <ActionIcon.export className="h-4 w-4" aria-hidden />
-            </Button>
-          </Tip>
-        )}
-        <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" data-testid="help-preset-input" onChange={(event) => void importPreset(event)} />
-      </div>
+      />
+      <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" data-testid="help-preset-input" onChange={(event) => void importPreset(event)} />
       <p className="-mt-2 flex-shrink-0 text-helper text-muted-foreground">{PROMPTS_COPY.preset.hint}</p>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
@@ -238,13 +228,6 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         initialName={pending?.kind === 'rename' ? active.name : copyName}
         onOpenChange={(open) => { if (!open) setPending(null); }}
         onSubmit={(name) => (pending?.kind === 'rename' ? setStore(renameHelpPreset(store, active.id, name)) : duplicate(name))}
-      />
-      <ConfirmDialog
-        open={pending?.kind === 'delete'}
-        onOpenChange={(open) => { if (!open) setPending(null); }}
-        title="Delete Preset"
-        description={`Delete the "${active.name}" preset? This can't be undone.`}
-        onConfirm={() => setStore(deleteHelpPreset(store, active.id))}
       />
       <ConfirmDialog
         open={pending?.kind === 'reset'}

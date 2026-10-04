@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { activeHelpPreset, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
 import { helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { helpTool } from '@/test/helpFixtures';
@@ -33,7 +34,7 @@ const buddy = (): HelpSettingsChange => ({
 
 /** Exports the active preset and returns the file text. */
 async function exportText(): Promise<string> {
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Export Preset' }));
+  await userEvent.setup().click(within(screen.getByTestId('help-preset-header-row')).getByRole('button', { name: 'Export' }));
   expect(download).toHaveBeenCalledTimes(1);
   const [blob, filename] = download.mock.calls[0];
   expect(filename).toBe('Buddy.help-preset.json');
@@ -59,10 +60,23 @@ beforeEach(() => {
 });
 
 describe('the preset file on the Prompts tab', () => {
-  it('offers no export on the Default preset, and an import beside the select', () => {
+  it('exports the Default preset as a file that imports as a separate custom preset', async () => {
+    const { unmount } = render(<Harness initial={{}} />);
+    expect(screen.getByRole('button', { name: 'Import' })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Export' }));
+    const [blob, filename] = download.mock.calls[0];
+    expect(filename).toBe('Default.help-preset.json');
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsText(blob);
+    });
+    unmount();
+
     render(<Harness initial={{}} />);
-    expect(screen.queryByRole('button', { name: 'Export Preset' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Import Preset' })).toBeInTheDocument();
+    importText(text);
+    await waitFor(() => expect(activeHelpPreset(help.presets).name).toBe('Default (2)'));
+    expect(activeHelpPreset(help.presets).prompts).toEqual(DEFAULT_HELP_PROMPTS);
   });
 
   it('exports a custom preset and imports it on a clean profile', async () => {

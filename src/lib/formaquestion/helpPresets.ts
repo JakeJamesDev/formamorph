@@ -107,6 +107,10 @@ export const editHelpOptions = (store: HelpPresetStore, id: string, key: HelpPro
 export const resetHelpPrompt = (store: HelpPresetStore, id: string, key: HelpPromptKey): HelpPresetStore =>
   editHelpPrompt(store, id, key, DEFAULT_HELP_PROMPTS[key]);
 
+/** Returns all three prompts of a custom preset, and their options, to the defaults. */
+export const resetHelpPreset = (store: HelpPresetStore, id: string): HelpPresetStore =>
+  withCustom(store, id, (preset) => ({ ...preset, prompts: { ...DEFAULT_HELP_PROMPTS }, options: copyOptions(DEFAULT_HELP_OPTIONS) }));
+
 /** Renames a custom preset. */
 export function renameHelpPreset(store: HelpPresetStore, id: string, name: string): HelpPresetStore {
   return withCustom(store, id, (preset) => ({ ...preset, name }));

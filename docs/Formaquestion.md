@@ -252,7 +252,7 @@ Your AI calls the Tool when the question needs what it returns. The endpoint mus
 
 1. On the first device, open the **Prompts** tab.
 2. Select your custom preset.
-3. Select **Export**. Formamorph saves a `.help-preset.json` file.
+3. Select **Export**. On a narrow screen, open the **Preset Actions** menu first. Formamorph saves a `.help-preset.json` file.
 4. Copy the file to the other device.
 5. On the other device, open the **Prompts** tab.
 6. Select **Import** and choose the file.
@@ -440,11 +440,11 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 
 - **Default** is read-only. Its text comes from the app, so each release updates it.
 - **Duplicate & Edit** in the notice above a Default prompt makes a copy of the preset and opens it for edits. The **Duplicate** button beside the preset list does the same. **Add New Preset…** in the list asks for a name first.
-- A custom preset has **Rename** and **Delete** beside the list. When you delete the preset in use, help goes back to **Default**.
+- A custom preset has **Rename**, **Reset** and **Delete** beside the list. On a narrow screen, they are in the **Preset Actions** menu. **Reset** returns all three prompts and their options to the text of this release, after it asks. When you delete the preset in use, help goes back to **Default**.
 - **Reset to Default** above a custom prompt returns that one prompt to the text of this release. A custom preset does not get the updates of a release on its own.
 - **Compare to Default** above a custom prompt opens a diff of your text against the text of this release. Text you added is tinted. Text you removed is struck through. **Raw** shows your text as it is. The button is off for a prompt that equals the default.
 - This device keeps the presets, with the other Formaquestion settings.
-- A custom preset has **Export** beside the list. It saves the preset to a file, with your **My Tools** and the switches of the **Tools** tab. **Default** has no export.
+- **Export** beside the list saves the preset to a file, with your **My Tools** and the switches of the **Tools** tab. **Default** exports too, and importing that file adds a custom preset.
 - **Import** beside the list adds the preset from a file and makes it the one in use.
 
 Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chips are the parts the app reads back or names elsewhere:

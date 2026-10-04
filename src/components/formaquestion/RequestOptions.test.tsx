@@ -100,7 +100,7 @@ describe('the Options panel of each prompt', () => {
 
   it('keeps each preset its own values when the player changes preset', async () => {
     const user = await renderOptions(mine('lookup', { temperature: 0.7 }), 'lookup');
-    await user.click(screen.getByRole('button', { name: 'Duplicate Preset' }));
+    await user.click(within(screen.getByTestId('help-preset-header-row')).getByRole('button', { name: 'Duplicate' }));
     expect(slider('lookup', 'Custom Temperature')).toHaveAttribute('aria-valuenow', '0.7');
     await user.click(box('lookup', 'Custom Temperature'));
     const copyId = help.presets.activeId;

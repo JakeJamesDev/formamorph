@@ -9,7 +9,7 @@ import type { Tool, ToolEnabledMap } from '@/types';
 import { DOCS_LOOKUP } from './docsLookup';
 import { HELP_PROMPT_KEYS, type HelpPromptKey, type HelpPromptTexts } from './helpPrompt';
 import {
-  DEFAULT_HELP_PRESET_NAME, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, mapHelpOptions, type HelpPreset, type HelpPresetOptions, type HelpRequestOptions,
+  DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, defaultHelpPreset, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, mapHelpOptions, type HelpPreset, type HelpPresetOptions, type HelpRequestOptions,
 } from './helpPresets';
 import { HELP_ROLL } from './helpRoll';
 import { HELP_CALL_LIMIT_MAX, type HelpSettings, type HelpSettingsChange } from './helpSettings';
@@ -59,9 +59,9 @@ const blockOf = ({ temperature, repetitionPenalty, maxTokens }: HelpRequestOptio
 /** The blocks with their fields only. */
 const blocksOf = (options: HelpPresetOptions): HelpPresetOptions => mapHelpOptions((key) => blockOf(options[key]));
 
-/** The file of the custom preset `presetId`; null for the Default preset, which has no export. */
+/** The file of the preset `presetId`, the Default preset from the code of this build; null for an id no preset holds. */
 export function buildHelpPresetFile(settings: HelpSettings, presetId: string, appVersion: string): HelpPresetFile | null {
-  const preset = settings.presets.presets.find((p) => p.id === presetId);
+  const preset = presetId === DEFAULT_HELP_PRESET_ID ? defaultHelpPreset() : settings.presets.presets.find((p) => p.id === presetId);
   if (!preset) return null;
   const { answer, pick, lookup } = preset.prompts;
   return {
