@@ -1,0 +1,120 @@
+# Spec: Help Take Me There
+
+Status: ready-for-agent
+Spec session: help-take-me-there — spec
+
+## Problem Statement
+
+A Formaquestion answer tells the player where a control lives: "open Settings, then the Endpoint tab". The player then closes or moves the help window and hunts for the screen. Nothing in the answer opens it. The Formaquestion spec named a deep link as a later effort (its Q3). This is that effort.
+
+An AI-driven jump is not an option for most players: the default cloud endpoint refuses every function call, so a navigate function would only ever fire on local models.
+
+## Solution
+
+Every how-to section in the player docs carries a **route**: the id of the screen, dialog or tab it explains. When an answer's top source carries a route, the answer gets a **Take Me There** button beside its Sources expander. A click opens that surface. Leaving a running game, or a World Editor with unsaved edits, asks first. On desktop the help window stays open above the new surface; on mobile the sheet closes.
+
+No AI call is involved. The link is derived from the docs, so it works on the cloud, costs no tokens, and never fires on a question the model misread.
+
+A probe scores the keyed task and here questions offline: does the keyed section's route match the surface the question is about. The first run reports; the user sets the bar after.
+
+## Rulings
+
+Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` grill.
+
+| # | Ruling |
+|---|---|
+| Q7 | The link is appended from the docs, never from an AI call. An AI-driven variant may follow once the link proves itself |
+| Q18 | An answer carries the link whenever its top source section has a route. No question-kind filter |
+| Q19 | The link may open any surface. Leaving a running game or an editor with unsaved work asks first |
+| Q20 | The route probe reports first. The user sets the bar after the first run |
+| Q23 | The button sits beside the Sources expander in the answer's footer row, in both chromes |
+| Q24 | After navigating, the desktop window stays open. The mobile sheet closes |
+
+## User Stories
+
+1. As a player, I want a Take Me There button on an answer, so that I reach the screen it describes with one click.
+2. As a player, I want the button only when the answer knows where to go, so that it never leads nowhere.
+3. As a player, I want the button beside Sources, so that it is in the same place on every answer.
+4. As a player, I want the button to open a Settings tab directly, so that I do not click through the modal.
+5. As a player, I want the button to open a Library screen or an editor dialog, so that every surface is reachable.
+6. As a player in a game, I want a question before the link leaves my game, so that a click does not cost me my turn.
+7. As a player with unsaved editor work, I want the editor's own unsaved prompt first, so that nothing is lost.
+8. As a player on desktop, I want the help window to stay where it is after the jump, so that I can keep reading the steps.
+9. As a player on mobile, I want the sheet to close after the jump, so that I see the surface.
+10. As a player, I want the button to be a real button with a name, so that a screen reader announces it.
+11. As a player on the cloud endpoint, I want the button as often as a local player gets it, so that the feature does not depend on my model.
+12. As a player, I want a route that no longer exists to show no button, so that I never land on an error.
+13. As a player, I want the jump to open the exact tab, not just the dialog, so that the control is on screen.
+14. As a player already on that surface, I want the click to do nothing harmful, so that a repeat click is safe.
+15. As a doc author, I want one comment line per section to set its route, so that routes live next to the text.
+16. As a doc author, I want a source test to refuse an unknown surface id, so that a typo fails the build.
+17. As a doc author, I want a route to inherit to a section's parts when the index splits it, so that long sections keep one tag.
+18. As the user, I want a route-accuracy report over the keyed questions, so that I can set a bar from numbers.
+19. As the user, I want the probe to run offline without a model, so that it is free and repeatable.
+20. As the user, I want the AI Context popup to show the route the answer chose, so that I can see why a button appeared.
+21. As a player, I want the button text in the help voice, so that it reads like the rest of the window.
+22. As a player, I want the button to survive the answer's reveal animation, so that it appears once the answer is done.
+
+## Implementation Decisions
+
+### Route tags in the docs
+
+- A how-to section carries one HTML comment line, the same shape as the keyword line: `<!-- route: <surface id> -->`. The id is a surface id from the surface map: a screen or dialog name, or `<ledger key>.<tab>`.
+- The docs index parses the line as it parses keywords, strips it from the section text, and stores it on the section. A split section's parts inherit it. A section without a line has no route.
+- A source test over the bundled docs refuses any route that is not a surface id, and refuses a route on an excluded surface (staff and dev surfaces).
+- The route is index data, not search data: it never joins the search phrases.
+
+### Navigation request
+
+- One new request in the settings context, beside the settings-open request: open a surface by id. It is the only production path from the help window into the app's navigation. The dev router stays DEV-only and does not change.
+- A pure resolver turns a surface id into the steps: the view to show, the dialog to open, the tab to select. It reads the same ledger the surface map reads, so a new surface needs no second registration.
+- The main menu and the game viewer consume the request as they consume the settings-open request. The game viewer, for a surface on another screen, asks before leaving the game; the World Editor's own unsaved-edits prompt runs for an editor surface when the editor holds changes (Q19). A refused prompt clears the request and changes nothing.
+- A request for the surface already open re-selects its tab and does nothing else.
+
+### Help session and window
+
+- The help session is unchanged. The `done` event already names the sources; the window reads the top source's route from the guide index.
+- The answer footer renders the Take Me There button beside the Sources expander when the top source carries a route (Q18, Q23). Both chromes render it. A click sends the navigation request; on mobile it also closes the sheet (Q24).
+- The trace that AI Context shows gains the chosen route per answer, so the popup names it.
+- The button label is settled copy in the help voice: "Take Me There".
+
+### Probe
+
+- A new offline probe in the baseline harness: for each keyed task and here question, the keyed section's route against the question's expected surface. The expected surface is a new field on the question key, authored once. Output: a table per kind with hit, miss and no-route counts, and the misses by name. No model runs.
+- The first run reports; the bar is the user's to set after (Q20).
+
+### Shape and settings
+
+- No settings, world, save, preset or card shape changes. The question-key file in the harness gains a field.
+
+## Testing Decisions
+
+A good test calls a module through its public operations and asserts on what a player observes: the parsed section, the surface that opens, the button on the answer. It never asserts on internal layout.
+
+Seams:
+
+- **Docs index (existing, pure).** A section with a route line stores the route and loses the line from its text; a part of a split section inherits it; a section without one has none; the line never enters the search phrases. The source test over the bundled docs refuses an unknown or excluded id. Prior art: the keyword-line tests in the docs index tests.
+- **Navigation request (new, one seam).** The resolver: a screen id resolves to the view alone; a dialog id to the view that hosts it plus the dialog; a tab id adds the tab; an unknown id resolves to nothing. The consumers, through the app's providers: a request opens the right view, dialog and tab; from a running game the prompt shows and a refusal changes nothing; a request for the open surface re-selects the tab. Prior art: the settings-open request tests in the main menu and game viewer tests.
+- **Window (component).** The button renders only when the top source has a route; it is absent for a routeless top source even when a later source has one; a click sends the request with that id; on mobile the sheet closes. The trace carries the route. Tests that mount Formaquestion keep the one mocked seam to the settings providers. Prior art: the Formaquestion ask and sources tests.
+- **Probe (pure).** The scorer over a small fixture: hit, miss, no-route, and the table shape. Prior art: the help probe's rescore path.
+
+Other checks:
+
+- Each guard is proven: reinstate the old behavior and confirm the test fails.
+- The dev-router test that keeps the ledger in lockstep with each surface's tab list still holds; the resolver reads that ledger.
+- Playwright: one end-to-end jump from an answer to a Settings tab, and one from a game with the prompt shown and refused.
+
+## Out of Scope
+
+- An AI-driven navigation function. A later ticket after the link proves itself (Q7).
+- Auto-navigation without a click.
+- Routes for sections that are not how-to sections.
+- A link per source. Only the top source carries the button (Q18).
+- Highlighting the control on the opened surface.
+- Routes into the community site or the desktop shell.
+
+## Further Notes
+
+- The surface map and the surface registry already name every player-facing screen, dialog and tab, so routes reuse their ids. The registry reports; it does not navigate. The resolver is the one new piece that does.
+- The keyed question set is the shared input the help bar used; this probe reads its sections and never tunes on the blind set.
+- The AI Picks list is a shared input for other efforts: a docs edit that only adds route comment lines does not change section text, so picks should not move. The docs ticket runs the recall probe once to confirm.
