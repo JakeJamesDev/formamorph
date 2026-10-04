@@ -1,0 +1,199 @@
+# Spec: Formaquestion Pass Two
+
+Status: ready-for-agent
+Spec session: formaquestion-pass-two — spec
+
+## Problem Statement
+
+The first pass of Formaquestion settings and the Mascot shipped as plain settings tabs. The Mascot tab reads like a list of rows, its live preview is a small strip at the top, the mask is set by drawing a box from scratch, and the transition controls with their Play button sit at the bottom of a long scroll where the preview is out of view. The layer list gives no read on what a layer does to the base. The mascot has one size, and it always stands left of the chat even when the chat is on the left edge of the screen.
+
+The Endpoint tab stacks Answer and Pick as two full rows, then shows a preset editor with its own select. That select follows Answer until it is touched, then stops following it, so it reads as a second way to pick a route.
+
+The Prompts tab lacks the Edit | Preview tabs that gameplay prompts have, and only the Answer prompt has options.
+
+Lookup Mode (`read_guide`) is off by default, and nothing on the tab says why a player would turn it on.
+
+The minimal chrome is tied to the Mascot switch: no way to pin it on or off. Its column has no resize grip, text is hard to read over busy screens, and its size is shared with the full window. Both chats lose the player when they scroll up through history: nothing brings them back to the end.
+
+## Solution
+
+**Mascot tab.** A two-column tab: a pinned live preview on the left, the rig controls scrolling on the right (stacked on mobile). The preview shows what is selected: a layer row shows the base plus that layer's overlays, a clicked overlay shows the base plus that overlay alone. The Mask is an editable box on the preview with eight edge handles and a center move grip, faded until hover on desktop and always drawn on touch. The transition mode, its tuning and Play sit on the preview widget. A Scale slider beside the preview sets the mascot's size as a percent of the base's pixel size, or Auto, which fits the mascot to the chat's height. Auto is the default.
+
+**Mascot placement.** The mascot stands on the side of the chat with more free screen. It flips when the window crosses the middle, and the head on the pill moves to the same end.
+
+**Chat Style.** Auto, Minimal or Full, on the General tab and in the pill's ⋮ menu. Auto is today's rule: minimal while the Mascot is on. Full with the Mascot on floats the mascot beside the full frame. Minimal gets a corner resize grip. Each style keeps its own width and height; the position is shared.
+
+**Minimal readability.** A prototype shows three treatments side by side: a scrim with an opacity slider behind the column, shadows on the bubbles, and a text halo. The user picks from frames; the pick becomes a setting that applies whenever the minimal chrome renders.
+
+**Scroll arrow.** Both chats show a small down-arrow button when the end is more than half a viewport away. A click scrolls to the end and resumes following.
+
+**Endpoint tab.** Answer and Pick share one row. The editor below loses its select: it always edits the preset Answer resolves to, under a heading that names it. Add copies that preset and moves Answer to the copy.
+
+**Prompts tab.** Every prompt gets the Edit | Preview tabs. Pick and Lookup gain their own Options (temperature, penalty, Max Output), with defaults equal to today's pins.
+
+**Lookup Mode.** On by default. The capability gate already skips it where the endpoint refuses functions. The help copy states when it runs and what it costs.
+
+Mascot ticket 14 (extract the tuned defaults) stays held until the tab redesign lands, so the user tunes once on the new tab.
+
+## Rulings
+
+Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, Q24 belong to the `help-take-me-there` spec).
+
+| # | Ruling |
+|---|---|
+| Q1 | Two efforts: this spec, and `help-take-me-there` for navigation |
+| Q2 | The tab redesign lands before mascot ticket 14. The user tunes the rig on the new tab |
+| Q3 | Scale is a device setting beside the window box, never in the card |
+| Q4 | The Endpoint editor loses its select and always edits the preset Answer resolves to. Add copies it and moves Answer to the copy |
+| Q5 | Pick and Lookup get sampler and Max Output options. Reopens Q58 of the settings spec. The preset file changes shape |
+| Q6 | Lookup Mode defaults to on, from the MeroMero numbers. No new probe before the flip |
+| Q8 | Minimal readability is picked from a prototype of three treatments: scrim with opacity, bubble shadows, text halo |
+| Q9 | Chat Style Full with the Mascot on floats the mascot beside the full frame |
+| Q10 | Chat Style lives on the General tab and in the ⋮ menu |
+| Q11 | Minimal and Full each keep their own width and height. The position is shared |
+| Q12 | The mascot takes the side with the wider free gap and flips when the window crosses the middle. The pill head follows |
+| Q13 | The scroll arrow shows when the end is more than half a viewport away |
+| Q14 | The Mascot tab is two columns: pinned preview left, controls right; stacked on mobile |
+| Q15 | A clicked overlay previews the base plus that overlay alone. A selected layer previews the base plus all its overlays |
+| Q16 | Mask handles fade until hover on desktop and stay visible on touch |
+| Q17 | Scale is a percent of the base's pixel size, plus Auto. Set by a slider on the tab |
+| Q21 | Auto fits the masked mascot to the chat's height and follows resizes. Default Auto; 50% is a slider stop |
+
+## User Stories
+
+1. As a player, I want the Mascot tab to show the mascot large and always in view, so that I see every change as I make it.
+2. As a player, I want the preview to follow the layer I select, so that I know what the layer adds to the base.
+3. As a player, I want to click an overlay and see the base with only that overlay, so that I can tell overlays apart.
+4. As a player, I want to drag the Mask's edges and corners, so that I can trim one side without redrawing the box.
+5. As a player, I want to drag the Mask from its middle, so that I can move the crop without changing its size.
+6. As a player, I want the Mask handles to fade when my pointer is away, so that they do not cover the preview.
+7. As a player on a touch screen, I want the handles always drawn, so that I can find them without a hover.
+8. As a player, I want the transition controls and Play next to the preview, so that I can watch what I tune.
+9. As a player, I want a Scale slider for the mascot, so that it takes the room I want on my screen.
+10. As a player, I want an Auto scale that fits the chat's height, so that the mascot matches the window without my tuning.
+11. As a player, I want my scale kept on this device and out of the card, so that an imported rig keeps my size.
+12. As a player, I want the mascot to stand where there is room, so that it never hangs off the screen edge beside the chat.
+13. As a player, I want the pill's head to move to the mascot's side, so that the two read as one piece.
+14. As a player, I want to choose Auto, Minimal or Full chat style, so that the chrome is what I like, not what the Mascot switch implies.
+15. As a player, I want the style choice in the ⋮ menu too, so that I can swap without opening settings.
+16. As a player with Full and the Mascot on, I want the mascot beside the full frame, so that I keep its reactions with the full chrome.
+17. As a player, I want a resize grip on the minimal column, so that I can size it like the full window.
+18. As a player, I want each style to remember its own size, so that a swap does not shrink or stretch the other.
+19. As a player, I want the window to stay where it was when I swap styles, so that it does not jump.
+20. As a player, I want the minimal chat readable over a busy screen, so that the text separates from what is behind it.
+21. As a player, I want to adjust how strong that separation is, so that it suits my screen.
+22. As a player, I want a down arrow when I scroll up, so that I return to the newest answer with one click.
+23. As a player, I want the arrow to leave when I am near the end, so that it never covers the latest text.
+24. As a player, I want Answer and Pick on one row, so that the Endpoint tab is short.
+25. As a player, I want the editor to edit the preset Answer uses, so that there is one way to choose a route.
+26. As a player, I want the editor heading to name the preset, so that I know what I am editing.
+27. As a player, I want Add to copy the current preset and move Answer to the copy, so that I can tune a variant without losing the original.
+28. As a player, I want Edit | Preview on every help prompt, so that I see the chips resolved as the model does.
+29. As a player, I want options on the Pick and Lookup prompts, so that I can tune every request the window sends.
+30. As a player, I want the new options in my exported preset file, so that a shared preset carries them.
+31. As a player with a preset file from before, I want it to import, so that my prompts are not lost.
+32. As a player on a local model, I want Lookup Mode on from the start, so that I get the better answers without finding the switch.
+33. As a player on the cloud endpoint, I want nothing to change, so that my requests stay the same.
+34. As a player, I want the Lookup row to say when it runs and what it costs, so that I can decide to turn it off.
+35. As a player who prefers reduced motion, I want the Mask handles and the arrow to appear without animation, so that the tab respects my setting.
+36. As a player on mobile, I want the preview above the controls, so that the tab fits the sheet.
+37. As a player who uses a keyboard, I want the Mask box adjustable with arrow keys from a focused handle, so that I can set it without a pointer.
+38. As the author, I want ticket 14 to wait for the redesign, so that I tune the rig once.
+39. As a player, I want the Chat Style and scale to survive a reload, so that the window opens as I left it.
+40. As a player, I want the ⋮ menu's style choice and the General tab row to agree, so that the two never fight.
+
+## Implementation Decisions
+
+### Window layout module
+
+- The layout module gains a side: the mascot stands on whichever side of the column has the wider free gap in the viewport, measured from the column's edges to the screen margin. The reader piece takes the other side. Ties keep the current side, so a drag that crosses the middle flips once. The pill's head is drawn at the mascot's end of the pill row.
+- The layout takes a scale value: a percent of the base's pixel size, or Auto. Auto sizes the masked mascot to the column's height (or the full frame's height under Full), as today. A percent sizes it to that share of the base's natural pixel height, at the base's aspect, clamped to the screen. The head view scales with it. The slider runs from 25% to 150% with Auto as its leading stop; the default is Auto (Q21).
+- The stored window box becomes a size per style and one position: `{ x, y, minimal: { w, h }, full: { w, h } }`. The reader opens from the stored box as before. The minimal size keeps today's narrow cap. A stored box of the old shape reads its `w, h` into both styles.
+- The scroll-arrow rule is a pure function of the viewport's scroll position, height and scroll height: shown when the end is more than half a viewport height away (Q13).
+- Scale and the head toggle are device values beside the window box, outside the help settings value and outside the card (Q3).
+
+### Help settings
+
+- The help settings value gains `chatStyle: 'auto' | 'minimal' | 'full'`, default `auto`. The chrome rule is one pure function of the style and the mascot switch: Auto is minimal while the Mascot is on; Minimal and Full pin. Full with the Mascot on renders the mascot piece beside the full frame (Q9). Minimal with the Mascot off renders the column alone.
+- The Lookup switch defaults to on (Q6). The gate (`settings.lookup && takesFunctions`) is unchanged; the cloud endpoint refuses functions, so its requests are byte-equal to today's.
+- The General tab gains a Chat Style row; the ⋮ menu lists the same three choices with the current one marked (Q10). Both write the one field.
+- The readability treatment, once picked from the prototype, becomes a setting beside Chat Style. The prototype ticket settles its name, range and default.
+
+### Help presets and the preset file
+
+- A help preset's options become one block per prompt: Answer, Pick and Lookup each hold temperature, repetition penalty and Max Output. The Default preset's Pick and Lookup options follow the code and equal today's pinned values for those requests. A custom preset stores all three (Q5).
+- The preset file carries the three blocks. Its version bumps; a file of the earlier version imports with Pick and Lookup at the Default's values. **Export-shape change: remind the user in the response.**
+- The help session reads each request's options from its own block. Compare to Default and Reset to Default cover the three blocks.
+
+### Prompts tab
+
+- Every prompt field renders with the Edit | Preview tabs the gameplay editor has, with the help chips resolved from the current settings (the marker, the Voice, the pick limit, the lookup function). The Values tab stays absent: help prompts have no placeholder values.
+- Each prompt row gets an Options sub-row with the shared per-prompt controls, as Answer has today.
+
+### Endpoint tab
+
+- Answer and Pick render in one row of two route fields. Pick keeps its Same as Answer choice.
+- The editor has no select. It edits the preset the Answer route resolves to, under a heading "Edit <preset name>" that changes with Answer; with Follow Active, it edits the active preset and the heading says so. Add copies that preset, moves Answer to the copy, and the editor follows. Delete, where the shared editor allows it, moves Answer to Follow Active (Q4).
+
+### Mascot tab
+
+- The tab is two columns from the modal's wide layout: the preview column is fixed and does not scroll; the controls column scrolls. Under the mobile breakpoint the preview sits above the scrolling controls (Q14).
+- The preview widget holds: the composed mascot at the preview height, the Mask box, the Scale slider, the transition mode, its tuning rows and Play, and the Head View thumbnail. The transition rows leave the bottom of the tab.
+- The preview composition is a pure function of the selection: no selection shows the Idle composition; a selected layer row shows the base plus that layer's overlays; a selected overlay shows the base plus that overlay alone (Q15). Selecting is a click on the row or thumbnail; the selection is tab state and clears when the tab closes.
+- The Mask box is an editable rectangle in base pixels with eight handles (four corners, four sides) and a center move grip. A corner drag moves two edges; a side drag moves one; the center drag moves the box. The box stays inside the base and above a minimum size. The handles and grip are at low opacity until the pointer hovers the box or a drag runs; on a coarse pointer they stay at full opacity (Q16). A focused handle moves one base pixel per arrow key, ten with Shift. Reduced motion drops the fade.
+- The existing pointer-drag hook drives every handle; drawing a new box from scratch stays available on a press outside the box, as today.
+- The Scale slider writes the device value. The preview does not scale with it; the window does.
+
+### Window
+
+- The chrome rule replaces the mascot-implies-minimal condition. A style change while the window is open swaps the chrome in place; conversation and phase carry over.
+- The minimal column gets the same corner resize grip as the full frame, writing the minimal size (Q11).
+- The mascot piece and the head on the pill take the side the layout module returns (Q12). Under Full, the mascot piece stands beside the frame at the frame's height under Auto scale.
+- Both conversation scrollers render the scroll arrow when the rule says so. The arrow is a small round button at the bottom center of the viewport, above the input. A click scrolls to the end and sets following; the arrow leaves when following resumes.
+- The readability treatment applies whenever the minimal chrome renders, under Auto or Minimal.
+
+### Prototype
+
+- The readability prototype runs on the prototype flow: a page that renders the minimal column over three busy backgrounds (light screen, dark screen, scene image) with the scrim at a slider, the bubble shadows, and the text halo as three columns. The user picks from frames. The pick, its range and its default go into this spec as a ruling before the ticket that ships it.
+
+### Shape and settings
+
+- The help settings value gains `chatStyle` and the readability setting. The device window box changes shape (local storage, migrated on read). The help preset file changes shape and bumps its version. The mascot card does not change.
+- `chatStyle` and the readability setting have no environment twins.
+
+## Testing Decisions
+
+A good test calls a module through its public operations and asserts on what a player observes: the pieces' places on the screen, the stored value after a reload, the request that leaves the app, the rows and controls on the tab. It never asserts on internal layout.
+
+Seams:
+
+- **Window layout module (existing, pure).** The side rule: a column near the right edge puts the mascot left; near the left edge, right; a tie keeps the side; the reader takes the other side. Scale: Auto equals the column height; a percent equals that share of the base's pixel height; both clamp to the screen. The stored box: a size per style, one position, the old shape reads into both. The scroll-arrow rule at the threshold and both sides of it. Prior art: the window box tests.
+- **Help settings codec and preset file (existing).** `chatStyle` and the readability setting round-trip; a missing value reads as the default; Lookup defaults on. The preset file: three option blocks round-trip; an older file imports with the Default's Pick and Lookup values; a bad block is named. Prior art: the help settings tests, the preset file tests.
+- **Help session (existing, fake fetch).** The pick request carries the preset's Pick options; the lookup request carries the Lookup options; the Default preset sends today's values byte-equal. Lookup on by default offers the function on a function-taking endpoint and nothing on the cloud endpoint, body byte-equal to today's. Prior art: the help session presets and lookup tests.
+- **Component seam (Formaquestion mount, settings tabs).** The chrome for each style and mascot pairing; the ⋮ menu and the General row write one value; the minimal column renders the grip; the scroll arrow renders past the threshold and a click scrolls to the end; the Endpoint editor heading follows Answer and Add moves Answer; Pick and Lookup show Options; every prompt shows Edit and Preview; the Mascot tab preview follows a selected layer and a clicked overlay; the handles render; a handle drag through the pointer hook changes one edge; the warning and pick rows still render. Tests that mount Formaquestion keep the one mocked seam to the settings providers. Prior art: the mascot tab, endpoint tab and prompts tab tests.
+- **Playwright.** The handle fade on hover and its absence on a coarse pointer; the mascot flip while the column is dragged across the middle; the minimal resize grip; the per-style size after a reload; the arrow's painted position above the input. The Browser pane does not composite, so motion claims use per-frame sampling.
+
+Other checks:
+
+- Each guard is proven: reinstate the old behavior and confirm the test fails.
+- Unmount during a drag or a stream leaves no timer or listener; the suite's exit code is the check.
+- The surface registry source scan still covers the tabs.
+- The Lookup default flip is not a prompt change; no probe. The help bar run stays valid for the cloud, whose requests are byte-equal.
+
+## Out of Scope
+
+- Take Me There and any navigation from an answer: the `help-take-me-there` spec.
+- A Cydonia lookup probe. The user flipped the default on the MeroMero numbers (Q6).
+- A scale or side in the mascot card. Both are device values (Q3).
+- A player-chosen side. The wider gap decides (Q12).
+- Mascot ticket 14's extraction. It runs after this effort on the new tab (Q2).
+- Idle motion, blinking, or new transition modes.
+- Changes to the game chat's scroller beyond the arrow.
+
+## Further Notes
+
+- The settings spec's Q58 (Answer-only options) is superseded by Q5 here.
+- The mascot spec's Q5 (mascot implies minimal) is refined: Auto keeps that rule; Minimal and Full pin.
+- The Endpoint editor's old select existed so a player could edit a preset other than Answer's. After Q4 that path is Settings → Endpoint, which edits every preset.
+- The readability prototype ships first; its ruling lands in this spec before the ticket that builds the setting.
+- The Lookup row copy, in the help voice: it runs on endpoints that accept functions, reads guide sections during the answer, and roughly quadruples input tokens per question.
