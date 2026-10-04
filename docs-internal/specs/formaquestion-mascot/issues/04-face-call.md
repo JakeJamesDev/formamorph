@@ -37,5 +37,5 @@ Recommended model rationale: a new fixed function across the session, the tool l
 | bare | 10/15 (67%) | 3/3 | 13/13 of calls | 0/18 | 0 |
 
 - The description lifts the call rate from 67% to 100%. Every call came before the answer text, so each set face shows from the first content token.
-- Every call in both arms picked **Happy**, the first face in the list, including for "a side character keeps showing up and I want them gone". The rate is high, but the choice does not follow the mood. The face list order or the description may need work; this ticket measured the rate only.
+- Every call in both arms picked **Happy**. Every case got a friendly answer with a working fix or a thank-you back, so Happy fits "the mood of your answer" each time. For "a side character keeps showing up", the guide's **Removing One** section gave a clean fix. These cases cannot tell a fitting pick from a pick of the first face in the list. The probe now has case groups whose answers have other moods: outside the guide, a missing feature, a loss with no fix, and thanks.
 - Each call costs one extra request round before the answer.
