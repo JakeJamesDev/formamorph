@@ -187,10 +187,34 @@ describe('the minimal layout', () => {
     expect(minimalLayout({ x: 800, y: 0, w: MIN_WIDTH, h: 560 }, SCREEN, ASPECT).column.w).toBe(MIN_WIDTH);
   });
 
-  it('moves the column right until the Mascot is whole on the screen', () => {
-    const { column, group } = minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
-    expect(column.x).toBe(420);
-    expect(group.x).toBe(0);
+  it('stands the Mascot right of the column near the left edge, and the shared box spans both', () => {
+    const { column, mascot, group, side } = minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    expect(side).toBe('right');
+    expect(column.x).toBe(100);
+    expect(mascot).toEqual({ w: 420, h: 560 });
+    expect(group).toEqual({ x: 100, y: 0, w: NARROW_WIDTH + 420, h: 560 });
+  });
+
+  it('stands the Mascot left near the right edge', () => {
+    expect(minimalLayout({ x: 1100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT).side).toBe('left');
+  });
+
+  it('keeps the current side on a tie', () => {
+    const middle = { x: (SCREEN.width - NARROW_WIDTH) / 2, y: 0, w: NARROW_WIDTH, h: 560 };
+    expect(windowLayout('minimal', middle, SCREEN, { mascotAspect: ASPECT, side: 'left' }).side).toBe('left');
+    expect(windowLayout('minimal', middle, SCREEN, { mascotAspect: ASPECT, side: 'right' }).side).toBe('right');
+  });
+
+  it('gives the side to the wider gap even while the Mascot is not drawn', () => {
+    expect(minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, null).side).toBe('right');
+  });
+
+  it('keeps the Mascot whole on the screen on its side', () => {
+    const { column, group } = minimalLayout({ x: 1300, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    expect(column.x).toBe(SCREEN.width - NARROW_WIDTH);
+    expect(group.x).toBe(column.x - 420);
+    const right = minimalLayout({ x: 0, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+    expect(right.group.x + right.group.w).toBeLessThanOrEqual(SCREEN.width);
   });
 
   it('keeps the column whole on the right and bottom edges', () => {
@@ -211,6 +235,16 @@ describe('the minimal layout', () => {
     expect(mascot).toBeNull();
     expect(group).toEqual(column);
     expect(column.x).toBe(100);
+  });
+
+  it('puts the reader on the side opposite the Mascot', () => {
+    const box = { x: 100, y: 0, w: NARROW_WIDTH, h: 560 };
+    const { column, mascot, reader, group, side } = minimalLayout(box, SCREEN, ASPECT, true);
+    expect(side).toBe('right');
+    expect(reader).toEqual({ w: READER_WIDTH, h: 560 });
+    expect(column.x).toBe(READER_GAP + READER_WIDTH);
+    expect(group.x).toBe(0);
+    expect(group.x + group.w).toBe(column.x + column.w + mascot!.w);
   });
 
   it('puts the reader right of the column at the column height, and the shared box widens by it', () => {
@@ -260,8 +294,9 @@ describe('movePieces', () => {
   });
 
   it('stops where the Mascot would leave the screen, beside the column or the frame', () => {
-    expect(movePieces('minimal', { x: 500, y: 0, w: NARROW_WIDTH, h: 560 }, -400, 0, SCREEN, pieces).x).toBe(420);
-    expect(movePieces('full', { x: 500, y: 0, w: WIDE_WIDTH, h: 560 }, -400, 0, SCREEN, pieces)).toEqual({ x: 420, y: 0, w: WIDE_WIDTH, h: 560 });
+    expect(movePieces('minimal', { x: 1000, y: 0, w: NARROW_WIDTH, h: 560 }, 500, 0, SCREEN, pieces).x).toBe(SCREEN.width - NARROW_WIDTH);
+    const nearLeft = { mascotAspect: 0.75, side: 'right' } as const;
+    expect(movePieces('full', { x: 500, y: 0, w: WIDE_WIDTH, h: 560 }, -600, 0, SCREEN, nearLeft)).toEqual({ x: 0, y: 0, w: WIDE_WIDTH, h: 560 });
   });
 });
 
@@ -283,8 +318,11 @@ describe('the full layout', () => {
     expect(group).toEqual({ x: 350, y: 100, w: 450 + WIDE_WIDTH, h: 600 });
   });
 
-  it('moves the frame right until the Mascot is whole on the screen', () => {
-    expect(fullLayout({ x: 100, y: 100, w: WIDE_WIDTH, h: 600 }, SCREEN, ASPECT).column.x).toBe(450);
+  it('puts the Mascot right of the frame near the left edge', () => {
+    const { column, mascot, group, side } = fullLayout({ x: 100, y: 100, w: WIDE_WIDTH, h: 600 }, SCREEN, ASPECT);
+    expect(side).toBe('right');
+    expect(column.x).toBe(100);
+    expect(group).toEqual({ x: 100, y: 100, w: WIDE_WIDTH + mascot!.w, h: 600 });
   });
 });
 

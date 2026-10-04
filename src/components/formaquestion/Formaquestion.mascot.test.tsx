@@ -259,6 +259,21 @@ describe('the minimal chrome', () => {
     expect(drawn()).toEqual(look('initial'));
   });
 
+  it('stands the Mascot right of the column and the head at the pill\'s right end once the column is dragged past the middle', async () => {
+    await openWindow();
+    loadBase();
+    expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.pointerDown(pill(), { button: 0, pointerId: 1, clientX: 900, clientY: 200 });
+    fireEvent.pointerMove(pill(), { pointerId: 1, clientX: 100, clientY: 200 });
+    fireEvent.pointerUp(pill(), { pointerId: 1 });
+    expect(column().compareDocumentPosition(mascot()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await userEvent.click(within(pill()).getByRole('button', { name: 'Show Head Only' }));
+    loadBase();
+    expect(mascot()).toHaveAttribute('data-fq-view', 'head');
+    expect(mascot()!.previousElementSibling).toBe(pill());
+  });
+
   it('swaps the whole Mascot and its head from the pill, narrows the box for the head, and keeps the view across a remount', async () => {
     const { view } = await openWindow();
     loadBase();
