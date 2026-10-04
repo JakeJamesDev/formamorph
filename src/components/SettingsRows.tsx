@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { useWheelScroll } from '@/lib/useWheelScroll';
+import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
 
 /** An `ⓘ` button that reveals its full explanation in a popover, so a setting row can show a terse lead
@@ -224,14 +225,16 @@ export function Row({ label, htmlFor, children, hint, top, info, muted, experime
 }
 
 /** A slider with its current value shown to the right. */
-export function ValueSlider({ id, value, onChange, min, max, step, format, ariaLabel }: {
+export function ValueSlider({ id, value, onChange, min, max, step, format, ariaLabel, valueClassName }: {
   id?: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number;
   format: (v: number) => string; ariaLabel?: string;
+  /** Overrides the value's width, for a narrow column. */
+  valueClassName?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
       <Slider id={id} aria-label={ariaLabel} className="flex-grow" value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
-      <span className="w-24 text-right text-label tabular-nums">{format(value)}</span>
+      <span className={cn('w-24 text-right text-label tabular-nums', valueClassName)}>{format(value)}</span>
     </div>
   );
 }

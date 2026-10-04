@@ -42,7 +42,8 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
     <header
       data-fq-drag=""
       {...move}
-      className={cn('flex shrink-0 select-none items-center gap-2 border-b pl-3 pr-1', sheet ? 'h-12' : 'h-10', move && 'cursor-move touch-none')}
+      // The sheet's 48px touch targets need room above and below, or their hover fill covers the border.
+      className={cn('flex shrink-0 select-none items-center gap-2 border-b pl-3 pr-1', sheet ? 'h-14' : 'h-10', move && 'cursor-move touch-none')}
     >
       <CircleHelp aria-hidden className="h-4 w-4 text-muted-foreground" />
       <h2 className="text-label font-semibold">Formaquestion</h2>

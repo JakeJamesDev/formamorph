@@ -40,7 +40,8 @@ async function openSettings() {
 
 const reasoningSwitch = (dialog: HTMLElement) => within(dialog).getByRole('checkbox', { name: 'Reasoning' });
 /** The reasoning level list: the General tab's one list besides Chat Style. */
-const levelList = (dialog: HTMLElement) => within(dialog).queryByRole('combobox', { name: (name) => name !== GENERAL_COPY.chatStyle.label });
+// The General tab also holds the Chat Style dropdown and the narrow-screen tab dropdown.
+const levelList = (dialog: HTMLElement) => within(dialog).queryByRole('combobox', { name: (name) => name !== GENERAL_COPY.chatStyle.label && name !== 'Tab' });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {

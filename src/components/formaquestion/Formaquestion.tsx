@@ -2,7 +2,7 @@ import {
   useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { ensureShieldedLayer } from '@/components/ui/shielded-layer';
+import { coverShieldedLayer, ensureShieldedLayer } from '@/components/ui/shielded-layer';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useDevRoute } from '@/lib/devRouter';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
@@ -167,11 +167,17 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }
   if (!open && swapped) setSwapped(false);
 
-  // A dialog opened from the window. On the sheet it fills the screen, so the sheet hides under it and keeps its state.
+  // A dialog opened from the window. On the sheet it fills the screen, so it slides over the sheet, which waits under it.
   // On the desktop the window closes while the dialog is open, and opens again when the dialog closes.
   const [dialog, setDialog] = useState<FormaquestionDialog | null>(null);
   const [settingsTab, setSettingsTab] = useState<FormaquestionSettingsTab>('general');
   const covered = sheet && dialog !== null;
+  // Before paint, so the dialog's first frame already draws above the sheet.
+  useLayoutEffect(() => {
+    if (!covered) return;
+    coverShieldedLayer(true);
+    return () => coverShieldedLayer(false);
+  }, [covered]);
   // Set while the window waits behind a dialog, with the element focus goes back to when the window closes.
   const reopen = useRef<{ focus: HTMLElement | null } | null>(null);
 
@@ -487,7 +493,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             'flex text-foreground outline-none',
             sheet
               // On the sheet a dim, blurred backdrop stands in for the frame, because the bubbles fill the screen.
-              ? cn('app-viewport pointer-events-auto bg-background/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm', sheetMotion, covered && 'invisible')
+              ? cn('app-viewport pointer-events-auto bg-background/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm', sheetMotion)
               // Only the pieces take presses; the gaps between them belong to the app.
               : `pointer-events-none fixed items-end ${windowMotion}`,
           )}
@@ -553,7 +559,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           menuContainer={layer}
           onClose={closeWindow}
           {...(sheet ? {
-            className: cn('app-viewport pointer-events-auto', sheetMotion, covered && 'invisible'),
+            className: cn('app-viewport pointer-events-auto', sheetMotion),
           } : {
             wide,
             onSwapWidth: swap,

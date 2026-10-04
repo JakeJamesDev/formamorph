@@ -1,8 +1,8 @@
-import { Row } from '@/components/SettingsRows';
 import { Slider } from '@/components/ui/slider';
 import { MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale } from '@/lib/formaquestion/windowBox';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 import { setMascotScale, useMascotScale } from './useMascotScale';
+import { WidgetRow } from './WidgetRow';
 
 const STEP = 5;
 /** The slider's leading stop, one step under the smallest percent, stands for Auto. */
@@ -16,9 +16,10 @@ const labelOf = (scale: MascotScale): string => (scale === 'auto' ? 'Auto' : `${
 export function MascotScaleRow() {
   const scale = useMascotScale();
   return (
-    <Row {...MASCOT_COPY.scale}>
+    <WidgetRow id="fq-mascot-scale" copy={MASCOT_COPY.scale}>
       <div className="flex items-center gap-3">
         <Slider
+          id="fq-mascot-scale"
           aria-label={MASCOT_COPY.scale.label}
           aria-valuetext={labelOf(scale)}
           value={[stopOf(scale)]}
@@ -27,8 +28,8 @@ export function MascotScaleRow() {
           step={STEP}
           onValueChange={([stop]) => setMascotScale(scaleAt(stop))}
         />
-        <span className="w-12 shrink-0 text-right text-label tabular-nums">{labelOf(scale)}</span>
+        <span className="w-14 shrink-0 whitespace-nowrap text-right text-label tabular-nums">{labelOf(scale)}</span>
       </div>
-    </Row>
+    </WidgetRow>
   );
 }

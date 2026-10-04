@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { toolsSupported } from '@/lib/reasoningEffort';
@@ -176,7 +177,16 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
           onValueChange={(value) => onTabChange(value as FormaquestionSettingsTab)}
           className="flex min-h-0 w-full flex-1 flex-col"
         >
-          <TabsList className="grid w-full flex-shrink-0 grid-cols-5">
+          {/* Below sm the tab strip is a dropdown of the active tab, as in Settings; both drive one value. */}
+          <Select value={tab} onValueChange={(value) => onTabChange(value as FormaquestionSettingsTab)}>
+            <SelectTrigger aria-label="Tab" className="w-full flex-shrink-0 sm:hidden">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FORMAQUESTION_SETTINGS_TABS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <TabsList className="hidden w-full flex-shrink-0 grid-cols-5 sm:grid">
             {FORMAQUESTION_SETTINGS_TABS.map((entry) => <TabsTrigger key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
           </TabsList>
           <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">

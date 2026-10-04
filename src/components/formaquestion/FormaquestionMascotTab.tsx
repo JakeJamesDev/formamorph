@@ -10,9 +10,10 @@ import { CheckRow, OptionSwitcher, Row, Section, ValueSlider } from '@/component
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Tip } from '@/components/ui/tooltip';
+import { Hint, Meta } from '@/components/ui/typography';
 import { ImageUpload } from '@/lib/UtilityComponents';
 import { ActionIcon } from '@/lib/actionIcons';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -38,8 +39,13 @@ import {
   addMascotLayer, addMascotOverlays, mascotImageIds, mascotImageRefs, mascotPickOptions, moveMascotLayer, moveMascotOverlay, orphanedMascotImages,
   removeMascotBase, removeMascotLayer, removeMascotOverlay, setMascotBase, setMascotPick, updateMascotLayer, type MascotLayerPatch,
 } from '@/lib/formaquestion/mascotRigEdits';
+import {
+  previewMascot, resolveSelection, selectLayer, selectOverlay, selectionAfterLayerRemove, selectionAfterMove, selectionAfterRemove, toggleLayer,
+  type MascotSelection,
+} from '@/lib/formaquestion/mascotSelection';
 import { MascotPiece } from './MascotPiece';
 import { MascotScaleRow } from './MascotScaleRow';
+import { WidgetLabel, WidgetRow } from './WidgetRow';
 import { usePointerDrag } from './usePointerDrag';
 import type { MascotReplay } from './useMascotMotion';
 import { useMascotImageUrls } from './useMascotImageUrls';
@@ -81,10 +87,12 @@ function Thumb({ url }: { url: string | null }) {
   );
 }
 
-function SortableOverlay({ index, image, urlOf, onRemove }: {
+function SortableOverlay({ index, image, urlOf, selected, onSelect, onRemove }: {
   index: number;
   image: MascotImageRef;
   urlOf: UrlOf;
+  selected: boolean;
+  onSelect: () => void;
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, ...drag } = useSortable({ id: overlayId(index) });
@@ -93,8 +101,9 @@ function SortableOverlay({ index, image, urlOf, onRemove }: {
       setNodeRef={setNodeRef}
       style={dragStyle(drag)}
       gripProps={{ ...attributes, ...listeners }}
-      selected={false}
-      onSelect={() => undefined}
+      selected={selected}
+      onSelect={onSelect}
+      selectionLabel={MASCOT_COPY.showOverlay(index + 1)}
       icon={<Thumb url={urlOf(image)} />}
       label={image.kind === 'bundled' ? image.name : MASCOT_COPY.storedOverlay}
       meta={image.kind === 'bundled' ? MASCOT_COPY.bundledOverlay : undefined}
@@ -104,9 +113,11 @@ function SortableOverlay({ index, image, urlOf, onRemove }: {
 }
 
 /** The expanded body of a layer row: its name, its kind, and its overlays in draw order. */
-function LayerBody({ layer, urlOf, onPatch, onAddFiles, onRemoveOverlay, onMoveOverlay }: {
+function LayerBody({ layer, urlOf, selectedOverlay, onSelectOverlay, onPatch, onAddFiles, onRemoveOverlay, onMoveOverlay }: {
   layer: MascotLayer;
   urlOf: UrlOf;
+  selectedOverlay: number | null;
+  onSelectOverlay: (index: number) => void;
   onPatch: (patch: MascotLayerPatch) => void;
   onAddFiles: (files: File[]) => void;
   onRemoveOverlay: (index: number) => void;
@@ -128,9 +139,17 @@ function LayerBody({ layer, urlOf, onPatch, onAddFiles, onRemoveOverlay, onMoveO
         {layer.images.length > 0 && (
           <EditorDndContext onDragEnd={handleDragEnd}>
             <StableSortableContext items={layer.images.map((_, index) => overlayId(index))} strategy={verticalListSortingStrategy}>
-              <EditorRowList>
+              <EditorRowList className="min-w-0">
                 {layer.images.map((image, index) => (
-                  <SortableOverlay key={overlayId(index)} index={index} image={image} urlOf={urlOf} onRemove={() => onRemoveOverlay(index)} />
+                  <SortableOverlay
+                    key={overlayId(index)}
+                    index={index}
+                    image={image}
+                    urlOf={urlOf}
+                    selected={selectedOverlay === index}
+                    onSelect={() => onSelectOverlay(index)}
+                    onRemove={() => onRemoveOverlay(index)}
+                  />
                 ))}
               </EditorRowList>
             </StableSortableContext>
@@ -142,11 +161,15 @@ function LayerBody({ layer, urlOf, onPatch, onAddFiles, onRemoveOverlay, onMoveO
   );
 }
 
-function SortableLayer({ layer, expanded, urlOf, onToggle, onPatch, onRemove, children }: {
+function SortableLayer({ layer, expanded, selected, urlOf, onSelect, onToggle, onSelectOverlay, onPatch, onRemove, children }: {
   layer: MascotLayer;
   expanded: boolean;
+  /** The layer itself is selected, not one of its overlays. */
+  selected: boolean;
   urlOf: UrlOf;
+  onSelect: () => void;
   onToggle: () => void;
+  onSelectOverlay: (index: number) => void;
   onPatch: (patch: MascotLayerPatch) => void;
   onRemove: () => void;
   children: ReactNode;
@@ -161,8 +184,8 @@ function SortableLayer({ layer, expanded, urlOf, onToggle, onPatch, onRemove, ch
     >
       <EditorRow
         gripProps={{ ...attributes, ...listeners }}
-        selected={expanded}
-        onSelect={onToggle}
+        selected={selected}
+        onSelect={onSelect}
         selectionLabel={`Expand ${layer.name}`}
         lead="chevron"
         collapsed={!expanded}
@@ -173,7 +196,19 @@ function SortableLayer({ layer, expanded, urlOf, onToggle, onPatch, onRemove, ch
         meta={
           <span className="flex items-center gap-2">
             {MASCOT_COPY.kind[layer.kind]}
-            <span className="flex gap-0.5">{layer.images.map((image, index) => <Thumb key={index} url={urlOf(image)} />)}</span>
+            <span className="flex gap-0.5">
+              {layer.images.map((image, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={MASCOT_COPY.showLayerOverlay(layer.name, index + 1)}
+                  onClick={(event) => { event.stopPropagation(); onSelectOverlay(index); }}
+                  className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                >
+                  <Thumb url={urlOf(image)} />
+                </button>
+              ))}
+            </span>
           </span>
         }
         actions={[{ icon: <X className="h-4 w-4" />, title: MASCOT_COPY.removeLayer, onClick: onRemove }]}
@@ -242,7 +277,7 @@ const JELLY_FORMATS: { readonly [K in keyof JellyTuning]: (value: number) => str
   settle: String,
 };
 
-/** One tuning slider, held to its range. */
+/** One tuning slider, held to its range, on one line of the preview widget. */
 function TuningRow({ id, copy, range, value, format, onChange }: {
   id: string;
   copy: { label: string; hint: string };
@@ -252,14 +287,24 @@ function TuningRow({ id, copy, range, value, format, onChange }: {
   onChange: (value: number) => void;
 }) {
   return (
-    <Row htmlFor={id} {...copy}>
-      <ValueSlider id={id} ariaLabel={copy.label} value={value} min={range.min} max={range.max} step={range.step} format={format} onChange={onChange} />
-    </Row>
+    <WidgetRow id={id} copy={copy}>
+      <ValueSlider
+        id={id}
+        ariaLabel={copy.label}
+        value={value}
+        min={range.min}
+        max={range.max}
+        step={range.step}
+        format={format}
+        onChange={onChange}
+        valueClassName="w-14 shrink-0 whitespace-nowrap"
+      />
+    </WidgetRow>
   );
 }
 
-/** The transition's mode, the chosen mode's tuning, and Play. */
-function TransitionRows({ transition, onTransition, onPlay }: {
+/** The transition's mode with Play, and the chosen mode's tuning. */
+function TransitionControls({ transition, onTransition, onPlay }: {
   transition: MascotTransition;
   onTransition: (next: MascotTransition) => void;
   onPlay: () => void;
@@ -268,13 +313,19 @@ function TransitionRows({ transition, onTransition, onPlay }: {
   const copy = MASCOT_COPY.transition;
   const setJelly = (key: keyof JellyTuning) => (value: number) => onTransition({ ...transition, jelly: { ...transition.jelly, [key]: value } });
   return (
-    <>
-      <Row top {...copy.mode}>
-        <div className="grid gap-2" data-row-stacked>
+    <div className="grid gap-2">
+      <WidgetLabel copy={copy.mode} />
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
           <OptionSwitcher ariaLabel={copy.mode.label} value={transition.mode} options={MODE_OPTIONS} onChange={(mode) => onTransition({ ...transition, mode })} />
-          {reduced && <p className="text-helper text-muted-foreground">{copy.reducedMotion}</p>}
         </div>
-      </Row>
+        <Tip tip={copy.play.hint} labelsChild={false}>
+          <Button variant="outline" size="sm" onClick={onPlay}>
+            <Play className="mr-1 h-4 w-4" />{copy.play.label}
+          </Button>
+        </Tip>
+      </div>
+      {reduced && <Hint>{copy.reducedMotion}</Hint>}
       {transition.mode === 'jelly' && (Object.keys(JELLY_RANGES) as (keyof JellyTuning)[]).map((key) => (
         <TuningRow
           key={key}
@@ -296,12 +347,7 @@ function TransitionRows({ transition, onTransition, onPlay }: {
           onChange={(durationMs) => onTransition({ ...transition, dissolve: { durationMs } })}
         />
       )}
-      <Row hint={copy.play.hint}>
-        <Button variant="outline" size="sm" onClick={onPlay}>
-          <Play className="mr-1 h-4 w-4" />{copy.play.label}
-        </Button>
-      </Row>
-    </>
+    </div>
   );
 }
 
@@ -318,7 +364,8 @@ export function MascotTab({ settings, onChange }: {
   // The latest rig, for an edit that lands after an upload's await.
   const latest = useRef(rig);
   latest.current = rig;
-  const [expanded, setExpanded] = useState<string | null>(null);
+  /** What the preview shows. The expanded layer is the selected one. */
+  const [selection, setSelection] = useState<MascotSelection | null>(null);
   const [base, setBase] = useState<MascotSize | null>(null);
   /** The box a Mask drag gives while it runs. The rig takes it on release. */
   const [draftMask, setDraftMask] = useState<MascotMask | null>(null);
@@ -327,8 +374,8 @@ export function MascotTab({ settings, onChange }: {
   /** A card read from a picked file, waiting for the replace confirmation. */
   const [pendingCard, setPendingCard] = useState<MascotCardData | null>(null);
   const cardInput = useRef<HTMLInputElement>(null);
-  /** Each Play: the run it starts on the preview, from the Thinking look. */
-  const [play, setPlay] = useState<Omit<MascotReplay, 'transition'> | null>(null);
+  /** The last Play: its run, whether it went to the Thinking look, and the selection it played over. */
+  const [play, setPlay] = useState<Omit<MascotReplay, 'transition'> & { thinking: boolean; over: MascotSelection | null } | null>(null);
   // Bumped by Reset and by an applied import, so an upload or import that started before it lands nowhere.
   const generation = useRef(0);
   const refs = mascotImageRefs(rig);
@@ -361,7 +408,7 @@ export function MascotTab({ settings, onChange }: {
     generation.current += 1;
     latest.current = DEFAULT_MASCOT_RIG;
     onChange({ rig: DEFAULT_MASCOT_RIG });
-    setExpanded(null);
+    setSelection(null);
     void clearMascotImages().catch((cause: unknown) => console.error('Could not clear the mascot images:', cause));
   };
 
@@ -395,7 +442,7 @@ export function MascotTab({ settings, onChange }: {
         return void Promise.all([...mascotImageIds(next)].map(deleteMascotImage)).catch(() => undefined);
       }
       generation.current += 1;
-      setExpanded(null);
+      setSelection(null);
       commit(next);
     } catch (cause: unknown) {
       toastError(cause, MASCOT_COPY.card.importFailed);
@@ -403,9 +450,19 @@ export function MascotTab({ settings, onChange }: {
   };
 
   const warnings = mascotPickWarnings(rig);
-  const shownLayer = rig.layers.find((row) => row.id === expanded);
-  // An answer with no face from the AI draws the Idle look.
-  const preview = shownLayer ? [rig.base, ...shownLayer.images] : composeMascot(rig, 'answering', null);
+  // Play holds the Thinking look until the next Play or a new selection.
+  const thinkingShown = play?.thinking === true && play.over === selection;
+  const preview = thinkingShown ? composeMascot(rig, 'thinking', null) : previewMascot(rig, selection);
+  const playNext = () => setPlay((last) => {
+    const toThinking = !(last?.thinking === true && last.over === selection);
+    const thinking = composeMascot(latest.current, 'thinking', null);
+    const chosen = previewMascot(latest.current, selection);
+    return { id: (last?.id ?? 0) + 1, from: toThinking ? chosen : thinking, thinking: toThinking, over: selection };
+  });
+  const shown = resolveSelection(rig, selection);
+  const caption = thinkingShown ? MASCOT_COPY.picks.thinking.label
+    : !shown ? MASCOT_COPY.idleShown
+    : shown.overlay === null ? shown.layer.name : MASCOT_COPY.overlayShown(shown.layer.name, shown.overlay + 1);
   const patchLayer = (id: string) => (patch: MascotLayerPatch) => edit((current) => updateMascotLayer(current, id, patch));
 
   const mask = base && fitMask(draftMask ?? rig.mask, base);
@@ -432,27 +489,25 @@ export function MascotTab({ settings, onChange }: {
   };
 
   return (
-    <ScrollArea className="min-h-0 flex-1">
-      <div className="grid gap-6 py-4">
-        <Section title="Mascot">
-          <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
-          <Row top htmlFor="fq-mascot-voice" {...MASCOT_COPY.voice}>
-            <Textarea
-              id="fq-mascot-voice"
-              rows={3}
-              value={rig.voice}
-              onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice })); }}
-            />
-          </Row>
-        </Section>
-        <Section title="Rig">
-          <Row {...MASCOT_COPY.preview}>
-            <div className="flex justify-center rounded-md border border-border bg-muted/30 p-2" style={{ minHeight: PREVIEW_HEIGHT + 16 }}>
+    <>
+      {/* Under lg the whole tab scrolls as one; at lg each column scrolls alone, so the preview stays in view. */}
+      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-6 lg:overflow-hidden">
+        <div className="pt-4 lg:min-h-0 lg:overflow-y-auto lg:pb-4">
+          <section
+            aria-label={MASCOT_COPY.preview.label}
+            data-fq-mascot-preview=""
+            className="grid gap-3 rounded-md border border-border bg-muted/30 p-3"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <WidgetLabel copy={{ label: MASCOT_COPY.preview.label, hint: MASCOT_COPY.preview.info }} />
+              <Meta className="min-w-0 truncate">{caption}</Meta>
+            </div>
+            <div className="flex flex-wrap items-end justify-center gap-3" style={{ minHeight: PREVIEW_HEIGHT }}>
               <div {...maskDrag} data-fq-mask-target="" className="relative cursor-crosshair touch-none select-none">
                 <MascotPiece
                   images={preview}
                   hold={refs}
-                  replay={play ? { ...play, transition: rig.transition } : undefined}
+                  replay={play ? { id: play.id, from: play.from, transition: rig.transition } : undefined}
                   size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
                   onBase={setBase}
                 />
@@ -470,110 +525,146 @@ export function MascotTab({ settings, onChange }: {
                   />
                 )}
               </div>
+              <figure className="grid justify-items-center gap-1">
+                <div className="flex items-end rounded-md border border-border bg-background/60 p-1" style={{ minHeight: HEAD_HEIGHT + 8 }}>
+                  <MascotPiece
+                    view="head"
+                    images={preview}
+                    hold={refs}
+                    size={mask && headSize(mask, HEAD_HEIGHT)}
+                    frame={base && mask ? cropFrame(mask, base) : undefined}
+                    onBase={setBase}
+                  />
+                </div>
+                <Meta as="figcaption">{MASCOT_COPY.headView}</Meta>
+              </figure>
             </div>
-          </Row>
-          <MascotScaleRow />
-          <Row {...MASCOT_COPY.headView}>
-            <div className="flex justify-center rounded-md border border-border bg-muted/30 p-2" style={{ minHeight: HEAD_HEIGHT + 16 }}>
-              <MascotPiece
-                view="head"
-                images={preview}
-                hold={refs}
-                size={mask && headSize(mask, HEAD_HEIGHT)}
-                frame={base && mask ? cropFrame(mask, base) : undefined}
-                onBase={setBase}
-              />
-            </div>
-          </Row>
-          <Row top {...MASCOT_COPY.base}>
-            <ImageUpload
-              id="fq-mascot-base"
-              // The bundled base leaves the slot empty, so a click or a drop uploads yours.
-              value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
-              onFile={(file) => void store([file], (current, [ref]) => setMascotBase(current, ref))}
-              onChange={(value) => { if (value === '') edit(removeMascotBase); }}
+            <Hint>{MASCOT_COPY.preview.hint}</Hint>
+            <MascotScaleRow />
+            <TransitionControls
+              transition={rig.transition}
+              onTransition={(transition) => edit((current) => ({ ...current, transition }))}
+              onPlay={playNext}
             />
-          </Row>
-          <Row top {...MASCOT_COPY.layers}>
-            <div className="grid gap-2">
-              <EditorDndContext onDragEnd={handleLayerDragEnd}>
-                <StableSortableContext items={rig.layers} strategy={verticalListSortingStrategy}>
-                  <EditorRowList>
-                    {rig.layers.map((layer) => (
-                      <SortableLayer
-                        key={layer.id}
-                        layer={layer}
-                        expanded={expanded === layer.id}
-                        urlOf={urlOf}
-                        onToggle={() => setExpanded((open) => (open === layer.id ? null : layer.id))}
-                        onPatch={patchLayer(layer.id)}
-                        onRemove={() => edit((current) => removeMascotLayer(current, layer.id))}
-                      >
-                        <LayerBody
-                          layer={layer}
-                          urlOf={urlOf}
-                          onPatch={patchLayer(layer.id)}
-                          onAddFiles={(files) => void store(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
-                          onRemoveOverlay={(index) => edit((current) => removeMascotOverlay(current, layer.id, index))}
-                          onMoveOverlay={(from, to) => edit((current) => moveMascotOverlay(current, layer.id, from, to))}
-                        />
-                      </SortableLayer>
-                    ))}
-                  </EditorRowList>
-                </StableSortableContext>
-              </EditorDndContext>
-              <Button
-                variant="outline"
-                size="sm"
-                className="justify-self-start"
-                onClick={() => {
-                  const id = randomUUID();
-                  edit((current) => addMascotLayer(current, id));
-                  setExpanded(id);
-                }}
-              >
-                <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
-              </Button>
-              {error && <p className="text-helper text-destructive">{error}</p>}
-            </div>
-          </Row>
-          {MASCOT_PICK_NAMES.map((pick) => (
-            <Row key={pick} {...MASCOT_COPY.picks[pick]}>
-              <div className="flex gap-2">
-                {MASCOT_LAYER_KINDS.map((slot) => (
-                  <PickSelect key={slot} rig={rig} pick={pick} slot={slot} onPick={(layerId) => edit((current) => setMascotPick(current, pick, slot, layerId))} />
-                ))}
+          </section>
+        </div>
+        <div data-fq-mascot-controls="" className="grid content-start gap-6 py-4 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
+          <Section title="Mascot">
+            <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
+            <Row top htmlFor="fq-mascot-voice" {...MASCOT_COPY.voice}>
+              <Textarea
+                id="fq-mascot-voice"
+                rows={3}
+                value={rig.voice}
+                onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice })); }}
+              />
+            </Row>
+          </Section>
+          <Section title="Rig">
+            <Row top {...MASCOT_COPY.base}>
+              <ImageUpload
+                id="fq-mascot-base"
+                // The bundled base leaves the slot empty, so a click or a drop uploads yours.
+                value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
+                onFile={(file) => void store([file], (current, [ref]) => setMascotBase(current, ref))}
+                onChange={(value) => { if (value === '') edit(removeMascotBase); }}
+              />
+            </Row>
+            <Row top {...MASCOT_COPY.layers}>
+              <div className="grid gap-2">
+                <EditorDndContext onDragEnd={handleLayerDragEnd}>
+                  <StableSortableContext items={rig.layers} strategy={verticalListSortingStrategy}>
+                    {/* Shrinks with the narrow controls column, so a long name truncates instead of pushing Remove out. */}
+                    <EditorRowList className="min-w-0">
+                      {rig.layers.map((layer) => {
+                        const own = shown?.layer.id === layer.id ? shown : null;
+                        const pickOverlay = (index: number) => setSelection((was) => selectOverlay(was, layer.id, index));
+                        return (
+                          <SortableLayer
+                            key={layer.id}
+                            layer={layer}
+                            expanded={own !== null}
+                            selected={own?.overlay === null}
+                            urlOf={urlOf}
+                            onSelect={() => setSelection((was) => selectLayer(was, layer.id))}
+                            onToggle={() => setSelection((was) => toggleLayer(was, layer.id))}
+                            onSelectOverlay={pickOverlay}
+                            onPatch={patchLayer(layer.id)}
+                            onRemove={() => {
+                              edit((current) => removeMascotLayer(current, layer.id));
+                              setSelection((was) => selectionAfterLayerRemove(was, layer.id));
+                            }}
+                          >
+                            <LayerBody
+                              layer={layer}
+                              urlOf={urlOf}
+                              selectedOverlay={own?.overlay ?? null}
+                              onSelectOverlay={pickOverlay}
+                              onPatch={patchLayer(layer.id)}
+                              onAddFiles={(files) => void store(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
+                              onRemoveOverlay={(index) => {
+                                edit((current) => removeMascotOverlay(current, layer.id, index));
+                                setSelection((was) => selectionAfterRemove(was, layer.id, index));
+                              }}
+                              onMoveOverlay={(from, to) => {
+                                edit((current) => moveMascotOverlay(current, layer.id, from, to));
+                                setSelection((was) => selectionAfterMove(was, layer.id, from, to));
+                              }}
+                            />
+                          </SortableLayer>
+                        );
+                      })}
+                    </EditorRowList>
+                  </StableSortableContext>
+                </EditorDndContext>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="justify-self-start"
+                  onClick={() => {
+                    const id = randomUUID();
+                    edit((current) => addMascotLayer(current, id));
+                    setSelection({ layerId: id, overlay: null });
+                  }}
+                >
+                  <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
+                </Button>
+                {error && <p className="text-helper text-destructive">{error}</p>}
               </div>
             </Row>
-          ))}
-          {warnings.length > 0 && <Row><PickWarnings rig={rig} warnings={warnings} /></Row>}
-          <TransitionRows
-            transition={rig.transition}
-            onTransition={(transition) => edit((current) => ({ ...current, transition }))}
-            onPlay={() => setPlay((last) => ({ id: (last?.id ?? 0) + 1, from: composeMascot(latest.current, 'thinking', null) }))}
-          />
-          <Row hint={MASCOT_COPY.card.hint}>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setConfirmReset(true)}>
-                <RotateCcw className="mr-1 h-4 w-4" />{MASCOT_COPY.reset.label}
-              </Button>
-              <Button variant="outline" size="sm" className="ml-auto" onClick={() => cardInput.current?.click()}>
-                <ActionIcon.import className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.import}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => void exportCard()}>
-                <ActionIcon.export className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.export}
-              </Button>
-              <input
-                ref={cardInput}
-                type="file"
-                accept=".webp,image/webp"
-                className="hidden"
-                data-testid="mascot-card-input"
-                onChange={(event) => void pickCard(event)}
-              />
-            </div>
-          </Row>
-        </Section>
+            {MASCOT_PICK_NAMES.map((pick) => (
+              <Row key={pick} {...MASCOT_COPY.picks[pick]}>
+                <div className="flex gap-2">
+                  {MASCOT_LAYER_KINDS.map((slot) => (
+                    <PickSelect key={slot} rig={rig} pick={pick} slot={slot} onPick={(layerId) => edit((current) => setMascotPick(current, pick, slot, layerId))} />
+                  ))}
+                </div>
+              </Row>
+            ))}
+            {warnings.length > 0 && <Row><PickWarnings rig={rig} warnings={warnings} /></Row>}
+            <Row hint={MASCOT_COPY.card.hint}>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setConfirmReset(true)}>
+                  <RotateCcw className="mr-1 h-4 w-4" />{MASCOT_COPY.reset.label}
+                </Button>
+                <Button variant="outline" size="sm" className="ml-auto" onClick={() => cardInput.current?.click()}>
+                  <ActionIcon.import className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.import}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => void exportCard()}>
+                  <ActionIcon.export className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.export}
+                </Button>
+                <input
+                  ref={cardInput}
+                  type="file"
+                  accept=".webp,image/webp"
+                  className="hidden"
+                  data-testid="mascot-card-input"
+                  onChange={(event) => void pickCard(event)}
+                />
+              </div>
+            </Row>
+          </Section>
+        </div>
       </div>
       <ConfirmDialog
         open={confirmReset}
@@ -589,6 +680,6 @@ export function MascotTab({ settings, onChange }: {
         description={MASCOT_COPY.card.confirmBody}
         onConfirm={() => { if (pendingCard) void importCard(pendingCard); }}
       />
-    </ScrollArea>
+    </>
   );
 }

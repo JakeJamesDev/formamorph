@@ -247,16 +247,19 @@ describe('AI Context in Formaquestion', () => {
     await waitFor(() => expect(reply.cancel).toHaveBeenCalled());
   });
 
-  it('hides the sheet while it is open on a mobile-size screen, and shows it again after', async () => {
+  it('keeps the sheet under it, inert, on a mobile-size screen, and live again after', async () => {
     setScreenWidth(375);
     await openAsk();
     const sheet = screen.getByRole('dialog', { name: 'Formaquestion' });
     expect(sheet).toHaveAttribute('data-fq-sheet');
+    const layer = sheet.closest<HTMLElement>('[data-shielded-layer]')!;
     await openAiContext();
-    expect(sheet).toHaveClass('invisible');
+    expect(Number(layer.style.zIndex)).toBeLessThan(50);
+    expect((layer.firstElementChild as HTMLElement).inert).toBe(true);
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'AI Context' })).toBeNull());
-    expect(sheet).not.toHaveClass('invisible');
+    expect(Number(layer.style.zIndex)).toBeGreaterThan(50);
+    expect((layer.firstElementChild as HTMLElement).inert).toBe(false);
   });
 });
