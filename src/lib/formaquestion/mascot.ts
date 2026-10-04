@@ -141,8 +141,9 @@ export function mascotPickWarnings(rig: MascotRig): readonly MascotPickWarning[]
   }));
 }
 
-const isId = (value: unknown): value is string => typeof value === 'string' && value !== '';
-const isLayerKind = (value: unknown): value is MascotLayerKind => (MASCOT_LAYER_KINDS as readonly unknown[]).includes(value);
+/** A non-empty string, as every rig id is. */
+export const isId = (value: unknown): value is string => typeof value === 'string' && value !== '';
+export const isLayerKind = (value: unknown): value is MascotLayerKind => (MASCOT_LAYER_KINDS as readonly unknown[]).includes(value);
 const isAssetName = (value: unknown): value is MascotAssetName => (MASCOT_ASSET_NAMES as readonly unknown[]).includes(value);
 
 function parseImageRef(stored: unknown): MascotImageRef | null {
@@ -181,7 +182,8 @@ function parsePick(stored: unknown): MascotPick {
 const isSize = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
 const isOffset = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 
-function parseMask(stored: unknown): MascotMask | null {
+/** A stored Mask, or null for a value that is not one. */
+export function parseMask(stored: unknown): MascotMask | null {
   if (!isRecord(stored)) return null;
   const { x, y, width, height } = stored;
   return isOffset(x) && isOffset(y) && isSize(width) && isSize(height) ? { x, y, width, height } : null;

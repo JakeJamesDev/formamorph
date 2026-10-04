@@ -47,9 +47,17 @@ export const MASCOT_COPY = {
   removeOverlay: 'Remove overlay',
   reset: {
     label: 'Reset Mascot',
-    hint: 'Restores the default mascot and deletes your images',
     confirmTitle: 'Reset the mascot?',
     confirmBody: "This restores the default mascot and deletes every image you added. You can't undo it.",
+  },
+  card: {
+    hint: 'Saves or loads your mascot as one image. Reset restores the default.',
+    import: 'Import',
+    export: 'Export',
+    confirmTitle: 'Replace your mascot?',
+    confirmBody: "This replaces your mascot with the one in the card and deletes every image you added. You can't undo it.",
+    importFailed: "Couldn't import that mascot card",
+    exportFailed: "Couldn't export the mascot",
   },
   saveFailed: "Couldn't save that image. Try again.",
   picks: {

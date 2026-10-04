@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -14,6 +14,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageUpload } from '@/lib/UtilityComponents';
+import { ActionIcon } from '@/lib/actionIcons';
+import { downloadBlob } from '@/lib/downloadBlob';
+import { filesFrom } from '@/lib/importFiles';
+import { toastError } from '@/lib/linkToast';
 import { randomUUID } from '@/lib/uuid';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
@@ -28,8 +32,10 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cropFrame, fitMask, headSize, maskFromDrag, type MascotPoint, type MascotSize } from '@/lib/formaquestion/mascotMask';
 import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
 import { addMascotImage, clearMascotImages, deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
+import type { MascotCardData } from '@/lib/formaquestion/mascotCard';
+import { MASCOT_CARD_FILE_NAME, exportMascotCard, readMascotCard, storeMascotCard } from '@/lib/formaquestion/mascotCardFile';
 import {
-  addMascotLayer, addMascotOverlays, mascotImageRefs, mascotPickOptions, moveMascotLayer, moveMascotOverlay, orphanedMascotImages,
+  addMascotLayer, addMascotOverlays, mascotImageIds, mascotImageRefs, mascotPickOptions, moveMascotLayer, moveMascotOverlay, orphanedMascotImages,
   removeMascotBase, removeMascotLayer, removeMascotOverlay, setMascotBase, setMascotPick, updateMascotLayer, type MascotLayerPatch,
 } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
@@ -317,9 +323,12 @@ export function MascotTab({ settings, onChange }: {
   const [draftMask, setDraftMask] = useState<MascotMask | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  /** A card read from a picked file, waiting for the replace confirmation. */
+  const [pendingCard, setPendingCard] = useState<MascotCardData | null>(null);
+  const cardInput = useRef<HTMLInputElement>(null);
   /** Each Play: the run it starts on the preview, from the Thinking look. */
   const [play, setPlay] = useState<Omit<MascotReplay, 'transition'> | null>(null);
-  // Bumped by Reset, so an upload that started before it lands nowhere.
+  // Bumped by Reset and by an applied import, so an upload or import that started before it lands nowhere.
   const generation = useRef(0);
   const refs = mascotImageRefs(rig);
   const urlOf = useMascotImageUrls(refs);
@@ -353,6 +362,43 @@ export function MascotTab({ settings, onChange }: {
     onChange({ rig: DEFAULT_MASCOT_RIG });
     setExpanded(null);
     void clearMascotImages().catch((cause: unknown) => console.error('Could not clear the mascot images:', cause));
+  };
+
+  const exportCard = async () => {
+    try {
+      downloadBlob(await exportMascotCard(latest.current), MASCOT_CARD_FILE_NAME);
+    } catch (cause: unknown) {
+      toastError(cause, MASCOT_COPY.card.exportFailed);
+    }
+  };
+
+  /** Reads the picked card; a whole card waits for the confirmation, a bad one is named and changes nothing. */
+  const pickCard = async (event: ChangeEvent<HTMLInputElement>) => {
+    const [file] = filesFrom(event);
+    if (!file) return;
+    try {
+      const card = await readMascotCard(file);
+      if (mounted.current) setPendingCard(card);
+    } catch (cause: unknown) {
+      toastError(cause, MASCOT_COPY.card.importFailed);
+    }
+  };
+
+  /** Stores the card's images, then replaces the rig; the old rig's images go with it. */
+  const importCard = async (card: MascotCardData) => {
+    const started = generation.current;
+    try {
+      const next = await storeMascotCard(card);
+      // Closed, reset or imported again mid-store: nothing will reference these.
+      if (!mounted.current || generation.current !== started) {
+        return void Promise.all([...mascotImageIds(next)].map(deleteMascotImage)).catch(() => undefined);
+      }
+      generation.current += 1;
+      setExpanded(null);
+      commit(next);
+    } catch (cause: unknown) {
+      toastError(cause, MASCOT_COPY.card.importFailed);
+    }
   };
 
   const warnings = mascotPickWarnings(rig);
@@ -504,10 +550,26 @@ export function MascotTab({ settings, onChange }: {
             onTransition={(transition) => edit((current) => ({ ...current, transition }))}
             onPlay={() => setPlay((last) => ({ id: (last?.id ?? 0) + 1, from: composeMascot(latest.current, 'thinking', null) }))}
           />
-          <Row hint={MASCOT_COPY.reset.hint}>
-            <Button variant="outline" size="sm" onClick={() => setConfirmReset(true)}>
-              <RotateCcw className="mr-1 h-4 w-4" />{MASCOT_COPY.reset.label}
-            </Button>
+          <Row hint={MASCOT_COPY.card.hint}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setConfirmReset(true)}>
+                <RotateCcw className="mr-1 h-4 w-4" />{MASCOT_COPY.reset.label}
+              </Button>
+              <Button variant="outline" size="sm" className="ml-auto" onClick={() => cardInput.current?.click()}>
+                <ActionIcon.import className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.import}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => void exportCard()}>
+                <ActionIcon.export className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.export}
+              </Button>
+              <input
+                ref={cardInput}
+                type="file"
+                accept=".webp,image/webp"
+                className="hidden"
+                data-testid="mascot-card-input"
+                onChange={(event) => void pickCard(event)}
+              />
+            </div>
           </Row>
         </Section>
       </div>
@@ -517,6 +579,13 @@ export function MascotTab({ settings, onChange }: {
         title={MASCOT_COPY.reset.confirmTitle}
         description={MASCOT_COPY.reset.confirmBody}
         onConfirm={reset}
+      />
+      <ConfirmDialog
+        open={pendingCard !== null}
+        onOpenChange={(open) => { if (!open) setPendingCard(null); }}
+        title={MASCOT_COPY.card.confirmTitle}
+        description={MASCOT_COPY.card.confirmBody}
+        onConfirm={() => { if (pendingCard) void importCard(pendingCard); }}
       />
     </ScrollArea>
   );
