@@ -14,7 +14,7 @@ import { openBubbleMenu } from '@/lib/bubbleMenuOpen';
 import type { PresetHeaderAction } from '@/lib/presetHeaderActions';
 
 /** The narrow preset header's ⋯ button and its menu. It lists `actions` by section, destructive last. */
-export function PresetHeaderMenu({ actions, className }: { actions: PresetHeaderAction[]; className?: string }) {
+export function PresetHeaderMenu({ actions, className, disabled }: { actions: PresetHeaderAction[]; className?: string; disabled?: boolean }) {
   const sections = (['file', 'destructive'] as const)
     .map((section) => actions.filter((a) => a.section === section))
     .filter((group) => group.length > 0);
@@ -23,11 +23,12 @@ export function PresetHeaderMenu({ actions, className }: { actions: PresetHeader
   return (
     <ContextMenu>
       <Tip tip="Preset Actions">
-        <ContextMenuTrigger asChild>
+        <ContextMenuTrigger asChild disabled={disabled}>
           <Button
             ref={button}
             variant="ghost"
             size="icon"
+            disabled={disabled}
             aria-label="Preset Actions"
             aria-haspopup="menu"
             className={cn('h-9 w-9 shrink-0', className)}
