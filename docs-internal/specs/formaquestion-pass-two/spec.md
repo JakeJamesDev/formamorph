@@ -85,6 +85,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q49 | The request where the AI chooses guide sections is **Search** everywhere the player sees it: Search Endpoint, the Search prompt and its options, AI Context. The General tab switch becomes **AI Search**. "Pick" leaves player-facing copy; code names may follow (user, 2026-10-04) |
 | Q50 | Search section hints: Keyword Search "Matches the words in your question to guide sections"; AI Search "Asks your AI to choose the sections before answering. One extra request."; Semantic Search "Finds sections by meaning, not exact words. Downloads a small model once." Search Endpoint hint: "Runs the search request. A small, fast model is enough." (user, 2026-10-04) |
 | Q51 | The Mascot tab's controls column drops the label column: the Base Image and the layer list take the full column width under their own headings, so layer rows have room for names and overlays (user, 2026-10-04) |
+| Q52 | Lookup Mode's default goes back to off (ticket 13's probe: both arms 48 of 48, lookup +7% tokens in, no outcome changed; the set is at the ceiling, so lookup stays a hedge the player turns on). Ticket 16 flips it and amends ADR 0009. Resolves Q6 and Q46 (user, 2026-10-04) |
 
 ## User Stories
 
