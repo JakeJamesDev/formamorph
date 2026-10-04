@@ -199,6 +199,8 @@ interface CommunityCreationsBrowserProps {
   /** The tab to open on — the dev-router's (`#dev?modal=community&tab=entity`), or Contest when an
    *  event banner sent the player here. */
   initialTab?: BrowseTab;
+  /** Changes with each outside request, so a repeat request selects its tab again. */
+  requestKey?: string;
   /** A listing to open the details for, arriving from somewhere else — a notification feed row. */
   openListing?: { id: string; kind: string } | null;
   /** Fired once that listing has been opened, or found to be gone, so the host can clear its request. */
@@ -228,7 +230,7 @@ interface CommunityCreationsBrowserProps {
 const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, worlds, setWorlds, entities, dictionaries, models,
   refreshEntities, refreshDictionaries, refreshModels,
-  isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
+  isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, requestKey, openListing, onListingOpened, listing: controlledListing,
   onListingChange, onListingUnavailable, detailsAction, promptLibrary,
   events = [], onOpenEvent, openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityCreationsBrowserProps) => {
@@ -452,7 +454,7 @@ const CommunityCreationsBrowser = ({
   // whichever tab the last visit was left on.
   useEffect(() => {
     if (open && initialTab) setBrowseTab(initialTab);
-  }, [open, initialTab]);
+  }, [open, initialTab, requestKey]);
 
   // A contest that ends up not being browsable — the read failed, or the router aimed here on a server
   // with no contests — leaves the reader on a tab with no trigger. Send them back to the catalog.

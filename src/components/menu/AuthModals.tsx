@@ -38,6 +38,8 @@ interface AuthModalsProps {
   onUnreadChange?: (unread: number) => void;
   /** Tab to open on; the dev-router uses this to land on either half directly. */
   initialTab?: ProfileTab;
+  /** Changes with each outside request, so a repeat request selects its tab again. */
+  requestKey?: string;
   /** Fired when the reader changes their own profile image, so the host's header follows it. */
   onAvatarChanged?: (avatarUrl: string | null) => void;
   /** Fired once the notification feed has been read, so the badge outside drops its share. */
@@ -53,7 +55,7 @@ export function AuthModals({
   showProfileDialog, setShowProfileDialog,
   currentUser, onLogout,
   onUnreadChange, onAvatarChanged, onNotificationsRead, onOpenListing,
-  initialTab = 'messages',
+  initialTab, requestKey,
 }: AuthModalsProps) {
   // Held locally as well as on the host: the header has to change the moment the crop is saved, and the
   // host's copy arrives a render later.
@@ -67,7 +69,7 @@ export function AuthModals({
   useEffect(() => {
     setAvatarUrl((currentUser?.avatarUrl as string | null) ?? null);
   }, [currentUser]);
-  const [profileTab, setProfileTab] = useState<ProfileTab>(initialTab);
+  const [profileTab, setProfileTab] = useState<ProfileTab>(initialTab ?? 'messages');
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   // Whether an admin has authored a gate at all. Until one exists there is nothing to show or agree to,
   // so the tab is absent rather than empty. `null` while the answer is still unknown — falling back on
@@ -133,12 +135,12 @@ export function AuthModals({
   // fields for a frame or two during the fade-out.
   useResetOnOpen(showProfileDialog, () => {
     resetPasswordForm();
-    setProfileTab(initialTab);
+    setProfileTab(initialTab ?? 'messages');
   });
 
   // Also honor a *change* of `initialTab` while the dialog is already open — the dev-router points at a
   // tab by changing this prop, and without it a second `goto` at an open dialog is silently ignored.
-  useEffect(() => { setProfileTab(initialTab); }, [initialTab]);
+  useEffect(() => { if (initialTab) setProfileTab(initialTab); }, [initialTab, requestKey]);
 
   const handleChangePassword = async () => {
     setPasswordError('');

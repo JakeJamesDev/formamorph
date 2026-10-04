@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type MutableRefObject, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
@@ -102,8 +102,17 @@ import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { useHelpWorldSource } from '@/lib/formaquestion/helpWorld';
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
+  initialTab, initialBenchTab, requestKey, leaveRef,
 }: {
   onClose: () => void;
+  /** A tab an outside request selects. */
+  initialTab?: string;
+  /** A Test Bench instrument an outside request opens. */
+  initialBenchTab?: string;
+  /** Changes with each outside request, so a repeat request selects its tab again. */
+  requestKey?: string;
+  /** Filled with the editor's leave step: it runs `then` now, or after the unsaved-changes prompt. */
+  leaveRef?: MutableRefObject<((then: () => void) => void) | null>;
   embedded?: boolean;
   /** The world is one New World just made. The editor offers the Authoring Tour on it. */
   newWorld?: boolean;
@@ -201,7 +210,8 @@ const WorldEditorInner = ({
   const dismissTutorial = useCallback(() => dismiss(EDITOR_MODE_TUTORIAL_ID), [dismiss]);
   const offerAnchor = useTourAnchor(offerPending ? TOUR_STEPS[0].anchor : null);
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(initialTab ?? "overview");
+  useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab, requestKey]);
   // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
   useEffect(() => {
     if (!visibleTabs.some((t) => t.value === activeTab)) setActiveTab('overview');
@@ -435,6 +445,11 @@ const WorldEditorInner = ({
     return false;
   }, [isWorldDirty]);
   const requestClose = useCallback(() => { leaveWorld(onClose); }, [leaveWorld, onClose]);
+  useEffect(() => {
+    if (!leaveRef) return;
+    leaveRef.current = leaveWorld;
+    return () => { leaveRef.current = null; };
+  }, [leaveRef, leaveWorld]);
   useBackStop(requestClose, editorRootRef);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
@@ -459,6 +474,8 @@ const WorldEditorInner = ({
     isMobile,
     advanced,
     routedTab: devRoute?.bench,
+    requestedTab: initialBenchTab,
+    requestKey,
     navigateToItem: navigateToBenchItem,
     // The tour's In Play pane holds the Bench's desktop slot while the tour runs.
     panelSuspended: touring && !isMobile,
@@ -1235,15 +1252,21 @@ const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
   // The Authoring Tour shows Simple while it runs on this world, without touching the stored preference.
   const { worldId } = useGameData();
   const touring = useTourRecord(worldId) !== null;
+  // A request for a tab Simple hides is a request for Advanced.
+  const requestedMode = props.initialTab && !editorTabsFor(false).some((t) => t.value === props.initialTab)
+    ? 'advanced'
+    : undefined;
   const forcedMode = import.meta.env.DEV && (devRoute?.mode === 'simple' || devRoute?.mode === 'advanced')
     ? devRoute.mode
-    : undefined;
+    : requestedMode;
   // Each parsed route is a fresh object, so this counts navigations — a `goto` with the same mode still
   // re-applies it, which a mount-time seed alone would miss once the switch had been clicked.
   const nonce = useRef(0);
   const lastRoute = useRef(devRoute);
-  if (lastRoute.current !== devRoute) {
+  const lastRequest = useRef(props.requestKey);
+  if (lastRoute.current !== devRoute || lastRequest.current !== props.requestKey) {
     lastRoute.current = devRoute;
+    lastRequest.current = props.requestKey;
     nonce.current += 1;
   }
   return (

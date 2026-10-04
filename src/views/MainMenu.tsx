@@ -41,6 +41,8 @@ import {
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { asSettingsTab, type SettingsTabId } from '../components/modals/settingsTabs';
 import { useSettingsOpenRequest } from '@/lib/useSettingsOpenRequest';
+import { closesWorldEditor, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from '@/lib/surface/useSurfaceOpenRequest';
+import { stepTab, type SurfaceSteps } from '@/lib/surface/surfaceRoute';
 import { useSettings } from "@/contexts/SettingsContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AiSetupGate, type GateReason } from '../components/AiSetupGate';
@@ -1302,6 +1304,64 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setPlayAfterTour(worldId);
     });
   };
+  /** The editor's own exit: close it and follow the open world into the reloaded grid. */
+  const exitWorldEditor = () => {
+    const openId = selectedWorld?.id;
+    void closeWorldEditor().then((list) => (openId ? resyncSelectedWorld(list, openId) : undefined));
+  };
+
+  // --- Surface requests ------------------------------------------------------------------------------
+  const surfaceNav = useSurfaceNav();
+  // The World Editor's leave step, which asks about unsaved edits before it lets go.
+  const editorLeaveRef = useRef<((then: () => void) => void) | null>(null);
+  const openSurfaceHere = (steps: SurfaceSteps) => {
+    surfaceNav.land(steps);
+    // No game is running, so a game surface opens the saves that lead into one.
+    if (steps.view === 'gameViewer') { setShowLoadDialog(true); return; }
+    const cardTab = stepTab(steps, 'mainMenu');
+    if (cardTab) setCardType(cardTab);
+    switch (steps.dialog) {
+      case 'settings': {
+        const landing = settingsLanding(steps);
+        if (landing.tab) setSettingsTab(landing.tab);
+        if (landing.endpointTab) setSettingsEndpointTab(landing.endpointTab);
+        setShowSettings(true);
+        break;
+      }
+      // The editor edits the open world. With none open, the library is where one is picked.
+      case 'worldEditor':
+        if (selectedWorld || showWorldEditor) setShowWorldEditor(true);
+        else setCardType('worlds');
+        break;
+      // Held as the browser's own tab request, so it outlasts the landing and an age gate's answer.
+      case 'community': {
+        const tab = stepTab(steps, 'community');
+        if (!showCommunityBrowser) openCommunityBrowser(tab);
+        else if (tab) setCommunityTab(tab);
+        break;
+      }
+      case 'profile':
+        if (isAuthenticated) setShowProfileDialog(true);
+        else requestSignIn();
+        break;
+      case 'auth': if (!isAuthenticated) requestSignIn(); break;
+      case 'feedbackHub': setShowFeedback(true); break;
+      case 'menu': setShowLoadDialog(true); break;
+      case 'backup': setShowBackup(true); break;
+      case 'avatar': setShowCharacterCustomization(true); break;
+      case 'aiSetup': setGate({ reason: 'firstRun' }); break;
+      case 'intro': onReplayIntro?.(); break;
+    }
+  };
+  useSurfaceOpenRequest((steps, clear) => {
+    clear();
+    const leave = editorLeaveRef.current;
+    if (!showWorldEditor || !closesWorldEditor(steps) || !leave) {
+      openSurfaceHere(steps);
+      return;
+    }
+    leave(() => { exitWorldEditor(); openSurfaceHere(steps); });
+  });
 
   /**
    * Download this world's linked pictures into the on-device cache so it stays viewable without a connection.
@@ -1826,8 +1886,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         onOpenChange={(v) => { setShowSettings(v); if (!v) { setSettingsTab(undefined); setSettingsEndpointTab(undefined); } }}
         initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
-        initialPromptTab={devRoute?.subtab}
-        initialPromptSurface={devRoute?.surface}
+        initialPromptTab={surfaceNav.settings?.promptTab ?? devRoute?.subtab}
+        initialPromptSurface={surfaceNav.settings?.promptSurface ?? devRoute?.surface}
+        requestKey={surfaceNav.key}
         onWorldsRestored={refreshWorlds}
         onStartAuthoringTour={() => { setShowSettings(false); void handleCreateNewWorld({ tour: true }); }}
       />
@@ -2794,7 +2855,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onUnreadChange={setUnreadMessages}
             onNotificationsRead={handleNotificationsRead}
             onOpenListing={handleOpenListing}
-            initialTab={devRoute?.modal === 'profile' ? (devRoute.tab as ProfileTab | undefined) : undefined}
+            initialTab={surfaceNav.tab('profile') ?? (devRoute?.modal === 'profile' ? (devRoute.tab as ProfileTab | undefined) : undefined)}
+            requestKey={surfaceNav.key}
           />
 
           {/* Publish Modal — form/handlers live in the component */}
@@ -2824,6 +2886,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onOpenChange={handleCommunityBrowserOpenChange}
             presentation={devRoute?.modal === 'community' && devRoute.mode === 'page' ? 'page' : 'dialog'}
             initialTab={communityTab ?? (devRoute?.modal === 'community' ? asBrowseTab(devRoute.tab) : undefined)}
+            requestKey={surfaceNav.key}
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
             // Only on a press, and only where a guest's like cannot land: a server with the feature
@@ -2855,10 +2918,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             newWorld={editorOnNewWorld}
             startTour={editorStartsTour}
             onPlay={playFromEditor}
-            onClose={() => {
-              const openId = selectedWorld?.id;
-              void closeWorldEditor().then((list) => (openId ? resyncSelectedWorld(list, openId) : undefined));
-            }}
+            onClose={exitWorldEditor}
+            initialTab={surfaceNav.tab('worldEditor')}
+            initialBenchTab={surfaceNav.tab('worldEditorBench')}
+            requestKey={surfaceNav.key}
+            leaveRef={editorLeaveRef}
           />
         </DialogContent>
       </Dialog>
@@ -2875,7 +2939,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <FeedbackHubDialog
         open={showFeedback}
         onOpenChange={setShowFeedback}
-        initialTab={devRoute?.modal === 'feedbackHub' ? (devRoute.tab as MyFeedbackTabKey | undefined) : undefined}
+        initialTab={surfaceNav.tab('feedbackHub') ?? (devRoute?.modal === 'feedbackHub' ? (devRoute.tab as MyFeedbackTabKey | undefined) : undefined)}
+        requestKey={surfaceNav.key}
         onChanged={handleBugsChange}
       />
 

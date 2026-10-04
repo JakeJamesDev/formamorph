@@ -217,7 +217,7 @@ function PromptsShell({ morph, sourceRef, title, children }: {
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, requestKey, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -239,6 +239,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   initialPromptSurface?: string;
   /** Which stacked field of the Messages view to scroll to and focus on arrival. */
   initialPromptField?: MessageField;
+  /** Changes with each outside request, so a repeat request for the tab already set selects it again. */
+  requestKey?: string;
   /** Overrides the stored Simple/Advanced preference (the dev-router's `mode` param; tests set it directly). */
   forcedMode?: SettingsMode;
 }) => {
@@ -268,6 +270,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     else if (wantsAdvancedTab) setModeState('advanced');
   }, [devRoute, routeMode, wantsAdvancedTab]);
   useEffect(() => { if (forcedMode) setModeState(forcedMode); }, [forcedMode]);
+  useEffect(() => {
+    if (requestKey && wantsAdvancedTab) setModeState('advanced');
+    // Only a new request switches the mode; the player's own switch afterwards stands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestKey]);
   const visibleTabs = useMemo(() => settingsTabsFor(advanced), [advanced]);
   const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('settings', { active: isOpen });
   const dismissTutorial = useCallback(() => { if (tutorial) dismiss(tutorial.id); }, [tutorial, dismiss]);
@@ -324,8 +331,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     onWorldsRestored?.();
   };
   // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
-  useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
-  useEffect(() => { if (requestedEndpointTab) setEndpointTab(requestedEndpointTab); }, [requestedEndpointTab]);
+  useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab, requestKey]);
+  useEffect(() => { if (requestedEndpointTab) setEndpointTab(requestedEndpointTab); }, [requestedEndpointTab, requestKey]);
   const settings = useSettings();
   const imageAttachmentsOn = useImageAttachments();
   const {
@@ -660,10 +667,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // The selected prompt sub-tab, so the Reset button can target just that prompt.
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
   // DEV dev-router: honor a requested prompt sub-tab (a `subtab=…` in the hash).
-  useEffect(() => { if (initialPromptTab) setPromptTab(initialPromptTab); }, [initialPromptTab]);
+  useEffect(() => { if (initialPromptTab) setPromptTab(initialPromptTab); }, [initialPromptTab, requestKey]);
   // The preset's Overview stands in place of a prompt. A built-in has none, so it falls through to the prompt.
   const [overviewOpen, setOverviewOpen] = useState(initialPromptTab === OVERVIEW_ROUTE);
-  useEffect(() => { if (initialPromptTab) setOverviewOpen(initialPromptTab === OVERVIEW_ROUTE); }, [initialPromptTab]);
+  useEffect(() => { if (initialPromptTab) setOverviewOpen(initialPromptTab === OVERVIEW_ROUTE); }, [initialPromptTab, requestKey]);
   const showingOverview = overviewOpen && presetOverview !== null;
   // Bumped to put focus on the Overview's Models field, the way out of the empty-Models publish block.
   const [focusModels, setFocusModels] = useState(0);
@@ -729,7 +736,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         : (initialPromptSurface as PromptSurface),
     );
     setJumpField(initialPromptField ?? null);
-  }, [initialPromptSurface, initialPromptTab, initialPromptField]);
+  }, [initialPromptSurface, initialPromptTab, initialPromptField, requestKey]);
   // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell. The
   // morph is the single source of truth: fields read `contentInOverlay`, so they return to their docked
   // form the moment the close starts — under the overlay, by then a fading solid panel.

@@ -27,6 +27,8 @@ export interface CommunityBrowserHostProps {
   filterPreferences?: CommunityFilterPreferences;
   /** The tab to open on — the dev-router's, or the one an event banner asked for. */
   initialTab?: BrowseTab;
+  /** Changes with each outside request, so a repeat request selects its tab again. */
+  requestKey?: string;
   /** A listing to open the details for, arriving from somewhere else — a notification feed row. */
   openListing?: { id: string; kind: string } | null;
   /** Fired once that listing has been opened, or found to be gone, so the caller can clear its request. */
@@ -66,7 +68,7 @@ export interface CommunityBrowserHostProps {
  * coordinator's own optimistic writes, entities, dictionaries, and models through the refreshers below.
  */
 export const CommunityBrowserHost = ({
-  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, initialTab, openListing, onListingOpened,
+  open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, initialTab, requestKey, openListing, onListingOpened,
   listing, onListingChange, onListingUnavailable, onGuestLike,
   detailsAction, promptLibrary,
   openLikersOnMount = false, openManageAddonsOnMount = false,
@@ -228,6 +230,7 @@ export const CommunityBrowserHost = ({
         onGuestLike={onGuestLike}
         openImageViewer={openImageViewer}
         initialTab={eventTab ?? initialTab}
+        requestKey={requestKey}
         openListing={openListing}
         onListingOpened={onListingOpened}
         listing={listing}
