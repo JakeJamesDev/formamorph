@@ -36,7 +36,7 @@ function exporter() {
     render: async (layers) => { drawn.push([...layers]); return { bytes: webp(), width: 48, height: 32 }; },
     appVersion: 'test',
   };
-  return { drawn, run: (rig: MascotRig) => exportMascotCard(rig, deps) };
+  return { drawn, run: (rig: MascotRig, name = 'Captain') => exportMascotCard(name, rig, deps) };
 }
 
 /** Each rig image's text, in rig order: the base, then each layer's overlays. */
@@ -72,6 +72,10 @@ describe('the mascot card file', () => {
     expect(await rigTexts(back)).toEqual(await rigTexts(rig));
     // The shared image comes back as one stored image in both layers.
     expect(back.layers[1].images[0]).toEqual(back.layers[2].images[0]);
+  });
+
+  it('carries the mascot name', async () => {
+    expect((await readMascotCard(await exporter().run(await storedRig(), 'Old Friend'))).name).toBe('Old Friend');
   });
 
   it('draws the Initial look as the visible image', async () => {

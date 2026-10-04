@@ -6,6 +6,8 @@ import { chatChrome, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MA
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { DEFAULT_MASCOT_RIG } from './mascot';
+import { activeMascotRig, EMPTY_MASCOT_PRESET_STORE } from './mascotPresets';
+import { mascotStoreOf } from '@/test/helpFixtures';
 
 describe('the default help settings', () => {
   it('equal the values the help session had as constants when the bar run measured it', () => {
@@ -29,7 +31,7 @@ describe('the default help settings', () => {
       tools: [],
       toolSwitches: {},
       mascot: true,
-      rig: DEFAULT_MASCOT_RIG,
+      mascotPresets: EMPTY_MASCOT_PRESET_STORE,
       chatStyle: 'auto',
       scrimOpacity: 60,
     });
@@ -130,8 +132,8 @@ describe('the reveal values', () => {
 describe('the mascot', () => {
   const stored = (value: unknown) => helpSettingsCodec.parse(JSON.stringify(value));
 
-  it('reads as on with the default rig when the value has none', () => {
-    expect(stored({})).toMatchObject({ mascot: true, rig: DEFAULT_MASCOT_RIG });
+  it('reads as on, with the Default active and no custom mascots, when the value has none', () => {
+    expect(stored({})).toMatchObject({ mascot: true, mascotPresets: EMPTY_MASCOT_PRESET_STORE });
   });
 
   it('keeps the switch, and takes on for anything else', () => {
@@ -139,17 +141,23 @@ describe('the mascot', () => {
     expect(stored({ mascot: 'off' }).mascot).toBe(true);
   });
 
-  it('survives the codec with a changed rig', () => {
+  it('round-trips the mascot store through the codec', () => {
     const rig = { ...DEFAULT_MASCOT_RIG, voice: 'Terse.', layers: DEFAULT_MASCOT_RIG.layers.slice(0, 2) };
-    const settings = helpSettingsOf({ mascot: false, rig });
+    const settings = helpSettingsOf({ mascot: false, mascotPresets: mascotStoreOf(rig) });
     expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings))).toEqual(settings);
   });
 
-  it('reads the rig through the mascot codec, so a bad layer drops and the others stay', () => {
+  it('reads each rig through the mascot codec, so a bad layer drops and the others stay', () => {
     const [first, second] = DEFAULT_MASCOT_RIG.layers;
-    const rig = stored({ rig: { ...DEFAULT_MASCOT_RIG, layers: [first, { id: 'broken' }, second] } }).rig;
-    expect(rig.layers).toEqual([first, second]);
-    expect(stored({ rig: 'mine' }).rig).toEqual(DEFAULT_MASCOT_RIG);
+    const rig = { ...DEFAULT_MASCOT_RIG, layers: [first, { id: 'broken' }, second] };
+    const { mascotPresets } = stored({ mascotPresets: { activeId: 'mine', mascots: [{ id: 'mine', name: 'Mine', rig }] } });
+    expect(activeMascotRig(mascotPresets).layers).toEqual([first, second]);
+  });
+
+  it('reads the old single-rig shape as nothing: the Default, with no custom mascots', () => {
+    const old = stored({ rig: { ...DEFAULT_MASCOT_RIG, voice: 'Gruff.' } });
+    expect(old.mascotPresets).toEqual(EMPTY_MASCOT_PRESET_STORE);
+    expect(old).not.toHaveProperty('rig');
   });
 });
 

@@ -527,10 +527,25 @@ A Tool that's on reads the world you have open, so text from that world can go t
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
 ### Mascot
-<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window -->
+<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot -->
 <!-- route: formaquestionSettings.mascot -->
 
 The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions.
+
+You can keep more than one mascot. The **Preset** list at the top of the tab picks the one Formaquestion shows. **Default** is the mascot that comes with the app. It is read-only, and it updates with each release. To change it, select **Duplicate Mascot** and edit the copy.
+
+| Button | What it does |
+|---|---|
+| **Duplicate Mascot** | Copies the mascot you see into one you can edit, and selects it |
+| **Rename Mascot** | Renames this mascot |
+| **Delete Mascot** | Deletes this mascot and the images no other mascot uses. It asks first. |
+| **Reset Mascot** | Puts the Default's rig in place of this mascot's. **Cancel** takes it back. |
+| **Import Mascot** | Adds a mascot from a card file, and selects it. See [The Mascot Card](#the-mascot-card). |
+| **Export Mascot** | Saves this mascot as a card |
+
+Only **Duplicate Mascot** and **Import Mascot** show while **Default** is selected.
+
+Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
 
 With the mascot on and the **Chat Style** at **Auto**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot beside it. The mascot stands on the side of the column that has more room on the screen. It moves to the other side when you drag the column past the middle of the screen, and the head on the pill moves to the same end. Select a source name under an answer to open the guide section in a reader on the other side of the column. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
 
@@ -549,14 +564,13 @@ The tab has two columns on a wide dialog. The preview stays in view on the left,
 | **Layers** | Lists every layer in draw order, with its name, its kind and its **Enabled** checkbox |
 | **Initial Look**, **Idle Look**, **Thinking Look** | Set the face and the state that the mascot shows at each moment. See [The Looks](#the-looks). |
 | **Transition** | Sets how the mascot moves when its look changes: **None**, **Dissolve** or **Jelly**. **Play** shows it on the preview. |
-| **Reset Mascot**, **Import**, **Export** | **Reset Mascot** restores the default mascot and deletes every image you added. **Import** replaces your mascot with a card from a file. **Export** saves your mascot as a card. Reset and Import ask first. See [The Mascot Card](#the-mascot-card). |
 
 - Drag a layer by its grip to change the draw order. A layer lower in the list draws on top.
 - Select a layer to expand it and show it on the preview. Collapse it, and the preview goes back to the Idle look.
 - Expand a layer to change its name and its kind. An **Expression** is a face your AI can pick. A **State** stacks with the face, such as the arms.
 - Each layer holds overlay images, drawn in order and stretched to the base size. Drag an overlay to move it, or upload more.
 - The slots take image files only, not links. This device keeps your images, outside the settings.
-- When you remove an overlay, a layer or your base image, the app deletes each image that no other layer uses.
+- When you save, the app deletes each image you removed that no layer of any mascot uses. **Cancel** deletes the images you added since your last save.
 
 #### The Looks
 
@@ -584,7 +598,7 @@ The Mask is the box that sets the head view. It has eight handles, one on each c
 - The handles fade while your pointer is away from the box. On a touch screen they stay drawn. With reduced motion, they show and hide with no fade.
 - **Head View** sits in a fixed slot. A wide Mask shows a shorter head, so the slot does not move while you drag.
 
-**Reset Mascot** restores the default Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
+**Reset Mascot** restores the Default's Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
 
 #### The Transition
 
@@ -596,13 +610,15 @@ The mascot plays its transition each time its look changes: from the Initial Loo
 | **Dissolve** | Fades the new look in over **Duration** |
 | **Jelly** | Squashes the mascot, stretches it past full height as the new look appears, then bounces it back to rest. **Duration**, **Squash**, **Overshoot** and **Settle Count** tune it. |
 
-- **Jelly** is the default. **Reset Mascot** returns the transition to its defaults.
+- **Jelly** is the default. **Reset Mascot** returns the transition to the Default's.
 - Your system's reduced-motion setting turns the transition off. The tab says so while it applies.
 - **Play** changes the preview between the look it shows and the Thinking Look. Each press plays the transition one way, and the next press plays it back.
 
 #### The Mascot Card
 
-**Export** saves your mascot as a `.webp` card. The card shows the Initial Look, and it holds the whole rig: every layer and image, the three looks, the Mask, the transition and the Voice. Send the file to a friend. **Import** reads a `.webp` card and replaces your rig with it, and it deletes every image you added. Import asks first, like **Reset Mascot**. It does not change the **Mascot** switch.
+**Export Mascot** saves the mascot you see as a `.webp` card, with your changes not saved yet. The card shows the Initial Look, and it holds the mascot's name and the whole rig: every layer and image, the three looks, the Mask, the transition and the Voice. Send the file to a friend. **Import Mascot** reads a `.webp` card and adds it as a new mascot. Your other mascots stay as they are. It does not change the **Mascot** switch.
+
+- The new mascot takes the name in the card. A card with no name takes the file's name. A name already in use gets a number, such as "Captain 2".
 
 - A card with a bad field, or one from a different version, is refused. The error names the field, and your mascot stays as it was.
 - The card is an image file with your art inside it. Share it only with people you want to see that art.

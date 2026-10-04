@@ -11,6 +11,7 @@ import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { HELP_PICK_LIMIT } from './helpPicks';
 import type { HelpPromptKey } from './helpPrompt';
 import type { HelpSettings } from './helpSettings';
+import { activeMascotRig } from './mascotPresets';
 
 /** A help chip's token in the stored text. */
 export const HELP_CHIP = {
@@ -31,9 +32,9 @@ export interface HelpChipValues {
 
 const NO_VALUES: HelpChipValues = { voice: '' };
 
-/** The chip values a prompt's request sends: the rig's Voice, trimmed, while the mascot is on; the pick request sends none. */
-export const helpChipValues = (prompt: HelpPromptKey, { mascot, rig }: Pick<HelpSettings, 'mascot' | 'rig'>): HelpChipValues =>
-  (prompt !== 'pick' && mascot ? { voice: rig.voice.trim() } : NO_VALUES);
+/** The chip values a prompt's request sends: the active mascot's Voice, trimmed, while the mascot is on; the pick request sends none. */
+export const helpChipValues = (prompt: HelpPromptKey, { mascot, mascotPresets }: Pick<HelpSettings, 'mascot' | 'mascotPresets'>): HelpChipValues =>
+  (prompt !== 'pick' && mascot ? { voice: activeMascotRig(mascotPresets).voice.trim() } : NO_VALUES);
 
 /** A chip sends a fixed `text`, or the question's `value` of that name in its `frame`. An empty value sends nothing. */
 type HelpChipEntry = { label: string; hint: string } & ({ text: string } | { value: keyof HelpChipValues; frame: (value: string) => string });

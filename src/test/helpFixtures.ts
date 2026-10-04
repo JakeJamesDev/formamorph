@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
 import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
-import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
+import { DEFAULT_MASCOT_RIG, type MascotRig } from '@/lib/formaquestion/mascot';
+import type { MascotPresetStore } from '@/lib/formaquestion/mascotPresets';
 import { writeStoredWindow } from '@/lib/formaquestion/windowBox';
 import type { Tool } from '@/types';
 import { sseReply, sseResponse } from './aiTextFixtures';
@@ -57,6 +58,9 @@ export function stubHelpStream(chunks: string[] | (() => Response), picked = NO_
   vi.stubGlobal('fetch', (url: string, init: RequestInit) => (isPickRequest(init) ? picks(url, init) : answers(url, init)));
   return Object.assign(answers, { picks });
 }
+
+/** A store whose one custom mascot, "Mine", holds `rig` and is active. */
+export const mascotStoreOf = (rig: MascotRig): MascotPresetStore => ({ activeId: 'mine', mascots: [{ id: 'mine', name: 'Mine', rig }] });
 
 /** Opens Formaquestion Settings from the window's title bar menu. */
 export async function openHelpSettings() {

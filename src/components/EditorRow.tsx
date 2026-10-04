@@ -60,7 +60,7 @@ export interface EditorRowProps {
   collapseLabels?: [string, string];
 
   /** The enabled toggle, where the surface offers one. */
-  checkbox?: { checked: boolean; onChange: (checked: boolean) => void; ariaLabel?: string };
+  checkbox?: { checked: boolean; onChange: (checked: boolean) => void; ariaLabel?: string; disabled?: boolean };
   /** Between the grip and the label (e.g. a folder glyph on group rows). */
   icon?: ReactNode;
   label: ReactNode;
@@ -162,6 +162,7 @@ export function EditorRow({
         <Tip tip={checkbox.checked ? 'Enabled — click to disable' : 'Disabled — click to enable'}>
           <Checkbox
             checked={checkbox.checked}
+            disabled={checkbox.disabled}
             onCheckedChange={(v) => checkbox.onChange(v === true)}
             onClick={(e) => e.stopPropagation()}
             aria-label={checkbox.ariaLabel}

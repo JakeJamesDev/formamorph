@@ -2,10 +2,12 @@ import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode 
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Info, Move, Play, Plus, RotateCcw, X } from 'lucide-react';
+import { Copy, Info, Move, Pencil, Play, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
+import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
+import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { CheckRow, OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +25,7 @@ import { randomUUID } from '@/lib/uuid';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import {
-  DEFAULT_MASCOT_RIG, MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotPickWarnings, type MascotImageRef, type MascotLayer,
+  MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotPickWarnings, type MascotImageRef, type MascotLayer,
   type MascotLayerKind, type MascotMask, type MascotPickName, type MascotPickWarning, type MascotRig,
 } from '@/lib/formaquestion/mascot';
 import {
@@ -34,11 +36,12 @@ import {
   MASK_GRIPS, cropFrame, fitMask, gripKeyDelta, headSizeWithin, isMaskGrip, maskFromDrag, moveMaskGrip, type MascotPoint, type MascotSize, type MaskGrip,
 } from '@/lib/formaquestion/mascotMask';
 import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
-import { addMascotImage, clearMascotImages, deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
-import type { MascotCardData } from '@/lib/formaquestion/mascotCard';
+import { addMascotImage } from '@/lib/formaquestion/mascotImageStore';
+import { mascotCardName } from '@/lib/formaquestion/mascotCard';
+import { DEFAULT_MASCOT_ID, DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 import { MASCOT_CARD_FILE_NAME, exportMascotCard, readMascotCard, storeMascotCard } from '@/lib/formaquestion/mascotCardFile';
 import {
-  addMascotLayer, addMascotOverlays, mascotImageIds, mascotImageRefs, mascotPickOptions, moveMascotLayer, moveMascotOverlay, orphanedMascotImages,
+  addMascotLayer, addMascotOverlays, mascotImageIds, mascotImageRefs, mascotPickOptions, moveMascotLayer, moveMascotOverlay,
   removeMascotBase, removeMascotLayer, removeMascotOverlay, setMascotBase, setMascotPick, updateMascotLayer, type MascotLayerPatch,
 } from '@/lib/formaquestion/mascotRigEdits';
 import {
@@ -52,6 +55,7 @@ import { usePointerDrag } from './usePointerDrag';
 import type { MascotReplay } from './useMascotMotion';
 import { useMascotImageUrls } from './useMascotImageUrls';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
+import { dropMascotImages, type MascotDraftControl } from './useMascotDraft';
 
 const PREVIEW_HEIGHT = 240;
 /** The widest Head View preview: the 128px slot less its frame's padding and border. */
@@ -95,10 +99,12 @@ const GRIP_BASE = 'absolute -translate-x-1/2 -translate-y-1/2 border-2 border-pr
 const GRIP_HIT = "before:absolute before:-inset-2 before:content-['']";
 
 /** The Mask on the preview: the dashed box, which moves from anywhere inside, with eight edge handles and a center grip. */
-function MaskBox({ mask, base, dragging, onNudge }: {
+function MaskBox({ mask, base, dragging, readOnly, onNudge }: {
   mask: MascotMask;
   base: MascotSize;
   dragging: boolean;
+  /** Draws the box alone, with no handles. */
+  readOnly: boolean;
   onNudge: (grip: MaskGrip, delta: MascotPoint) => void;
 }) {
   const keyDown = (grip: MaskGrip) => (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -114,7 +120,7 @@ function MaskBox({ mask, base, dragging, onNudge }: {
       data-fq-mask-box=""
       {...{ [GRIP_ATTR]: 'move' }}
       data-dragging={dragging ? '' : undefined}
-      className="group absolute cursor-move rounded-sm border-2 border-dashed border-primary"
+      className={`group absolute rounded-sm border-2 border-dashed border-primary ${readOnly ? '' : 'cursor-move'}`}
       style={{
         left: `${(mask.x / base.width) * 100}%`,
         top: `${(mask.y / base.height) * 100}%`,
@@ -123,7 +129,7 @@ function MaskBox({ mask, base, dragging, onNudge }: {
       }}
     >
       {/* First, so the edge handles stack over it on a small box. */}
-      <button
+      {!readOnly && <button
         type="button"
         aria-label={MASCOT_COPY.mask.move}
         {...{ [GRIP_ATTR]: 'move' }}
@@ -131,8 +137,8 @@ function MaskBox({ mask, base, dragging, onNudge }: {
         className={`${GRIP_BASE} ${GRIP_FADE} left-1/2 top-1/2 grid h-6 w-6 cursor-move place-items-center rounded-full text-primary`}
       >
         <Move aria-hidden className="h-3.5 w-3.5" />
-      </button>
-      {MASK_GRIPS.map((grip) => (
+      </button>}
+      {!readOnly && MASK_GRIPS.map((grip) => (
         <button
           key={grip}
           type="button"
@@ -173,8 +179,9 @@ function Thumb({ url }: { url: string | null }) {
   );
 }
 
-function SortableOverlay({ index, image, urlOf, selected, onSelect, onRemove }: {
+function SortableOverlay({ index, image, urlOf, selected, readOnly, onSelect, onRemove }: {
   index: number;
+  readOnly: boolean;
   image: MascotImageRef;
   urlOf: UrlOf;
   selected: boolean;
@@ -186,21 +193,23 @@ function SortableOverlay({ index, image, urlOf, selected, onSelect, onRemove }: 
     <EditorRow
       setNodeRef={setNodeRef}
       style={dragStyle(drag)}
-      gripProps={{ ...attributes, ...listeners }}
+      gripProps={readOnly ? undefined : { ...attributes, ...listeners }}
+      grip={!readOnly}
       selected={selected}
       onSelect={onSelect}
       selectionLabel={MASCOT_COPY.showOverlay(index + 1)}
       icon={<Thumb url={urlOf(image)} />}
       label={image.kind === 'bundled' ? image.name : MASCOT_COPY.storedOverlay}
       meta={image.kind === 'bundled' ? MASCOT_COPY.bundledOverlay : undefined}
-      actions={[{ icon: <X className="h-4 w-4" />, title: MASCOT_COPY.removeOverlay, onClick: onRemove }]}
+      actions={readOnly ? [] : [{ icon: <X className="h-4 w-4" />, title: MASCOT_COPY.removeOverlay, onClick: onRemove }]}
     />
   );
 }
 
 /** The expanded body of a layer row: its name, its kind, and its overlays in draw order. */
-function LayerBody({ layer, urlOf, selectedOverlay, onSelectOverlay, onPatch, onAddFiles, onRemoveOverlay, onMoveOverlay }: {
+function LayerBody({ layer, urlOf, readOnly, selectedOverlay, onSelectOverlay, onPatch, onAddFiles, onRemoveOverlay, onMoveOverlay }: {
   layer: MascotLayer;
+  readOnly: boolean;
   urlOf: UrlOf;
   selectedOverlay: number | null;
   onSelectOverlay: (index: number) => void;
@@ -217,9 +226,9 @@ function LayerBody({ layer, urlOf, selectedOverlay, onSelectOverlay, onPatch, on
     <div className="grid gap-3 rounded-b-md border border-t-0 border-border p-3">
       <div className="grid gap-1">
         <Label htmlFor={nameId}>{MASCOT_COPY.layerName}</Label>
-        <Input id={nameId} value={layer.name} onChange={(event) => onPatch({ name: event.target.value })} />
+        <Input id={nameId} value={layer.name} readOnly={readOnly} onChange={(event) => onPatch({ name: event.target.value })} />
       </div>
-      <OptionSwitcher value={layer.kind} onChange={(kind) => onPatch({ kind })} options={KIND_OPTIONS} ariaLabel={`Kind of ${layer.name}`} />
+      <OptionSwitcher value={layer.kind} onChange={(kind) => onPatch({ kind })} options={KIND_OPTIONS} ariaLabel={`Kind of ${layer.name}`} disabled={readOnly} />
       <div className="grid gap-1">
         <span className="text-label">{MASCOT_COPY.overlays}</span>
         {layer.images.length > 0 && (
@@ -233,6 +242,7 @@ function LayerBody({ layer, urlOf, selectedOverlay, onSelectOverlay, onPatch, on
                     image={image}
                     urlOf={urlOf}
                     selected={selectedOverlay === index}
+                    readOnly={readOnly}
                     onSelect={() => onSelectOverlay(index)}
                     onRemove={() => onRemoveOverlay(index)}
                   />
@@ -241,14 +251,15 @@ function LayerBody({ layer, urlOf, selectedOverlay, onSelectOverlay, onPatch, on
             </StableSortableContext>
           </EditorDndContext>
         )}
-        <ImageUpload id={`fq-mascot-overlay-${layer.id}`} onChange={() => undefined} onFile={(file) => onAddFiles([file])} onFiles={onAddFiles} />
+        {!readOnly && <ImageUpload id={`fq-mascot-overlay-${layer.id}`} onChange={() => undefined} onFile={(file) => onAddFiles([file])} onFiles={onAddFiles} />}
       </div>
     </div>
   );
 }
 
-function SortableLayer({ layer, expanded, selected, urlOf, onSelect, onToggle, onSelectOverlay, onPatch, onRemove, children }: {
+function SortableLayer({ layer, expanded, selected, urlOf, readOnly, onSelect, onToggle, onSelectOverlay, onPatch, onRemove, children }: {
   layer: MascotLayer;
+  readOnly: boolean;
   expanded: boolean;
   /** The layer itself is selected, not one of its overlays. */
   selected: boolean;
@@ -269,7 +280,8 @@ function SortableLayer({ layer, expanded, selected, urlOf, onSelect, onToggle, o
       style={dragStyle(drag)}
     >
       <EditorRow
-        gripProps={{ ...attributes, ...listeners }}
+        gripProps={readOnly ? undefined : { ...attributes, ...listeners }}
+        grip={!readOnly}
         selected={selected}
         onSelect={onSelect}
         selectionLabel={`Expand ${layer.name}`}
@@ -277,7 +289,7 @@ function SortableLayer({ layer, expanded, selected, urlOf, onSelect, onToggle, o
         collapsed={!expanded}
         onToggleCollapse={onToggle}
         attached={expanded}
-        checkbox={{ checked: layer.enabled, onChange: (enabled) => onPatch({ enabled }), ariaLabel: `Enable ${layer.name}` }}
+        checkbox={{ checked: layer.enabled, onChange: (enabled) => onPatch({ enabled }), ariaLabel: `Enable ${layer.name}`, disabled: readOnly }}
         label={layer.name}
         meta={
           <span className="flex items-center gap-2">
@@ -297,7 +309,7 @@ function SortableLayer({ layer, expanded, selected, urlOf, onSelect, onToggle, o
             </span>
           </span>
         }
-        actions={[{ icon: <X className="h-4 w-4" />, title: MASCOT_COPY.removeLayer, onClick: onRemove }]}
+        actions={readOnly ? [] : [{ icon: <X className="h-4 w-4" />, title: MASCOT_COPY.removeLayer, onClick: onRemove }]}
       />
       {expanded && children}
     </div>
@@ -308,8 +320,9 @@ function SortableLayer({ layer, expanded, selected, urlOf, onSelect, onToggle, o
 const NO_LAYER = 'none';
 
 /** One pick slot: the enabled layers of its kind. A slot that names any other layer shows that layer's name, unlisted. */
-function PickSelect({ rig, pick, slot, onPick }: {
+function PickSelect({ rig, pick, slot, disabled, onPick }: {
   rig: MascotRig;
+  disabled: boolean;
   pick: MascotPickName;
   slot: MascotLayerKind;
   onPick: (layerId: string | null) => void;
@@ -320,7 +333,7 @@ function PickSelect({ rig, pick, slot, onPick }: {
   const kept = rig.layers.find((row) => row.id === layerId);
   return (
     // An unlisted layer selects nothing, so the placeholder shows its name.
-    <Select value={layerId === null ? NO_LAYER : listed ? layerId : ''} onValueChange={(value) => onPick(value === NO_LAYER ? null : value)}>
+    <Select disabled={disabled} value={layerId === null ? NO_LAYER : listed ? layerId : ''} onValueChange={(value) => onPick(value === NO_LAYER ? null : value)}>
       <SelectTrigger aria-label={`${MASCOT_COPY.picks[pick].label} ${MASCOT_COPY.kind[slot]}`} className="min-w-0 flex-1">
         <SelectValue placeholder={kept?.name ?? MASCOT_COPY.missingLayer} />
       </SelectTrigger>
@@ -364,8 +377,9 @@ const JELLY_FORMATS: { readonly [K in keyof JellyTuning]: (value: number) => str
 };
 
 /** One tuning slider, held to its range, on one line of the preview widget. */
-function TuningRow({ id, copy, range, value, format, onChange }: {
+function TuningRow({ id, copy, range, value, format, disabled, onChange }: {
   id: string;
+  disabled: boolean;
   copy: { label: string; hint: string };
   range: TuningRange;
   value: number;
@@ -382,6 +396,7 @@ function TuningRow({ id, copy, range, value, format, onChange }: {
         max={range.max}
         step={range.step}
         format={format}
+        disabled={disabled}
         onChange={onChange}
         valueClassName="w-14 shrink-0 whitespace-nowrap"
       />
@@ -390,8 +405,9 @@ function TuningRow({ id, copy, range, value, format, onChange }: {
 }
 
 /** The transition's mode with Play, and the chosen mode's tuning. */
-function TransitionControls({ transition, onTransition, onPlay }: {
+function TransitionControls({ transition, readOnly, onTransition, onPlay }: {
   transition: MascotTransition;
+  readOnly: boolean;
   onTransition: (next: MascotTransition) => void;
   onPlay: () => void;
 }) {
@@ -403,7 +419,7 @@ function TransitionControls({ transition, onTransition, onPlay }: {
       <WidgetLabel copy={copy.mode} />
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
-          <OptionSwitcher ariaLabel={copy.mode.label} value={transition.mode} options={MODE_OPTIONS} onChange={(mode) => onTransition({ ...transition, mode })} />
+          <OptionSwitcher ariaLabel={copy.mode.label} value={transition.mode} options={MODE_OPTIONS} onChange={(mode) => onTransition({ ...transition, mode })} disabled={readOnly} />
         </div>
         <Tip tip={copy.play.hint} labelsChild={false}>
           <Button variant="outline" size="sm" onClick={onPlay}>
@@ -420,6 +436,7 @@ function TransitionControls({ transition, onTransition, onPlay }: {
           range={JELLY_RANGES[key]}
           value={transition.jelly[key]}
           format={JELLY_FORMATS[key]}
+          disabled={readOnly}
           onChange={setJelly(key)}
         />
       ))}
@@ -430,6 +447,7 @@ function TransitionControls({ transition, onTransition, onPlay }: {
           range={DISSOLVE_RANGES.durationMs}
           value={transition.dissolve.durationMs}
           format={ms}
+          disabled={readOnly}
           onChange={(durationMs) => onTransition({ ...transition, dissolve: { durationMs } })}
         />
       )}
@@ -437,53 +455,63 @@ function TransitionControls({ transition, onTransition, onPlay }: {
   );
 }
 
+/** One icon-only action of the preset row. */
+function RowAction({ copy, onClick, children }: { copy: { label: string; tip: string }; onClick: () => void; children: ReactNode }) {
+  return (
+    <Tip tip={copy.tip}>
+      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label={copy.label} onClick={onClick}>
+        {children}
+      </Button>
+    </Tip>
+  );
+}
+
+type Pending = 'rename' | 'delete' | null;
+
 /**
- * The Mascot tab of Formaquestion Settings: the switch and the rig editor. Player images go to the mascot
- * image store; an edit that leaves an image unreferenced deletes it.
+ * The Mascot tab of Formaquestion Settings: the preset row, the switch, and the editor of the selected
+ * mascot's draft. Player images go to the mascot image store; the draft drops them at Save or Cancel.
  */
-export function MascotTab({ settings, onChange }: {
+export function MascotTab({ settings, onChange, control }: {
   settings: HelpSettings;
   onChange: (change: HelpSettingsChange) => void;
+  control: MascotDraftControl;
 }) {
-  const { rig } = settings;
+  const { rig } = control.draft;
+  const { readOnly, mascot: selected } = control;
   const mounted = useMountedRef();
-  // The latest rig, for an edit that lands after an upload's await.
-  const latest = useRef(rig);
-  latest.current = rig;
   /** What the preview shows. The expanded layer is the selected one. */
   const [selection, setSelection] = useState<MascotSelection | null>(null);
+  // A switch to another mascot clears the selection; a prompt the player answers with Cancel keeps it.
+  const [selectionFor, setSelectionFor] = useState(control.draft.mascotId);
+  if (selectionFor !== control.draft.mascotId) {
+    setSelectionFor(control.draft.mascotId);
+    setSelection(null);
+  }
   const [base, setBase] = useState<MascotSize | null>(null);
   /** The box a Mask drag gives while it runs. The rig takes it on release. */
   const [draftMask, setDraftMask] = useState<MascotMask | null>(null);
   const [maskDragging, setMaskDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
-  /** A card read from a picked file, waiting for the replace confirmation. */
-  const [pendingCard, setPendingCard] = useState<MascotCardData | null>(null);
+  const [pending, setPending] = useState<Pending>(null);
   const cardInput = useRef<HTMLInputElement>(null);
   /** The last Play: its run, whether it went to the Thinking look, and the selection it played over. */
   const [play, setPlay] = useState<Omit<MascotReplay, 'transition'> & { thinking: boolean; over: MascotSelection | null } | null>(null);
-  // Bumped by Reset and by an applied import, so an upload or import that started before it lands nowhere.
-  const generation = useRef(0);
   const refs = mascotImageRefs(rig);
   const urlOf = useMascotImageUrls(refs);
 
-  const commit = (next: MascotRig) => {
-    const orphans = orphanedMascotImages(latest.current, next);
-    latest.current = next;
-    onChange({ rig: next });
-    for (const id of orphans) void deleteMascotImage(id).catch((cause: unknown) => console.error('Could not delete a mascot image:', cause));
-  };
+  const edit = control.edit;
+  // The draft at the moment of a call, for a Mask drag or nudge that reads before it edits.
+  const latest = useRef(rig);
+  latest.current = rig;
 
-  const edit = (apply: (current: MascotRig) => MascotRig) => commit(apply(latest.current));
-
-  const store = async (files: readonly File[], apply: (current: MascotRig, refs: MascotImageRef[]) => MascotRig) => {
-    const started = generation.current;
+  const uploadImages = async (files: readonly File[], apply: (current: MascotRig, refs: MascotImageRef[]) => MascotRig) => {
+    const started = control.generation.current;
     setError(null);
     try {
       const ids = await Promise.all(files.map(addMascotImage));
-      // Closed or reset mid-save: nothing will reference these.
-      if (!mounted.current || generation.current !== started) return void Promise.all(ids.map(deleteMascotImage)).catch(() => undefined);
+      // Closed, canceled or switched mid-save: nothing will reference these.
+      if (!mounted.current || control.generation.current !== started) return dropMascotImages(ids);
       edit((current) => apply(current, ids.map((id) => ({ kind: 'stored', id }))));
     } catch (cause: unknown) {
       console.error('Could not save a mascot image:', cause);
@@ -491,49 +519,32 @@ export function MascotTab({ settings, onChange }: {
     }
   };
 
-  const reset = () => {
-    generation.current += 1;
-    latest.current = DEFAULT_MASCOT_RIG;
-    onChange({ rig: DEFAULT_MASCOT_RIG });
-    setSelection(null);
-    void clearMascotImages().catch((cause: unknown) => console.error('Could not clear the mascot images:', cause));
-  };
-
   const exportCard = async () => {
     try {
-      downloadBlob(await exportMascotCard(latest.current), MASCOT_CARD_FILE_NAME);
+      downloadBlob(await exportMascotCard(selected.name, latest.current), MASCOT_CARD_FILE_NAME);
     } catch (cause: unknown) {
       toastError(cause, MASCOT_COPY.card.exportFailed);
     }
   };
 
-  /** Reads the picked card; a whole card waits for the confirmation, a bad one is named and changes nothing. */
-  const pickCard = async (event: ChangeEvent<HTMLInputElement>) => {
-    const [file] = filesFrom(event);
-    if (!file) return;
+  /** Stores the card's images, then adds the mascot and selects it. */
+  const importCard = async (file: File) => {
+    const started = control.generation.current;
     try {
       const card = await readMascotCard(file);
-      if (mounted.current) setPendingCard(card);
+      const next = await storeMascotCard(card);
+      // Closed, switched or imported again mid-store: nothing will reference these.
+      if (!mounted.current || control.generation.current !== started) return dropMascotImages(mascotImageIds(next));
+      control.add(mascotCardName(card, file.name), next);
     } catch (cause: unknown) {
       toastError(cause, MASCOT_COPY.card.importFailed);
     }
   };
 
-  /** Stores the card's images, then replaces the rig; the old rig's images go with it. */
-  const importCard = async (card: MascotCardData) => {
-    const started = generation.current;
-    try {
-      const next = await storeMascotCard(card);
-      // Closed, reset or imported again mid-store: nothing will reference these.
-      if (!mounted.current || generation.current !== started) {
-        return void Promise.all([...mascotImageIds(next)].map(deleteMascotImage)).catch(() => undefined);
-      }
-      generation.current += 1;
-      setSelection(null);
-      commit(next);
-    } catch (cause: unknown) {
-      toastError(cause, MASCOT_COPY.card.importFailed);
-    }
+  /** A picked card imports once a dirty draft is saved or discarded. */
+  const pickCard = (event: ChangeEvent<HTMLInputElement>) => {
+    const [file] = filesFrom(event);
+    if (file) control.guard(() => void importCard(file));
   };
 
   const warnings = mascotPickWarnings(rig);
@@ -555,7 +566,7 @@ export function MascotTab({ settings, onChange }: {
   const mask = base && fitMask(draftMask ?? rig.mask, base);
   const maskDrag = usePointerDrag<MaskPress>({
     start: (event) => {
-      if (event.button !== 0 || !base) return null;
+      if (event.button !== 0 || !base || readOnly) return null;
       const rect = event.currentTarget.getBoundingClientRect();
       const from = basePoint(event, rect, base);
       const grip = gripAt(event.target);
@@ -579,7 +590,7 @@ export function MascotTab({ settings, onChange }: {
       edit((current) => ({ ...current, mask: next }));
     },
   });
-  /** An arrow key on a focused handle, committed at once. */
+  /** An arrow key on a focused handle, applied at once. */
   const nudgeMask = (grip: MaskGrip, delta: MascotPoint) => {
     if (!base) return;
     const from = fitMask(latest.current.mask, base);
@@ -591,8 +602,56 @@ export function MascotTab({ settings, onChange }: {
     if (over && active.id !== over.id) edit((current) => moveMascotLayer(current, String(active.id), String(over.id)));
   };
 
+  const copy = MASCOT_COPY.preset;
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 pt-4" data-testid="mascot-preset-row">
+        <span className="text-helper text-muted-foreground">{copy.label}</span>
+        {!readOnly && (
+          <RowAction copy={copy.delete} onClick={() => setPending('delete')}>
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </RowAction>
+        )}
+        <Select value={selected.id} onValueChange={control.select}>
+          <SelectTrigger aria-label={copy.label} className="min-w-40 flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={DEFAULT_MASCOT_ID}>{DEFAULT_MASCOT_NAME}</SelectItem>
+            {control.store.mascots.map((mascot) => <SelectItem key={mascot.id} value={mascot.id}>{mascot.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <RowAction copy={copy.duplicate} onClick={control.duplicate}>
+          <Copy className="h-4 w-4" aria-hidden />
+        </RowAction>
+        {!readOnly && (
+          <>
+            <RowAction copy={copy.rename} onClick={() => setPending('rename')}>
+              <Pencil className="h-4 w-4" aria-hidden />
+            </RowAction>
+            <RowAction copy={copy.reset} onClick={() => { setSelection(null); control.reset(); }}>
+              <RotateCcw className="h-4 w-4" aria-hidden />
+            </RowAction>
+          </>
+        )}
+        <RowAction copy={copy.import} onClick={() => cardInput.current?.click()}>
+          <ActionIcon.import className="h-4 w-4" aria-hidden />
+        </RowAction>
+        {!readOnly && (
+          <RowAction copy={copy.export} onClick={() => void exportCard()}>
+            <ActionIcon.export className="h-4 w-4" aria-hidden />
+          </RowAction>
+        )}
+        <input
+          ref={cardInput}
+          type="file"
+          accept=".webp,image/webp"
+          className="hidden"
+          data-testid="mascot-card-input"
+          onChange={pickCard}
+        />
+      </div>
+      <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{copy.hint}</p>
       {/* Under lg the whole tab scrolls as one; at lg each column scrolls alone, so the preview stays in view. */}
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-6 lg:overflow-hidden">
         <div className="pt-4 lg:min-h-0 lg:overflow-y-auto lg:pb-4">
@@ -606,7 +665,7 @@ export function MascotTab({ settings, onChange }: {
               <Meta className="min-w-0 truncate">{caption}</Meta>
             </div>
             <div className="flex flex-wrap items-end justify-center gap-3" style={{ minHeight: PREVIEW_HEIGHT }}>
-              <div {...maskDrag} data-fq-mask-target="" className="relative cursor-crosshair touch-none select-none">
+              <div {...maskDrag} data-fq-mask-target="" className={`relative touch-none select-none ${readOnly ? '' : 'cursor-crosshair'}`}>
                 <MascotPiece
                   images={preview}
                   hold={refs}
@@ -614,7 +673,7 @@ export function MascotTab({ settings, onChange }: {
                   size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
                   onBase={setBase}
                 />
-                {base && mask && <MaskBox mask={mask} base={base} dragging={maskDragging} onNudge={nudgeMask} />}
+                {base && mask && <MaskBox mask={mask} base={base} dragging={maskDragging} readOnly={readOnly} onNudge={nudgeMask} />}
               </div>
               {/* A fixed slot, so the head resizing under a Mask drag never slides the mascot under the pointer. */}
               <figure className="grid w-32 justify-items-center gap-1">
@@ -635,12 +694,14 @@ export function MascotTab({ settings, onChange }: {
             <MascotScaleRow />
             <TransitionControls
               transition={rig.transition}
+              readOnly={readOnly}
               onTransition={(transition) => edit((current) => ({ ...current, transition }))}
               onPlay={playNext}
             />
           </section>
         </div>
         <div data-fq-mascot-controls="" className="grid content-start gap-6 py-4 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
+          {readOnly && <ReadOnlyNotice reason={copy.readOnly(selected.name)} onRequestEdit={control.duplicate} />}
           <Section title="Mascot">
             <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
             <Row top htmlFor="fq-mascot-voice" {...MASCOT_COPY.voice}>
@@ -648,19 +709,22 @@ export function MascotTab({ settings, onChange }: {
                 id="fq-mascot-voice"
                 rows={3}
                 value={rig.voice}
+                readOnly={readOnly}
                 onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice })); }}
               />
             </Row>
           </Section>
           {/* Base Image and Layers drop the label column, so a layer row has the whole column for its name. */}
           <Section title={MASCOT_COPY.base.label} hint={MASCOT_COPY.base.hint}>
-            <ImageUpload
-              id="fq-mascot-base"
-              // The bundled base leaves the slot empty, so a click or a drop uploads yours.
-              value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
-              onFile={(file) => void store([file], (current, [ref]) => setMascotBase(current, ref))}
-              onChange={(value) => { if (value === '') edit(removeMascotBase); }}
-            />
+            {readOnly ? <Meta>{MASCOT_COPY.bundledOverlay}</Meta> : (
+              <ImageUpload
+                id="fq-mascot-base"
+                // The bundled base leaves the slot empty, so a click or a drop uploads yours.
+                value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
+                onFile={(file) => void uploadImages([file], (current, [ref]) => setMascotBase(current, ref))}
+                onChange={(value) => { if (value === '') edit(removeMascotBase); }}
+              />
+            )}
           </Section>
           <Section title={MASCOT_COPY.layers.label} hint={MASCOT_COPY.layers.hint}>
             <div className="grid gap-2">
@@ -678,6 +742,7 @@ export function MascotTab({ settings, onChange }: {
                           expanded={own !== null}
                           selected={own?.overlay === null}
                           urlOf={urlOf}
+                          readOnly={readOnly}
                           onSelect={() => setSelection((was) => selectLayer(was, layer.id))}
                           onToggle={() => setSelection((was) => toggleLayer(was, layer.id))}
                           onSelectOverlay={pickOverlay}
@@ -690,10 +755,11 @@ export function MascotTab({ settings, onChange }: {
                           <LayerBody
                             layer={layer}
                             urlOf={urlOf}
+                            readOnly={readOnly}
                             selectedOverlay={own?.overlay ?? null}
                             onSelectOverlay={pickOverlay}
                             onPatch={patchLayer(layer.id)}
-                            onAddFiles={(files) => void store(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
+                            onAddFiles={(files) => void uploadImages(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
                             onRemoveOverlay={(index) => {
                               edit((current) => removeMascotOverlay(current, layer.id, index));
                               setSelection((was) => selectionAfterRemove(was, layer.id, index));
@@ -709,18 +775,20 @@ export function MascotTab({ settings, onChange }: {
                   </EditorRowList>
                 </StableSortableContext>
               </EditorDndContext>
-              <Button
-                variant="outline"
-                size="sm"
-                className="justify-self-start"
-                onClick={() => {
-                  const id = randomUUID();
-                  edit((current) => addMascotLayer(current, id));
-                  setSelection({ layerId: id, overlay: null });
-                }}
-              >
-                <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
-              </Button>
+              {!readOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="justify-self-start"
+                  onClick={() => {
+                    const id = randomUUID();
+                    edit((current) => addMascotLayer(current, id));
+                    setSelection({ layerId: id, overlay: null });
+                  }}
+                >
+                  <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
+                </Button>
+              )}
               {error && <p className="text-helper text-destructive">{error}</p>}
             </div>
           </Section>
@@ -729,50 +797,40 @@ export function MascotTab({ settings, onChange }: {
               <Row key={pick} {...MASCOT_COPY.picks[pick]}>
                 <div className="flex gap-2">
                   {MASCOT_LAYER_KINDS.map((slot) => (
-                    <PickSelect key={slot} rig={rig} pick={pick} slot={slot} onPick={(layerId) => edit((current) => setMascotPick(current, pick, slot, layerId))} />
+                    <PickSelect
+                      key={slot}
+                      rig={rig}
+                      pick={pick}
+                      slot={slot}
+                      disabled={readOnly}
+                      onPick={(layerId) => edit((current) => setMascotPick(current, pick, slot, layerId))}
+                    />
                   ))}
                 </div>
               </Row>
             ))}
             {warnings.length > 0 && <Row><PickWarnings rig={rig} warnings={warnings} /></Row>}
-            <Row hint={MASCOT_COPY.card.hint}>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setConfirmReset(true)}>
-                  <RotateCcw className="mr-1 h-4 w-4" />{MASCOT_COPY.reset.label}
-                </Button>
-                <Button variant="outline" size="sm" className="ml-auto" onClick={() => cardInput.current?.click()}>
-                  <ActionIcon.import className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.import}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => void exportCard()}>
-                  <ActionIcon.export className="mr-1 h-4 w-4" aria-hidden />{MASCOT_COPY.card.export}
-                </Button>
-                <input
-                  ref={cardInput}
-                  type="file"
-                  accept=".webp,image/webp"
-                  className="hidden"
-                  data-testid="mascot-card-input"
-                  onChange={(event) => void pickCard(event)}
-                />
-              </div>
-            </Row>
           </Section>
         </div>
       </div>
-      <ConfirmDialog
-        open={confirmReset}
-        onOpenChange={setConfirmReset}
-        title={MASCOT_COPY.reset.confirmTitle}
-        description={MASCOT_COPY.reset.confirmBody}
-        onConfirm={reset}
+      <div className="flex flex-shrink-0 justify-end gap-2 border-t border-border py-3" data-testid="mascot-footer">
+        <Button variant="outline" disabled={!control.dirty} onClick={() => { setSelection(null); control.cancel(); }}>{MASCOT_COPY.footer.cancel}</Button>
+        <Button disabled={!control.dirty} onClick={control.save}>{MASCOT_COPY.footer.save}</Button>
+      </div>
+      <PresetNameDialog
+        open={pending === 'rename'}
+        mode="rename"
+        initialName={selected.name}
+        onOpenChange={(open) => { if (!open) setPending(null); }}
+        onSubmit={control.rename}
       />
       <ConfirmDialog
-        open={pendingCard !== null}
-        onOpenChange={(open) => { if (!open) setPendingCard(null); }}
-        title={MASCOT_COPY.card.confirmTitle}
-        description={MASCOT_COPY.card.confirmBody}
-        onConfirm={() => { if (pendingCard) void importCard(pendingCard); }}
+        open={pending === 'delete'}
+        onOpenChange={(open) => { if (!open) setPending(null); }}
+        title={copy.deleteTitle}
+        description={copy.deleteBody(selected.name)}
+        onConfirm={control.remove}
       />
-    </>
+    </div>
   );
 }

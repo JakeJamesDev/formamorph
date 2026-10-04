@@ -14,7 +14,7 @@ import { DOCS_LOOKUP_CALL_LIMIT } from './docsLookup';
 import { EMPTY_HELP_PRESET_STORE, parseHelpPresetStore, type HelpPresetStore } from './helpPresets';
 import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
 import { parseHelpTools, parseHelpToolSwitches } from './helpTools';
-import { DEFAULT_MASCOT_RIG, parseMascotRig, type MascotRig } from './mascot';
+import { EMPTY_MASCOT_PRESET_STORE, parseMascotPresetStore, type MascotPresetStore } from './mascotPresets';
 import type { WindowChrome } from './windowBox';
 
 /** The search sources of a help question. The rankings of the ones that are on merge into one. */
@@ -68,8 +68,8 @@ export interface HelpSettings {
   readonly toolSwitches: ToolEnabledMap;
   /** The Mascot stands beside the chat. Under the Auto chat style the window then takes the minimal chrome. */
   readonly mascot: boolean;
-  /** The Mascot's rig: its images by reference, its layers, picks, Mask and Voice. */
-  readonly rig: MascotRig;
+  /** The mascot presets and the active one. The window, the face call and AI Context draw the active mascot's rig. */
+  readonly mascotPresets: MascotPresetStore;
   /** The window's chrome: Auto follows the Mascot switch; Minimal and Full pin it. */
   readonly chatStyle: ChatStyle;
   /** The Scrim's opacity in percent: the panel of the app background behind the minimal column. 0 draws nothing. */
@@ -110,7 +110,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   tools: [],
   toolSwitches: {},
   mascot: true,
-  rig: DEFAULT_MASCOT_RIG,
+  mascotPresets: EMPTY_MASCOT_PRESET_STORE,
   chatStyle: 'auto',
   scrimOpacity: 60,
 };
@@ -153,7 +153,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
   parse: (raw) => {
     const stored: unknown = JSON.parse(raw);
     if (!isRecord(stored)) throw new Error('not a help settings object');
-    const { sources, reveal, presets, tools, toolSwitches, rig, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
+    const { sources, reveal, presets, tools, toolSwitches, mascotPresets, ...rest } = pick<HelpSettings>(stored, DEFAULT_HELP_SETTINGS, {
       sources: isRecord,
       answerEndpoint: isPresetId,
       pickEndpoint: (value) => value === SAME_AS_ANSWER || isPresetId(value),
@@ -172,7 +172,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       tools: Array.isArray,
       toolSwitches: isRecord,
       mascot: isBool,
-      rig: isRecord,
+      mascotPresets: isRecord,
       chatStyle: isChatStyle,
       scrimOpacity: (value) => isBetween(SCRIM_OPACITY_MIN, SCRIM_OPACITY_MAX)(value) && (value as number) % SCRIM_OPACITY_STEP === 0,
     });
@@ -185,7 +185,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       sources: pick(storedSources, DEFAULT_HELP_SETTINGS.sources, { keyword: isBool, aiPicks: isBool, semantic: isBool }),
       tools: storedTools,
       toolSwitches: parseHelpToolSwitches(toolSwitches, storedTools),
-      rig: parseMascotRig(rig),
+      mascotPresets: parseMascotPresetStore(mascotPresets),
     };
   },
   serialize: (value) => JSON.stringify(value),

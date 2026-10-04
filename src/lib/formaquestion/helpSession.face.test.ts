@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { helpTool, pastPicks } from '@/test/helpFixtures';
+import { helpTool, mascotStoreOf, pastPicks } from '@/test/helpFixtures';
 import { DOCS_LOOKUP } from './docsLookup';
 import { HELP_FACE } from './helpFace';
 import { HELP_ROLL } from './helpRoll';
@@ -77,7 +77,7 @@ describe('the face call', () => {
 
   it('drops a disabled expression from its enum', async () => {
     const fetchImpl = script(sseReply('Select **Add Trait**.'));
-    await collect(ask(fetchImpl, { rig: without('happy', 'wink') }));
+    await collect(ask(fetchImpl, { mascotPresets: mascotStoreOf(without('happy', 'wink')) }));
     expect(faceSchema(bodyOf(fetchImpl))!.function.parameters.properties.face.enum).toEqual(EXPRESSIONS.filter((name) => name !== 'Happy' && name !== 'Wink'));
   });
 
@@ -87,7 +87,7 @@ describe('the face call', () => {
     const noFaces = script(sseReply('Select **Add Trait**.'));
     const expressionIds = DEFAULT_MASCOT_RIG.layers.filter((row) => row.kind === 'expression').map((row) => row.id);
     // A blank Voice keeps the Voice chip out, so the two requests can differ only by the face call.
-    await collect(ask(noFaces, { rig: { ...without(...expressionIds), voice: '' } }));
+    await collect(ask(noFaces, { mascotPresets: mascotStoreOf({ ...without(...expressionIds), voice: '' }) }));
     expect(bodyOf(off)).not.toHaveProperty('tools');
     expect(bodyOf(noFaces)).toEqual(bodyOf(off));
   });
@@ -126,7 +126,7 @@ describe('the face call', () => {
 
   it('answers a face that is not offered with an error, and yields no face event', async () => {
     const fetchImpl = script(faceFrames('Happy'), sseReply('Select **Add Trait**.'));
-    const events = await collect(ask(fetchImpl, { rig: without('happy') }));
+    const events = await collect(ask(fetchImpl, { mascotPresets: mascotStoreOf(without('happy')) }));
     expect(faceEvents(events)).toEqual([]);
     expect(toolResults(bodyOf(fetchImpl, 1))[0]).toContain('"error"');
     expect(events.at(-1)).toMatchObject({ type: 'done', text: 'Select **Add Trait**.' });

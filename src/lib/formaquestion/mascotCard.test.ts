@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotLayer, type MascotLayerKind, type MascotRig } from './mascot';
-import { buildMascotCardData, mascotRigFromCard, parseMascotCardData, MASCOT_CARD_VERSION } from './mascotCard';
+import { buildMascotCardData, mascotCardName, mascotRigFromCard, parseMascotCardData, MASCOT_CARD_VERSION } from './mascotCard';
 
 const img = (id: string): MascotImageRef => ({ kind: 'stored', id });
 
@@ -28,7 +28,7 @@ const rig: MascotRig = {
 /** Each image's pixels as a data URL; `mouth` and `grin-mouth` would be equal art under two ids. */
 const dataOf = (ref: MascotImageRef): string => `data:image/png;base64,${btoa(ref.kind === 'stored' ? ref.id : ref.name)}`;
 
-const build = (from: MascotRig = rig) => buildMascotCardData(from, dataOf, '3.0.1');
+const build = (from: MascotRig = rig) => buildMascotCardData('Captain', from, dataOf, '3.0.1');
 
 /** The card as a reader would receive it: through JSON text. */
 const throughJson = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
@@ -77,6 +77,20 @@ describe('the mascot card data', () => {
     expect(build()).toMatchObject({ formamorphKind: 'mascot', version: MASCOT_CARD_VERSION, appVersion: '3.0.1' });
   });
 
+  it('round-trips the mascot name', () => {
+    const card = parseMascotCardData(throughJson(build()));
+    expect(card.name).toBe('Captain');
+    expect(mascotCardName(card, 'friend.webp')).toBe('Captain');
+  });
+
+  it('names a card without a name after its file', () => {
+    for (const name of [DELETE, '', '  ']) {
+      const card = parseMascotCardData(edited('name', name));
+      expect(card.name).toBeUndefined();
+      expect(mascotCardName(card, 'Old Friend.webp')).toBe('Old Friend');
+    }
+  });
+
   it('keeps a pick at a missing layer, which the tab warns about', () => {
     expect(parseMascotCardData(throughJson(build())).rig.picks.thinking.expression).toBe('gone');
   });
@@ -95,6 +109,7 @@ describe('a refused mascot card', () => {
 
   it.each<[string, unknown]>([
     ['appVersion', DELETE],
+    ['name', 5],
     ['images', 'none'],
     ['images.1', 'https://example.com/arm.png'],
     ['images.2', 'data:image/png;base64,not base64!'],

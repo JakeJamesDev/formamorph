@@ -10,7 +10,7 @@ import { HELP_LOOKUP_SYSTEM_PROMPT, HELP_PICK_SYSTEM_PROMPT, HELP_SYSTEM_PROMPT 
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from './helpSettings';
 import { DEFAULT_MASCOT_RIG } from './mascot';
-import { VOICED_HELP_PROMPT, VOICED_LOOKUP_PROMPT } from '@/test/helpFixtures';
+import { mascotStoreOf, VOICED_HELP_PROMPT, VOICED_LOOKUP_PROMPT } from '@/test/helpFixtures';
 
 const PAGES = {
   Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.\n',
@@ -142,46 +142,46 @@ describe('the Voice of a question', () => {
 
   it("sits after the answer prompt's intro with the mascot on, and nowhere in the pick request", async () => {
     const fetchImpl = answers();
-    await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ rig }) });
+    await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf(rig) }) });
     expect(systemOf(fetchImpl, 1)).toBe(voiced(HELP_SYSTEM_PROMPT, VOICE));
     expect(systemOf(fetchImpl, 0)).toBe(HELP_PICK_SYSTEM_PROMPT);
   });
 
   it("sits after the lookup prompt's intro in lookup mode", async () => {
     const fetchImpl = answers();
-    await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ rig, lookup: true, sources: { aiPicks: false } }), snapshot: CAPABLE });
+    await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf(rig), lookup: true, sources: { aiPicks: false } }), snapshot: CAPABLE });
     expect(systemOf(fetchImpl, 0)).toBe(voiced(HELP_LOOKUP_SYSTEM_PROMPT, VOICE));
   });
 
   it("sends the prompts with no Voice while the mascot is off, and changes nothing else in the body", async () => {
     const off = answers();
-    await sent('How do I add a trait?', off, { settings: helpSettingsOf({ rig, mascot: false }) });
+    await sent('How do I add a trait?', off, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf(rig), mascot: false }) });
     expect(systemOf(off, 1)).toBe(HELP_SYSTEM_PROMPT);
     const on = answers();
-    await sent('How do I add a trait?', on, { settings: helpSettingsOf({ rig }) });
+    await sent('How do I add a trait?', on, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf(rig) }) });
     const { messages: [, ...offRest], ...offBody } = bodyOf(off, 1) as SentBody & Record<string, unknown>;
     const { messages: [, ...onRest], ...onBody } = bodyOf(on, 1) as SentBody & Record<string, unknown>;
     expect(onRest).toEqual(offRest);
     expect(onBody).toEqual(offBody);
     const lookupOff = answers();
-    await sent('How do I add a trait?', lookupOff, { settings: helpSettingsOf({ rig, mascot: false, lookup: true, sources: { aiPicks: false } }), snapshot: CAPABLE });
+    await sent('How do I add a trait?', lookupOff, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf(rig), mascot: false, lookup: true, sources: { aiPicks: false } }), snapshot: CAPABLE });
     expect(systemOf(lookupOff, 0)).toBe(HELP_LOOKUP_SYSTEM_PROMPT);
   });
 
   it("sends the prompt with no Voice when the Voice is empty or blank", async () => {
     for (const voice of ['', '  \n ']) {
       const fetchImpl = answers();
-      await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ rig: { ...rig, voice } }) });
+      await sent('How do I add a trait?', fetchImpl, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf({ ...rig, voice }) }) });
       expect(systemOf(fetchImpl, 1), JSON.stringify(voice)).toBe(HELP_SYSTEM_PROMPT);
     }
   });
 
   it('goes out in a custom answer prompt only where it places the chip', async () => {
     const without = answers();
-    await sent('How do I add a trait?', without, { settings: helpSettingsOf({ rig, presets: custom({ answer: 'Answer from the guide sections.' }) }) });
+    await sent('How do I add a trait?', without, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf(rig), presets: custom({ answer: 'Answer from the guide sections.' }) }) });
     expect(systemOf(without, 1)).toBe('Answer from the guide sections.');
     const placed = answers();
-    await sent('How do I add a trait?', placed, { settings: helpSettingsOf({ rig, presets: custom({ answer: `Answer from the guide sections.\n${HELP_CHIP.voice}` }) }) });
+    await sent('How do I add a trait?', placed, { settings: helpSettingsOf({ mascotPresets: mascotStoreOf(rig), presets: custom({ answer: `Answer from the guide sections.\n${HELP_CHIP.voice}` }) }) });
     expect(systemOf(placed, 1)).toBe(`Answer from the guide sections.\n${framed(VOICE)}`);
   });
 

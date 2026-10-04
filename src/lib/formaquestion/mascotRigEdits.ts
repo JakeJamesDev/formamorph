@@ -1,6 +1,6 @@
 /**
- * The Mascot tab's edits to a rig, as pure functions, and the rule that names the stored images an edit
- * leaves unreferenced. A layer edit never touches the picks: a pick that names a removed layer stays and warns.
+ * The Mascot tab's edits to a rig, as pure functions, and the store ids a rig references. A layer edit never
+ * touches the picks: a pick that names a removed layer stays and warns.
  */
 import {
   DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotLayer, type MascotLayerKind, type MascotPick, type MascotPickName,
@@ -67,10 +67,4 @@ export const mascotImageRefs = (rig: MascotRig): readonly MascotImageRef[] => [r
 /** The store ids a rig references. */
 export function mascotImageIds(rig: MascotRig): ReadonlySet<string> {
   return new Set(mascotImageRefs(rig).flatMap((ref) => (ref.kind === 'stored' ? [ref.id] : [])));
-}
-
-/** The store ids `before` references and `after` does not: the images an edit leaves to delete. */
-export function orphanedMascotImages(before: MascotRig, after: MascotRig): string[] {
-  const kept = mascotImageIds(after);
-  return [...mascotImageIds(before)].filter((id) => !kept.has(id));
 }

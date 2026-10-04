@@ -225,15 +225,15 @@ export function Row({ label, htmlFor, children, hint, top, info, muted, experime
 }
 
 /** A slider with its current value shown to the right. */
-export function ValueSlider({ id, value, onChange, min, max, step, format, ariaLabel, valueClassName }: {
+export function ValueSlider({ id, value, onChange, min, max, step, format, ariaLabel, valueClassName, disabled }: {
   id?: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number;
-  format: (v: number) => string; ariaLabel?: string;
+  format: (v: number) => string; ariaLabel?: string; disabled?: boolean;
   /** Overrides the value's width, for a narrow column. */
   valueClassName?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
-      <Slider id={id} aria-label={ariaLabel} className="flex-grow" value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
+      <Slider id={id} aria-label={ariaLabel} className="flex-grow" value={[value]} min={min} max={max} step={step} disabled={disabled} onValueChange={(v) => onChange(v[0])} />
       <span className={cn('w-24 text-right text-label tabular-nums', valueClassName)}>{format(value)}</span>
     </div>
   );

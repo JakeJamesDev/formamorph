@@ -30,13 +30,15 @@ export interface MascotCardData {
   readonly formamorphKind: typeof MASCOT_CARD_KIND;
   readonly version: typeof MASCOT_CARD_VERSION;
   readonly appVersion: string;
+  /** The mascot's name. An import without one names the mascot after the file. */
+  readonly name?: string;
   /** Each distinct image once, as a base64 data URL. */
   readonly images: readonly string[];
   readonly rig: MascotCardRig;
 }
 
-/** The card of `rig`. `dataOf` gives each image's pixels as a base64 data URL; equal pixels share one table entry. */
-export function buildMascotCardData(rig: MascotRig, dataOf: (ref: MascotImageRef) => string, appVersion: string): MascotCardData {
+/** The card of the mascot `name`. `dataOf` gives each image's pixels as a base64 data URL; equal pixels share one table entry. */
+export function buildMascotCardData(name: string, rig: MascotRig, dataOf: (ref: MascotImageRef) => string, appVersion: string): MascotCardData {
   const images: string[] = [];
   const indexOf = new Map<string, number>();
   const carry = (ref: MascotImageRef): number => {
@@ -53,10 +55,15 @@ export function buildMascotCardData(rig: MascotRig, dataOf: (ref: MascotImageRef
     formamorphKind: MASCOT_CARD_KIND,
     version: MASCOT_CARD_VERSION,
     appVersion,
+    name,
     images,
     rig: { ...rest, base: carry(base), layers: layers.map((layer) => ({ ...layer, images: layer.images.map(carry) })) },
   };
 }
+
+/** The name an imported card's mascot takes before a clash is numbered: the card's, else the file's without its extension. */
+export const mascotCardName = (card: MascotCardData, fileName: string): string =>
+  card.name ?? (fileName.replace(/\.[^.]*$/, '').trim() || 'Mascot');
 
 /** The rig a card gives once its images are stored: `ids[n]` is the store id of the card's image `n`. */
 export function mascotRigFromCard(card: MascotCardData, ids: readonly string[]): MascotRig {
@@ -160,6 +167,8 @@ export function parseMascotCardData(raw: unknown): MascotCardData {
   if (!isRecord(raw) || raw.formamorphKind !== MASCOT_CARD_KIND) throw new Error(NOT_A_MASCOT_CARD);
   if (raw.version !== MASCOT_CARD_VERSION) throw new Error(`This mascot card is version ${String(raw.version)}. This build reads version ${MASCOT_CARD_VERSION}.`);
   if (typeof raw.appVersion !== 'string') throw refusal('appVersion');
+  if (raw.name !== undefined && typeof raw.name !== 'string') throw refusal('name');
+  const name = typeof raw.name === 'string' && raw.name.trim() !== '' ? raw.name.trim() : undefined;
   const images = readImages(listAt(raw, 'images', 'images'));
   const rig = recordAt(raw, 'rig', 'rig');
   const base = readIndex(rig.base, images.length, 'rig.base');
@@ -172,6 +181,7 @@ export function parseMascotCardData(raw: unknown): MascotCardData {
     formamorphKind: MASCOT_CARD_KIND,
     version: MASCOT_CARD_VERSION,
     appVersion: raw.appVersion,
+    ...(name !== undefined && { name }),
     images,
     rig: { base, layers, mask, picks, voice: rig.voice, transition: readTransition(rig) },
   };
