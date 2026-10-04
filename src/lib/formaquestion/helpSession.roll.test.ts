@@ -45,9 +45,9 @@ const script = (...replies: string[][]): FetchSpy => {
   });
 };
 
-// Mascot and lookup are off by default here, so the face call and the lookup stay out of the offered functions.
+// The Mascot is off, so the face call stays out of the offered functions.
 const ask = (fetchImpl: FetchSpy, settings: HelpSettingsChange, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question: 'Roll 2d6+1 for me.', settings: helpSettingsOf({ mascot: false, lookup: false, ...settings }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
+  askHelp({ question: 'Roll 2d6+1 for me.', settings: helpSettingsOf({ mascot: false, ...settings }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];
