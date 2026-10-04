@@ -211,9 +211,12 @@ Scene images are not in a save unless you select their checkbox in **Save Game**
 
 A preset keeps a full set of **Image** tab values: the provider, its address and token, the model, the prompts, the sizes and the sampling values. Keep one preset for each server or style, and switch between them.
 
+The icon buttons next to **Preset** manage your presets. Point at an icon to see its name. On a narrow screen they are in the **Preset Actions** menu.
+
 | Control | What it does |
 |---|---|
 | **Preset** | Switches to a preset. **Add New Preset…** makes one. |
+| **Duplicate** | Copies the preset as "*preset name* (copy)" and selects the copy |
 | **Rename** | Changes the preset's name |
 | **Reset** | Sets the preset back to its default values |
 | **Delete** | Deletes the preset. Shows when you have more than one. |
