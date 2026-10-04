@@ -59,7 +59,7 @@ import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { numInput } from '@/lib/numInput';
-import { Hint, FieldError } from '@/components/ui/typography';
+import { FieldError } from '@/components/ui/typography';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import { EndpointRouteField } from './EndpointRouteField';
 import { TextEndpointEditor } from './TextEndpointEditor';
@@ -623,6 +623,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     if (v === IMG_ADD_PRESET_SENTINEL) setImagePresetDialog({ mode: 'add' });
     else selectImageEndpointPreset(v);
   };
+  // `addImageEndpointPreset` clones the active values and selects the result, so a copy needs no dialog.
+  // Every image preset is editable, so none is built in.
+  const imagePresetActions = presetHeaderActions(false, {
+    duplicate: () => addImageEndpointPreset(`${activeImageEndpointPresetName} (copy)`),
+    rename: () => setImagePresetDialog({ mode: 'rename' }),
+    reset: {
+      run: () => resetImageEndpointPreset(activeImageEndpointPresetId),
+      description: `Reset the "${activeImageEndpointPresetName}" preset to its default values? This can't be undone.`,
+    },
+    ...(imageEndpointPresets.length > 1 ? {
+      delete: {
+        run: () => deleteImageEndpointPreset(activeImageEndpointPresetId),
+        description: `Delete the "${activeImageEndpointPresetName}" preset? This can't be undone.`,
+      },
+    } : {}),
+  });
   const handleImagePresetNameSubmit = (name: string) => {
     if (imagePresetDialog?.mode === 'add') addImageEndpointPreset(name);
     else if (imagePresetDialog?.mode === 'rename') renameImageEndpointPreset(activeImageEndpointPresetId, name);
@@ -1087,26 +1103,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               </TabsContent>
               <TabsContent value="img-endpoint" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-3">
             {/* Preset selector: swaps the whole endpoint field set. Every preset (incl. Default) is editable. */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Hint as="span">Preset</Hint>
-              {imageEndpointPresets.length > 1 && (
-                <ConfirmDialog
-                  title="Delete Preset"
-                  description={`Delete the "${activeImageEndpointPresetName}" preset? This can't be undone.`}
-                  onConfirm={() => deleteImageEndpointPreset(activeImageEndpointPresetId)}
-                >
-                  <Button variant="outline" size="sm">Delete</Button>
-                </ConfirmDialog>
-              )}
-              <ConfirmDialog
-                title="Reset Preset"
-                description={`Reset the "${activeImageEndpointPresetName}" preset to its default values? This can't be undone.`}
-                onConfirm={() => resetImageEndpointPreset(activeImageEndpointPresetId)}
-              >
-                <Button variant="outline" size="sm">Reset</Button>
-              </ConfirmDialog>
+            <PresetHeader
+              label="Preset"
+              actions={imagePresetActions}
+              testId="image-preset-header"
+              select={
               <Select value={activeImageEndpointPresetId} onValueChange={handleImagePresetSelect}>
-                <SelectTrigger className="flex-1 min-w-0">
+                <SelectTrigger aria-label="Preset" className="flex-1 min-w-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1117,8 +1120,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                   <SelectItem value={IMG_ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={() => setImagePresetDialog({ mode: 'rename' })}>Rename</Button>
-            </div>
+              }
+            />
             {/* Global kill switch: hides every "Generate with AI" image button, and everything below it here.
                 On the same row grid as Face Fix further down, so all three checkboxes share a label column. */}
             <div className="flex-shrink-0">
