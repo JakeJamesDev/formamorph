@@ -1,6 +1,6 @@
 # 01: Incremental typecheck
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -21,8 +21,26 @@ Recommended model rationale: a cache whose failure mode is a silent false green;
 
 ## Acceptance criteria
 
-- [ ] `npm run typecheck` and the gate both run incrementally with a worktree-local build-info file.
-- [ ] A fresh worktree on the same drive seeds from the main checkout and reports "seeded".
-- [ ] Fixture tests: planted error after warm run fails; seeded stale file still fails on the error.
-- [ ] Times in the Answer: cold, warm, seeded.
-- [ ] The four gates are green.
+- [x] `npm run typecheck` and the gate both run incrementally with a worktree-local build-info file.
+- [x] A fresh worktree on the same drive seeds from the main checkout and reports "seeded".
+- [x] Fixture tests: planted error after warm run fails; seeded stale file still fails on the error.
+- [x] Times in the Answer: cold, warm, seeded.
+- [x] The four gates are green.
+
+## Answer
+
+`scripts/typecheck.mjs` runs `tsc --noEmit --incremental` with `typecheck.tsbuildinfo` at the checkout root; `npm run typecheck` calls it, so the gate list is unchanged (Q4). A distinct file name leaves the old minimal `tsconfig.tsbuildinfo` unused; the script does not delete it.
+
+Per Q3, a clean worktree run on the main checkout's drive writes its file back to the main checkout (temp file + rename), and a fresh worktree seeds from it. The shared file is `typecheck.seed.tsbuildinfo`, apart from the main checkout's own `typecheck.tsbuildinfo`: tsc resolves the node_modules junction, so a worktree's file stores `../../../node_modules/...` paths that fit only checkouts at worktree depth. Keeping them apart stops the main checkout's own runs and the worktree seed from turning each other near-cold. A seed copy that fails (missing or busy file) runs cold.
+
+Times on the app, 2026-10-04, no prepare lock held:
+
+| Run | Wall time |
+|---|---|
+| Cold | 21.1 s |
+| Warm | 3.6 s |
+| Seeded | 4.0 s |
+
+The seeded run read a seed written from this worktree's own tree, so it is the best case; a seed from an older tree rechecks the files that changed since.
+
+Fixture tests in `scripts/typecheck.test.mjs` (6 tests): a planted error after a warm run fails; a seed made on a clean tree still fails on an error in an unchanged file whose dependency changed; a seed written back by one tree still fails another tree's planted error and the failing run does not overwrite it; a half-written seed still fails a planted error (tsc treats it as cold); the main checkout's own runs never read or write the seed. Mutations that ignore tsc's exit status, publish after a failed run, or share with the checkout itself each turn a test red.

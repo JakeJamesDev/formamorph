@@ -14,7 +14,7 @@
     "build": "vite build",
     "build:site": "vite build --config vite.site.config.js",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/typecheck.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
