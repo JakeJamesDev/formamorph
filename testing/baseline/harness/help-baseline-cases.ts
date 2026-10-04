@@ -1,6 +1,7 @@
 // Reads the fixed Formaquestion question set, `testing/baseline/help-baseline-cases.json`.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { Keys } from './help-baseline-score';
 
@@ -16,6 +17,8 @@ export interface BaselineCase extends Keys {
   page?: string;
   /** Here: what the player has open. */
   surface?: Surface;
+  /** Task and here: the surface the question is about; `null` when the steps have no single surface. */
+  expectSurface?: SurfaceId | null;
   /** Follow-up: the id of the task case asked first. */
   after?: string;
   /** Language: the AI Language setting. */
@@ -26,8 +29,8 @@ export interface BaselineCase extends Keys {
 
 interface KeyedEntry extends Keys { id: string; question: string; section: string }
 interface CaseFile {
-  cases: (KeyedEntry & { page: string })[];
-  here: (KeyedEntry & { surface: Surface })[];
+  cases: (KeyedEntry & { page: string; expectSurface: SurfaceId | null })[];
+  here: (KeyedEntry & { surface: Surface; expectSurface: SurfaceId | null })[];
   followUps: (KeyedEntry & { after: string })[];
   changelog: { id: string; question: string; section: string }[];
   uncovered: { id: string; question: string }[];
