@@ -205,7 +205,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 - The layer list is a reorderable list. Each row shows the name, the kind, the switch and its overlays. Expanding a row shows the overlay list, itself reorderable, with add and remove.
 - Image upload reuses the existing image upload control. A file goes to the mascot image store; a link is refused, because the store holds blobs.
 - The pick dropdowns list enabled layers only, filtered by kind. A warning row names the picks that point at a disabled or missing layer (Q21).
-- The Mask drag draws a box on the preview and stores it in base pixels. The head preview updates live.
+- The Mask drag draws a box on the preview and stores it in base pixels. A canceled pointer (a touch scroll) drops the box; a drag under 16 base pixels on either side counts as a press and keeps the Mask. A Head View row shows the live head preview.
 - Reset restores the default rig and deletes the player's images.
 
 ### Mascot card
