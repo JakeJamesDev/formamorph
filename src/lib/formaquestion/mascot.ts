@@ -3,6 +3,7 @@
  * pick warnings. No other module reads a layer's kind; the renderer draws the composition's list as given.
  */
 import { isRecord } from '@/lib/tools/toolValidation';
+import { DEFAULT_MASCOT_TRANSITION, parseMascotTransition, type MascotTransition } from './mascotTransition';
 
 /** The default rig's images, bundled under `mascotAssets/`. Cut from the author's layered file by `scripts/cutMascotRig.mjs`. */
 export const MASCOT_ASSET_NAMES = [
@@ -52,11 +53,6 @@ export interface MascotMask {
   readonly height: number;
 }
 
-/** How a face change moves. A placeholder until the transition modes land. */
-export interface MascotTransition {
-  readonly mode: 'none';
-}
-
 export interface MascotRig {
   readonly base: MascotImageRef;
   /** One ordered list for both kinds. List order is draw order. */
@@ -66,6 +62,7 @@ export interface MascotRig {
   readonly picks: { readonly [K in MascotPickName]: MascotPick };
   /** The Voice chip's text: how the help answers sound while the mascot is on. */
   readonly voice: string;
+  /** How the mascot moves on a change of look. */
   readonly transition: MascotTransition;
 }
 
@@ -108,7 +105,7 @@ export const DEFAULT_MASCOT_RIG: MascotRig = {
     thinking: { expression: 'pondering', state: 'thinking' },
   },
   voice: 'Playful and cheerful, with a light touch of humor. Keep the fun in your word choice.',
-  transition: { mode: 'none' },
+  transition: DEFAULT_MASCOT_TRANSITION,
 };
 
 /**
@@ -204,6 +201,6 @@ export function parseMascotRig(stored: unknown): MascotRig {
     mask: parseMask(stored.mask),
     picks: { initial: parsePick(picks.initial), idle: parsePick(picks.idle), thinking: parsePick(picks.thinking) },
     voice: typeof stored.voice === 'string' ? stored.voice : DEFAULT_MASCOT_RIG.voice,
-    transition: DEFAULT_MASCOT_RIG.transition,
+    transition: parseMascotTransition(stored.transition),
   };
 }

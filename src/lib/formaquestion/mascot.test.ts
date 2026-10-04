@@ -28,7 +28,7 @@ const rig = (change: Partial<MascotRig> = {}): MascotRig => ({
     thinking: { expression: 'think', state: 'point' },
   },
   voice: 'Cheerful.',
-  transition: { mode: 'none' },
+  transition: { mode: 'dissolve', jelly: { durationMs: 600, squash: 0.3, overshoot: 0.2, settle: 1 }, dissolve: { durationMs: 400 } },
   ...change,
 });
 
@@ -197,6 +197,12 @@ describe('parseMascotRig', () => {
   it.each([['missing', undefined], ['bad', 'all']])('clears every pick when the picks are %s', (_, picks) => {
     const empty = { expression: null, state: null };
     expect(parseMascotRig({ ...stored(), picks }).picks).toEqual({ initial: empty, idle: empty, thinking: empty });
+  });
+
+  it('reads a rig with no transition, or a bare mode, as the default transition', () => {
+    const { transition: _, ...before } = stored();
+    expect(parseMascotRig(before)).toEqual({ ...rig(), transition: DEFAULT_MASCOT_RIG.transition });
+    expect(parseMascotRig({ ...before, transition: { mode: 'none' } }).transition).toEqual(DEFAULT_MASCOT_RIG.transition);
   });
 
   it("keeps a stored base and an empty voice", () => {

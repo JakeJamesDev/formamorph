@@ -5,10 +5,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
-import { DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotRig } from '@/lib/formaquestion/mascot';
-import { mascotAssetUrl } from '@/lib/formaquestion/mascotAssets';
+import { DEFAULT_MASCOT_RIG, composeMascot, type MascotImageRef, type MascotRig } from '@/lib/formaquestion/mascot';
+import { mascotAssetUrl, mascotImageUrl } from '@/lib/formaquestion/mascotAssets';
+import { DISSOLVE_RANGES, JELLY_RANGES } from '@/lib/formaquestion/mascotTransition';
 import { addMascotImage, clearMascotImages, getMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import { MascotTab } from './FormaquestionMascotTab';
+import { MASCOT_COPY } from './formaquestionSettingsTabs';
+import { stubReducedMotion } from '@/test/reducedMotion';
 
 let current: HelpSettings;
 
@@ -205,7 +208,7 @@ describe('player images', () => {
 describe('the Mask', () => {
   /** jsdom loads no image and lays nothing out: the base reports 888 by 1184, drawn at 180 by 240. */
   function laidOut() {
-    for (const base of document.querySelectorAll<HTMLImageElement>('[data-fq-piece="mascot"] > div > img:first-child')) {
+    for (const base of document.querySelectorAll<HTMLImageElement>('[data-fq-piece="mascot"] [data-fq-look="new"] > img:first-child')) {
       Object.defineProperty(base, 'naturalWidth', { configurable: true, value: 888 });
       Object.defineProperty(base, 'naturalHeight', { configurable: true, value: 1184 });
       fireEvent.load(base);
@@ -326,6 +329,79 @@ describe('the picks', () => {
     expect(current.rig.picks.initial.state).toBe('wave');
     expect(pickSelect('Initial Look State')).toHaveTextContent('Missing Layer');
     expect(warned()).toEqual(['Initial Look State: Missing Layer']);
+  });
+});
+
+describe('the transition rows', () => {
+  const looks = () => [...document.querySelectorAll<HTMLElement>('[data-fq-piece="mascot"][data-fq-view="full"] [data-fq-look]')]
+    .map((look) => [...look.querySelectorAll('img')].map((img) => img.getAttribute('src')));
+  const thinkingLook = () => composeMascot(DEFAULT_MASCOT_RIG, 'thinking', null).map(mascotImageUrl);
+  const modeButton = (name: string) => screen.getAllByRole('radio', { name })[0];
+  const slider = (name: string) => screen.getByRole('slider', { name });
+
+  it('shows the Jelly tuning within its ranges at the default, and keeps it across a switch to Dissolve and back', async () => {
+    mount();
+    expect(modeButton('Jelly')).toHaveAttribute('aria-checked', 'true');
+    for (const [name, key] of [['Duration', 'durationMs'], ['Squash', 'squash'], ['Overshoot', 'overshoot'], ['Settle Count', 'settle']] as const) {
+      expect(slider(name)).toHaveAttribute('aria-valuemin', String(JELLY_RANGES[key].min));
+      expect(slider(name)).toHaveAttribute('aria-valuemax', String(JELLY_RANGES[key].max));
+      expect(slider(name)).toHaveAttribute('aria-valuenow', String(DEFAULT_MASCOT_RIG.transition.jelly[key]));
+    }
+
+    fireEvent.keyDown(slider('Settle Count'), { key: 'End' });
+    expect(current.rig.transition.jelly.settle).toBe(JELLY_RANGES.settle.max);
+    fireEvent.keyDown(slider('Settle Count'), { key: 'ArrowRight' });
+    expect(current.rig.transition.jelly.settle).toBe(JELLY_RANGES.settle.max);
+
+    await userEvent.click(modeButton('Dissolve'));
+    expect(current.rig.transition.mode).toBe('dissolve');
+    expect(screen.queryByRole('slider', { name: 'Squash' })).toBeNull();
+    expect(slider('Duration')).toHaveAttribute('aria-valuemin', String(DISSOLVE_RANGES.durationMs.min));
+    expect(slider('Duration')).toHaveAttribute('aria-valuemax', String(DISSOLVE_RANGES.durationMs.max));
+    fireEvent.keyDown(slider('Duration'), { key: 'Home' });
+    expect(current.rig.transition.dissolve.durationMs).toBe(DISSOLVE_RANGES.durationMs.min);
+
+    await userEvent.click(modeButton('None'));
+    expect(screen.queryByRole('slider')).toBeNull();
+    await userEvent.click(modeButton('Jelly'));
+    expect(current.rig.transition).toEqual({
+      mode: 'jelly',
+      jelly: { ...DEFAULT_MASCOT_RIG.transition.jelly, settle: JELLY_RANGES.settle.max },
+      dissolve: { durationMs: DISSOLVE_RANGES.durationMs.min },
+    });
+  });
+
+  it('plays from the Thinking look to the Idle look on the preview', async () => {
+    mount();
+    const idle = preview();
+    expect(looks()).toEqual([idle]);
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }));
+    expect(looks()).toEqual([thinkingLook(), idle]);
+    await waitFor(() => expect(looks()).toEqual([idle]));
+  });
+
+  it("plays from the Thinking look to an expanded layer's look", async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    const happy = preview();
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }));
+    expect(looks()).toEqual([thinkingLook(), happy]);
+  });
+
+  it('says the look swaps at once under the reduced-motion preference, and Play swaps at once', async () => {
+    mount();
+    expect(screen.queryByText(MASCOT_COPY.transition.reducedMotion)).toBeNull();
+    cleanup();
+    stubReducedMotion();
+    try {
+      mount();
+      expect(screen.getByText(MASCOT_COPY.transition.reducedMotion)).toBeInTheDocument();
+      const idle = preview();
+      await userEvent.click(screen.getByRole('button', { name: 'Play' }));
+      expect(looks()).toEqual([idle]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
