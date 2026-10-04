@@ -38,6 +38,9 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 | Q31 | From a running game, a World Editor surface opens the in-game editor on the game's world, with no leave prompt. The leave prompt is only for surfaces the game screen cannot host (ticket 02 question) |
 | Q32 | A request for a tab that Simple mode hides switches to Advanced for the session without saving the mode, so the control is on screen (ticket 02 finding, consistent with story 13) |
 | Q33 | From a game with a dirty in-game editor, a main-menu request asks Exit to Main Menu first, then the editor's unsaved prompt. Either refusal changes nothing (ticket 02 finding, under Q19 and Q28) |
+| Q34 | A keyed question's expected surface may be "none". None scores a hit when the keyed section has no route and a miss when it carries one. The report lists none-expected rows as their own line per kind, so the bar can cover surfaced questions alone or all of them (ticket 05 question) |
+| Q35 | A flagged answer (not from the guide) gets no button: its top source is not what it describes (ticket 04 question) |
+| Q36 | The button renders only on an answer whose status is answered. A stopped answer, a failed one or the no-AI fallback gets none. "Top source" is the first source of the done event: the looked-up section in lookup mode, else the first prompt section. A route the resolver refuses shows no button (ticket 04 question) |
 
 ## User Stories
 
