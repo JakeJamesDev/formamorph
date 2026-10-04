@@ -25,6 +25,7 @@ Settled with the user on 2026-10-04.
 | Q1 | Incremental typecheck and the build classifier ship. The `isolate: false` vitest experiment and TypeScript 7 do not, until measured separately |
 | Q2 | The build stays in prepare for source changes. Prepare is the merge candidate, so no "build after landing" |
 | Q3 | After a clean run in a worktree, the typecheck script writes its build-info back to the main checkout (temp file, then rename), same drive only, so the next fresh worktree seeds warm. Nothing in the main checkout runs typecheck on its own, so without this the seed never exists (ticket 01 question) |
+| Q4 | Tickets never edit the gate list. It is excluded from git and every prepare reads it from the main checkout, so a line naming a script not yet on main breaks every other prepare. The spec session flips each line after its script lands (ticket 02 question) |
 
 ## User Stories
 
@@ -57,7 +58,7 @@ Settled with the user on 2026-10-04.
 
 ### Config
 
-- The gate list in the ticket worktrees config points at the two scripts. The prepare hook reads command strings and is unchanged.
+- The gate list in the ticket worktrees config points at the two scripts. The prepare hook reads command strings and is unchanged. The spec session makes that edit after each ticket lands (Q4); the typecheck line stays `npm run typecheck`, which ticket 01 repoints in package.json.
 
 ## Testing Decisions
 
