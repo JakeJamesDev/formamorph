@@ -51,7 +51,7 @@ Then open the app, head to **Settings**, and point it at your AI endpoint (or pr
 | `npm run build` | Build the production bundle to `dist/` |
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | Run ESLint |
-| `npm run typecheck` | Type-check with `tsc` (no emit) |
+| `npm run typecheck` | Type-check with incremental `tsc` (no emit) |
 | `npm run desktop:dev` | Build, then launch the app in a desktop window (Electron) |
 | `npm run desktop:build` | Package a standalone **Windows `.exe`** to `release/` |
 | `npm run desktop:build:linux` | Package a Linux **AppImage** to `release/` |
