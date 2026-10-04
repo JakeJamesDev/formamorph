@@ -123,7 +123,7 @@ export const ENDPOINT_COPY = {
   pick: { label: 'Pick Endpoint', description: 'Sends the "AI Picks" request here. A small, fast model works well.' },
   followsActive: 'Follows the endpoint picked on the **AI Endpoints** tab of Settings. Switch endpoints there and this follows.',
   sameAsAnswer: 'Goes to the **Answer Endpoint**, and follows it when you change it',
-  presetHint: 'Picks the preset to edit. The game uses the same presets.',
+  presetHint: 'Edits the preset Answer uses. The game uses the same presets.',
 } as const;
 
 /** The copy of the Prompts tab. */

@@ -41,10 +41,10 @@ function Harness({ initial }: { initial: HelpSettingsChange }) {
 
 const renderTab = (initial: HelpSettingsChange = {}) => render(<SettingsProvider><Harness initial={initial} /></SettingsProvider>);
 
-/** The three selects of the tab, in order: Answer Endpoint, Pick Endpoint, the editor's preset. */
+/** The two selects of the tab, in order: Answer Endpoint, Pick Endpoint. */
 const selects = () => {
-  const [answer, pick, editor] = screen.getAllByRole('combobox');
-  return { answer, pick, editor };
+  const [answer, pick] = screen.getAllByRole('combobox');
+  return { answer, pick };
 };
 
 async function choose(select: HTMLElement, option: string) {
@@ -64,7 +64,6 @@ describe('the Endpoint tab', () => {
     renderTab();
     expect(selects().answer).toHaveTextContent('Use Active Endpoint (game)');
     expect(selects().pick).toHaveTextContent('Same as Answer (game)');
-    expect(selects().editor).toHaveTextContent('game');
   });
 
   it('sets each route from its own select', async () => {
@@ -85,7 +84,7 @@ describe('the Endpoint tab', () => {
 
   it('starts the editor on the preset answers go to, and edits that preset alone', async () => {
     renderTab({ answerEndpoint: 'small' });
-    expect(selects().editor).toHaveTextContent('small');
+    expect(screen.getByRole('heading', { name: 'Edit small' })).toBeInTheDocument();
     const field = screen.getByLabelText(/Model/, { selector: 'input' });
     await userEvent.setup().type(field, '-q4');
     expect(app.textEndpointValuesFor('small').model).toBe('small-model-q4');
@@ -109,7 +108,7 @@ describe('the Endpoint tab', () => {
     (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {};
     try {
       renderTab({ answerEndpoint: BUILTIN_ENGINE_PRESET_ID });
-      expect(selects().editor).toHaveTextContent('Built-In Engine');
+      expect(screen.getByRole('heading', { name: 'Edit Built-In Engine' })).toBeInTheDocument();
       expect(screen.getByTestId('local-model-panel')).toBeInTheDocument();
       expect(screen.queryByLabelText(/Endpoint URL/)).toBeNull();
     } finally {
@@ -124,28 +123,77 @@ describe('the Endpoint tab', () => {
     }
   });
 
-  it('picks a preset to edit without a change to the active endpoint or a route', async () => {
-    renderTab({ answerEndpoint: 'small' });
-    await choose(selects().editor, 'big');
-    expect(selects().editor).toHaveTextContent('big');
-    expect(screen.getByLabelText(/Model/, { selector: 'input' })).toHaveValue('big-model');
-    expect(app.activeTextEndpointPresetId).toBe('game');
-    expect(help).toMatchObject({ answerEndpoint: 'small', pickEndpoint: helpSettingsOf().pickEndpoint });
+  it('has no preset select: Answer and Pick are the only two', () => {
+    renderTab();
+    expect(screen.getAllByRole('combobox')).toHaveLength(2);
   });
 
-  it('adds a preset, opens it in the editor, and changes no route', async () => {
+  it('puts Answer and Pick in one row', () => {
+    renderTab();
+    const { answer, pick } = selects();
+    const row = answer.closest('.grid');
+    expect(row).toBe(pick.closest('.grid'));
+    expect(row).toHaveClass('sm:grid-cols-2');
+  });
+
+  it('keeps Pick on Same as Answer through an Add', async () => {
     renderTab({ answerEndpoint: 'small' });
     const user = userEvent.setup();
-    await choose(selects().editor, 'Add New Preset…');
-    const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByRole('textbox'), 'Fresh');
-    await user.click(within(dialog).getByRole('button', { name: /Add|Save|Create/ }));
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.type(within(await screen.findByRole('dialog')).getByRole('textbox'), 'Fresh');
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Add|Save|Create/ }));
+    expect(selects().pick).toHaveTextContent('Same as Answer (Fresh)');
+  });
 
-    expect(selects().editor).toHaveTextContent('Fresh');
+  it('follows Answer in the heading and the fields', async () => {
+    renderTab({ answerEndpoint: 'small' });
+    expect(screen.getByRole('heading', { name: 'Edit small' })).toBeInTheDocument();
+    await choose(selects().answer, 'big');
+    expect(screen.getByRole('heading', { name: 'Edit big' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Model/, { selector: 'input' })).toHaveValue('big-model');
+    expect(app.activeTextEndpointPresetId).toBe('game');
+  });
+
+  it('names the active preset in the heading while Answer follows it', () => {
+    renderTab();
+    expect(screen.getByRole('heading', { name: 'Edit game (Active Endpoint)' })).toBeInTheDocument();
+  });
+
+  async function addPreset(name: string) {
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox'), name);
+    await user.click(within(dialog).getByRole('button', { name: /Add|Save|Create/ }));
+  }
+
+  it('adds a copy of the Answer preset, moves Answer to it, and the editor follows', async () => {
+    renderTab({ answerEndpoint: 'small' });
+    await addPreset('Fresh');
     const added = app.textEndpointPresets.find((p) => p.name === 'Fresh');
     expect(added).toBeDefined();
     expect(app.textEndpointValuesFor(added!.id).model).toBe('small-model');
+    expect(help.answerEndpoint).toBe(added!.id);
+    expect(screen.getByRole('heading', { name: 'Edit Fresh' })).toBeInTheDocument();
+    expect(selects().answer).toHaveTextContent('Fresh');
     expect(app.activeTextEndpointPresetId).toBe('game');
-    expect(help).toMatchObject({ answerEndpoint: 'small', pickEndpoint: helpSettingsOf().pickEndpoint });
+  });
+
+  it('copies the active preset when Answer follows it', async () => {
+    renderTab();
+    await addPreset('Fresh');
+    const added = app.textEndpointPresets.find((p) => p.name === 'Fresh');
+    expect(app.textEndpointValuesFor(added!.id).model).toBe('game-model');
+    expect(help.answerEndpoint).toBe(added!.id);
+  });
+
+  it('moves Answer to Use Active Endpoint when its preset is deleted', async () => {
+    renderTab({ answerEndpoint: 'small' });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
+    expect(help.answerEndpoint).toBeNull();
+    expect(app.textEndpointPresets.some((p) => p.id === 'small')).toBe(false);
+    expect(screen.getByRole('heading', { name: 'Edit game (Active Endpoint)' })).toBeInTheDocument();
   });
 });

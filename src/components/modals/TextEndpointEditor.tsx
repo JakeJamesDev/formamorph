@@ -33,14 +33,16 @@ const ENDPOINT_SAMPLERS = [
  * fields. It renders as siblings so the caller's flex column lays it out. The read-only built-ins are the
  * shared endpoint ("Default") and, on desktop, the bundled engine — a preset rather than a mode so a single
  * prompt can be routed to it. The select stays visible for every preset, including the engine, or there'd be
- * no way back.
+ * no way back. A `heading` swaps the select for a title and an Add button.
  */
-export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, presetDescription = SETTINGS_COPY.textPreset.description }: {
+export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, presetDescription = SETTINGS_COPY.textPreset.description, heading }: {
   model: TextEndpointEditorModel;
   advanced: boolean;
   onOpenConnectionGuide: () => void;
-  /** The help line under the preset select. */
+  /** The help line under the preset select or heading. */
   presetDescription?: string;
+  /** Replaces the preset select with a title and an Add button, for a caller that picks the preset itself. */
+  heading?: string;
 }) {
   const { presets, edited, fields, edit, onSelect, onAdd, onRename, onDelete, onReset } = model;
   const {
@@ -115,7 +117,12 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
   return (
     <>
       <div className="flex items-center gap-2 flex-shrink-0 pt-4">
-        <Hint as="span">{SETTINGS_COPY.textPreset.label}</Hint>
+        {heading === undefined
+          ? <Hint as="span">{SETTINGS_COPY.textPreset.label}</Hint>
+          : <h3 className="text-label mr-auto min-w-0 truncate">{heading}</h3>}
+        {heading !== undefined && (
+          <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'add' })}>Add</Button>
+        )}
         {!builtIn && (
           <ConfirmDialog
             title="Delete Preset"
@@ -134,21 +141,23 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
             <Button variant="outline" size="sm">Reset</Button>
           </ConfirmDialog>
         )}
-        <Select value={edited.id} onValueChange={handlePresetSelect}>
-          <SelectTrigger className="flex-1 min-w-0">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {presets.builtIn.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-            ))}
-            {presets.user.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-            ))}
-            <SelectSeparator />
-            <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
-          </SelectContent>
-        </Select>
+        {heading === undefined && (
+          <Select value={edited.id} onValueChange={handlePresetSelect}>
+            <SelectTrigger className="flex-1 min-w-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {presets.builtIn.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+              {presets.user.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+              <SelectSeparator />
+              <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
         {!builtIn && (
           <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
         )}
