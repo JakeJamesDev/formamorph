@@ -99,6 +99,10 @@ export interface WindowPieces {
   readonly showReader?: boolean;
   /** The side the Mascot stands on now. It decides a tie between the two gaps. Defaults to left. */
   readonly side?: MascotSide;
+  /** The Mascot's size. Defaults to Auto. */
+  readonly scale?: MascotScale;
+  /** The base's natural pixel height, which a percent scale takes its share of. Unknown fits the column. */
+  readonly baseHeight?: number;
 }
 
 /** The pieces on the screen: the column or frame, the Mascot bottom-aligned at its wider-gap side, the reader at the other. */
@@ -123,27 +127,32 @@ function widerSide(x: number, w: number, viewport: Viewport, current: MascotSide
 /**
  * The pieces for a stored box. The column takes the box's height, and under the minimal chrome at most the
  * narrow width. The Mascot stands on the side with the wider free gap. The reader takes the room it needs on
- * the other side, then the Mascot takes the column's height at its aspect, less when the screen lacks the
- * room. All stay whole on the screen.
+ * the other side, then the Mascot takes its scale's height at its aspect, less when the screen lacks the
+ * room. A percent Mascot taller than the column rises above it; the column never moves for it (Q37). All
+ * stay whole on the screen.
  */
-export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Viewport, { mascotAspect, showReader = false, side: previous = 'left' }: WindowPieces): WindowLayout {
+export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Viewport, pieces: WindowPieces): WindowLayout {
+  const { mascotAspect, showReader = false, side: previous = 'left', scale = 'auto', baseHeight } = pieces;
   const w = clamp(chrome === 'minimal' ? Math.min(box.w, NARROW_WIDTH) : box.w, MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
   const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
+  const y = clamp(box.y, 0, viewport.height - h);
   const side = widerSide(clamp(box.x, 0, viewport.width - w), w, viewport, previous);
   const room = Math.max(0, viewport.width - SCREEN_MARGIN * 2 - w);
   const readerSpace = showReader && chrome === 'minimal' ? Math.min(READER_GAP + READER_WIDTH, room) : 0;
   const readerW = Math.max(0, readerSpace - READER_GAP);
-  const mascotW = mascotAspect ? Math.min(h * mascotAspect, room - readerSpace) : 0;
+  const wantedH = scale === 'auto' || !baseHeight ? h : Math.min((baseHeight * scale) / 100, Math.max(h, y + h - SCREEN_MARGIN));
+  const mascotW = mascotAspect ? Math.min(wantedH * mascotAspect, room - readerSpace) : 0;
+  const mascot = mascotAspect && mascotW > 0 ? { w: mascotW, h: mascotW / mascotAspect } : null;
   const before = side === 'left' ? mascotW : readerSpace;
   const after = side === 'left' ? readerSpace : mascotW;
   const x = clamp(box.x, before, viewport.width - w - after);
-  const y = clamp(box.y, 0, viewport.height - h);
+  const groupH = Math.max(h, mascot?.h ?? 0);
   return {
     column: { x, y, w, h },
-    mascot: mascotAspect && mascotW > 0 ? { w: mascotW, h: mascotW / mascotAspect } : null,
+    mascot,
     reader: readerW > 0 ? { w: readerW, h } : null,
     side,
-    group: { x: x - before, y, w: w + before + after, h },
+    group: { x: x - before, y: y + h - groupH, w: w + before + after, h: groupH },
   };
 }
 
@@ -220,6 +229,34 @@ export function showsScrollArrow({ scrollTop, scrollHeight, clientHeight }: Scro
 /** The head view's height left of the pill: on the desktop, and on the mobile sheet. Its width follows the Mask. */
 export const HEAD_HEIGHT = 96;
 export const SHEET_HEAD_HEIGHT = 64;
+
+/** The head view's height on the desktop: the fixed height under Auto, else the Mask's pixel height at the percent, at most the column's (Q36). */
+export const headHeight = (scale: MascotScale, maskHeight: number, columnHeight: number): number =>
+  (scale === 'auto' ? HEAD_HEIGHT : Math.min((maskHeight * scale) / 100, columnHeight));
+
+/** The Mascot's size on this device: Auto fits the chat's height; a number is a percent of the base's pixel size. */
+export type MascotScale = 'auto' | number;
+export const MASCOT_SCALE_MIN = 25;
+export const MASCOT_SCALE_MAX = 150;
+
+const MASCOT_SCALE_KEY = 'formamorph.formaquestion.mascotScale';
+
+/** The Mascot scale this device stored. Auto when nothing is stored, it is damaged, or storage is blocked. */
+export function readStoredMascotScale(): MascotScale {
+  try {
+    const stored = Number(localStorage.getItem(MASCOT_SCALE_KEY) || 'auto');
+    return Number.isFinite(stored) ? clamp(stored, MASCOT_SCALE_MIN, MASCOT_SCALE_MAX) : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+/** Stores the Mascot scale on this device. With storage blocked, it lasts for this visit only. */
+export function writeStoredMascotScale(scale: MascotScale): void {
+  try {
+    localStorage.setItem(MASCOT_SCALE_KEY, String(scale));
+  } catch { /* blocked storage */ }
+}
 
 const HEAD_VIEW_KEY = 'formamorph.formaquestion.mascotView';
 

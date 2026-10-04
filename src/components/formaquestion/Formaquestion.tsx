@@ -17,7 +17,7 @@ import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
   boxOf, defaultWindow, type MascotSide, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
-  writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
+  headHeight, writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
   type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
 } from '@/lib/formaquestion/windowBox';
 import { chatChrome } from '@/lib/formaquestion/helpSettings';
@@ -42,6 +42,7 @@ import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
+import { useMascotScale } from './useMascotScale';
 import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
 import { useSemanticSearch } from './useSemanticSearch';
@@ -114,6 +115,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const [mascotBase, setMascotBase] = useState<MascotSize | null>(null);
   /** The desktop shows the Mascot's head alone. The sheet always does. */
   const [headView, setHeadView] = useState(readStoredHeadView);
+  const scale = useMascotScale();
   /** The section the minimal chrome's reader piece shows, or null while it is closed. */
   const [readerId, setReaderId] = useState<string | null>(null);
 
@@ -405,7 +407,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const mascotAspect = settings.mascot && mascotBase && !(minimal && showHead) ? mascotBase.width / mascotBase.height : null;
   // The side flips once as the column crosses the middle; the last side decides a tie.
   const sideRef = useRef<MascotSide>('left');
-  const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current };
+  const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current, scale, baseHeight: mascotBase?.height };
   const layout = sheet ? null : windowLayout(chrome, box, viewport, pieces);
   if (layout) sideRef.current = layout.side;
   const side = layout?.side ?? 'left';
@@ -458,7 +460,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       images={mascotImages}
       hold={mascotImageRefs(settings.rig)}
       transition={settings.rig.transition}
-      size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : HEAD_HEIGHT)}
+      size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : headHeight(scale, crop.height, layout?.column.h ?? HEAD_HEIGHT))}
       frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
       onBase={setMascotBase}
     />
@@ -518,6 +520,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             headToggle={sheet || !settings.mascot ? undefined : { showingHead: headView, onToggle: toggleHead }}
             menu={{ ...menuActions, container: layer }}
             onClose={closeWindow}
+            height={layout?.column.h}
           />
           {side === 'left' && readerPiece}
           {side === 'right' && wholeMascot}
