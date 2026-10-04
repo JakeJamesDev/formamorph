@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
-import { Section } from '@/components/SettingsRows';
 import { EndpointRouteField } from '@/components/modals/EndpointRouteField';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { TextEndpointEditor } from '@/components/modals/TextEndpointEditor';
@@ -44,7 +43,7 @@ function routeInfo(presetName: string | undefined, follows: string): string {
 
 /**
  * The Endpoint tab: where answers and picks go, and the text-endpoint editor on the presets Settings uses.
- * The editor's select picks the preset to edit and never a route.
+ * The editor edits the preset the Answer route resolves to.
  */
 export function EndpointTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
   const s = useSettings();
@@ -59,19 +58,27 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
   const pickPreset = presetOf(settings.pickEndpoint);
   const pickValue = settings.pickEndpoint === null ? null : pickPreset?.id ?? SAME_AS_ANSWER;
 
-  const [chosen, setChosen] = useState<string | null>(null);
-  const editedId = presetOf(chosen)?.id ?? answer.endpointId;
+  // The editor always edits where Answer goes. Its select is gone, so only Add and Delete move the route.
+  const editedId = answer.endpointId;
   const detect = usePresetDetect(s, editedId);
-  const model = presetEditor(s, editedId, {
-    onSelect: setChosen,
-    onAdd: (name) => setChosen(s.copyTextEndpointPreset(name, editedId)),
+  const base = presetEditor(s, editedId, {
+    onSelect: () => {},
+    onAdd: (name) => onChange({ answerEndpoint: s.copyTextEndpointPreset(name, editedId) }),
     ...detect,
   });
+  const model = {
+    ...base,
+    onDelete: (id: string) => {
+      base.onDelete(id);
+      if (id === settings.answerEndpoint) onChange({ answerEndpoint: null });
+    },
+  };
+  const heading = answerPreset ? `Edit ${answerPreset.name}` : `Edit ${s.activeTextEndpointPresetName} (Active Endpoint)`;
   const [guideOpen, setGuideOpen] = useState(false);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid flex-shrink-0 gap-4 pt-4">
+      <div className="grid flex-shrink-0 gap-4 pt-4 sm:grid-cols-2">
         <EndpointRouteField
           {...ENDPOINT_COPY.answer}
           info={routeInfo(answerPreset?.name, ENDPOINT_COPY.followsActive)}
@@ -92,10 +99,7 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           target={{ url: pick.url, apiToken: pick.apiToken, model: pick.model, enabled: pickPreset !== undefined }}
         />
       </div>
-      <div className="flex-shrink-0 pt-6">
-        <Section title="Presets">{null}</Section>
-      </div>
-      <TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => setGuideOpen(true)} presetDescription={ENDPOINT_COPY.presetHint} />
+      <TextEndpointEditor heading={heading} model={model} advanced onOpenConnectionGuide={() => setGuideOpen(true)} presetDescription={ENDPOINT_COPY.presetHint} />
       <LlmSetupGuide open={guideOpen} onOpenChange={setGuideOpen} endpointUrl={model.fields.endpointUrl} />
     </div>
   );
