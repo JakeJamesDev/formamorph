@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
+import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { storeFramedWindow, stubHelpStream } from '@/test/helpFixtures';
@@ -19,6 +20,9 @@ const PAGES = {
   Help: '# ❓ Help\n\nThe help window answers questions.\n\n## How to Edit the Help Prompt\n\n<!-- route: formaquestionSettings.prompts -->\n\n1. Open the **Prompts** tab of the help settings.\n',
 };
 const loadFixture = () => Promise.resolve(createDocsIndex({ pages: PAGES, sidebar: '- [Settings](Settings)\n- [Traits](Traits)\n- [Help](Help)\n' }));
+
+/** A place in the surface registry above every other, for the screen the player asks from. */
+const SCREEN_PLACE = 1_000_000;
 
 const conversation = () => screen.getByRole('log', { name: 'Conversation' });
 /** The window, or null once it has closed. */
@@ -38,9 +42,9 @@ function setScreenWidth(width: number) {
 }
 
 /** Opens the window, asks one question, and waits for the answer's sources. */
-async function ask(question: string, reply = 'Open the **Display** tab.') {
+async function ask(question: string, reply = 'Open the **Display** tab.', load = loadFixture) {
   stubHelpStream(sseReply(reply));
-  render(<Formaquestion loadIndex={loadFixture} />);
+  render(<Formaquestion loadIndex={load} />);
   fireEvent.click(screen.getByRole('button', { name: 'Help' }));
   const field = await screen.findByRole('textbox', { name: 'Ask a Question' });
   await userEvent.type(field, question);
@@ -54,6 +58,8 @@ beforeEach(() => {
   ai.current = helpAi({ requestSurface: vi.fn() });
 });
 afterEach(() => {
+  surfaceRegistry.clear(SCREEN_PLACE);
+  surfaceRegistry.clear(SCREEN_PLACE + 1);
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -74,6 +80,21 @@ describe('Take Me There', () => {
     expect(names[0]).toContain('How to Add a Trait');
     expect(names.slice(1).some((name) => name?.includes('How to Add a Trait Color'))).toBe(true);
     expect(takeMeThere()).toBeNull();
+  });
+
+  it('shows for a routed hit when Use the Open Screen puts a routeless lead first', async () => {
+    const pages = { ...PAGES, Settings: PAGES.Settings.replace('## How to Change the Theme', '## Display\n\nDisplay holds the theme and text size.\n\n## How to Change the Theme') };
+    act(() => {
+      surfaceRegistry.report(SCREEN_PLACE, 'settings', null);
+      surfaceRegistry.report(SCREEN_PLACE + 1, 'settings.display', SCREEN_PLACE);
+    });
+    await ask('How do I change the theme?', undefined, () => Promise.resolve(createDocsIndex({ pages, sidebar: '- [Settings](Settings)\n' })));
+    const names = sourceNames();
+    expect(names[0]).toContain('Display');
+    expect(names[0]).not.toContain('How to Change the Theme');
+    expect(names.some((name) => name?.includes('How to Change the Theme'))).toBe(true);
+    await userEvent.click(takeMeThere()!);
+    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith('settings.display');
   });
 
   it('closes the sheet on a mobile-size screen', async () => {
