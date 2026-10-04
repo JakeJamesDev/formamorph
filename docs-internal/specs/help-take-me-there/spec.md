@@ -36,6 +36,8 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 | Q29 | A game surface requested while no game runs opens the Load Game dialog (ticket 02 question) |
 | Q30 | Formaquestion surfaces resolve as view-any. The help window consumes them itself: it switches its tab or opens its own Settings. Ticket 02 ships the resolver entries; ticket 04 ships the consuming side (ticket 02 question) |
 | Q31 | From a running game, a World Editor surface opens the in-game editor on the game's world, with no leave prompt. The leave prompt is only for surfaces the game screen cannot host (ticket 02 question) |
+| Q32 | A request for a tab that Simple mode hides switches to Advanced for the session without saving the mode, so the control is on screen (ticket 02 finding, consistent with story 13) |
+| Q33 | From a game with a dirty in-game editor, a main-menu request asks Exit to Main Menu first, then the editor's unsaved prompt. Either refusal changes nothing (ticket 02 finding, under Q19 and Q28) |
 
 ## User Stories
 
@@ -69,13 +71,17 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 - A how-to section carries one HTML comment line, the same shape as the keyword line: `<!-- route: <surface id> -->`. The id is a surface id from the surface map: a screen or dialog name, or `<ledger key>.<tab>`.
 - The docs index parses the line as it parses keywords, strips it from the section text, and stores it on the section. A section cut at block boundaries by the size split passes it to every part; a section cut at sub-headings keeps it on the heading that holds the line, as keyword lines do. A section without a line has no route. A second route line in one section, or an empty one, is refused.
 - **Ticket 01 landed 2026-10-04 (`99c71351`).** 15 routes: Settings 6, Prompts 6, Tools 3. "How to Turn On Tools" has no line: it spans the Output and Tools tabs. Calls open to a one-line edit: "How to Publish a Prompt Preset" → the preset Overview (the publish dialog is item-bound); "How to Use a Preset for One World" → the Enter World dialog. No recall probe: comment lines change no section text; ticket 03 owns it.
+- **Ticket 03 landed 2026-10-04 (`c1ad452b`).** 178 how-to sections: 165 routed, 13 without (cross-screen flows, any-prose-field how-tos, Android install and picker, the WorldFormat JSON edits). Rule used: a route names the surface where the steps happen; steps across sibling tabs take the parent surface; a "See …" cross-reference is not a step. Recall probe, cloud, 5 runs: known 84.5% → 84.3%, blind 88.7% → 89.8%, inside run-to-run drift; the pick request's 506 headings are unchanged. Ten judgment calls are listed in the ticket's Answer for one-line edits.
 - A source test over the bundled docs refuses any route that is not a surface id, and refuses a route on an excluded surface (staff and dev surfaces).
 - The route is index data, not search data: it never joins the search phrases.
 
 ### Navigation request
 
 - One new request in the settings context, beside the settings-open request: open a surface by id. It is the only production path from the help window into the app's navigation. The dev router stays DEV-only and does not change.
-- A pure resolver turns a surface id into the steps: the view to show, the dialog to open, the tab to select. It reads the same ledger the surface map reads, so a new surface needs no second registration.
+- A pure resolver turns a surface id into the steps: the view to show, the dialog to open, the tab to select. It reads the same ledger the surface map reads for the ids, plus two typed tables of its own: which screen hosts each dialog, and what each tab ledger sits in. The ledger does not hold either. A new dialog or ledger needs an entry in both, and the type check refuses one without it; a new tab in an existing ledger needs nothing (ticket 02 finding).
+- Surfaces the app raises on its own (update required, error details, exit, the design system) resolve to nothing. Surfaces reached through nested panels or their own state resolve to the panel's ancestor under Q26: Memory Manager → the game's memory tab, Persona → the game screen, the location list and canvas → the editor's Locations tab, the changelog → the main menu.
+- A request for a tab that Simple mode hides switches Settings or the World Editor to Advanced for the session, without saving the mode, as the dev route does (Q32).
+- A main-menu request from a game with a dirty in-game editor asks Exit to Main Menu first, then the editor's unsaved prompt. A refusal of either changes nothing (Q33).
 - The main menu and the game viewer consume the request as they consume the settings-open request. The game viewer, for a surface on another screen, asks before leaving the game; the World Editor's own unsaved-edits prompt runs for an editor surface when the editor holds changes (Q19). A refused prompt clears the request and changes nothing.
 - A request for the surface already open re-selects its tab and does nothing else.
 
