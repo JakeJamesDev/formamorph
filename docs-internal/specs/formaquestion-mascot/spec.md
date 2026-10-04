@@ -63,6 +63,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q34 | The minimal chrome's pill is grip, today's ⋮ menu (Clear Conversation, AI Context, Settings) and Close; the head toggle joins it in its ticket. Until the reader piece lands, a docs request with the mascot on opens the heading in the wiki, as with the window unmounted |
 | Q35 | The mascot's prompt text is the **Voice**, never Persona, which the glossary holds for the player-slot entity. The landed rig field is renamed in the Voice chip ticket; nothing shipped |
 | Q36 | The Initial look ends on the first send and on nothing else. A dialog's close-and-reopen, or the player closing and reopening the window, keeps it. Refines Q9 and Q10 |
+| Q37 | The Voice chip sits in both the Answer and the Lookup prompt of the Default preset, as its own paragraph after the intro line and before the rules; never in the Pick prompt. Token `<VOICE>`, label Mascot Voice |
 
 ## User Stories
 
@@ -174,7 +175,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 
 - The help session gains one fixed function, the face call, offered beside the guide lookup and the help dice roll while the mascot is on and at least one expression is enabled. Its one parameter is the face name, with the enabled expressions' names as the enum. The capability gate of ADR-0008 applies: on an endpoint that takes no functions, nothing is offered and the window's phases still run.
 - Its handler yields a new session event that names the face. The answer events are unchanged. The trace records the call as it records every tool round, so AI Context shows it.
-- A new help chip stands for the Voice. While the mascot is on, the chip sends the rig's Voice text; while it is off, or the Voice is empty, it sends nothing and leaves no blank line, as Markdown Guidance does. The Default help preset's answer prompt gains the chip. A custom preset that lacks the chip sends no Voice (no chip, no injection).
+- A new help chip stands for the Voice. While the mascot is on, the chip sends the rig's Voice text; while it is off, or the Voice is empty, it sends nothing and leaves no blank line, as Markdown Guidance does. The Default help preset's Answer and Lookup prompts gain the chip, as a paragraph after the intro line (Q37). A custom preset that lacks the chip sends no Voice (no chip, no injection).
 - The question carries the mascot switch and the Voice, as it carries every other setting: the session reads no context.
 - The reserved-name rule of ADR-0010 covers the face call's name, through the fixed-function list.
 
