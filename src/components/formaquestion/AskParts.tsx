@@ -49,17 +49,8 @@ function fallbackLine(status: Extract<HelpStatus, 'no-ai' | 'failed'>, partial: 
   return matched ? `${cause}. These guide sections match your question.` : `${cause}, and no guide section matches your question`;
 }
 
-/** A source under an answer: the page, then the section. It opens the section in the reader, or only names it without one. */
-function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSection; onOpen?: (id: string) => void }) {
-  if (!onOpen) {
-    return (
-      <span className="inline-flex max-w-full items-center gap-1 text-meta text-muted-foreground">
-        <span className="truncate">{guide.titleOf(section.page)}</span>
-        <ChevronRight aria-hidden className="h-3 w-3 shrink-0" />
-        <span className="truncate text-foreground">{section.label}</span>
-      </span>
-    );
-  }
+/** A source under an answer: the page, then the section. It opens the section in the reader. */
+function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSection; onOpen: (id: string) => void }) {
   return (
     <button
       type="button"
@@ -118,14 +109,12 @@ function Thinking({ text, ms, active, settings, onSettingsChange }: {
 }
 
 /** One answer: its reasoning, text, wait line, fallback and sources. */
-export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, sourcesAsNames = false }: {
+export function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
   guide: Guide;
   exchange: HelpExchange;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
-  /** Names the sources without opening them, where no reader shows. */
-  sourcesAsNames?: boolean;
 }) {
   const { answer, reasoning, reasoningMs, status, stage, sources, question, flagged, nearest } = exchange;
   // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
@@ -176,7 +165,7 @@ export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, so
           <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />
           {fold.open && (
             <div className="flex flex-wrap gap-1">
-              {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={sourcesAsNames ? undefined : onOpen} />)}
+              {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
             </div>
           )}
         </div>

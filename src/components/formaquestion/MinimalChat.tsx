@@ -136,7 +136,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
                 <p className={cn(BUBBLE, 'whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground [overflow-wrap:anywhere]')}>{exchange.question}</p>
               </div>
               <div className={ASSISTANT_BUBBLE}>
-                <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} sourcesAsNames />
+                <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
               </div>
             </div>
           ))}

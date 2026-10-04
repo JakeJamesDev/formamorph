@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { composeMascot, DEFAULT_MASCOT_RIG, type MascotPhase } from '@/lib/formaquestion/mascot';
 import { mascotImageUrl } from '@/lib/formaquestion/mascotAssets';
-import { NARROW_WIDTH } from '@/lib/formaquestion/windowBox';
+import { NARROW_WIDTH, READER_GAP } from '@/lib/formaquestion/windowBox';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
@@ -25,7 +25,10 @@ const PAGES = {
 };
 const loadFixture = () => Promise.resolve(createDocsIndex({ pages: PAGES, sidebar: '- [Traits](Traits)\n' }));
 
-const BOX_KEY = 'formamorph.formaquestion.window';
+/** An answer that lists "How to Add a Trait" under it as a source. */
+const REPLY_WITH_SOURCE = [sseFrame({ content: '1. Open the **Traits** tab.\n' }), ...sseReply('2. Select **Add Trait**.')];
+
+const BOX_KEY ='formamorph.formaquestion.window';
 /** The default base is 888 by 1184. */
 const ASPECT = 0.75;
 
@@ -154,20 +157,76 @@ describe('the minimal chrome', () => {
     expect(parseFloat(helpWindow().style.left)).toBe(before - 40);
   });
 
-  it('names the sources of an answer without opening them, and sends a docs request to the wiki', async () => {
-    stubHelpStream([sseFrame({ content: '1. Open the **Traits** tab.\n' }), ...sseReply('2. Select **Add Trait**.')]);
-    const browse = vi.fn();
-    vi.stubGlobal('open', browse);
+  it('opens the reader right of the column from a source name, widens the box, and closes alone', async () => {
+    vi.stubGlobal('innerWidth', 1920);
+    stubHelpStream(REPLY_WITH_SOURCE);
     const { field } = await openWindow();
     await send(field, 'How do I add a trait?');
+    loadBase();
+    const closedWidth = parseFloat(helpWindow().style.width);
+    const closedLeft = parseFloat(helpWindow().style.left);
 
     const sources = await within(conversation()).findByRole('group', { name: 'Sources' });
-    expect(within(sources).getByText('How to Add a Trait')).toBeInTheDocument();
-    expect(within(sources).queryByRole('button', { name: /How to Add a Trait/ })).toBeNull();
+    await userEvent.click(within(sources).getByRole('button', { name: /How to Add a Trait/ }));
 
+    const reader = helpWindow().querySelector<HTMLElement>('[data-fq-piece="reader"]')!;
+    expect(within(reader).getByRole('article', { name: /How to Add a Trait/ })).toBeInTheDocument();
+    expect(column().compareDocumentPosition(reader) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(reader.style.height).toBe(helpWindow().style.height);
+    expect(parseFloat(helpWindow().style.width)).toBe(closedWidth + READER_GAP + parseFloat(reader.style.width));
+    // The default place sits at the screen's right edge, so the box shifts left to keep the reader whole.
+    expect(parseFloat(helpWindow().style.left) + parseFloat(helpWindow().style.width)).toBeLessThanOrEqual(window.innerWidth);
+
+    await userEvent.click(within(reader).getByRole('button', { name: 'Close Reader' }));
+    expect(helpWindow().querySelector('[data-fq-piece="reader"]')).toBeNull();
+    expect(helpWindow().style.width).toBe(`${closedWidth}px`);
+    expect(parseFloat(helpWindow().style.left)).toBe(closedLeft);
+    expect(conversation()).toBeInTheDocument();
+    expect(mascot()).not.toBeNull();
+  });
+
+  it('moves the reader with the other pieces by the pill', async () => {
+    vi.stubGlobal('innerWidth', 1920);
+    stubHelpStream(REPLY_WITH_SOURCE);
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    loadBase();
+    const sources = await within(conversation()).findByRole('group', { name: 'Sources' });
+    await userEvent.click(within(sources).getByRole('button', { name: /How to Add a Trait/ }));
+
+    const before = { left: parseFloat(helpWindow().style.left), top: parseFloat(helpWindow().style.top) };
+    fireEvent.pointerDown(pill(), { button: 0, pointerId: 1, clientX: 600, clientY: 300 });
+    fireEvent.pointerMove(pill(), { pointerId: 1, clientX: 560, clientY: 280 });
+    fireEvent.pointerUp(pill(), { pointerId: 1 });
+    // One shared box holds every piece, so it moves them as one.
+    expect(parseFloat(helpWindow().style.left)).toBe(before.left - 40);
+    expect(parseFloat(helpWindow().style.top)).toBe(before.top - 20);
+    expect(helpWindow().querySelector('[data-fq-piece="reader"]')).not.toBeNull();
+    expect(mascot()).not.toBeNull();
+  });
+
+  it('opens a docs request in the reader', async () => {
+    await openWindow();
+    act(() => { openDocs({ page: 'Traits', anchor: 'how-to-add-a-trait' }); });
+    const reader = await waitFor(() => {
+      const found = helpWindow().querySelector<HTMLElement>('[data-fq-piece="reader"]');
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(within(reader).getByRole('article', { name: /How to Add a Trait/ })).toBeInTheDocument();
+  });
+
+  it('sends a docs request to the wiki on a mobile-size screen, which has no reader piece', async () => {
+    vi.stubGlobal('innerWidth', 375);
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+    const browse = vi.fn();
+    vi.stubGlobal('open', browse);
+    await openWindow();
     act(() => { openDocs({ page: 'Traits', anchor: 'how-to-add-a-trait' }); });
     expect(browse).toHaveBeenCalledWith(expect.stringContaining('/wiki/Traits#how-to-add-a-trait'), '_blank', 'noopener,noreferrer');
-    expect(screen.queryByRole('article')).toBeNull();
+    expect(helpWindow().querySelector('[data-fq-piece="reader"]')).toBeNull();
   });
 
   it('shows the column alone on a mobile-size screen', async () => {
