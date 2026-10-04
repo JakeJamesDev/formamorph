@@ -69,7 +69,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q33 | The help preset file has never shipped, so its version stays 1 and the shape changes in place with no reader for the earlier form. A file without the Pick or Lookup block fails naming the block (ticket 09) |
 | Q34 | Option blocks need no Compare or Reset buttons: the per-field Custom checkboxes are the reset and restore the Default's values. Compare to Default stays a text diff (ticket 09) |
 | Q35 | The pinned preview column may scroll only when the screen is too short to hold it (at 1366×768: 559px for 574px of content). It never clips a row and the preview height stays 240px (ticket 06) |
-| Q36 | Under a percent, the head view draws the Mask crop at that share of its natural pixel height. Auto keeps the head's fixed height. The mobile sheet keeps its own head height and ignores Scale (ticket 04) |
+| Q36 | Under a percent, the head view draws the Mask crop at that share of its natural pixel height. Auto keeps the head's fixed height. The mobile sheet keeps its own head height and ignores Scale. The head clamps to the column height: it is the compact view and never grows past the chat's box (ticket 04) |
 | Q37 | A percent mascot stays bottom-aligned with the column and rises above it. Its height clamps to the room from the column's bottom edge up to the screen margin, so the column never moves for it; width clamps to the free room beside the column at the base's aspect (ticket 04) |
 | Q38 | Ticket 04 ships the Scale slider as one self-contained component inserted once beside the current preview; ticket 06's preview widget is its final home, and the later landing moves it (ticket 04) |
 
