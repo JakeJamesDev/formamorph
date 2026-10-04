@@ -79,6 +79,10 @@ Settled with the user on 2026-10-04.
 - Project references.
 - Skipping the build for docs-only changes, the changelog excepted (Q6).
 
+## Review 2026-10-04
+
+All three tickets landed (`cce89f30`, `2202b571`, `93e804b8`) and match the spec. Both script test files pass (24 tests); the planted-error guards fail as required. A tests-plus-changelog ticket's gates: typecheck 9.4 s seeded, lint 1.2 s, affected tests 34 s, build skipped, about 45 s against 232 s before. Findings, none blocking: the changelog skip is by path, so an edit to a released section would skip a build the bundle reads (the slice and format tests still run); `path.matchesGlob` is experimental below Node 22 and may print a warning there (unverified, this machine runs 24); the skip line's wording could be plainer.
+
 ## Further Notes
 
 - The 69 s typecheck in the ticket 02 log was contention from a parallel prepare. The lock already serializes prepares; the cold run alone is 24 s.
