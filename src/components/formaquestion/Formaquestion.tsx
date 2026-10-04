@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
-  boxOf, defaultWindow, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
+  boxOf, defaultWindow, type MascotSide, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
   writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
   type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
 } from '@/lib/formaquestion/windowBox';
@@ -382,8 +382,12 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const readerShown = guide !== null && readerId !== null;
   const showHead = sheet || headView;
   const mascotAspect = settings.mascot && mascotBase && !(minimal && showHead) ? mascotBase.width / mascotBase.height : null;
-  const pieces = { mascotAspect, showReader: readerShown };
+  // The side flips once as the column crosses the middle; the last side decides a tie.
+  const sideRef = useRef<MascotSide>('left');
+  const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current };
   const layout = sheet ? null : windowLayout(chrome, box, viewport, pieces);
+  if (layout) sideRef.current = layout.side;
+  const side = layout?.side ?? 'left';
   // A drag starts from the box as drawn, which a small screen can shift.
   const drawn = layout?.column ?? box;
   const boxDrag = (step: typeof movePieces): PointerDrag<BoxPress> => ({
@@ -423,6 +427,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const wholeMascot = layout && settings.mascot && !(minimal && showHead) && (
     <MascotPiece images={mascotImages} hold={mascotImageRefs(settings.rig)} transition={settings.rig.transition} size={layout.mascot} onBase={setMascotBase} />
+  );
+  const readerPiece = layout?.reader && guide && readerId && (
+    <ReaderPiece guide={guide} sectionId={readerId} size={layout.reader} onOpen={setReaderId} onClose={() => setReaderId(null)} />
   );
   const head = minimal && settings.mascot && showHead && (
     <MascotPiece
@@ -469,7 +476,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: originFrom(layout.group.x, layout.group.y),
           } : undefined}
         >
-          {wholeMascot}
+          {side === 'left' && wholeMascot}
+          {side === 'right' && readerPiece}
           <MinimalChat
             guide={guide}
             failed={failed}
@@ -484,13 +492,13 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             resize={sheet ? undefined : resizeHandlers}
             large={sheet}
             head={head}
+            headSide={side}
             headToggle={sheet || !settings.mascot ? undefined : { showingHead: headView, onToggle: toggleHead }}
             menu={{ ...menuActions, container: layer }}
             onClose={closeWindow}
           />
-          {layout?.reader && guide && readerId && (
-            <ReaderPiece guide={guide} sectionId={readerId} size={layout.reader} onOpen={setReaderId} onClose={() => setReaderId(null)} />
-          )}
+          {side === 'left' && readerPiece}
+          {side === 'right' && wholeMascot}
         </section>
       )}
       {shown && !minimal && layout && wholeMascot && (
@@ -498,9 +506,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           data-state={open ? 'open' : 'closed'}
           className={`pointer-events-none fixed flex items-end ${windowMotion}`}
           style={{
-            left: layout.group.x,
+            left: side === 'left' ? layout.group.x : layout.column.x + layout.column.w,
             top: layout.group.y,
-            width: layout.column.x - layout.group.x,
+            width: layout.group.w - layout.column.w,
             height: layout.group.h,
             transformOrigin: originFrom(layout.group.x, layout.group.y),
           }}

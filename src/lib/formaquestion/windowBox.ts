@@ -88,43 +88,62 @@ export const READER_GAP = 8;
 /** The window's two chromes: the bare chat column, and the framed window. */
 export type WindowChrome = 'minimal' | 'full';
 
+/** The side of the column or frame the Mascot stands on. The reader takes the other. */
+export type MascotSide = 'left' | 'right';
+
 /** The pieces drawn beside the column or frame. */
 export interface WindowPieces {
   /** The whole Mascot's aspect, or null while it is not drawn beside the chat. */
   readonly mascotAspect: number | null;
   /** The reader piece, which only the minimal chrome draws. */
   readonly showReader?: boolean;
+  /** The side the Mascot stands on now. It decides a tie between the two gaps. Defaults to left. */
+  readonly side?: MascotSide;
 }
 
-/** The pieces on the screen: the column or frame, the Mascot bottom-aligned at its left, the reader at its right. */
+/** The pieces on the screen: the column or frame, the Mascot bottom-aligned at its wider-gap side, the reader at the other. */
 export interface WindowLayout {
   /** The stored box's part: it moves, and the device keeps it. */
   readonly column: WindowBox;
   readonly mascot: { readonly w: number; readonly h: number } | null;
   readonly reader: { readonly w: number; readonly h: number } | null;
-  /** The box the pieces share: the column, widened left by the Mascot and right by the reader. */
+  /** The side the Mascot stands on. The head view stands at the matching end of the pill. */
+  readonly side: MascotSide;
+  /** The box the pieces share: the column, widened by the Mascot on its side and the reader on the other. */
   readonly group: WindowBox;
+}
+
+/** The side with the wider free gap between the column and the screen edge. A tie keeps `current`. */
+function widerSide(x: number, w: number, viewport: Viewport, current: MascotSide): MascotSide {
+  const right = viewport.width - x - w;
+  if (x === right) return current;
+  return x > right ? 'left' : 'right';
 }
 
 /**
  * The pieces for a stored box. The column takes the box's height, and under the minimal chrome at most the
- * narrow width. The reader takes the room it needs, then the Mascot takes the column's height at its aspect,
- * less when the screen lacks the room. All stay whole on the screen.
+ * narrow width. The Mascot stands on the side with the wider free gap. The reader takes the room it needs on
+ * the other side, then the Mascot takes the column's height at its aspect, less when the screen lacks the
+ * room. All stay whole on the screen.
  */
-export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Viewport, { mascotAspect, showReader = false }: WindowPieces): WindowLayout {
+export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Viewport, { mascotAspect, showReader = false, side: previous = 'left' }: WindowPieces): WindowLayout {
   const w = clamp(chrome === 'minimal' ? Math.min(box.w, NARROW_WIDTH) : box.w, MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
   const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
+  const side = widerSide(clamp(box.x, 0, viewport.width - w), w, viewport, previous);
   const room = Math.max(0, viewport.width - SCREEN_MARGIN * 2 - w);
   const readerSpace = showReader && chrome === 'minimal' ? Math.min(READER_GAP + READER_WIDTH, room) : 0;
   const readerW = Math.max(0, readerSpace - READER_GAP);
   const mascotW = mascotAspect ? Math.min(h * mascotAspect, room - readerSpace) : 0;
-  const x = clamp(box.x, mascotW, viewport.width - w - readerSpace);
+  const before = side === 'left' ? mascotW : readerSpace;
+  const after = side === 'left' ? readerSpace : mascotW;
+  const x = clamp(box.x, before, viewport.width - w - after);
   const y = clamp(box.y, 0, viewport.height - h);
   return {
     column: { x, y, w, h },
     mascot: mascotAspect && mascotW > 0 ? { w: mascotW, h: mascotW / mascotAspect } : null,
     reader: readerW > 0 ? { w: readerW, h } : null,
-    group: { x: x - mascotW, y, w: w + mascotW + readerSpace, h },
+    side,
+    group: { x: x - before, y, w: w + before + after, h },
   };
 }
 

@@ -71,6 +71,37 @@ test.describe('the Mascot on a desktop screen', () => {
     expect(reloaded.mascot.x).toBeCloseTo(moved.mascot.x, 0);
   });
 
+  test('flips the Mascot to the wider gap once while the column is dragged across the middle', async ({ page }) => {
+    await openApp(page);
+    await openHelp(page);
+    const start = await boxes(page);
+    expect(start.mascot.x + start.mascot.width).toBeCloseTo(start.column.x, 0);
+
+    const grip = (await helpWindow(page).locator('[data-fq-drag] svg').first().boundingBox())!;
+    const from = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    // The column's center starts right of the middle and ends left of it, in small steps.
+    const sides: string[] = [];
+    const steps = 40;
+    const travel = start.column.x + start.column.width / 2 - 960 + 400;
+    for (let i = 1; i <= steps; i++) {
+      await page.mouse.move(from.x - (travel * i) / steps, from.y);
+      const [mascot, column] = [(await piece(page, 'mascot').boundingBox())!, (await piece(page, 'column').boundingBox())!];
+      sides.push(mascot.x < column.x ? 'left' : 'right');
+    }
+    await page.mouse.up();
+    expect(sides[0]).toBe('left');
+    expect(sides.at(-1)).toBe('right');
+    // One flip: no side repeats after it changes.
+    expect(sides.filter((side, i) => i > 0 && side !== sides[i - 1])).toHaveLength(1);
+
+    const end = await boxes(page);
+    expect(end.column.x + end.column.width / 2).toBeLessThan(960);
+    expect(end.mascot.x).toBeCloseTo(end.column.x + end.column.width, 0);
+    expect(end.mascot.y + end.mascot.height).toBeCloseTo(end.column.y + end.column.height, 0);
+  });
+
   test('resizes the column from its corner grip, and each chat style keeps its own size at one place after a reload', async ({ page }) => {
     await openApp(page);
     await openHelp(page);
