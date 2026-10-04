@@ -141,6 +141,15 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   // The grip takes a strip under the ask field, clear of the Send button.
   return (
     <div data-fq-piece="column" className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2', resize && 'pb-3')} style={height === undefined ? undefined : { height }}>
+      {/* The Scrim: a panel of the app background, inset past the column. It sits behind every piece of the window, whose section is its own stacking context. */}
+      {settings.scrimOpacity > 0 && (
+        <div
+          aria-hidden
+          data-fq-scrim=""
+          className="pointer-events-none absolute -inset-3 -z-10 rounded-2xl bg-background"
+          style={{ opacity: settings.scrimOpacity / 100 }}
+        />
+      )}
       <div className={cn('flex shrink-0 items-end gap-2', headSide === 'right' ? 'justify-start' : 'justify-end')}>
         {headSide === 'left' && head}
         <Pill move={move} large={large} headToggle={headToggle} menu={menu} onClose={onClose} />

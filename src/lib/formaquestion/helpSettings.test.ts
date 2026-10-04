@@ -31,6 +31,7 @@ describe('the default help settings', () => {
       mascot: true,
       rig: DEFAULT_MASCOT_RIG,
       chatStyle: 'auto',
+      scrimOpacity: 60,
     });
   });
 });
@@ -149,6 +150,22 @@ describe('the mascot', () => {
     const rig = stored({ rig: { ...DEFAULT_MASCOT_RIG, layers: [first, { id: 'broken' }, second] } }).rig;
     expect(rig.layers).toEqual([first, second]);
     expect(stored({ rig: 'mine' }).rig).toEqual(DEFAULT_MASCOT_RIG);
+  });
+});
+
+describe('the scrim opacity', () => {
+  const stored = (value: unknown) => helpSettingsCodec.parse(JSON.stringify(value));
+
+  it('reads as 60 when the value has none or a bad one', () => {
+    expect(stored({}).scrimOpacity).toBe(60);
+    for (const bad of [-5, 105, 62, 12.5, '40', null]) expect(stored({ scrimOpacity: bad }).scrimOpacity).toBe(60);
+  });
+
+  it('survives the codec at both ends and a step between, 0 included', () => {
+    for (const scrimOpacity of [0, 35, 100]) {
+      const settings = helpSettingsOf({ scrimOpacity });
+      expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings)).scrimOpacity).toBe(scrimOpacity);
+    }
   });
 });
 

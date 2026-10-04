@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Settings } from 'lucide-react';
-import { CheckRow, HintInfo, OptionSwitcher, Row, Section } from '@/components/SettingsRows';
+import { CheckRow, HintInfo, OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
 import { PromptReasoningField } from '@/components/modals/PromptOptionFields';
 import { promptReasoningFieldProps, type ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
 import { REASONING_NOTES } from '@/components/modals/settingsCopy';
@@ -13,7 +13,9 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import {
+  HELP_HISTORY_MAX, SCRIM_OPACITY_MAX, SCRIM_OPACITY_MIN, SCRIM_OPACITY_STEP, type HelpSettings, type HelpSettingsChange,
+} from '@/lib/formaquestion/helpSettings';
 import { toolsSupported } from '@/lib/reasoningEffort';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import { MascotTab } from './FormaquestionMascotTab';
@@ -100,6 +102,19 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
             value={settings.chatStyle}
             options={GENERAL_COPY.chatStyle.options}
             onChange={(chatStyle) => onChange({ chatStyle })}
+          />
+        </Row>
+        <Row htmlFor="fq-scrim-opacity" label={GENERAL_COPY.scrimOpacity.label} hint={GENERAL_COPY.scrimOpacity.hint}>
+          <ValueSlider
+            id="fq-scrim-opacity"
+            ariaLabel={GENERAL_COPY.scrimOpacity.label}
+            value={settings.scrimOpacity}
+            min={SCRIM_OPACITY_MIN}
+            max={SCRIM_OPACITY_MAX}
+            step={SCRIM_OPACITY_STEP}
+            format={(value) => `${value}%`}
+            onChange={(scrimOpacity) => onChange({ scrimOpacity })}
+            valueClassName="w-14 shrink-0 whitespace-nowrap"
           />
         </Row>
       </Section>

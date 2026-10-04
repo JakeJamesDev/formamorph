@@ -497,6 +497,59 @@ describe('the Chat Style', () => {
   });
 });
 
+describe('the Scrim', () => {
+  const scrim = () => helpWindow().querySelector<HTMLElement>('[data-fq-scrim]');
+
+  it.each([
+    { chatStyle: 'auto', mascot: true, drawn: true },
+    { chatStyle: 'minimal', mascot: true, drawn: true },
+    { chatStyle: 'minimal', mascot: false, drawn: true },
+    { chatStyle: 'auto', mascot: false, drawn: false },
+    { chatStyle: 'full', mascot: true, drawn: false },
+    { chatStyle: 'full', mascot: false, drawn: false },
+  ])('draws behind the column: $drawn for $chatStyle with the Mascot on: $mascot', async ({ chatStyle, mascot: on, drawn: expected }) => {
+    storeFramedWindow({ chatStyle, mascot: on });
+    await openWindow();
+    expect(scrim() !== null).toBe(expected);
+    if (expected) expect(column()).toContainElement(scrim());
+  });
+
+  it('draws the stored opacity, and nothing at 0', async () => {
+    storeFramedWindow({ chatStyle: 'minimal', scrimOpacity: 35 });
+    const { view } = await openWindow();
+    expect(scrim()!.style.opacity).toBe('0.35');
+    view.unmount();
+
+    storeFramedWindow({ chatStyle: 'minimal', scrimOpacity: 0 });
+    await openWindow();
+    expect(scrim()).toBeNull();
+  });
+
+  it('draws at 60% for a player who changed nothing', async () => {
+    storeFramedWindow({ chatStyle: 'minimal' });
+    await openWindow();
+    expect(scrim()!.style.opacity).toBe('0.6');
+  });
+
+  it('follows the Scrim Opacity slider at once and keeps the value across a remount', async () => {
+    storeFramedWindow({ chatStyle: 'minimal' });
+    const { view } = await openWindow();
+    await openHelpSettings();
+    const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
+    const slider = within(dialog).getByRole('slider', { name: 'Scrim Opacity' });
+    expect(slider).toHaveAttribute('aria-valuenow', '60');
+    slider.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
+    expect(scrim()!.style.opacity).toBe('0.65');
+
+    view.unmount();
+    await openWindow();
+    expect(scrim()!.style.opacity).toBe('0.65');
+  });
+});
+
 describe('the Mascot phases', () => {
   it('waves across a close and reopen until the first send, and draws Idle on every open after it', async () => {
     stubHelpStream(sseReply('Open the Traits tab.'));
