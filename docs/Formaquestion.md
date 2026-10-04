@@ -83,8 +83,8 @@ The row is the first item on the **Search** tab and on the **Guide** tab. It nam
 <!-- keywords: drag, bigger, smaller, size, position, wide view, layout, title bar, corner handle, in the way, covers the screen, side by side, split, enlarge, relocate -->
 <!-- route: formaquestion -->
 
-1. Drag the title bar to move the window.
-2. Drag the bottom right corner to change its size.
+1. Drag the title bar to move the window. In the minimal chat, drag the grip on the pill.
+2. Drag the bottom right corner to change its size. Each chat style keeps its own size.
 
 To see the contents and a section side by side, select **Wide View** in the title bar. Select it again to go back.
 
@@ -195,7 +195,7 @@ The request now holds your question alone. The answer has no note that it is not
 ---
 
 ## The Window
-<!-- keywords: f1 key behavior, stays on top, remembers position, off screen, focus cursor, narrow or wide, disappeared, always visible -->
+<!-- keywords: f1 key behavior, stays on top, remembers position, off screen, focus cursor, narrow or wide, disappeared, always visible, chat style, minimal, full, framed window, bare column -->
 
 Formaquestion is one window for the whole app. It shows above every dialog, and it keeps its conversation, its search text and its open section while the app is open.
 
@@ -203,7 +203,7 @@ Formaquestion is one window for the whole app. It shows above every dialog, and 
 |---|---|
 | Title bar | Drag it to move the window |
 | **Wide View** | Changes between the narrow and the wide layout. It stays lit while the wide view is on |
-| **⋮** | Opens a menu with **Clear Conversation**, **AI Context** and **Settings** |
+| **⋮** | Opens a menu with **Clear Conversation**, the **Chat Style** choices, **AI Context** and **Settings** |
 | **Close** | Closes the window |
 | Bottom right corner | Drag it to change the size of the window |
 
@@ -216,10 +216,10 @@ F1 does one of three things:
 | The cursor is in the window | The window closes |
 
 - The window stays whole on the screen. When the browser window gets smaller, Formaquestion moves back inside it.
-- This device keeps the place and the size of the window. They are not in a backup or an export.
+- This device keeps the place of the window, and a size for each chat style. A change of style keeps the place. They are not in a backup or an export.
 - The narrow layout shows one tab at a time. The wide layout shows the search field and the contents on the left, and the conversation or a section on the right. **Back to Conversation**, above a section, shows the conversation again. The layout changes at a width of 560 pixels, so the corner changes it too.
 - While the welcome animation plays, the **Help** tab does not show and F1 does nothing.
-- With the mascot on, the window has no title bar, no tabs, no **Wide View** and no corner to drag. See [Mascot](#mascot).
+- The **Chat Style** sets how the window looks. **Full** is this window. **Minimal** is a bare chat column with no title bar, no tabs and no **Wide View**. **Auto** is **Minimal** while the mascot is on and **Full** while it's off. Pick a style in the **⋮** menu or on the **General** tab. See [Mascot](#mascot).
 
 ## Ask
 <!-- keywords: privacy, what is sent, reads my saves, hallucinate, inaccurate, general knowledge note, history lost, send disabled, which model answers, reload -->
@@ -285,12 +285,13 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - This device keeps each setting. The settings are not in a backup or an export.
 
 ### General
-<!-- keywords: reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
+<!-- keywords: chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
 
-The **General** tab sets how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in three groups: **Answer**, **Search** and **Request**.
+The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**.
 
 | Setting | Default | What it does |
 |---|---|---|
+| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Minimal** with the **Mascot** on. The **⋮** menu has the same three choices. |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Picks** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
@@ -425,7 +426,9 @@ A Tool that's on reads the world you have open, so text from that world can go t
 
 The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions.
 
-With the mascot on, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot on its left. Select a source name under an answer to open the guide section in a reader on the right. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces.
+With the mascot on and the **Chat Style** at **Auto**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot on its left. Select a source name under an answer to open the guide section in a reader on the right. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
+
+With the **Chat Style** at **Full**, the whole mascot stands left of the framed window, at its height. A mobile-size screen shows no mascot with the framed sheet.
 
 | Row | What it does |
 |---|---|

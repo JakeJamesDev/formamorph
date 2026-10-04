@@ -8,7 +8,7 @@ import { WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 import { turnActivity } from '@/lib/turnActivity';
 import { openSseReply, sseFrame, sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
+import { stubHelpStream, storeFramedWindow, storeWindowBox } from '@/test/helpFixtures';
 import { ATTACH_REFUSAL_COPY, MAX_ATTACHMENTS } from '@/lib/actionAttachments';
 import { decodedFake, fakeImageFile, installFakeImageCodec } from '@/test/fakeImageCodec';
 import type { HelpAi } from './useHelpAi';
@@ -531,7 +531,7 @@ describe('the wide layout', () => {
   beforeEach(() => {
     vi.stubGlobal('innerWidth', 1600);
     vi.stubGlobal('innerHeight', 900);
-    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 400, y: 100, w: WIDE_WIDTH, h: 560 }));
+    storeWindowBox({ x: 400, y: 100, w: WIDE_WIDTH, h: 560 });
   });
 
   it('holds the conversation beside the rail, with the cursor in the question field', async () => {

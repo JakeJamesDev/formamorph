@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { GripHorizontal, PersonStanding, ScanFace, SendHorizontal, Square, X } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
@@ -12,7 +12,8 @@ import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { cn } from '@/lib/utils';
 import { Answer } from './AskParts';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
-import { FormaquestionMenu } from './FormaquestionMenu';
+import { ResizeGrip } from './FormaquestionFrame';
+import { FormaquestionMenu, type MenuActions } from './FormaquestionMenu';
 import type { HelpChat } from './useHelpChat';
 import type { DragHandlers } from './usePointerDrag';
 
@@ -22,7 +23,7 @@ const BUBBLE = cn(FLOATING, 'rounded-2xl px-3 py-2 text-label');
 const ASSISTANT_BUBBLE = cn(BUBBLE, 'mr-6 self-start rounded-bl-sm border bg-popover text-popover-foreground');
 const PILL_BUTTON = 'inline-flex items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
 
-type MenuProps = Omit<ComponentProps<typeof FormaquestionMenu>, 'large' | 'round'>;
+type MenuProps = MenuActions & { container?: HTMLElement };
 
 /** The desktop pill's switch between the whole Mascot and its head. */
 export interface HeadToggle {
@@ -103,7 +104,7 @@ function AskPill({ draft, onDraftChange, chat }: { draft: string; onDraftChange:
  * The minimal chrome's chat column: a pill, the conversation as floating bubbles, and the ask field. No frame,
  * no title bar, no tabs. Older bubbles fade out at the top, and no scroll bar draws.
  */
-export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, move, large, head, headToggle, menu, onClose }: {
+export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, move, resize, large, head, headToggle, menu, onClose }: {
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
@@ -117,6 +118,8 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   onOpen: (id: string) => void;
   /** Pointer handlers for the pill, where the window moves. */
   move?: DragHandlers;
+  /** Pointer handlers for the corner grip under the ask field. */
+  resize?: DragHandlers;
   /** Sheet-size controls. */
   large: boolean;
   /** The Mascot's head view, drawn left of the pill. */
@@ -127,8 +130,9 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   onClose: () => void;
 }) {
   const { viewportRef, onScroll } = useFollowEnd(chat.exchanges);
+  // The grip takes a strip under the ask field, clear of the Send button.
   return (
-    <div data-fq-piece="column" className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2">
+    <div data-fq-piece="column" className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2', resize && 'pb-3')}>
       <div className="flex shrink-0 items-end justify-end gap-2">
         {head}
         <Pill move={move} large={large} headToggle={headToggle} menu={menu} onClose={onClose} />
@@ -163,6 +167,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
         </div>
       </div>
       <AskPill draft={draft} onDraftChange={onDraftChange} chat={chat} />
+      {resize && <ResizeGrip resize={resize} className="pointer-events-auto" />}
     </div>
   );
 }

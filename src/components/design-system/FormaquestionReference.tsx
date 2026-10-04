@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SectionTitle } from '@/components/ui/typography';
 import { EdgeTabButton } from '@/components/formaquestion/EdgeTab';
 import { FormaquestionFrame } from '@/components/formaquestion/FormaquestionFrame';
+import type { MenuActions } from '@/components/formaquestion/FormaquestionMenu';
+import type { DragHandlers } from '@/components/formaquestion/usePointerDrag';
 import { useGuideView } from '@/components/formaquestion/formaquestionTabs';
 import { GuideBody } from '@/components/formaquestion/GuideBody';
 import { MascotPiece } from '@/components/formaquestion/MascotPiece';
@@ -100,6 +102,18 @@ const EDGE_PLACE: Record<Edge, string> = {
 const EDGES: Edge[] = ['right', 'left', 'top', 'bottom'];
 const SHEET_SIZE = { width: 360, height: 560 };
 
+/** The ⋮ menu of a sample: its Chat Style choice writes the sample's settings, and the dialogs do nothing. */
+const sampleMenu = (settings: HelpSettings, change: (next: HelpSettingsChange) => void, onClear?: () => void): MenuActions => ({
+  onOpenAiContext: () => {},
+  onOpenSettings: () => {},
+  onClear,
+  chatStyle: settings.chatStyle,
+  onChatStyleChange: (chatStyle) => change({ chatStyle }),
+});
+
+/** Grip handlers that draw the grip and resize nothing. */
+const INERT_DRAG: DragHandlers = { onPointerDown: () => {}, onPointerMove: () => {}, onPointerUp: () => {}, onPointerCancel: () => {} };
+
 function SampleWindow() {
   const [wide, setWide] = useState(false);
   const [view, changeView] = useGuideView();
@@ -107,7 +121,7 @@ function SampleWindow() {
   const [settings, changeSettings] = useReferenceSettings();
   const style = useMemo(() => ({ width: wide ? WIDE_WIDTH : NARROW_WIDTH, height: 480 }), [wide]);
   return (
-    <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} onOpenAiContext={() => {}} onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full" style={style}>
+    <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} menu={sampleMenu(settings, changeSettings)} onClose={() => {}} className="relative max-w-full" style={style}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} />
     </FormaquestionFrame>
   );
@@ -119,7 +133,7 @@ function SampleSheet() {
   const chat = useSampleChat();
   const [settings, changeSettings] = useReferenceSettings();
   return (
-    <FormaquestionFrame sheet onOpenAiContext={() => {}} onOpenSettings={() => {}} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
+    <FormaquestionFrame sheet menu={sampleMenu(settings, changeSettings)} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
       <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} chat={chat} settings={settings} onSettingsChange={changeSettings} />
     </FormaquestionFrame>
   );
@@ -159,7 +173,8 @@ function SampleMinimalChrome() {
           large={false}
           head={head}
           headToggle={{ showingHead, onToggle: () => setShowingHead((current) => !current) }}
-          menu={{ onOpenAiContext: () => {}, onOpenSettings: () => {}, onClear: chat.exchanges.length > 0 ? chat.clear : undefined }}
+          menu={sampleMenu(settings, changeSettings, chat.exchanges.length > 0 ? chat.clear : undefined)}
+          resize={INERT_DRAG}
           onClose={() => {}}
         />
       </div>

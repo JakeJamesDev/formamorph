@@ -2,6 +2,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { REASONING_NOTES } from '@/components/modals/settingsCopy';
+import { GENERAL_COPY } from './formaquestionSettingsTabs';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { reasoningCapabilityFromLevels, type ReasoningCapability } from '@/lib/reasoningEffort';
 import { sseReply, textSnapshot, textTarget } from '@/test/aiTextFixtures';
@@ -38,6 +39,8 @@ async function openSettings() {
 }
 
 const reasoningSwitch = (dialog: HTMLElement) => within(dialog).getByRole('checkbox', { name: 'Reasoning' });
+/** The reasoning level list: the General tab's one list besides Chat Style. */
+const levelList = (dialog: HTMLElement) => within(dialog).queryByRole('combobox', { name: (name) => name !== GENERAL_COPY.chatStyle.label });
 
 beforeEach(() => localStorage.clear());
 afterEach(() => {
@@ -52,7 +55,7 @@ describe('the Reasoning row', () => {
     const dialog = await openSettings();
     expect(within(dialog).getByText('Reasoning')).toBeInTheDocument();
     expect(reasoningSwitch(dialog)).toHaveAttribute('aria-checked', 'false');
-    expect(within(dialog).getByRole('combobox')).toHaveTextContent('Global');
+    expect(levelList(dialog)!).toHaveTextContent('Global');
 
     await userEvent.click(reasoningSwitch(dialog));
     expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toMatchObject({ reasoning: { enabled: true, level: 'global' } });
@@ -77,7 +80,7 @@ describe('the Reasoning row', () => {
     ai.current = reasoningAi({ ...reasoningCapabilityFromLevels(['none', 'low', 'high'], 'probe'), dialect: 'vllm' });
     const dialog = await openSettings();
     expect(reasoningSwitch(dialog)).toBeInTheDocument();
-    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    expect(levelList(dialog)).toBeNull();
     expect(within(dialog).queryByText(REASONING_NOTES.never)).toBeNull();
   });
 
@@ -85,7 +88,7 @@ describe('the Reasoning row', () => {
     ai.current = reasoningAi({ ...reasoningCapabilityFromLevels([], 'probe'), reasons: false });
     const dialog = await openSettings();
     expect(within(dialog).getByText(REASONING_NOTES.never)).toBeInTheDocument();
-    expect(within(dialog).queryByRole('combobox')).toBeNull();
+    expect(levelList(dialog)).toBeNull();
     expect(within(dialog).queryByRole('checkbox', { name: 'Reasoning' })).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import { EMPTY_HELP_PRESET_STORE, parseHelpPresetStore, type HelpPresetStore } f
 import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
 import { parseHelpTools, parseHelpToolSwitches } from './helpTools';
 import { DEFAULT_MASCOT_RIG, parseMascotRig, type MascotRig } from './mascot';
+import type { WindowChrome } from './windowBox';
 
 /** The search sources of a help question. The rankings of the ones that are on merge into one. */
 export interface HelpSources {
@@ -65,11 +66,21 @@ export interface HelpSettings {
   readonly tools: readonly Tool[];
   /** The switch of each Formaquestion Tool, by id. Absent is off. */
   readonly toolSwitches: ToolEnabledMap;
-  /** The Mascot stands beside the chat, and the window takes the minimal chrome. */
+  /** The Mascot stands beside the chat. Under the Auto chat style the window then takes the minimal chrome. */
   readonly mascot: boolean;
   /** The Mascot's rig: its images by reference, its layers, picks, Mask and Voice. */
   readonly rig: MascotRig;
+  /** The window's chrome: Auto follows the Mascot switch; Minimal and Full pin it. */
+  readonly chatStyle: ChatStyle;
 }
+
+export const CHAT_STYLES = ['auto', 'minimal', 'full'] as const;
+export type ChatStyle = (typeof CHAT_STYLES)[number];
+export const isChatStyle = (value: unknown): value is ChatStyle => CHAT_STYLES.some((style) => style === value);
+
+/** The chrome the window draws: Auto is minimal while the Mascot is on (Q9). */
+export const chatChrome = ({ chatStyle, mascot }: Pick<HelpSettings, 'chatStyle' | 'mascot'>): WindowChrome =>
+  (chatStyle === 'auto' ? (mascot ? 'minimal' : 'full') : chatStyle);
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
 export const DEFAULT_HELP_SETTINGS: HelpSettings = {
@@ -93,6 +104,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   toolSwitches: {},
   mascot: true,
   rig: DEFAULT_MASCOT_RIG,
+  chatStyle: 'auto',
 };
 
 /** A change to the settings: any field, and inside `sources` and `reveal` only the values it names. */
@@ -153,6 +165,7 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       toolSwitches: isRecord,
       mascot: isBool,
       rig: isRecord,
+      chatStyle: isChatStyle,
     });
     const storedSources = isRecord(sources) ? sources : {};
     const storedTools = parseHelpTools(tools);

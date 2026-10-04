@@ -922,7 +922,7 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 ### Composition
 
 - 🏷️ **Help tab.** A launcher that stays flat against one of the four screen edges and is round on its inner side. Its label reads top to bottom on the right edge, bottom to top on the left edge, and left to right on the top and the bottom. It is never upside down. A press opens or closes the window. A drag, or an arrow key while the tab has focus, moves it. The tab shows the accent fill while the window is open.
-- 🪟 **Floating window.** A title bar with the name, **Wide View**, a **⋮** menu and **Close**. **Wide View** keeps one icon and stays lit while on. The menu holds **Clear Conversation**, **AI Context** and **Settings**, renders in the window's layer, and hangs from the corner of the button that has room, so it always comes from the button. **Close** is a bare X in the dialog style. A dialog opened from the menu closes the window and reopens it on close. The title bar moves the window. A grip at the bottom right corner resizes it. The window stays whole on the screen. Only the tab snaps to an edge.
+- 🪟 **Floating window.** A title bar with the name, **Wide View**, a **⋮** menu and **Close**. **Wide View** keeps one icon and stays lit while on. The menu holds **Clear Conversation**, the **Chat Style** radio items (**Auto**, **Minimal**, **Full**), **AI Context** and **Settings**, in that order in both chromes. It renders in the window's layer, and hangs from the corner of the button that has room, so it always comes from the button. **Close** is a bare X in the dialog style. A dialog opened from the menu closes the window and reopens it on close. The title bar moves the window. A grip at the bottom right corner resizes it. The window stays whole on the screen. Only the tab snaps to an edge.
 - ↔️ **Two widths.** Narrow (400px) shows one part at a time behind three tabs: **Ask**, **Search** and **Guide**. Wide (720px) shows a rail with search and contents beside the conversation or the reader. **Wide View** swaps them, and the grip crosses the same line at 560px. The conversation, the search text and the open section carry over.
 - 💬 **Conversation.** A scrolling log of questions and answers above the question field. It stays at its end while an answer comes in, unless the player scrolled up. The question field is one line and grows with its text while focused, as the game's action box does.
 - 🙋 **Question bubble.** The player's question, right-aligned on `muted`, with an 8-unit left margin so it never spans the full width.
@@ -935,16 +935,17 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 
 ### Minimal chrome
 
-With the mascot on, the window drops its frame and shows three separate pieces over the app: the mascot, the column and the reader. The column and the reader take presses. The mascot does not. A press in a gap between the pieces reaches the app.
+Under **Chat Style** **Minimal**, or **Auto** with the mascot on, the window drops its frame and shows three separate pieces over the app: the mascot, the column and the reader. A style change while the window is open swaps the chrome in place, with no zoom. The column and the reader take presses. The mascot does not. A press in a gap between the pieces reaches the app.
 
-- 💊 **Pill.** The only chrome. A round, bordered `background` pill at the top right of the column, with a drag grip, the **⋮** menu, **Show Head Only** and **Close**. On a mobile-size screen the pill has no grip and no head button. The grip moves all three pieces. Every button is round, bare and `muted-foreground`, and fills with `accent` on hover.
+- 💊 **Pill.** The chrome on top. A round, bordered `background` pill at the top right of the column, with a drag grip, the **⋮** menu, **Show Head Only** and **Close**. On a mobile-size screen the pill has no grip and no head button. The grip moves all three pieces. Every button is round, bare and `muted-foreground`, and fills with `accent` on hover.
 - 🧍 **Mascot piece.** Left of the column, as tall as the column, at the base's aspect, with its feet on the column's bottom edge. It has no box, no border and no shadow. The head view is the same piece, cropped by the Mask, left of the pill. It is 96px tall on a desktop and 64px on a mobile-size screen.
-- 💬 **Column.** The conversation as bubbles over the app, up to 400px wide, with no frame, no title bar and no tabs. Older bubbles fade out at the top. No scroll bar shows.
+- 💬 **Column.** The conversation as bubbles over the app, up to 400px wide, with no frame, no title bar and no tabs. Older bubbles fade out at the top. No scroll bar shows. The framed window's corner grip sits in a strip under the ask pill, clear of **Send**, and resizes the column.
 - 🙋 **Question bubble.** On the `primary` fill with `primary-foreground` text, right-aligned, with a flat bottom right corner and a 40px left margin. The framed window's question bubble uses `muted`.
 - 📝 **Answer bubble.** The answer sits in a bubble on `popover` with a border, left-aligned, with a flat bottom left corner and a 24px right margin. The framed window draws its answer with no bubble.
 - ⌨️ **Ask pill.** The question field and **Send** in one rounded pill, in the `shadow-lg` role, with the inset focus ring around the whole pill.
 - 📖 **Reader piece.** Right of the column, 8px away, as tall as the column. A `popover` card with a border and a **Close Reader** button in its own top bar. It closes alone. The column and the mascot stay.
 - 🌫️ **Shadow.** The pill, the bubbles and the reader have `shadow-md`, which separates them from the app. The ask pill has `shadow-lg`. The mascot has none.
+- 🧍 **Mascot beside the frame.** Under **Full** with the mascot on, the whole mascot stands left of the framed window, as tall as it, with its feet on the frame's bottom edge. The head view does not apply. The mobile sheet draws no mascot under **Full**.
 - 📱 **On a mobile-size screen.** The sheet fills the screen over a dim, blurred backdrop. The bubbles sit on the backdrop, and the head view is left of the pill. A source name opens the guide section in the wiki, not in a reader piece.
 
 ### Layering
@@ -969,7 +970,7 @@ The mobile sheet slides in from the edge that holds the Help tab, with the same 
 | Help tab look per edge, and the placed tab | `EdgeTabButton` and `EdgeTab` in [`EdgeTab.tsx`](../src/components/formaquestion/EdgeTab.tsx) |
 | Tab place, drag and arrow-key moves | [`tabPlace.ts`](../src/lib/formaquestion/tabPlace.ts) |
 | Window frame | [`FormaquestionFrame.tsx`](../src/components/formaquestion/FormaquestionFrame.tsx) |
-| Window place, size and the two widths | [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
+| Window place, a size per chat style, and the two widths | [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
 | Narrow and wide layouts | [`GuideBody.tsx`](../src/components/formaquestion/GuideBody.tsx) |
 | Search field, result rows, contents, reader | [`GuideParts.tsx`](../src/components/formaquestion/GuideParts.tsx) |
 | Conversation, question bubble, answer, not-from-the-guide notice, source link, question field | [`AskParts.tsx`](../src/components/formaquestion/AskParts.tsx) |
@@ -977,7 +978,7 @@ The mobile sheet slides in from the edge that holds the Help tab, with the same 
 | Minimal chrome: pill, bubbles, ask pill | `MinimalChat` in [`MinimalChat.tsx`](../src/components/formaquestion/MinimalChat.tsx) |
 | Mascot piece and head view | [`MascotPiece.tsx`](../src/components/formaquestion/MascotPiece.tsx) |
 | Reader piece | [`ReaderPiece.tsx`](../src/components/formaquestion/ReaderPiece.tsx) |
-| Piece boxes beside the column | `minimalLayout` in [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
+| Piece boxes beside the column or the frame | `windowLayout` in [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
 | Isolated reference | [`FormaquestionReference.tsx`](../src/components/design-system/FormaquestionReference.tsx) |
 
 Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge, a sample window, a sample mobile sheet and the three pieces of the minimal chrome in local state. The samples have no AI: a question you send there shows the docs search state. Open `#dev?modal=formaquestion` on any screen for the real one.
