@@ -187,7 +187,7 @@ The dialog shows one question per page, the newest first, with its request cards
 3. Clear **AI Picks**.
 4. Clear **Semantic Search**.
 5. Clear **Use the Open Screen**.
-6. Select the **Tools** tab and check that **read_guide** is off.
+6. Select the **Tools** tab, select **read_guide**, and turn off **Enabled**.
 7. Ask a question.
 
 The request now holds your question alone. The answer has no note that it is not from the guide. To give the chat a purpose, write your own prompt and add Tools. Set **History Length** to the number of earlier exchanges you want it to keep.
@@ -387,7 +387,7 @@ The **Tools** tab lists the functions your AI can call while it answers. It uses
 
 | Function | Default | What it does |
 |---|---|---|
-| **read_guide** | Off | The guide lookup. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. |
+| **read_guide** | On | The guide lookup. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. It roughly quadruples the input tokens of a question. |
 | **roll** | Off | A dice roll. Ask your AI to roll, such as "roll two six-sided dice", and it rolls and gives you the total. |
 
 - **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
@@ -403,8 +403,10 @@ A function goes out only when the **Answer Endpoint** takes function calls. If i
 <!-- route: formaquestionSettings -->
 
 1. Set **Answer Endpoint** to a model that takes function calls, such as a local model.
-2. Open the **Tools** tab, select **read_guide**, and turn on **Enabled**.
+2. Open the **Tools** tab, select **read_guide**, and check that **Enabled** is on. It starts on.
 3. Ask a question. Your AI reads more sections when it needs them, and the answer lists them under **Sources**.
+
+To skip the extra input tokens, turn **Enabled** off. Each question then goes out as one request with the matching sections in it.
 
 **My Tools.** Make your own Tools for help questions, and Formaquestion can work as a chat assistant for the world you have open. They are a list of their own: a Tool you make here never goes to a game prompt, and a Tool from **Settings** → **Tools** does not show here.
 
