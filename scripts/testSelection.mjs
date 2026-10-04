@@ -20,6 +20,7 @@ export const changedSince = (base) => [
 
 /** Tests whose result depends on files they don't import. The ticket test gate runs them every time. */
 export const ALWAYS_RUN = {
+  'scripts/buildDecision.test.mjs': 'scans every tracked source file and glob import to keep the build skip set honest',
   'scripts/changelogFormat.test.mjs': 'reads docs/Changelog.md and runs scripts/extractReleaseNotes.mjs as a child process',
   'scripts/testSelection.test.mjs': 'scans every test and source file to keep these lists complete',
   'site/bundleBoundary.test.ts': 'scans the site and app sources for imports',
