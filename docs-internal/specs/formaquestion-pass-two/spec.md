@@ -79,6 +79,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q43 | The whole Mask box interior is the move area; the center grip is the visible, focusable keyboard target; only a press outside the box draws a new one (ticket 07) |
 | Q44 | Arrow keys on a side handle move its own axis only; corners and the center grip move on both. Each key press commits to the rig at once, with no draft (ticket 07) |
 | Q45 | The preview's Head View sits in a fixed 128px slot; a wide Mask's preview head shrinks to fit that width, shorter than its usual height. Without the fixed slot, a width change mid-drag slid the centered preview up to 70px under the pointer. The window's head view is unchanged (ticket 07, user) |
+| Q46 | Q6 reopens on evidence: ticket 28's re-probe after the keyword work had retrieval at 48 of 48 complete (1,653 tokens in) against lookup's 45 of 48 (3,090), and ADR 0009 shipped the lookup off on that. Q6 rested on ticket 22's older numbers. The default stays on until ticket 13 re-probes on today's docs; the result decides, and ADR 0009 is amended to match (user, 2026-10-04) |
 
 ## User Stories
 
@@ -199,7 +200,7 @@ Other checks:
 - Each guard is proven: reinstate the old behavior and confirm the test fails.
 - Unmount during a drag or a stream leaves no timer or listener; the suite's exit code is the check.
 - The surface registry source scan still covers the tabs.
-- The Lookup default flip is not a prompt change; no probe. The help bar run stays valid for the cloud, whose requests are byte-equal.
+- The Lookup default flip is not a prompt change. The help bar run stays valid for the cloud, whose requests are byte-equal. Ticket 13 re-probes the local arm on today's docs (Q46).
 
 ## Out of Scope
 
