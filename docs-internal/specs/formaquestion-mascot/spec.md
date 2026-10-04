@@ -65,6 +65,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q36 | The Initial look ends on the first send and on nothing else. A dialog's close-and-reopen, or the player closing and reopening the window, keeps it. Refines Q9 and Q10 |
 | Q37 | The Voice chip sits in both the Answer and the Lookup prompt of the Default preset, as its own paragraph after the intro line and before the rules; never in the Pick prompt. Token `<VOICE>`, label Mascot Voice |
 | Q38 | Rig editor details: the preview draws Idle, or the base plus one layer's overlays while that row is expanded; removing the base returns to the bundled base; a new layer is an enabled expression with no overlays, named and kinded in its expanded body; the URL field is hidden on this tab; Reset confirms, removing a layer or an overlay does not |
+| Q39 | The Voice chip frames the Voice with fixed lines in code: a "speak in this voice" lead and a line that keeps the answer first and the guide's control names. Off or empty still sends nothing. The bar run compares mascot on and off inside one batch, with the no-docs control. Refines Q22, Q26 and Q37 after the first run missed the bar (off 77.1%, on 74.4%, bar 75%) |
 
 ## User Stories
 
