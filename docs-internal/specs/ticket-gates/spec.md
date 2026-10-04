@@ -27,6 +27,7 @@ Settled with the user on 2026-10-04.
 | Q3 | After a clean run in a worktree, the typecheck script writes its build-info back to the main checkout (temp file, then rename), same drive only, so the next fresh worktree seeds warm. Nothing in the main checkout runs typecheck on its own, so without this the seed never exists (ticket 01 question) |
 | Q4 | Tickets never edit the gate list. It is excluded from git and every prepare reads it from the main checkout, so a line naming a script not yet on main breaks every other prepare. The spec session flips each line after its script lands (ticket 02 question) |
 | Q5 | The seed in the main checkout is its own file, apart from the main checkout's own build-info. tsc resolves the node_modules junction, so a worktree's build-info holds paths at worktree depth that fit only other worktrees; one shared file would make main's run and the next seed near-cold in turn. Slow, not a false green (ticket 01 review finding, refines Q3) |
+| Q6 | `docs/Changelog.md` joins the build skip set. It is text behind a raw import and its format test runs on every prepare, so a tests-plus-changelog ticket skips the build. Every other docs file still builds. Ticket 03 (2026-10-04) |
 
 ## User Stories
 
@@ -48,7 +49,7 @@ Settled with the user on 2026-10-04.
 - Seeding: when the worktree has no build-info file and the main checkout (read from the worktree's git common dir) has one on the same drive, the script copies it first. Different drives skip the seed, since TypeScript stores absolute paths across drives.
 - Write-back (Q3): after a clean run in a worktree on the same drive, the script copies its build-info to the main checkout's path through a temp file and a rename, so a reader never sees a partial file. The main checkout's own run writes in place.
 - **Ticket 01 landed 2026-10-04 (`cce89f30`).** Script `scripts/typecheck.mjs` behind `npm run typecheck`, so the gate line did not change. Worktree file `typecheck.tsbuildinfo`; main-checkout seed `typecheck.seed.tsbuildinfo` (Q5). A failed seed copy runs cold; a half-written seed still fails a planted error (fixture test). Times on the app: cold 21.1 s, warm 3.6 s, seeded 4.0 s. The old minimal `tsconfig.tsbuildinfo` is unused and left in place.
-- **Ticket 02 landed 2026-10-04 (`2202b571`).** `scripts/buildGate.mjs` over the pure classifier `scripts/buildDecision.mjs`; deleted files count as changes. The spec session flipped the gate line to `node scripts/buildGate.mjs {base}` the same day (Q4). Open finding: every ticket adds a changelog line in `docs/`, which always builds, so the skip fires only for a ticket with no changelog line. Whether `docs/Changelog.md` joins the skip set is the user's call.
+- **Ticket 02 landed 2026-10-04 (`2202b571`).** `scripts/buildGate.mjs` over the pure classifier `scripts/buildDecision.mjs`; deleted files count as changes. The spec session flipped the gate line to `node scripts/buildGate.mjs {base}` the same day (Q4). Open finding: every ticket adds a changelog line in `docs/`, which always builds, so the skip fires only for a ticket with no changelog line. Ruled in Q6: it does, through ticket 03.
 - The script prints whether the run was cold, warm or seeded, and the wall time.
 - Correctness is proven, not assumed: a test plants a type error after a warm run and confirms a non-zero exit; a second test seeds from a build-info made on a tree where the erroring file was clean and confirms the error is still reported. Both run against a small fixture project, not the app.
 
@@ -76,7 +77,7 @@ Settled with the user on 2026-10-04.
 - TypeScript 7 native tsc. Blocked on typescript-eslint's API.
 - Changes to the global prepare hook or the lock.
 - Project references.
-- Skipping the build for docs-only changes.
+- Skipping the build for docs-only changes, the changelog excepted (Q6).
 
 ## Further Notes
 
