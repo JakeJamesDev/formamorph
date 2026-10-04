@@ -49,6 +49,10 @@ export interface TestBenchWiring {
   advanced: boolean;
   /** The dev-router's `bench=` slot: an Instrument to open on (DEV builds only). */
   routedTab?: string;
+  /** An Instrument an outside request opens the Bench on. */
+  requestedTab?: string;
+  /** Changes with each outside request, so a repeat request opens the Bench again. */
+  requestKey?: string;
   /** Land the editor on a finding's item: its tab active, its row selected and revealed. */
   navigateToItem: (section: FindingSection, itemId: string) => void;
   /** Another pane holds the Bench's slot. The full panel stays hidden and the popover offers no way to it. */
@@ -84,7 +88,7 @@ export interface TestBenchHandle {
 }
 
 export function useTestBench({
-  selectedLocationId, isMobile, advanced, routedTab, navigateToItem, panelSuspended = false,
+  selectedLocationId, isMobile, advanced, routedTab, requestedTab, requestKey, navigateToItem, panelSuspended = false,
 }: TestBenchWiring): TestBenchHandle {
   const {
     worldId, worldOverview, getWorldData, worldMetadata, updateWorldOverview,
@@ -357,6 +361,12 @@ export function useTestBench({
     routeBenchTab(tab);
     setBenchOpen(true);
   }, [routedTab, routeBenchTab]);
+  useEffect(() => {
+    const tab = asBenchTab(requestedTab);
+    if (!tab) return;
+    routeBenchTab(tab);
+    setBenchOpen(true);
+  }, [requestedTab, requestKey, routeBenchTab]);
 
   const issues = {
     groups: bench.groups,

@@ -94,8 +94,12 @@ const PanelTab = ({ value, icon: Icon, label }: { value: string; icon: LucideIco
   </Tip>
 );
 
-export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrationPrompt }: {
+export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrationPrompt, requestedTab, requestKey }: {
   entities: Entity[];
+  /** A tab an outside request selects. */
+  requestedTab?: string;
+  /** Changes with each outside request, so a repeat request selects its tab again. */
+  requestKey?: string;
   onEntityClick: (entityId: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
   onRegenerateMemory?: (turnId: string) => Promise<boolean>;
@@ -157,7 +161,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const [modelTab, setModelTab] = React.useState("avatar");
   // Entity picked from the list; falls back to the first detected showable entity.
   const [selectedEntityName, setSelectedEntityName] = React.useState<string | undefined>(undefined);
-  const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
+  const [leftTab, setLeftTab] = React.useState(requestedTab ?? (isMobile ? "model" : "notes"));
+  React.useEffect(() => { if (requestedTab) setLeftTab(requestedTab); }, [requestedTab, requestKey]);
 
   const entityViewEntity =
     [...entities, ...(personaEntity ? [personaEntity] : [])].find((e) => e.name === selectedEntityName)

@@ -6,6 +6,9 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMe
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
+import { closesWorldEditor, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from "@/lib/surface/useSurfaceOpenRequest";
+import { stepTab, type SurfaceSteps } from "@/lib/surface/surfaceRoute";
+import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import { type StatClock } from "@/lib/statCodeExecutor";
@@ -26,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
-import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff } from "lucide-react";
+import { Music, SquarePen, Database, ScrollText, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Search, Eye, EyeOff, DoorOpen } from "lucide-react";
 import IndeterminateProgress from "../components/ui/indeterminate-progress";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1165,6 +1168,60 @@ const GameViewer = ({
   // Export the whole playthrough's narration as a plain-text or Markdown file (user picks the format
   // via the export dialog). Same sanitized text either way — format only sets the extension + MIME.
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // --- Surface requests ------------------------------------------------------------------------------
+  const surfaceNav = useSurfaceNav();
+  // What follows the in-game editor's unsaved prompt: the rest of the request, or its refusal.
+  const editorLeave = useRef<{ then: () => void; cancel: () => void } | null>(null);
+  // A request for the main menu, waiting on the leave prompt. Leaving keeps it pending for the menu.
+  const [leaveForSurface, setLeaveForSurface] = useState<{ clear: () => void } | null>(null);
+  // Set by the leave prompt's Confirm, so the close that follows it is not read as a refusal.
+  const leavingForSurface = useRef(false);
+  /** Closes the in-game editor, after its unsaved prompt when it holds edits, then runs `then`. */
+  const leaveEditorThen = (then: () => void, cancel: () => void) => {
+    if (!isEditingWorld) { then(); return; }
+    if (!isWorldDirty) { setIsEditingWorld(false); then(); return; }
+    editorLeave.current = { then, cancel };
+    setShowEditorExitPrompt(true);
+  };
+  /** Takes what waits on the editor prompt, so its answer runs it once. */
+  const takeEditorLeave = () => {
+    const pending = editorLeave.current;
+    editorLeave.current = null;
+    return pending;
+  };
+  const openSurfaceHere = (steps: SurfaceSteps) => {
+    surfaceNav.land(steps);
+    switch (steps.dialog) {
+      case null:
+        if (isMobile && stepTab(steps, 'gameViewer')) setMobilePanel('character');
+        break;
+      case 'settings': {
+        const landing = settingsLanding(steps);
+        if (landing.tab) setSettingsTab(landing.tab);
+        if (landing.endpointTab) setSettingsEndpointTab(landing.endpointTab);
+        // The request replaces an earlier prompt jump, which would otherwise win once the landing clears.
+        setSettingsPrompt(undefined);
+        setIsSettingsOpen(true);
+        break;
+      }
+      case 'worldEditor': setIsEditingWorld(true); break;
+      case 'export': setIsExportModalOpen(true); break;
+      case 'location': setIsLocationModalOpen(true); break;
+      case 'aiContext': setIsDebugOpen(true); break;
+      case 'demoAI': demoAINoticeRef.current?.open(); break;
+    }
+  };
+  useSurfaceOpenRequest((steps, clear) => {
+    // Leaving asks first, so a refusal leaves an open editor and its edits as they are.
+    if (steps.view === 'mainMenu') {
+      setLeaveForSurface({ clear });
+      return;
+    }
+    clear();
+    if (closesWorldEditor(steps)) leaveEditorThen(() => openSurfaceHere(steps), () => {});
+    else openSurfaceHere(steps);
+  });
   const exportStory = (format: 'txt' | 'md') => {
     const story = fullMessageHistory
       .filter((m) => m.role === 'assistant')
@@ -4421,6 +4478,8 @@ const GameViewer = ({
       }}
       onRegenerateMemory={regenerateMemory}
       narrationPrompt={systemPrompt}
+      requestedTab={surfaceNav.tab('gameViewer')}
+      requestKey={surfaceNav.key}
     />
   );
 
@@ -4696,14 +4755,45 @@ const GameViewer = ({
       >
         <DialogContent surface="worldEditor" aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
           <DialogTitle className="sr-only">World Editor</DialogTitle>
-          <WorldEditor embedded inGame onClose={() => setIsEditingWorld(false)} />
+          <WorldEditor
+            embedded
+            inGame
+            onClose={() => setIsEditingWorld(false)}
+            initialTab={surfaceNav.tab('worldEditor')}
+            initialBenchTab={surfaceNav.tab('worldEditorBench')}
+            requestKey={surfaceNav.key}
+          />
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog
         open={showEditorExitPrompt}
-        onOpenChange={setShowEditorExitPrompt}
-        onSave={async () => { await saveWorld(); setShowEditorExitPrompt(false); setIsEditingWorld(false); }}
-        onExit={() => { setShowEditorExitPrompt(false); setIsEditingWorld(false); }}
+        // A dismissal is a refusal of whatever waited on the prompt.
+        onOpenChange={(open) => { setShowEditorExitPrompt(open); if (!open) takeEditorLeave()?.cancel(); }}
+        onSave={async () => {
+          const next = takeEditorLeave();
+          const saved = await saveWorld(); setShowEditorExitPrompt(false); setIsEditingWorld(false);
+          // A failed save stops the request; the editor still closes, as it always has.
+          if (saved) next?.then(); else next?.cancel();
+        }}
+        onExit={() => { const next = takeEditorLeave(); setShowEditorExitPrompt(false); setIsEditingWorld(false); next?.then(); }}
+      />
+      {/* A surface request for the main menu asks the in-game Exit's question, then the editor's. */}
+      <ConfirmDialog
+        open={leaveForSurface !== null}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (!leavingForSurface.current) leaveForSurface?.clear();
+          leavingForSurface.current = false;
+          setLeaveForSurface(null);
+        }}
+        title={EXIT_TO_MENU_PROMPT.title}
+        icon={<DoorOpen className="h-4 w-4" />}
+        description={EXIT_TO_MENU_PROMPT.description}
+        onConfirm={() => {
+          leavingForSurface.current = true;
+          const clear = leaveForSurface?.clear ?? (() => {});
+          leaveEditorThen(onExitToMenu, clear);
+        }}
       />
 
       {/* Full AI context sent each turn, paginated by turn */}
@@ -5275,9 +5365,10 @@ const GameViewer = ({
         toolWorld={toolWorld}
         initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
-        initialPromptTab={settingsPrompt?.tab ?? devRoute?.subtab}
-        initialPromptSurface={settingsPrompt?.surface ?? devRoute?.surface}
+        initialPromptTab={surfaceNav.settings?.promptTab ?? settingsPrompt?.tab ?? devRoute?.subtab}
+        initialPromptSurface={surfaceNav.settings?.promptSurface ?? settingsPrompt?.surface ?? devRoute?.surface}
         initialPromptField={settingsPrompt?.field}
+        requestKey={surfaceNav.key}
       />
 
       <AiSetupGate
