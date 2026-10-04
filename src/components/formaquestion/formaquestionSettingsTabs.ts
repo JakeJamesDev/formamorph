@@ -33,6 +33,7 @@ export const GENERAL_COPY = {
 export const MASCOT_COPY = {
   mascot: { label: 'Mascot', hint: 'Shows a character beside a bare chat column' },
   preview: { label: 'Preview', hint: 'Shows the Idle look. Expand a layer to see what it draws.' },
+  headView: { label: 'Head View', hint: 'Drag a box on the preview to choose the head' },
   base: { label: 'Base Image', hint: 'Draws under every layer. Remove yours to go back to the default.' },
   layers: { label: 'Layers', hint: 'Draws each enabled layer in list order. Drag a row to move it.' },
   addLayer: 'Add Layer',

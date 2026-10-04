@@ -1,5 +1,5 @@
-import type { ComponentProps } from 'react';
-import { GripHorizontal, SendHorizontal, Square, X } from 'lucide-react';
+import type { ComponentProps, ReactNode } from 'react';
+import { GripHorizontal, PersonStanding, ScanFace, SendHorizontal, Square, X } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,15 @@ const PILL_BUTTON = 'inline-flex items-center justify-center rounded-full text-m
 
 type MenuProps = Omit<ComponentProps<typeof FormaquestionMenu>, 'large' | 'round'>;
 
-/** The only chrome: it moves the window, holds the ⋮ menu, and closes the window. */
-function Pill({ move, large, menu, onClose }: { move?: DragHandlers; large: boolean; menu: MenuProps; onClose: () => void }) {
+/** The desktop pill's switch between the whole Mascot and its head. */
+export interface HeadToggle {
+  showingHead: boolean;
+  onToggle: () => void;
+}
+
+/** The only chrome: it moves the window, swaps the Mascot's view, holds the ⋮ menu, and closes the window. */
+function Pill({ move, large, headToggle, menu, onClose }: { move?: DragHandlers; large: boolean; headToggle?: HeadToggle; menu: MenuProps; onClose: () => void }) {
+  const headLabel = headToggle?.showingHead ? 'Show Full Mascot' : 'Show Head Only';
   return (
     <div
       data-fq-drag=""
@@ -33,6 +40,13 @@ function Pill({ move, large, menu, onClose }: { move?: DragHandlers; large: bool
       className={cn(FLOATING, 'flex shrink-0 select-none items-center self-end rounded-full border bg-background p-0.5', move && 'cursor-move touch-none')}
     >
       {move && <GripHorizontal aria-hidden className="mx-1.5 h-4 w-4 text-muted-foreground" />}
+      {headToggle && (
+        <Tip tip={headLabel}>
+          <button type="button" aria-label={headLabel} onClick={headToggle.onToggle} className={cn(PILL_BUTTON, large ? 'h-12 w-12' : 'h-8 w-8')}>
+            {headToggle.showingHead ? <PersonStanding aria-hidden className="h-4 w-4" /> : <ScanFace aria-hidden className="h-4 w-4" />}
+          </button>
+        </Tip>
+      )}
       <FormaquestionMenu {...menu} large={large} round />
       <Tip tip={large ? 'Close' : 'Close (F1)'}>
         <button type="button" aria-label="Close Formaquestion" onClick={onClose} className={cn(PILL_BUTTON, large ? 'h-12 w-12' : 'h-8 w-8')}>
@@ -89,7 +103,7 @@ function AskPill({ draft, onDraftChange, chat }: { draft: string; onDraftChange:
  * The minimal chrome's chat column: a pill, the conversation as floating bubbles, and the ask field. No frame,
  * no title bar, no tabs. Older bubbles fade out at the top, and no scroll bar draws.
  */
-export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, move, large, menu, onClose }: {
+export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, move, large, head, headToggle, menu, onClose }: {
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
@@ -105,6 +119,9 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   move?: DragHandlers;
   /** Sheet-size controls. */
   large: boolean;
+  /** The Mascot's head view, drawn left of the pill. */
+  head?: ReactNode;
+  headToggle?: HeadToggle;
   /** The ⋮ menu's actions, as the framed window's title bar menu takes them. */
   menu: MenuProps;
   onClose: () => void;
@@ -112,7 +129,10 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   const { viewportRef, onScroll } = useFollowEnd(chat.exchanges);
   return (
     <div data-fq-piece="column" className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2">
-      <Pill move={move} large={large} menu={menu} onClose={onClose} />
+      <div className="flex shrink-0 items-end justify-end gap-2">
+        {head}
+        <Pill move={move} large={large} headToggle={headToggle} menu={menu} onClose={onClose} />
+      </div>
       <div
         ref={viewportRef}
         onScroll={onScroll}

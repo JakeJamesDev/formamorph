@@ -115,7 +115,7 @@ describe('the minimal chrome', () => {
     expect(screen.queryByRole('heading', { name: 'Formaquestion' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Wide View' })).toBeNull();
     expect(helpWindow().querySelector('[data-fq-resize]')).toBeNull();
-    expect(within(pill()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['More Actions', 'Close Formaquestion']);
+    expect(within(pill()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Show Head Only', 'More Actions', 'Close Formaquestion']);
     expect(drawn()).toEqual(look('initial'));
   });
 
@@ -231,7 +231,7 @@ describe('the minimal chrome', () => {
     expect(helpWindow().querySelector('[data-fq-piece="reader"]')).toBeNull();
   });
 
-  it('shows the column alone on a mobile-size screen', async () => {
+  it('shows the masked head left of the pill on a mobile-size screen, with no full view and no toggle', async () => {
     vi.stubGlobal('innerWidth', 375);
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
@@ -239,8 +239,46 @@ describe('the minimal chrome', () => {
     await openWindow();
     expect(helpWindow()).toHaveAttribute('data-fq-sheet');
     expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
-    expect(mascot()).toBeNull();
     expect(helpWindow().querySelector('[data-fq-drag] svg.lucide-grip-horizontal')).toBeNull();
+    expect(within(pill()).queryByRole('button', { name: /^Show / })).toBeNull();
+    loadBase();
+    expect(helpWindow().querySelectorAll('[data-fq-piece="mascot"]')).toHaveLength(1);
+    expect(mascot()).toHaveAttribute('data-fq-view', 'head');
+    expect(mascot()!.nextElementSibling).toBe(pill());
+    // The default Mask is 768 by 680 from (100, 0).
+    expect(mascot()!.style.height).toBe('64px');
+    expect(parseFloat(mascot()!.style.width)).toBeCloseTo(72.28, 2);
+    // The whole base draws past the piece, so the Mask fills it.
+    const frame = (mascot()!.firstElementChild as HTMLElement).style;
+    expect(parseFloat(frame.left)).toBeCloseTo(-13.02, 2);
+    expect(parseFloat(frame.height)).toBeCloseTo(174.12, 2);
+    expect(drawn()).toEqual(look('initial'));
+  });
+
+  it('swaps the whole Mascot and its head from the pill, narrows the box for the head, and keeps the view across a remount', async () => {
+    const { view } = await openWindow();
+    loadBase();
+    const fullLeft = parseFloat(helpWindow().style.left);
+    expect(mascot()).toHaveAttribute('data-fq-view', 'full');
+    await userEvent.click(within(pill()).getByRole('button', { name: 'Show Head Only' }));
+    expect(helpWindow().querySelectorAll('[data-fq-piece="mascot"]')).toHaveLength(1);
+    loadBase();
+    expect(mascot()).toHaveAttribute('data-fq-view', 'head');
+    expect(mascot()!.nextElementSibling).toBe(pill());
+    expect(mascot()!.style.height).toBe('96px');
+    // The head sits in the column, so the box is the column alone, at the column's place.
+    expect(parseFloat(helpWindow().style.width)).toBe(NARROW_WIDTH);
+    expect(parseFloat(helpWindow().style.left)).toBe(fullLeft + parseFloat(helpWindow().style.height) * ASPECT);
+    expect(drawn()).toEqual(look('initial'));
+
+    view.unmount();
+    await openWindow();
+    loadBase();
+    expect(mascot()).toHaveAttribute('data-fq-view', 'head');
+    await userEvent.click(within(pill()).getByRole('button', { name: 'Show Full Mascot' }));
+    loadBase();
+    expect(mascot()).toHaveAttribute('data-fq-view', 'full');
+    expect(parseFloat(helpWindow().style.left)).toBe(fullLeft);
   });
 });
 

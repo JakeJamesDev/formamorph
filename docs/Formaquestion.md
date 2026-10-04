@@ -409,7 +409,8 @@ The **Mascot** tab turns the mascot on or off and edits its rig: a base image wi
 | Row | What it does |
 |---|---|
 | **Mascot** | Shows a character beside a bare chat column. On by default. |
-| **Preview** | Shows the Idle look. Expand a layer to see the base with that layer alone. |
+| **Preview** | Shows the Idle look. Expand a layer to see the base with that layer alone. Drag a box on it to set the head view. |
+| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the left of the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. |
 | **Base Image** | Draws under every layer. Upload your own image, or remove yours to go back to the default. |
 | **Layers** | Lists every layer in draw order, with its name, its kind and its **Enabled** checkbox |
 | **Reset Mascot** | Restores the default mascot and deletes every image you added. It asks first. |
