@@ -449,6 +449,101 @@ test.describe('the Mask on a coarse pointer', () => {
   });
 });
 
+test.describe('the second pass controls', () => {
+  // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'The wide tab and the Mascot piece are the desktop form');
+  });
+
+  const scaleSlider = (page: Page) => page.getByRole('slider', { name: 'Scale' });
+
+  /** Sets Scale on the Mascot tab by key: Home is the Auto stop at 20, and each arrow is one 5-point step up from it. */
+  async function setScale(page: Page, arrows: number): Promise<void> {
+    await openApp(page);
+    await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+    await scaleSlider(page).focus();
+    await page.keyboard.press('Home');
+    for (let i = 0; i < arrows; i++) await page.keyboard.press('ArrowRight');
+    await expect(scaleSlider(page)).toHaveAttribute('aria-valuetext', arrows === 0 ? 'Auto' : `${20 + arrows * 5}%`);
+    await page.reload();
+    await page.waitForFunction(() => '__fmDev' in window);
+    await openHelp(page);
+  }
+
+  test('a percent Scale sizes the Mascot from the base height, level with the column bottom, and Auto goes back to the column height', async ({ page }) => {
+    await setScale(page, 6);
+    const percent = await boxes(page);
+    // 50% of the 1184-pixel base, at the base's aspect, with the column unchanged.
+    expect(percent.mascot.height).toBeCloseTo(592, 0);
+    expect(percent.mascot.width / percent.mascot.height).toBeCloseTo(BASE_ASPECT, 2);
+    expect(percent.mascot.y + percent.mascot.height).toBeCloseTo(percent.column.y + percent.column.height, 0);
+    expect(percent.mascot.x + percent.mascot.width).toBeCloseTo(percent.column.x, 0);
+    expect(percent.column.width).toBe(400);
+
+    await setScale(page, 0);
+    const auto = await boxes(page);
+    expect(auto.mascot.height).toBeCloseTo(auto.column.height, 0);
+    expect(auto.column.height).toBeCloseTo(percent.column.height, 0);
+  });
+
+  test('the Scrim paints a panel 0.75rem past the column at its 60% default, behind the pieces', async ({ page }) => {
+    await openApp(page);
+    await openHelp(page);
+    const { column } = await boxes(page);
+    const scrim = page.locator('[data-fq-scrim]');
+    const box = (await scrim.boundingBox())!;
+    expect(box).toMatchObject({ x: column.x - 12, y: column.y - 12, width: column.width + 24 });
+    expect(box.height).toBeCloseTo(column.height + 24, 0);
+    expect(await scrim.evaluate((el) => getComputedStyle(el).opacity)).toBe('0.6');
+    // The field above the scrim takes the press, and a press on the scrim's rim reaches the app.
+    const field = (await askField(page).boundingBox())!;
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('#formaquestion-window') !== null, { x: field.x + 8, y: field.y + 8 })).toBe(true);
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('#formaquestion-window') === null, { x: column.x - 6, y: column.y + column.height / 2 })).toBe(true);
+  });
+
+  test.describe('on a short screen', () => {
+    test.use({ viewport: { width: 1280, height: 700 } });
+
+    test('the Mascot tab keeps its preview in place while the controls scroll', async ({ page }) => {
+      await openApp(page);
+      await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+      await loaded(page, '[data-fq-mask-target]');
+      const preview = page.locator('[data-fq-mascot-preview]');
+      const controls = page.locator('[data-fq-mascot-controls]');
+      const before = (await preview.boundingBox())!;
+      const side = (await controls.boundingBox())!;
+      // The preview sits left of the controls.
+      expect(before.x + before.width).toBeLessThanOrEqual(side.x);
+      expect(await controls.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+
+      await controls.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+      await expect.poll(() => controls.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      const after = (await preview.boundingBox())!;
+      expect(after.y).toBeCloseTo(before.y, 0);
+      expect(after.x).toBeCloseTo(before.x, 0);
+    });
+  });
+
+  test('the Endpoint tab puts Answer and Pick on one row, over an editor headed by the active endpoint', async ({ page }) => {
+    await openApp(page);
+    await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'endpoint' });
+    // The route selects carry no accessible name, so the two first selects of the tab stand for the two fields.
+    const routes = page.getByRole('dialog').getByRole('combobox');
+    await expect(routes.first()).toContainText('Use Active Endpoint');
+    await expect(routes.nth(1)).toContainText('Same as Answer');
+    // The two labels top the two fields, so equal tops mean one row. A longer hint can push one select lower.
+    const answerLabel = (await page.getByRole('dialog').locator('label', { hasText: 'Answer Endpoint' }).boundingBox())!;
+    const pickLabel = (await page.getByRole('dialog').locator('label', { hasText: 'Pick Endpoint' }).boundingBox())!;
+    expect(pickLabel.y).toBeCloseTo(answerLabel.y, 0);
+    const answer = (await routes.first().boundingBox())!;
+    const pick = (await routes.nth(1).boundingBox())!;
+    expect(pick.x).toBeGreaterThan(answer.x + answer.width - 1);
+    const heading = page.getByRole('heading', { name: /^Edit .*\(Active Endpoint\)$/ });
+    await expect(heading).toBeVisible();
+    expect((await heading.boundingBox())!.y).toBeGreaterThan(answer.y + answer.height);
+  });
+});
+
 /** The resting opacity of a Mask handle away from the box. */
 const FADED = 0.3;
 

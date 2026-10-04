@@ -109,17 +109,82 @@ To see the contents and a section side by side, select **Wide View** in the titl
 
 With the keyboard, press Tab until the **Help** tab has focus. Then press the arrow keys.
 
+## How to Change the Chat Style
+<!-- keywords: window style, minimal, full, auto, framed window, bare column, no title bar, switch chrome, pill, frame, title bar back, bring back the frame, unframed -->
+<!-- route: formaquestionSettings.general -->
+
+1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column.
+2. Under **Chat Style**, select **Auto**, **Minimal** or **Full**.
+
+You can also set it in the **Window** group of the **General** tab. Both places change the same setting.
+
+- **Auto** is **Minimal** while the mascot is on, and **Full** while it's off.
+- **Minimal** is a bare chat column. **Full** is the framed window.
+- **Full** with the mascot on keeps the mascot beside the frame.
+- The window stays where it was, and your conversation stays. Each style keeps its own size. See [The Window](#the-window).
+
+## How to Make the Bare Chat Easier to Read
+<!-- keywords: hard to read, text over my screen, busy background, see through, transparent, backdrop, panel behind the chat, contrast, readability, scrim, opacity, dim, minimal chat text -->
+<!-- route: formaquestionSettings.general -->
+
+1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
+2. Under **Window**, move **Scrim Opacity**.
+
+The scrim is a panel behind the bare chat column, in the color of the app. A higher value hides more of the screen behind the text. The setting runs from 0 to 100% in steps of 5, and starts at 60%. Set 0 to draw no panel. The panel shows whenever the **Minimal** style shows, also under **Auto** with the mascot on.
+
+## How to Return to the Newest Answer
+<!-- keywords: scroll down, jump to the end, long conversation, old messages, bottom, latest answer, down arrow, scroll to end, lost my place, newest message -->
+<!-- route: formaquestion.ask -->
+
+1. Scroll up in the conversation to read an earlier answer.
+2. Select **Scroll to End**, the round arrow above the question field.
+
+The arrow shows when the end of the conversation is more than half a window height away. It goes away when you get near the end. After you select it, new text keeps scrolling into view as it arrives. The framed window and the bare column both have the arrow. See [Ask](#ask).
+
+## How to Change the Size of the Mascot
+<!-- keywords: bigger mascot, smaller mascot, scale, resize mascot, mascot too big, mascot too small, size slider, auto size, fit the chat, percent -->
+<!-- route: formaquestionSettings.mascot -->
+
+1. Select **⋮** in the Formaquestion title bar, then **Settings**.
+2. Select the **Mascot** tab.
+3. Move **Scale** in the preview.
+
+The first stop is **Auto**. **Auto** fits the mascot to the height of the chat, and follows the chat when you resize it. Any other stop is a percent of the base image's size in pixels, from 25% to 150%. A percent mascot stays level with the bottom of the chat column and rises above it. It never grows past the room on the screen.
+
+The preview does not change with **Scale**. The window does. This device keeps the setting, outside your mascot card. See [Mascot](#mascot).
+
+## How to Set the Head View With the Mask
+<!-- keywords: crop, mask handles, head only, face crop, resize the box, move the box, trim, drag the edges, corners, arrow keys, head view box, face box, keyboard -->
+<!-- route: formaquestionSettings.mascot -->
+
+1. Open the **Mascot** tab in **Formaquestion Settings**.
+2. Point at the preview. The Mask box shows eight handles and a center grip.
+3. Drag a handle to move one edge, or a corner to move two. Drag inside the box to move the whole box.
+4. Watch **Head View**, next to the preview. It shows the result as you drag.
+
+To draw a new box, drag on the preview outside the current one. With the keyboard, press Tab to a handle, then press an arrow key to move it one pixel. Shift with an arrow key moves it ten pixels. The handles fade while your pointer is away, unless one has focus or you are dragging. On a touch screen they stay drawn. See [The Mask](#the-mask).
+
 ## How to Use a Different AI for Help
 <!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, pick endpoint, small model -->
 <!-- route: formaquestionSettings.endpoint -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Endpoint** tab.
-3. In the editor, select **Add New Preset**.
+3. In the editor, select **Add New Preset**. The new preset is a copy of the one under the heading, and **Answer Endpoint** moves to it.
 4. Enter the endpoint, token and model of the other AI.
-5. Set **Answer Endpoint** to the new preset.
 
-Your game keeps its own AI. To send the **AI Picks** request to a small, fast model, set **Pick Endpoint** the same way. See [Endpoint](#endpoint).
+Your game keeps its own AI. The editor always edits the preset that **Answer Endpoint** uses. To edit another preset, set **Answer Endpoint** to it first. To send the **AI Picks** request to a small, fast model, set **Pick Endpoint** to a preset. See [Endpoint](#endpoint).
+
+## How to Edit the Preset That Help Uses
+<!-- keywords: change the endpoint settings, edit the model, edit the url, change the token, which preset am I editing, endpoint editor heading, answer preset, copy a preset, tune a variant, delete a preset, follow active, editor has no list -->
+<!-- route: formaquestionSettings.endpoint -->
+
+1. Open the **Endpoint** tab in **Formaquestion Settings**.
+2. Read the heading above the editor. It says **Edit** and the name of the preset that **Answer Endpoint** uses.
+3. To edit another preset, set **Answer Endpoint** to it. The heading and the editor change with it.
+4. To try a variant, select **Add New Preset**. The copy opens in the editor, and **Answer Endpoint** moves to it. The first preset stays as it was.
+
+While **Answer Endpoint** is **Use Active Endpoint**, the heading names the active preset and says **Active Endpoint**. A delete of the preset in use moves **Answer Endpoint** back to **Use Active Endpoint**. A change to a preset applies to the game too. See [Endpoint](#endpoint).
 
 ## How to Turn On Reasoning for Help
 <!-- keywords: thinking, think harder, reasoning model, hard question, effort, reasoning level, show thinking, think before answering, better answers, deep answer, slow answers, thinking block -->
@@ -153,7 +218,18 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 4. Select **Answer**, **Picks** or **Lookup**, and edit the text. Keep the chips that the app reads back.
 5. Close the dialog and ask a question. The next request uses your text.
 
-**Default** is read-only, so your copy is the one you edit. Select **Compare to Default** to see what a new release changed, or **Reset to Default** to start again. See [Prompts](#prompts).
+**Default** is read-only, so your copy is the one you edit. Select **Compare to Default** to see what a new release changed, or **Reset to Default** to start again. Select **Preview** above a prompt to read it as your AI gets it. See [Prompts](#prompts).
+
+## How to Change the Length of a Help Reply
+<!-- keywords: tokens, token limit, temperature, repetition penalty, shorter replies, longer answers, creative, sampler, pick options, lookup options, custom checkbox, reply length, cut off answer -->
+<!-- route: formaquestionSettings.prompts -->
+
+1. Open the **Prompts** tab in **Formaquestion Settings**.
+2. Select a custom preset. **Default** shows its options read-only.
+3. Select **Options** under **Answer**, **Picks** or **Lookup**.
+4. Check **Max Output**, **Custom Temperature** or **Custom Repetition Penalty**, then set a value.
+
+Each prompt has its own options for its own request. Clear a box to return that field to the value of **Default**. The preset file carries the options. See [Prompts](#prompts).
 
 ## How to Add a Tool to Formaquestion
 <!-- keywords: custom tool, own tool, new function, chat assistant, world lookup, create a tool, tool for help, function call, my tools, script tool, give the ai a function, extend the assistant -->
@@ -255,6 +331,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 - The answer is in your **AI Language**. Control names stay as the guide writes them. See [Settings](Settings).
 - Enter sends the question. Shift+Enter starts a new line.
 - **Stop** ends an answer and keeps its text.
+- **Scroll to End**, the round arrow above the question field, shows while the end of the conversation is more than half a window height away. Select it to go to the end and keep following the answer. See [How to Return to the Newest Answer](#how-to-return-to-the-newest-answer).
 - With no AI connected, **Send** shows the guide sections that match your question. The Demo AI always counts as connected.
 - When the AI does not answer, an error message shows, and the guide sections that match your question show in place of the answer. Text that came before the failure stays.
 - The conversation stays while the app is open, also when you close the window or go to a different screen. The app does not store it, so a reload or a restart empties it.
@@ -301,11 +378,12 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 ### General
 <!-- keywords: chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai picks, open screen, history length, extra request, earlier questions, no guide -->
 
-The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**.
+The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Chat Style** and **Scrim Opacity** are in **Window**.
 
 | Setting | Default | What it does |
 |---|---|---|
 | **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Minimal** with the **Mascot** on. The **⋮** menu has the same three choices. |
+| **Scrim Opacity** | 60% | Sets how solid the panel behind a bare chat column is, from 0 to 100% in steps of 5. The panel shows with the **Minimal** style. Set 0 for no panel. |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Picks** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
@@ -333,10 +411,11 @@ The **Endpoint** tab sets where help questions go. Help can use a different AI t
 - If you delete a preset that a setting names, that setting goes back to its default.
 - The **Ask** tab says when your AI is not connected. It checks the **Answer Endpoint**.
 
-Under the two settings is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
+The two settings share one row. Under them is the same preset editor as **Settings** → **AI Endpoints**, on the same presets.
 
-- Its preset list chooses the preset to edit. It does not change where the game or help sends requests.
-- **Add New Preset** adds a copy of the preset you are editing, and opens it in the editor.
+- The editor has no preset list. It always edits the preset that **Answer Endpoint** uses. Its heading, **Edit** and the preset's name, changes when you change **Answer Endpoint**. While **Answer Endpoint** follows the active endpoint, the heading names that preset and says **Active Endpoint**.
+- **Add New Preset** adds a copy of the preset you are editing, moves **Answer Endpoint** to the copy, and opens the copy in the editor.
+- Delete the preset that **Answer Endpoint** uses, and **Answer Endpoint** goes back to **Use Active Endpoint**.
 - A change to a preset applies everywhere that preset is used, the game included.
 
 ### Prompts
@@ -401,7 +480,7 @@ The **Tools** tab lists the functions your AI can call while it answers. It uses
 
 | Function | Default | What it does |
 |---|---|---|
-| **read_guide** | On | The guide lookup. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. It roughly quadruples the input tokens of a question. |
+| **read_guide** | On | The guide lookup. It starts on, and it runs only while the **Answer Endpoint** takes function calls. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. It roughly quadruples the input tokens of a question. |
 | **roll** | Off | A dice roll. Ask your AI to roll, such as "roll two six-sided dice", and it rolls and gives you the total. |
 
 - **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
@@ -444,16 +523,19 @@ A Tool that's on reads the world you have open, so text from that world can go t
 
 The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions.
 
-With the mascot on and the **Chat Style** at **Auto**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot on its left. Select a source name under an answer to open the guide section in a reader on the right. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
+With the mascot on and the **Chat Style** at **Auto**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot beside it. The mascot stands on the side of the column that has more room on the screen. It moves to the other side when you drag the column past the middle of the screen, and the head on the pill moves to the same end. Select a source name under an answer to open the guide section in a reader on the other side of the column. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
 
-With the **Chat Style** at **Full**, the whole mascot stands left of the framed window, at its height. A mobile-size screen shows no mascot with the framed sheet.
+With the **Chat Style** at **Full**, the whole mascot stands beside the framed window, on the same side rule. Its height follows the frame while **Scale** is **Auto**. A mobile-size screen shows no mascot with the framed sheet.
+
+The tab has two columns on a wide dialog. The preview stays in view on the left, and the other rows scroll on the right. On a narrower dialog, the preview comes first and the whole tab scrolls.
 
 | Row | What it does |
 |---|---|
 | **Mascot** | Shows a character beside a bare chat column. On by default. |
 | **Voice** | Tells your AI how help answers sound while the mascot is on. The **Mascot Voice** chip sends this text. |
-| **Preview** | Shows the Idle look. Expand a layer to see the base with that layer alone. Drag a box on it to set the head view. |
-| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the left of the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. **Show Full Mascot** goes back. |
+| **Preview** | Shows the Idle look, or what you select. Select a layer to see the base with all of that layer's overlays. Select one overlay to see the base with that overlay alone. Drag the Mask on it to set the head view. The **Scale** slider, the **Transition** rows and **Play** are in the same box. |
+| **Scale** | Sizes the mascot beside the chat. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. |
+| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. **Show Full Mascot** goes back. With a percent **Scale**, the head draws at that share of its size, and never taller than the chat. |
 | **Base Image** | Draws under every layer. Upload your own image, or remove yours to go back to the default. |
 | **Layers** | Lists every layer in draw order, with its name, its kind and its **Enabled** checkbox |
 | **Initial Look**, **Idle Look**, **Thinking Look** | Set the face and the state that the mascot shows at each moment. See [The Looks](#the-looks). |
@@ -461,6 +543,7 @@ With the **Chat Style** at **Full**, the whole mascot stands left of the framed 
 | **Reset Mascot**, **Import**, **Export** | **Reset Mascot** restores the default mascot and deletes every image you added. **Import** replaces your mascot with a card from a file. **Export** saves your mascot as a card. Reset and Import ask first. See [The Mascot Card](#the-mascot-card). |
 
 - Drag a layer by its grip to change the draw order. A layer lower in the list draws on top.
+- Select a layer to expand it and show it on the preview. Collapse it, and the preview goes back to the Idle look.
 - Expand a layer to change its name and its kind. An **Expression** is a face your AI can pick. A **State** stacks with the face, such as the arms.
 - Each layer holds overlay images, drawn in order and stretched to the base size. Drag an overlay to move it, or upload more.
 - The slots take image files only, not links. This device keeps your images, outside the settings.
@@ -483,7 +566,16 @@ A look is one expression and one state. Each look row has two lists, one for the
 
 #### The Mask
 
-The Mask is the box that sets the head view. Drag a box on **Preview** to set it. **Head View** shows the result while you drag. A drag under 16 pixels of the base image counts as a press and keeps the Mask. **Reset Mascot** restores the default Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
+The Mask is the box that sets the head view. It has eight handles, one on each corner and one on each edge, and a grip in the center. **Head View** shows the result while you drag.
+
+- Drag an edge handle to move that edge. Drag a corner handle to move two edges. Drag inside the box to move all of it.
+- The box stays inside the base image and above a small minimum size.
+- Drag outside the box to draw a new one. A drag under 16 pixels of the base image counts as a press and keeps the Mask.
+- Press Tab to a handle, then an arrow key. A side handle moves along its own axis, and a corner or the center grip moves both ways. One press moves one pixel of the base image, and Shift moves ten. Each key press saves at once.
+- The handles fade while your pointer is away from the box. On a touch screen they stay drawn. With reduced motion, they show and hide with no fade.
+- **Head View** sits in a fixed slot. A wide Mask shows a shorter head, so the slot does not move while you drag.
+
+**Reset Mascot** restores the default Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
 
 #### The Transition
 
@@ -497,7 +589,7 @@ The mascot plays its transition each time its look changes: from the Initial Loo
 
 - **Jelly** is the default. **Reset Mascot** returns the transition to its defaults.
 - Your system's reduced-motion setting turns the transition off. The tab says so while it applies.
-- **Play** runs the change from the Thinking Look to the look on the preview.
+- **Play** changes the preview between the look it shows and the Thinking Look. Each press plays the transition one way, and the next press plays it back.
 
 #### The Mascot Card
 

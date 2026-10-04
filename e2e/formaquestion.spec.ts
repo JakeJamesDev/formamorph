@@ -877,7 +877,10 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await expect(model).toHaveValue('typed-before-help');
   });
 
-  test('Settings in the menu hides the sheet under Formaquestion Settings, and the sheet comes back as it was', async ({ page }) => {
+  /** Whether the sheet waits under a dialog, drawn but inert. */
+  const sheetIsInert = (page: Page) => helpWindow(page).evaluate((el) => el.closest('[inert]') !== null);
+
+  test('Settings in the menu slides over the sheet, which waits inert under it, and the sheet comes back as it was', async ({ page }) => {
     await openApp(page);
     await openSheet(page);
     await showSearch(page);
@@ -887,7 +890,7 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
     await expect(help).toBeVisible();
     await help.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-    await expect(helpWindow(page)).toBeHidden();
+    expect(await sheetIsInert(page)).toBe(true);
     const dialogOnTop = await help.evaluate((el) => el.contains(document.elementFromPoint(187, 400)));
     expect(dialogOnTop, 'the settings are on top at the center of the screen').toBe(true);
     const keyword = help.getByRole('checkbox', { name: 'Keyword Search' });
@@ -897,10 +900,11 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     await help.getByRole('button', { name: 'Close' }).click();
     await expect(help).toBeHidden();
     await expect(helpWindow(page)).toBeVisible();
+    expect(await sheetIsInert(page)).toBe(false);
     await expect(searchField(page)).toHaveValue('endpoint');
   });
 
-  test('AI Context in the menu hides the sheet under AI Context, and the sheet comes back as it was', async ({ page }) => {
+  test('AI Context in the menu slides over the sheet, which waits inert under it, and the sheet comes back as it was', async ({ page }) => {
     await openApp(page);
     await openSheet(page);
     await showSearch(page);
@@ -910,13 +914,14 @@ test.describe('Formaquestion on a mobile-size screen', () => {
     const context = page.getByRole('dialog', { name: 'AI Context' });
     await expect(context).toBeVisible();
     await context.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-    await expect(helpWindow(page)).toBeHidden();
+    expect(await sheetIsInert(page)).toBe(true);
     const dialogOnTop = await context.evaluate((el) => el.contains(document.elementFromPoint(187, 400)));
     expect(dialogOnTop, 'AI Context is on top at the center of the screen').toBe(true);
 
     await context.getByRole('button', { name: 'Close' }).click();
     await expect(context).toBeHidden();
     await expect(helpWindow(page)).toBeVisible();
+    expect(await sheetIsInert(page)).toBe(false);
     await expect(searchField(page)).toHaveValue('endpoint');
   });
 
