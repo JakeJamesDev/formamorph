@@ -32,6 +32,7 @@ export const GENERAL_COPY = {
 /** The copy of the Mascot tab. */
 export const MASCOT_COPY = {
   mascot: { label: 'Mascot', hint: 'Shows a character beside a bare chat column' },
+  voice: { label: 'Voice', hint: 'Tells your AI how help answers sound while the mascot is on' },
   preview: { label: 'Preview', hint: 'Shows the Idle look. Expand a layer to see what it draws.' },
   headView: { label: 'Head View', hint: 'Drag a box on the preview to choose the head' },
   base: { label: 'Base Image', hint: 'Draws under every layer. Remove yours to go back to the default.' },
@@ -51,6 +52,14 @@ export const MASCOT_COPY = {
     confirmBody: "This restores the default mascot and deletes every image you added. You can't undo it.",
   },
   saveFailed: "Couldn't save that image. Try again.",
+  picks: {
+    initial: { label: 'Initial Look', hint: 'Shows the first time the mascot appears after the app starts' },
+    idle: { label: 'Idle Look', hint: 'Shows with an answer when your AI picks no face' },
+    thinking: { label: 'Thinking Look', hint: 'Shows while your AI works on an answer' },
+  },
+  noLayer: 'None',
+  missingLayer: 'Missing Layer',
+  pickWarning: "These looks name a layer that's off or gone, so it draws nothing. Pick another or turn the layer on:",
 } as const;
 
 /** The copy of the AI Context dialog. */

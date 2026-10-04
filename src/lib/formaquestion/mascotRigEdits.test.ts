@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_MASCOT_RIG, composeMascot, type MascotImageRef, type MascotRig } from './mascot';
 import {
-  addMascotLayer, addMascotOverlays, moveMascotLayer, moveMascotOverlay, orphanedMascotImages, removeMascotBase,
-  removeMascotLayer, removeMascotOverlay, setMascotBase, updateMascotLayer,
+  addMascotLayer, addMascotOverlays, mascotPickOptions, moveMascotLayer, moveMascotOverlay, orphanedMascotImages, removeMascotBase,
+  removeMascotLayer, removeMascotOverlay, setMascotBase, setMascotPick, updateMascotLayer,
 } from './mascotRigEdits';
 
 const stored = (id: string): MascotImageRef => ({ kind: 'stored', id });
@@ -91,5 +91,23 @@ describe('orphanedMascotImages', () => {
 
   it('names every stored image when the rig resets to the default', () => {
     expect(orphanedMascotImages(rig, DEFAULT_MASCOT_RIG).sort()).toEqual(['base', 'shared', 'solo']);
+  });
+});
+
+describe('pick edits', () => {
+  it('points one slot at a layer and leaves the other slot and picks alone', () => {
+    const rig = setMascotPick(DEFAULT_MASCOT_RIG, 'idle', 'expression', 'happy');
+    expect(rig.picks).toEqual({ ...DEFAULT_MASCOT_RIG.picks, idle: { expression: 'happy', state: 'rest' } });
+  });
+
+  it('empties a slot', () => {
+    expect(setMascotPick(DEFAULT_MASCOT_RIG, 'thinking', 'state', null).picks.thinking).toEqual({ expression: 'pondering', state: null });
+  });
+
+  it('offers the enabled layers of one kind, in list order', () => {
+    const rig = updateMascotLayer(updateMascotLayer(DEFAULT_MASCOT_RIG, 'rest', { enabled: false }), 'happy', { kind: 'state' });
+    expect(mascotPickOptions(rig, 'state').map((row) => row.id)).toEqual(['wave', 'thinking', 'happy']);
+    expect(mascotPickOptions(rig, 'expression').map((row) => row.id)).not.toContain('happy');
+    expect(mascotPickOptions(rig, 'expression')[0].id).toBe('excited');
   });
 });

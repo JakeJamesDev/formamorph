@@ -71,6 +71,24 @@ describe('the help preset on the device', () => {
     expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
   });
 
+  it('sends the Voice typed on the Mascot tab', async () => {
+    const spy = stubRequests();
+    renderReporting(<Formaquestion loadIndex={loadFixture} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+    await screen.findByRole('textbox', { name: 'Ask a Question' });
+    await openHelpSettings();
+    const dialog = screen.getByRole('dialog', { name: 'Formaquestion Settings' });
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
+    const voice = await within(dialog).findByRole('textbox', { name: 'Voice' });
+    await userEvent.clear(voice);
+    await userEvent.type(voice, 'Speak like a ship captain.');
+    await userEvent.keyboard('{Escape}');
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Ask a Question' }), 'How do I add a trait?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByText('Open the **Traits** tab.', { exact: false }).catch(() => undefined);
+    expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
+  });
+
   it("sends the prompt with no Voice while the Mascot is off", async () => {
     localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ rig: captain, mascot: false })));
     const spy = stubRequests();

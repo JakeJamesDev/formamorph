@@ -268,3 +268,74 @@ describe('the Mask', () => {
     expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
   });
 });
+
+describe('the picks', () => {
+  const pickSelect = (name: string) => screen.getByRole('combobox', { name });
+  /** The option names a pick dropdown offers, read with it open, then closed again. */
+  async function optionsOf(name: string) {
+    const user = userEvent.setup();
+    await user.click(pickSelect(name));
+    const names = (await screen.findAllByRole('option')).map((option) => option.textContent);
+    await user.keyboard('{Escape}');
+    return names;
+  }
+  async function choose(name: string, option: string) {
+    const user = userEvent.setup();
+    await user.click(pickSelect(name));
+    await user.click(await screen.findByRole('option', { name: option }));
+  }
+  const warning = () => document.querySelector<HTMLElement>('[data-fq-pick-warning]');
+  const warned = () => within(warning()!).getAllByRole('listitem').map((item) => item.textContent);
+  const faces = DEFAULT_MASCOT_RIG.layers.filter((row) => row.kind === 'expression').map((row) => row.name);
+
+  it('lists the enabled layers of each kind, and None', async () => {
+    mount();
+    expect(await optionsOf('Idle Look State')).toEqual(['None', 'Wave', 'Rest', 'Thinking']);
+    expect(await optionsOf('Thinking Look Expression')).toEqual(['None', ...faces]);
+    await userEvent.click(within(layerRow('Happy')).getByRole('checkbox', { name: 'Enable Happy' }));
+    expect(await optionsOf('Initial Look Expression')).toEqual(['None', ...faces.filter((name) => name !== 'Happy')]);
+  });
+
+  it('points a pick at a layer, and the Idle preview draws it', async () => {
+    mount();
+    await choose('Idle Look Expression', 'Happy');
+    expect(current.rig.picks.idle).toEqual({ expression: 'happy', state: 'rest' });
+    expect(preview()).toContain(mascotAssetUrl('mouth-grin'));
+    await choose('Idle Look Expression', 'None');
+    expect(current.rig.picks.idle).toEqual({ expression: null, state: 'rest' });
+    expect(preview()).not.toContain(mascotAssetUrl('mouth-grin'));
+  });
+
+  it('keeps a pick whose layer goes off, draws nothing for it and warns, until the layer comes back', async () => {
+    mount();
+    expect(warning()).toBeNull();
+    const rest = within(layerRow('Rest')).getByRole('checkbox', { name: 'Enable Rest' });
+    await userEvent.click(rest);
+    expect(current.rig.picks.idle.state).toBe('rest');
+    expect(preview()).toEqual([mascotAssetUrl('base')]);
+    expect(pickSelect('Idle Look State')).toHaveTextContent('Rest');
+    expect(warned()).toEqual(['Idle Look State: Rest']);
+    await userEvent.click(rest);
+    expect(warning()).toBeNull();
+    expect(preview()).toContain(mascotAssetUrl('arms-no-wave'));
+  });
+
+  it('warns about a pick whose layer is gone', async () => {
+    mount();
+    await userEvent.click(within(layerRow('Wave')).getByRole('button', { name: 'Remove layer' }));
+    expect(current.rig.picks.initial.state).toBe('wave');
+    expect(pickSelect('Initial Look State')).toHaveTextContent('Missing Layer');
+    expect(warned()).toEqual(['Initial Look State: Missing Layer']);
+  });
+});
+
+describe('the Voice', () => {
+  it('shows the rig Voice and stores what the player types', async () => {
+    mount();
+    const voice = screen.getByRole('textbox', { name: 'Voice' });
+    expect(voice).toHaveValue(DEFAULT_MASCOT_RIG.voice);
+    await userEvent.clear(voice);
+    await userEvent.type(voice, 'Dry and brief.');
+    expect(current.rig.voice).toBe('Dry and brief.');
+  });
+});

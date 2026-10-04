@@ -1,6 +1,6 @@
 # 08: Picks and Voice on the tab
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 05, 07
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

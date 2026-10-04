@@ -1,8 +1,11 @@
 /**
  * The Mascot tab's edits to a rig, as pure functions, and the rule that names the stored images an edit
- * leaves unreferenced. Picks are never touched: a pick that names a removed layer stays and warns.
+ * leaves unreferenced. A layer edit never touches the picks: a pick that names a removed layer stays and warns.
  */
-import { DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotLayer, type MascotRig } from './mascot';
+import {
+  DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotLayer, type MascotLayerKind, type MascotPick, type MascotPickName,
+  type MascotRig,
+} from './mascot';
 
 /** The editable fields of a layer. */
 export type MascotLayerPatch = Partial<Pick<MascotLayer, 'name' | 'kind' | 'enabled'>>;
@@ -44,6 +47,14 @@ export const removeMascotOverlay = (rig: MascotRig, layerId: string, index: numb
 
 export const moveMascotOverlay = (rig: MascotRig, layerId: string, from: number, to: number): MascotRig =>
   mapLayer(rig, layerId, (row) => ({ ...row, images: moved(row.images, from, to) }));
+
+/** Points one slot of a pick at a layer, or empties it with `null`. */
+export const setMascotPick = (rig: MascotRig, pick: MascotPickName, slot: keyof MascotPick, layerId: string | null): MascotRig =>
+  ({ ...rig, picks: { ...rig.picks, [pick]: { ...rig.picks[pick], [slot]: layerId } } });
+
+/** The layers a pick slot of `kind` may name: the enabled ones of that kind, in list order. */
+export const mascotPickOptions = (rig: MascotRig, kind: MascotLayerKind): readonly MascotLayer[] =>
+  rig.layers.filter((row) => row.enabled && row.kind === kind);
 
 export const setMascotBase = (rig: MascotRig, base: MascotImageRef): MascotRig => ({ ...rig, base });
 
