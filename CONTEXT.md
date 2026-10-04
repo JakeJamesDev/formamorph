@@ -29,11 +29,11 @@ The help window that a player can open on every screen. It holds the player docs
 _Avoid_: help chat, assistant, help bot, wiki (the web copy of the docs)
 
 **Mascot**:
-The optional character beside the Formaquestion chat. It is a rig: a base image and an ordered list of layers, each an expression (one at a time, picked by the AI through the face call) or a state (any number stacked), each drawing its overlay images in order. The app sets its look at three moments through picks (Initial, Idle, Thinking). On by default, and it implies the minimal chrome.
+The optional character beside the Formaquestion chat. It is a rig: a base image and an ordered list of layers, each an expression (one at a time, picked by the AI through the face call) or a state (any number stacked), each drawing its overlay images in order. The app sets its look at three moments through the Initial Look, Idle Look and Thinking Look rows, each a pick of one expression and one state. A Mask, dragged on the Preview, sets the head view. A transition (None, Dissolve or Jelly) moves it on each change of look. On by default, and it implies the minimal chrome. Exports as a mascot card.
 _Avoid_: avatar, assistant character, sprite
 
 **Voice**:
-The Mascot's prompt text: the line a help chip sends while the mascot is on, so the answers sound like the character. Travels in the mascot card.
+The Mascot's prompt text, the **Voice** row of the Mascot tab: the line the Mascot Voice help chip sends while the mascot is on, so the answers sound like the character. Travels in the mascot card.
 _Avoid_: persona (the player-slot entity), personality, tone setting
 
 **Docs Index**:

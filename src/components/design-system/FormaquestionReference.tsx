@@ -5,12 +5,17 @@ import { EdgeTabButton } from '@/components/formaquestion/EdgeTab';
 import { FormaquestionFrame } from '@/components/formaquestion/FormaquestionFrame';
 import { useGuideView } from '@/components/formaquestion/formaquestionTabs';
 import { GuideBody } from '@/components/formaquestion/GuideBody';
+import { MascotPiece } from '@/components/formaquestion/MascotPiece';
+import { MinimalChat } from '@/components/formaquestion/MinimalChat';
+import { ReaderPiece } from '@/components/formaquestion/ReaderPiece';
 import type { HelpChat, HelpExchange } from '@/components/formaquestion/useHelpChat';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import { composeMascot } from '@/lib/formaquestion/mascot';
+import { cropFrame, fitMask, headSize, type MascotSize } from '@/lib/formaquestion/mascotMask';
 import type { Edge } from '@/lib/formaquestion/tabPlace';
-import { NARROW_WIDTH, WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
+import { HEAD_HEIGHT, NARROW_WIDTH, READER_WIDTH, WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 
 /** A small guide for the sample window. The app's own docs stay out of the reference. */
 const SAMPLE_PAGES = {
@@ -120,6 +125,49 @@ function SampleSheet() {
   );
 }
 
+const MINIMAL_HEIGHT = 480;
+const SAMPLE_SECTION = 'Lanterns#how-to-light-a-lantern';
+
+/** The minimal chrome as the window draws it with the Mascot on: three floating pieces on the app. */
+function SampleMinimalChrome() {
+  const chat = useSampleChat();
+  const [settings, changeSettings] = useReferenceSettings();
+  const [base, setBase] = useState<MascotSize | null>(null);
+  const [readerId, setReaderId] = useState<string | null>(SAMPLE_SECTION);
+  const [draft, setDraft] = useState('');
+  const [showingHead, setShowingHead] = useState(false);
+  const images = useMemo(() => composeMascot(settings.rig, 'answering', null), [settings.rig]);
+  const mascotWidth = base ? Math.round((MINIMAL_HEIGHT * base.width) / base.height) : 0;
+  const crop = base && fitMask(settings.rig.mask, base);
+  const head = showingHead && (
+    <MascotPiece view="head" images={images} size={crop && headSize(crop, HEAD_HEIGHT)} frame={crop && base ? cropFrame(crop, base) : undefined} onBase={setBase} />
+  );
+  return (
+    <div className="flex items-end rounded-md border bg-muted/30 p-3" style={{ width: 'max-content', minWidth: '100%' }}>
+      {!showingHead && <MascotPiece images={images} size={base && { w: mascotWidth, h: MINIMAL_HEIGHT }} onBase={setBase} />}
+      <div className="flex shrink-0 flex-col" style={{ width: NARROW_WIDTH, height: MINIMAL_HEIGHT }}>
+        <MinimalChat
+          guide={SAMPLE_GUIDE}
+          failed={false}
+          onRetry={() => {}}
+          chat={chat}
+          settings={settings}
+          onSettingsChange={changeSettings}
+          draft={draft}
+          onDraftChange={setDraft}
+          onOpen={setReaderId}
+          large={false}
+          head={head}
+          headToggle={{ showingHead, onToggle: () => setShowingHead((current) => !current) }}
+          menu={{ onOpenAiContext: () => {}, onOpenSettings: () => {}, onClear: chat.exchanges.length > 0 ? chat.clear : undefined }}
+          onClose={() => {}}
+        />
+      </div>
+      {readerId && <ReaderPiece guide={SAMPLE_GUIDE} sectionId={readerId} size={{ w: READER_WIDTH, h: MINIMAL_HEIGHT }} onOpen={setReaderId} onClose={() => setReaderId(null)} />}
+    </div>
+  );
+}
+
 export function FormaquestionReference() {
   return (
     <Card role="region" aria-labelledby="formaquestion-reference-title" className="min-w-0">
@@ -147,6 +195,13 @@ export function FormaquestionReference() {
         <section aria-label="Mobile Sheet" className="min-w-0 space-y-2">
           <SectionTitle>Mobile Sheet</SectionTitle>
           <SampleSheet />
+        </section>
+        <section aria-label="Minimal Chrome" className="min-w-0 space-y-2">
+          <SectionTitle>Minimal Chrome</SectionTitle>
+          <p className="text-helper text-muted-foreground">Select a source name to show its section in the reader. Select Show Head Only to see the head view.</p>
+          <div className="overflow-x-auto pb-2">
+            <SampleMinimalChrome />
+          </div>
         </section>
       </CardContent>
     </Card>

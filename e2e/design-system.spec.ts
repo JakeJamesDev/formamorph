@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { HEAD_HEIGHT, READER_GAP } from '../src/lib/formaquestion/windowBox';
 
 test('all design references fit the viewport and remain reachable', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('FORMAMORPH_introSeen', '1'));
@@ -37,6 +38,59 @@ test('all design references fit the viewport and remain reachable', async ({ pag
     expect(labelDimensions.labelLeft).toBeGreaterThanOrEqual(labelDimensions.tabLeft - 1);
     expect(labelDimensions.labelRight).toBeLessThanOrEqual(labelDimensions.tabRight + 1);
   }
+});
+
+test('the Formaquestion reference draws the minimal chrome as three pieces on one baseline', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('FORMAMORPH_introSeen', '1'));
+  await page.goto('/#dev?modal=designSystem');
+  await page.getByRole('tab', { name: 'Formaquestion', exact: true }).click();
+
+  const sample = page.getByRole('region', { name: 'Minimal Chrome' });
+  const mascot = sample.locator('[data-fq-piece="mascot"]');
+  const column = sample.locator('[data-fq-piece="column"]');
+  const reader = sample.locator('[data-fq-piece="reader"]');
+  await expect.poll(() => mascot.evaluate((el) => [...el.querySelectorAll('img')].every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
+  await expect.poll(async () => (await mascot.boundingBox())?.width ?? 0).toBeGreaterThan(0);
+  await expect(reader).toBeVisible();
+
+  const [m, c, r] = [(await mascot.boundingBox())!, (await column.boundingBox())!, (await reader.boundingBox())!];
+  expect(m.x + m.width).toBeCloseTo(c.x, 0);
+  expect(r.x).toBeCloseTo(c.x + c.width + READER_GAP, 0);
+  expect(m.y + m.height).toBeCloseTo(c.y + c.height, 0);
+  expect(r.y + r.height).toBeCloseTo(c.y + c.height, 0);
+  expect(r.height).toBeCloseTo(c.height, 0);
+  expect(m.height).toBeCloseTo(c.height, 0);
+
+  // The question sits on the primary fill and the answer on the popover fill, in a border.
+  const fillOf = (token: string) => page.evaluate((className) => {
+    const probe = document.body.appendChild(document.createElement('div'));
+    probe.className = className;
+    const fill = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return fill;
+  }, `bg-${token}`);
+  const question = sample.locator('[data-fq-bubble="question"]').first();
+  const answer = sample.locator('[data-fq-bubble="answer"]').first();
+  expect(await question.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(await fillOf('primary'));
+  expect(await answer.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(await fillOf('popover'));
+  expect(await fillOf('primary')).not.toBe(await fillOf('popover'));
+  expect(await answer.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('1px');
+
+  // The pill's head button swaps the whole mascot for the head view and back.
+  await sample.getByRole('button', { name: 'Show Head Only' }).click();
+  await expect(mascot).toHaveAttribute('data-fq-view', 'head');
+  await expect.poll(async () => (await mascot.boundingBox())?.height ?? 0).toBeCloseTo(HEAD_HEIGHT, 0);
+  await sample.getByRole('button', { name: 'Show Full Mascot' }).click();
+  await expect(mascot).toHaveAttribute('data-fq-view', 'full');
+
+  // The reader closes on its own. The column and the mascot stay.
+  await reader.getByRole('button', { name: 'Close Reader' }).click();
+  await expect(reader).toHaveCount(0);
+  await expect(column).toBeVisible();
+  await expect(mascot).toBeVisible();
+  // A source name opens it again.
+  await sample.getByRole('group', { name: 'Sources' }).getByRole('button', { name: /How to Light a Lantern/ }).click();
+  await expect(reader).toBeVisible();
 });
 
 test('the Code Templates reference validates and inserts into its local target', async ({ page }) => {

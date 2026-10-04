@@ -204,6 +204,7 @@ F1 does one of three things:
 - This device keeps the place and the size of the window. They are not in a backup or an export.
 - The narrow layout shows one tab at a time. The wide layout shows the search field and the contents on the left, and the conversation or a section on the right. **Back to Conversation**, above a section, shows the conversation again. The layout changes at a width of 560 pixels, so the corner changes it too.
 - While the welcome animation plays, the **Help** tab does not show and F1 does nothing.
+- With the mascot on, the window has no title bar, no tabs, no **Wide View** and no corner to drag. See [Mascot](#mascot).
 
 ## Ask
 <!-- keywords: privacy, what is sent, reads my saves, hallucinate, inaccurate, general knowledge note, history lost, send disabled, which model answers, reload -->
@@ -403,24 +404,69 @@ A Tool that's on reads the world you have open, so text from that world can go t
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
 ### Mascot
-<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character -->
+<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window -->
 
-The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top.
+The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions.
+
+With the mascot on, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot on its left. Select a source name under an answer to open the guide section in a reader on the right. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces.
 
 | Row | What it does |
 |---|---|
 | **Mascot** | Shows a character beside a bare chat column. On by default. |
+| **Voice** | Tells your AI how help answers sound while the mascot is on. The **Mascot Voice** chip sends this text. |
 | **Preview** | Shows the Idle look. Expand a layer to see the base with that layer alone. Drag a box on it to set the head view. |
-| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the left of the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. |
+| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the left of the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. **Show Full Mascot** goes back. |
 | **Base Image** | Draws under every layer. Upload your own image, or remove yours to go back to the default. |
 | **Layers** | Lists every layer in draw order, with its name, its kind and its **Enabled** checkbox |
-| **Reset Mascot** | Restores the default mascot and deletes every image you added. It asks first. |
+| **Initial Look**, **Idle Look**, **Thinking Look** | Set the face and the state that the mascot shows at each moment. See [The Looks](#the-looks). |
+| **Transition** | Sets how the mascot moves when its look changes: **None**, **Dissolve** or **Jelly**. **Play** shows it on the preview. |
+| **Reset Mascot**, **Import**, **Export** | **Reset Mascot** restores the default mascot and deletes every image you added. **Import** replaces your mascot with a card from a file. **Export** saves your mascot as a card. Reset and Import ask first. See [The Mascot Card](#the-mascot-card). |
 
 - Drag a layer by its grip to change the draw order. A layer lower in the list draws on top.
 - Expand a layer to change its name and its kind. An **Expression** is a face your AI can pick. A **State** stacks with the face, such as the arms.
 - Each layer holds overlay images, drawn in order and stretched to the base size. Drag an overlay to move it, or upload more.
 - The slots take image files only, not links. This device keeps your images, outside the settings.
 - When you remove an overlay, a layer or your base image, the app deletes each image that no other layer uses.
+
+#### The Looks
+
+A look is one expression and one state. Each look row has two lists, one for the expression and one for the state. The lists show only layers that are on, and each list has **None**.
+
+| Look | When the mascot shows it |
+|---|---|
+| **Initial Look** | The first time the mascot appears after the app starts. It stays until you send your first question. The default mascot waves. |
+| **Thinking Look** | From the moment you send a question until the answer starts. It stays while your AI reasons. |
+| **Idle Look** | When the answer starts. Its state shows with every answer. Its expression shows when your AI picked no face. |
+
+- Your AI can pick a face for its answer when the **Answer Endpoint** takes function calls. It picks from the expressions that are on. The face shows when the answer starts, and it stays until your next question.
+- On an endpoint with no function calls, the mascot still waves, thinks and rests. Your AI picks no face.
+- A look that names a layer you turned off draws nothing for that layer. The tab shows a warning that names the look.
+- Each face call shows in **AI Context** with the other tool rounds.
+
+#### The Mask
+
+The Mask is the box that sets the head view. Drag a box on **Preview** to set it. **Head View** shows the result while you drag. A drag under 16 pixels of the base image counts as a press and keeps the Mask. **Reset Mascot** restores the default Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
+
+#### The Transition
+
+The mascot plays its transition each time its look changes: from the Initial Look to the Thinking Look, from the Thinking Look to a face, from a face to the Thinking Look on your next question, and when your AI picks a face. A change during a transition restarts it from the frame on the screen.
+
+| Mode | What it does |
+|---|---|
+| **None** | Swaps the look at once |
+| **Dissolve** | Fades the new look in over **Duration** |
+| **Jelly** | Squashes the mascot, stretches it past full height as the new look appears, then bounces it back to rest. **Duration**, **Squash**, **Overshoot** and **Settle Count** tune it. |
+
+- **Jelly** is the default. **Reset Mascot** returns the transition to its defaults.
+- Your system's reduced-motion setting turns the transition off. The tab says so while it applies.
+- **Play** runs the change from the Thinking Look to the look on the preview.
+
+#### The Mascot Card
+
+**Export** saves your mascot as a `.webp` card. The card shows the Initial Look, and it holds the whole rig: every layer and image, the three looks, the Mask, the transition and the Voice. Send the file to a friend. **Import** reads a `.webp` card and replaces your rig with it, and it deletes every image you added. Import asks first, like **Reset Mascot**. It does not change the **Mascot** switch.
+
+- A card with a bad field, or one from a different version, is refused. The error names the field, and your mascot stays as it was.
+- The card is an image file with your art inside it. Share it only with people you want to see that art.
 
 ## AI Context
 <!-- keywords: debug a question, see the request, inspect help, wrong section, trace, export json, bug report, search block, samplers, request card -->
@@ -451,6 +497,7 @@ On a screen narrower than 768 pixels, Formaquestion fills the screen. It has the
 - The sheet opens above an open dialog. When you close the sheet, the dialog is as you left it.
 - The keyboard does not open until you select a field. With the keyboard open, the sheet fits the space above it.
 - The sheet has no **Wide View**, and you cannot move it or change its size.
+- With the mascot on, the sheet shows the mascot's head at the left of the pill, over a dimmed backdrop. A source name opens its section on the wiki in your browser, not in a reader. See [Mascot](#mascot).
 - **Formaquestion Settings** and **AI Context** fill the screen, so the sheet hides while one is open. When you close it, the sheet shows again as you left it, and an answer that was coming in continues.
 - On Android, the back action closes the sheet first, before a dialog under it.
 
