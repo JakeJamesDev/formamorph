@@ -72,6 +72,10 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q36 | Under a percent, the head view draws the Mask crop at that share of its natural pixel height. Auto keeps the head's fixed height. The mobile sheet keeps its own head height and ignores Scale. The head clamps to the column height: it is the compact view and never grows past the chat's box (ticket 04) |
 | Q37 | A percent mascot stays bottom-aligned with the column and rises above it. Its height clamps to the room from the column's bottom edge up to the screen margin, so the column never moves for it; width clamps to the free room beside the column at the base's aspect (ticket 04) |
 | Q38 | Ticket 04 ships the Scale slider as one self-contained component inserted once beside the current preview; ticket 06's preview widget is its final home, and the later landing moves it (ticket 04) |
+| Q39 | Frame review of ticket 06 (user, 2026-10-04): Formaquestion Settings on a phone picks its tab from a dropdown, not a tab strip |
+| Q40 | Play on the preview widget alternates between the current look and the Thinking look, so each press plays a transition both ways (ticket 06) |
+| Q41 | The phone sheet's header is 56px (ticket 06) |
+| Q42 | On a phone, Settings and AI Context slide over the help sheet, which waits under them; the shielded layer sinks under dialogs and is inert while covered (ticket 06) |
 
 ## User Stories
 
