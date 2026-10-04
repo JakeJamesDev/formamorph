@@ -29,6 +29,9 @@ export function headingAnchor(text: string): string {
 /** A section's hidden keyword line, `<!-- keywords: … -->`; group 1 is the list. */
 export const KEYWORD_LINE = /^\s{0,3}<!--\s*keywords:(.*?)-->\s*$/i;
 
+/** A section's hidden route line, `<!-- route: <surface id> -->`; group 1 is the text after the colon, trimmed. */
+export const ROUTE_LINE = /^\s{0,3}<!--\s*route:\s*(.*?)\s*-->\s*$/i;
+
 /** A heading's source text as a reader sees it. */
 export function plainText(text: string): string {
   return text.replace(MARKDOWN_LINK, '$1').replace(/[*`]/g, '').trim();

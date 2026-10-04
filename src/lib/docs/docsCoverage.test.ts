@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { HELP_TOPICS } from '@/lib/helpTopics';
 import {
-  docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, keywordLineProblems, surfaceCoverageProblems,
-  HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
+  docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, keywordLineProblems, routeLineProblems,
+  surfaceCoverageProblems, HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
 } from './docsChecks';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, SURFACE_MAP } from './surfaceMap';
 
@@ -50,6 +50,10 @@ describe('docs coverage of the app', () => {
 
   it('gives every how-to section a keyword line', () => {
     expect(keywordLineProblems(DOCS)).toEqual([]);
+  });
+
+  it('points every route line at a surface players see', () => {
+    expect(routeLineProblems(DOCS, { surfaceIds: SURFACE_IDS, exclusions: SURFACE_EXCLUSIONS })).toEqual([]);
   });
 });
 
@@ -274,5 +278,35 @@ describe('keywordLineProblems', () => {
   it('checks no keyword line inside code or outside the guide', () => {
     const pages = { P: '# P\n\nText.\n```md\n<!-- keywords: a, a -->\n```\n', 'Writing-Guide': '# W\n\nText.\n<!-- keywords: a, a -->\n' };
     expect(keywordLineProblems(pages)).toEqual([]);
+  });
+});
+
+describe('routeLineProblems', () => {
+  const surfaces = { surfaceIds: ['stats', 'stats.panel', 'admin'], exclusions: { admin: 'staff' } };
+  const route = (line: string) => ({ P: `# P\n\n## How to Go\n<!-- keywords: leave -->\n${line}\n\nText.\n` });
+
+  it('passes a route that names a surface, and a section with no route', () => {
+    expect(routeLineProblems(route('<!-- route: stats.panel -->'), surfaces)).toEqual([]);
+    expect(routeLineProblems(route(''), surfaces)).toEqual([]);
+  });
+
+  it('fails a route that is not a surface id', () => {
+    expect(routeLineProblems(route('<!-- route: stats.pane -->'), surfaces)).toEqual(['P:5 route stats.pane is not a surface id']);
+    expect(routeLineProblems(route('<!-- route: -->'), surfaces)).toEqual(['P:5 route line names no surface']);
+    expect(routeLineProblems(route('<!--route: stats panel-->'), surfaces)).toEqual(['P:5 route stats panel is not a surface id']);
+  });
+
+  it('fails a route on an excluded surface', () => {
+    expect(routeLineProblems(route('<!-- route: admin -->'), surfaces)).toEqual(['P:5 route admin is on a staff surface that players never see']);
+  });
+
+  it('fails a second route line in one section', () => {
+    const pages = { P: '# P\n\n## Go\n<!-- route: stats -->\n<!-- route: stats.panel -->\n\n## Stop\n<!-- route: stats -->\n' };
+    expect(routeLineProblems(pages, surfaces)).toEqual(['P:5 section has a second route line']);
+  });
+
+  it('checks no route line inside code or outside the guide', () => {
+    const pages = { P: '# P\n\n```md\n<!-- route: nope -->\n```\n', 'Writing-Guide': '# W\n\n<!-- route: nope -->\n' };
+    expect(routeLineProblems(pages, surfaces)).toEqual([]);
   });
 });

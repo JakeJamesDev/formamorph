@@ -9,6 +9,7 @@ To open it, select **Menu** on the main menu, then **Settings**. During a game, 
 
 ## How to Change the Narration Layout
 <!-- keywords: chat mode, pages mode, view, display, look, style, chat bubbles, book, messenger, conversation format, switch format, sillytavern like, toggle, single page -->
+<!-- route: settings.display -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.
@@ -18,6 +19,7 @@ The game changes at once. See [Narration](#narration) for what each layout shows
 
 ## How to Color Quoted Speech
 <!-- keywords: dialogue, highlight, talking, italic, colour, text, quotation marks, spoken lines, tint, stand out, distinguish, custom hex, what people say, emphasis -->
+<!-- route: settings.display -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.
@@ -28,6 +30,7 @@ To set quoted speech in italic, select **Quote Italic**. It works with or withou
 
 ## How to Change the Narration Font
 <!-- keywords: text, typeface, bigger text, size, readability, style, dyslexia, serif, hard to read, larger letters, line spacing, low vision, small print, legible, zoom -->
+<!-- route: settings.display -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.
@@ -38,6 +41,7 @@ The font changes the story text only. **Use Global** uses the app's **Font**.
 
 ## How to Turn On a Thinking Mode
 <!-- keywords: reasoning, planning, smarter, better answers, chain of thought, cot, think first, improve quality, plan ahead, step by step, deliberate, more coherent, small model help, director -->
+<!-- route: settings.output -->
 
 1. Open **Settings**.
 2. Open the **Output** tab.
@@ -47,6 +51,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 
 ## How to Limit Active Characters
 <!-- keywords: entities, max, cap, too many, speed, staged, fewer, npc count, crowd, slow turns, reduce requests, people in scene, cast size, big party, restrict -->
+<!-- route: settings.output -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.
@@ -57,6 +62,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 
 ## How to Restore Default Worlds
 <!-- keywords: get back, deleted, bundled, built-in, starter, reinstall, recover, original, sample, accidentally removed, missing, stock, preinstalled, undelete, came with the app -->
+<!-- route: settings.data -->
 
 1. Open **Settings**.
 2. In the switch next to the title, select **Advanced**.

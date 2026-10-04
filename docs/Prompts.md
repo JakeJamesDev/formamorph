@@ -9,6 +9,7 @@ The **Prompts** tab shows in **Advanced** mode only. To open it, open **Settings
 
 ## How to Make a Prompt Preset
 <!-- keywords: create, new, copy, duplicate, custom, own, system, jailbreak, template, read only, locked, editing blocked, clone, fork, my version -->
+<!-- route: settings.prompts -->
 
 The built-in presets are read-only. To change a prompt, make your own preset first.
 
@@ -21,6 +22,7 @@ The new preset is a copy of the preset that was active, and it is now the active
 
 ## How to Edit a Prompt
 <!-- keywords: change, rewrite, customize, system, instructions, tweak, modify, writing style, tone, longer responses, ai behavior, rules, restore shipped text, preview result, second person, narrator personality -->
+<!-- route: settings.prompts -->
 
 1. Select your own preset in the **Preset** list.
 2. In the list of prompts, select the prompt, such as **Choices**.
@@ -32,6 +34,7 @@ The app saves each change at once. To go back to the shipped text, select **Rese
 
 ## How to Route a Prompt to Another Endpoint
 <!-- keywords: different model, second model, small model, faster, separate api, two models, per task, cheaper, multiple backends, mix providers, assign, split work, reachable, dual setup -->
+<!-- route: settings.prompts -->
 
 You can send one prompt to a different text endpoint, such as a small fast model for **Choices**. First add the endpoint as a preset on the **Endpoints** tab. See [Text](Settings#text).
 
@@ -44,6 +47,7 @@ To send the prompt to the active endpoint again, select **Use Active Endpoint**.
 
 ## How to Share a Prompt Preset
 <!-- keywords: export, import, copy code, send, file, json, friend, paste, transfer, give, load someone elses, string, another device -->
+<!-- route: settings.prompts -->
 
 1. Select the preset in the **Preset** list.
 2. Select the **Export** button.
@@ -60,6 +64,7 @@ See [Sharing a Preset](#sharing-a-preset) for what a shared preset holds.
 
 ## How to Publish a Prompt Preset
 <!-- keywords: upload, community, share online, post, public, listing, workshop, submit, models required, tags, publish blocked -->
+<!-- route: settingsPromptPreset.overview -->
 
 You must log in to Community Creations to publish. See [Login and Register](Community-Creations#login-and-register).
 
@@ -73,6 +78,7 @@ Without a model in **Models**, **Publish** opens **Add a Model**. Select **Open 
 
 ## How to Use a Preset for One World
 <!-- keywords: different prompts, specific, override, per world, only this scenario, assign, individual, folder wide, just one game, exception, global again -->
+<!-- route: enterWorld -->
 
 1. On the main menu, select the world.
 2. In the world dialog, open the **Prompts** list.

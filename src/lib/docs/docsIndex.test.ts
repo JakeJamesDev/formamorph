@@ -252,6 +252,49 @@ describe('Docs Index keyword line', () => {
   });
 });
 
+describe('Docs Index route line', () => {
+  const ROUTE = '<!-- route: settings.display -->';
+  const page = (route: string) => `# P\n\n## How to Go\n<!-- keywords: leave -->\n${route}\nPress **Go** to start.\n`;
+
+  it('stores the route on its section and keeps the line out of the text', () => {
+    const index = createDocsIndex({ pages: { Library: page(ROUTE) } });
+    const [section] = index.get(['Library#how-to-go']);
+    expect(section.route).toBe('settings.display');
+    expect(section.markdown).toBe('## How to Go\nPress **Go** to start.');
+  });
+
+  it('gives a section without a route line no route', () => {
+    const index = createDocsIndex({ pages: { Library: page('') } });
+    expect(index.get(['Library#how-to-go'])[0].route).toBeUndefined();
+  });
+
+  it('gives each part of a split section the route', () => {
+    const item = (n: number) => `- Item ${n}: ${Array.from({ length: 80 }, (_, i) => `word${i}`).join(' ')}`;
+    const long = ['# Big', '', '## List', ROUTE, '', ...Array.from({ length: 12 }, (_, n) => item(n))].join('\n');
+    const parts = createDocsIndex({ pages: { Big: long } }).get(['Big#list']);
+    expect(parts.length).toBeGreaterThan(1);
+    expect(parts.map((part) => part.route)).toEqual(parts.map(() => 'settings.display'));
+  });
+
+  it('keeps the route out of the search phrases', () => {
+    const pages = { Library: page(ROUTE) };
+    expect(createDocsIndex({ pages }).search('settings display')).toEqual([]);
+  });
+
+  it('reads no route line inside a code fence', () => {
+    const fenced = `# P\n\n## Syntax\n\n\`\`\`md\n${ROUTE}\n\`\`\`\n`;
+    const [section] = createDocsIndex({ pages: { A: fenced } }).get(['A#syntax']);
+    expect(section.route).toBeUndefined();
+    expect(section.markdown).toContain(ROUTE);
+  });
+
+  it('counts no route line toward the size limit', () => {
+    const route = `<!-- route: ${'x'.repeat(SECTION_CHAR_LIMIT)} -->`;
+    const index = createDocsIndex({ pages: { Big: `# Big\n\n## Part\n${route}\n\nIntro.\n\n### One\n\nText.\n` } });
+    expect(index.contents()[0].sections.map((s) => s.label)).toEqual(['Big', 'Part']);
+  });
+});
+
 describe('Docs Index section size', () => {
   const filler = (words: number) => Array.from({ length: words }, (_, i) => `word${i}`).join(' ');
 

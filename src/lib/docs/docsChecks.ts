@@ -1,5 +1,5 @@
 /** The docs coverage checks: one readable line per problem, over docs passed in as data. */
-import { docHeadings, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText } from './headingAnchors';
+import { docHeadings, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText, ROUTE_LINE } from './headingAnchors';
 import { docsHrefs, docTargetId, hrefParts, type DocTarget } from './docsLinks';
 
 /** Docs pages by wiki page name (the file name without `.md`). */
@@ -155,6 +155,36 @@ export function keywordLineProblems(pages: DocsPages): string[] {
       const list = KEYWORD_LINE.exec(next)?.[1] ?? '';
       if (!/[\p{L}\p{N}]/u.test(list)) problems.push(`${page}:${heading.line + 1} heading ${text} has no keyword line under it`);
     }
+  }
+  return problems;
+}
+
+export interface RouteTargets {
+  /** Every surface id the app has. */
+  surfaceIds: readonly string[];
+  /** Surfaces players never see, with the reason. */
+  exclusions: Partial<Record<string, string>>;
+}
+
+/** Route lines that name no surface, an unknown or excluded one, or that repeat in one section. */
+export function routeLineProblems(pages: DocsPages, { surfaceIds, exclusions }: RouteTargets): string[] {
+  const problems: string[] = [];
+  const known = new Set(surfaceIds);
+  for (const [page, markdown] of Object.entries(pages)) {
+    if (NON_GUIDE_PAGES.includes(page)) continue;
+    const headingLines = new Set(docHeadings(markdown).map((heading) => heading.line));
+    let routed = false;
+    forEachProseLine(markdown, (source, line) => {
+      if (headingLines.has(line)) routed = false;
+      const id = ROUTE_LINE.exec(source)?.[1];
+      if (id === undefined) return;
+      const where = `${page}:${line + 1}`;
+      if (routed) problems.push(`${where} section has a second route line`);
+      routed = true;
+      if (id === '') problems.push(`${where} route line names no surface`);
+      else if (!known.has(id)) problems.push(`${where} route ${id} is not a surface id`);
+      else if (exclusions[id] !== undefined) problems.push(`${where} route ${id} is on a ${exclusions[id]} surface that players never see`);
+    });
   }
   return problems;
 }

@@ -3,7 +3,7 @@
  * needs no network and no model. Section ids are `<page>#<anchor>`, with the wiki's anchor rule.
  */
 import { stemmer } from 'stemmer';
-import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, type DocHeading } from './headingAnchors';
+import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, ROUTE_LINE, type DocHeading } from './headingAnchors';
 import type { DocsPages } from './docsChecks';
 import { docsHrefs, docTargetId, hrefParts } from './docsLinks';
 import { sectionParts } from './sectionParts';
@@ -26,6 +26,8 @@ export interface DocSection {
   trail: string[];
   /** The section's source, heading line included. */
   markdown: string;
+  /** The surface id its route line names: where a player does what the section explains. Absent without a line. */
+  route?: string;
 }
 
 export interface DocsContentsPage {
@@ -69,22 +71,27 @@ interface SplitSection extends DocSection {
   baseId: string;
   /** The lists of the keyword lines in the section's text, which its markdown leaves out. */
   keywords: string[];
+  /** The first route line's surface id; the markdown leaves the line out. */
+  route?: string;
 }
 
-/** A section's text without its keyword lines, and their lists. A blank line the removal doubles goes too. */
-function takeKeywordLines(text: string): { text: string; keywords: string[] } {
+/** A section's text without its keyword and route lines, and what they held. A blank line the removal doubles goes too. */
+function takeTagLines(text: string): { text: string; keywords: string[]; route?: string } {
   const lines = text.split('\n');
   const drop = new Set<number>();
   const keywords: string[] = [];
+  let route: string | undefined;
   forEachProseLine(text, (source, line) => {
-    const match = KEYWORD_LINE.exec(source);
-    if (!match) return;
-    keywords.push(match[1]);
+    const keyword = KEYWORD_LINE.exec(source);
+    const routeLine = ROUTE_LINE.exec(source);
+    if (keyword) keywords.push(keyword[1]);
+    else if (routeLine) route ||= routeLine[1] || undefined;
+    else return;
     drop.add(line);
     if (lines[line - 1]?.trim() === '' && lines[line + 1]?.trim() === '') drop.add(line + 1);
   });
   if (drop.size === 0) return { text, keywords };
-  return { text: lines.filter((_, i) => !drop.has(i)).join('\n').trimEnd(), keywords };
+  return { text: lines.filter((_, i) => !drop.has(i)).join('\n').trimEnd(), keywords, route };
 }
 
 /**
@@ -111,7 +118,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
     if (heading === null && source.trim() === '') return;
     const baseId = docTargetId({ page, anchor: heading?.anchor });
     const name = heading ? plainText(heading.text) : page;
-    const { text, keywords } = takeKeywordLines(source);
+    const { text, keywords, route } = takeTagLines(source);
     const parts = sectionParts(text, heading !== null, SECTION_CHAR_LIMIT);
     parts.forEach((part, k) => {
       sections.push({
@@ -124,6 +131,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
         markdown: part,
         level: heading?.level ?? 0,
         keywords,
+        route,
       });
     });
   };
@@ -136,7 +144,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
       const to = next < last ? headings[next].line : end;
       const text = textOf(headings[start].line, to);
       const deeper = headings.slice(start + 1, next).map((h) => h.level);
-      if (takeKeywordLines(text).text.length <= SECTION_CHAR_LIMIT || deeper.length === 0) {
+      if (takeTagLines(text).text.length <= SECTION_CHAR_LIMIT || deeper.length === 0) {
         addSection(headings[start], start, text);
         return;
       }
@@ -396,6 +404,6 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
   };
 }
 
-function publicSection({ id, page, heading, label, trail, markdown }: SplitSection): DocSection {
-  return { id, page, heading, label, trail, markdown };
+function publicSection({ id, page, heading, label, trail, markdown, route }: SplitSection): DocSection {
+  return { id, page, heading, label, trail, markdown, ...(route === undefined ? {} : { route }) };
 }

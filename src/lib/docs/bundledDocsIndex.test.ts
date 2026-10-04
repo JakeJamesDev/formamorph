@@ -45,6 +45,17 @@ describe('the bundled Docs Index', () => {
     expect(index.search('make a folder')[0]?.id).toBe('Library#how-to-make-a-group');
   });
 
+  it('shows no route line in a section', () => {
+    expect(sections.filter((s) => /<!--\s*route:/i.test(s.markdown)).map((s) => s.id)).toEqual([]);
+  });
+
+  it('routes each how-to on the Settings pages', () => {
+    const howTos = sections.filter((s) => ['Settings', 'Prompts', 'Tools'].includes(s.page) && s.heading.startsWith('How to '));
+    // How to Turn On Tools spans the Output and Tools tabs, so it names no single surface.
+    expect(howTos.filter((s) => s.route === undefined).map((s) => s.id)).toEqual(['Tools#how-to-turn-on-tools']);
+    expect(index.get(['Settings#how-to-restore-default-worlds'])[0]?.route).toBe('settings.data');
+  });
+
   it('stays out of the start chunk: only the loader names it, through a dynamic import', () => {
     const src = resolve(__dirname, '../..');
     const files = readdirSync(src, { recursive: true, encoding: 'utf8' })
