@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { withoutAttachment } from '@/lib/actionAttachments';
+import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import type { Guide } from '@/lib/formaquestion/guide';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import type { MascotSide } from '@/lib/formaquestion/windowBox';
@@ -106,7 +107,7 @@ function AskPill({ draft, onDraftChange, chat }: { draft: string; onDraftChange:
  * The minimal chrome's chat column: a pill, the conversation as floating bubbles, and the ask field. No frame,
  * no title bar, no tabs. Older bubbles fade out at the top, and no scroll bar draws.
  */
-export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, move, resize, large, head, headSide = 'left', headToggle, menu, onClose }: {
+export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo, move, resize, large, head, headSide = 'left', headToggle, menu, onClose }: {
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
@@ -118,6 +119,8 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   onDraftChange: (text: string) => void;
   /** Opens a docs section that an answer links to. */
   onOpen: (id: string) => void;
+  /** Opens the surface an answer's Take Me There names. */
+  onGo: (id: SurfaceId) => void;
   /** Pointer handlers for the pill, where the window moves. */
   move?: DragHandlers;
   /** Pointer handlers for the corner grip under the ask field. */
@@ -165,7 +168,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
                 <p data-fq-bubble="question" className={cn(BUBBLE, 'whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground [overflow-wrap:anywhere]')}>{exchange.question}</p>
               </div>
               <div data-fq-bubble="answer" className={ASSISTANT_BUBBLE}>
-                <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
+                <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} onGo={onGo} />
               </div>
             </div>
           ))}

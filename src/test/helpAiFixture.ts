@@ -7,6 +7,7 @@ export function helpAi(over: Partial<HelpAi> = {}): HelpAi {
   return {
     snapshot: textSnapshot(), language: 'English', reachable: true, revalidate: async () => true, readsImages: false,
     answerTarget: { reasoning, localEngine, maxTokens },
+    requestSurface: () => {},
     ...over,
   };
 }

@@ -122,7 +122,7 @@ function SampleWindow() {
   const style = useMemo(() => ({ width: wide ? WIDE_WIDTH : NARROW_WIDTH, height: 480 }), [wide]);
   return (
     <FormaquestionFrame wide={wide} onSwapWidth={() => setWide((current) => !current)} menu={sampleMenu(settings, changeSettings)} onClose={() => {}} className="relative max-w-full" style={style}>
-      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} />
+      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} onGo={() => {}} />
     </FormaquestionFrame>
   );
 }
@@ -134,7 +134,7 @@ function SampleSheet() {
   const [settings, changeSettings] = useReferenceSettings();
   return (
     <FormaquestionFrame sheet menu={sampleMenu(settings, changeSettings)} onClose={() => {}} className="relative max-w-full rounded-md border" style={SHEET_SIZE}>
-      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} chat={chat} settings={settings} onSettingsChange={changeSettings} />
+      <GuideBody guide={SAMPLE_GUIDE} failed={false} onRetry={() => {}} view={view} onViewChange={changeView} wide={false} chat={chat} settings={settings} onSettingsChange={changeSettings} onGo={() => {}} />
     </FormaquestionFrame>
   );
 }
@@ -170,6 +170,7 @@ function SampleMinimalChrome() {
           draft={draft}
           onDraftChange={setDraft}
           onOpen={setReaderId}
+          onGo={() => {}}
           large={false}
           head={head}
           headToggle={{ showingHead, onToggle: () => setShowingHead((current) => !current) }}

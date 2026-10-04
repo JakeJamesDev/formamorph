@@ -10,6 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { HELP_SAMPLER_FIELDS, type HelpQueryTrace, type HelpRequestTrace, type HelpSamplers, type HelpTrace, type HelpTraceSection } from '@/lib/formaquestion/helpTrace';
 import { cn } from '@/lib/utils';
+import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import { answerRoute } from './answerRoute';
 import { AI_CONTEXT_COPY, GENERAL_COPY } from './formaquestionSettingsTabs';
 import type { HelpExchange } from './useHelpChat';
 
@@ -79,8 +81,8 @@ function QueryBlock({ query, sent }: { query: HelpQueryTrace; sent: ReadonlySet<
   );
 }
 
-/** The Search block of one question: the screen, the preset, each query, and the sections sent. */
-function SearchBlock({ trace }: { trace: HelpTrace }) {
+/** The Search block of one question: the screen, the preset, each query, the sections sent, and the route. */
+function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceId | null }) {
   const sent = useMemo(() => new Set(trace.sent.map((section) => section.id)), [trace.sent]);
   const off = trace.search?.on.length === 0;
   return (
@@ -99,6 +101,7 @@ function SearchBlock({ trace }: { trace: HelpTrace }) {
         </>
       )}
       <SectionList label={AI_CONTEXT_COPY.sentList} sections={trace.sent} sent={sent} />
+      <p>{AI_CONTEXT_COPY.route}: {route ?? AI_CONTEXT_COPY.none}</p>
     </div>
   );
 }
@@ -190,7 +193,7 @@ function Question({ exchange, isOpen, setOpen }: {
   return (
     <section role="group" aria-label={question} className="space-y-2">
       <AiContextSection title={AI_CONTEXT_COPY.search} open={isOpen(searchKey)} onOpenChange={(next) => setOpen(searchKey, next)}>
-        <SearchBlock trace={trace} />
+        <SearchBlock trace={trace} route={answerRoute(exchange)} />
       </AiContextSection>
       {trace.requests.map((request, i) => {
         const sectionKey = (section: AiContextCardSection) => keyOf(id, `${i}:${section}`);
