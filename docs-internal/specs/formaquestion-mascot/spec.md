@@ -70,6 +70,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q41 | The Voice chip passed the bar (on 77.9%, off 76.7%) but uncovered questions miss the Not in Guide flag more often under it (24% against 10%), with more invented names and longer answers. Default on stays; a follow-up ticket adds a framing line that keeps the marker rule, measured in one batch |
 | Q42 | A pick keeps its layer when that layer changes kind. The layer still draws, the dropdown shows its name as unlisted, and no warning shows. Q21's warning covers blank faces only |
 | Q43 | Transition details: Dissolve has a duration only (default 250 ms, the Jelly range); the default rig uses Jelly at the prototype's defaults and keeps both modes' tuning; a restart mid-transition eases from the current frame with no jump; the tab's Play runs Thinking to the preview's look; range-end tests check the dip and peak only where the tuning is above 0 |
+| Q44 | Card details: bundled images embed as bytes too, identical images once; the gate is a kind marker and an integer version, with the app version written beside them; import replaces the rig only, never the mascot switch, and confirms like Reset; parse refuses the whole card on any bad field and names its path; a pick naming a missing layer is allowed |
 
 ## User Stories
 
