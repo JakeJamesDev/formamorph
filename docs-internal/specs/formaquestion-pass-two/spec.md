@@ -98,6 +98,8 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q62 | The Mascot tab gets a full-screen view like Settings → Prompts and Tools: the same morph shell and the same "View full screen" icon button, placed at the end of the preset row; the whole tab (preset row, switch row, both columns, footer) fills the screen, and Exit returns it in place (user, 2026-10-04) |
 | Q63 | Ticket 19's AC: the shared scrollbar shows at 1280×700 and not at 1920×1200. Measured at 1600×900 the preview viewport is 493px for a 744px widget (Scale and transition rows grew it past Q35's 574px), so the preview scrolls on every common desktop. Q35 stands; whether the widget shrinks is open for the user (ticket 19) |
 | Q64 | Ticket 20 builds on the preset-header effort: the Mascot tab's hand-rolled preset row becomes the shared preset header (icon actions at md, ⋯ menu below, confirms inside), "View full screen" is a header action, and the morph goes through the shared panel shell that preset-header ticket 09 extracted for the Formaquestion Prompts tab. Refines Q58 and Q62 (user, 2026-10-04) |
+| Q65 | The shared preset header gains an optional per-action tooltip. The short label stays the accessible name and the ⋯ menu text; the tooltip shows the Q58 sentence where set. Only the Mascot header sets them; the Prompts and endpoint headers keep their short tooltips (ticket 20) |
+| Q66 | Export stays available on the Default mascot, as the shared header keeps it on built-in presets. Refines Q53 and Q58 (ticket 20) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
