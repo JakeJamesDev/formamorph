@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MASCOT_RIG, type MascotImageRef, type MascotRig } from './mascot';
-import { cancelMascotDraft, editMascotDraft, isMascotDraftDirty, openMascotDraft, resetMascotDraft, saveMascotDraft } from './mascotDraft';
+import {
+  cancelMascotDraft, editMascotDraft, isMascotDraftDirty, openMascotDraft, resetMascotDraft, saveMascotDraft, touchMascotDraft,
+} from './mascotDraft';
 import { activeMascotRig, type MascotPresetStore } from './mascotPresets';
 import { removeMascotLayer, setMascotBase } from './mascotRigEdits';
 
@@ -20,6 +22,13 @@ describe('the mascot draft', () => {
     const draft = openMascotDraft(store);
     expect(draft.rig).toBe(mine);
     expect(isMascotDraftDirty(draft)).toBe(false);
+  });
+
+  it('names an upload no rig holds, so Cancel and Save still drop it', () => {
+    const draft = touchMascotDraft(openMascotDraft(store), ['late']);
+    expect(isMascotDraftDirty(draft)).toBe(false);
+    expect(cancelMascotDraft(store, draft)).toEqual(['late']);
+    expect(saveMascotDraft(store, draft).orphans).toEqual(['late']);
   });
 
   it('is clean again when an edit returns to the saved rig', () => {

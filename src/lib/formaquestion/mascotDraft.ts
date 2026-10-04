@@ -25,6 +25,10 @@ export function openMascotDraft(store: MascotPresetStore): MascotDraft {
 export const editMascotDraft = (draft: MascotDraft, rig: MascotRig): MascotDraft =>
   ({ ...draft, rig, touched: new Set([...draft.touched, ...mascotImageIds(rig)]) });
 
+/** The draft with `ids` marked as its own uploads, so Save and Cancel drop them even when no rig holds them. */
+export const touchMascotDraft = (draft: MascotDraft, ids: Iterable<string>): MascotDraft =>
+  ({ ...draft, touched: new Set([...draft.touched, ...ids]) });
+
 /** The draft with the Default mascot's rig. */
 export const resetMascotDraft = (draft: MascotDraft): MascotDraft => editMascotDraft(draft, DEFAULT_MASCOT_RIG);
 
