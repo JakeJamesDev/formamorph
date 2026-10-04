@@ -224,5 +224,6 @@ Other checks:
 - The mascot spec's Q5 (mascot implies minimal) is refined: Auto keeps that rule; Minimal and Full pin.
 - The Endpoint editor's old select existed so a player could edit a preset other than Answer's. After Q4 that path is Settings → Endpoint, which edits every preset.
 - The readability prototype ships first; its ruling lands in this spec before the ticket that builds the setting.
+- **Probe shares count failed runs (ticket 13):** the help probe's shares now use every run as the denominator, failed runs included. Totals from earlier tickets excluded failed runs, so compare across tickets only when both batches had none.
 - **Open gap (ticket 09):** the Preview tab shows an empty line where an empty Voice chip sits, while the request drops that line. Closing it means line-dropping in the shared prompt field preview, which gameplay prompts also use. Named, not built; needs the user's call.
 - The Lookup row copy, in the help voice: it runs on endpoints that accept functions, reads guide sections during the answer, and roughly quadruples input tokens per question.
