@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type ChangeEvent } from 'react';
+import { Fragment, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Copy, GitCompare, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -11,13 +11,13 @@ import { Tip } from '@/components/ui/tooltip';
 import { ActionIcon } from '@/lib/actionIcons';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { downloadBlob } from '@/lib/downloadBlob';
-import { helpChipVocabulary } from '@/lib/formaquestion/helpChips';
+import { helpChipPreview, helpChipValues, helpChipVocabulary } from '@/lib/formaquestion/helpChips';
 import { buildHelpPresetFile, helpPresetFileName, importHelpPresetFile, parseHelpPresetFile } from '@/lib/formaquestion/helpPresetFile';
 import {
   activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, isDefaultHelpPresetActive,
   isHelpPromptEdited, renameHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from '@/lib/formaquestion/helpPresets';
-import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
+import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, HELP_PROMPT_KEYS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
@@ -26,13 +26,10 @@ import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 import { randomUUID } from '@/lib/uuid';
 import { APP_VERSION } from '@/lib/version';
 import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
-import { AnswerOptions } from './AnswerOptions';
 import { COMPARE_COPY, PROMPTS_COPY } from './formaquestionSettingsTabs';
+import { RequestOptions } from './RequestOptions';
 
 const ADD_PRESET = '__add__';
-
-/** The prompts in rail order. */
-const PROMPT_KEYS: readonly HelpPromptKey[] = ['answer', 'pick', 'lookup'];
 
 /** One chip family per prompt, made once: the palette of each is fixed. */
 const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
@@ -41,15 +38,21 @@ const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
   lookup: helpChipVocabulary(HELP_PROMPT_CHIPS.lookup),
 };
 
-/** The select value of the Options row, which shares the answer prompt's key. */
-const OPTIONS_VALUE = 'options';
+/** The select value of a prompt's Options row. */
+const optionsValue = (key: HelpPromptKey) => `${key}:options`;
+
+/** The prompt a select value names, and whether it is that prompt's Options row. */
+const selectionOf = (value: string): { key: HelpPromptKey; options: boolean } | undefined => {
+  const key = HELP_PROMPT_KEYS.find((id) => value === id || value === optionsValue(id));
+  return key && { key, options: value !== key };
+};
 
 type Pending = { kind: 'add' } | { kind: 'rename' } | { kind: 'delete' } | { kind: 'reset'; key: HelpPromptKey } | null;
 
 /**
  * The Prompts tab: the help preset select with duplicate, rename and delete, and the three prompts in a
- * rail. The Default preset shows its prompts read-only with a way to duplicate; a custom prompt resets to
- * the default text. A custom preset exports to a help preset file, and a file imports as a new preset.
+ * rail, each with Edit | Preview and an Options row. The Default preset shows its prompts read-only with a
+ * way to duplicate; a custom prompt resets to the default text. A custom preset exports to a help preset file, and a file imports as a new preset.
  */
 export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
   const store = settings.presets;
@@ -70,6 +73,8 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   // The import reads the settings after the file text arrives, not as they were at the click.
   const latest = useRef(settings);
   latest.current = settings;
+  const { mascot, rig } = settings;
+  const preview = useMemo(() => helpChipPreview(helpChipValues(key, { mascot, rig })), [key, mascot, rig]);
 
   const exportPreset = () => {
     const file = buildHelpPresetFile(settings, active.id, APP_VERSION);
@@ -143,42 +148,45 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
       <p className="-mt-2 flex-shrink-0 text-helper text-muted-foreground">{PROMPTS_COPY.preset.hint}</p>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
-        <Select value={showOptions ? OPTIONS_VALUE : key} onValueChange={(value) => open(value === OPTIONS_VALUE ? 'answer' : value as HelpPromptKey, value === OPTIONS_VALUE)}>
+        <Select value={showOptions ? optionsValue(key) : key} onValueChange={(value) => { const next = selectionOf(value); if (next) open(next.key, next.options); }}>
           <SelectTrigger aria-label="Prompt" className="md:hidden">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PROMPT_KEYS.map((id) => (
+            {HELP_PROMPT_KEYS.map((id) => (
               <Fragment key={id}>
                 <SelectItem value={id}>{PROMPTS_COPY.prompts[id].label}</SelectItem>
-                {id === 'answer' && <SelectItem value={OPTIONS_VALUE}>{PROMPTS_COPY.options.title}</SelectItem>}
+                <SelectItem value={optionsValue(id)}>{`${PROMPTS_COPY.prompts[id].label} ${PROMPTS_COPY.options.title}`}</SelectItem>
               </Fragment>
             ))}
           </SelectContent>
         </Select>
         <nav aria-label="Prompts" className="hidden w-[160px] shrink-0 flex-col border-r pr-3 md:flex">
-          {PROMPT_KEYS.map((id) => (
+          {HELP_PROMPT_KEYS.map((id) => (
             <Fragment key={id}>
               <CompactSelectionRow selected={key === id && !showOptions} showCheck={false} aria-pressed={undefined} aria-current={key === id && !showOptions ? 'true' : undefined} onClick={() => open(id, false)}>
                 {PROMPTS_COPY.prompts[id].label}
               </CompactSelectionRow>
-              {id === 'answer' && (
-                <CompactSelectionRow className="pl-6" selected={showOptions} showCheck={false} aria-pressed={undefined} aria-current={showOptions ? 'true' : undefined} onClick={() => open('answer', true)}>
-                  {PROMPTS_COPY.options.title}
-                </CompactSelectionRow>
-              )}
+              <CompactSelectionRow
+                className="pl-6" selected={key === id && showOptions} showCheck={false} aria-pressed={undefined}
+                aria-label={`${PROMPTS_COPY.prompts[id].label} ${PROMPTS_COPY.options.title}`}
+                aria-current={key === id && showOptions ? 'true' : undefined} onClick={() => open(id, true)}
+              >
+                {PROMPTS_COPY.options.title}
+              </CompactSelectionRow>
             </Fragment>
           ))}
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {showOptions ? (
-            <AnswerOptions
-              key={active.id}
-              options={active.options}
+            <RequestOptions
+              key={`${active.id}:${key}`}
+              prompt={key}
+              options={active.options[key]}
               readOnly={readOnly}
               readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
               onRequestEdit={() => duplicate(copyName)}
-              onChange={(change) => setStore(editHelpOptions(store, active.id, change))}
+              onChange={(change) => setStore(editHelpOptions(store, active.id, key, change))}
             />
           ) : (
             <PromptField
@@ -189,6 +197,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
               value={active.prompts[key]}
               onChange={(text) => setStore(editHelpPrompt(store, active.id, key, text))}
               vocabulary={VOCABULARIES[key]}
+              previewValues={preview}
               readOnly={readOnly}
               readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
               onRequestEdit={() => duplicate(copyName)}

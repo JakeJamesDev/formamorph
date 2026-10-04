@@ -17,7 +17,7 @@ import { withImageParts } from '@/lib/aiRequest/imageParts';
 import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
-import { renderHelpPrompt } from './helpChips';
+import { helpChipValues, renderHelpPrompt } from './helpChips';
 import { createFaceCall } from './helpFace';
 import { requestPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
@@ -140,9 +140,6 @@ function helpSnapshot(snapshot: AiSettingsSnapshot, routes: readonly string[], r
 
 /** The reasoning parts that came in, as one text. */
 const joinReasoning = (...parts: string[]): string => parts.filter(Boolean).join('\n\n');
-
-/** The Voice a question sends: the rig's, trimmed, while the mascot is on, else none. */
-const voiceOf = ({ mascot, rig }: HelpSettings): string => (mascot ? rig.voice.trim() : '');
 
 /** The sampler values a request body carried, in the settings' names. The engine spells the penalty `repeat_penalty`. */
 function samplersOf(body: AiRequestBody): HelpSamplers {
@@ -317,11 +314,12 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
   const stopped = new Promise<null>((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
   const previous = keptHistory(history, settings.historyLength).at(-1);
   const prompts = activeHelpPrompts(settings.presets);
-  const prompt = renderHelpPrompt(prompts.pick);
+  const prompt = renderHelpPrompt(prompts.pick, helpChipValues('pick', settings));
   const observe = record && ((spec: AiRequestSpec, result?: AiStreamResult) => { record.pick = requestTrace('AI Picks', spec, isHelpPromptEdited(prompts, 'pick'), result); });
+  const pickSnapshot = helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING);
   const [allPicks, semantic] = await Promise.all([
     on.aiPicks
-      ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING), { signal, fetchImpl, observe }).catch(() => [])
+      ? requestPicks(index, { question, prompt, earlier: previous?.question, earlierAnswer: previous?.answer, where: hint?.where }, pickSnapshot, activeHelpOptions(settings.presets).pick, { signal, fetchImpl, observe }).catch(() => [])
       : [],
     on.semantic ? Promise.race([semanticRanking(index, helpQueries(question, previous), embedder), stopped]) : null,
   ]);
@@ -390,7 +388,7 @@ export async function* askHelp({
     : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
-  const options = activeHelpOptions(settings.presets);
+  const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup and the face call keep their own executors;
   // the roll and the Tools run on the one world snapshot of the question, which the roll does not read.
   const offered: OfferedFunction[] = [
@@ -408,7 +406,7 @@ export async function* askHelp({
   const execute: ToolExecutor<OfferedFunction> = (fn, argumentsText, callSignal) =>
     (isTool(fn) ? runTool(fn, argumentsText, callSignal) : internal.get(fn.id)!(fn, argumentsText, callSignal));
   const spec = buildAiRequestSpec(answerSnapshot, {
-    systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer, { voice: voiceOf(settings) })),
+    systemPrompt: helpSystemPrompt(language, renderHelpPrompt(lookup ? prompts.lookup : prompts.answer, helpChipValues(lookup ? 'lookup' : 'answer', settings))),
     messages: withImageParts([...historyMessages(kept), { role: 'user', content: userMessage }], images),
     requestType: 'help',
     maxTokensOverride: options.maxTokens,

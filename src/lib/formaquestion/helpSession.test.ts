@@ -361,7 +361,7 @@ describe('a follow-up', () => {
   it('reads the History Length and the answer cap from the settings of the question', async () => {
     const fetchImpl = replyWith(sseReply('Done.'));
     const history = Array.from({ length: 3 }, (_, n) => turn(`question ${n}`, `answer ${n}`));
-    await collect(ask('and then?', fetchImpl, { history, settings: helpSettingsOf({ historyLength: 1, presets: editHelpOptions(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', { maxTokens: 123 }) }) }));
+    await collect(ask('and then?', fetchImpl, { history, settings: helpSettingsOf({ historyLength: 1, presets: editHelpOptions(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', 'answer', { maxTokens: 123 }) }) }));
 
     const body = bodyOf(fetchImpl);
     expect(body.messages.slice(1, -1).map((message) => message.content)).toEqual(['question 2', 'answer 2']);

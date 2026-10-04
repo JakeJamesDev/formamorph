@@ -2,6 +2,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
+import { frameVoice, HELP_CHIP } from '@/lib/formaquestion/helpChips';
+import { HELP_PICK_LIMIT } from '@/lib/formaquestion/helpPicks';
+import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { activeHelpPreset, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
@@ -58,6 +63,41 @@ describe('the Prompts tab on the Default preset', () => {
     expect(picks).toHaveTextContent('Reply Format');
     await user.click(within(rail).getByRole('button', { name: 'Lookup' }));
     expect(editor('Lookup Prompt')).toHaveTextContent('Lookup Function');
+  });
+
+  it.each([
+    ['Answer', [GENERAL_KNOWLEDGE_MARKER, frameVoice(DEFAULT_MASCOT_RIG.voice)]],
+    ['Picks', [`Pick ${HELP_PICK_LIMIT} sections at most.`, '- Reply with the lines of your picks alone']],
+    ['Lookup', [GENERAL_KNOWLEDGE_MARKER, `with ${DOCS_LOOKUP.name}.`, frameVoice(DEFAULT_MASCOT_RIG.voice)]],
+  ])('gives the %s prompt Edit and Preview, no Values, and previews its chips as sent', async (label, sent) => {
+    renderTab();
+    const user = userEvent.setup();
+    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: label }));
+    expect(screen.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tab', { name: 'Values' })).toBeNull();
+    await user.click(screen.getByRole('tab', { name: 'Preview' }));
+    const preview = screen.getByTestId('prompt-preview');
+    for (const text of sent) expect(preview.textContent).toContain(text);
+    expect(preview.textContent).not.toMatch(/<[A-Z_]+>/);
+  });
+
+  it('previews no Voice in the Picks prompt, as its request sends none', async () => {
+    renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'pick', `Pick well.\n${HELP_CHIP.voice}`) });
+    const user = userEvent.setup();
+    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Picks' }));
+    await user.click(screen.getByRole('tab', { name: 'Preview' }));
+    const preview = screen.getByTestId('prompt-preview');
+    expect(preview.textContent).toContain('Pick well.');
+    expect(preview.textContent).not.toContain('Speak in this voice');
+  });
+
+  it('previews no Voice while the Mascot is off', async () => {
+    renderTab({ mascot: false });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: 'Preview' }));
+    const preview = screen.getByTestId('prompt-preview');
+    expect(preview.textContent).toContain(GENERAL_KNOWLEDGE_MARKER);
+    expect(preview.textContent).not.toContain('Speak in this voice');
   });
 
   it('duplicates into a custom copy from the notice, which then takes edits', async () => {

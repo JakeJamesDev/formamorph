@@ -136,9 +136,25 @@ export const PROMPTS_COPY = {
   },
   options: {
     title: 'Options',
-    hint: 'Sets how this preset runs the answer request. The Picks request keeps its own values.',
-    temperature: { label: 'Custom Temperature', hint: 'Sets how freely the answer words its steps' },
-    repetitionPenalty: { label: 'Custom Repetition Penalty', hint: 'Sets how hard the answer avoids repeated words' },
+    temperature: 'Custom Temperature',
+    repetitionPenalty: 'Custom Repetition Penalty',
+    prompts: {
+      answer: {
+        hint: 'Sets how this preset runs the answer request',
+        temperature: 'Sets how freely the answer words its steps',
+        repetitionPenalty: 'Sets how hard the answer avoids repeated words',
+      },
+      pick: {
+        hint: 'Sets how this preset runs the Picks request',
+        temperature: 'Sets how freely your AI picks guide sections',
+        repetitionPenalty: 'Sets how hard the pick reply avoids repeated words',
+      },
+      lookup: {
+        hint: 'Sets how this preset runs the answer request with the lookup function',
+        temperature: 'Sets how freely the answer words its steps',
+        repetitionPenalty: 'Sets how hard the answer avoids repeated words',
+      },
+    },
   },
   readOnly: (name: string) => `${name} is read-only`,
   reset: { label: 'Reset to Default', hint: 'Returns this prompt to the text of this release' },

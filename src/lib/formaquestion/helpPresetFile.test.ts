@@ -17,7 +17,9 @@ function customized(): HelpSettings {
   let presets = duplicateHelpPreset(DEFAULT_HELP_SETTINGS.presets, DEFAULT_HELP_PRESET_ID, 'p-1', 'Chat Buddy');
   presets = editHelpPrompt(presets, 'p-1', 'answer', 'Answer like a pirate. <NOT_IN_GUIDE>');
   presets = editHelpPrompt(presets, 'p-1', 'pick', 'Pick well.');
-  presets = editHelpOptions(presets, 'p-1', { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 });
+  presets = editHelpOptions(presets, 'p-1', 'answer', { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 });
+  presets = editHelpOptions(presets, 'p-1', 'pick', { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 });
+  presets = editHelpOptions(presets, 'p-1', 'lookup', { temperature: 0.6, maxTokens: 1500 });
   return helpSettingsOf({
     presets,
     tools: [helpTool(), helpTool({ id: 'h-2', name: 'find_place' })],
@@ -41,7 +43,8 @@ describe('buildHelpPresetFile', () => {
     const file = fileOf(customized());
     expect(Object.keys(file).sort()).toEqual([...HELP_PRESET_FILE_FIELDS].sort());
     expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'lookup', 'pick']);
-    expect(Object.keys(file.options).sort()).toEqual(['maxTokens', 'repetitionPenalty', 'temperature']);
+    expect(Object.keys(file.options).sort()).toEqual(['answer', 'lookup', 'pick']);
+    for (const block of Object.values(file.options)) expect(Object.keys(block).sort()).toEqual(['maxTokens', 'repetitionPenalty', 'temperature']);
     // The face call has no switch and no call limit, so it has no row.
     expect(Object.keys(file.functions)).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name]);
     expect(Object.keys(file.functions[DOCS_LOOKUP.name]).sort()).toEqual(['enabled', 'maxCalls']);
@@ -60,7 +63,11 @@ describe('buildHelpPresetFile', () => {
       appVersion: '9.9.9',
       name: 'Chat Buddy',
       prompts: { answer: 'Answer like a pirate. <NOT_IN_GUIDE>', pick: 'Pick well.' },
-      options: { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 },
+      options: {
+        answer: { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 },
+        pick: { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 },
+        lookup: { temperature: 0.6, repetitionPenalty: 1, maxTokens: 1500 },
+      },
       tools: [{ tool: helpTool(), enabled: true }, { tool: helpTool({ id: 'h-2', name: 'find_place' }), enabled: false }],
       functions: { [DOCS_LOOKUP.name]: { enabled: true, maxCalls: 7 } },
     });
@@ -72,7 +79,7 @@ describe('buildHelpPresetFile', () => {
 });
 
 describe('export then import on a clean profile', () => {
-  it('gives the same texts, answer options, Tools and switches', () => {
+  it('gives the same texts, option blocks, Tools and switches', () => {
     const source = customized();
     const parsed = parseHelpPresetFile(textOf(fileOf(source)));
     const { change } = importHelpPresetFile(DEFAULT_HELP_SETTINGS, parsed, mint);
@@ -152,6 +159,7 @@ describe('importHelpPresetFile', () => {
 
 describe('parseHelpPresetFile', () => {
   const good = () => JSON.parse(textOf(fileOf(customized()))) as Record<string, unknown>;
+  const block = (f: Record<string, unknown>) => f.options as Record<string, unknown>;
   const refused = (value: unknown) => () => parseHelpPresetFile(typeof value === 'string' ? value : textOf(value));
 
   it('reads an exported file back as it was', () => {
@@ -173,8 +181,11 @@ describe('parseHelpPresetFile', () => {
     ['a missing name', (f: Record<string, unknown>) => ({ ...f, name: undefined }), 'name'],
     ['a blank name', (f: Record<string, unknown>) => ({ ...f, name: '  ' }), 'name'],
     ['a missing prompt', (f: Record<string, unknown>) => ({ ...f, prompts: { answer: 'a', pick: 'b' } }), 'prompts.lookup'],
-    ['a temperature out of range', (f: Record<string, unknown>) => ({ ...f, options: { temperature: 3, repetitionPenalty: 1, maxTokens: 800 } }), 'options.temperature'],
-    ['a text Max Output', (f: Record<string, unknown>) => ({ ...f, options: { temperature: 0.2, repetitionPenalty: 1, maxTokens: '800' } }), 'options.maxTokens'],
+    ['options of one block for every request', (f: Record<string, unknown>) => ({ ...f, options: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 } }), 'options.answer'],
+    ['a missing Lookup block', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), lookup: undefined } }), 'options.lookup'],
+    ['a Pick temperature out of range', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), pick: { temperature: 3, repetitionPenalty: 1, maxTokens: 150 } } }), 'options.pick.temperature'],
+    ['a Lookup penalty out of range', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), lookup: { temperature: 0.2, repetitionPenalty: 2, maxTokens: 800 } } }), 'options.lookup.repetitionPenalty'],
+    ['a text Max Output', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), answer: { temperature: 0.2, repetitionPenalty: 1, maxTokens: '800' } } }), 'options.answer.maxTokens'],
     ['a malformed Tool', (f: Record<string, unknown>) => ({ ...f, tools: [{ tool: { name: 'x' }, enabled: true }] }), 'a Tool that can’t be read: "x"'],
     ['a Tool without a switch', (f: Record<string, unknown>) => ({ ...f, tools: [{ tool: helpTool() }] }), 'tools.0.enabled'],
     ['a missing fixed function', (f: Record<string, unknown>) => ({ ...f, functions: {} }), `functions.${DOCS_LOOKUP.name}`],

@@ -7,9 +7,9 @@ import { planToolImport } from '@/lib/tools/toolPack';
 import { isRecord, parseTool } from '@/lib/tools/toolValidation';
 import type { Tool, ToolEnabledMap } from '@/types';
 import { DOCS_LOOKUP } from './docsLookup';
-import type { HelpPromptTexts } from './helpPrompt';
+import { HELP_PROMPT_KEYS, type HelpPromptKey, type HelpPromptTexts } from './helpPrompt';
 import {
-  DEFAULT_HELP_PRESET_NAME, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, type HelpAnswerOptions, type HelpPreset,
+  DEFAULT_HELP_PRESET_NAME, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, mapHelpOptions, type HelpPreset, type HelpPresetOptions, type HelpRequestOptions,
 } from './helpPresets';
 import { HELP_ROLL } from './helpRoll';
 import { HELP_CALL_LIMIT_MAX, type HelpSettings, type HelpSettingsChange } from './helpSettings';
@@ -35,7 +35,7 @@ export interface HelpPresetFile {
   appVersion: string;
   name: string;
   prompts: HelpPromptTexts;
-  options: HelpAnswerOptions;
+  options: HelpPresetOptions;
   tools: HelpPresetFileTool[];
   /** Keyed by the function name the model sees. */
   functions: Record<string, HelpPresetFileFunction>;
@@ -53,18 +53,23 @@ const FUNCTION_FIELDS: readonly { name: string; enabled: SwitchKey; maxCalls: Li
   { name: HELP_ROLL.name, enabled: 'roll', maxCalls: 'rollCallLimit', max: HELP_CALL_LIMIT_MAX },
 ];
 
+/** One option block with its fields only. */
+const blockOf = ({ temperature, repetitionPenalty, maxTokens }: HelpRequestOptions): HelpRequestOptions => ({ temperature, repetitionPenalty, maxTokens });
+
+/** The blocks with their fields only. */
+const blocksOf = (options: HelpPresetOptions): HelpPresetOptions => mapHelpOptions((key) => blockOf(options[key]));
+
 /** The file of the custom preset `presetId`; null for the Default preset, which has no export. */
 export function buildHelpPresetFile(settings: HelpSettings, presetId: string, appVersion: string): HelpPresetFile | null {
   const preset = settings.presets.presets.find((p) => p.id === presetId);
   if (!preset) return null;
   const { answer, pick, lookup } = preset.prompts;
-  const { temperature, repetitionPenalty, maxTokens } = preset.options;
   return {
     formamorphHelpPreset: HELP_PRESET_FILE_VERSION,
     appVersion,
     name: preset.name,
     prompts: { answer, pick, lookup },
-    options: { temperature, repetitionPenalty, maxTokens },
+    options: blocksOf(preset.options),
     tools: settings.tools.map((tool) => ({ tool: structuredClone(tool), enabled: settings.toolSwitches[tool.id] === true })),
     functions: Object.fromEntries(FUNCTION_FIELDS.map((fn) => [fn.name, { enabled: settings[fn.enabled], maxCalls: settings[fn.maxCalls] }])),
   };
@@ -86,6 +91,16 @@ function recordAt(parent: Record<string, unknown>, key: string, field = key): Re
   const value = parent[key];
   if (!isRecord(value)) throw refusal(field);
   return value;
+}
+
+/** The option block of `key`, else a refusal that names the block or its bad field. */
+function parseBlock(options: Record<string, unknown>, key: HelpPromptKey): HelpRequestOptions {
+  const field = `options.${key}`;
+  const block = recordAt(options, key, field);
+  if (!isNumberIn(block.temperature, HELP_TEMPERATURE_RANGE)) throw refusal(`${field}.temperature`);
+  if (!isNumberIn(block.repetitionPenalty, HELP_REPETITION_PENALTY_RANGE)) throw refusal(`${field}.repetitionPenalty`);
+  if (!isWholeIn(block.maxTokens, 1, Number.MAX_SAFE_INTEGER)) throw refusal(`${field}.maxTokens`);
+  return { temperature: block.temperature, repetitionPenalty: block.repetitionPenalty, maxTokens: block.maxTokens };
 }
 
 function readTools(raw: unknown): HelpPresetFileTool[] {
@@ -114,15 +129,13 @@ export function parseHelpPresetFile(json: string): HelpPresetFile {
   if (!isText(parsed.name) || parsed.name.trim() === '') throw refusal('name');
 
   const prompts = recordAt(parsed, 'prompts');
-  const [answer, pick, lookup] = (['answer', 'pick', 'lookup'] as const).map((key) => {
+  const [answer, pick, lookup] = HELP_PROMPT_KEYS.map((key) => {
     if (!isText(prompts[key])) throw refusal(`prompts.${key}`);
     return prompts[key];
   });
 
-  const options = recordAt(parsed, 'options');
-  if (!isNumberIn(options.temperature, HELP_TEMPERATURE_RANGE)) throw refusal('options.temperature');
-  if (!isNumberIn(options.repetitionPenalty, HELP_REPETITION_PENALTY_RANGE)) throw refusal('options.repetitionPenalty');
-  if (!isWholeIn(options.maxTokens, 1, Number.MAX_SAFE_INTEGER)) throw refusal('options.maxTokens');
+  const fileOptions = recordAt(parsed, 'options');
+  const options = mapHelpOptions((key) => parseBlock(fileOptions, key));
 
   const tools = readTools(parsed.tools);
 
@@ -140,7 +153,7 @@ export function parseHelpPresetFile(json: string): HelpPresetFile {
     appVersion: parsed.appVersion,
     name: parsed.name,
     prompts: { answer, pick, lookup },
-    options: { temperature: options.temperature, repetitionPenalty: options.repetitionPenalty, maxTokens: options.maxTokens },
+    options,
     tools,
     functions,
   };
@@ -168,7 +181,7 @@ export function importHelpPresetFile(settings: HelpSettings, file: HelpPresetFil
 } {
   const store = settings.presets;
   const presetName = freePresetName(store.presets, file.name);
-  const preset: HelpPreset = { id: mintId(), name: presetName, prompts: { ...file.prompts }, options: { ...file.options } };
+  const preset: HelpPreset = { id: mintId(), name: presetName, prompts: { ...file.prompts }, options: blocksOf(file.options) };
 
   const added: Tool[] = [];
   const switches: ToolEnabledMap = {};
