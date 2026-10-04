@@ -72,6 +72,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q43 | Transition details: Dissolve has a duration only (default 250 ms, the Jelly range); the default rig uses Jelly at the prototype's defaults and keeps both modes' tuning; a restart mid-transition eases from the current frame with no jump; the tab's Play runs Thinking to the preview's look; range-end tests check the dip and peak only where the tuning is above 0: at squash 0 there is no dip before the peak, though the settle still swings around 1; at overshoot 0 the curve stays at or below 1 |
 | Q44 | Card details: bundled images embed as bytes too, identical images once; the gate is a kind marker and an integer version, with the app version written beside them; import replaces the rig only, never the mascot switch, and confirms like Reset; parse refuses the whole card on any bad field and names its path; a pick naming a missing layer is allowed |
 | Q45 | The Voice framing's wording is not fixed by Q39; its intent is: no chatty opener, the guide's names, the marker rule unbroken, and never "in your words". Ticket 16 may merge the ordering into one line and runs both candidates as arms in its one batch |
+| Q46 | Ticket 16's batch: today's framing 75.9% with a 14% missed flag; merged line 72.6%; added marker line 73.4% with a 54% missed flag, because the marker was named in words and the reader matches the bracketed token only. No framing change ships. The flag gap on 50 questions reads as batch drift. Closes Q41 |
 
 ## User Stories
 
