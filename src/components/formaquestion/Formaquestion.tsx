@@ -28,6 +28,7 @@ import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
 import { MascotPiece } from './MascotPiece';
+import { appLoadQuestion, mascotPhase } from './mascotPhase';
 import { MinimalChat } from './MinimalChat';
 import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
@@ -128,6 +129,15 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const semantic = useSemanticSearch(settings, changeSettings);
   const ai = useHelpAi(open, settings);
   const chat = useHelpChat(index, ai, settings);
+  // The app load's first question ends the Initial look, across a remount too.
+  const [beforeFirstQuestion, setBeforeFirstQuestion] = useState(() => !appLoadQuestion.asked());
+  const sent = chat.exchanges.length > 0;
+  useEffect(() => {
+    if (!sent) return;
+    appLoadQuestion.record();
+    setBeforeFirstQuestion(false);
+  }, [sent]);
+  const phase = mascotPhase(chat.exchanges.at(-1), beforeFirstQuestion);
   // The Mascot implies the minimal chrome (Q5). The switch swaps the chrome in place; the conversation lives above both.
   const minimal = settings.mascot;
 
@@ -393,7 +403,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: origin ? `${origin.x - layout.group.x}px ${origin.y - layout.group.y}px` : undefined,
           } : undefined}
         >
-          {layout && <MascotPiece images={composeMascot(settings.rig, 'answering', null)} size={layout.mascot} onAspect={setMascotAspect} />}
+          {layout && <MascotPiece images={composeMascot(settings.rig, phase, null)} size={layout.mascot} onAspect={setMascotAspect} />}
           <MinimalChat
             guide={guide}
             failed={failed}
