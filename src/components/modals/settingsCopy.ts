@@ -635,9 +635,9 @@ export const SETTINGS_BUTTONS = {
   retryWithSettings: 'Retry With These Settings',
 } as const;
 
-/** Lines the modal draws in place of a control. */
+/** Labels the modal draws over a group of controls. */
 export const SETTINGS_NOTES = {
-  imageGenerationOff: 'Image generation is off. Turn it on to edit these settings.',
+  imageGenerationOff: 'Image generation is off',
 } as const;
 
 /** Every confirmation the modal raises. Bodies are sentences and carry their own punctuation. */

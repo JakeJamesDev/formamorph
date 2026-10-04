@@ -23,7 +23,7 @@ vi.mock('@/lib/imageGen/probe', async (importOriginal) => ({
 
 const IMAGE_KEY = 'FORMAMORPH_imageEndpointPresets';
 const OFF_KEY = 'FORMAMORPH_imageGenDisabled';
-const OFF_LINE = 'Image generation is off. Turn it on to edit these settings.';
+const OFF_LABEL = 'Image generation is off';
 
 function seed(overrides: Partial<ImageEndpointValues>) {
   localStorage.setItem(IMAGE_KEY, imageEndpointPresetCodec.serialize({
@@ -57,13 +57,13 @@ beforeEach(() => {
 });
 
 describe('Settings → AI Endpoints → Image: off state', () => {
-  it('keeps the connection rows mounted and disabled under the line, and the switch still toggles', async () => {
+  it('keeps the connection rows mounted and disabled under the label, and the switch still toggles', async () => {
     seed({ provider: 'comfyui', endpoint: 'http://comfy.test', model: '' });
     localStorage.setItem(OFF_KEY, 'true');
     probeImageEndpoint.mockResolvedValue('ok');
     openImageEndpoints();
 
-    expect(await screen.findByText(OFF_LINE)).toBeTruthy();
+    expect(await screen.findByText(OFF_LABEL)).toBeTruthy();
     for (const id of ['imageProvider', 'imageEndpoint', 'imageApiToken']) {
       expect(byId(id), id).toBeDisabled();
     }
@@ -77,22 +77,38 @@ describe('Settings → AI Endpoints → Image: off state', () => {
     expect(toggle().closest('fieldset')).toBeNull();
 
     fireEvent.click(toggle());
-    await waitFor(() => expect(screen.queryByText(OFF_LINE)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(OFF_LABEL)).toBeNull());
     for (const id of ['imageProvider', 'imageEndpoint', 'imageApiToken']) {
       expect(byId(id), id).toBeEnabled();
     }
     expect(byId('imageEndpoint').closest('fieldset')).not.toHaveAttribute('inert');
 
     fireEvent.click(toggle());
-    expect(await screen.findByText(OFF_LINE)).toBeTruthy();
+    expect(await screen.findByText(OFF_LABEL)).toBeTruthy();
     expect(byId('imageEndpoint')).toBeDisabled();
   });
 
-  it('shows no line and enabled rows while image generation is on', () => {
+  it('draws the label over the scroller, announced and out of the way of the wheel', async () => {
+    seed({ provider: 'comfyui', endpoint: 'http://comfy.test', model: '' });
+    localStorage.setItem(OFF_KEY, 'true');
+    probeImageEndpoint.mockResolvedValue('ok');
+    openImageEndpoints();
+
+    const label = await screen.findByText(OFF_LABEL);
+    expect(label.closest('[role="status"]')).not.toBeNull();
+    // Outside the viewport, so it holds still while the rows scroll under it.
+    expect(label.closest('[data-radix-scroll-area-viewport]')).toBeNull();
+    // The same box holds the scroller, so the label centers on what the reader sees.
+    const frame = screen.getByTestId('image-scroll-frame');
+    expect(frame.contains(label)).toBe(true);
+    expect(frame.contains(byId('imageEndpoint'))).toBe(true);
+  });
+
+  it('shows no label and enabled rows while image generation is on', () => {
     seed({ provider: 'comfyui', endpoint: 'http://comfy.test', model: '' });
     probeImageEndpoint.mockResolvedValue('ok');
     openImageEndpoints();
-    expect(screen.queryByText(OFF_LINE)).toBeNull();
+    expect(screen.queryByText(OFF_LABEL)).toBeNull();
     expect(byId('imageEndpoint')).toBeEnabled();
   });
 
@@ -100,7 +116,7 @@ describe('Settings → AI Endpoints → Image: off state', () => {
     seed({ provider: 'comfyui', endpoint: 'http://comfy.test', model: '' });
     localStorage.setItem(OFF_KEY, 'true');
     openImageEndpoints();
-    await screen.findByText(OFF_LINE);
+    await screen.findByText(OFF_LABEL);
     expect(screen.queryByRole('button', { name: 'Recheck' })).toBeNull();
     expect(probeImageEndpoint).not.toHaveBeenCalled();
   });

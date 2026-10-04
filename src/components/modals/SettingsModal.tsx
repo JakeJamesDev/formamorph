@@ -1116,16 +1116,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 {...rowCopy('enableImageGeneration')}
               />
             </div>
-            {imageGenDisabled && (
-              <p className="flex-shrink-0 text-helper text-muted-foreground">{SETTINGS_NOTES.imageGenerationOff}</p>
-            )}
+            {/* The off label floats over the scroller, so it takes no layout space and no row moves. */}
+            <div data-testid="image-scroll-frame" className="relative flex min-h-0 flex-1 flex-col">
+            {/* Always mounted, so a screen reader announces the label when it fills in. */}
+            <div role="status" className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              {imageGenDisabled && (
+                <span className="rounded-md border bg-background px-3 py-1.5 text-helper shadow-sm">
+                  {SETTINGS_NOTES.imageGenerationOff}
+                </span>
+              )}
+            </div>
             <ScrollArea className="flex-1 min-h-0">
-            {/* Inside the scroller, so the rows still scroll while off. `inert` covers the tag fields,
-                which are contenteditable and ignore `disabled`. */}
+            {/* Inside the scroller, so the rows still scroll while off. `inert` covers the tag fields, which
+                are contenteditable and ignore `disabled`. The group mutes once, so controls skip their own dim. */}
             <fieldset
               disabled={imageGenDisabled}
               {...(imageGenDisabled ? { inert: '' } : {})}
-              className="m-0 min-w-0 border-0 p-0 [&[inert]_[contenteditable]]:opacity-50"
+              className="m-0 min-w-0 border-0 p-0 [&[inert]]:opacity-50 [&[inert]_:disabled]:!opacity-100"
             >
             <div className="grid gap-6">
               <Section title="Connection">
@@ -1370,6 +1377,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
             </div>
             </fieldset>
             </ScrollArea>
+            </div>
               </TabsContent>
               {!imageGenDisabled && advanced && (
               <TabsContent value="img-tagprompt" className="pt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-2">
