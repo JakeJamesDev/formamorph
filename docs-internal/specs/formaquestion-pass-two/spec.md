@@ -100,6 +100,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q64 | Ticket 20 builds on the preset-header effort: the Mascot tab's hand-rolled preset row becomes the shared preset header (icon actions at md, ⋯ menu below, confirms inside), "View full screen" is a header action, and the morph goes through the shared panel shell that preset-header ticket 09 extracted for the Formaquestion Prompts tab. Refines Q58 and Q62 (user, 2026-10-04) |
 | Q65 | The shared preset header gains an optional per-action tooltip. The short label stays the accessible name and the ⋯ menu text; the tooltip shows the Q58 sentence where set. Only the Mascot header sets them; the Prompts and endpoint headers keep their short tooltips (ticket 20) |
 | Q66 | Export stays available on the Default mascot, as the shared header keeps it on built-in presets. Refines Q53 and Q58 (ticket 20) |
+| Q67 | In full screen the Mascot tab's columns split 1/3 preview, 2/3 controls; docked it keeps the 22rem preview column. The Prompts tab's full screen keeps its layout. The shared panel shell no longer shows its title row on either tab; the title stays the window's accessible name and the header's toggle, reading "Exit full screen", is the way out (user, 2026-10-04) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
