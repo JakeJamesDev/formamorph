@@ -338,11 +338,9 @@ test.describe('the Mask', () => {
   });
 
   test('takes the box a drag draws on the preview, the head preview follows, and the window head draws it', async ({ page }) => {
-    await openApp(page);
-    await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+    await openMaskTab(page);
     const target = '[data-fq-mask-target]';
     const headPreview = '[role="dialog"] [data-fq-piece="mascot"][data-fq-view="head"]';
-    await loaded(page, target);
     await loaded(page, headPreview);
     const preview = await pieceBox(page, target);
 
@@ -362,7 +360,10 @@ test.describe('the Mask', () => {
     expect(box.width).toBeCloseTo(from.x - to.x, 0);
     expect(box.height).toBeCloseTo(from.y - to.y, 0);
 
-    // The stored Mask reaches the window's head view after a reload.
+    // The stored Mask reaches the window's head view after a reload, once the draft is saved.
+    const save = page.getByTestId('mascot-footer').getByRole('button', { name: 'Save' });
+    await save.click();
+    await expect(save).toBeDisabled();
     await page.reload();
     await page.waitForFunction(() => '__fmDev' in window);
     await openHelp(page);
@@ -609,10 +610,16 @@ test.describe('the second pass controls', () => {
 /** The resting opacity of a Mask handle away from the box. */
 const FADED = 0.3;
 
+/** Opens the Mascot tab on an editable copy of the read-only Default, so the Mask draws its handles. */
 async function openMaskTab(page: Page): Promise<void> {
   await openApp(page);
   await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
   await loaded(page, '[data-fq-mask-target]');
+  const presetRow = page.getByTestId('mascot-preset-row');
+  await expect(presetRow.getByRole('combobox', { name: 'Preset' })).toHaveText('Default');
+  await expect(page.locator('[data-fq-mask-box] button')).toHaveCount(0);
+  await presetRow.getByRole('button', { name: 'Duplicate Mascot' }).click();
+  await expect(presetRow.getByRole('combobox', { name: 'Preset' })).toHaveText('Default (copy)');
   await expect(page.locator('[data-fq-mask-box] button')).toHaveCount(9);
 }
 
