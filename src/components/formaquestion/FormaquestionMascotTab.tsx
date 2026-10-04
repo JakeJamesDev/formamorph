@@ -24,6 +24,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
 import { presetHeaderActions, type PresetHeaderAction } from '@/lib/presetHeaderActions';
+import { useElementSize } from '@/lib/useElementSize';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -38,7 +39,8 @@ import {
 } from '@/lib/formaquestion/mascotTransition';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import {
-  MASK_GRIPS, cropFrame, fitMask, gripKeyDelta, headSizeWithin, isMaskGrip, maskFromDrag, moveMaskGrip, type MascotPoint, type MascotSize, type MaskGrip,
+  MASK_GRIPS, cropFrame, fitMask, gripKeyDelta, headSizeWithin, isMaskGrip, maskFromDrag, moveMaskGrip, sizeWithin,
+  type MascotPoint, type MascotSize, type MaskGrip,
 } from '@/lib/formaquestion/mascotMask';
 import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
 import { addMascotImage } from '@/lib/formaquestion/mascotImageStore';
@@ -68,6 +70,11 @@ const WIDE_QUERY = '(min-width: 1024px)';
 const COLUMNS_DOCKED = 'grid-cols-[22rem_minmax(0,1fr)]';
 const COLUMNS_FULL_SCREEN = 'grid-cols-[minmax(0,1fr)_minmax(0,2fr)]';
 const PREVIEW_HEIGHT = 240;
+/** The Head View's slot and the gap before it: the mascot takes the rest of the preview row. */
+const HEAD_SLOT_WIDTH = 128;
+const PREVIEW_ROW_GAP = 12;
+/** The least room the mascot gets, so a very narrow row overflows instead of drawing it at nothing. */
+const MIN_PREVIEW_WIDTH = 64;
 /** The widest Head View preview: the 128px slot less its frame's padding and border. */
 const PREVIEW_HEAD_WIDTH = 118;
 
@@ -585,6 +592,11 @@ export function MascotTab({ settings, onChange, control }: {
   const patchLayer = (id: string) => (patch: MascotLayerPatch) =>
     edit((current) => updateMascotLayer(current, id, patch), 'name' in patch ? `layer-name-${id}` : undefined);
 
+  const [rowRef, row] = useElementSize();
+  // An unmeasured row (zero width) draws at the full height.
+  const roomForMascot = row.width > 0 ? Math.max(MIN_PREVIEW_WIDTH, row.width - HEAD_SLOT_WIDTH - PREVIEW_ROW_GAP) : Infinity;
+  const fitted = base && sizeWithin(base, PREVIEW_HEIGHT, roomForMascot);
+  const previewSize = fitted && { w: Math.round(fitted.w), h: fitted.h };
   const mask = base && fitMask(draftMask ?? rig.mask, base);
   const maskDrag = usePointerDrag<MaskPress>({
     start: (event) => {
@@ -655,19 +667,20 @@ export function MascotTab({ settings, onChange, control }: {
         <WidgetLabel copy={{ label: MASCOT_COPY.preview.label, hint: MASCOT_COPY.preview.info }} />
         <Meta className="min-w-0 truncate">{caption}</Meta>
       </div>
-      <div className="flex flex-wrap items-end justify-center gap-3" style={{ minHeight: PREVIEW_HEIGHT }}>
-        <div {...maskDrag} data-fq-mask-target="" className={`relative touch-none select-none ${readOnly ? '' : 'cursor-crosshair'}`}>
+      {/* One row at any width: the mascot gives up height before the Head View gives up its place. */}
+      <div ref={rowRef} data-fq-preview-row="" className="flex items-end justify-center" style={{ minHeight: PREVIEW_HEIGHT, columnGap: PREVIEW_ROW_GAP }}>
+        <div {...maskDrag} data-fq-mask-target="" className={`relative shrink-0 touch-none select-none ${readOnly ? '' : 'cursor-crosshair'}`}>
           <MascotPiece
             images={preview}
             hold={refs}
             replay={play ? { id: play.id, from: play.from, transition: rig.transition } : undefined}
-            size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
+            size={base && previewSize}
             onBase={setBase}
           />
           {base && mask && <MaskBox mask={mask} base={base} dragging={maskDragging} readOnly={readOnly} onNudge={nudgeMask} />}
         </div>
         {/* A fixed slot, so the head resizing under a Mask drag never slides the mascot under the pointer. */}
-        <figure className="grid w-32 justify-items-center gap-1">
+        <figure className="grid shrink-0 justify-items-center gap-1" style={{ width: HEAD_SLOT_WIDTH }}>
           <div className="flex items-end rounded-md border border-border bg-background/60 p-1" style={{ minHeight: HEAD_HEIGHT + 8 }}>
             <MascotPiece
               view="head"

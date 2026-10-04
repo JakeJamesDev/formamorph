@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cropFrame, fitMask, gripKeyDelta, headSize, headSizeWithin, maskFromDrag, moveMaskGrip, type MaskGrip } from './mascotMask';
+import { cropFrame, fitMask, gripKeyDelta, headSize, headSizeWithin, maskFromDrag, moveMaskGrip, sizeWithin, type MaskGrip } from './mascotMask';
 
 const BASE = { width: 888, height: 1184 };
 
@@ -109,6 +109,16 @@ describe('headSizeWithin', () => {
 
   it('shrinks a wider Mask to the width at its aspect', () => {
     expect(headSizeWithin({ x: 0, y: 0, width: 400, height: 100 }, 64, 120)).toEqual({ w: 120, h: 30 });
+  });
+});
+
+describe('sizeWithin', () => {
+  it('keeps the height while the base aspect fits the width', () => {
+    expect(sizeWithin(BASE, 240, 400)).toEqual({ w: 180, h: 240 });
+  });
+
+  it('shrinks to the width at the base aspect when it runs past', () => {
+    expect(sizeWithin(BASE, 240, 150)).toEqual({ w: 150, h: 200 });
   });
 });
 
