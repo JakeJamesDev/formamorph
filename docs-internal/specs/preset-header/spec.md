@@ -47,6 +47,8 @@ Settled with the user on 2026-10-04.
 | Q14 | Reset and Compare join this spec with their own tickets |
 | Q15 | Right-aligned everywhere. Reset left of Compare, Compare at the right edge. One prompt on screen: the modal footer. Stacked prompts: the right of each label row, as Settings Messages does today |
 | Q16 | Formaquestion full screen lifts the whole Prompts tab through the Settings shell |
+| Q17 | The image endpoint Tag Prompt is out of scope. Reset and Compare cover prompt-preset surfaces only: the Settings prompt tabs, the Messages view, and Formaquestion (ticket 07 intent question, spec session) |
+| Q18 | In Formaquestion full screen, the Options view shows the field's "Exit full screen" toggle, same icon, label and position, only while in full screen. A touch player has no Escape key (ticket 09 intent question, spec session) |
 
 ## User Stories
 
@@ -131,3 +133,5 @@ A good test drives the rendered surface the way a player does and asserts what t
 - The probe sends list requests only, never a completion, so no paid endpoint bills tokens. A gateway that hides its model list reads as "Didn't answer". The route fields accept this today.
 - Reset in the Formaquestion header is new behavior for help presets. It resets prompts and options together, matching the Settings "Reset every prompt" confirm.
 - Frames from the grill: `.scratch/preset-header/` holds the three phone-width captures that settled Q2.
+- Q18 focus return: a docked Options view has no toggle, so the shell returns focus to the current rail row instead (ticket 09).
+- Dev-route finding (ticket 09): `formaquestionSettings` keeps the help window on screen over its settings. With the window visible, the full-screen trip stalls one frame of about 260 ms. A player never reaches that state, because the window's menu hides the window while Settings is open, so the morph e2e takes the menu path. The route is unchanged. A follow-up may hide the window on that route.
