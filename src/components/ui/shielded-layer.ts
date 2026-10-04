@@ -23,6 +23,10 @@ const MARK = 'data-shielded-layer';
 
 /** Above dialogs, popovers and selects (z-50). Below the chip typeahead (z-70) and tooltips (z-80). */
 const LAYER_Z_INDEX = 65;
+/** Below dialogs, for a layer that a dialog covers. */
+const COVERED_Z_INDEX = 40;
+/** A closing dialog's exit animation, which stays above the layer until it ends. */
+const DIALOG_EXIT_MS = 200;
 
 /** Events the dialog library reads on `document` and must not see from inside the layer. */
 const SHIELDED_EVENTS = ['focusin', 'wheel', 'touchmove'] as const;
@@ -80,4 +84,15 @@ export function ensureShieldedLayer(): HTMLDivElement {
   }
   if (!host.isConnected) document.body.append(host);
   return mount;
+}
+
+/**
+ * Puts the layer under dialogs while one covers it, inert so focus and assistive tech skip it. Uncovered,
+ * it is live at once and rises again once the closing dialog's exit has played.
+ */
+export function coverShieldedLayer(covered: boolean): void {
+  if (!host || !mount) return;
+  mount.inert = covered;
+  host.style.transition = covered ? 'none' : `z-index 0s linear ${DIALOG_EXIT_MS}ms`;
+  host.style.zIndex = String(covered ? COVERED_Z_INDEX : LAYER_Z_INDEX);
 }

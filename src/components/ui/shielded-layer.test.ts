@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { ensureShieldedLayer, ignoreLayerPress, inShieldedLayer, keepLayerFocus } from './shielded-layer';
+import { coverShieldedLayer, ensureShieldedLayer, ignoreLayerPress, inShieldedLayer, keepLayerFocus } from './shielded-layer';
 
 /** Dispatches a bubbling event on `target` and reports whether a `document` listener saw it. */
 function reachesDocument(target: Element, event: Event): boolean {
@@ -35,6 +35,21 @@ describe('the shielded layer', () => {
     const host = ensureShieldedLayer().parentElement!;
     expect(Number(host.style.zIndex)).toBeGreaterThan(50);
     expect(Number(host.style.zIndex)).toBeLessThan(70);
+  });
+
+  it('sinks under dialogs and goes inert while a dialog covers it, and rises again after the dialog exits', () => {
+    const mount = ensureShieldedLayer();
+    const host = mount.parentElement!;
+    coverShieldedLayer(true);
+    expect(Number(host.style.zIndex)).toBeLessThan(50);
+    expect(mount.inert).toBe(true);
+    expect(host.style.transition).toBe('none');
+
+    coverShieldedLayer(false);
+    expect(Number(host.style.zIndex)).toBeGreaterThan(50);
+    expect(mount.inert).toBe(false);
+    // The rise waits for the closing dialog's exit animation.
+    expect(host.style.transition).toBe('z-index 0s linear 200ms');
   });
 
   it('carries aria-live, which keeps a modal dialog from hiding it', () => {

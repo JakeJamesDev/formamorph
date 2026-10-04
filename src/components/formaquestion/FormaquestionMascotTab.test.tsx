@@ -178,6 +178,134 @@ describe('the layer list', () => {
   });
 });
 
+describe('the preview selection', () => {
+  const happy = [mascotAssetUrl('base'), mascotAssetUrl('mouth-grin'), mascotAssetUrl('eyes-closed')];
+  const idle = () => composeMascot(DEFAULT_MASCOT_RIG, 'answering', null).map(mascotImageUrl);
+  const overlayButton = (n: number) => screen.getByRole('button', { name: `Show overlay ${n}` });
+  const selectedOverlays = () => layerRow('Happy').querySelectorAll('[data-editor-row-selected] [aria-label^="Show overlay"]').length;
+
+  it('shows the Idle look with nothing selected, and returns to it when the layer collapses', async () => {
+    mount();
+    expect(preview()).toEqual(idle());
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    expect(preview()).toEqual(happy);
+    await userEvent.click(within(layerRow('Happy')).getByRole('button', { name: 'Collapse' }));
+    expect(preview()).toEqual(idle());
+  });
+
+  it('collapses a selected layer on a second click of its row, back to the Idle look', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    expect(preview()).toEqual(idle());
+    expect(screen.queryByRole('textbox', { name: 'Name' })).toBeNull();
+  });
+
+  it('returns to the whole layer when its row is clicked with an overlay selected', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Show Happy overlay 2' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    expect(preview()).toEqual(happy);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Happy');
+  });
+
+  it('shows the base with a clicked overlay alone, and the whole layer again on a second click', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    await userEvent.click(overlayButton(2));
+    expect(preview()).toEqual([mascotAssetUrl('base'), mascotAssetUrl('eyes-closed')]);
+    expect(selectedOverlays()).toBe(1);
+    await userEvent.click(overlayButton(2));
+    expect(preview()).toEqual(happy);
+  });
+
+  it('selects an overlay from a collapsed row thumbnail, and opens its layer', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Show Happy overlay 1' }));
+    expect(preview()).toEqual([mascotAssetUrl('base'), mascotAssetUrl('mouth-grin')]);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Happy');
+  });
+
+  it('falls back to the whole layer when the selected overlay goes', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    await userEvent.click(overlayButton(1));
+    await userEvent.click(within(layerRow('Happy')).getAllByRole('button', { name: 'Remove overlay' })[0]);
+    expect(layerOf('happy').images).toEqual([{ kind: 'bundled', name: 'eyes-closed' }]);
+    expect(preview()).toEqual([mascotAssetUrl('base'), mascotAssetUrl('eyes-closed')]);
+    expect(selectedOverlays()).toBe(0);
+  });
+
+  it('keeps the same overlay shown after a removal above it', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    await userEvent.click(overlayButton(2));
+    await userEvent.click(within(layerRow('Happy')).getAllByRole('button', { name: 'Remove overlay' })[0]);
+    expect(preview()).toEqual([mascotAssetUrl('base'), mascotAssetUrl('eyes-closed')]);
+    expect(selectedOverlays()).toBe(1);
+  });
+
+  it('keeps the same overlay shown after it moves', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const row = this.closest<HTMLElement>('[aria-roledescription="sortable"]')?.parentElement ?? null;
+      if (!row?.parentElement) return DOMRect.fromRect({ x: 0, y: 0, width: 300, height: 10000 });
+      return DOMRect.fromRect({ x: 0, y: [...row.parentElement.children].indexOf(row) * 100, width: 300, height: 90 });
+    });
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    await user.click(overlayButton(2));
+    const grips = within(layerRow('Happy')).getAllByRole('button').filter((el) => el.getAttribute('aria-roledescription') === 'sortable');
+    grips[2].focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowUp]');
+    await user.keyboard('[Space]');
+    expect(layerOf('happy').images[0]).toEqual({ kind: 'bundled', name: 'eyes-closed' });
+    expect(preview()).toEqual([mascotAssetUrl('base'), mascotAssetUrl('eyes-closed')]);
+  });
+
+  it('drops the selection when its layer goes', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    await userEvent.click(within(layerRow('Happy')).getByRole('button', { name: 'Remove layer' }));
+    expect(preview()).toEqual(idle());
+  });
+});
+
+describe('the preview widget', () => {
+  const widget = () => document.querySelector<HTMLElement>('[data-fq-mascot-preview]')!;
+  const controls = () => document.querySelector<HTMLElement>('[data-fq-mascot-controls]')!;
+
+  it('holds the mascot, the head view, the transition mode, its tuning and Play', () => {
+    mount();
+    expect(within(widget()).getAllByRole('radio', { name: 'Jelly' })).toHaveLength(1);
+    expect(within(widget()).getByRole('slider', { name: 'Squash' })).toBeInTheDocument();
+    expect(within(widget()).getByRole('button', { name: 'Play' })).toBeInTheDocument();
+    expect(widget().querySelector('[data-fq-piece="mascot"][data-fq-view="full"]')).not.toBeNull();
+    expect(widget().querySelector('[data-fq-piece="mascot"][data-fq-view="head"]')).not.toBeNull();
+    expect(widget().querySelector('[data-fq-mask-target]')).not.toBeNull();
+    expect(within(controls()).queryByRole('button', { name: 'Play' })).toBeNull();
+  });
+
+  it('keeps the layers, picks and warning in the controls, with the preview first in reading order', async () => {
+    mount();
+    expect(within(controls()).getByRole('combobox', { name: 'Idle Look State' })).toBeInTheDocument();
+    await userEvent.click(within(layerRow('Rest')).getByRole('checkbox', { name: 'Enable Rest' }));
+    expect(controls().querySelector('[data-fq-pick-warning]')).not.toBeNull();
+    // Stacked under the breakpoint, the preview comes first; the pinned columns are proven by the ticket's frames.
+    expect(widget().compareDocumentPosition(controls()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('names what the preview shows', async () => {
+    mount();
+    expect(within(widget()).getByText(MASCOT_COPY.idleShown)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    expect(within(widget()).getByText('Happy')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Show overlay 2' }));
+    expect(within(widget()).getByText('Happy · Overlay 2')).toBeInTheDocument();
+  });
+});
+
 describe('player images', () => {
   it('stores an uploaded overlay, puts its id in the rig, and draws it from an object URL', async () => {
     mount();
@@ -422,21 +550,28 @@ describe('the transition rows', () => {
     });
   });
 
-  it('plays from the Thinking look to the Idle look on the preview', async () => {
+  it('plays to the Thinking look and holds it, then back to the Idle look on the next Play', async () => {
     mount();
     const idle = preview();
     expect(looks()).toEqual([idle]);
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }));
+    expect(looks()).toEqual([idle, thinkingLook()]);
+    await waitFor(() => expect(looks()).toEqual([thinkingLook()]));
+    expect(screen.getByText(MASCOT_COPY.picks.thinking.label, { selector: '[data-fq-mascot-preview] *' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Play' }));
     expect(looks()).toEqual([thinkingLook(), idle]);
     await waitFor(() => expect(looks()).toEqual([idle]));
   });
 
-  it("plays from the Thinking look to an expanded layer's look", async () => {
+  it("plays from an expanded layer's look to the Thinking look, and a new selection drops the Thinking look", async () => {
     mount();
     await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
     const happy = preview();
     await userEvent.click(screen.getByRole('button', { name: 'Play' }));
-    expect(looks()).toEqual([thinkingLook(), happy]);
+    expect(looks()).toEqual([happy, thinkingLook()]);
+    await waitFor(() => expect(looks()).toEqual([thinkingLook()]));
+    await userEvent.click(screen.getByRole('button', { name: 'Show overlay 1' }));
+    expect(preview()).toEqual([mascotAssetUrl('base'), mascotAssetUrl('mouth-grin')]);
   });
 
   it('says the look swaps at once under the reduced-motion preference, and Play swaps at once', async () => {
@@ -448,6 +583,8 @@ describe('the transition rows', () => {
       mount();
       expect(screen.getByText(MASCOT_COPY.transition.reducedMotion)).toBeInTheDocument();
       const idle = preview();
+      await userEvent.click(screen.getByRole('button', { name: 'Play' }));
+      expect(looks()).toEqual([thinkingLook()]);
       await userEvent.click(screen.getByRole('button', { name: 'Play' }));
       expect(looks()).toEqual([idle]);
     } finally {

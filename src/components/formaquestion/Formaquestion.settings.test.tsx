@@ -92,6 +92,17 @@ describe('Formaquestion Settings', () => {
     expect(screen.getByRole('textbox', { name: 'Ask a Question' })).toHaveFocus();
   });
 
+  it('switches tabs from the dropdown that stands in for the tab strip on a narrow screen', async () => {
+    await openAsk();
+    const dialog = await openSettings();
+    const picker = within(dialog).getByRole('combobox', { name: 'Tab' });
+    expect(picker).toHaveTextContent('General');
+    await userEvent.click(picker);
+    await userEvent.click(await screen.findByRole('option', { name: 'Mascot' }));
+    expect(within(dialog).getByRole('tab', { name: 'Mascot' })).toHaveAttribute('data-state', 'active');
+    expect(picker).toHaveTextContent('Mascot');
+  });
+
   it('reports the dialog and its tab to the surface registry', async () => {
     await openAsk();
     const dialog = await openSettings();
@@ -263,7 +274,7 @@ describe('Formaquestion Settings on a mobile-size screen', () => {
     }));
   });
 
-  it('hides the sheet while the settings are open, and the answer that was coming in finishes', async () => {
+  it('keeps the sheet under the settings while they are open, and the answer that was coming in finishes', async () => {
     // The answer starts, and its end waits until the test sends it.
     const encoder = new TextEncoder();
     let finish = () => {};
@@ -283,12 +294,17 @@ describe('Formaquestion Settings on a mobile-size screen', () => {
 
     await openSettings();
     const sheet = document.getElementById('formaquestion-window')!;
-    expect(sheet).toHaveClass('invisible');
+    const layer = sheet.closest<HTMLElement>('[data-shielded-layer]')!;
+    // The settings slide over the sheet, which stays drawn under them, inert.
+    expect(sheet).not.toHaveClass('invisible');
+    expect(Number(layer.style.zIndex)).toBeLessThan(50);
+    expect((layer.firstElementChild as HTMLElement).inert).toBe(true);
     act(() => finish());
 
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());
-    expect(sheet).not.toHaveClass('invisible');
+    expect(Number(layer.style.zIndex)).toBeGreaterThan(50);
+    expect((layer.firstElementChild as HTMLElement).inert).toBe(false);
     expect(document.getElementById('formaquestion-window')).toBe(sheet);
     await waitFor(() => expect(conversation()).toHaveTextContent('Open the Traits tab. Select Add Trait.'));
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
