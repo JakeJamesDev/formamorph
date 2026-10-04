@@ -1,6 +1,7 @@
 # Spec: Help Take Me There
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-04. Tickets 01–08 done; last landing ac9cba55. Closed without gates.
 Spec session: help-take-me-there — spec
 
 ## Problem Statement
