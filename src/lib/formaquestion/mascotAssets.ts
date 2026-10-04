@@ -17,7 +17,7 @@ export function mascotAssetUrl(name: MascotAssetName): string {
   return url;
 }
 
-/** The URL of one rig image, or null for a stored image, which no store serves. */
+/** The URL of one rig image, or null for a stored image, which has no URL until its blob is read. */
 export function mascotImageUrl(ref: MascotImageRef): string | null {
   return ref.kind === 'bundled' ? mascotAssetUrl(ref.name) : null;
 }

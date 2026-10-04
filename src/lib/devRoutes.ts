@@ -216,7 +216,7 @@ export const DEV_MODAL_TABS = {
   // section id and opens it in the reader. `mode=wide` or `mode=narrow` picks the layout.
   formaquestion: ['ask', 'search', 'guide'],
   // Formaquestion Settings (`#dev?modal=formaquestionSettings&tab=general`).
-  formaquestionSettings: ['general', 'endpoint', 'prompts', 'tools'],
+  formaquestionSettings: ['general', 'endpoint', 'prompts', 'tools', 'mascot'],
 } as const;
 
 // Admin Panel → Policies uses the `subtab=…` slot, and its two are fixed, so they are guarded above.

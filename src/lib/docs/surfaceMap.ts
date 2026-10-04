@@ -206,6 +206,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'formaquestionSettings.endpoint': { page: 'Formaquestion', anchor: 'endpoint' },
   'formaquestionSettings.prompts': { page: 'Formaquestion', anchor: 'prompts' },
   'formaquestionSettings.tools': { page: 'Formaquestion', anchor: 'tools' },
+  'formaquestionSettings.mascot': { page: 'Formaquestion', anchor: 'mascot' },
 
   avatar: { page: 'Avatars', anchor: 'character-customization' },
   modelDetails: { page: 'Avatars', anchor: 'the-avatar-details-dialog' },
