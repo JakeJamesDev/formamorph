@@ -58,6 +58,11 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q16 | Mask handles fade until hover on desktop and stay visible on touch |
 | Q17 | Scale is a percent of the base's pixel size, plus Auto. Set by a slider on the tab |
 | Q21 | Auto fits the masked mascot to the chat's height and follows resizes. Default Auto; 50% is a slider stop |
+| Q25 | Under Full, the mobile sheet draws no mascot (ticket 02) |
+| Q26 | Under Full on desktop, the whole mascot stands beside the frame; the stored head view is ignored and returns under minimal (ticket 02) |
+| Q27 | Chat Style is one row in a new first "Window" section of the General tab, an OptionSwitcher Auto / Minimal / Full. Hint: "Picks the help window's chrome. Auto is Minimal while the **Mascot** switch is on" (ticket 02) |
+| Q28 | The ⋮ menu order in both chromes: Clear Conversation, separator, a "Chat Style" label with three radio items (current checked), separator, AI Context, Settings (ticket 02) |
+| Q29 | Readability (ticket 01, resolves Q8): the treatment is a Scrim, a rounded panel of the app background color at a set opacity behind the whole minimal column, inset 0.75rem beyond it. Setting: opacity 0–100% in steps of 5, default 60%. Bubble shadows and the text halo are rejected. Prototype on branch `prototype/readability` (f9c57ea0), page `/readability.html`, launch entry `proto-readability` on 5247 |
 
 ## User Stories
 
@@ -117,7 +122,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 - The help settings value gains `chatStyle: 'auto' | 'minimal' | 'full'`, default `auto`. The chrome rule is one pure function of the style and the mascot switch: Auto is minimal while the Mascot is on; Minimal and Full pin. Full with the Mascot on renders the mascot piece beside the full frame (Q9). Minimal with the Mascot off renders the column alone.
 - The Lookup switch defaults to on (Q6). The gate (`settings.lookup && takesFunctions`) is unchanged; the cloud endpoint refuses functions, so its requests are byte-equal to today's.
 - The General tab gains a Chat Style row; the ⋮ menu lists the same three choices with the current one marked (Q10). Both write the one field.
-- The readability treatment, once picked from the prototype, becomes a setting beside Chat Style. The prototype ticket settles its name, range and default.
+- The readability treatment is the Scrim (Q29): a help settings field `scrimOpacity`, 0–100 in steps of 5, default 60, beside Chat Style. The window draws a rounded panel of the app background at that opacity behind the whole minimal column, inset 0.75rem beyond it, whenever the minimal chrome renders. 0 draws nothing.
 
 ### Help presets and the preset file
 
