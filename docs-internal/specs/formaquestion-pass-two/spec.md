@@ -60,9 +60,10 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q21 | Auto fits the masked mascot to the chat's height and follows resizes. Default Auto; 50% is a slider stop |
 | Q25 | Under Full, the mobile sheet draws no mascot (ticket 02) |
 | Q26 | Under Full on desktop, the whole mascot stands beside the frame; the stored head view is ignored and returns under minimal (ticket 02) |
-| Q27 | Chat Style is one row in a new first "Window" section of the General tab, an OptionSwitcher Auto / Minimal / Full. Hint: "Picks the window's chrome. Auto is Minimal while the mascot is on" (row hints are plain text and capped at 12 words) (ticket 02) |
+| Q27 | Chat Style is one row in a new first "Window" section of the General tab, an OptionSwitcher Auto / Minimal / Full. Hint: "Sets how the window looks. Auto is Minimal with the Mascot on" (row hints are plain text and capped at 12 words; no UI jargon) (ticket 02) |
 | Q28 | The ⋮ menu order in both chromes: Clear Conversation, separator, a "Chat Style" label with three radio items (current checked), separator, AI Context, Settings (ticket 02) |
 | Q29 | Readability (ticket 01, resolves Q8): the treatment is a Scrim, a rounded panel of the app background color at a set opacity behind the whole minimal column, inset 0.75rem beyond it. Setting: opacity 0–100% in steps of 5, default 60%. Bubble shadows and the text halo are rejected. Prototype on branch `prototype/readability` (9b2754ea), page `/readability.html`, launch entry `proto-readability` on 5247 |
+| Q30 | The stored window box has never shipped, so no old-shape read (constraint: no compat for an unreleased form). An old or unreadable box reads as nothing and the window opens at the default box (ticket 02) |
 
 ## User Stories
 
@@ -113,7 +114,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 
 - The layout module gains a side: the mascot stands on whichever side of the column has the wider free gap in the viewport, measured from the column's edges to the screen margin. The reader piece takes the other side. Ties keep the current side, so a drag that crosses the middle flips once. The pill's head is drawn at the mascot's end of the pill row.
 - The layout takes a scale value: a percent of the base's pixel size, or Auto. Auto sizes the masked mascot to the column's height (or the full frame's height under Full), as today. A percent sizes it to that share of the base's natural pixel height, at the base's aspect, clamped to the screen. The head view scales with it. The slider runs from 25% to 150% with Auto as its leading stop; the default is Auto (Q21).
-- The stored window box becomes a size per style and one position: `{ x, y, minimal: { w, h }, full: { w, h } }`. The reader opens from the stored box as before. The minimal size keeps today's narrow cap. A stored box of the old shape reads its `w, h` into both styles.
+- The stored window box becomes a size per style and one position: `{ x, y, minimal: { w, h }, full: { w, h } }`. The reader opens from the stored box as before. The minimal size keeps today's narrow cap. The box has never shipped, so an old or unreadable value reads as nothing and the window opens at the default box (Q30).
 - The scroll-arrow rule is a pure function of the viewport's scroll position, height and scroll height: shown when the end is more than half a viewport height away (Q13).
 - Scale and the head toggle are device values beside the window box, outside the help settings value and outside the card (Q3).
 
