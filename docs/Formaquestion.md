@@ -543,23 +543,24 @@ A Tool that's on reads the world you have open, so text from that world can go t
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
 ### Mascot
-<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot -->
+<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot, mascot full screen -->
 <!-- route: formaquestionSettings.mascot -->
 
 The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions.
 
-You can keep more than one mascot. The **Preset** list at the top of the tab picks the one Formaquestion shows. **Default** is the mascot that comes with the app. It is read-only, and it updates with each release. To change it, select **Duplicate Mascot** and edit the copy.
+You can keep more than one mascot. The **Preset** list at the top of the tab picks the one Formaquestion shows. **Default** is the mascot that comes with the app. It is read-only, and it updates with each release. To change it, select **Duplicate** and edit the copy.
 
 | Button | What it does |
 |---|---|
-| **Duplicate Mascot** | Copies the mascot you see into one you can edit, and selects it |
-| **Rename Mascot** | Renames this mascot |
-| **Delete Mascot** | Deletes this mascot and the images no other mascot uses. It asks first. |
-| **Reset Mascot** | Puts the Default's rig in place of this mascot's. **Cancel** takes it back. |
-| **Import Mascot** | Adds a mascot from a card file, and selects it. See [The Mascot Card](#the-mascot-card). |
-| **Export Mascot** | Saves this mascot as a card |
+| **Duplicate** | Copies the mascot you see into one you can edit, and selects it |
+| **Rename** | Renames this mascot |
+| **Delete** | Deletes this mascot and the images no other mascot uses. It asks first. |
+| **Reset** | Puts the Default's rig in place of this mascot's. **Cancel** takes it back. |
+| **Import** | Adds a mascot from a card file, and selects it. See [The Mascot Card](#the-mascot-card). |
+| **Export** | Saves this mascot as a card |
+| **View full screen** | Opens the whole tab full screen. **Exit full screen** or Escape returns it. |
 
-Only **Duplicate Mascot** and **Import Mascot** show while **Default** is selected.
+Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Default** is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
 
 Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
 
@@ -614,7 +615,7 @@ The Mask is the box that sets the head view. It has eight handles, one on each c
 - The handles fade while your pointer is away from the box. On a touch screen they stay drawn. With reduced motion, they show and hide with no fade.
 - **Head View** sits in a fixed slot. A wide Mask shows a shorter head, so the slot does not move while you drag.
 
-**Reset Mascot** restores the Default's Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
+**Reset** restores the Default's Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
 
 #### The Transition
 
@@ -626,13 +627,13 @@ The mascot plays its transition each time its look changes: from the Initial Loo
 | **Dissolve** | Fades the new look in over **Duration** |
 | **Jelly** | Squashes the mascot, stretches it past full height as the new look appears, then bounces it back to rest. **Duration**, **Squash**, **Overshoot** and **Settle Count** tune it. |
 
-- **Jelly** is the default. **Reset Mascot** returns the transition to the Default's.
+- **Jelly** is the default. **Reset** returns the transition to the Default's.
 - Your system's reduced-motion setting turns the transition off. The tab says so while it applies.
 - **Play** changes the preview between the look it shows and the Thinking Look. Each press plays the transition one way, and the next press plays it back.
 
 #### The Mascot Card
 
-**Export Mascot** saves the mascot you see as a `.webp` card, with your changes not saved yet. The card shows the Initial Look, and it holds the mascot's name and the whole rig: every layer and image, the three looks, the Mask, the transition and the Voice. Send the file to a friend. **Import Mascot** reads a `.webp` card and adds it as a new mascot. Your other mascots stay as they are. It does not change the **Mascot** switch.
+**Export** saves the mascot you see as a `.webp` card, with your changes not saved yet. The card shows the Initial Look, and it holds the mascot's name and the whole rig: every layer and image, the three looks, the Mask, the transition and the Voice. Send the file to a friend. **Import** reads a `.webp` card and adds it as a new mascot. Your other mascots stay as they are. It does not change the **Mascot** switch.
 
 - The new mascot takes the name in the card. A card with no name takes the file's name. A name already in use gets a number, such as "Captain 2".
 

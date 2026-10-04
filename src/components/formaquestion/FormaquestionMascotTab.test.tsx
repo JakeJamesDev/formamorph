@@ -364,7 +364,7 @@ describe('the controls column', () => {
     expect(sectionOf('Mascot')).toContainElement(screen.getByRole('textbox', { name: 'Voice' }));
     expect(sectionOf('Rig')).toContainElement(screen.getByRole('combobox', { name: 'Idle Look State' }));
     const row = screen.getByTestId('mascot-preset-row');
-    for (const name of ['Reset Mascot', 'Import Mascot', 'Export Mascot']) expect(row).toContainElement(screen.getByRole('button', { name }));
+    for (const name of ['Reset', 'Import', 'Export']) expect(row).toContainElement(screen.getByRole('button', { name }));
   });
 });
 
@@ -522,14 +522,14 @@ describe('player images', () => {
     const id = await addMascotImage(png());
     const mine = { ...DEFAULT_MASCOT_RIG, base: stored(id), layers: DEFAULT_MASCOT_RIG.layers.slice(2) };
     mount(mine);
-    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
     expect(saved()).toEqual(mine);
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(drafted()).toEqual(mine);
     expect(await getMascotImage(id)).not.toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     await save();
     expect(saved()).toEqual(DEFAULT_MASCOT_RIG);
     await waitFor(async () => expect(await getMascotImage(id)).toBeNull());
@@ -729,7 +729,7 @@ describe('the Mask', () => {
 
   it('restores the default Mask on Reset', async () => {
     mount({ ...DEFAULT_MASCOT_RIG, mask: { x: 0, y: 0, width: 300, height: 300 } });
-    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(drafted().mask).toEqual(DEFAULT_MASCOT_RIG.mask);
   });
 });
@@ -984,7 +984,7 @@ describe('the mascot card', () => {
     // The fake store clones a jsdom Blob to an empty object; Node's Blob keeps its bytes, as a browser's store does.
     const id = await addMascotImage(new NodeBlob(['pixels'], { type: 'image/png' }) as unknown as Blob);
     mount({ ...cardRig, base: stored(id), layers: [] });
-    await userEvent.click(screen.getByRole('button', { name: 'Export Mascot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Export' }));
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
     const [blob, name] = vi.mocked(downloadBlob).mock.calls[0];
     expect(name).toBe('mascot.webp');
@@ -997,7 +997,7 @@ describe('the mascot card', () => {
     mount();
     const release = holdImport();
     await upload(cardFile(cardRig));
-    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     release();
     await waitFor(async () => expect(await importedImagesGone()).toEqual([true, true]));
     expect(names()).toEqual(['Mine']);
@@ -1013,6 +1013,80 @@ describe('the mascot card', () => {
   });
 });
 
+describe('full screen', () => {
+  const mascotWindow = () => screen.getByRole('dialog', { name: 'Mascot' });
+  const enter = () => userEvent.click(screen.getByRole('button', { name: 'View full screen' }));
+
+  it('lifts the whole tab into the window: header, switch row, both columns and the footer', async () => {
+    mount();
+    await enter();
+    const box = within(mascotWindow());
+    expect(box.getByTestId('mascot-preset-row')).toBeInTheDocument();
+    expect(box.getByTestId('mascot-switch-row')).toBeInTheDocument();
+    expect(box.getByRole('region', { name: 'Preview' })).toBeInTheDocument();
+    expect(box.getByRole('textbox', { name: 'Voice' })).toBeInTheDocument();
+    expect(box.getByTestId('mascot-footer')).toBeInTheDocument();
+    // Moved, not copied: one header on screen.
+    expect(screen.getAllByTestId('mascot-preset-row')).toHaveLength(1);
+  });
+
+  it('hands the tab back on Exit and returns focus to the toggle', async () => {
+    mount();
+    await enter();
+    await userEvent.click(within(mascotWindow()).getByRole('button', { name: 'Exit full screen' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mascot' })).toBeNull());
+    expect(screen.getByTestId('mascot-footer')).toBeInTheDocument();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'View full screen' })));
+  });
+
+  it('runs from the ⋯ menu below md, and Exit returns focus to the ⋯ button', async () => {
+    // Below md the breakpoint hides the icon row; jsdom applies no CSS, so visibility follows that class.
+    Object.defineProperty(HTMLElement.prototype, 'checkVisibility', {
+      configurable: true,
+      value(this: HTMLElement) { return !this.classList.contains('md:inline-flex'); },
+    });
+    try {
+      mount();
+      const fromMenu = async (item: string) => {
+        fireEvent.click(screen.getByRole('button', { name: 'Preset Actions' }));
+        fireEvent.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: item }));
+      };
+      await fromMenu('View full screen');
+      await screen.findByRole('dialog', { name: 'Mascot' });
+      await fromMenu('Exit full screen');
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mascot' })).toBeNull());
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Preset Actions' })));
+    } finally {
+      delete (HTMLElement.prototype as { checkVisibility?: unknown }).checkVisibility;
+    }
+  });
+
+  it('saves from inside the window, and keeps the draft across the trip', async () => {
+    mount();
+    await enter();
+    await userEvent.click(within(mascotWindow()).getByRole('checkbox', { name: 'Enable Sad' }));
+    await userEvent.click(within(mascotWindow()).getByRole('button', { name: 'Exit full screen' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mascot' })).toBeNull());
+    expect(control.dirty).toBe(true);
+    await enter();
+    const edited = drafted();
+    await userEvent.click(within(mascotWindow()).getByRole('button', { name: 'Save' }));
+    expect(saved()).toEqual(edited);
+    expect(saved()).not.toEqual(DEFAULT_MASCOT_RIG);
+    expect(control.dirty).toBe(false);
+  });
+
+  it('undoes with Ctrl+Z from a control inside the window', async () => {
+    mount();
+    await enter();
+    const box = within(mascotWindow());
+    await userEvent.click(within(box.getByRole('button', { name: 'Expand Sad' }).closest<HTMLElement>('[data-mascot-layer]')!).getByRole('button', { name: 'Remove layer' }));
+    expect(drafted().layers.map((layer) => layer.id)).not.toContain('sad');
+    fireEvent.keyDown(box.getByRole('textbox', { name: 'Voice' }), { key: 'z', ctrlKey: true });
+    expect(drafted().layers.map((layer) => layer.id)).toContain('sad');
+  });
+});
+
 describe('the preset row', () => {
   const row = () => screen.getByTestId('mascot-preset-row');
   const actions = () => within(row()).getAllByRole('button').map((button) => button.getAttribute('aria-label'));
@@ -1023,12 +1097,30 @@ describe('the preset row', () => {
     await user.click(await screen.findByRole('option', { name }));
   }
 
-  it('offers Duplicate and Import on the Default, and every action on a custom mascot', () => {
+  it('offers Duplicate, Import, Export and full screen on the Default, and every action on a custom mascot', () => {
     mountDefault();
-    expect(actions()).toEqual(['Duplicate Mascot', 'Import Mascot']);
+    expect(actions()).toEqual(['Duplicate', 'Import', 'Export', 'View full screen', 'Preset Actions']);
     cleanup();
     mount();
-    expect(actions()).toEqual(['Delete Mascot', 'Duplicate Mascot', 'Rename Mascot', 'Reset Mascot', 'Import Mascot', 'Export Mascot']);
+    expect(actions()).toEqual(['Delete', 'Reset', 'Duplicate', 'Rename', 'Import', 'Export', 'View full screen', 'Preset Actions']);
+  });
+
+  it('lists the same actions in the ⋯ menu, destructive last', async () => {
+    mount();
+    fireEvent.click(within(row()).getByRole('button', { name: 'Preset Actions' }));
+    const items = within(await screen.findByRole('menu')).getAllByRole('menuitem').map((item) => item.textContent);
+    expect(items).toEqual(['Duplicate', 'Rename', 'Import', 'Export', 'View full screen', 'Reset', 'Delete']);
+  });
+
+  it('exports the Default as a card under its name', async () => {
+    // jsdom serves no bundled asset; the browser fetches each one from the build.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(webp(), { headers: { 'Content-Type': 'image/webp' } }));
+    mountDefault();
+    await userEvent.click(within(row()).getByRole('button', { name: 'Export' }));
+    await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
+    const [blob, fileName] = vi.mocked(downloadBlob).mock.calls[0];
+    expect(fileName).toBe('mascot.webp');
+    expect((await readMascotCard(blob)).name).toBe('Default');
   });
 
   it('shows the Default read-only: no editor control takes input, and the preview still follows a selected layer', async () => {
@@ -1062,7 +1154,7 @@ describe('the preset row', () => {
   it('duplicates a custom mascot sharing its image ids', async () => {
     const id = await addMascotImage(png());
     mount({ ...DEFAULT_MASCOT_RIG, base: stored(id) });
-    await userEvent.click(within(row()).getByRole('button', { name: 'Duplicate Mascot' }));
+    await userEvent.click(within(row()).getByRole('button', { name: 'Duplicate' }));
     const [mine, copy] = current.mascotPresets.mascots;
     expect(copy.name).toBe('Mine (copy)');
     expect(copy.rig.base).toEqual(stored(id));
@@ -1071,7 +1163,7 @@ describe('the preset row', () => {
 
   it('renames a custom mascot at once, outside the draft', async () => {
     mount();
-    await userEvent.click(within(row()).getByRole('button', { name: 'Rename Mascot' }));
+    await userEvent.click(within(row()).getByRole('button', { name: 'Rename' }));
     const name = await screen.findByPlaceholderText('Preset name');
     await userEvent.clear(name);
     await userEvent.type(name, 'Captain{Enter}');
@@ -1092,7 +1184,7 @@ describe('the preset row', () => {
         ],
       },
     }} />);
-    await userEvent.click(within(row()).getByRole('button', { name: 'Delete Mascot' }));
+    await userEvent.click(within(row()).getByRole('button', { name: 'Delete' }));
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
     expect(current.mascotPresets.mascots.map((mascot) => mascot.name)).toEqual(['Twin']);
     expect(presetSelect()).toHaveTextContent('Default');
@@ -1166,7 +1258,7 @@ describe('undo and redo', () => {
     const id = await addMascotImage(png());
     const mine: MascotRig = { ...DEFAULT_MASCOT_RIG, base: stored(id), voice: 'Gruff.', layers: DEFAULT_MASCOT_RIG.layers.slice(2) };
     mount(mine);
-    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
     expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
     await userEvent.click(undoButton());
     expect(drafted()).toEqual(mine);
@@ -1300,7 +1392,7 @@ describe('undo and redo', () => {
   it('clears the history on a switch to another mascot', async () => {
     mount();
     await removeLayer('Sad');
-    await userEvent.click(screen.getByRole('button', { name: 'Duplicate Mascot' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save & Exit' }));
     expect(undoButton()).toBeDisabled();
     expect(redoButton()).toBeDisabled();
@@ -1333,7 +1425,7 @@ describe('undo and redo', () => {
     it('leave a key from a dialog the tab opened alone', async () => {
       mount();
       await removeLayer('Sad');
-      await userEvent.click(screen.getByRole('button', { name: 'Rename Mascot' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Rename' }));
       ctrlZ(await screen.findByPlaceholderText('Preset name'));
       expect(layerIds()).not.toContain('sad');
     });

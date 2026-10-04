@@ -2,11 +2,12 @@ import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode 
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Copy, Info, Move, Pencil, Play, Plus, Redo2, RotateCcw, Trash2, Undo2, X } from 'lucide-react';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Info, Move, Play, Plus, Redo2, Undo2, X } from 'lucide-react';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
+import { PanelShell } from '@/components/PanelShell';
+import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { CheckRow, OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
@@ -18,12 +19,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { ImageUpload } from '@/lib/UtilityComponents';
-import { ActionIcon } from '@/lib/actionIcons';
 import { historyShortcut } from '@/lib/canvasHistory';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
+import { presetHeaderActions, type PresetHeaderAction } from '@/lib/presetHeaderActions';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { randomUUID } from '@/lib/uuid';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
@@ -461,7 +463,7 @@ function TransitionControls({ transition, readOnly, onTransition, onPlay }: {
   );
 }
 
-/** One icon-only action of the preset row or the footer. */
+/** One icon-only action of the footer. */
 function RowAction({ copy, onClick, disabled, children }: {
   copy: { label: string; tip: string };
   onClick: () => void;
@@ -477,11 +479,10 @@ function RowAction({ copy, onClick, disabled, children }: {
   );
 }
 
-type Pending = 'rename' | 'delete' | null;
-
 /**
- * The Mascot tab of Formaquestion Settings: the preset row, the switch, and the editor of the selected
+ * The Mascot tab of Formaquestion Settings: the preset header, the switch, and the editor of the selected
  * mascot's draft. Player images go to the mascot image store; the draft drops them at Save or Cancel.
+ * Full screen lifts the whole tab, footer included.
  */
 export function MascotTab({ settings, onChange, control }: {
   settings: HelpSettings;
@@ -505,8 +506,10 @@ export function MascotTab({ settings, onChange, control }: {
   const [draftMask, setDraftMask] = useState<MascotMask | null>(null);
   const [maskDragging, setMaskDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<Pending>(null);
+  const [renaming, setRenaming] = useState(false);
   const cardInput = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const morph = useMorphFullscreen(panelRef);
   /** The last Play: its run, whether it went to the Thinking look, and the selection it played over. */
   const [play, setPlay] = useState<Omit<MascotReplay, 'transition'> & { thinking: boolean; over: MascotSelection | null } | null>(null);
   const refs = mascotImageRefs(rig);
@@ -629,6 +632,16 @@ export function MascotTab({ settings, onChange, control }: {
   };
 
   const copy = MASCOT_COPY.preset;
+  const tips: Partial<Record<PresetHeaderAction['key'], string>> = copy.tips;
+  const presetActions = presetHeaderActions(readOnly, {
+    duplicate: control.duplicate,
+    rename: () => setRenaming(true),
+    import: () => cardInput.current?.click(),
+    export: () => void exportCard(),
+    fullscreen: { active: morph.contentInOverlay, toggle: morph.toggle },
+    reset: () => { setSelection(null); control.reset(); },
+    delete: { run: control.remove, title: copy.deleteTitle, description: copy.deleteBody(selected.name) },
+  }).map((action) => ({ ...action, tip: tips[action.key] }));
   const previewWidget = (
     <section
       aria-label={MASCOT_COPY.preview.label}
@@ -790,54 +803,36 @@ export function MascotTab({ settings, onChange, control }: {
   );
 
   return (
-    // Focus leaving a control closes the step a typed run or key nudge opened.
-    <div className="flex min-h-0 flex-1 flex-col" onKeyDown={shortcut} onBlur={control.closeStep}>
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 pt-4" data-testid="mascot-preset-row">
-        <span className="text-helper text-muted-foreground">{copy.label}</span>
-        {!readOnly && (
-          <RowAction copy={copy.delete} onClick={() => setPending('delete')}>
-            <Trash2 className="h-4 w-4" aria-hidden />
-          </RowAction>
+    // The morph source: the window grows out of the whole tab, and its contents move into the window.
+    <div ref={panelRef} className="flex min-h-0 flex-1 flex-col pt-4">
+      <PanelShell morph={morph} sourceRef={panelRef} title={MASCOT_COPY.mascot.label}>
+      {/* Moves with the contents, so the shortcut's own-element check holds inside the window too.
+          Focus leaving a control closes the step a typed run or key nudge opened. */}
+      <div className="flex min-h-0 flex-1 flex-col" onKeyDown={shortcut} onBlur={control.closeStep}>
+      <PresetHeader
+        label={copy.label}
+        actions={presetActions}
+        testId="mascot-preset-row"
+        select={(
+          <Select value={selected.id} onValueChange={control.select}>
+            <SelectTrigger aria-label={copy.label} className="min-w-0 flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DEFAULT_MASCOT_ID}>{DEFAULT_MASCOT_NAME}</SelectItem>
+              {control.store.mascots.map((mascot) => <SelectItem key={mascot.id} value={mascot.id}>{mascot.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         )}
-        <Select value={selected.id} onValueChange={control.select}>
-          <SelectTrigger aria-label={copy.label} className="min-w-40 flex-1">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={DEFAULT_MASCOT_ID}>{DEFAULT_MASCOT_NAME}</SelectItem>
-            {control.store.mascots.map((mascot) => <SelectItem key={mascot.id} value={mascot.id}>{mascot.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <RowAction copy={copy.duplicate} onClick={control.duplicate}>
-          <Copy className="h-4 w-4" aria-hidden />
-        </RowAction>
-        {!readOnly && (
-          <>
-            <RowAction copy={copy.rename} onClick={() => setPending('rename')}>
-              <Pencil className="h-4 w-4" aria-hidden />
-            </RowAction>
-            <RowAction copy={copy.reset} onClick={() => { setSelection(null); control.reset(); }}>
-              <RotateCcw className="h-4 w-4" aria-hidden />
-            </RowAction>
-          </>
-        )}
-        <RowAction copy={copy.import} onClick={() => cardInput.current?.click()}>
-          <ActionIcon.import className="h-4 w-4" aria-hidden />
-        </RowAction>
-        {!readOnly && (
-          <RowAction copy={copy.export} onClick={() => void exportCard()}>
-            <ActionIcon.export className="h-4 w-4" aria-hidden />
-          </RowAction>
-        )}
-        <input
-          ref={cardInput}
-          type="file"
-          accept=".webp,image/webp"
-          className="hidden"
-          data-testid="mascot-card-input"
-          onChange={pickCard}
-        />
-      </div>
+      />
+      <input
+        ref={cardInput}
+        type="file"
+        accept=".webp,image/webp"
+        className="hidden"
+        data-testid="mascot-card-input"
+        onChange={pickCard}
+      />
       <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{copy.hint}</p>
       <div className="flex-shrink-0 pt-4" data-testid="mascot-switch-row">
         <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
@@ -871,19 +866,14 @@ export function MascotTab({ settings, onChange, control }: {
         <Button disabled={!control.dirty} onClick={control.save}>{MASCOT_COPY.footer.save}</Button>
       </div>
       <PresetNameDialog
-        open={pending === 'rename'}
+        open={renaming}
         mode="rename"
         initialName={selected.name}
-        onOpenChange={(open) => { if (!open) setPending(null); }}
+        onOpenChange={setRenaming}
         onSubmit={control.rename}
       />
-      <ConfirmDialog
-        open={pending === 'delete'}
-        onOpenChange={(open) => { if (!open) setPending(null); }}
-        title={copy.deleteTitle}
-        description={copy.deleteBody(selected.name)}
-        onConfirm={control.remove}
-      />
+      </div>
+      </PanelShell>
     </div>
   );
 }

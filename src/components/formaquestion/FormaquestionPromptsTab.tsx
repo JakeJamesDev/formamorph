@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'react-toastify';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
-import { PromptsShell } from '@/components/PromptsShell';
+import { PanelShell } from '@/components/PanelShell';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import PromptField from '@/components/prompt/PromptField';
 import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
@@ -115,7 +115,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
 
   return (
     <div ref={panelRef} className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
-      <PromptsShell morph={morph} sourceRef={panelRef} title="Prompts">
+      <PanelShell morph={morph} sourceRef={panelRef} title="Prompts">
       <PresetHeader
         label={PROMPTS_COPY.preset.label}
         actions={presetActions}
@@ -219,7 +219,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         onOpenChange={(open) => { if (!open) setPending(null); }}
         onSubmit={(name) => (pending?.kind === 'rename' ? setStore(renameHelpPreset(store, active.id, name)) : duplicate(name))}
       />
-      </PromptsShell>
+      </PanelShell>
     </div>
   );
 }

@@ -955,6 +955,27 @@ describe('the mascot draft', () => {
     expect(drawn()).toEqual(IDLE);
   });
 
+  it('leaves full screen on Escape with the dialog and the draft kept, then still asks before a close drops the draft', async () => {
+    await openAnswered();
+    const dialog = await openMascotTab();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'View full screen' }));
+    const box = screen.getByRole('dialog', { name: 'Mascot' });
+    await userEvent.click(within(box).getByRole('checkbox', { name: 'Enable Rest' }));
+
+    // The window covers the dialog's own close, so Escape is the one close path: it leaves full screen first.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mascot' })).toBeNull());
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(within(settingsDialog()).getByTestId('mascot-footer')).toBeInTheDocument();
+    expect(preview()).toEqual(RESTLESS);
+
+    await userEvent.keyboard('{Escape}');
+    const prompt = await screen.findByRole('alertdialog');
+    await userEvent.click(within(prompt).getByRole('button', { name: 'Exit Without Saving' }));
+    expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull();
+    expect(drawn()).toEqual(IDLE);
+  });
+
   it('draws the active mascot in the window after a switch', async () => {
     await openAnswered();
     const dialog = await openMascotTab();

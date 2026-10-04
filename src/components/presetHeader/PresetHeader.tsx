@@ -31,8 +31,8 @@ export function PresetHeader({ actions, testId, layout = 'auto', ...lead }: {
   const showIcons = layout !== 'narrow';
   const showMenu = layout !== 'wide';
   const iconButton = (action: PresetHeaderAction) => (
-    <Tip key={action.key} tip={action.label}>
-      <Button variant="ghost" size="icon" className={cn('h-9 w-9 shrink-0', auto && 'hidden md:inline-flex')} onClick={action.run}>
+    <Tip key={action.key} tip={action.tip ?? action.label}>
+      <Button variant="ghost" size="icon" aria-label={action.label} className={cn('h-9 w-9 shrink-0', auto && 'hidden md:inline-flex')} onClick={action.run}>
         <action.icon className="h-4 w-4" aria-hidden />
       </Button>
     </Tip>
