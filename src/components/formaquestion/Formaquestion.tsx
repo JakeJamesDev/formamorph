@@ -14,8 +14,8 @@ import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
-  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, resizeBox, swapWidth, viewportOf, writeStoredBox,
-  NARROW_WIDTH, WIDE_WIDTH, type Viewport, type WindowBox,
+  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, readStoredHeadView, resizeBox, swapWidth, viewportOf,
+  writeStoredBox, writeStoredHeadView, HEAD_HEIGHT, NARROW_WIDTH, SHEET_HEAD_HEIGHT, WIDE_WIDTH, type Viewport, type WindowBox,
 } from '@/lib/formaquestion/windowBox';
 import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/useIsMobile';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -27,6 +27,7 @@ import { FormaquestionSettings } from './FormaquestionSettings';
 import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
+import { cropFrame, fitMask, headSize, type MascotSize } from '@/lib/formaquestion/mascotMask';
 import { mascotImageRefs } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
@@ -102,8 +103,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const [view, changeView] = useGuideView();
   const [box, setBox] = useState<WindowBox>(() => readStoredBox(viewportOf(window)) ?? defaultBox(viewportOf(window)));
   const [viewport, setViewport] = useState<Viewport>(() => viewportOf(window));
-  /** The Mascot base's width over its height, once its image has loaded. */
-  const [mascotAspect, setMascotAspect] = useState<number | null>(null);
+  /** The Mascot base's natural size, once its image has loaded. */
+  const [mascotBase, setMascotBase] = useState<MascotSize | null>(null);
+  /** The desktop shows the Mascot's head alone. The sheet always does. */
+  const [headView, setHeadView] = useState(readStoredHeadView);
   /** The section the minimal chrome's reader piece shows, or null while it is closed. */
   const [readerId, setReaderId] = useState<string | null>(null);
 
@@ -350,8 +353,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     }
   }, [devRoute, changeView]);
 
-  // In the minimal chrome the stored box places the column.
+  // The stored box places the column; the head sits in the column, so only the whole Mascot widens the box.
   const readerShown = guide !== null && readerId !== null;
+  const showHead = sheet || headView;
+  const mascotAspect = mascotBase && !showHead ? mascotBase.width / mascotBase.height : null;
   const layout = minimal && !sheet ? minimalLayout(box, viewport, mascotAspect, readerShown) : null;
   const movePill = (start: WindowBox, dx: number, dy: number, within: Viewport) => moveColumn(start, dx, dy, within, mascotAspect, readerShown);
   const boxDrag = (step: typeof moveBox, from: WindowBox = box): PointerDrag<BoxPress> => ({
@@ -375,6 +380,23 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setBox(next);
     writeStoredBox(next);
   };
+  const toggleHead = () => {
+    setHeadView(!headView);
+    writeStoredHeadView(!headView);
+  };
+
+  const mascotImages = composeMascot(settings.rig, phase, mascotFace(chat.exchanges.at(-1)));
+  const crop = mascotBase && fitMask(settings.rig.mask, mascotBase);
+  const head = minimal && showHead && (
+    <MascotPiece
+      view="head"
+      images={mascotImages}
+      hold={mascotImageRefs(settings.rig)}
+      size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : HEAD_HEIGHT)}
+      frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
+      onBase={setMascotBase}
+    />
+  );
 
   return createPortal(
     <>
@@ -409,7 +431,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: origin ? `${origin.x - layout.group.x}px ${origin.y - layout.group.y}px` : undefined,
           } : undefined}
         >
-          {layout && <MascotPiece images={composeMascot(settings.rig, phase, mascotFace(chat.exchanges.at(-1)))} hold={mascotImageRefs(settings.rig)} size={layout.mascot} onAspect={setMascotAspect} />}
+          {layout && !showHead && <MascotPiece images={mascotImages} hold={mascotImageRefs(settings.rig)} size={layout.mascot} onBase={setMascotBase} />}
           <MinimalChat
             guide={guide}
             failed={failed}
@@ -422,6 +444,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             onOpen={sheet ? openInWiki : setReaderId}
             move={sheet ? undefined : columnHandlers}
             large={sheet}
+            head={head}
+            headToggle={sheet ? undefined : { showingHead: headView, onToggle: toggleHead }}
             menu={{ onOpenAiContext: () => openDialog('aiContext'), onOpenSettings: () => openDialog('settings'), onClear: chat.exchanges.length > 0 ? chat.clear : undefined, container: layer }}
             onClose={closeWindow}
           />

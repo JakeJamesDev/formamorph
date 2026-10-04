@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openApp } from './app';
+import { gotoDev, openApp } from './app';
 
 /**
  * The Formaquestion Mascot beside the minimal chat column. jsdom has no layout and loads no image, so the
@@ -149,5 +149,88 @@ test.describe('the Mascot on a desktop screen', () => {
     // The zoom's fixed point is the Help tab, at the right edge of the screen.
     const tab = (await page.getByRole('button', { name: 'Help', exact: true }).boundingBox())!;
     for (const frame of frames) expect(frame.origin).toBeCloseTo(tab.x + tab.width / 2, 0);
+  });
+});
+
+const pieceBox = async (page: Page, selector: string) => (await page.locator(selector).boundingBox())!;
+
+/** Waits until every image under the selector has loaded and the piece has a size. */
+async function loaded(page: Page, selector: string): Promise<void> {
+  await expect.poll(() => page.locator(selector).evaluate((el) => [...el.querySelectorAll('img')].every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
+  await expect.poll(async () => (await page.locator(selector).boundingBox())?.width ?? 0).toBeGreaterThan(0);
+}
+
+test.describe('the Mask', () => {
+  // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'The drag and the head toggle are the desktop form');
+  });
+
+  test('takes the box a drag draws on the preview, the head preview follows, and the window head draws it', async ({ page }) => {
+    await openApp(page);
+    await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+    const target = '[data-fq-mask-target]';
+    const headPreview = '[role="dialog"] [data-fq-piece="mascot"][data-fq-view="head"]';
+    await loaded(page, target);
+    await loaded(page, headPreview);
+    const preview = await pieceBox(page, target);
+
+    // A quarter in from each side of the base: a 444 by 592 box, the base's own aspect.
+    const from = { x: preview.x + preview.width / 4, y: preview.y + preview.height / 4 };
+    const to = { x: preview.x + (preview.width * 3) / 4, y: preview.y + (preview.height * 3) / 4 };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 6 });
+    // While the drag runs, the head preview already takes the new box.
+    await expect.poll(async () => (await pieceBox(page, headPreview)).width).toBeCloseTo(96 * BASE_ASPECT, 0);
+    await page.mouse.up();
+
+    const box = await pieceBox(page, '[data-fq-mask-box]');
+    expect(box.x).toBeCloseTo(from.x, 0);
+    expect(box.y).toBeCloseTo(from.y, 0);
+    expect(box.width).toBeCloseTo(to.x - from.x, 0);
+    expect(box.height).toBeCloseTo(to.y - from.y, 0);
+
+    // The stored Mask reaches the window's head view after a reload.
+    await page.reload();
+    await page.waitForFunction(() => '__fmDev' in window);
+    await openHelp(page);
+    await helpWindow(page).getByRole('button', { name: 'Show Head Only' }).click();
+    const head = '#formaquestion-window [data-fq-piece="mascot"][data-fq-view="head"]';
+    await loaded(page, head);
+    const drawn = await pieceBox(page, head);
+    expect(drawn.height).toBeCloseTo(96, 0);
+    expect(drawn.width).toBeCloseTo(96 * BASE_ASPECT, 0);
+    // The Mask is half the base each way, so the whole base draws at twice the head's size.
+    const frame = (await page.locator(`${head} > div`).boundingBox())!;
+    expect(frame.width).toBeCloseTo(drawn.width * 2, 0);
+    expect(frame.x).toBeCloseTo(drawn.x - drawn.width / 2, 0);
+  });
+});
+
+test.describe('the Mascot on a mobile-size screen', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+  // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'The sheet is the mobile form');
+  });
+
+  test('shows the masked head left of the pill row, with no full view and no toggle', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Help', exact: true }).click();
+    const head = '#formaquestion-window [data-fq-piece="mascot"]';
+    await loaded(page, head);
+    await expect(page.locator(head)).toHaveCount(1);
+    await expect(page.locator(head)).toHaveAttribute('data-fq-view', 'head');
+    await expect(helpWindow(page).getByRole('button', { name: /^Show / })).toHaveCount(0);
+
+    // The default Mask is 768 by 680.
+    const drawn = await pieceBox(page, head);
+    const pill = (await helpWindow(page).locator('[data-fq-drag]').boundingBox())!;
+    expect(drawn.height).toBeCloseTo(64, 0);
+    expect(drawn.width).toBeCloseTo((64 * 768) / 680, 0);
+    expect(drawn.x + drawn.width).toBeLessThanOrEqual(pill.x);
+    expect(drawn.y + drawn.height).toBeCloseTo(pill.y + pill.height, 0);
+    expect(drawn.x).toBeGreaterThanOrEqual(0);
   });
 });

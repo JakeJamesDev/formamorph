@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, resizeBox, swapWidth, writeStoredBox,
+  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, readStoredHeadView, resizeBox, swapWidth, writeStoredBox,
+  writeStoredHeadView,
   MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH,
 } from './windowBox';
 
@@ -117,6 +118,24 @@ describe('the stored box', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
     expect(() => writeStoredBox({ x: 0, y: 0, w: 400, h: 400 })).not.toThrow();
     expect(readStoredBox(SCREEN)).toBeNull();
+  });
+});
+
+describe('the stored head view', () => {
+  it('reads full until the head is stored, and comes back as stored', () => {
+    expect(readStoredHeadView()).toBe(false);
+    writeStoredHeadView(true);
+    expect(readStoredHeadView()).toBe(true);
+    writeStoredHeadView(false);
+    expect(readStoredHeadView()).toBe(false);
+  });
+
+  it('reads full and does not throw when storage is blocked', () => {
+    const blocked = () => { throw new DOMException('blocked', 'SecurityError'); };
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+    expect(() => writeStoredHeadView(true)).not.toThrow();
+    expect(readStoredHeadView()).toBe(false);
   });
 });
 

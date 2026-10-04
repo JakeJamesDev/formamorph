@@ -27,7 +27,7 @@ const stored = (id: string): MascotImageRef => ({ kind: 'stored', id });
 const layerNames = () => [...document.querySelectorAll<HTMLElement>('[data-mascot-layer]')]
   .map((row) => within(row).getByRole('button', { name: /^Expand / }).textContent);
 const layerRow = (name: string) => screen.getByRole('button', { name: `Expand ${name}` }).closest<HTMLElement>('[data-mascot-layer]')!;
-const preview = () => [...document.querySelectorAll<HTMLImageElement>('[data-fq-piece="mascot"] img')].map((img) => img.getAttribute('src'));
+const preview = () => [...document.querySelectorAll<HTMLImageElement>('[data-fq-piece="mascot"][data-fq-view="full"] img')].map((img) => img.getAttribute('src'));
 const fileInput = (id: string) => document.getElementById(`image-upload-${id}`) as HTMLInputElement;
 const layerOf = (id: string) => current.rig.layers.find((row) => row.id === id)!;
 
@@ -199,5 +199,72 @@ describe('player images', () => {
     await waitFor(() => expect(created.length).toBeGreaterThanOrEqual(2));
     unmount();
     expect(revoked.sort()).toEqual(created.sort());
+  });
+});
+
+describe('the Mask', () => {
+  /** jsdom loads no image and lays nothing out: the base reports 888 by 1184, drawn at 180 by 240. */
+  function laidOut() {
+    for (const base of document.querySelectorAll<HTMLImageElement>('[data-fq-piece="mascot"] > div > img:first-child')) {
+      Object.defineProperty(base, 'naturalWidth', { configurable: true, value: 888 });
+      Object.defineProperty(base, 'naturalHeight', { configurable: true, value: 1184 });
+      fireEvent.load(base);
+    }
+    const target = document.querySelector<HTMLElement>('[data-fq-mask-target]')!;
+    vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({ x: 10, y: 20, width: 180, height: 240 }));
+    return target;
+  }
+  const head = () => document.querySelector<HTMLElement>('[data-fq-piece="mascot"][data-fq-view="head"]')!;
+  const frame = () => (head().firstElementChild as HTMLElement).style;
+
+  it('draws the head view from the stored Mask', () => {
+    mount();
+    laidOut();
+    // The default Mask is 768 by 680 from (100, 0).
+    expect(head().style.height).toBe('96px');
+    expect(parseFloat(head().style.width)).toBeCloseTo(108.42, 2);
+    expect(parseFloat(frame().left)).toBeCloseTo(-13.02, 2);
+    expect(parseFloat(frame().width)).toBeCloseTo(115.63, 2);
+  });
+
+  it('stores the box a drag draws, in base pixels, and the head preview follows while it runs', () => {
+    mount();
+    const target = laidOut();
+    // Preview pixels (45, 30) to (135, 120) are base pixels (222, 148) to (666, 592).
+    fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 55, clientY: 50 });
+    fireEvent.pointerMove(target, { pointerId: 1, clientX: 145, clientY: 140 });
+    expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
+    expect(head().style.width).toBe('96px');
+    expect(parseFloat(frame().left)).toBeCloseTo(-50, 6);
+    expect(parseFloat(frame().top)).toBeCloseTo(-33.33, 2);
+    fireEvent.pointerUp(target, { pointerId: 1 });
+    expect(current.rig.mask).toEqual({ x: 222, y: 148, width: 444, height: 444 });
+    expect(document.querySelector<HTMLElement>('[data-fq-mask-box]')!.style.left).toBe('25%');
+  });
+
+  it('drops the box when the browser cancels the drag', () => {
+    mount();
+    const target = laidOut();
+    fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 55, clientY: 50 });
+    fireEvent.pointerMove(target, { pointerId: 1, clientX: 145, clientY: 140 });
+    fireEvent.pointerCancel(target, { pointerId: 1 });
+    expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
+    expect(parseFloat(head().style.width)).toBeCloseTo(108.42, 2);
+  });
+
+  it('keeps the Mask through a press that wobbles a pixel', () => {
+    mount();
+    const target = laidOut();
+    fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 80, clientY: 80 });
+    fireEvent.pointerMove(target, { pointerId: 1, clientX: 81, clientY: 81 });
+    fireEvent.pointerUp(target, { pointerId: 1 });
+    expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
+  });
+
+  it('restores the default Mask on Reset', async () => {
+    mount({ ...DEFAULT_MASCOT_RIG, mask: { x: 0, y: 0, width: 300, height: 300 } });
+    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
+    expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
   });
 });

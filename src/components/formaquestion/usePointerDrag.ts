@@ -6,7 +6,8 @@ export type DragHandlers = Required<Pick<HTMLAttributes<HTMLElement>, 'onPointer
 export interface PointerDrag<Press> {
   start: (event: PointerEvent<HTMLElement>) => Press | null;
   move: (press: Press, event: PointerEvent<HTMLElement>) => void;
-  end: (press: Press) => void;
+  /** `canceled` is true when the browser took the pointer, such as for a scroll, rather than the player letting go. */
+  end: (press: Press, canceled: boolean) => void;
 }
 
 /**
@@ -15,10 +16,10 @@ export interface PointerDrag<Press> {
  */
 export function usePointerDrag<Press>({ start, move, end }: PointerDrag<Press>): DragHandlers {
   const press = useRef<Press | null>(null);
-  const release = () => {
+  const release = (canceled: boolean) => {
     const ended = press.current;
     press.current = null;
-    if (ended !== null) end(ended);
+    if (ended !== null) end(ended, canceled);
   };
   return {
     onPointerDown: (event) => {
@@ -31,7 +32,7 @@ export function usePointerDrag<Press>({ start, move, end }: PointerDrag<Press>):
     onPointerMove: (event) => {
       if (press.current !== null) move(press.current, event);
     },
-    onPointerUp: release,
-    onPointerCancel: release,
+    onPointerUp: () => release(false),
+    onPointerCancel: () => release(true),
   };
 }

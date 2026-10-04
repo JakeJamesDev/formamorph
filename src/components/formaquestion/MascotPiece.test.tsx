@@ -40,7 +40,7 @@ async function storedRig(): Promise<MascotRig> {
 }
 
 const piece = (rig: MascotRig, phase: 'initial' | 'thinking') => (
-  <MascotPiece images={composeMascot(rig, phase, null)} hold={mascotImageRefs(rig)} size={null} onAspect={() => undefined} />
+  <MascotPiece images={composeMascot(rig, phase, null)} hold={mascotImageRefs(rig)} size={null} onBase={() => undefined} />
 );
 
 describe('MascotPiece', () => {

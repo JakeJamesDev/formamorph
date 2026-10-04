@@ -16,18 +16,33 @@ import { randomUUID } from '@/lib/uuid';
 import { useMountedRef } from '@/lib/useMountedRef';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import {
-  DEFAULT_MASCOT_RIG, composeMascot, type MascotImageRef, type MascotLayer, type MascotLayerKind, type MascotRig,
+  DEFAULT_MASCOT_RIG, composeMascot, type MascotImageRef, type MascotLayer, type MascotLayerKind, type MascotMask, type MascotRig,
 } from '@/lib/formaquestion/mascot';
+import { cropFrame, fitMask, headSize, maskFromDrag, type MascotPoint, type MascotSize } from '@/lib/formaquestion/mascotMask';
+import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
 import { addMascotImage, clearMascotImages, deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import {
   addMascotLayer, addMascotOverlays, mascotImageRefs, moveMascotLayer, moveMascotOverlay, orphanedMascotImages, removeMascotBase,
   removeMascotLayer, removeMascotOverlay, setMascotBase, updateMascotLayer, type MascotLayerPatch,
 } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
+import { usePointerDrag } from './usePointerDrag';
 import { useMascotImageUrls } from './useMascotImageUrls';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 
 const PREVIEW_HEIGHT = 240;
+
+/** A Mask drag: where it started in base pixels, the box it gives now, and the preview's box on screen. */
+interface MaskPress {
+  from: MascotPoint;
+  latest: MascotMask | null;
+  rect: DOMRect;
+}
+
+const basePoint = (event: { clientX: number; clientY: number }, rect: DOMRect, base: MascotSize): MascotPoint => ({
+  x: ((event.clientX - rect.left) / rect.width) * base.width,
+  y: ((event.clientY - rect.top) / rect.height) * base.height,
+});
 
 const KIND_OPTIONS: readonly { value: MascotLayerKind; label: string }[] = [
   { value: 'expression', label: MASCOT_COPY.kind.expression },
@@ -167,7 +182,9 @@ export function MascotTab({ settings, onChange }: {
   const latest = useRef(rig);
   latest.current = rig;
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [aspect, setAspect] = useState<number | null>(null);
+  const [base, setBase] = useState<MascotSize | null>(null);
+  /** The box a Mask drag gives while it runs. The rig takes it on release. */
+  const [draftMask, setDraftMask] = useState<MascotMask | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   // Bumped by Reset, so an upload that started before it lands nowhere.
@@ -211,6 +228,25 @@ export function MascotTab({ settings, onChange }: {
   const preview = shownLayer ? [rig.base, ...shownLayer.images] : composeMascot(rig, 'answering', null);
   const patchLayer = (id: string) => (patch: MascotLayerPatch) => edit((current) => updateMascotLayer(current, id, patch));
 
+  const mask = base && fitMask(draftMask ?? rig.mask, base);
+  const maskDrag = usePointerDrag<MaskPress>({
+    start: (event) => {
+      if (event.button !== 0 || !base) return null;
+      const rect = event.currentTarget.getBoundingClientRect();
+      return { from: basePoint(event, rect, base), latest: null, rect };
+    },
+    move: (press, event) => {
+      if (!base) return;
+      press.latest = maskFromDrag(press.from, basePoint(event, press.rect, base), base);
+      setDraftMask(press.latest);
+    },
+    end: (press, canceled) => {
+      setDraftMask(null);
+      const next = press.latest;
+      if (next && !canceled) edit((current) => ({ ...current, mask: next }));
+    },
+  });
+
   const handleLayerDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && active.id !== over.id) edit((current) => moveMascotLayer(current, String(active.id), String(over.id)));
   };
@@ -224,11 +260,38 @@ export function MascotTab({ settings, onChange }: {
         <Section title="Rig">
           <Row {...MASCOT_COPY.preview}>
             <div className="flex justify-center rounded-md border border-border bg-muted/30 p-2" style={{ minHeight: PREVIEW_HEIGHT + 16 }}>
+              <div {...maskDrag} data-fq-mask-target="" className="relative cursor-crosshair touch-none select-none">
+                <MascotPiece
+                  images={preview}
+                  hold={refs}
+                  size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
+                  onBase={setBase}
+                />
+                {base && mask && (
+                  <div
+                    aria-hidden
+                    data-fq-mask-box=""
+                    className="pointer-events-none absolute rounded-sm border-2 border-dashed border-primary"
+                    style={{
+                      left: `${(mask.x / base.width) * 100}%`,
+                      top: `${(mask.y / base.height) * 100}%`,
+                      width: `${(mask.width / base.width) * 100}%`,
+                      height: `${(mask.height / base.height) * 100}%`,
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          </Row>
+          <Row {...MASCOT_COPY.headView}>
+            <div className="flex justify-center rounded-md border border-border bg-muted/30 p-2" style={{ minHeight: HEAD_HEIGHT + 16 }}>
               <MascotPiece
+                view="head"
                 images={preview}
                 hold={refs}
-                size={aspect === null ? null : { w: Math.round(PREVIEW_HEIGHT * aspect), h: PREVIEW_HEIGHT }}
-                onAspect={setAspect}
+                size={mask && headSize(mask, HEAD_HEIGHT)}
+                frame={base && mask ? cropFrame(mask, base) : undefined}
+                onBase={setBase}
               />
             </div>
           </Row>

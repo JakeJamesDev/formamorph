@@ -146,3 +146,25 @@ export function writeStoredBox(box: WindowBox): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(box));
   } catch { /* blocked storage */ }
 }
+
+/** The head view's height left of the pill: on the desktop, and on the mobile sheet. Its width follows the Mask. */
+export const HEAD_HEIGHT = 96;
+export const SHEET_HEAD_HEIGHT = 64;
+
+const HEAD_VIEW_KEY = 'formamorph.formaquestion.mascotView';
+
+/** Whether this device shows the Mascot's head alone on the desktop. False when nothing is stored or storage is blocked. */
+export function readStoredHeadView(): boolean {
+  try {
+    return localStorage.getItem(HEAD_VIEW_KEY) === 'head';
+  } catch {
+    return false;
+  }
+}
+
+/** Stores the desktop Mascot view on this device. With storage blocked, it lasts for this visit only. */
+export function writeStoredHeadView(head: boolean): void {
+  try {
+    localStorage.setItem(HEAD_VIEW_KEY, head ? 'head' : 'full');
+  } catch { /* blocked storage */ }
+}
