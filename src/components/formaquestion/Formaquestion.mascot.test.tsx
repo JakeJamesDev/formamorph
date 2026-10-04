@@ -112,13 +112,13 @@ afterEach(() => {
 });
 
 describe('the minimal chrome', () => {
-  it('shows the column, the pill and the Mascot drawing the Initial look, with no frame, tabs or grip', async () => {
+  it('shows the column, the pill, the corner grip and the Mascot drawing the Initial look, with no frame or tabs', async () => {
     await openWindow();
     expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Formaquestion' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Wide View' })).toBeNull();
-    expect(helpWindow().querySelector('[data-fq-resize]')).toBeNull();
+    expect(column().querySelector('[data-fq-resize]')).not.toBeNull();
     expect(within(pill()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['Show Head Only', 'More Actions', 'Close Formaquestion']);
     expect(drawn()).toEqual(look('initial'));
   });
@@ -153,8 +153,8 @@ describe('the minimal chrome', () => {
     fireEvent.pointerUp(pill(), { pointerId: 1 });
     expect(parseFloat(helpWindow().style.left)).toBe(before - 40);
 
-    const stored = JSON.parse(localStorage.getItem(BOX_KEY)!) as { x: number; w: number };
-    expect(stored.w).toBe(NARROW_WIDTH);
+    const stored = JSON.parse(localStorage.getItem(BOX_KEY)!) as { x: number; minimal: { w: number } };
+    expect(stored.minimal.w).toBe(NARROW_WIDTH);
     expect(stored.x).toBe(before - 40 + parseFloat(mascot()!.style.width));
 
     view.unmount();
@@ -310,6 +310,128 @@ describe('the Mascot switch', () => {
     expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
     expect(conversation()).toHaveTextContent('How do I add a trait?');
     expect(conversation()).toHaveTextContent('Open the Traits tab.');
+  });
+});
+
+describe('the Chat Style', () => {
+  const anyMascot = () => document.querySelector<HTMLElement>('[data-fq-piece="mascot"]');
+  const chromeOf = () => helpWindow().getAttribute('data-fq-chrome') ?? 'full';
+
+  async function pickInMenu(style: string) {
+    await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: style }));
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+  }
+
+  async function checkedInMenu() {
+    await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
+    const checked = (await screen.findAllByRole('menuitemradio')).filter((item) => item.getAttribute('aria-checked') === 'true');
+    await userEvent.keyboard('{Escape}');
+    return checked.map((item) => item.textContent);
+  }
+
+  it.each([
+    { chatStyle: 'auto', mascot: true, chrome: 'minimal', drawsMascot: true },
+    { chatStyle: 'auto', mascot: false, chrome: 'full', drawsMascot: false },
+    { chatStyle: 'minimal', mascot: true, chrome: 'minimal', drawsMascot: true },
+    { chatStyle: 'minimal', mascot: false, chrome: 'minimal', drawsMascot: false },
+    { chatStyle: 'full', mascot: true, chrome: 'full', drawsMascot: true },
+    { chatStyle: 'full', mascot: false, chrome: 'full', drawsMascot: false },
+  ])('draws the $chrome chrome for $chatStyle with the Mascot on: $mascot', async ({ chatStyle, mascot: on, chrome, drawsMascot }) => {
+    storeFramedWindow({ chatStyle, mascot: on });
+    await openWindow();
+    expect(chromeOf()).toBe(chrome);
+    expect(anyMascot() !== null).toBe(drawsMascot);
+    if (chrome === 'minimal') expect(within(pill()).queryByRole('button', { name: /^Show / }) !== null).toBe(drawsMascot);
+  });
+
+  it('stands the whole Mascot left of the full frame at its height, whatever the stored head view', async () => {
+    localStorage.setItem('formamorph.formaquestion.mascotView', 'head');
+    storeFramedWindow({ chatStyle: 'full', mascot: true });
+    await openWindow();
+    expect(screen.getByRole('tablist', { name: 'Formaquestion Parts' })).toBeInTheDocument();
+    expect(anyMascot()).toHaveAttribute('data-fq-view', 'full');
+    const base = anyMascot()!.querySelector('[data-fq-look="new"] img')!;
+    Object.defineProperty(base, 'naturalWidth', { configurable: true, value: 888 });
+    Object.defineProperty(base, 'naturalHeight', { configurable: true, value: 1184 });
+    fireEvent.load(base);
+    const frame = helpWindow().style;
+    const piece = anyMascot()!.parentElement!.style;
+    expect(anyMascot()!.style.height).toBe(frame.height);
+    expect(parseFloat(piece.left) + parseFloat(anyMascot()!.style.width)).toBe(parseFloat(frame.left));
+  });
+
+  it('draws no Mascot beside the full sheet on a mobile-size screen', async () => {
+    vi.stubGlobal('innerWidth', 375);
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('max-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+    storeFramedWindow({ chatStyle: 'full', mascot: true });
+    await openWindow();
+    expect(helpWindow()).toHaveAttribute('data-fq-sheet');
+    expect(anyMascot()).toBeNull();
+  });
+
+  it('swaps the chrome in place from the ⋮ menu, keeps the conversation, and agrees with the General row', async () => {
+    stubHelpStream(sseReply('Open the Traits tab.'));
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('Open the Traits tab.'));
+    expect(await checkedInMenu()).toEqual(['Auto']);
+    expect(helpWindow().className).toContain('zoom-in-75');
+
+    await pickInMenu('Full');
+    expect(chromeOf()).toBe('full');
+    // The new chrome draws in place: it does not zoom out of the Help tab again.
+    expect(helpWindow().className).not.toContain('zoom-in-75');
+    expect(conversation()).toHaveTextContent('Open the Traits tab.');
+    expect(anyMascot()).not.toBeNull();
+    // The swap removed the menu's button, so focus moves into the new chrome.
+    expect(helpWindow()).toContainElement(document.activeElement as HTMLElement);
+    expect(await checkedInMenu()).toEqual(['Full']);
+    // A swap back while still open draws in place too.
+    await pickInMenu('Auto');
+    expect(chromeOf()).toBe('minimal');
+    expect(helpWindow().className).not.toContain('zoom-in-75');
+    await pickInMenu('Full');
+
+    await openHelpSettings();
+    const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
+    expect(within(dialog).getByRole('radio', { name: 'Full' })).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Minimal' }));
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
+    expect(chromeOf()).toBe('minimal');
+    expect(conversation()).toHaveTextContent('Open the Traits tab.');
+    expect(await checkedInMenu()).toEqual(['Minimal']);
+  });
+
+  it('keeps a size per chrome and one place across a remount', async () => {
+    vi.stubGlobal('innerWidth', 1600);
+    vi.stubGlobal('innerHeight', 900);
+    const { view } = await openWindow();
+    loadBase();
+    const grip = column().querySelector<HTMLElement>('[data-fq-resize]')!;
+    const minimalHeight = parseFloat(helpWindow().style.height);
+    fireEvent.pointerDown(grip, { button: 0, pointerId: 1, clientX: 900, clientY: 700 });
+    fireEvent.pointerMove(grip, { pointerId: 1, clientX: 860, clientY: 640 });
+    fireEvent.pointerUp(grip, { pointerId: 1 });
+    expect(parseFloat(helpWindow().style.height)).toBe(minimalHeight - 60);
+    expect(parseFloat(column().parentElement!.style.width) - parseFloat(mascot()!.style.width)).toBe(NARROW_WIDTH - 40);
+    const columnLeft = parseFloat(helpWindow().style.left) + parseFloat(mascot()!.style.width);
+
+    await pickInMenu('Full');
+    // The frame keeps the default size at the column's place.
+    expect(helpWindow().style).toMatchObject({ width: `${NARROW_WIDTH}px`, height: `${minimalHeight}px`, left: `${columnLeft}px` });
+
+    view.unmount();
+    await openWindow();
+    expect(chromeOf()).toBe('full');
+    expect(helpWindow().style.height).toBe(`${minimalHeight}px`);
+    await pickInMenu('Minimal');
+    loadBase();
+    expect(parseFloat(helpWindow().style.height)).toBe(minimalHeight - 60);
+    expect(parseFloat(helpWindow().style.left) + parseFloat(mascot()!.style.width)).toBe(columnLeft);
   });
 });
 

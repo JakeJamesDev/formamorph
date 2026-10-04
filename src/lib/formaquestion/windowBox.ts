@@ -85,8 +85,19 @@ const clamp = (value: number, min: number, max: number): number => Math.min(Math
 export const READER_WIDTH = 360;
 export const READER_GAP = 8;
 
-/** The minimal chrome's pieces: the chat column, the Mascot bottom-aligned at its left, the reader at its right. */
-export interface MinimalLayout {
+/** The window's two chromes: the bare chat column, and the framed window. */
+export type WindowChrome = 'minimal' | 'full';
+
+/** The pieces drawn beside the column or frame. */
+export interface WindowPieces {
+  /** The whole Mascot's aspect, or null while it is not drawn beside the chat. */
+  readonly mascotAspect: number | null;
+  /** The reader piece, which only the minimal chrome draws. */
+  readonly showReader?: boolean;
+}
+
+/** The pieces on the screen: the column or frame, the Mascot bottom-aligned at its left, the reader at its right. */
+export interface WindowLayout {
   /** The stored box's part: it moves, and the device keeps it. */
   readonly column: WindowBox;
   readonly mascot: { readonly w: number; readonly h: number } | null;
@@ -96,15 +107,15 @@ export interface MinimalLayout {
 }
 
 /**
- * The pieces for a stored box. The column takes the box's height and at most the narrow width. The reader
- * takes the room it needs, then the Mascot takes the column's height at its aspect, less when the screen
- * lacks the room. All stay whole on the screen.
+ * The pieces for a stored box. The column takes the box's height, and under the minimal chrome at most the
+ * narrow width. The reader takes the room it needs, then the Mascot takes the column's height at its aspect,
+ * less when the screen lacks the room. All stay whole on the screen.
  */
-export function minimalLayout(box: WindowBox, viewport: Viewport, mascotAspect: number | null, showReader = false): MinimalLayout {
-  const w = clamp(Math.min(box.w, NARROW_WIDTH), MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
+export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Viewport, { mascotAspect, showReader = false }: WindowPieces): WindowLayout {
+  const w = clamp(chrome === 'minimal' ? Math.min(box.w, NARROW_WIDTH) : box.w, MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
   const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
   const room = Math.max(0, viewport.width - SCREEN_MARGIN * 2 - w);
-  const readerSpace = showReader ? Math.min(READER_GAP + READER_WIDTH, room) : 0;
+  const readerSpace = showReader && chrome === 'minimal' ? Math.min(READER_GAP + READER_WIDTH, room) : 0;
   const readerW = Math.max(0, readerSpace - READER_GAP);
   const mascotW = mascotAspect ? Math.min(h * mascotAspect, room - readerSpace) : 0;
   const x = clamp(box.x, mascotW, viewport.width - w - readerSpace);
@@ -117,33 +128,62 @@ export function minimalLayout(box: WindowBox, viewport: Viewport, mascotAspect: 
   };
 }
 
-/**
- * The box a pill drag of (dx, dy) gives, from where the drag started. The column's place moves; the box
- * keeps its own width and height, so the framed window comes back at its size.
- */
-export function moveColumn(start: WindowBox, dx: number, dy: number, viewport: Viewport, mascotAspect: number | null, showReader = false): WindowBox {
-  const { column } = minimalLayout({ ...start, x: start.x + dx, y: start.y + dy }, viewport, mascotAspect, showReader);
-  return { ...start, x: column.x, y: column.y };
+/** The column or frame a pill or title bar drag of (dx, dy) gives, from where the drag started. The pieces stay whole on the screen. */
+export function movePieces(chrome: WindowChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
+  return windowLayout(chrome, moveBox(start, dx, dy, viewport), viewport, pieces).column;
 }
 
-const isBox = (value: unknown): value is WindowBox =>
-  typeof value === 'object' && value !== null
-  && (['x', 'y', 'w', 'h'] as const).every((key) => Number.isFinite((value as Record<string, unknown>)[key]));
+/** The column or frame a corner grip drag of (dx, dy) gives. The top left corner stays put while the pieces have room. */
+export function resizePieces(chrome: WindowChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
+  return windowLayout(chrome, resizeBox(start, dx, dy, viewport), viewport, pieces).column;
+}
 
-/** The box this device stored, fitted to the screen, or null when none is stored or storage is blocked. */
-export function readStoredBox(viewport: Viewport): WindowBox | null {
+export interface WindowSize {
+  readonly w: number;
+  readonly h: number;
+}
+
+/** What the device keeps: one place, and a size for each chrome (Q11). */
+export interface StoredWindow {
+  readonly x: number;
+  readonly y: number;
+  readonly minimal: WindowSize;
+  readonly full: WindowSize;
+}
+
+/** The chrome's box: the shared place at that chrome's size. */
+export const boxOf = (stored: StoredWindow, chrome: WindowChrome): WindowBox => ({ x: stored.x, y: stored.y, ...stored[chrome] });
+
+/** The stored window after the chrome moved or resized to `box`. The other chrome keeps its size. */
+export const withBox = (stored: StoredWindow, chrome: WindowChrome, { x, y, w, h }: WindowBox): StoredWindow => ({ ...stored, x, y, [chrome]: { w, h } });
+
+/** Both chromes at the default box. */
+export function defaultWindow(viewport: Viewport): StoredWindow {
+  const { x, y, w, h } = defaultBox(viewport);
+  return { x, y, minimal: { w, h }, full: { w, h } };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+const hasNumbers = <K extends string>(value: unknown, keys: readonly K[]): value is Record<string, unknown> & Record<K, number> =>
+  isRecord(value) && keys.every((key) => Number.isFinite(value[key]));
+
+/** The window this device stored, or null when none is stored, it is damaged, or storage is blocked. The drawn layout fits it to the screen. */
+export function readStoredWindow(): StoredWindow | null {
   try {
     const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
-    return isBox(stored) ? clampBox({ x: stored.x, y: stored.y, w: stored.w, h: stored.h }, viewport) : null;
+    if (!hasNumbers(stored, ['x', 'y'] as const)) return null;
+    const { x, y, minimal, full } = stored;
+    if (!hasNumbers(minimal, ['w', 'h'] as const) || !hasNumbers(full, ['w', 'h'] as const)) return null;
+    return { x, y, minimal: { w: Math.min(minimal.w, NARROW_WIDTH), h: minimal.h }, full: { w: full.w, h: full.h } };
   } catch {
     return null;
   }
 }
 
-/** Stores the box on this device. With storage blocked, the box lasts for this visit only. */
-export function writeStoredBox(box: WindowBox): void {
+/** Stores the window on this device. With storage blocked, it lasts for this visit only. */
+export function writeStoredWindow(stored: StoredWindow): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(box));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
   } catch { /* blocked storage */ }
 }
 

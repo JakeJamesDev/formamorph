@@ -16,6 +16,15 @@ export function asFormaquestionSettingsTab(value: string | undefined): Formaques
 
 /** The label and the description of each General row. */
 export const GENERAL_COPY = {
+  chatStyle: {
+    label: 'Chat Style',
+    hint: 'Sets how the window looks. Auto is Minimal with the Mascot on.',
+    options: [
+      { value: 'auto', label: 'Auto' },
+      { value: 'minimal', label: 'Minimal' },
+      { value: 'full', label: 'Full' },
+    ],
+  },
   reasoning: {
     label: 'Reasoning',
     hint: 'Lets your AI reason before it answers. Answers take longer.',

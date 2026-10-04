@@ -7,7 +7,7 @@ import { openDocs } from '@/lib/formaquestion/docsOpener';
 
 // The AI settings come from the app's providers. No test here asks a question.
 vi.mock('./useHelpAi', () => import('@/test/idleHelpAi'));
-import { storeFramedWindow } from '@/test/helpFixtures';
+import { storeFramedWindow, storeWindowBox } from '@/test/helpFixtures';
 import { Formaquestion } from './Formaquestion';
 
 const PAGES = {
@@ -367,7 +367,7 @@ describe('the window on the screen', () => {
   const frame = () => helpWindow() as HTMLElement;
 
   it('opens at the place and size this device stored', async () => {
-    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 40, y: 60, w: 420, h: 380 }));
+    storeWindowBox({ x: 40, y: 60, w: 420, h: 380 });
     await openWindow();
     expect(frame().style).toMatchObject({ left: '40px', top: '60px', width: '420px', height: '380px' });
   });
@@ -466,7 +466,7 @@ describe('the window on the screen', () => {
     expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.getByRole('searchbox', { name: 'Search the Guide' })).toHaveValue('panel');
     expect(screen.getByRole('article', { name: '📊 Stats: The Panel' })).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem('formamorph.formaquestion.window')!).w).toBe(WIDE_WIDTH);
+    expect(JSON.parse(localStorage.getItem('formamorph.formaquestion.window')!).full.w).toBe(WIDE_WIDTH);
 
     await userEvent.click(wideView);
     expect(frame().style.width).toBe(`${NARROW_WIDTH}px`);
@@ -476,7 +476,7 @@ describe('the window on the screen', () => {
   it('keeps its place and size across a trip to a mobile-size screen', async () => {
     setScreenWidth(1600);
     vi.stubGlobal('innerHeight', 900);
-    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 800, y: 200, w: 720, h: 560 }));
+    storeWindowBox({ x: 800, y: 200, w: 720, h: 560 });
     await openWindow();
 
     // The browser goes to a mobile width, where the window does not show, and comes back.
@@ -491,7 +491,7 @@ describe('the window on the screen', () => {
   it('comes back inside the screen when the browser window gets smaller', async () => {
     setScreenWidth(1600);
     vi.stubGlobal('innerHeight', 900);
-    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 1150, y: 300, w: 400, h: 560 }));
+    storeWindowBox({ x: 1150, y: 300, w: 400, h: 560 });
     await openWindow();
     expect(frame().style.left).toBe('1150px');
 

@@ -3,7 +3,7 @@ import { CircleHelp, PanelLeft, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { FormaquestionMenu } from './FormaquestionMenu';
+import { FormaquestionMenu, type MenuActions } from './FormaquestionMenu';
 import type { DragHandlers } from './usePointerDrag';
 
 /**
@@ -16,19 +16,16 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
   /** Shows the Wide View control. */
   onSwapWidth?: () => void;
   sheet?: boolean;
-  onOpenAiContext: () => void;
-  /** Turns on Clear Conversation in the menu. */
-  onClear?: () => void;
+  menu: MenuActions;
   /** Where the menu renders: the layer that holds the window. */
   menuContainer?: HTMLElement;
-  onOpenSettings: () => void;
   onClose: () => void;
   /** Pointer handlers for the title bar. */
   move?: DragHandlers;
   /** Pointer handlers for the corner grip. */
   resize?: DragHandlers;
   children: ReactNode;
-}>(({ wide = false, onSwapWidth, sheet = false, onOpenAiContext, onClear, menuContainer, onOpenSettings, onClose, move, resize, className, children, ...props }, ref) => (
+}>(({ wide = false, onSwapWidth, sheet = false, menu, menuContainer, onClose, move, resize, className, children, ...props }, ref) => (
   <section
     ref={ref}
     role="dialog"
@@ -63,7 +60,7 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
             </Button>
           </Tip>
         )}
-        <FormaquestionMenu onOpenAiContext={onOpenAiContext} onOpenSettings={onOpenSettings} onClear={onClear} container={menuContainer} large={sheet} />
+        <FormaquestionMenu {...menu} container={menuContainer} large={sheet} />
         <Tip tip={sheet ? 'Close' : 'Close (F1)'}>
           <button
             type="button"
@@ -80,11 +77,16 @@ export const FormaquestionFrame = forwardRef<HTMLElement, ComponentPropsWithoutR
       </div>
     </header>
     <div className="min-h-0 flex-1">{children}</div>
-    {resize && (
-      <div data-fq-resize="" aria-hidden {...resize} className="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize touch-none">
-        <span className="absolute bottom-1 right-1 h-2 w-2 border-b-2 border-r-2 border-muted-foreground/60" />
-      </div>
-    )}
+    {resize && <ResizeGrip resize={resize} />}
   </section>
 ));
 FormaquestionFrame.displayName = 'FormaquestionFrame';
+
+/** The bottom right corner grip that resizes the framed window or the minimal column. */
+export function ResizeGrip({ resize, className }: { resize: DragHandlers; className?: string }) {
+  return (
+    <div data-fq-resize="" aria-hidden {...resize} className={cn('absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize touch-none', className)}>
+      <span className="absolute bottom-1 right-1 h-2 w-2 border-b-2 border-r-2 border-muted-foreground/60" />
+    </div>
+  );
+}

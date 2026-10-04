@@ -71,6 +71,56 @@ test.describe('the Mascot on a desktop screen', () => {
     expect(reloaded.mascot.x).toBeCloseTo(moved.mascot.x, 0);
   });
 
+  test('resizes the column from its corner grip, and each chat style keeps its own size at one place after a reload', async ({ page }) => {
+    await openApp(page);
+    await openHelp(page);
+    const { column } = await boxes(page);
+
+    const grip = (await piece(page, 'column').locator('[data-fq-resize]').boundingBox())!;
+    expect(grip.x + grip.width).toBeCloseTo(column.x + column.width, 0);
+    expect(grip.y + grip.height).toBeCloseTo(column.y + column.height, 0);
+    // The grip sits under the ask field, so a press on it reaches the grip and not the Send button.
+    const from = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 };
+    expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-fq-resize]') !== null, from)).toBe(true);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x - 40, from.y - 80, { steps: 5 });
+    await page.mouse.up();
+    const resized = (await boxes(page)).column;
+    expect(resized).toMatchObject({ x: column.x, y: column.y, width: column.width - 40 });
+    expect(resized.height).toBeCloseTo(column.height - 80, 0);
+
+    const pickStyle = async (style: string) => {
+      await helpWindow(page).getByRole('button', { name: 'More Actions' }).click();
+      await page.getByRole('menuitemradio', { name: style }).click();
+      await expect(page.getByRole('menu')).toHaveCount(0);
+    };
+    await pickStyle('Full');
+    const frame = (await helpWindow(page).boundingBox())!;
+    expect(frame).toMatchObject({ x: column.x, y: column.y, width: column.width });
+    expect(frame.height).toBeCloseTo(column.height, 0);
+    // The whole Mascot stands left of the frame, at its height.
+    const beside = page.locator('[data-fq-piece="mascot"]');
+    await loaded(page, '[data-fq-piece="mascot"]');
+    const mascot = (await beside.boundingBox())!;
+    expect(mascot.x + mascot.width).toBeCloseTo(frame.x, 0);
+    expect(mascot.height).toBeCloseTo(frame.height, 0);
+
+    await page.reload();
+    await page.waitForFunction(() => '__fmDev' in window);
+    await page.keyboard.press('F1');
+    await expect(helpWindow(page)).not.toHaveAttribute('data-fq-chrome');
+    await helpWindow(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const reloadedFrame = (await helpWindow(page).boundingBox())!;
+    expect(reloadedFrame).toMatchObject({ x: frame.x, y: frame.y, width: frame.width, height: frame.height });
+
+    await pickStyle('Minimal');
+    await expect(helpWindow(page)).toHaveAttribute('data-fq-chrome', 'minimal');
+    const reloadedColumn = (await boxes(page)).column;
+    expect(reloadedColumn).toMatchObject({ x: resized.x, y: resized.y, width: resized.width });
+    expect(reloadedColumn.height).toBeCloseTo(resized.height, 0);
+  });
+
   test('opens the reader beside the column from a source name, whole on the screen, and the pill moves all three', async ({ page }) => {
     await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
     await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));

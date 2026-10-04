@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Tool } from '@/types';
-import { DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
+import { chatChrome, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { DEFAULT_MASCOT_RIG } from './mascot';
@@ -30,6 +30,7 @@ describe('the default help settings', () => {
       toolSwitches: {},
       mascot: true,
       rig: DEFAULT_MASCOT_RIG,
+      chatStyle: 'auto',
     });
   });
 });
@@ -148,5 +149,28 @@ describe('the mascot', () => {
     const rig = stored({ rig: { ...DEFAULT_MASCOT_RIG, layers: [first, { id: 'broken' }, second] } }).rig;
     expect(rig.layers).toEqual([first, second]);
     expect(stored({ rig: 'mine' }).rig).toEqual(DEFAULT_MASCOT_RIG);
+  });
+});
+
+describe('the chat style', () => {
+  const stored = (value: unknown) => helpSettingsCodec.parse(JSON.stringify(value));
+
+  it('reads as Auto when the value has none or a bad one', () => {
+    expect(stored({}).chatStyle).toBe('auto');
+    expect(stored({ chatStyle: 'framed' }).chatStyle).toBe('auto');
+  });
+
+  it('survives the codec', () => {
+    for (const chatStyle of ['minimal', 'full'] as const) {
+      const settings = helpSettingsOf({ chatStyle });
+      expect(helpSettingsCodec.parse(helpSettingsCodec.serialize(settings)).chatStyle).toBe(chatStyle);
+    }
+  });
+
+  it('gives the chrome: Auto follows the Mascot switch, Minimal and Full pin', () => {
+    expect(chatChrome(helpSettingsOf({ chatStyle: 'auto', mascot: true }))).toBe('minimal');
+    expect(chatChrome(helpSettingsOf({ chatStyle: 'auto', mascot: false }))).toBe('full');
+    expect(chatChrome(helpSettingsOf({ chatStyle: 'minimal', mascot: false }))).toBe('minimal');
+    expect(chatChrome(helpSettingsOf({ chatStyle: 'full', mascot: true }))).toBe('full');
   });
 });

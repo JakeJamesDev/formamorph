@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
 import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
+import { writeStoredWindow } from '@/lib/formaquestion/windowBox';
 import type { Tool } from '@/types';
 import { sseReply, sseResponse } from './aiTextFixtures';
 
@@ -12,6 +13,11 @@ export const VOICED_HELP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, 
 
 /** The default lookup prompt as a player who changed nothing sends it. */
 export const VOICED_LOOKUP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.lookup, { voice: DEFAULT_MASCOT_RIG.voice });
+
+/** Stores the window's place, with one size for both chromes. */
+export function storeWindowBox({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
+  writeStoredWindow({ x, y, minimal: { w, h }, full: { w, h } });
+}
 
 /** Stores help settings with the Mascot off, so the window has the framed chrome. Fields pass as given, bad ones included. */
 export function storeFramedWindow(fields: Record<string, unknown> = {}) {

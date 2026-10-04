@@ -5,26 +5,39 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Tip } from '@/components/ui/tooltip';
 import { openBubbleMenu } from '@/lib/bubbleMenuOpen';
+import { isChatStyle, type ChatStyle } from '@/lib/formaquestion/helpSettings';
 import { cn } from '@/lib/utils';
+import { GENERAL_COPY } from './formaquestionSettingsTabs';
 
 /**
- * The title bar's ⋮ menu: Clear Conversation, which is off while the conversation is empty, then AI Context
- * and Settings. It hangs from the corner of the button that has room, so it always comes from the button. The chosen action runs after the menu has closed, so a dialog it opens does not
+ * The ⋮ menu of both chromes: Clear Conversation, which is off while the conversation is empty, the Chat Style
+ * choices, then AI Context and Settings. It hangs from the corner of the button that has room, so it always comes from the button. The chosen action runs after the menu has closed, so a dialog it opens does not
  * fight the menu's focus return. `container` is where the menu renders; the window sits in a layer above the
  * dialogs, so its menu must render in that layer too.
  */
 /** The menu's width, which decides the corner it hangs from. Matches the `w-52` on the content. */
 const MENU_WIDTH = 208;
 
-export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, container, large = false, round = false }: {
+/** What the ⋮ menu does, the same in both chromes. */
+export interface MenuActions {
   onOpenAiContext: () => void;
   onOpenSettings: () => void;
+  /** Turns on Clear Conversation. */
   onClear?: () => void;
+  /** The Chat Style the radio items mark. A pick applies after the menu closes, since it can swap the chrome that holds the menu. */
+  chatStyle: ChatStyle;
+  onChatStyleChange: (chatStyle: ChatStyle) => void;
+}
+
+export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, chatStyle, onChatStyleChange, container, large = false, round = false }: MenuActions & {
   container?: HTMLElement;
   large?: boolean;
   /** A round button with no border, as the other buttons of the minimal chrome's pill. */
@@ -73,6 +86,19 @@ export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, co
           <Eraser className="h-4 w-4 shrink-0" aria-hidden />
           Clear Conversation
         </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuLabel>{GENERAL_COPY.chatStyle.label}</ContextMenuLabel>
+        <ContextMenuRadioGroup
+          value={chatStyle}
+          onValueChange={(value) => {
+            if (isChatStyle(value) && value !== chatStyle) pending.current = () => onChatStyleChange(value);
+          }}
+        >
+          {/* The shared radio item takes its checked state explicitly. */}
+          {GENERAL_COPY.chatStyle.options.map(({ value, label }) => (
+            <ContextMenuRadioItem key={value} value={value} checked={chatStyle === value}>{label}</ContextMenuRadioItem>
+          ))}
+        </ContextMenuRadioGroup>
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => { pending.current = onOpenAiContext; }}>
           <ScrollText className="h-4 w-4 shrink-0" aria-hidden />

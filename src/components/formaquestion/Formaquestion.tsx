@@ -14,10 +14,13 @@ import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
-  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, readStoredHeadView, resizeBox, swapWidth, viewportOf,
-  writeStoredBox, writeStoredHeadView, HEAD_HEIGHT, NARROW_WIDTH, SHEET_HEAD_HEIGHT, WIDE_WIDTH, type Viewport, type WindowBox,
+  boxOf, defaultWindow, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
+  writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
+  type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
 } from '@/lib/formaquestion/windowBox';
-import { MOBILE_BREAKPOINT, useIsMobile } from '@/lib/useIsMobile';
+import { chatChrome } from '@/lib/formaquestion/helpSettings';
+import type { MenuActions } from './FormaquestionMenu';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame } from './FormaquestionFrame';
@@ -64,10 +67,12 @@ const SHEET_MOTION: Record<Edge, string> = {
   bottom: `${MOTION} data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom`,
 };
 
-/** A title bar or corner grip drag: where it started, and the box it gives now. */
+/** A move or corner grip drag: where it started, the chrome and stored window it started on, and the box it gives now. */
 interface BoxPress {
   x: number;
   y: number;
+  chrome: WindowChrome;
+  stored: StoredWindow;
   start: WindowBox;
   latest: WindowBox;
 }
@@ -101,7 +106,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const [open, setOpen] = useState(false);
   const [view, changeView] = useGuideView();
-  const [box, setBox] = useState<WindowBox>(() => readStoredBox(viewportOf(window)) ?? defaultBox(viewportOf(window)));
+  const [stored, setStored] = useState<StoredWindow>(() => readStoredWindow() ?? defaultWindow(viewportOf(window)));
   const [viewport, setViewport] = useState<Viewport>(() => viewportOf(window));
   /** The Mascot base's natural size, once its image has loaded. */
   const [mascotBase, setMascotBase] = useState<MascotSize | null>(null);
@@ -145,8 +150,18 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setBeforeFirstQuestion(false);
   }, [sent]);
   const phase = mascotPhase(chat.exchanges.at(-1), beforeFirstQuestion);
-  // The Mascot implies the minimal chrome (Q5). The switch swaps the chrome in place; the conversation lives above both.
-  const minimal = settings.mascot;
+  // A change of style or of the Mascot switch swaps the chrome in place; the conversation lives above both.
+  const chrome = chatChrome(settings);
+  const minimal = chrome === 'minimal';
+  const box = boxOf(stored, chrome);
+  // A swap while open draws in place, with no open animation, until the window closes.
+  const [lastChrome, setLastChrome] = useState(chrome);
+  const [swapped, setSwapped] = useState(false);
+  if (lastChrome !== chrome) {
+    setLastChrome(chrome);
+    setSwapped(open);
+  }
+  if (!open && swapped) setSwapped(false);
 
   // A dialog opened from the window. On the sheet it fills the screen, so the sheet hides under it and keeps its state.
   // On the desktop the window closes while the dialog is open, and opens again when the dialog closes.
@@ -156,12 +171,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // Set while the window waits behind a dialog, with the element focus goes back to when the window closes.
   const reopen = useRef<{ focus: HTMLElement | null } | null>(null);
 
-  // A resize keeps the window on the screen. At a mobile width the sheet shows and the box waits unchanged.
+  // The layout fits the stored window to the screen as drawn, so a resize leaves the stored window unchanged.
   useEffect(() => {
-    const onResize = () => {
-      setViewport(viewportOf(window));
-      if (window.innerWidth >= MOBILE_BREAKPOINT) setBox((current) => clampBox(current, viewportOf(window)));
-    };
+    const onResize = () => setViewport(viewportOf(window));
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -174,6 +186,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   // The window grows out of the Help tab and shrinks back into it. The sheet slides from the tab's edge.
   const [origin, setOrigin] = useState<{ x: number; y: number; edge: Edge } | null>(null);
+  const still = (motion: string) => (swapped ? 'transition-none' : motion);
+  const windowMotion = still(WINDOW_MOTION);
+  const sheetMotion = still(SHEET_MOTION[origin?.edge ?? 'right']);
+  /** The zoom's fixed point, the Help tab, from a box's top left corner. */
+  const originFrom = (x: number, y: number) => (origin ? `${origin.x - x}px ${origin.y - y}px` : undefined);
   const aimAtTab = useCallback(() => {
     const tab = layer.querySelector<HTMLElement>('[data-fq-launcher]');
     const rect = tab?.getBoundingClientRect();
@@ -254,6 +271,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     }
     wasOpen.current = open;
   }, [open, suspended, focusWindow]);
+
+  // A chrome swap removes the focused ⋮ button, so focus moves into the new chrome.
+  const focusChrome = useRef(chrome);
+  useLayoutEffect(() => {
+    if (focusChrome.current === chrome) return;
+    focusChrome.current = chrome;
+    if (open && !focusedElement()) focusWindow();
+  }, [chrome, open, focusWindow]);
 
   // A press in the window can remove the control it was on: a result row, a contents row, a link.
   // Focus then stays in the window, on its frame, so the next F1 closes it.
@@ -349,36 +374,37 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     else if (tab) changeView({ tab });
     if (devRoute.mode === 'wide' || devRoute.mode === 'narrow') {
       const w = devRoute.mode === 'wide' ? WIDE_WIDTH : NARROW_WIDTH;
-      setBox((current) => (isWide(current) === (devRoute.mode === 'wide') ? current : clampBox({ ...current, w }, viewportOf(window))));
+      setStored((current) => (isWide(boxOf(current, 'full')) === (devRoute.mode === 'wide') ? current : { ...current, full: { ...current.full, w } }));
     }
   }, [devRoute, changeView]);
 
-  // The stored box places the column; the head sits in the column, so only the whole Mascot widens the box.
+  // Only the whole Mascot widens the box; under Full it ignores the head view, and the sheet draws none (Q25, Q26).
   const readerShown = guide !== null && readerId !== null;
   const showHead = sheet || headView;
-  const mascotAspect = mascotBase && !showHead ? mascotBase.width / mascotBase.height : null;
-  const layout = minimal && !sheet ? minimalLayout(box, viewport, mascotAspect, readerShown) : null;
-  const movePill = (start: WindowBox, dx: number, dy: number, within: Viewport) => moveColumn(start, dx, dy, within, mascotAspect, readerShown);
-  const boxDrag = (step: typeof moveBox, from: WindowBox = box): PointerDrag<BoxPress> => ({
+  const mascotAspect = settings.mascot && mascotBase && !(minimal && showHead) ? mascotBase.width / mascotBase.height : null;
+  const pieces = { mascotAspect, showReader: readerShown };
+  const layout = sheet ? null : windowLayout(chrome, box, viewport, pieces);
+  // A drag starts from the box as drawn, which a small screen can shift.
+  const drawn = layout?.column ?? box;
+  const boxDrag = (step: typeof movePieces): PointerDrag<BoxPress> => ({
     start: (event) => (event.button !== 0 || (event.target as HTMLElement).closest('button')
       ? null
-      : { x: event.clientX, y: event.clientY, start: from, latest: from }),
+      : { x: event.clientX, y: event.clientY, chrome, stored, start: drawn, latest: drawn }),
     move: (press, event) => {
-      press.latest = step(press.start, event.clientX - press.x, event.clientY - press.y, viewportOf(window));
-      setBox(press.latest);
+      press.latest = step(press.chrome, press.start, event.clientX - press.x, event.clientY - press.y, viewportOf(window), pieces);
+      setStored(withBox(press.stored, press.chrome, press.latest));
     },
-    // The device keeps the place and size the player left the window at.
-    end: (press) => writeStoredBox(press.latest),
+    // The device keeps the place and the chrome's size the player left the window at.
+    end: (press) => writeStoredWindow(withBox(press.stored, press.chrome, press.latest)),
   });
-  const moveHandlers = usePointerDrag(boxDrag(moveBox));
-  const resizeHandlers = usePointerDrag(boxDrag(resizeBox));
-  // The drag starts from the column's place as drawn, which a small screen can shift.
-  const columnHandlers = usePointerDrag(boxDrag(movePill, layout ? { ...box, x: layout.column.x, y: layout.column.y } : box));
-  const wide = !sheet && isWide(box);
+  const moveHandlers = usePointerDrag(boxDrag(movePieces));
+  const resizeHandlers = usePointerDrag(boxDrag(resizePieces));
+  const wide = !sheet && isWide(drawn);
   const swap = () => {
-    const next = swapWidth(box, viewportOf(window));
-    setBox(next);
-    writeStoredBox(next);
+    const toggled = swapWidth(drawn, viewportOf(window));
+    const next = withBox(stored, chrome, windowLayout(chrome, toggled, viewportOf(window), pieces).column);
+    setStored(next);
+    writeStoredWindow(next);
   };
   const toggleHead = () => {
     setHeadView(!headView);
@@ -387,7 +413,18 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   const mascotImages = composeMascot(settings.rig, phase, mascotFace(chat.exchanges.at(-1)));
   const crop = mascotBase && fitMask(settings.rig.mask, mascotBase);
-  const head = minimal && showHead && (
+  const menuActions: MenuActions = {
+    onOpenAiContext: () => openDialog('aiContext'),
+    onOpenSettings: () => openDialog('settings'),
+    onClear: chat.exchanges.length > 0 ? chat.clear : undefined,
+    chatStyle: settings.chatStyle,
+    onChatStyleChange: (chatStyle) => changeSettings({ chatStyle }),
+  };
+
+  const wholeMascot = layout && settings.mascot && !(minimal && showHead) && (
+    <MascotPiece images={mascotImages} hold={mascotImageRefs(settings.rig)} transition={settings.rig.transition} size={layout.mascot} onBase={setMascotBase} />
+  );
+  const head = minimal && settings.mascot && showHead && (
     <MascotPiece
       view="head"
       images={mascotImages}
@@ -420,19 +457,19 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             'flex text-foreground outline-none',
             sheet
               // On the sheet a dim, blurred backdrop stands in for the frame, because the bubbles fill the screen.
-              ? cn('app-viewport pointer-events-auto bg-background/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm', SHEET_MOTION[origin?.edge ?? 'right'], covered && 'invisible')
+              ? cn('app-viewport pointer-events-auto bg-background/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm', sheetMotion, covered && 'invisible')
               // Only the pieces take presses; the gaps between them belong to the app.
-              : `pointer-events-none fixed items-end ${WINDOW_MOTION}`,
+              : `pointer-events-none fixed items-end ${windowMotion}`,
           )}
           style={layout ? {
             left: layout.group.x,
             top: layout.group.y,
             width: layout.group.w,
             height: layout.group.h,
-            transformOrigin: origin ? `${origin.x - layout.group.x}px ${origin.y - layout.group.y}px` : undefined,
+            transformOrigin: originFrom(layout.group.x, layout.group.y),
           } : undefined}
         >
-          {layout && !showHead && <MascotPiece images={mascotImages} hold={mascotImageRefs(settings.rig)} transition={settings.rig.transition} size={layout.mascot} onBase={setMascotBase} />}
+          {wholeMascot}
           <MinimalChat
             guide={guide}
             failed={failed}
@@ -443,17 +480,33 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             draft={view.draft}
             onDraftChange={(draft) => changeView({ draft })}
             onOpen={sheet ? openInWiki : setReaderId}
-            move={sheet ? undefined : columnHandlers}
+            move={sheet ? undefined : moveHandlers}
+            resize={sheet ? undefined : resizeHandlers}
             large={sheet}
             head={head}
-            headToggle={sheet ? undefined : { showingHead: headView, onToggle: toggleHead }}
-            menu={{ onOpenAiContext: () => openDialog('aiContext'), onOpenSettings: () => openDialog('settings'), onClear: chat.exchanges.length > 0 ? chat.clear : undefined, container: layer }}
+            headToggle={sheet || !settings.mascot ? undefined : { showingHead: headView, onToggle: toggleHead }}
+            menu={{ ...menuActions, container: layer }}
             onClose={closeWindow}
           />
           {layout?.reader && guide && readerId && (
             <ReaderPiece guide={guide} sectionId={readerId} size={layout.reader} onOpen={setReaderId} onClose={() => setReaderId(null)} />
           )}
         </section>
+      )}
+      {shown && !minimal && layout && wholeMascot && (
+        <div
+          data-state={open ? 'open' : 'closed'}
+          className={`pointer-events-none fixed flex items-end ${windowMotion}`}
+          style={{
+            left: layout.group.x,
+            top: layout.group.y,
+            width: layout.column.x - layout.group.x,
+            height: layout.group.h,
+            transformOrigin: originFrom(layout.group.x, layout.group.y),
+          }}
+        >
+          {wholeMascot}
+        </div>
       )}
       {shown && !minimal && (
         <FormaquestionFrame
@@ -463,25 +516,23 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           data-fq-sheet={sheet ? '' : undefined}
           onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
           sheet={sheet}
-          onOpenAiContext={() => openDialog('aiContext')}
-          onClear={chat.exchanges.length > 0 ? chat.clear : undefined}
+          menu={menuActions}
           menuContainer={layer}
-          onOpenSettings={() => openDialog('settings')}
           onClose={closeWindow}
           {...(sheet ? {
-            className: cn('app-viewport pointer-events-auto', SHEET_MOTION[origin?.edge ?? 'right'], covered && 'invisible'),
+            className: cn('app-viewport pointer-events-auto', sheetMotion, covered && 'invisible'),
           } : {
             wide,
             onSwapWidth: swap,
             move: moveHandlers,
             resize: resizeHandlers,
-            className: `pointer-events-auto fixed ${WINDOW_MOTION}`,
+            className: `pointer-events-auto fixed ${windowMotion}`,
             style: {
-              left: box.x,
-              top: box.y,
-              width: box.w,
-              height: box.h,
-              transformOrigin: origin ? `${origin.x - box.x}px ${origin.y - box.y}px` : undefined,
+              left: drawn.x,
+              top: drawn.y,
+              width: drawn.w,
+              height: drawn.h,
+              transformOrigin: originFrom(drawn.x, drawn.y),
             },
           })}
         >

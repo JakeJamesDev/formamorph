@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, readStoredHeadView, resizeBox, swapWidth, writeStoredBox,
-  writeStoredHeadView,
-  MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH,
+  boxOf, clampBox, defaultBox, defaultWindow, isWide, moveBox, movePieces, readStoredHeadView, readStoredWindow, resizeBox,
+  resizePieces, swapWidth, windowLayout, withBox, writeStoredHeadView, writeStoredWindow,
+  MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH, type StoredWindow, type Viewport, type WindowBox,
 } from './windowBox';
+
+const minimalLayout = (box: WindowBox, viewport: Viewport, mascotAspect: number | null, showReader = false) =>
+  windowLayout('minimal', box, viewport, { mascotAspect, showReader });
+const fullLayout = (box: WindowBox, viewport: Viewport, mascotAspect: number | null) => windowLayout('full', box, viewport, { mascotAspect });
 
 const SCREEN = { width: 1600, height: 900 };
 
@@ -90,34 +94,63 @@ describe('moveBox and resizeBox', () => {
   });
 });
 
-describe('the stored box', () => {
+describe('the stored window', () => {
+  const stored: StoredWindow = { x: 320, y: 140, minimal: { w: 360, h: 600 }, full: { w: 720, h: 480 } };
+
   it('comes back as it was stored', () => {
-    const box = { x: 320, y: 140, w: 720, h: 480 };
-    writeStoredBox(box);
-    expect(readStoredBox(SCREEN)).toEqual(box);
+    writeStoredWindow(stored);
+    expect(readStoredWindow()).toEqual(stored);
   });
 
-  it('comes back inside a screen that is now smaller', () => {
-    writeStoredBox({ x: 1100, y: 300, w: 400, h: 500 });
-    const fitted = readStoredBox({ width: 1000, height: 700 })!;
-    expect(fitted.x + fitted.w).toBeLessThanOrEqual(1000);
-    expect(fitted.y + fitted.h).toBeLessThanOrEqual(700);
+  it('starts both chromes at the default box', () => {
+    const box = defaultBox(SCREEN);
+    const fresh = defaultWindow(SCREEN);
+    expect(boxOf(fresh, 'minimal')).toEqual(box);
+    expect(boxOf(fresh, 'full')).toEqual(box);
   });
 
-  it('is null when nothing is stored or the stored value is damaged', () => {
-    expect(readStoredBox(SCREEN)).toBeNull();
+  it('gives each chrome its own size at the one shared place', () => {
+    expect(boxOf(stored, 'minimal')).toEqual({ x: 320, y: 140, w: 360, h: 600 });
+    expect(boxOf(stored, 'full')).toEqual({ x: 320, y: 140, w: 720, h: 480 });
+  });
+
+  it("keeps the other chrome's size when one chrome moves or resizes", () => {
+    const next = withBox(stored, 'minimal', { x: 500, y: 90, w: 380, h: 700 });
+    expect(next).toEqual({ x: 500, y: 90, minimal: { w: 380, h: 700 }, full: { w: 720, h: 480 } });
+    expect(boxOf(next, 'full')).toEqual({ x: 500, y: 90, w: 720, h: 480 });
+  });
+
+  it('reads the minimal width at the narrow cap', () => {
+    writeStoredWindow({ ...stored, minimal: { w: WIDE_WIDTH, h: 520 } });
+    expect(readStoredWindow()!.minimal).toEqual({ w: NARROW_WIDTH, h: 520 });
+  });
+
+  it('draws inside a screen that is now smaller', () => {
+    writeStoredWindow({ x: 1100, y: 300, minimal: { w: 400, h: 500 }, full: { w: 400, h: 500 } });
+    const small = { width: 1000, height: 700 };
+    const drawn = fullLayout(boxOf(readStoredWindow()!, 'full'), small, null).column;
+    expect(drawn.x + drawn.w).toBeLessThanOrEqual(1000);
+    expect(drawn.y + drawn.h).toBeLessThanOrEqual(700);
+  });
+
+  it('is null when nothing is stored or the stored value is damaged or of one size', () => {
+    expect(readStoredWindow()).toBeNull();
+    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 300, y: 100, w: WIDE_WIDTH, h: 520 }));
+    expect(readStoredWindow()).toBeNull();
     localStorage.setItem('formamorph.formaquestion.window', '{"x":1,"y":2,"w":"wide"}');
-    expect(readStoredBox(SCREEN)).toBeNull();
+    expect(readStoredWindow()).toBeNull();
+    localStorage.setItem('formamorph.formaquestion.window', '{"x":1,"y":2,"minimal":{"w":400,"h":500},"full":{"w":400}}');
+    expect(readStoredWindow()).toBeNull();
     localStorage.setItem('formamorph.formaquestion.window', 'not json');
-    expect(readStoredBox(SCREEN)).toBeNull();
+    expect(readStoredWindow()).toBeNull();
   });
 
   it('does not throw when storage is blocked', () => {
     const blocked = () => { throw new DOMException('blocked', 'SecurityError'); };
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
-    expect(() => writeStoredBox({ x: 0, y: 0, w: 400, h: 400 })).not.toThrow();
-    expect(readStoredBox(SCREEN)).toBeNull();
+    expect(() => writeStoredWindow(stored)).not.toThrow();
+    expect(readStoredWindow()).toBeNull();
   });
 });
 
@@ -139,7 +172,7 @@ describe('the stored head view', () => {
   });
 });
 
-describe('minimalLayout', () => {
+describe('the minimal layout', () => {
   const ASPECT = 0.75;
 
   it('puts the Mascot left of the column at the column height, and the shared box spans both', () => {
@@ -213,18 +246,58 @@ describe('minimalLayout', () => {
   });
 });
 
-describe('moveColumn', () => {
+describe('movePieces', () => {
+  const pieces = { mascotAspect: 0.75 };
+
   it('stops where the reader would leave the screen', () => {
     const start = { x: 1000, y: 0, w: NARROW_WIDTH, h: 560 };
-    expect(moveColumn(start, 500, 0, SCREEN, 0.75, true).x).toBe(SCREEN.width - NARROW_WIDTH - READER_GAP - READER_WIDTH);
+    expect(movePieces('minimal', start, 500, 0, SCREEN, { ...pieces, showReader: true }).x).toBe(SCREEN.width - NARROW_WIDTH - READER_GAP - READER_WIDTH);
   });
 
-  it('moves the column and keeps the width and height of the box', () => {
-    const wide = { x: 900, y: 200, w: WIDE_WIDTH, h: 560 };
-    expect(moveColumn(wide, -100, 40, SCREEN, 0.75)).toEqual({ x: 800, y: 240, w: WIDE_WIDTH, h: 560 });
+  it('moves the column by the drag and keeps its size', () => {
+    const start = { x: 900, y: 200, w: NARROW_WIDTH, h: 560 };
+    expect(movePieces('minimal', start, -100, 40, SCREEN, pieces)).toEqual({ x: 800, y: 240, w: NARROW_WIDTH, h: 560 });
   });
 
-  it('stops where the Mascot would leave the screen', () => {
-    expect(moveColumn({ x: 500, y: 0, w: NARROW_WIDTH, h: 560 }, -400, 0, SCREEN, 0.75).x).toBe(420);
+  it('stops where the Mascot would leave the screen, beside the column or the frame', () => {
+    expect(movePieces('minimal', { x: 500, y: 0, w: NARROW_WIDTH, h: 560 }, -400, 0, SCREEN, pieces).x).toBe(420);
+    expect(movePieces('full', { x: 500, y: 0, w: WIDE_WIDTH, h: 560 }, -400, 0, SCREEN, pieces)).toEqual({ x: 420, y: 0, w: WIDE_WIDTH, h: 560 });
+  });
+});
+
+describe('the full layout', () => {
+  const ASPECT = 0.75;
+
+  it('is the clamped frame alone while the Mascot is not drawn', () => {
+    const box = { x: 1500, y: 700, w: 400, h: 400 };
+    const { column, mascot, group } = fullLayout(box, SCREEN, null);
+    expect(column).toEqual(clampBox(box, SCREEN));
+    expect(mascot).toBeNull();
+    expect(group).toEqual(column);
+  });
+
+  it('puts the Mascot left of the frame at the frame height, past the narrow cap', () => {
+    const { column, mascot, group } = fullLayout({ x: 800, y: 100, w: WIDE_WIDTH, h: 600 }, SCREEN, ASPECT);
+    expect(column).toEqual({ x: 800, y: 100, w: WIDE_WIDTH, h: 600 });
+    expect(mascot).toEqual({ w: 450, h: 600 });
+    expect(group).toEqual({ x: 350, y: 100, w: 450 + WIDE_WIDTH, h: 600 });
+  });
+
+  it('moves the frame right until the Mascot is whole on the screen', () => {
+    expect(fullLayout({ x: 100, y: 100, w: WIDE_WIDTH, h: 600 }, SCREEN, ASPECT).column.x).toBe(450);
+  });
+});
+
+describe('resizePieces', () => {
+  const pieces = { mascotAspect: 0.75 };
+
+  it('stops the minimal column at the narrow cap and keeps its top left corner', () => {
+    const start = { x: 800, y: 200, w: MIN_WIDTH, h: 500 };
+    expect(resizePieces('minimal', start, 300, 120, SCREEN, pieces)).toEqual({ x: 800, y: 200, w: NARROW_WIDTH, h: 620 });
+  });
+
+  it('grows the frame past the narrow cap', () => {
+    const start = { x: 800, y: 200, w: NARROW_WIDTH, h: 500 };
+    expect(resizePieces('full', start, 300, 120, SCREEN, pieces)).toEqual({ x: 800, y: 200, w: NARROW_WIDTH + 300, h: 620 });
   });
 });

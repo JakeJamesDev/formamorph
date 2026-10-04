@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Settings } from 'lucide-react';
-import { CheckRow, HintInfo, Row, Section } from '@/components/SettingsRows';
+import { CheckRow, HintInfo, OptionSwitcher, Row, Section } from '@/components/SettingsRows';
 import { PromptReasoningField } from '@/components/modals/PromptOptionFields';
 import { promptReasoningFieldProps, type ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
 import { REASONING_NOTES } from '@/components/modals/settingsCopy';
@@ -92,6 +92,16 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
 }) {
   return (
     <div className="grid gap-6 py-4">
+      <Section title="Window">
+        <Row label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint}>
+          <OptionSwitcher
+            ariaLabel={GENERAL_COPY.chatStyle.label}
+            value={settings.chatStyle}
+            options={GENERAL_COPY.chatStyle.options}
+            onChange={(chatStyle) => onChange({ chatStyle })}
+          />
+        </Row>
+      </Section>
       <Section title="Answer">
         <ReasoningRow settings={settings} onChange={onChange} target={answerTarget} />
         <AnswerRevealRow settings={settings} onChange={onChange} />
