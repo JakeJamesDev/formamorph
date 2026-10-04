@@ -44,7 +44,7 @@ import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { PromptsShell } from "@/components/PromptsShell";
+import { PanelShell } from "@/components/PanelShell";
 import { useMorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
@@ -718,7 +718,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     );
     setJumpField(initialPromptField ?? null);
   }, [initialPromptSurface, initialPromptTab, initialPromptField, requestKey]);
-  // Fullscreen for the whole Prompts panel (rail included), not for one field — see PromptsShell. The
+  // Fullscreen for the whole Prompts panel (rail included), not for one field — see PanelShell. The
   // morph is the single source of truth: fields read `contentInOverlay`, so they return to their docked
   // form the moment the close starts — under the overlay, by then a fading solid panel.
   const promptsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -1390,7 +1390,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
 
           {advanced && (
           <TabsContent ref={promptsPanelRef} value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
-            <PromptsShell morph={promptsMorph} sourceRef={promptsPanelRef} title="Prompts">
+            <PanelShell morph={promptsMorph} sourceRef={promptsPanelRef} title="Prompts">
             {/* Built-in presets are read-only; selecting one switches the whole prompt set. */}
             <PresetHeader
               label="Preset"
@@ -1896,13 +1896,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               existingUserNames={promptPresets}
               onImport={(imported, opts) => { const id = importPreset(imported, opts); selectPreset(id); }}
             />
-            </PromptsShell>
+            </PanelShell>
           </TabsContent>
           )}
 
           {advanced && (
           <TabsContent ref={toolsPanelRef} value="tools" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <PromptsShell morph={toolsMorph} sourceRef={toolsPanelRef} title="Tools">
+            <PanelShell morph={toolsMorph} sourceRef={toolsPanelRef} title="Tools">
             <ToolsTab
               catalogTools={catalogTools}
               userTools={userTools}
@@ -1932,7 +1932,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 </div>
               )}
             />
-            </PromptsShell>
+            </PanelShell>
           </TabsContent>
           )}
 

@@ -83,7 +83,7 @@ describe('the help preset on the device', () => {
     const dialog = screen.getByRole('dialog', { name: 'Formaquestion Settings' });
     await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
     // The Default mascot is read-only; its copy takes the Voice.
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Duplicate Mascot' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Duplicate' }));
     const voice = await within(dialog).findByRole('textbox', { name: 'Voice' });
     await userEvent.clear(voice);
     // One paste, not 26 keystrokes: each keystroke re-renders the whole Mascot tab, and the field's value is what the prompt reads.

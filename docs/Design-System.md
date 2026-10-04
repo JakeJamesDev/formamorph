@@ -1145,9 +1145,9 @@ The badge labels are **Supporter** and **Supporter+**. Copy says Profile Image, 
 ### Composition
 
 - 🏷️ **Label and select.** The label reads **Preset**. The select lists the presets, then a separator, then **Add New Preset…** as its last row. It has no Import row. A surface that picks the preset elsewhere, such as the Formaquestion **Endpoint** tab, shows a heading in place of the label and select.
-- 🔘 **Icons at `md` and up.** Each action is a ghost icon button with a tooltip. Destructive actions sit left of the select, with Delete outermost. File actions sit right of it.
+- 🔘 **Icons at `md` and up.** Each action is a ghost icon button with a tooltip. Destructive actions sit left of the select, with Delete outermost. File actions sit right of it. A panel that opens full screen ends the file actions with **View full screen**, which reads **Exit full screen** while the panel is full screen.
 - ⋯ **One menu below `md`.** A single **Preset Actions** button holds every action. File actions come first, then a separator, then the destructive ones in red.
-- ✋ **Confirm first.** Reset and Delete open a confirm that names the preset. Cancel returns focus to the icon, or to the **Preset Actions** button when the menu opened the confirm.
+- ✋ **Confirm first.** Reset and Delete open a confirm that names the preset. A surface whose Reset Undo or Cancel can revert, such as the Formaquestion **Mascot** tab, resets with no confirm. A surface can title its own confirm. Cancel returns focus to the icon, or to the **Preset Actions** button when the menu opened the confirm.
 - 🟢 **Badge.** An endpoint preset select shows whether its server answers, under the select. The row carries one dot, one line and **Recheck**.
 - ↩️ **Reset and Compare.** The pair sits right-aligned, Reset left of Compare. One prompt on screen puts it in the modal footer. Stacked prompts put a smaller pair at the right of each label row.
 
@@ -1155,10 +1155,11 @@ The badge labels are **Supporter** and **Supporter+**. Copy says Profile Image, 
 | --- | --- |
 | Settings → Prompts | Duplicate, Rename, Import, Export, Publish (when the account can publish), Reset, Delete |
 | Formaquestion → Prompts | Duplicate, Rename, Import, Export, Reset, Delete |
+| Formaquestion → Mascot | Duplicate, Rename, Import, Export, View full screen, Reset (no confirm), Delete |
 | Text endpoint, in both modals | Duplicate, Rename, Reset, Delete |
 | Image endpoint | Duplicate, Rename, Reset, Delete. Delete hides while one preset remains. |
 
-An endpoint preset has no Import or Export, because the file would carry an API token. A built-in preset keeps only Duplicate, Import and Export where the surface offers them. A surface that passes no handler for an action drops that action from both widths.
+An endpoint preset has no Import or Export, because the file would carry an API token. A built-in preset keeps only Duplicate, Import, Export and View full screen where the surface offers them. A surface that passes no handler for an action drops that action from both widths.
 
 ### Production mapping
 
@@ -1171,7 +1172,7 @@ An endpoint preset has no Import or Export, because the file would carry an API 
 | Probes | [`useEndpointReachable.ts`](../src/lib/useEndpointReachable.ts), [`probe.ts`](../src/lib/imageGen/probe.ts) |
 | Reset and Compare | `PromptResetCompare` in [`PromptResetCompare.tsx`](../src/components/prompt/PromptResetCompare.tsx), its words in [`promptResetCompareCopy.ts`](../src/components/prompt/promptResetCompareCopy.ts) |
 | Compare dialog | `PromptCompareDialog` in [`PromptCompareDialog.tsx`](../src/components/prompt/PromptCompareDialog.tsx) |
-| Production hosts of the header | [`SettingsModal.tsx`](../src/components/modals/SettingsModal.tsx), [`FormaquestionPromptsTab.tsx`](../src/components/formaquestion/FormaquestionPromptsTab.tsx), [`TextEndpointEditor.tsx`](../src/components/modals/TextEndpointEditor.tsx) |
+| Production hosts of the header | [`SettingsModal.tsx`](../src/components/modals/SettingsModal.tsx), [`FormaquestionPromptsTab.tsx`](../src/components/formaquestion/FormaquestionPromptsTab.tsx), [`FormaquestionMascotTab.tsx`](../src/components/formaquestion/FormaquestionMascotTab.tsx), [`TextEndpointEditor.tsx`](../src/components/modals/TextEndpointEditor.tsx) |
 | Production hosts of the badge | The three above, and [`GenerateImageButton.tsx`](../src/components/GenerateImageButton.tsx) for the in-game image preset |
 | Production host of the pair | [`SettingsModal.tsx`](../src/components/modals/SettingsModal.tsx) |
 | Isolated reference | [`PresetHeaderReference.tsx`](../src/components/design-system/PresetHeaderReference.tsx) |
@@ -1190,7 +1191,7 @@ Build a new preset header from `presetHeaderActions` and `PresetHeader`. Do not 
 | State | Treatment |
 | --- | --- |
 | Editable | The full action set of the surface. |
-| Built-in | Duplicate, Import and Export only. No Reset or Delete. |
+| Built-in | Duplicate, Import, Export and View full screen only. No Rename, Reset or Delete. |
 | Narrow | One **Preset Actions** button. The menu lists every action of the wide row. |
 | One image preset | Delete hides until a second preset exists. |
 | Heading form | A heading takes the place of the label and select. The same icons or menu follow it. |
@@ -1208,7 +1209,7 @@ The probe asks for a model list or node info and never sends a prompt, so no che
 
 ### Writing review
 
-The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **Publish**, **Reset**, **Delete**, **Preset Actions**, **Add New Preset…**, **Recheck** and **Compare**, all in Title Case. An icon's tooltip is its label. The Reset and Compare tooltips are one sentence with no period. The badge lines are status text: one word or phrase, and the missing model name changes with the preset. Each confirm names what it changes, the preset or the prompt, and says "This can't be undone." The reference sample text and status lines were checked against the Writing Guide by copy role. This review does not certify the production confirm text as ASD-STE100 compliant.
+The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **Publish**, **Reset**, **Delete**, **Preset Actions**, **Add New Preset…**, **Recheck** and **Compare**, all in Title Case. **View full screen** and **Exit full screen** keep the sentence case of the editor's own full-screen toggles. An icon's tooltip is its label, unless the surface passes a longer tip: the **Mascot** tab's tips say what each action does, such as "Make an editable copy of this mascot". The Reset and Compare tooltips are one sentence with no period. The badge lines are status text: one word or phrase, and the missing model name changes with the preset. Each confirm names what it changes, the preset or the prompt, and says "This can't be undone." The reference sample text and status lines were checked against the Writing Guide by copy role. This review does not certify the production confirm text as ASD-STE100 compliant.
 
 ## UI and prototype workflow
 

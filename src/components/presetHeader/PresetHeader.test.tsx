@@ -1,9 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { PresetHeader } from './PresetHeader';
 import { presetHeaderActions, type PresetHeaderHandlers } from '@/lib/presetHeaderActions';
 
-function handlers(): Required<PresetHeaderHandlers> {
+/** Every handler but full screen, with confirmed destructive actions. */
+function handlers() {
   return {
     duplicate: vi.fn(),
     rename: vi.fn(),
@@ -118,6 +121,37 @@ describe('PresetHeader', () => {
     render(<PresetHeader label="Preset" testId="row" layout="narrow" actions={presetHeaderActions(false, handlers())} select={<span />} />);
     expect(rowNames()).toEqual([]);
     expect(await openMenu()).toEqual(['Duplicate', 'Rename', 'Import', 'Export', 'Publish', '---', 'Reset', 'Delete']);
+  });
+
+  it('resets at once, with no confirm, from a plain handler', () => {
+    const run = vi.fn();
+    renderHeader(false, { reset: run });
+    fireEvent.click(rowButton('Reset'));
+    expect(run).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('titles a confirm with the surface title when it passes one', async () => {
+    renderHeader(false, { delete: { run: vi.fn(), title: 'Delete Mascot', description: 'Delete "Mine"?' } });
+    fireEvent.click(rowButton('Delete'));
+    expect((await screen.findByRole('alertdialog')).textContent).toContain('Delete Mascot');
+  });
+
+  it('shows a longer tip on hover and keeps the label as the name', async () => {
+    const actions = presetHeaderActions(false, { duplicate: vi.fn() }).map((action) => ({ ...action, tip: 'Make an editable copy' }));
+    render(<TooltipProvider><PresetHeader label="Preset" testId="row" select={<span />} actions={actions} /></TooltipProvider>);
+    expect(rowNames()).toEqual(['Duplicate']);
+    await userEvent.hover(rowButton('Duplicate'));
+    expect(await screen.findByText('Make an editable copy', { selector: 'div' })).toBeInTheDocument();
+  });
+
+  it('ends the file group with the full-screen toggle, named for the way it goes, on a built-in preset too', async () => {
+    const toggle = vi.fn();
+    renderHeader(true, { ...handlers(), fullscreen: { active: false, toggle } });
+    expect(rowNames()).toEqual(['select', 'Duplicate', 'Import', 'Export', 'View full screen']);
+    fireEvent.click(rowButton('View full screen'));
+    expect(toggle).toHaveBeenCalledOnce();
+    expect(presetHeaderActions(true, { fullscreen: { active: true, toggle } }).map((a) => a.label)).toEqual(['Exit full screen']);
   });
 
   it('returns focus to the ⋯ button when a confirm opened from the menu is canceled', async () => {

@@ -26,7 +26,7 @@ interface Sample {
    *  backdrop of the same color, for the frames before the dim has built up. */
   borderW: number;
   shadow: boolean;
-  /** A docked "Edit full screen" toggle exists outside the window — the panel is back underneath. */
+  /** A docked full-screen toggle exists outside the window — the panel is back underneath. */
   docked: boolean;
 }
 
@@ -59,7 +59,7 @@ function record(page: import('@playwright/test').Page, ms: number): Promise<void
           shadow: getComputedStyle(box).boxShadow !== 'none',
           veil: veil ? parseFloat(getComputedStyle(veil).opacity) : -1,
           overlay: overlay ? parseFloat(getComputedStyle(overlay).opacity) : 0,
-          docked: [...document.querySelectorAll('button[aria-label="Edit full screen"]')].some((b) => !box.contains(b)),
+          docked: [...document.querySelectorAll('button[aria-label="Edit full screen"], button[aria-label="View full screen"]')].some((b) => !box.contains(b)),
         });
       }
       if (performance.now() - t0 < duration) requestAnimationFrame(tick);
@@ -73,29 +73,74 @@ const samples = (page: import('@playwright/test').Page): Promise<Sample[]> =>
 
 const area = (s: Sample) => s.rect.w * s.rect.h;
 
+type Page = import('@playwright/test').Page;
+
+/** Waits out every animation under `locator`, so a later click lands at once. */
+const settle = (locator: import('@playwright/test').Locator) =>
+  locator.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+
+/** Opens a Formaquestion Settings tab the way a player does. */
+async function openHelpSettingsTab(page: Page, tab: 'Prompts' | 'Mascot'): Promise<void> {
+  // The player's path: the window's menu opens Formaquestion Settings and hides the window meanwhile.
+  // The dev route keeps both on screen, a state no player reaches.
+  await openApp(page, { FORMAMORPH_helpSettings: { mascot: false } });
+  await page.keyboard.press('F1');
+  await page.locator('#formaquestion-window').getByRole('button', { name: 'More Actions' }).click();
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Formaquestion Settings' });
+  // Below `sm` (640px) the tab strip is a select.
+  if (page.viewportSize()!.width >= 640) await dialog.getByRole('tab', { name: tab }).click();
+  else {
+    await dialog.getByRole('combobox', { name: 'Tab' }).click();
+    await page.getByRole('option', { name: tab }).click();
+  }
+  await dialog.getByRole('combobox', { name: 'Preset' }).waitFor();
+  // Settled first: a click on a still-zooming dialog waits for it, and the recorder's clock runs meanwhile.
+  await settle(dialog);
+}
+
+/** One way through the toggle: `arm` readies it off the clock, `press` is the click the trip answers. */
+interface Toggle {
+  arm?: (page: Page) => Promise<void>;
+  press: (page: Page) => Promise<void>;
+}
+
+const narrow = (page: Page) => page.viewportSize()!.width < 768;
+
+/** A preset header action: an icon at `md` (768px) and up, a ⋯ menu item below. */
+const headerAction = (name: string): Toggle => ({
+  arm: async (page) => {
+    if (!narrow(page)) return;
+    await page.getByRole('button', { name: 'Preset Actions' }).last().click();
+    // Settled, so the press is one click and not a wait on the menu's open animation.
+    await settle(page.getByRole('menu'));
+  },
+  press: (page) => (narrow(page) ? page.getByRole('menuitem', { name }) : page.getByRole('button', { name, exact: true })).click(),
+});
+
+const toggle = async (page: Page, way: Toggle) => { await way.arm?.(page); await way.press(page); };
+
+interface Surface {
+  name: string;
+  /** The window's accessible name: the tab it grows out of. */
+  window: string;
+  open: (page: Page) => Promise<void>;
+  enter: Toggle;
+  exit: Toggle;
+}
+
+const fieldToggle = { enter: { press: (page: Page) => chrome.enterFullscreen(page).click() }, exit: { press: (page: Page) => chrome.exitFullscreen(page).click() } };
+
 /** Each panel that lifts into the window whole: the trip is the same shell from either modal. */
-const SURFACES: { name: string; open: (page: import('@playwright/test').Page) => Promise<void> }[] = [
-  { name: 'Settings Prompts', open: async (page) => { await openApp(page); await openPromptEditor(page); } },
+const SURFACES: Surface[] = [
+  { name: 'Settings Prompts', window: 'Prompts', open: async (page) => { await openApp(page); await openPromptEditor(page); }, ...fieldToggle },
+  { name: 'Formaquestion Prompts', window: 'Prompts', open: (page) => openHelpSettingsTab(page, 'Prompts'), ...fieldToggle },
   {
-    name: 'Formaquestion Prompts',
-    open: async (page) => {
-      // The player's path: the window's menu opens Formaquestion Settings and hides the window meanwhile.
-      // The dev route keeps both on screen, a state no player reaches.
-      await openApp(page, { FORMAMORPH_helpSettings: { mascot: false } });
-      await page.keyboard.press('F1');
-      await page.locator('#formaquestion-window').getByRole('button', { name: 'More Actions' }).click();
-      await page.getByRole('menuitem', { name: 'Settings' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Formaquestion Settings' });
-      // Below `sm` (640px) the tab strip is a select.
-      if (page.viewportSize()!.width >= 640) await dialog.getByRole('tab', { name: 'Prompts' }).click();
-      else {
-        await dialog.getByRole('combobox', { name: 'Tab' }).click();
-        await page.getByRole('option', { name: 'Prompts' }).click();
-      }
-      await dialog.getByRole('combobox', { name: 'Preset' }).waitFor();
-      // Settled first: a click on a still-zooming dialog waits for it, and the recorder's clock runs meanwhile.
-      await dialog.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-    },
+    name: 'Formaquestion Mascot',
+    window: 'Mascot',
+    open: (page) => openHelpSettingsTab(page, 'Mascot'),
+    enter: headerAction('View full screen'),
+    exit: headerAction('Exit full screen'),
   },
 ];
 
@@ -105,13 +150,14 @@ const travelFrames = (frames: Sample[], full: number) => frames.filter((s) => ar
 for (const surface of SURFACES) test.describe(surface.name, () => {
   test('opening: the window grows through intermediate sizes, solid, over a dimmed backdrop', async ({ page }) => {
     await surface.open(page);
+    await surface.enter.arm?.(page);
 
     await record(page, 800);
-    await chrome.enterFullscreen(page).click();
+    await surface.enter.press(page);
     await page.waitForTimeout(850);
 
     // The panel's window, not the field's own: a field's window is named by its label.
-    await expect(page.getByRole('dialog', { name: 'Prompts', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: surface.window, exact: true })).toBeVisible();
     const frames = await samples(page);
     expect(frames.length).toBeGreaterThan(10);
     const full = area(frames[frames.length - 1]);
@@ -140,20 +186,22 @@ for (const surface of SURFACES) test.describe(surface.name, () => {
     expect(mid.overlay).toBeGreaterThan(0.5);
 
     // The reveal starts at landing, not after the settle buffer: the veil is fully off well before the
-    // buffered timeline (~600ms with click latency) could manage it.
+    // buffered timeline (~540ms after the window appears) could manage it. Timed from the window's first
+    // frame, so a ⋯ menu closing before its action runs is not charged to the morph.
     const revealed = frames.find((s) => s.veil >= 0 && s.veil < 0.1);
     expect(revealed).toBeTruthy();
-    expect(revealed!.t).toBeLessThan(560);
+    expect(revealed!.t - frames[0].t).toBeLessThan(480);
   });
 
   test('closing: the window shrinks back into the docked slot, solid, with the panel restored under it', async ({ page }) => {
     await surface.open(page);
-    await chrome.enterFullscreen(page).click();
+    await toggle(page, surface.enter);
     // Let the enter trip land fully, the way a person toggles.
     await page.waitForTimeout(700);
+    await surface.exit.arm?.(page);
 
     await record(page, 800);
-    await chrome.exitFullscreen(page).click();
+    await surface.exit.press(page);
     await page.waitForTimeout(850);
 
     const all = await samples(page);
@@ -198,6 +246,8 @@ for (const surface of SURFACES) test.describe(surface.name, () => {
     expect(midShrink.overlay).toBeGreaterThan(0.25);
     for (const s of travel) expect(s.docked).toBe(true);
 
+    await expect(page.getByRole('dialog', { name: surface.window, exact: true })).toHaveCount(0);
+    // No field window is left behind either: each is named for its prompt.
     await expect(page.getByRole('dialog', { name: /prompt/i })).toHaveCount(0);
   });
 });

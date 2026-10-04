@@ -618,7 +618,7 @@ async function openMaskTab(page: Page): Promise<void> {
   const presetRow = page.getByTestId('mascot-preset-row');
   await expect(presetRow.getByRole('combobox', { name: 'Preset' })).toHaveText('Default');
   await expect(page.locator('[data-fq-mask-box] button')).toHaveCount(0);
-  await presetRow.getByRole('button', { name: 'Duplicate Mascot' }).click();
+  await presetRow.getByRole('button', { name: 'Duplicate' }).click();
   await expect(presetRow.getByRole('combobox', { name: 'Preset' })).toHaveText('Default (copy)');
   await expect(page.locator('[data-fq-mask-box] button')).toHaveCount(9);
 }
