@@ -96,6 +96,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q60 | The Mascot switch sits in a fixed row under the preset row, above the two columns and outside both scrollers, so it reads as its own device setting and not part of the selected mascot (user, 2026-10-04) |
 | Q61 | Both Mascot tab columns scroll through the shared ScrollArea per the Design System's Scrollbars standard (10px arrowless track, reserved gutter), not native overflow (user, 2026-10-04) |
 | Q62 | The Mascot tab gets a full-screen view like Settings → Prompts and Tools: the same morph shell and the same "View full screen" icon button, placed at the end of the preset row; the whole tab (preset row, switch row, both columns, footer) fills the screen, and Exit returns it in place (user, 2026-10-04) |
+| Q63 | Ticket 19's AC: the shared scrollbar shows at 1280×700 and not at 1920×1200. Measured at 1600×900 the preview viewport is 493px for a 744px widget (Scale and transition rows grew it past Q35's 574px), so the preview scrolls on every common desktop. Q35 stands; whether the widget shrinks is open for the user (ticket 19) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
