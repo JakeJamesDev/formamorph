@@ -115,7 +115,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
 
   return (
     <div ref={panelRef} className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
-      <PanelShell morph={morph} sourceRef={panelRef} title="Prompts">
+      <PanelShell morph={morph} sourceRef={panelRef} title="Prompts" showTitle={false}>
       <PresetHeader
         label={PROMPTS_COPY.preset.label}
         actions={presetActions}

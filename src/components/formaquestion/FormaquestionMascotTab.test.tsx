@@ -1076,6 +1076,41 @@ describe('full screen', () => {
     expect(control.dirty).toBe(false);
   });
 
+  it('names the window without a visible title row', async () => {
+    mount();
+    await enter();
+    const box = mascotWindow();
+    expect(box).toHaveAccessibleName('Mascot');
+    // The title is the dialog's name only: its element is screen-reader-only, so no row is spent on it.
+    expect(document.getElementById(box.getAttribute('aria-labelledby')!)!.closest('.sr-only')).not.toBeNull();
+    expect(within(box).getByRole('button', { name: 'Exit full screen' })).toBeInTheDocument();
+  });
+
+  describe('the column split', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    const columns = () => document.querySelector<HTMLElement>('[data-fq-mascot-columns]')!;
+    const wide = () => vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+
+    it('keeps the 22rem preview column docked', () => {
+      wide();
+      mount();
+      expect(columns().className).toContain('grid-cols-[22rem_minmax(0,1fr)]');
+    });
+
+    it('gives the preview a third and the controls two thirds in the window, and restores 22rem on Exit', async () => {
+      wide();
+      mount();
+      await enter();
+      expect(columns().className).toContain('grid-cols-[minmax(0,1fr)_minmax(0,2fr)]');
+      expect(columns().className).not.toContain('22rem');
+      await userEvent.click(within(mascotWindow()).getByRole('button', { name: 'Exit full screen' }));
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mascot' })).toBeNull());
+      expect(columns().className).toContain('grid-cols-[22rem_minmax(0,1fr)]');
+    });
+  });
+
   it('undoes with Ctrl+Z from a control inside the window', async () => {
     mount();
     await enter();

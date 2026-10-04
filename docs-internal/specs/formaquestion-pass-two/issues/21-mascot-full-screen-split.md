@@ -1,6 +1,6 @@
 # 21: Mascot full-screen split and no title row
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 20
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
