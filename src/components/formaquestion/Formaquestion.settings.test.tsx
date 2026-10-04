@@ -155,25 +155,39 @@ describe('the guide lookup switch on the Tools tab', () => {
   };
   type ToolsBody = Body & { tools?: { function: { name: string } }[] };
 
-  async function askWithLookup(field: HTMLElement) {
-    const dialog = await openSettings();
-    await userEvent.click(within(dialog).getByRole('tab', { name: 'Tools' }));
-    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Enabled' }));
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());
+  /** Asks with the Tools tab's switch as it is, or flipped once from there. */
+  async function ask(field: HTMLElement, { flip = false } = {}) {
+    if (flip) {
+      const dialog = await openSettings();
+      await userEvent.click(within(dialog).getByRole('tab', { name: 'Tools' }));
+      await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Enabled' }));
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull());
+    }
     await send(field, 'How do I add a trait?');
     await within(conversation()).findByRole('group', { name: 'Sources' });
   }
 
-  it('sends the lookup prompt and the function to an endpoint that takes function calls', async () => {
+  it('sends the lookup prompt and the function to an endpoint that takes function calls, with the switch as shipped', async () => {
     ai.current = endpoint(true);
     const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
-    await askWithLookup(field);
+    await ask(field);
 
     const body = sentBody(fetchSpy) as ToolsBody;
     expect(body.tools?.map((tool) => tool.function.name)).toEqual([DOCS_LOOKUP.name]);
     expect(body.messages[0].content).toContain(DOCS_LOOKUP.name);
+  });
+
+  it('sends the retrieval request with no function to that endpoint once the switch is off', async () => {
+    ai.current = endpoint(true);
+    const fetchSpy = stubHelpStream(sseReply('Select **Add Trait**.'));
+    const { field } = await openAsk();
+    await ask(field, { flip: true });
+
+    const body = sentBody(fetchSpy) as ToolsBody;
+    expect(body.tools).toBeUndefined();
+    expect(body.messages[0].content).not.toContain(DOCS_LOOKUP.name);
   });
 
   it('sends the retrieval request with no function, and the tab says so, to an endpoint that does not', async () => {
@@ -184,7 +198,7 @@ describe('the guide lookup switch on the Tools tab', () => {
     await userEvent.click(within(dialog).getByRole('tab', { name: 'Tools' }));
     expect(within(dialog).getByRole('note')).toHaveTextContent(TOOLS_COPY.unsupported);
     await userEvent.keyboard('{Escape}');
-    await askWithLookup(field);
+    await ask(field);
 
     const body = sentBody(fetchSpy) as ToolsBody;
     expect(body.tools).toBeUndefined();

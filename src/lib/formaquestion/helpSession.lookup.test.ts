@@ -73,15 +73,26 @@ const hitIds = (question: string, over: Parameters<typeof helpSections>[2] = {})
 const allIds = index.contents().flatMap((page) => page.sections.map((section) => section.id));
 
 describe('lookup mode, as shipped', () => {
-  it('offers no lookup function on a tool-capable endpoint, and sends the retrieval request', async () => {
+  const toolNames = (spy: FetchSpy) => ((bodyOf(spy).tools ?? []) as { function: { name: string } }[]).map((tool) => tool.function.name);
+
+  it('offers the lookup function on a tool-capable endpoint, as the same player with the switch on does', async () => {
     const shipped = script(sseReply('Select **Add Trait**.'));
     await collect(ask(TRAIT, shipped, { settings: DEFAULT_HELP_SETTINGS }));
-    const retrieval = script(sseReply('Select **Add Trait**.'));
-    await collect(ask(TRAIT, retrieval, { settings: helpSettingsOf({ lookup: false }) }));
+    const switchedOn = script(sseReply('Select **Add Trait**.'));
+    await collect(ask(TRAIT, switchedOn, { settings: helpSettingsOf({ lookup: true }) }));
 
-    const names = ((bodyOf(shipped).tools ?? []) as { function: { name: string } }[]).map((tool) => tool.function.name);
-    expect(names).not.toContain(DOCS_LOOKUP.name);
-    expect(bodyOf(shipped)).toEqual(bodyOf(retrieval));
+    expect(toolNames(shipped)).toContain(DOCS_LOOKUP.name);
+    expect(bodyOf(shipped)).toEqual(bodyOf(switchedOn));
+  });
+
+  it('sends the cloud endpoint, which refuses functions, the retrieval body it sent with the switch off', async () => {
+    const shipped = script(sseReply('Select **Add Trait**.'));
+    await collect(ask(TRAIT, shipped, { settings: DEFAULT_HELP_SETTINGS, snapshot: endpoint(false) }));
+    const switchedOff = script(sseReply('Select **Add Trait**.'));
+    await collect(ask(TRAIT, switchedOff, { settings: helpSettingsOf({ lookup: false }), snapshot: endpoint(false) }));
+
+    expect(toolNames(shipped)).not.toContain(DOCS_LOOKUP.name);
+    expect(bodyOf(shipped)).toEqual(bodyOf(switchedOff));
   });
 });
 

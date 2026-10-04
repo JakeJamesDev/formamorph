@@ -94,7 +94,7 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   sources: { keyword: true, aiPicks: true, semantic: false },
   answerEndpoint: null,
   pickEndpoint: SAME_AS_ANSWER,
-  lookup: false,
+  lookup: true,
   lookupCallLimit: DOCS_LOOKUP_CALL_LIMIT,
   roll: false,
   // The catalog roll's limit, so a roll behaves the same in help and in play (Q61).
