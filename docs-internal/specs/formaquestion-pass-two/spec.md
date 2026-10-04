@@ -68,6 +68,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q32 | Expansion is selection on the Mascot tab: a layer row's click expands and selects it, collapsing returns the preview to Idle; an overlay click (row or thumbnail) selects it and expands its layer; a second click on the selected overlay returns to the layer; removing the selected overlay falls back to the layer (ticket 06) |
 | Q33 | The help preset file has never shipped, so its version stays 1 and the shape changes in place with no reader for the earlier form. A file without the Pick or Lookup block fails naming the block (ticket 09) |
 | Q34 | Option blocks need no Compare or Reset buttons: the per-field Custom checkboxes are the reset and restore the Default's values. Compare to Default stays a text diff (ticket 09) |
+| Q35 | The pinned preview column may scroll only when the screen is too short to hold it (at 1366×768: 559px for 574px of content). It never clips a row and the preview height stays 240px (ticket 06) |
 
 ## User Stories
 
