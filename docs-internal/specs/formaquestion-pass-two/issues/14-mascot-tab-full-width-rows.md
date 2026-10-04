@@ -1,0 +1,25 @@
+# 14: Mascot tab full-width rows
+
+Status: ready-for-agent
+Blocked by: 07
+Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
+Reasoning effort: medium
+
+## What to build
+
+The Mascot tab's controls column stops spending a quarter of its width on labels.
+
+- The Base Image and the layer list drop the label column and take the full column width, each under its own heading in the section style the tab already uses. Layer rows get the room back for their names, overlays and the remove button.
+- The switch, Voice, picks and card buttons keep their rows.
+- Frames at 1600×900 and 1366×768 in both themes go to the user in the ticket's Answer.
+
+Spec: Q51; Implementation → Mascot tab.
+
+Recommended model rationale: a layout change on one tab with existing section patterns.
+
+## Acceptance criteria
+
+- [ ] Layer rows at 1600×900 show full names at the default rig's longest name without truncation.
+- [ ] Component tests still find the Base Image control and every layer row by role and name.
+- [ ] Frames in the Answer.
+- [ ] The four gates are green.
