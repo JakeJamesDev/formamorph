@@ -41,6 +41,7 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 | Q34 | A keyed question's expected surface may be "none". None scores a hit when the keyed section has no route and a miss when it carries one. The report lists none-expected rows as their own line per kind, so the bar can cover surfaced questions alone or all of them (ticket 05 question) |
 | Q35 | A flagged answer (not from the guide) gets no button: its top source is not what it describes (ticket 04 question) |
 | Q36 | The button renders only on an answer whose status is answered. A stopped answer, a failed one or the no-AI fallback gets none. "Top source" is the first source of the done event: the looked-up section in lookup mode, else the first prompt section. A route the resolver refuses shows no button (ticket 04 question) |
+| Q37 | "Top source" skips the open screen's lead section: the route comes from the first source that is not the lead, as the follow-up topic rule does; the lead counts only when it is the only source. Refines Q36. Found in use 2026-10-04: with Use the Open Screen on, the lead led the sources and the button never showed. Ticket 07 |
 
 ## User Stories
 
