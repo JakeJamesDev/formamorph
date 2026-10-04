@@ -933,6 +933,20 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 - 📖 **Reader.** The page as `Meta`, the section name, the body, then an **On This Page** list. In the narrow layout a **Contents** row above it goes back to the list. In the wide layout a **Back to Conversation** row above it shows the conversation again.
 - 📚 **Contents.** One collapsible row per page, with its sections as Compact Selection Lists rows.
 
+### Minimal chrome
+
+With the mascot on, the window drops its frame and shows three separate pieces over the app: the mascot, the column and the reader. The column and the reader take presses. The mascot does not. A press in a gap between the pieces reaches the app.
+
+- 💊 **Pill.** The only chrome. A round, bordered `background` pill at the top right of the column, with a drag grip, the **⋮** menu, **Show Head Only** and **Close**. On a mobile-size screen the pill has no grip and no head button. The grip moves all three pieces. Every button is round, bare and `muted-foreground`, and fills with `accent` on hover.
+- 🧍 **Mascot piece.** Left of the column, as tall as the column, at the base's aspect, with its feet on the column's bottom edge. It has no box, no border and no shadow. The head view is the same piece, cropped by the Mask, left of the pill. It is 96px tall on a desktop and 64px on a mobile-size screen.
+- 💬 **Column.** The conversation as bubbles over the app, up to 400px wide, with no frame, no title bar and no tabs. Older bubbles fade out at the top. No scroll bar shows.
+- 🙋 **Question bubble.** On the `primary` fill with `primary-foreground` text, right-aligned, with a flat bottom right corner and a 40px left margin. The framed window's question bubble uses `muted`.
+- 📝 **Answer bubble.** The answer sits in a bubble on `popover` with a border, left-aligned, with a flat bottom left corner and a 24px right margin. The framed window draws its answer with no bubble.
+- ⌨️ **Ask pill.** The question field and **Send** in one rounded pill, in the `shadow-lg` role, with the inset focus ring around the whole pill.
+- 📖 **Reader piece.** Right of the column, 8px away, as tall as the column. A `popover` card with a border and a **Close Reader** button in its own top bar. It closes alone. The column and the mascot stay.
+- 🌫️ **Shadow.** The pill, the bubbles and the reader have `shadow-md`, which separates them from the app. The ask pill has `shadow-lg`. The mascot has none.
+- 📱 **On a mobile-size screen.** The sheet fills the screen over a dim, blurred backdrop. The bubbles sit on the backdrop, and the head view is left of the pill. A source name opens the guide section in the wiki, not in a reader piece.
+
 ### Layering
 
 The tab and the window render in the shielded layer, one host on `<body>` at z-65. That is above dialogs, popovers and selects (z-50), and under the chip typeahead (z-70) and tooltips (z-80).
@@ -960,9 +974,13 @@ The mobile sheet slides in from the edge that holds the Help tab, with the same 
 | Search field, result rows, contents, reader | [`GuideParts.tsx`](../src/components/formaquestion/GuideParts.tsx) |
 | Conversation, question bubble, answer, not-from-the-guide notice, source link, question field | [`AskParts.tsx`](../src/components/formaquestion/AskParts.tsx) |
 | The one instance, F1, focus and motion | [`Formaquestion.tsx`](../src/components/formaquestion/Formaquestion.tsx) |
+| Minimal chrome: pill, bubbles, ask pill | `MinimalChat` in [`MinimalChat.tsx`](../src/components/formaquestion/MinimalChat.tsx) |
+| Mascot piece and head view | [`MascotPiece.tsx`](../src/components/formaquestion/MascotPiece.tsx) |
+| Reader piece | [`ReaderPiece.tsx`](../src/components/formaquestion/ReaderPiece.tsx) |
+| Piece boxes beside the column | `minimalLayout` in [`windowBox.ts`](../src/lib/formaquestion/windowBox.ts) |
 | Isolated reference | [`FormaquestionReference.tsx`](../src/components/design-system/FormaquestionReference.tsx) |
 
-Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge, a sample window and a sample mobile sheet in local state. The samples have no AI: a question you send there shows the docs search state. Open `#dev?modal=formaquestion` on any screen for the real one.
+Open `#dev?modal=designSystem&tab=formaquestion` for the tab on each edge, a sample window, a sample mobile sheet and the three pieces of the minimal chrome in local state. The samples have no AI: a question you send there shows the docs search state. Open `#dev?modal=formaquestion` on any screen for the real one.
 
 ### Responsive behavior
 
@@ -1008,12 +1026,13 @@ Below the `md` breakpoint the window is a full-screen sheet in the narrow layout
 | 8 | Reader with an On This Page list and a Back row | ✅ |
 | 9 | Send reason: a help line under the field when Send is unavailable | ✅ |
 | 10 | Movable edge tab | ✅ |
+| 11 | Minimal chrome: pill, floating pieces, bubbles on `primary` and `popover` | ✅ |
 
 A pattern that is not built gets its composition and its reference here when its production component lands.
 
 ### Writing review
 
-**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Nearest Sections**, **Clear** and **Try Again** are labels in Title Case. The hints and status lines are one sentence with no period. The not-from-the-guide notice is two sentences, so each has a period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
+**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Nearest Sections**, **Clear**, **Try Again**, **Show Head Only**, **Show Full Mascot** and **Close Reader** are labels in Title Case. The hints and status lines are one sentence with no period. The not-from-the-guide notice is two sentences, so each has a period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
 
 ## Pattern: Filter Row With Filters Popover
 

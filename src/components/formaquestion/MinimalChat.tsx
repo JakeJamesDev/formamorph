@@ -153,9 +153,9 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
             <div key={exchange.id} className="flex flex-col gap-2">
               <div className="ml-10 flex flex-col items-end gap-2 self-end">
                 <AttachmentThumbs attachments={exchange.images} className="pointer-events-auto" />
-                <p className={cn(BUBBLE, 'whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground [overflow-wrap:anywhere]')}>{exchange.question}</p>
+                <p data-fq-bubble="question" className={cn(BUBBLE, 'whitespace-pre-wrap rounded-br-sm bg-primary text-primary-foreground [overflow-wrap:anywhere]')}>{exchange.question}</p>
               </div>
-              <div className={ASSISTANT_BUBBLE}>
+              <div data-fq-bubble="answer" className={ASSISTANT_BUBBLE}>
                 <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
               </div>
             </div>

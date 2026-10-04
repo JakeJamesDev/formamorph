@@ -1,6 +1,6 @@
 # 13: Guide docs and end-to-end sweep
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 04, 06, 09, 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
