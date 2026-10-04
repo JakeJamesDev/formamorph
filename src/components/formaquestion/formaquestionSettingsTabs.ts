@@ -113,6 +113,7 @@ export const AI_CONTEXT_COPY = {
   sentList: 'Sent',
   noRanking: 'no ranking',
   sent: 'sent',
+  route: 'Take Me There',
   customPrompt: { label: 'Custom Prompt', tip: 'Differs from the default text' },
   sources: { keyword: 'Keyword Search', aiPicks: 'AI Picks', semantic: 'Semantic Search' },
 } as const;

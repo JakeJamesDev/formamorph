@@ -11,6 +11,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { withoutAttachment } from '@/lib/actionAttachments';
 import type { DocSection } from '@/lib/docs/docsIndex';
+import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { helpRevealSpec, helpRevealTiming } from '@/lib/formaquestion/helpReveal';
@@ -20,6 +21,7 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { useAutoGrowTextarea } from '@/lib/useAutoGrowTextarea';
 import { cn } from '@/lib/utils';
+import { answerRoute } from './answerRoute';
 import { SectionRows } from './GuideParts';
 import { ScrollArrow } from './ScrollArrow';
 import { FOCUS_RING, readerComponents } from './readerLinks';
@@ -109,13 +111,23 @@ function Thinking({ text, ms, active, settings, onSettingsChange }: {
   );
 }
 
-/** One answer: its reasoning, text, wait line, fallback and sources. */
-export function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: {
+/** Opens the surface an answer's top source names. */
+function TakeMeThere({ onClick }: { onClick: () => void }) {
+  return (
+    <Button variant="outline" size="xs" className="h-6 px-1.5" onClick={onClick}>
+      Take Me There
+    </Button>
+  );
+}
+
+/** One answer: its reasoning, text, wait line, fallback, sources and Take Me There. */
+export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, onGo }: {
   guide: Guide;
   exchange: HelpExchange;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
+  onGo: (id: SurfaceId) => void;
 }) {
   const { answer, reasoning, reasoningMs, status, stage, sources, question, flagged, nearest } = exchange;
   // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
@@ -132,6 +144,7 @@ export function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: 
   // A docs link that the model copies from a section opens that section here.
   const text = useMemo(() => withReaderLinks(answer, '', guide.resolve), [answer, guide]);
   const searched = status === 'no-ai' || status === 'failed';
+  const route = answerRoute(exchange);
   const matches = useMemo(
     () => (searched ? guide.index.search(question, FALLBACK_RESULT_LIMIT) : []),
     [searched, guide, question],
@@ -163,7 +176,11 @@ export function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: 
       )}
       {listed.length > 0 && (
         <div role="group" aria-label={listLabel} className="flex flex-col gap-1">
-          <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />
+          {/* The footer row: the list's toggle, then Take Me There. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />
+            {route && <TakeMeThere onClick={() => onGo(route)} />}
+          </div>
           {fold.open && (
             <div className="flex flex-wrap gap-1">
               {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
@@ -175,13 +192,14 @@ export function Answer({ guide, exchange, settings, onSettingsChange, onOpen }: 
   );
 }
 
-function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOpen }: {
+function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOpen, onGo }: {
   guide: Guide;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   exchanges: readonly HelpExchange[];
   busy: boolean;
   onOpen: (id: string) => void;
+  onGo: (id: SurfaceId) => void;
 }) {
   const { viewportRef, onScroll, away, toEnd } = useFollowEnd(exchanges);
   return (
@@ -199,7 +217,7 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
               <AttachmentThumbs attachments={exchange.images} />
               <p className="whitespace-pre-wrap rounded-md bg-muted px-3 py-2 text-label [overflow-wrap:anywhere]">{exchange.question}</p>
             </div>
-            <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
+            <Answer guide={guide} exchange={exchange} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} onGo={onGo} />
           </div>
         ))}
       </div>
@@ -258,7 +276,7 @@ function AskField({ draft, onDraftChange, chat }: {
 }
 
 /** The Ask part of the window: the conversation, and the field that adds a question to it. */
-export function AskPanel({ guide, chat, settings, onSettingsChange, draft, onDraftChange, onOpen }: {
+export function AskPanel({ guide, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo }: {
   guide: Guide;
   chat: HelpChat;
   settings: HelpSettings;
@@ -266,10 +284,11 @@ export function AskPanel({ guide, chat, settings, onSettingsChange, draft, onDra
   draft: string;
   onDraftChange: (text: string) => void;
   onOpen: (id: string) => void;
+  onGo: (id: SurfaceId) => void;
 }) {
   return (
     <>
-      <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} />
+      <Conversation guide={guide} exchanges={chat.exchanges} busy={chat.busy} settings={settings} onSettingsChange={onSettingsChange} onOpen={onOpen} onGo={onGo} />
       <AskField draft={draft} onDraftChange={onDraftChange} chat={chat} />
     </>
   );

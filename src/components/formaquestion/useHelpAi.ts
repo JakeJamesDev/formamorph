@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import type { ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
+import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { useAiSettingsSnapshot } from '@/lib/aiRequest/useAiSettingsSnapshot';
 import { helpRoutes } from '@/lib/formaquestion/helpRoutes';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
@@ -12,7 +13,7 @@ import { useImageAttachments } from '@/lib/useImageAttachments';
 /** The owner name of Formaquestion's claim on the bundled engine. */
 const ENGINE_OWNER = 'formaquestion';
 
-/** What a help question needs from the app's AI settings. */
+/** What a help question needs from the app's AI settings, and the window's one way into the app's navigation. */
 export interface HelpAi {
   snapshot: AiSettingsSnapshot;
   /** The AI Language setting. */
@@ -25,6 +26,8 @@ export interface HelpAi {
   readsImages: boolean;
   /** What the Reasoning row reads off the endpoint answers resolve to. */
   answerTarget: ReasoningFieldTarget;
+  /** Asks the app to open a surface. */
+  requestSurface: (id: SurfaceId) => void;
 }
 
 /**
@@ -34,7 +37,7 @@ export interface HelpAi {
  */
 export function useHelpAi(enabled: boolean, settings: Pick<HelpSettings, 'answerEndpoint' | 'pickEndpoint'>): HelpAi {
   const snapshot = useAiSettingsSnapshot();
-  const { resolveEndpointForKind, claimEngine, language } = useSettings();
+  const { resolveEndpointForKind, claimEngine, language, requestSurface } = useSettings();
   const { answerEndpoint, pickEndpoint } = settings;
   const routes = useMemo(() => helpRoutes({ answerEndpoint, pickEndpoint }), [answerEndpoint, pickEndpoint]);
   const answer = resolveEndpointForKind('help', routes.answer);
@@ -49,7 +52,7 @@ export function useHelpAi(enabled: boolean, settings: Pick<HelpSettings, 'answer
   const readsImages = useImageAttachments();
   const answerTarget = useMemo(() => ({ reasoning, localEngine, maxTokens }), [reasoning, localEngine, maxTokens]);
   return useMemo(
-    () => ({ snapshot, language, reachable: demoAI ? true : reachable, revalidate, readsImages, answerTarget }),
-    [snapshot, language, demoAI, reachable, revalidate, readsImages, answerTarget],
+    () => ({ snapshot, language, reachable: demoAI ? true : reachable, revalidate, readsImages, answerTarget, requestSurface }),
+    [snapshot, language, demoAI, reachable, revalidate, readsImages, answerTarget, requestSurface],
   );
 }

@@ -8,6 +8,8 @@ import { useDevRoute } from '@/lib/devRouter';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
 import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
+import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import { opensInHelpWindow, resolveSurface, stepTab } from '@/lib/surface/surfaceRoute';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
@@ -297,6 +299,25 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     return () => cancelAnimationFrame(frame);
   }, [view]);
 
+  // Take Me There. The window opens its own surfaces; any other goes to the app, and the sheet steps aside (Q24, Q30).
+  const { requestSurface } = ai;
+  const go = useCallback((id: SurfaceId) => {
+    const steps = resolveSurface(id);
+    if (!steps) return;
+    if (!opensInHelpWindow(steps)) {
+      requestSurface(id);
+      if (sheet) closeWindow();
+    } else if (steps.dialog === 'formaquestionSettings') {
+      setSettingsTab(asFormaquestionSettingsTab(stepTab(steps, 'formaquestionSettings')) ?? 'general');
+      openDialog('settings');
+    } else if (steps.dialog === 'formaquestionAiContext') {
+      openDialog('aiContext');
+    } else {
+      const tab = stepTab(steps, 'formaquestion');
+      if (tab) changeViewInWindow({ tab });
+    }
+  }, [requestSurface, sheet, closeWindow, openDialog, changeViewInWindow]);
+
   // A failed load drops the request, so a later Try Again does not jump the view.
   useEffect(() => {
     if (failed) setTarget(null);
@@ -488,6 +509,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             draft={view.draft}
             onDraftChange={(draft) => changeView({ draft })}
             onOpen={sheet ? openInWiki : setReaderId}
+            onGo={go}
             move={sheet ? undefined : moveHandlers}
             resize={sheet ? undefined : resizeHandlers}
             large={sheet}
@@ -544,7 +566,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             },
           })}
         >
-          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} />
+          <GuideBody guide={guide} failed={failed} onRetry={load} view={view} onViewChange={changeViewInWindow} wide={wide} chat={chat} settings={settings} onSettingsChange={changeSettings} onGo={go} />
         </FormaquestionFrame>
       )}
       <FormaquestionSettings
