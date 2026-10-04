@@ -65,7 +65,7 @@ describe('settings copy', () => {
     expect(bad).toEqual([]);
   });
 
-  it('writes every note as sentences that end in a period', () => {
+  it('gives every note the sentence shape, a lone sentence with no period', () => {
     const bad = Object.entries(SETTINGS_NOTES).flatMap(([k, note]) => {
       const why = sentenceShapeViolation(note);
       return why ? [`${k}: ${note} (${why})`] : [];
