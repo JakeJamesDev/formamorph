@@ -26,6 +26,7 @@ import { helpRoutes } from './helpRoutes';
 import { semanticRanking, type HelpEmbedder, type SectionRanking } from './helpSemantic';
 // Type-only: the session reads every setting from the question, never from this module's defaults.
 import type { HelpSettings } from './helpSettings';
+import { activeMascotRig } from './mascotPresets';
 import { helpToolsOn } from './helpTools';
 import {
   emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection,
@@ -367,7 +368,7 @@ export async function* askHelp({
   const takesFunctions = toolsSupported(answerSnapshot.resolveTarget('help').reasoning);
   const lookupMode = settings.lookup && takesFunctions;
   const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
-  const face = settings.mascot && takesFunctions ? createFaceCall(settings.rig) : null;
+  const face = settings.mascot && takesFunctions ? createFaceCall(activeMascotRig(settings.mascotPresets)) : null;
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));

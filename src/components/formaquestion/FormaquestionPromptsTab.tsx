@@ -75,8 +75,8 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   // The import reads the settings after the file text arrives, not as they were at the click.
   const latest = useRef(settings);
   latest.current = settings;
-  const { mascot, rig } = settings;
-  const preview = useMemo(() => helpChipPreview(helpChipValues(key, { mascot, rig })), [key, mascot, rig]);
+  const { mascot, mascotPresets } = settings;
+  const preview = useMemo(() => helpChipPreview(helpChipValues(key, { mascot, mascotPresets })), [key, mascot, mascotPresets]);
 
   const exportPreset = () => {
     const file = buildHelpPresetFile(settings, active.id, APP_VERSION);

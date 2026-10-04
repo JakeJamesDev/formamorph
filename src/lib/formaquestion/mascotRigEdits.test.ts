@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_MASCOT_RIG, composeMascot, type MascotImageRef, type MascotRig } from './mascot';
 import {
-  addMascotLayer, addMascotOverlays, mascotPickOptions, moveMascotLayer, moveMascotOverlay, orphanedMascotImages, removeMascotBase,
+  addMascotLayer, addMascotOverlays, mascotPickOptions, moveMascotLayer, moveMascotOverlay, removeMascotBase,
   removeMascotLayer, removeMascotOverlay, setMascotBase, setMascotPick, updateMascotLayer,
 } from './mascotRigEdits';
 
@@ -63,34 +63,6 @@ describe('base edits', () => {
     const rig = setMascotBase(DEFAULT_MASCOT_RIG, stored('mine'));
     expect(rig.base).toEqual(stored('mine'));
     expect(removeMascotBase(rig).base).toEqual(DEFAULT_MASCOT_RIG.base);
-  });
-});
-
-describe('orphanedMascotImages', () => {
-  const rig = setMascotBase(
-    addMascotOverlays(addMascotOverlays(DEFAULT_MASCOT_RIG, 'happy', [stored('shared'), stored('solo')]), 'sad', [stored('shared')]),
-    stored('base'),
-  );
-
-  it('names a stored image that the edit left unreferenced', () => {
-    expect(orphanedMascotImages(rig, removeMascotOverlay(rig, 'happy', 3))).toEqual(['solo']);
-  });
-
-  it('keeps an image another layer still references', () => {
-    expect(orphanedMascotImages(rig, removeMascotOverlay(rig, 'happy', 2))).toEqual([]);
-  });
-
-  it('names every image only a removed layer held', () => {
-    expect(orphanedMascotImages(rig, removeMascotLayer(rig, 'happy'))).toEqual(['solo']);
-    expect(orphanedMascotImages(rig, removeMascotLayer(removeMascotLayer(rig, 'happy'), 'sad'))).toEqual(['shared', 'solo']);
-  });
-
-  it('names the base once it is removed', () => {
-    expect(orphanedMascotImages(rig, removeMascotBase(rig))).toEqual(['base']);
-  });
-
-  it('names every stored image when the rig resets to the default', () => {
-    expect(orphanedMascotImages(rig, DEFAULT_MASCOT_RIG).sort()).toEqual(['base', 'shared', 'solo']);
   });
 });
 

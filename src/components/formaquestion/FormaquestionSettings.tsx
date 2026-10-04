@@ -5,6 +5,7 @@ import { PromptReasoningField } from '@/components/modals/PromptOptionFields';
 import { promptReasoningFieldProps, type ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
 import { REASONING_NOTES } from '@/components/modals/settingsCopy';
 import { RevealAnimationDemoButton } from '@/components/RevealAnimationDemo';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { MascotTab } from './FormaquestionMascotTab';
 import { PromptsTab } from './FormaquestionPromptsTab';
 import { ToolsTab } from './FormaquestionToolsTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
+import { useMascotDraft } from './useMascotDraft';
 import type { SemanticSearch } from './useSemanticSearch';
 import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 
@@ -163,7 +165,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
 
 /**
  * Formaquestion Settings: a dialog the size of Settings, opened from the gear in the Formaquestion header.
- * The help window stays above it.
+ * The help window stays above it. A dirty mascot draft holds the tab and the dialog until it is saved or discarded.
  */
 export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, settings, onChange, semantic, answerTarget }: {
   open: boolean;
@@ -176,53 +178,59 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
   /** The endpoint answers resolve to, which the Reasoning row and the Tools tab read. */
   answerTarget: ReasoningFieldTarget;
 }) {
+  const mascotDraft = useMascotDraft(settings, onChange);
+  const changeTab = (next: FormaquestionSettingsTab) => mascotDraft.guard(() => onTabChange(next));
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        surface="formaquestionSettings"
-        aria-describedby={undefined}
-        className={SETTINGS_DIALOG_SIZE}
-      >
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Formaquestion Settings</DialogTitle>
-        </DialogHeader>
-        <Tabs
-          surfaceTabs="formaquestionSettings"
-          value={tab}
-          onValueChange={(value) => onTabChange(value as FormaquestionSettingsTab)}
-          className="flex min-h-0 w-full flex-1 flex-col"
+    <>
+      {/* A close drops the draft, so an upload a clean draft no longer holds goes with it. */}
+      <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : mascotDraft.guard(() => { mascotDraft.cancel(); onOpenChange(false); }))}>
+        <DialogContent
+          surface="formaquestionSettings"
+          aria-describedby={undefined}
+          className={SETTINGS_DIALOG_SIZE}
         >
-          {/* Below sm the tab strip is a dropdown of the active tab, as in Settings; both drive one value. */}
-          <Select value={tab} onValueChange={(value) => onTabChange(value as FormaquestionSettingsTab)}>
-            <SelectTrigger aria-label="Tab" className="w-full flex-shrink-0 sm:hidden">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FORMAQUESTION_SETTINGS_TABS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <TabsList className="hidden w-full flex-shrink-0 grid-cols-5 sm:grid">
-            {FORMAQUESTION_SETTINGS_TABS.map((entry) => <TabsTrigger key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
-          </TabsList>
-          <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-            <ScrollArea className="min-h-0 flex-1">
-              <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} />
-            </ScrollArea>
-          </TabsContent>
-          <TabsContent value="endpoint" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-            <EndpointTab settings={settings} onChange={onChange} />
-          </TabsContent>
-          <TabsContent value="prompts" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-            <PromptsTab settings={settings} onChange={onChange} />
-          </TabsContent>
-          <TabsContent value="tools" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-            <ToolsTab settings={settings} onChange={onChange} toolsSupported={toolsSupported(answerTarget.reasoning)} />
-          </TabsContent>
-          <TabsContent value="mascot" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-            <MascotTab settings={settings} onChange={onChange} />
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Formaquestion Settings</DialogTitle>
+          </DialogHeader>
+          <Tabs
+            surfaceTabs="formaquestionSettings"
+            value={tab}
+            onValueChange={(value) => changeTab(value as FormaquestionSettingsTab)}
+            className="flex min-h-0 w-full flex-1 flex-col"
+          >
+            {/* Below sm the tab strip is a dropdown of the active tab, as in Settings; both drive one value. */}
+            <Select value={tab} onValueChange={(value) => changeTab(value as FormaquestionSettingsTab)}>
+              <SelectTrigger aria-label="Tab" className="w-full flex-shrink-0 sm:hidden">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FORMAQUESTION_SETTINGS_TABS.map((entry) => <SelectItem key={entry.value} value={entry.value}>{entry.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <TabsList className="hidden w-full flex-shrink-0 grid-cols-5 sm:grid">
+              {FORMAQUESTION_SETTINGS_TABS.map((entry) => <TabsTrigger key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
+            </TabsList>
+            <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
+              <ScrollArea className="min-h-0 flex-1">
+                <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} />
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="endpoint" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
+              <EndpointTab settings={settings} onChange={onChange} />
+            </TabsContent>
+            <TabsContent value="prompts" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
+              <PromptsTab settings={settings} onChange={onChange} />
+            </TabsContent>
+            <TabsContent value="tools" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
+              <ToolsTab settings={settings} onChange={onChange} toolsSupported={toolsSupported(answerTarget.reasoning)} />
+            </TabsContent>
+            <TabsContent value="mascot" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
+              <MascotTab settings={settings} onChange={onChange} control={mascotDraft} />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+      <UnsavedChangesDialog {...mascotDraft.leavePrompt} />
+    </>
   );
 }

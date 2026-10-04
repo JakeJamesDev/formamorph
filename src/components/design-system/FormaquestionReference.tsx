@@ -16,6 +16,7 @@ import { createGuide } from '@/lib/formaquestion/guide';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { composeMascot } from '@/lib/formaquestion/mascot';
 import { cropFrame, fitMask, headSize, type MascotSize } from '@/lib/formaquestion/mascotMask';
+import { activeMascotRig } from '@/lib/formaquestion/mascotPresets';
 import type { Edge } from '@/lib/formaquestion/tabPlace';
 import { HEAD_HEIGHT, NARROW_WIDTH, READER_WIDTH, WIDE_WIDTH } from '@/lib/formaquestion/windowBox';
 
@@ -150,9 +151,10 @@ function SampleMinimalChrome() {
   const [readerId, setReaderId] = useState<string | null>(SAMPLE_SECTION);
   const [draft, setDraft] = useState('');
   const [showingHead, setShowingHead] = useState(false);
-  const images = useMemo(() => composeMascot(settings.rig, 'answering', null), [settings.rig]);
+  const rig = activeMascotRig(settings.mascotPresets);
+  const images = useMemo(() => composeMascot(rig, 'answering', null), [rig]);
   const mascotWidth = base ? Math.round((MINIMAL_HEIGHT * base.width) / base.height) : 0;
-  const crop = base && fitMask(settings.rig.mask, base);
+  const crop = base && fitMask(rig.mask, base);
   const head = showingHead && (
     <MascotPiece view="head" images={images} size={crop && headSize(crop, HEAD_HEIGHT)} frame={crop && base ? cropFrame(crop, base) : undefined} onBase={setBase} />
   );

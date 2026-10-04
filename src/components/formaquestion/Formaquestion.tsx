@@ -33,6 +33,7 @@ import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
 import { cropFrame, fitMask, headSize, type MascotSize } from '@/lib/formaquestion/mascotMask';
+import { activeMascotRig } from '@/lib/formaquestion/mascotPresets';
 import { mascotImageRefs } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
@@ -444,8 +445,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     writeStoredHeadView(!headView);
   };
 
-  const mascotImages = composeMascot(settings.rig, phase, mascotFace(chat.exchanges.at(-1)));
-  const crop = mascotBase && fitMask(settings.rig.mask, mascotBase);
+  const rig = activeMascotRig(settings.mascotPresets);
+  const mascotImages = composeMascot(rig, phase, mascotFace(chat.exchanges.at(-1)));
+  const crop = mascotBase && fitMask(rig.mask, mascotBase);
   const menuActions: MenuActions = {
     onOpenAiContext: () => openDialog('aiContext'),
     onOpenSettings: () => openDialog('settings'),
@@ -455,7 +457,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   };
 
   const wholeMascot = layout && settings.mascot && !(minimal && showHead) && (
-    <MascotPiece images={mascotImages} hold={mascotImageRefs(settings.rig)} transition={settings.rig.transition} size={layout.mascot} onBase={setMascotBase} />
+    <MascotPiece images={mascotImages} hold={mascotImageRefs(rig)} transition={rig.transition} size={layout.mascot} onBase={setMascotBase} />
   );
   const readerPiece = layout?.reader && guide && readerId && (
     <ReaderPiece guide={guide} sectionId={readerId} size={layout.reader} onOpen={setReaderId} onClose={() => setReaderId(null)} />
@@ -464,8 +466,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     <MascotPiece
       view="head"
       images={mascotImages}
-      hold={mascotImageRefs(settings.rig)}
-      transition={settings.rig.transition}
+      hold={mascotImageRefs(rig)}
+      transition={rig.transition}
       size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : headHeight(scale, crop.height, layout?.column.h ?? HEAD_HEIGHT))}
       frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
       onBase={setMascotBase}

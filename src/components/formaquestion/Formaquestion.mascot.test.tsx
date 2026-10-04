@@ -11,7 +11,7 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { stubReducedMotion } from '@/test/reducedMotion';
-import { openHelpSettings, stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
+import { mascotStoreOf, openHelpSettings, stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
@@ -716,5 +716,90 @@ describe('the Mascot phases', () => {
     await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Clear Conversation' }));
     expect(drawn()).toEqual(look('answering'));
+  });
+});
+
+describe('the mascot draft', () => {
+  /** "Mine" smiles at rest, so its Idle look differs from the Default's. */
+  const mine = { ...DEFAULT_MASCOT_RIG, picks: { ...DEFAULT_MASCOT_RIG.picks, idle: { expression: 'happy', state: 'rest' } } };
+  const IDLE = composeMascot(mine, 'answering', null).map(mascotImageUrl);
+  /** Mine's Idle look with the Rest layer off. */
+  const RESTLESS = composeMascot({ ...mine, layers: mine.layers.map((layer) => (layer.id === 'rest' ? { ...layer, enabled: false } : layer)) }, 'answering', null)
+    .map(mascotImageUrl);
+  const settingsDialog = () => screen.getByRole('dialog', { name: 'Formaquestion Settings' });
+  const preview = () => [...settingsDialog().querySelectorAll('[data-fq-mascot-preview] [data-fq-view="full"] [data-fq-look="new"] img')]
+    .map((image) => image.getAttribute('src'));
+
+  /** Opens the window on "Mine" with one answer on screen, so the window draws the Idle look the preview shows. */
+  async function openAnswered() {
+    localStorage.setItem('FORMAMORPH_helpSettings', JSON.stringify({ mascotPresets: mascotStoreOf(mine) }));
+    stubHelpStream(sseReply('Open the Traits tab.'));
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('Open the Traits tab.'));
+    expect(drawn()).toEqual(IDLE);
+  }
+
+  async function openMascotTab() {
+    await openHelpSettings();
+    const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
+    return dialog;
+  }
+
+  /** Closes Settings; on a desktop screen the window waits closed behind it and comes back now. */
+  async function closeSettings() {
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
+  }
+
+  it('shows an edit in the preview, and Save puts it in the window', async () => {
+    await openAnswered();
+    const dialog = await openMascotTab();
+    expect(preview()).toEqual(IDLE);
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Enable Rest' }));
+    expect(preview()).toEqual(RESTLESS);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await closeSettings();
+    expect(drawn()).toEqual(RESTLESS);
+  });
+
+  it('restores the preview on Cancel, and the window keeps the saved mascot', async () => {
+    await openAnswered();
+    const dialog = await openMascotTab();
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Enable Rest' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(preview()).toEqual(IDLE);
+    await closeSettings();
+    expect(drawn()).toEqual(IDLE);
+  });
+
+  it('asks before a tab change or a close drops a dirty draft, and the window never draws the dropped edit', async () => {
+    await openAnswered();
+    const dialog = await openMascotTab();
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Enable Rest' }));
+
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'General' }));
+    let prompt = await screen.findByRole('alertdialog');
+    await userEvent.click(within(prompt).getByRole('button', { name: 'Cancel' }));
+    expect(within(settingsDialog()).getByRole('tab', { name: 'Mascot' })).toHaveAttribute('aria-selected', 'true');
+
+    await userEvent.keyboard('{Escape}');
+    prompt = await screen.findByRole('alertdialog');
+    await userEvent.click(within(prompt).getByRole('button', { name: 'Exit Without Saving' }));
+    await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
+    expect(screen.queryByRole('dialog', { name: 'Formaquestion Settings' })).toBeNull();
+    expect(drawn()).toEqual(IDLE);
+  });
+
+  it('draws the active mascot in the window after a switch', async () => {
+    await openAnswered();
+    const dialog = await openMascotTab();
+    const user = userEvent.setup();
+    await user.click(within(dialog).getByRole('combobox', { name: 'Preset' }));
+    await user.click(await screen.findByRole('option', { name: 'Default' }));
+    await closeSettings();
+    expect(drawn()).toEqual(look('answering'));
+    expect(drawn()).not.toEqual(IDLE);
   });
 });

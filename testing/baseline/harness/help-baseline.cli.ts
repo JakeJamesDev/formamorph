@@ -100,8 +100,12 @@ const frames = frameArgs.filter(isFrame);
 const mascotArg = argVal('--mascot', 'on');
 if (mascotArg !== 'on' && mascotArg !== 'off') throw new Error(`--mascot takes on or off, not ${mascotArg}`);
 /** The Mascot settings every session arm carries. */
-const mascotSettings = { mascot: mascotArg === 'on', rig: { ...DEFAULT_MASCOT_RIG, voice: argVal('--voice', DEFAULT_MASCOT_RIG.voice) } };
-if (frames.length > 0 && !(mascotSettings.mascot && mascotSettings.rig.voice.trim())) throw new Error('--frames needs the Mascot on and a Voice');
+const mascotVoice = argVal('--voice', DEFAULT_MASCOT_RIG.voice);
+const mascotSettings = {
+  mascot: mascotArg === 'on',
+  mascotPresets: { activeId: 'probe', mascots: [{ id: 'probe', name: 'Probe', rig: { ...DEFAULT_MASCOT_RIG, voice: mascotVoice } }] },
+};
+if (frames.length > 0 && !(mascotSettings.mascot && mascotVoice.trim())) throw new Error('--frames needs the Mascot on and a Voice');
 
 type Arm = AnswerVariant | VoiceFrame | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'mascot-off' | 'no-docs';
 
@@ -179,7 +183,7 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
   const fetchImpl = arm === 'pick-old'
     ? withoutEarlierAnswer(sessionFetch(usage), PICK_LINES, { question: c.question, earlier: previous?.question, earlierAnswer: previous?.answer, where: surfaceHint(c.surface, index)?.where })
     : isVariant(arm) ? answerVariant(sessionFetch(usage), arm)
-    : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotSettings.rig.voice.trim()) : sessionFetch(usage);
+    : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotVoice.trim()) : sessionFetch(usage);
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
     settings: helpSettingsOf({ lookup, ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), ...(arm === 'keyword-only' && { sources: { aiPicks: false } }) }),
@@ -210,7 +214,7 @@ ${exchange.answer}` : exchange.answer },
     { role: 'user', content: helpUserMessage(c.question, sections, hint?.where) },
   ];
   const spec = buildAiRequestSpec(probeSnapshot(target, false), {
-    systemPrompt: helpSystemPrompt(c.language ?? '', renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: mascotSettings.mascot ? mascotSettings.rig.voice.trim() : '' })), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens,
+    systemPrompt: helpSystemPrompt(c.language ?? '', renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: mascotSettings.mascot ? mascotVoice.trim() : '' })), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
   if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);
@@ -298,7 +302,7 @@ async function runBatch(): Promise<Batch> {
   const started = Date.now();
   const rows = (await pool(jobs, parallel)).flat();
   console.log(`${rows.length} answers in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
-  return { endpoint: target.endpoint, model: target.model, runs, arms, picked: asked.map((c) => c.id), mascot: { on: mascotSettings.mascot, voice: mascotSettings.rig.voice }, rows };
+  return { endpoint: target.endpoint, model: target.model, runs, arms, picked: asked.map((c) => c.id), mascot: { on: mascotSettings.mascot, voice: mascotVoice }, rows };
 }
 
 const batch = rescoreFile ? JSON.parse(readFileSync(rescoreFile, 'utf8')) as Batch : await runBatch();

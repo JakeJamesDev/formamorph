@@ -10,7 +10,7 @@ import { helpSettingsCodec, helpSettingsOf } from '@/lib/formaquestion/helpSetti
 import { addPreset, emptyStore, presetStoreCodec, PROMPT_TEXT_KEYS, type PromptValues } from '@/lib/promptPresets';
 import { sseReply, sseResponse } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { openHelpSettings, VOICED_HELP_PROMPT } from '@/test/helpFixtures';
+import { mascotStoreOf, openHelpSettings, VOICED_HELP_PROMPT } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import type { HelpAi } from './useHelpAi';
 
@@ -68,7 +68,7 @@ describe('the help preset on the device', () => {
   const captain = { ...DEFAULT_MASCOT_RIG, voice: 'Speak like a ship captain.' };
 
   it("sends the stored rig's Voice with the Mascot on", async () => {
-    localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ rig: captain })));
+    localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ mascotPresets: mascotStoreOf(captain) })));
     const spy = stubRequests();
     await ask(spy, 'How do I add a trait?');
     expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
@@ -82,10 +82,13 @@ describe('the help preset on the device', () => {
     await openHelpSettings();
     const dialog = screen.getByRole('dialog', { name: 'Formaquestion Settings' });
     await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
+    // The Default mascot is read-only; its copy takes the Voice.
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Duplicate Mascot' }));
     const voice = await within(dialog).findByRole('textbox', { name: 'Voice' });
     await userEvent.clear(voice);
     // One paste, not 26 keystrokes: each keystroke re-renders the whole Mascot tab, and the field's value is what the prompt reads.
     await userEvent.paste('Speak like a ship captain.');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     await userEvent.keyboard('{Escape}');
     await userEvent.type(await screen.findByRole('textbox', { name: 'Ask a Question' }), 'How do I add a trait?');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
@@ -94,7 +97,7 @@ describe('the help preset on the device', () => {
   });
 
   it("sends the prompt with no Voice while the Mascot is off", async () => {
-    localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ rig: captain, mascot: false })));
+    localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ mascotPresets: mascotStoreOf(captain), mascot: false })));
     const spy = stubRequests();
     await ask(spy, 'How do I add a trait?');
     expect(systemOf(spy, 1)).toBe(HELP_SYSTEM_PROMPT);
