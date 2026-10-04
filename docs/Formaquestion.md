@@ -36,6 +36,19 @@ Your AI writes the answer from the guide sections that match your question. To e
 
 The AI gets your earlier questions and its answers, so you do not have to say the topic again. To start again on a new topic, select **Clear Conversation** in the title bar's **⋮** menu.
 
+## How to Go to the Screen an Answer Describes
+<!-- keywords: take me there, jump, go there, open the screen, open the tab, navigate, link, shortcut, show me where, find the control, button under the answer, open settings from help, direct me, takes me to the dialog -->
+<!-- route: formaquestion.ask -->
+
+1. Ask a question.
+2. Under the answer, select **Take Me There**.
+
+The button opens the screen, dialog or tab that the top source under **Sources** describes. The top source is the first one that is not the guide section of the screen you have open. The button sits next to **Sources**. On a desktop screen, the window stays open, so you can read the steps while you work. On a mobile-size screen, the sheet closes.
+
+- When the button needs you to leave a game in progress, the app asks first. Select **Cancel** to stay. The game does not change.
+- When the button needs you to close a World Editor that has unsaved changes, the editor asks first, as it does when you close it. A jump to **Settings** opens over the editor and does not ask.
+- The button does not show when the answer is not from the guide, when the top source has no screen, or when the answer stopped or failed.
+
 ## How to Ask About a Screenshot
 <!-- keywords: image, picture, paste, upload, attach, what is this, screen capture, photo, snip, print screen, vision model, clipboard, identify button, show my screen, drag file -->
 <!-- route: formaquestion.ask -->
@@ -229,6 +242,7 @@ The **Ask** tab sends your question to your AI, together with the guide sections
 Until the answer starts, a line under your question says what it waits on: **Checking your AI…** for a connection check, **Picking sections…** for the **AI Picks** request, **Searching the guide…** for **Semantic Search**, **Waiting for your AI…** for the answer request, and **Looking up…** while the AI reads more of the guide. While the model reasons, the **Thinking** header shows the wait instead.
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
+- **Take Me There**, next to **Sources**, opens the screen that the top source describes. See [How to Go to the Screen an Answer Describes](#how-to-go-to-the-screen-an-answer-describes).
 - **Thinking**, above an answer, shows how the AI reasoned, when your model reasons. It starts closed. Open or close one, and later answers start the same way.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
 - The request holds your question and those guide sections. It holds nothing from your worlds or your saves.

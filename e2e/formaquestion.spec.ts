@@ -647,6 +647,55 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect.poll(() => focusOwner(page)).toBe('window');
   });
 
+  test('Take Me There opens the Settings tab that the answer describes, and the window stays open', async ({ page }) => {
+    await openWithAi(page, '1. Open the **Display** tab.\n2. Pick a font.');
+    await openHelp(page);
+    await askField(page).fill('How do I change the narration font?');
+    await page.keyboard.press('Enter');
+    const sources = conversation(page).getByRole('group', { name: 'Sources' });
+    // The buttons are the fold, Take Me There, the open screen's lead, then the first section the search found.
+    await expect(sources.getByRole('button').nth(2)).toContainText('The Library Tabs');
+    await expect(sources.getByRole('button').nth(3)).toContainText('How to Change the Narration Font');
+    await expect(settings(page)).toHaveCount(0);
+
+    await sources.getByRole('button', { name: 'Take Me There' }).click();
+    await expect(settings(page)).toBeVisible();
+    // The Display tab holds the font list, so the control is on screen.
+    await expect(settings(page).locator('#fontFamily')).toBeVisible();
+    await expect(helpWindow(page)).toBeVisible();
+    await expect(conversation(page)).toContainText('Pick a font.');
+  });
+
+  test('Take Me There from a game asks first, and Cancel leaves the game as it was', async ({ page }) => {
+    await openWithAi(page, '1. Select **Start Game** on a world tile.');
+    await gotoDev(page, 'gameViewer', { fixture: 'whiteRoom' });
+    const action = page.getByPlaceholder(/Type your action/);
+    // The fixture fills the box with its opening cue; the typed action replaces it once that has landed.
+    await expect(action).toHaveValue(/^Begin the story/);
+    await action.fill('I wait by the seam.');
+    await openHelp(page);
+    await askField(page).fill('How do I start a game?');
+    await page.keyboard.press('Enter');
+    const sources = conversation(page).getByRole('group', { name: 'Sources' });
+    await expect(sources.getByRole('button', { name: /How to Start a Game/ })).toBeVisible();
+
+    await sources.getByRole('button', { name: 'Take Me There' }).click();
+    const leave = page.getByRole('alertdialog', { name: 'Exit to Main Menu' });
+    await expect(leave).toBeVisible();
+    await leave.getByRole('button', { name: 'Cancel' }).click();
+    await expect(leave).toHaveCount(0);
+
+    // The game is untouched: its screen, its typed action and the help window all stay.
+    await expect(action).toHaveValue('I wait by the seam.');
+    await expect(page.getByRole('button', { name: 'Send', exact: true }).first()).toBeVisible();
+    await expect(helpWindow(page)).toBeVisible();
+    // A second click asks again: the refusal left no request pending.
+    await sources.getByRole('button', { name: 'Take Me There' }).click();
+    await expect(leave).toBeVisible();
+    await leave.getByRole('button', { name: 'Cancel' }).click();
+    await expect(action).toHaveValue('I wait by the seam.');
+  });
+
   test('a long answer keeps the conversation at its end, and the question field stays in view', async ({ page }) => {
     const steps = Array.from({ length: 40 }, (_, n) => `${n + 1}. Select the control for step ${n + 1} and wait for the list to change.`).join('\n');
     await openWithAi(page, steps);
