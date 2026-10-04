@@ -64,6 +64,9 @@ import { dropMascotImages, type MascotDraftControl } from './useMascotDraft';
 
 /** Tailwind's `lg`: from here the tab is two columns that scroll alone. */
 const WIDE_QUERY = '(min-width: 1024px)';
+/** Docked, the preview keeps a fixed column; in full screen it takes a third of the width. */
+const COLUMNS_DOCKED = 'grid-cols-[22rem_minmax(0,1fr)]';
+const COLUMNS_FULL_SCREEN = 'grid-cols-[minmax(0,1fr)_minmax(0,2fr)]';
 const PREVIEW_HEIGHT = 240;
 /** The widest Head View preview: the 128px slot less its frame's padding and border. */
 const PREVIEW_HEAD_WIDTH = 118;
@@ -805,7 +808,7 @@ export function MascotTab({ settings, onChange, control }: {
   return (
     // The morph source: the window grows out of the whole tab, and its contents move into the window.
     <div ref={panelRef} className="flex min-h-0 flex-1 flex-col pt-4">
-      <PanelShell morph={morph} sourceRef={panelRef} title={MASCOT_COPY.mascot.label}>
+      <PanelShell morph={morph} sourceRef={panelRef} title={MASCOT_COPY.mascot.label} showTitle={false}>
       {/* Moves with the contents, so the shortcut's own-element check holds inside the window too.
           Focus leaving a control closes the step a typed run or key nudge opened. */}
       <div className="flex min-h-0 flex-1 flex-col" onKeyDown={shortcut} onBlur={control.closeStep}>
@@ -839,7 +842,7 @@ export function MascotTab({ settings, onChange, control }: {
       </div>
       {/* From lg each column scrolls alone, so the preview stays in view; under it one scroller holds both. */}
       {wide ? (
-        <div className="grid min-h-0 flex-1 grid-cols-[22rem_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-6">
+        <div data-fq-mascot-columns="" className={`grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 ${morph.contentInOverlay ? COLUMNS_FULL_SCREEN : COLUMNS_DOCKED}`}>
           <ScrollArea type="auto" className="min-h-0" viewportProps={{ 'data-fq-scroll': 'mascot-preview' }}>
             <div className="py-4">{previewWidget}</div>
           </ScrollArea>

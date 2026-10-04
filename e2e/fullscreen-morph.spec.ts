@@ -127,6 +127,8 @@ interface Surface {
   open: (page: Page) => Promise<void>;
   enter: Toggle;
   exit: Toggle;
+  /** Runs at this size on a desktop project only, in place of the project's own. */
+  viewport?: { width: number; height: number };
 }
 
 const fieldToggle = { enter: { press: (page: Page) => chrome.enterFullscreen(page).click() }, exit: { press: (page: Page) => chrome.exitFullscreen(page).click() } };
@@ -144,10 +146,53 @@ const SURFACES: Surface[] = [
   },
 ];
 
+const WIDE_VIEWPORT = { width: 1600, height: 900 };
+/** The docked preview column: 22rem at 16px. */
+const DOCKED_PREVIEW_PX = 352;
+
+test.describe('Formaquestion Mascot split', () => {
+  test.use({ viewport: WIDE_VIEWPORT });
+
+  test('full screen gives the preview a third of the viewport, and the dock keeps 22rem', async ({ page }) => {
+    await openHelpSettingsTab(page, 'Mascot');
+    const dialog = page.getByRole('dialog', { name: 'Formaquestion Settings' });
+    const previewWidth = () => dialog.locator('[data-fq-scroll="mascot-preview"]').evaluate((el) => Math.round(el.getBoundingClientRect().width));
+    expect(await previewWidth()).toBe(DOCKED_PREVIEW_PX);
+
+    await headerAction('View full screen').press(page);
+    const full = page.getByRole('dialog', { name: 'Mascot', exact: true });
+    await expect(full).toBeVisible();
+    // The Mascot tab runs an endless animation, so `settle` would never return; the trip is well under a second.
+    await page.waitForTimeout(900);
+    // One third of the window less its share of the gap and padding: within a fifth of the viewport's third.
+    const width = await full.locator('[data-fq-scroll="mascot-preview"]').evaluate((el) => el.getBoundingClientRect().width);
+    expect(Math.abs(width - 1600 / 3)).toBeLessThan(1600 / 3 * 0.2);
+    const controls = await full.locator('[data-fq-scroll="mascot-controls"]').evaluate((el) => el.getBoundingClientRect().width);
+    expect(controls / width).toBeGreaterThan(1.95);
+    expect(controls / width).toBeLessThan(2.05);
+
+    await headerAction('Exit full screen').press(page);
+    await expect(full).toHaveCount(0);
+    expect(await previewWidth()).toBe(DOCKED_PREVIEW_PX);
+  });
+});
+
 /** The frames in which the window is visibly mid-travel: meaningfully smaller than its final size. */
 const travelFrames = (frames: Sample[], full: number) => frames.filter((s) => area(s) < full * 0.95);
 
-for (const surface of SURFACES) test.describe(surface.name, () => {
+/** The Mascot trip again at a desktop size, where the columns reflow from 22rem to a third during the morph. */
+const WIDE_MASCOT: Surface = {
+  ...SURFACES.find((s) => s.name === 'Formaquestion Mascot')!,
+  name: 'Formaquestion Mascot at 1600×900',
+  viewport: WIDE_VIEWPORT,
+};
+
+for (const surface of [...SURFACES, WIDE_MASCOT]) test.describe(surface.name, () => {
+  if (surface.viewport) {
+    test.use({ viewport: surface.viewport });
+    test.skip(({ isMobile, hasTouch }) => isMobile || hasTouch, 'A desktop-size run');
+  }
+
   test('opening: the window grows through intermediate sizes, solid, over a dimmed backdrop', async ({ page }) => {
     await surface.open(page);
     await surface.enter.arm?.(page);

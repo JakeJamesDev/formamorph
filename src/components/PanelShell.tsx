@@ -33,10 +33,12 @@ function returnTarget(root: HTMLElement | null): HTMLElement | undefined {
  * rebuilt from their values: controlled state is safe, but a field's own undo stack starts fresh on either
  * side of the toggle.
  */
-export function PanelShell({ morph, sourceRef, title, children }: {
+export function PanelShell({ morph, sourceRef, title, showTitle = true, children }: {
   morph: MorphFullscreen;
   /** The window's name: the tab it grows out of. */
   title: string;
+  /** False keeps the title as the accessible name and spends no row on it; the panel's own toggle is the way out. */
+  showTitle?: boolean;
   /** The panel the shell sits in. The window grows out of it, and focus returns to a toggle inside it. */
   sourceRef: RefObject<HTMLElement | null>;
   children: ReactNode;
@@ -47,7 +49,7 @@ export function PanelShell({ morph, sourceRef, title, children }: {
   return (
     <>
       {!morph.contentInOverlay && children}
-      <FullscreenShell morph={morph} title={title} showTitle returnFocus={() => returnTarget(sourceRef.current)}>
+      <FullscreenShell morph={morph} title={title} showTitle={showTitle} returnFocus={() => returnTarget(sourceRef.current)}>
         {morph.contentInOverlay ? children : null}
       </FullscreenShell>
     </>

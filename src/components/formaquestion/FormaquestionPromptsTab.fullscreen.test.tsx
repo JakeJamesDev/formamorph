@@ -33,6 +33,17 @@ describe('Formaquestion Prompts full screen', () => {
     expect(screen.getAllByTestId('help-preset-header-row')).toHaveLength(1);
   });
 
+  it('names the window without a visible title row, and keeps the toggle as the way out', async () => {
+    const user = userEvent.setup();
+    renderMine();
+    await user.click(screen.getByRole('button', { name: 'Edit full screen' }));
+
+    expect(promptsWindow()).toHaveAccessibleName('Prompts');
+    const heading = within(promptsWindow()).getByRole('heading', { name: 'Prompts' });
+    expect(heading.closest('.sr-only')).not.toBeNull();
+    expect(within(promptsWindow()).getByRole('button', { name: 'Exit full screen' })).toBeInTheDocument();
+  });
+
   it('stays in full screen across the rail and returns focus to the toggle', async () => {
     const user = userEvent.setup();
     renderMine();
