@@ -7,7 +7,7 @@ test('all design references fit the viewport and remain reachable', async ({ pag
   const showcase = page.locator('[data-design-system-showcase]');
   await expect(showcase).toBeVisible();
 
-  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates', 'Locations', 'Context Menu', 'Rich Lists', 'Footer Actions', 'Panel Tabs', 'Formaquestion']) {
+  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates', 'Locations', 'Context Menu', 'Rich Lists', 'Footer Actions', 'Panel Tabs', 'Formaquestion', 'Preset Header']) {
     const tab = page.getByRole('tab', { name, exact: true });
     await tab.click();
     await expect(tab).toHaveAttribute('aria-selected', 'true');
@@ -91,6 +91,47 @@ test('the Formaquestion reference draws the minimal chrome as three pieces on on
   // A source name opens it again.
   await sample.getByRole('group', { name: 'Sources' }).getByRole('button', { name: /How to Light a Lantern/ }).click();
   await expect(reader).toBeVisible();
+});
+
+test('the Preset Header reference shows both widths and fits a phone viewport', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('FORMAMORPH_introSeen', '1'));
+  await page.goto('/#dev?modal=designSystem&tab=preset-header');
+  const reference = page.getByRole('region', { name: 'Preset Header Reference' });
+  await expect(reference).toBeVisible();
+
+  const wide = reference.getByRole('region', { name: 'Editable, Wide' });
+  const narrow = reference.getByRole('region', { name: 'Editable, Narrow' });
+  await expect(wide.getByRole('button', { name: 'Export' })).toBeVisible();
+  await expect(narrow.getByRole('button', { name: 'Export' })).toHaveCount(0);
+
+  // The ⋯ menu holds every action, and Reset confirms with the preset's name.
+  await narrow.getByRole('button', { name: 'Preset Actions' }).click();
+  await expect(page.getByRole('menuitem')).toHaveCount(7);
+  await page.getByRole('menuitem', { name: 'Reset' }).click();
+  const confirm = page.getByRole('alertdialog');
+  await expect(confirm).toContainText('"Mine"');
+  await confirm.getByRole('button', { name: 'Cancel' }).click();
+  await expect(narrow.getByRole('button', { name: 'Preset Actions' })).toBeFocused();
+
+  // Reset left of Compare, at the right edge of the footer pair.
+  const single = reference.getByRole('region', { name: 'Single Prompt' });
+  const reset = (await single.getByRole('button', { name: 'Reset Narration Prompt' }).boundingBox())!;
+  const compare = (await single.getByRole('button', { name: 'Compare Narration Prompt' }).boundingBox())!;
+  expect(reset.x + reset.width).toBeLessThanOrEqual(compare.x);
+  const section = (await single.boundingBox())!;
+  // The gap to the card edge is its padding and border, 13px.
+  expect(section.x + section.width - (compare.x + compare.width)).toBeLessThan(20);
+
+  // At phone width nothing makes the page scroll sideways, and the wide sample scrolls inside its own box.
+  await page.setViewportSize({ width: 375, height: 812 });
+  const showcase = page.locator('[data-design-system-showcase]');
+  const dimensions = await showcase.evaluate((el) => ({ content: el.scrollWidth, viewport: el.clientWidth }));
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
+  const stacked = reference.getByRole('region', { name: 'Stacked Prompts' });
+  const label = (await stacked.getByText('Opening Message').boundingBox())!;
+  const pairBox = (await stacked.getByRole('button', { name: 'Reset Opening Message' }).boundingBox())!;
+  // The pair never covers its label, whether it shares the row or wraps under it.
+  expect(pairBox.x >= label.x + label.width || pairBox.y >= label.y + label.height).toBe(true);
 });
 
 test('the Code Templates reference validates and inserts into its local target', async ({ page }) => {

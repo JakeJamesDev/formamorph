@@ -108,6 +108,18 @@ describe('PresetHeader', () => {
     expect(h.reset.run).not.toHaveBeenCalled();
   });
 
+  it('draws only the icon row when the layout is wide', () => {
+    render(<PresetHeader label="Preset" testId="row" layout="wide" actions={presetHeaderActions(false, handlers())} select={<span />} />);
+    expect(rowNames()).toEqual(['Delete', 'Reset', 'Duplicate', 'Rename', 'Import', 'Export', 'Publish']);
+    expect(screen.queryByRole('button', { name: MENU })).toBeNull();
+  });
+
+  it('draws only the ⋯ menu when the layout is narrow', async () => {
+    render(<PresetHeader label="Preset" testId="row" layout="narrow" actions={presetHeaderActions(false, handlers())} select={<span />} />);
+    expect(rowNames()).toEqual([]);
+    expect(await openMenu()).toEqual(['Duplicate', 'Rename', 'Import', 'Export', 'Publish', '---', 'Reset', 'Delete']);
+  });
+
   it('returns focus to the ⋯ button when a confirm opened from the menu is canceled', async () => {
     renderHeader(false, handlers());
     await openMenu();

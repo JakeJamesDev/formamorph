@@ -1136,6 +1136,80 @@ Open `#dev?modal=designSystem&tab=supporter-flair` for the light and dark panels
 
 The badge labels are **Supporter** and **Supporter+**. Copy says Profile Image, never avatar.
 
+## Pattern: Preset Header
+
+**Purpose:** Pick a preset and act on it with the same controls on every preset surface.
+
+**Density:** Compact. One row holds the label, the preset select and the actions. A reachability badge sits under the row, and the Reset and Compare pair sits with its prompt.
+
+### Composition
+
+- 🏷️ **Label and select.** The label reads **Preset**. The select lists the presets, then a separator, then **Add New Preset…** as its last row. It has no Import row. A surface that picks the preset elsewhere, such as the Formaquestion **Endpoint** tab, shows a heading in place of the label and select.
+- 🔘 **Icons at `md` and up.** Each action is a ghost icon button with a tooltip. Destructive actions sit left of the select, with Delete outermost. File actions sit right of it.
+- ⋯ **One menu below `md`.** A single **Preset Actions** button holds every action. File actions come first, then a separator, then the destructive ones in red.
+- ✋ **Confirm first.** Reset and Delete open a confirm that names the preset. Cancel returns focus to the icon, or to the **Preset Actions** button when the menu opened the confirm.
+- 🟢 **Badge.** An endpoint preset select shows whether its server answers, under the select. The row carries one dot, one line and **Recheck**.
+- ↩️ **Reset and Compare.** The pair sits right-aligned, Reset left of Compare. One prompt on screen puts it in the modal footer. Stacked prompts put a smaller pair at the right of each label row.
+
+| Surface | Actions, in menu order |
+| --- | --- |
+| Settings → Prompts | Duplicate, Rename, Import, Export, Publish (when the account can publish), Reset, Delete |
+| Formaquestion → Prompts | Duplicate, Rename, Import, Export, Reset, Delete |
+| Text endpoint, in both modals | Duplicate, Rename, Reset, Delete |
+| Image endpoint | Duplicate, Rename, Reset, Delete. Delete hides while one preset remains. |
+
+An endpoint preset has no Import or Export, because the file would carry an API token. A built-in preset keeps only Duplicate, Import and Export where the surface offers them. A surface that passes no handler for an action drops that action from both widths.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Row, icons, confirm and focus return | `PresetHeader` in [`PresetHeader.tsx`](../src/components/presetHeader/PresetHeader.tsx) |
+| The ⋯ menu | `PresetHeaderMenu` in [`PresetHeaderMenu.tsx`](../src/components/presetHeader/PresetHeaderMenu.tsx) |
+| The one action list | `presetHeaderActions` in [`presetHeaderActions.ts`](../src/lib/presetHeaderActions.ts) |
+| Badge | `EndpointReachabilityBadge` and `EndpointReachabilityView` in [`EndpointReachabilityBadge.tsx`](../src/components/modals/EndpointReachabilityBadge.tsx) |
+| Probes | [`useEndpointReachable.ts`](../src/lib/useEndpointReachable.ts), [`probe.ts`](../src/lib/imageGen/probe.ts) |
+| Reset and Compare | `PromptResetCompare` in [`PromptResetCompare.tsx`](../src/components/prompt/PromptResetCompare.tsx), its words in [`promptResetCompareCopy.ts`](../src/components/prompt/promptResetCompareCopy.ts) |
+| Compare dialog | `PromptCompareDialog` in [`PromptCompareDialog.tsx`](../src/components/prompt/PromptCompareDialog.tsx) |
+| Production hosts of the header | [`SettingsModal.tsx`](../src/components/modals/SettingsModal.tsx), [`FormaquestionPromptsTab.tsx`](../src/components/formaquestion/FormaquestionPromptsTab.tsx), [`TextEndpointEditor.tsx`](../src/components/modals/TextEndpointEditor.tsx) |
+| Production hosts of the badge | The three above, and [`GenerateImageButton.tsx`](../src/components/GenerateImageButton.tsx) for the in-game image preset |
+| Production host of the pair | [`SettingsModal.tsx`](../src/components/modals/SettingsModal.tsx) |
+| Isolated reference | [`PresetHeaderReference.tsx`](../src/components/design-system/PresetHeaderReference.tsx) |
+
+Build a new preset header from `presetHeaderActions` and `PresetHeader`. Do not draw a row of buttons by hand.
+
+### Responsive behavior
+
+- The header switches at `md`. `PresetHeader` takes `layout="wide"` or `layout="narrow"` to pin one form. Only the reference uses it, so both forms show at one viewport size.
+- The select takes the free width and shrinks first. The label, the icons and the ⋯ button keep their size.
+- The Reset and Compare pair on a label row wraps under the label when the row is too narrow, and stays right-aligned. It never covers the label.
+- A badge line stays on one row. A long line truncates, and **Recheck** keeps its size.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Editable | The full action set of the surface. |
+| Built-in | Duplicate, Import and Export only. No Reset or Delete. |
+| Narrow | One **Preset Actions** button. The menu lists every action of the wide row. |
+| One image preset | Delete hides until a second preset exists. |
+| Heading form | A heading takes the place of the label and select. The same icons or menu follow it. |
+| Checking | A pulsing gray dot, **Checking…**, and a disabled **Recheck**. |
+| Reachable | A green dot and **Reachable**. |
+| Missing model | A yellow dot and **Reachable, but no "name"**, or **Reachable, but no model** when the preset has no model name. |
+| Unreachable | A red dot and **Didn't answer**. |
+| Not checked | A gray dot and **Not checked**. |
+| No badge | The Built-In Engine, NovelAI, the OpenAI image provider in the web build, and an image preset with image generation off. The row shows nothing. |
+| Pair, edited | Reset and Compare are enabled. |
+| Pair, at default | Reset and Compare are disabled. |
+| Pair, built-in preset | The pair is hidden. |
+
+The probe asks for a model list or node info and never sends a prompt, so no check costs credits. Open `#dev?modal=designSystem&tab=preset-header` for the header in both widths, every badge state, and the pair in the modal footer and on label rows. The sample actions change only local text.
+
+### Writing review
+
+The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **Publish**, **Reset**, **Delete**, **Preset Actions**, **Add New Preset…**, **Recheck** and **Compare**, all in Title Case. An icon's tooltip is its label. The Reset and Compare tooltips are one sentence with no period. The badge lines are status text: one word or phrase, and the missing model name changes with the preset. Each confirm names what it changes, the preset or the prompt, and says "This can't be undone." The reference sample text and status lines were checked against the Writing Guide by copy role. This review does not certify the production confirm text as ASD-STE100 compliant.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.
