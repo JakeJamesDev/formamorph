@@ -69,6 +69,58 @@ test.describe('the Mascot on a desktop screen', () => {
     expect(reloaded.mascot.x).toBeCloseTo(moved.mascot.x, 0);
   });
 
+  test('opens the reader beside the column from a source name, whole on the screen, and the pill moves all three', async ({ page }) => {
+    await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
+    await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
+    await page.route('**/chat/completions', async (route) => {
+      const body = route.request().postDataJSON() as { max_tokens: number };
+      // The AI Picks request picks nothing, so the keyword search alone finds the sections.
+      const text = body.max_tokens === 150 ? 'No section of the list answers the question.' : '1. Open the **Traits** tab.\n2. Select **New Blueprint**.';
+      const frame = `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\n`;
+      await route.fulfill({ contentType: 'text/event-stream', body: `${frame}data: [DONE]\n\n` });
+    });
+    await openApp(page, { FORMAMORPH_endpointUrl: 'http://127.0.0.1:5190/v1/chat/completions' });
+    await openHelp(page);
+    await askField(page).fill('How do I make a blueprint?');
+    await page.keyboard.press('Enter');
+    await helpWindow(page).getByRole('group', { name: 'Sources' }).getByRole('button', { name: /How to Make a Blueprint/ }).click();
+
+    const reader = helpWindow(page).locator('[data-fq-piece="reader"]');
+    await expect(reader.getByRole('heading', { name: 'How to Make a Blueprint', level: 3 })).toBeVisible();
+    await expect.poll(async () => (await reader.boundingBox())?.width ?? 0).toBeGreaterThan(0);
+    const readerBox = async () => (await reader.boundingBox())!;
+    const { mascot, column } = await boxes(page);
+    const opened = await readerBox();
+    expect(opened.x).toBeCloseTo(column.x + column.width + 8, 0);
+    expect(opened.y).toBeCloseTo(column.y, 0);
+    expect(opened.height).toBeCloseTo(column.height, 0);
+    expect(opened.x + opened.width).toBeLessThanOrEqual(1920);
+    expect(mascot.x + mascot.width).toBeCloseTo(column.x, 0);
+
+    // The gap between the column and the reader belongs to the app.
+    const throughGap = await page.evaluate(({ x, y }) => !document.elementFromPoint(x, y)?.closest('#formaquestion-window'), { x: column.x + column.width + 4, y: column.y + column.height / 2 });
+    expect(throughGap).toBe(true);
+
+    const grip = (await helpWindow(page).locator('[data-fq-drag] svg').first().boundingBox())!;
+    const from = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x - 150, from.y - 60, { steps: 5 });
+    await page.mouse.up();
+    const moved = await boxes(page);
+    const movedReader = await readerBox();
+    expect(moved.column.x).toBeCloseTo(column.x - 150, 0);
+    expect(moved.mascot.x).toBeCloseTo(mascot.x - 150, 0);
+    expect(movedReader.x).toBeCloseTo(opened.x - 150, 0);
+    expect(movedReader.y).toBeCloseTo(opened.y - 60, 0);
+
+    // The reader's own button closes it. The column and the Mascot stay.
+    await reader.getByRole('button', { name: 'Close Reader' }).click();
+    await expect(reader).toHaveCount(0);
+    await expect(piece(page, 'column')).toBeVisible();
+    await expect(piece(page, 'mascot')).toBeVisible();
+  });
+
   test('zooms open with the column from the Help tab, as the framed window does', async ({ page }) => {
     await openApp(page);
     const frames = await page.evaluate(async () => {

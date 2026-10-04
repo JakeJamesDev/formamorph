@@ -28,6 +28,7 @@ import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
 import { MascotPiece } from './MascotPiece';
+import { ReaderPiece } from './ReaderPiece';
 import { appLoadQuestion, mascotPhase } from './mascotPhase';
 import { MinimalChat } from './MinimalChat';
 import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
@@ -102,6 +103,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const [viewport, setViewport] = useState<Viewport>(() => viewportOf(window));
   /** The Mascot base's width over its height, once its image has loaded. */
   const [mascotAspect, setMascotAspect] = useState<number | null>(null);
+  /** The section the minimal chrome's reader piece shows, or null while it is closed. */
+  const [readerId, setReaderId] = useState<string | null>(null);
 
   // The docs load on the first open, from their own chunk.
   const [index, setIndex] = useState<DocsIndex | null>(null);
@@ -208,11 +211,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (suspended) return;
     return registerDocsOpener((next) => {
       if (!open) openWindow();
-      // The minimal chrome has no reader, so the heading opens in the wiki.
-      if (minimal) openInWiki(docTargetId(next));
+      // The sheet's minimal chrome has no reader piece, so the heading opens in the wiki.
+      if (minimal && sheet) openInWiki(docTargetId(next));
       else setTarget(next);
     });
-  }, [suspended, open, openWindow, minimal]);
+  }, [suspended, open, openWindow, minimal, sheet]);
 
   // The Android back action closes the window before any dialog under it.
   useBackStop(open && !suspended && !covered ? closeWindow : undefined, windowRef);
@@ -278,8 +281,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       window.open(wikiPageUrl(docTargetId(target)), '_blank', 'noopener,noreferrer');
       return;
     }
-    changeViewInWindow(openSectionChange(sectionId, guide.section(sectionId)?.page));
-  }, [target, guide, changeViewInWindow]);
+    if (minimal) setReaderId(sectionId);
+    else changeViewInWindow(openSectionChange(sectionId, guide.section(sectionId)?.page));
+  }, [target, guide, changeViewInWindow, minimal]);
 
   // The docs can load after the window opens. Focus then goes from the frame to the window's first field, except on the sheet.
   useEffect(() => {
@@ -346,8 +350,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [devRoute, changeView]);
 
   // In the minimal chrome the stored box places the column.
-  const layout = minimal && !sheet ? minimalLayout(box, viewport, mascotAspect) : null;
-  const movePill = (start: WindowBox, dx: number, dy: number, within: Viewport) => moveColumn(start, dx, dy, within, mascotAspect);
+  const readerShown = guide !== null && readerId !== null;
+  const layout = minimal && !sheet ? minimalLayout(box, viewport, mascotAspect, readerShown) : null;
+  const movePill = (start: WindowBox, dx: number, dy: number, within: Viewport) => moveColumn(start, dx, dy, within, mascotAspect, readerShown);
   const boxDrag = (step: typeof moveBox, from: WindowBox = box): PointerDrag<BoxPress> => ({
     start: (event) => (event.button !== 0 || (event.target as HTMLElement).closest('button')
       ? null
@@ -413,12 +418,15 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             onSettingsChange={changeSettings}
             draft={view.draft}
             onDraftChange={(draft) => changeView({ draft })}
-            onOpen={openInWiki}
+            onOpen={sheet ? openInWiki : setReaderId}
             move={sheet ? undefined : columnHandlers}
             large={sheet}
             menu={{ onOpenAiContext: () => openDialog('aiContext'), onOpenSettings: () => openDialog('settings'), onClear: chat.exchanges.length > 0 ? chat.clear : undefined, container: layer }}
             onClose={closeWindow}
           />
+          {layout?.reader && guide && readerId && (
+            <ReaderPiece guide={guide} sectionId={readerId} size={layout.reader} onOpen={setReaderId} onClose={() => setReaderId(null)} />
+          )}
         </section>
       )}
       {shown && !minimal && (

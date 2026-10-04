@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   clampBox, defaultBox, isWide, minimalLayout, moveBox, moveColumn, readStoredBox, resizeBox, swapWidth, writeStoredBox,
-  MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, WIDE_WIDTH,
+  MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH,
 } from './windowBox';
 
 const SCREEN = { width: 1600, height: 900 };
@@ -160,9 +160,46 @@ describe('minimalLayout', () => {
     expect(group).toEqual(column);
     expect(column.x).toBe(100);
   });
+
+  it('puts the reader right of the column at the column height, and the shared box widens by it', () => {
+    const box = { x: 800, y: 200, w: NARROW_WIDTH, h: 560 };
+    const { column, mascot, reader, group } = minimalLayout(box, SCREEN, ASPECT, true);
+    expect(column).toEqual({ x: 800, y: 200, w: NARROW_WIDTH, h: 560 });
+    expect(reader).toEqual({ w: READER_WIDTH, h: 560 });
+    expect(group.w).toBe(mascot!.w + NARROW_WIDTH + READER_GAP + READER_WIDTH);
+    expect(group.x).toBe(column.x - mascot!.w);
+  });
+
+  it('keeps the box unchanged while the reader is closed', () => {
+    const box = { x: 1000, y: 200, w: NARROW_WIDTH, h: 560 };
+    const closed = minimalLayout(box, SCREEN, ASPECT);
+    expect(closed.reader).toBeNull();
+    expect(closed.group.w).toBe(closed.mascot!.w + NARROW_WIDTH);
+  });
+
+  it('moves the column left until the reader is whole on the screen', () => {
+    const { column, group } = minimalLayout({ x: 1500, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT, true);
+    expect(column.x).toBe(SCREEN.width - NARROW_WIDTH - READER_GAP - READER_WIDTH);
+    expect(group.x + group.w).toBe(SCREEN.width);
+  });
+
+  it('gives the reader the room first and the Mascot what is left', () => {
+    const narrow = { width: 900, height: 900 };
+    const { column, mascot, reader, group } = minimalLayout({ x: 450, y: 0, w: NARROW_WIDTH, h: 560 }, narrow, ASPECT, true);
+    expect(reader!.w).toBe(READER_WIDTH);
+    expect(mascot!.w).toBeLessThan(560 * ASPECT);
+    expect(group.x).toBeGreaterThanOrEqual(0);
+    expect(group.x + group.w).toBeLessThanOrEqual(narrow.width);
+    expect(column.x + column.w + READER_GAP + reader!.w).toBeLessThanOrEqual(narrow.width);
+  });
 });
 
 describe('moveColumn', () => {
+  it('stops where the reader would leave the screen', () => {
+    const start = { x: 1000, y: 0, w: NARROW_WIDTH, h: 560 };
+    expect(moveColumn(start, 500, 0, SCREEN, 0.75, true).x).toBe(SCREEN.width - NARROW_WIDTH - READER_GAP - READER_WIDTH);
+  });
+
   it('moves the column and keeps the width and height of the box', () => {
     const wide = { x: 900, y: 200, w: WIDE_WIDTH, h: 560 };
     expect(moveColumn(wide, -100, 40, SCREEN, 0.75)).toEqual({ x: 800, y: 240, w: WIDE_WIDTH, h: 560 });
