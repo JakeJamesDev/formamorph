@@ -7,6 +7,7 @@ import { gotoDev, openApp } from './app';
  */
 
 const IMAGE_BASE = 'http://image.e2e.test';
+const OFF_LABEL = 'Image generation is off. Select “Enable Image Generation” to turn it on.';
 
 const STORE = {
   activeId: 'p0',
@@ -46,7 +47,7 @@ test.describe('Settings → Endpoints → Image: off state and badge slot', () =
     expect(await boxOf(page.getByRole('checkbox', { name: 'Enable Image Generation' }))).toEqual(switchBox);
   });
 
-  test('toggling the switch moves no row, above the content or in it', async ({ page }) => {
+  test('toggling the switch moves no row and keeps the frame one size', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 });
     await openApp(page, { FORMAMORPH_imageEndpointPresets: JSON.stringify(STORE) });
     await page.route(`${IMAGE_BASE}/sdapi/v1/sd-models`, (route) =>
@@ -55,59 +56,32 @@ test.describe('Settings → Endpoints → Image: off state and badge slot', () =
 
     const header = page.getByTestId('image-preset-header');
     const slot = page.getByTestId('image-reachability-slot');
+    const frame = page.getByTestId('image-scroll-frame');
     const toggle = page.getByRole('checkbox', { name: 'Enable Image Generation' });
     await expect(slot).toContainText('Reachable');
-    // The first content row too: the off label floats, so nothing below the switch shifts either.
-    const rows = async () => [
-      await boxOf(header), await boxOf(slot), await boxOf(toggle), await boxOf(page.locator('#imageEndpoint')),
-    ];
+    const rows = async () => [await boxOf(header), await boxOf(slot), await boxOf(toggle), await boxOf(frame)];
     const before = await rows();
 
     await toggle.click();
-    await expect(page.getByText('Image generation is off')).toBeVisible();
-    await expect(page.locator('#imageEndpoint')).toBeDisabled();
+    await expect(page.getByText(OFF_LABEL)).toBeVisible();
+    await expect(page.locator('#imageEndpoint')).toBeHidden();
     expect(await rows()).toEqual(before);
 
     await toggle.click();
-    await expect(page.locator('#imageEndpoint')).toBeEnabled();
+    await expect(page.locator('#imageEndpoint')).toBeVisible();
     expect(await rows()).toEqual(before);
   });
 
-  test('the disabled rows still scroll', async ({ page }) => {
-    await page.setViewportSize({ width: 1600, height: 560 });
+  test('the off label is alone in the frame, centered', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
     await openApp(page, { FORMAMORPH_imageEndpointPresets: JSON.stringify(STORE), FORMAMORPH_imageGenDisabled: 'true' });
     await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'endpoints', subtab: 'image' });
 
-    await expect(page.locator('#imageEndpoint')).toBeDisabled();
-    const viewport = page.locator('[role="tabpanel"][data-state="active"] [data-radix-scroll-area-viewport]').last();
-    expect(await viewport.evaluate((node) => node.scrollHeight > node.clientHeight)).toBe(true);
-    const box = (await viewport.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.wheel(0, 300);
-    await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
-  });
-
-  test('the off label stays centered on the scroll window while the rows scroll', async ({ page }) => {
-    await page.setViewportSize({ width: 1600, height: 560 });
-    await openApp(page, { FORMAMORPH_imageEndpointPresets: JSON.stringify(STORE), FORMAMORPH_imageGenDisabled: 'true' });
-    await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'endpoints', subtab: 'image' });
-
-    const frame = page.getByTestId('image-scroll-frame');
-    const label = page.getByText('Image generation is off');
-    await expect(label).toBeVisible();
-    const centered = async () => {
-      const f = await boxOf(frame);
-      const l = await boxOf(label);
-      return [Math.abs(l.x + l.width / 2 - (f.x + f.width / 2)), Math.abs(l.y + l.height / 2 - (f.y + f.height / 2))];
-    };
-    for (const off of await centered()) expect(off).toBeLessThanOrEqual(1);
-    const still = await boxOf(label);
-
-    const frameBox = await boxOf(frame);
-    await page.mouse.move(frameBox.x + frameBox.width / 2, frameBox.y + frameBox.height / 2);
-    await page.mouse.wheel(0, 300);
-    const viewport = page.locator('[role="tabpanel"][data-state="active"] [data-radix-scroll-area-viewport]').last();
-    await expect.poll(() => viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
-    expect(await boxOf(label)).toEqual(still);
+    const frame = await boxOf(page.getByTestId('image-scroll-frame'));
+    const label = await boxOf(page.getByText(OFF_LABEL));
+    expect(Math.abs(label.x + label.width / 2 - (frame.x + frame.width / 2))).toBeLessThanOrEqual(1);
+    expect(Math.abs(label.y + label.height / 2 - (frame.y + frame.height / 2))).toBeLessThanOrEqual(1);
+    // Nothing else shows in the frame: the whole scroll window is hidden.
+    await expect(page.locator('[data-testid="image-scroll-frame"] [data-radix-scroll-area-viewport]')).toBeHidden();
   });
 });

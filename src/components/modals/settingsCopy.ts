@@ -635,9 +635,9 @@ export const SETTINGS_BUTTONS = {
   retryWithSettings: 'Retry With These Settings',
 } as const;
 
-/** Labels the modal draws over a group of controls. */
+/** Status text the modal draws where a group of controls would be. */
 export const SETTINGS_NOTES = {
-  imageGenerationOff: 'Image generation is off',
+  imageGenerationOff: 'Image generation is off. Select “Enable Image Generation” to turn it on.',
 } as const;
 
 /** Every confirmation the modal raises. Bodies are sentences and carry their own punctuation. */
