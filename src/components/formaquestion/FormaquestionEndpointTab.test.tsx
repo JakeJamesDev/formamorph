@@ -183,6 +183,25 @@ describe('the Endpoint tab', () => {
     expect(names).toEqual(['Delete', 'Reset', 'Duplicate', 'Rename', 'Preset Actions']);
   });
 
+  it('shows whether the edited preset answers, under the heading', () => {
+    // Both routes follow the active endpoint here, so the one badge on screen is the editor's.
+    renderTab();
+    const badge = screen.getByText('Reachable');
+    const heading = screen.getByRole('heading', { name: 'Edit game (Active Endpoint)' });
+    expect(heading.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows no badge on the Built-In Engine', () => {
+    (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {};
+    try {
+      renderTab({ answerEndpoint: BUILTIN_ENGINE_PRESET_ID });
+      // One badge only: the Answer route's own.
+      expect(screen.getAllByText('Reachable')).toHaveLength(1);
+    } finally {
+      delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop;
+    }
+  });
+
   it('offers only Duplicate on the Built-In Engine', () => {
     (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {};
     try {

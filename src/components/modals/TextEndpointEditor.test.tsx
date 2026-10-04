@@ -1,9 +1,10 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, defaultPresetName, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
+import { useEndpointReachable } from '@/lib/useEndpointReachable';
 import { TextEndpointEditor } from './TextEndpointEditor';
 import { activePresetEditor, type TextEndpointEditorModel } from './textEndpointEditorModel';
 
@@ -18,6 +19,8 @@ vi.mock('@/lib/contextLength', async () => ({
   ...await vi.importActual<typeof import('@/lib/contextLength')>('@/lib/contextLength'),
   fetchContextLength: () => Promise.resolve(null),
 }));
+
+vi.mock('@/lib/useEndpointReachable', () => ({ useEndpointReachable: vi.fn() }));
 
 const preset = (id: string, endpoint: string) => ({ id, name: id, values: { ...DEFAULT_TEXT_ENDPOINT_VALUES, endpoint } });
 
@@ -49,12 +52,70 @@ const renderEditor = (onOpenConnectionGuide?: () => void) =>
 
 describe('TextEndpointEditor', () => {
   beforeEach(() => {
+    vi.mocked(useEndpointReachable).mockReset().mockReturnValue({ status: 'ok', checking: false, recheck: vi.fn() });
     localStorage.setItem('FORMAMORPH_textEndpointPresets', textEndpointPresetCodec.serialize({
       activeId: 'llama',
       presets: [preset('llama', 'http://llama.test/v1'), preset('vllm', 'http://vllm.test/v1')],
     }));
   });
   afterEach(() => localStorage.clear());
+
+  it('shows whether the edited preset answers, under the select', () => {
+    vi.mocked(useEndpointReachable).mockReturnValue({ status: 'unreachable', checking: false, recheck: vi.fn() });
+    render(<TextEndpointEditor model={modelOn('vllm')} advanced onOpenConnectionGuide={() => {}} />);
+    const badge = screen.getByText("Didn't answer");
+    expect(screen.getByRole('combobox').compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Recheck' })).toBeInTheDocument();
+  });
+
+  it('probes the URL the route fields probe, so both surfaces share one answer', () => {
+    const model = modelOn('vllm');
+    model.fields.endpointUrl = 'http://vllm.test';
+    render(<TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} />);
+    expect(useEndpointReachable).toHaveBeenLastCalledWith('http://vllm.test/v1/chat/completions', '', 'local', true);
+  });
+
+  it('shows no badge on the bundled engine preset', () => {
+    const engine = modelOn('engine');
+    engine.edited = { ...engine.edited, builtIn: true, engine: true };
+    render(<TextEndpointEditor model={engine} advanced onOpenConnectionGuide={() => {}} />);
+    expect(screen.queryByText('Reachable')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Recheck' })).toBeNull();
+    expect(useEndpointReachable).not.toHaveBeenCalled();
+  });
+
+  it('probes a URL once typing stops, never a half-typed one', () => {
+    vi.useFakeTimers();
+    try {
+      const typed = (url: string) => {
+        const model = modelOn('vllm');
+        model.fields.endpointUrl = url;
+        return <TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} />;
+      };
+      const { rerender } = render(typed('http://l'));
+      rerender(typed('http://lo'));
+      rerender(typed('http://localhost:5000/v1'));
+      act(() => { vi.advanceTimersByTime(700); });
+      const probed = () => vi.mocked(useEndpointReachable).mock.calls.map(([url]) => url);
+      expect(probed()).toEqual(Array(probed().length).fill('http://l/v1/chat/completions'));
+
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(vi.mocked(useEndpointReachable).mock.lastCall?.[0]).toBe('http://localhost:5000/v1/chat/completions');
+      expect(probed()).not.toContain('http://lo/v1/chat/completions');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('probes a newly selected preset at once', () => {
+    const preset = (id: string) => {
+      const model = modelOn(id);
+      return <TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} />;
+    };
+    const { rerender } = render(preset('vllm'));
+    rerender(preset('llama'));
+    expect(vi.mocked(useEndpointReachable).mock.lastCall?.[0]).toBe('http://llama.test/v1/chat/completions');
+  });
 
   it('selects a preset and shows its fields', async () => {
     renderEditor();

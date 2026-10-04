@@ -12,10 +12,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { numInput } from '@/lib/numInput';
+import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { cn } from '@/lib/utils';
 import { Hint, FieldError } from '@/components/ui/typography';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
+import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
 import { PresetNameDialog } from './PresetNameDialog';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import type { TextEndpointEditorModel } from './textEndpointEditorModel';
@@ -29,6 +31,20 @@ const ENDPOINT_SAMPLERS = [
   { id: 'endpointTopK', key: 'topK', min: 0, max: 100, step: 1 },
   { id: 'endpointMinP', key: 'minP', min: 0, max: 0.5, step: 0.01 },
 ] as const;
+
+/** Waits for typing to stop so a half-typed URL or token is never probed. The caller keys it by preset, so a switch probes at once. */
+const PROBE_DEBOUNCE_MS = 800;
+
+/** The badge of the edited preset. It probes the normalized URL the route fields probe, so both share one cached answer. */
+function EditedPresetBadge({ url, apiToken, model }: { url: string; apiToken: string; model: string }) {
+  const target = {
+    url: useDebouncedValue(normalizeEndpointUrl(url), PROBE_DEBOUNCE_MS),
+    apiToken: useDebouncedValue(apiToken, PROBE_DEBOUNCE_MS),
+    model: useDebouncedValue(model, PROBE_DEBOUNCE_MS),
+    enabled: true,
+  };
+  return <EndpointReachabilityBadge target={target} />;
+}
 
 /**
  * The text-endpoint editor: the shared preset header (duplicate, rename, reset, delete), then the edited
@@ -159,6 +175,12 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
             : { heading })}
         />
       </div>
+      {/* The engine has no URL to probe. */}
+      {!edited.engine && (
+        <div className="flex-shrink-0 pt-1">
+          <EditedPresetBadge key={edited.id} url={endpointUrl} apiToken={apiToken} model={modelName} />
+        </div>
+      )}
       <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
       {edited.engine ? <LocalModelPanel /> : (
