@@ -91,6 +91,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q55 | The Mascot tab edits a draft. Save and Cancel sit in the footer; the preview shows the draft while the window keeps the saved mascot; images are dropped only at Save; switching mascots or closing with a dirty draft asks first. Undo and redo over the draft (Ctrl+Z, Ctrl+Shift+Z, drags and typing coalesce) come as a second small ticket (user, 2026-10-04) |
 | Q56 | The draft model is built inside ticket 17, so presets stand on it from the start (user, 2026-10-04) |
 | Q57 | Reset acts on the draft: one undoable step, nothing deleted until Save. It needs no confirm dialog, since Undo and Cancel both revert it. Refines Q53 (user, 2026-10-04) |
+| Q58 | The mascot preset row's buttons are icon-only, as the Prompts tab's row already is: ghost icon buttons with a tooltip and an accessible name each. The tooltip states the full function in the help voice, not one word: Duplicate "Make an editable copy of this mascot", Rename "Rename this mascot", Delete "Delete this mascot and its images", Import "Add a mascot from a card", Export "Save this mascot as a card", Reset "Put this mascot back to the Default". Reset uses the shared reset icon (user, 2026-10-04) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
@@ -172,7 +173,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 ### Mascot presets
 
 - The help settings value's single rig becomes a mascot preset store: an active id and the player's custom mascots, each a named rig. The Default mascot is virtual, read from the code, never stored, so it follows every release (Q53). The window, the face call's enum and the card export read the active mascot.
-- The top row of the Mascot tab is the preset row the Prompts tab has: a select listing Default and the custom mascots, then Duplicate and Import always, and Rename, Delete, Export and Reset on a custom mascot only. The Default's controls below the row are read-only, as the Default help prompts are.
+- The top row of the Mascot tab is the preset row the Prompts tab has: a select listing Default and the custom mascots, then Duplicate and Import always, and Rename, Delete, Export and Reset on a custom mascot only. Every button is icon-only with a tooltip and an accessible name, as that row's are (Q58). The Default's controls below the row are read-only, as the Default help prompts are.
 - Duplicate copies the rig and shares its image ids. Delete and Reset remove images no remaining mascot references. Import adds a mascot named from the card or the file, with a numbered suffix on a clash, and selects it (Q54).
 - The card carries the mascot's name (Q54). Export-shape change: the card and the help settings value, both unreleased, change in place.
 - Scale and the head toggle stay device values, outside the presets.
