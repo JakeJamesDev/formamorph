@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SKIP_PATTERNS, classifyChange, isSkippable } from './buildDecision.mjs';
+import { SKIP_PATTERNS, classifyChange, describeSkip, isSkippable } from './buildDecision.mjs';
 
 describe('classifyChange', () => {
   it('skips a tests-only list', () => {
@@ -16,11 +16,20 @@ describe('classifyChange', () => {
     expect(classifyChange(changed).build).toBe(false);
   });
 
+  it('skips tests plus the changelog', () => {
+    expect(classifyChange(['src/lib/foo.test.ts', 'docs/Changelog.md'])).toEqual({ build: false, forcing: [] });
+  });
+
   it('builds a docs-only list, since the help index bundles docs', () => {
-    expect(classifyChange(['docs/Changelog.md', 'docs/Home.md'])).toEqual({
+    expect(classifyChange(['docs/Home.md', 'docs/Design-System.md'])).toEqual({
       build: true,
-      forcing: ['docs/Changelog.md', 'docs/Home.md'],
+      forcing: ['docs/Home.md', 'docs/Design-System.md'],
     });
+  });
+
+  it('builds tests plus the changelog plus any other docs file, and names only that file', () => {
+    const changed = ['src/lib/foo.test.ts', 'docs/Changelog.md', 'docs/Home.md'];
+    expect(classifyChange(changed)).toEqual({ build: true, forcing: ['docs/Home.md'] });
   });
 
   it('builds a mixed list and names only the forcing paths', () => {
@@ -38,6 +47,19 @@ describe('classifyChange', () => {
 
   it('does not skip other docs-internal folders or sibling test folders', () => {
     expect(classifyChange(['docs-internal/designs/x/design.md', 'testing/parity/turn-pipeline-parity.json']).build).toBe(true);
+  });
+});
+
+describe('describeSkip', () => {
+  it('says tests-only and counts the files', () => {
+    expect(describeSkip(['a.test.ts', 'b.test.ts'], 'abc123')).toBe('build skipped: tests-only change (2 changed files since abc123)');
+  });
+
+  it('names the changelog when it was among the changed files', () => {
+    expect(describeSkip(['a.test.ts', 'docs/Changelog.md'], 'abc123')).toBe(
+      'build skipped: no bundle file changed, docs/Changelog.md among them (2 changed files since abc123)',
+    );
+    expect(describeSkip(['docs/Changelog.md'], 'abc123')).toContain('docs/Changelog.md');
   });
 });
 
@@ -75,29 +97,44 @@ export function bundleInputsSkipped(patterns) {
   return [...skipped].sort();
 }
 
+// The one bundle input the skip set may hold (spec Q6). Only the newest released minor series of the changelog
+// reaches the bundle (vite.config.js docs-index plugin); a ticket's line lands in In Progress, which never does.
+const ALLOWED_BUNDLE_INPUTS = ['docs/Changelog.md'];
+
+/** Bundle inputs `patterns` would skip, minus the named allowance. */
+const refused = (patterns) => bundleInputsSkipped(patterns).filter((file) => !ALLOWED_BUNDLE_INPUTS.includes(file));
+
 describe('skip set against the bundle inputs', () => {
   it('finds source to scan', () => {
     expect(tracked.filter(isSource).length).toBeGreaterThan(100);
     expect(tracked).toContain('docs/_Sidebar.md');
   });
 
-  it('skips no file the Vite entry graph or the help docs bundle reads', () => {
-    expect(bundleInputsSkipped(SKIP_PATTERNS)).toEqual([]);
+  it('skips no file the Vite entry graph or the help docs bundle reads, bar the changelog', () => {
+    expect(refused(SKIP_PATTERNS)).toEqual([]);
+  });
+
+  it('keeps the changelog allowance live: the skip set holds it and the bundle still reads it', () => {
+    expect(bundleInputsSkipped(SKIP_PATTERNS)).toEqual(ALLOWED_BUNDLE_INPUTS);
+  });
+
+  it('refuses any other docs path in the skip set', () => {
+    expect(refused([...SKIP_PATTERNS, 'docs/Home.md'])).toEqual(['docs/Home.md']);
   });
 
   it('reports the docs the help index bundles when a docs pattern joins the skip set', () => {
-    const hit = bundleInputsSkipped([...SKIP_PATTERNS, 'docs/**']);
+    const hit = refused([...SKIP_PATTERNS, 'docs/**']);
     expect(hit).toContain('docs/_Sidebar.md');
     expect(hit.some((file) => file.startsWith('docs/') && file !== 'docs/_Sidebar.md')).toBe(true);
   });
 
   it('reports bundled source when a source pattern joins the skip set', () => {
-    const hit = bundleInputsSkipped([...SKIP_PATTERNS, 'src/lib/**']);
+    const hit = refused([...SKIP_PATTERNS, 'src/lib/**']);
     expect(hit.length).toBeGreaterThan(0);
     expect(hit.every((file) => file.startsWith('src/lib/'))).toBe(true);
   });
 
   it('reports bundled assets reached by glob when their pattern joins the skip set', () => {
-    expect(bundleInputsSkipped([...SKIP_PATTERNS, 'src/defaultworlds/*.json'])).toContain('src/defaultworlds/emberwatch.json');
+    expect(refused([...SKIP_PATTERNS, 'src/defaultworlds/*.json'])).toContain('src/defaultworlds/emberwatch.json');
   });
 });

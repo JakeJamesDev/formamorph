@@ -1,6 +1,6 @@
 # 03: Changelog skips the build
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -25,3 +25,20 @@ Recommended model rationale: a one-pattern change with a test allowance to word 
 - [ ] The source test allows only the changelog and fails when another docs path is added to the skip set.
 - [ ] Prepare total for a tests-plus-changelog ticket in the Answer.
 - [ ] The four gates are green.
+
+## Answer
+
+Landed: `docs/Changelog.md` joins `SKIP_PATTERNS` in `scripts/buildDecision.mjs`, and `describeSkip` words the skip line. `scripts/buildDecision.test.mjs` carries one named allowance (`ALLOWED_BUNDLE_INPUTS`) and refuses any other docs path.
+The allowance holds because the bundle takes only the released slice of the changelog (`changelogSlice.test.ts` and `bundledDocsIndex.test.ts` assert In Progress stays out). A ticket that edits a released section would skip the build wrongly; the gate classifies by path, not by hunk.
+
+Gates run by hand against a synthetic tests-plus-changelog diff (one test file and the changelog), 48 test files selected, no other prepare started by this session:
+
+```
+$ npm run typecheck                         exit 0,   9.4 s (seeded)
+$ node scripts/changedLint.mjs <base>        exit 0,   1.2 s
+$ node scripts/affectedTests.mjs <base>      exit 0,  34.2 s (715 tests)
+$ node scripts/buildGate.mjs <base>          exit 0,   0.2 s
+build skipped: no bundle file changed, docs/Changelog.md among them (2 changed files since <base>)
+```
+
+Gate total about 45 s, against the 232 s ticket 01 measured with the full build. This is the sum of the four gates, not a prepare run: the squash and rebase are extra, and this ticket itself builds because it edits scripts. Peer sessions were busy, so the affected-tests time may run high.
