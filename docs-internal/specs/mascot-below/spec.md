@@ -30,6 +30,9 @@ The chat also opens at a fixed pixel height. On a small window it is most of the
 | Q7 | The Lookup reader stays beside the column at the column's height, on the wider free side |
 | Q8 | Both chromes draw her below. The head view stays in the pill, unchanged |
 | Q9 | Picking Below while the column is taller than the cap clamps the column to the cap at once and stores that height |
+| Q10 | Under Below the column keeps its stored vertical position and she fills the room under it. That position clamps so her room is never less than what the cap leaves: the window height minus the cap minus the screen margin. At the cap height the column sits at the top. One constant drives the cap, the Auto rule and this floor. Under a percent scale the position clamps so her asked height fits; when it cannot fit even at the top, she shrinks to the room (Q6) (ticket 01) |
+| Q11 | Below, she centers under the column, and the column's horizontal position clamps so she stays whole on the screen, as the beside layout does (ticket 01) |
+| Q12 | The cap and the Below variant apply only while a whole Mascot is drawn. Mascot off or the head view leaves the column uncapped and the layout as today (ticket 01) |
 
 ## User Stories
 
