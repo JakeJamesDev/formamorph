@@ -101,6 +101,13 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q65 | The shared preset header gains an optional per-action tooltip. The short label stays the accessible name and the ⋯ menu text; the tooltip shows the Q58 sentence where set. Only the Mascot header sets them; the Prompts and endpoint headers keep their short tooltips (ticket 20) |
 | Q66 | Export stays available on the Default mascot, as the shared header keeps it on built-in presets. Refines Q53 and Q58 (ticket 20) |
 | Q67 | In full screen the Mascot tab's columns split 1/3 preview, 2/3 controls; docked it keeps the 22rem preview column. The Prompts tab's full screen keeps its layout. The shared panel shell no longer shows its title row on either tab; the title stays the window's accessible name and the header's toggle, reading "Exit full screen", is the way out (user, 2026-10-04) |
+| Q68 | The Mascot switch moves to the General tab's Window section, first: Mascot, Chat Style, Backdrop. The switch row ticket 19 added to the Mascot tab comes out (user, 2026-10-04) |
+| Q69 | With the Mascot off, the Mascot tab shows one line, "The Mascot is off. Turn it on in General" with a link to the General tab, above the preset row, and everything else on the tab is disabled: select, header actions, preview controls, editor and footer. The link is the one action (user, 2026-10-04; refined by Q72) |
+| Q70 | The ⋮ menu gets no Mascot entry. Mascot on/off is a settings-only choice (user, 2026-10-04) |
+| Q71 | The off-state link is a tab change, so a dirty draft goes through the unsaved prompt first (user, 2026-10-04) |
+| Q72 | Nothing but the line stays usable while the Mascot is off (user, 2026-10-04) |
+| Q73 | The Image endpoint tab takes the same off state: Enable Image Generation stays on the tab, and with it off everything below stays mounted and disabled with the same one-line note, instead of unmounting (user, 2026-10-04) |
+| Q74 | The image reachability badge gets a fixed slot, constant height and reserved width in every state, so a toggle or a probe rerun never shifts the rows around it (user, 2026-10-04) |
 | Q51a | Ticket 14's layout is confirmed from the desktop mockup: two columns, preview left, controls right, with Base Image and Layers full width under their own headers (user, 2026-10-04) |
 
 ## User Stories
@@ -197,7 +204,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 
 ### Mascot tab
 
-- Above the columns: the preset row, then a fixed row with the Mascot switch (Q60). Neither scrolls. The "View full screen" icon button ends the preset row (Q62).
+- Above the columns: the preset row (Q60 as refined by Q68: the switch lives on General). With the Mascot off, a single line with a link to General sits above the row and the rest of the tab is disabled (Q69, Q72). The line's link is a tab change and runs the dirty-draft prompt (Q71). The "View full screen" icon button ends the preset row (Q62).
 - Each column is a ScrollArea with a flex-resolved height (Q61). The preview column scrolls only when the screen is too short (Q35).
 - The preset row is the shared preset header (Q64). Full screen reuses the shared panel shell and morph hook the Formaquestion Prompts tab hosts: the tab's root is the morph source, the shell wraps the whole tab, and Exit hands the panel back in place with focus on the toggle. The dialog's own tabs and footer stay out of the full-screen view; Save and Cancel travel with the tab since they belong to it.
 - The tab is two columns from the modal's wide layout: the preview column is fixed and does not scroll; the controls column scrolls. Under the mobile breakpoint the preview sits above the scrolling controls (Q14).
