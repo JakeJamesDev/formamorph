@@ -74,14 +74,14 @@ afterEach(() => {
 });
 
 describe('Formaquestion Settings', () => {
-  it('opens from the title bar menu on General, with four tabs, and the window waits closed until the dialog closes', async () => {
+  it('opens from the title bar menu on General, with five tabs, and the window waits closed until the dialog closes', async () => {
     await openAsk();
     const dialog = await openSettings();
 
-    expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools']);
+    expect(within(dialog).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['General', 'Endpoint', 'Prompts', 'Tools', 'Mascot']);
     expect(within(dialog).getByRole('tab', { name: 'General' })).toHaveAttribute('data-state', 'active');
-    // Mascot (stored off for the framed window), Reasoning, Keyword Search, AI Picks, Semantic Search, Use the Open Screen.
-    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'true', 'false', 'true']);
+    // Reasoning, Keyword Search, AI Picks, Semantic Search, Use the Open Screen.
+    expect(within(dialog).getAllByRole('checkbox').map((box) => box.getAttribute('aria-checked'))).toEqual(['false', 'true', 'true', 'false', 'true']);
     expect(within(dialog).getByRole('spinbutton', { name: 'History Length' })).toHaveValue(4);
 
     expect(screen.getByRole('dialog', { name: 'Formaquestion' })).toHaveAttribute('data-state', 'closed');

@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HELP_HISTORY_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { toolsSupported } from '@/lib/reasoningEffort';
 import { EndpointTab } from './FormaquestionEndpointTab';
+import { MascotTab } from './FormaquestionMascotTab';
 import { PromptsTab } from './FormaquestionPromptsTab';
 import { ToolsTab } from './FormaquestionToolsTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
@@ -91,9 +92,6 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
 }) {
   return (
     <div className="grid gap-6 py-4">
-      <Section title="Window">
-        <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...GENERAL_COPY.mascot} />
-      </Section>
       <Section title="Answer">
         <ReasoningRow settings={settings} onChange={onChange} target={answerTarget} />
         <AnswerRevealRow settings={settings} onChange={onChange} />
@@ -168,7 +166,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
           onValueChange={(value) => onTabChange(value as FormaquestionSettingsTab)}
           className="flex min-h-0 w-full flex-1 flex-col"
         >
-          <TabsList className="grid w-full flex-shrink-0 grid-cols-4">
+          <TabsList className="grid w-full flex-shrink-0 grid-cols-5">
             {FORMAQUESTION_SETTINGS_TABS.map((entry) => <TabsTrigger key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
           </TabsList>
           <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
@@ -184,6 +182,9 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
           </TabsContent>
           <TabsContent value="tools" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
             <ToolsTab settings={settings} onChange={onChange} toolsSupported={toolsSupported(answerTarget.reasoning)} />
+          </TabsContent>
+          <TabsContent value="mascot" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
+            <MascotTab settings={settings} onChange={onChange} />
           </TabsContent>
         </Tabs>
       </DialogContent>

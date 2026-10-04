@@ -87,6 +87,7 @@ async function reopen() {
 async function setMascot(on: boolean) {
   await openHelpSettings();
   const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
+  await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
   const box = within(dialog).getByRole('checkbox', { name: 'Mascot' });
   if ((box.getAttribute('aria-checked') === 'true') !== on) await userEvent.click(box);
   await userEvent.keyboard('{Escape}');

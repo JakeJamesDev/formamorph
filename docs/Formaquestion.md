@@ -263,7 +263,7 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 ## Formaquestion Settings
 <!-- keywords: gear, options, configure help, help settings, turn off search, plain chat -->
 
-**Formaquestion Settings** opens from **Settings** in the **⋮** menu of the Formaquestion title bar. The window closes while the settings are open and opens again when you close them. It has four tabs: **General**, **Endpoint**, **Prompts** and **Tools**.
+**Formaquestion Settings** opens from **Settings** in the **⋮** menu of the Formaquestion title bar. The window closes while the settings are open and opens again when you close them. It has five tabs: **General**, **Endpoint**, **Prompts**, **Tools** and **Mascot**.
 
 - The Formaquestion window stays above the settings, so you can change a setting and ask a question to see the effect.
 - This device keeps each setting. The settings are not in a backup or an export.
@@ -400,6 +400,25 @@ A Tool that's on reads the world you have open, so text from that world can go t
 
 1. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
+
+### Mascot
+<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character -->
+
+The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top.
+
+| Row | What it does |
+|---|---|
+| **Mascot** | Shows a character beside a bare chat column. On by default. |
+| **Preview** | Shows the Idle look. Expand a layer to see the base with that layer alone. |
+| **Base Image** | Draws under every layer. Upload your own image, or remove yours to go back to the default. |
+| **Layers** | Lists every layer in draw order, with its name, its kind and its **Enabled** checkbox |
+| **Reset Mascot** | Restores the default mascot and deletes every image you added. It asks first. |
+
+- Drag a layer by its grip to change the draw order. A layer lower in the list draws on top.
+- Expand a layer to change its name and its kind. An **Expression** is a face your AI can pick. A **State** stacks with the face, such as the arms.
+- Each layer holds overlay images, drawn in order and stretched to the base size. Drag an overlay to move it, or upload more.
+- The slots take image files only, not links. This device keeps your images, outside the settings.
+- When you remove an overlay, a layer or your base image, the app deletes each image that no other layer uses.
 
 ## AI Context
 <!-- keywords: debug a question, see the request, inspect help, wrong section, trace, export json, bug report, search block, samplers, request card -->

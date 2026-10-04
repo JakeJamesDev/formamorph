@@ -4,6 +4,7 @@ export const FORMAQUESTION_SETTINGS_TABS = [
   { value: 'endpoint', label: 'Endpoint' },
   { value: 'prompts', label: 'Prompts' },
   { value: 'tools', label: 'Tools' },
+  { value: 'mascot', label: 'Mascot' },
 ] as const;
 
 export type FormaquestionSettingsTab = (typeof FORMAQUESTION_SETTINGS_TABS)[number]['value'];
@@ -15,7 +16,6 @@ export function asFormaquestionSettingsTab(value: string | undefined): Formaques
 
 /** The label and the description of each General row. */
 export const GENERAL_COPY = {
-  mascot: { label: 'Mascot', hint: 'Shows a character beside a bare chat column' },
   reasoning: {
     label: 'Reasoning',
     hint: 'Lets your AI reason before it answers. Answers take longer.',
@@ -27,6 +27,29 @@ export const GENERAL_COPY = {
   semantic: { label: 'Semantic Search', hint: 'Finds guide sections by meaning. Downloads a small model once.' },
   openScreen: { label: 'Use the Open Screen', hint: 'Sends the screen you have open and its guide section' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
+} as const;
+
+/** The copy of the Mascot tab. */
+export const MASCOT_COPY = {
+  mascot: { label: 'Mascot', hint: 'Shows a character beside a bare chat column' },
+  preview: { label: 'Preview', hint: 'Shows the Idle look. Expand a layer to see what it draws.' },
+  base: { label: 'Base Image', hint: 'Draws under every layer. Remove yours to go back to the default.' },
+  layers: { label: 'Layers', hint: 'Draws each enabled layer in list order. Drag a row to move it.' },
+  addLayer: 'Add Layer',
+  layerName: 'Name',
+  kind: { expression: 'Expression', state: 'State' },
+  overlays: 'Overlays',
+  bundledOverlay: 'Default Image',
+  storedOverlay: 'Your Image',
+  removeLayer: 'Remove layer',
+  removeOverlay: 'Remove overlay',
+  reset: {
+    label: 'Reset Mascot',
+    hint: 'Restores the default mascot and deletes your images',
+    confirmTitle: 'Reset the mascot?',
+    confirmBody: "This restores the default mascot and deletes every image you added. You can't undo it.",
+  },
+  saveFailed: "Couldn't save that image. Try again.",
 } as const;
 
 /** The copy of the AI Context dialog. */

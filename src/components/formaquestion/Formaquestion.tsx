@@ -27,6 +27,7 @@ import { FormaquestionSettings } from './FormaquestionSettings';
 import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
+import { mascotImageRefs } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
 import { appLoadQuestion, mascotFace, mascotPhase } from './mascotPhase';
@@ -408,7 +409,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: origin ? `${origin.x - layout.group.x}px ${origin.y - layout.group.y}px` : undefined,
           } : undefined}
         >
-          {layout && <MascotPiece images={composeMascot(settings.rig, phase, mascotFace(chat.exchanges.at(-1)))} size={layout.mascot} onAspect={setMascotAspect} />}
+          {layout && <MascotPiece images={composeMascot(settings.rig, phase, mascotFace(chat.exchanges.at(-1)))} hold={mascotImageRefs(settings.rig)} size={layout.mascot} onAspect={setMascotAspect} />}
           <MinimalChat
             guide={guide}
             failed={failed}
