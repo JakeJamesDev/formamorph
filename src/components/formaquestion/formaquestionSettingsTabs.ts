@@ -95,7 +95,12 @@ export const MASCOT_COPY = {
     importFailed: "Couldn't import that mascot card",
     exportFailed: "Couldn't export the mascot",
   },
-  footer: { save: 'Save', cancel: 'Cancel' },
+  footer: {
+    save: 'Save',
+    cancel: 'Cancel',
+    undo: { label: 'Undo', tip: 'Undo the last change (Ctrl+Z)' },
+    redo: { label: 'Redo', tip: 'Redo the change you undid (Ctrl+Shift+Z)' },
+  },
   saveFailed: "Couldn't save that image. Try again.",
   picks: {
     initial: { label: 'Initial Look', hint: 'Shows the first time the mascot appears after the app starts' },

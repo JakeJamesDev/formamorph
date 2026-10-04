@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode 
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Copy, Info, Move, Pencil, Play, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { Copy, Info, Move, Pencil, Play, Plus, Redo2, RotateCcw, Trash2, Undo2, X } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -18,6 +18,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { ImageUpload } from '@/lib/UtilityComponents';
 import { ActionIcon } from '@/lib/actionIcons';
+import { historyShortcut } from '@/lib/canvasHistory';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
@@ -408,12 +409,13 @@ function TuningRow({ id, copy, range, value, format, disabled, onChange }: {
 function TransitionControls({ transition, readOnly, onTransition, onPlay }: {
   transition: MascotTransition;
   readOnly: boolean;
-  onTransition: (next: MascotTransition) => void;
+  /** `group` joins a slider drag's edits into one undo step. */
+  onTransition: (next: MascotTransition, group?: string) => void;
   onPlay: () => void;
 }) {
   const reduced = usePrefersReducedMotion();
   const copy = MASCOT_COPY.transition;
-  const setJelly = (key: keyof JellyTuning) => (value: number) => onTransition({ ...transition, jelly: { ...transition.jelly, [key]: value } });
+  const setJelly = (key: keyof JellyTuning) => (value: number) => onTransition({ ...transition, jelly: { ...transition.jelly, [key]: value } }, `jelly-${key}`);
   return (
     <div className="grid gap-2">
       <WidgetLabel copy={copy.mode} />
@@ -448,18 +450,23 @@ function TransitionControls({ transition, readOnly, onTransition, onPlay }: {
           value={transition.dissolve.durationMs}
           format={ms}
           disabled={readOnly}
-          onChange={(durationMs) => onTransition({ ...transition, dissolve: { durationMs } })}
+          onChange={(durationMs) => onTransition({ ...transition, dissolve: { durationMs } }, 'dissolve-duration')}
         />
       )}
     </div>
   );
 }
 
-/** One icon-only action of the preset row. */
-function RowAction({ copy, onClick, children }: { copy: { label: string; tip: string }; onClick: () => void; children: ReactNode }) {
+/** One icon-only action of the preset row or the footer. */
+function RowAction({ copy, onClick, disabled, children }: {
+  copy: { label: string; tip: string };
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
   return (
     <Tip tip={copy.tip}>
-      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label={copy.label} onClick={onClick}>
+      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label={copy.label} disabled={disabled} onClick={onClick}>
         {children}
       </Button>
     </Tip>
@@ -512,6 +519,8 @@ export function MascotTab({ settings, onChange, control }: {
       const ids = await Promise.all(files.map(addMascotImage));
       // Closed, canceled or switched mid-save: nothing will reference these.
       if (!mounted.current || control.generation.current !== started) return dropMascotImages(ids);
+      // The upload belongs to this draft even when `apply` finds its target gone, so Save or Cancel drops it.
+      control.adopt(ids);
       edit((current) => apply(current, ids.map((id) => ({ kind: 'stored', id }))));
     } catch (cause: unknown) {
       console.error('Could not save a mascot image:', cause);
@@ -561,7 +570,9 @@ export function MascotTab({ settings, onChange, control }: {
   const caption = thinkingShown ? MASCOT_COPY.picks.thinking.label
     : !shown ? MASCOT_COPY.idleShown
     : shown.overlay === null ? shown.layer.name : MASCOT_COPY.overlayShown(shown.layer.name, shown.overlay + 1);
-  const patchLayer = (id: string) => (patch: MascotLayerPatch) => edit((current) => updateMascotLayer(current, id, patch));
+  // A typed run in a layer's name is one step per layer.
+  const patchLayer = (id: string) => (patch: MascotLayerPatch) =>
+    edit((current) => updateMascotLayer(current, id, patch), 'name' in patch ? `layer-name-${id}` : undefined);
 
   const mask = base && fitMask(draftMask ?? rig.mask, base);
   const maskDrag = usePointerDrag<MaskPress>({
@@ -595,16 +606,27 @@ export function MascotTab({ settings, onChange, control }: {
     if (!base) return;
     const from = fitMask(latest.current.mask, base);
     const next = moveMaskGrip(from, grip, delta, base);
-    if (!sameMask(next, from)) edit((current) => ({ ...current, mask: next }));
+    if (!sameMask(next, from)) edit((current) => ({ ...current, mask: next }), 'mask-nudge');
   };
 
   const handleLayerDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && active.id !== over.id) edit((current) => moveMascotLayer(current, String(active.id), String(over.id)));
   };
 
+  /** Ctrl+Z undoes and Ctrl+Shift+Z or Ctrl+Y redoes, from anywhere in this tab. */
+  const shortcut = (event: KeyboardEvent<HTMLDivElement>) => {
+    const asked = historyShortcut(event);
+    // A dialog's keys bubble up the React tree from its portal; only keys from this tab's own elements count.
+    if (!asked || !(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
+    event.preventDefault();
+    if (asked === 'redo') control.redo();
+    else control.undo();
+  };
+
   const copy = MASCOT_COPY.preset;
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // Focus leaving a control closes the step a typed run or key nudge opened.
+    <div className="flex min-h-0 flex-1 flex-col" onKeyDown={shortcut} onBlur={control.closeStep}>
       <div className="flex flex-shrink-0 flex-wrap items-center gap-2 pt-4" data-testid="mascot-preset-row">
         <span className="text-helper text-muted-foreground">{copy.label}</span>
         {!readOnly && (
@@ -695,7 +717,7 @@ export function MascotTab({ settings, onChange, control }: {
             <TransitionControls
               transition={rig.transition}
               readOnly={readOnly}
-              onTransition={(transition) => edit((current) => ({ ...current, transition }))}
+              onTransition={(transition, group) => edit((current) => ({ ...current, transition }), group)}
               onPlay={playNext}
             />
           </section>
@@ -710,7 +732,7 @@ export function MascotTab({ settings, onChange, control }: {
                 rows={3}
                 value={rig.voice}
                 readOnly={readOnly}
-                onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice })); }}
+                onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice }), 'voice'); }}
               />
             </Row>
           </Section>
@@ -813,7 +835,15 @@ export function MascotTab({ settings, onChange, control }: {
           </Section>
         </div>
       </div>
-      <div className="flex flex-shrink-0 justify-end gap-2 border-t border-border py-3" data-testid="mascot-footer">
+      <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border py-3" data-testid="mascot-footer">
+        <div className="mr-auto flex gap-1">
+          <RowAction copy={MASCOT_COPY.footer.undo} disabled={!control.canUndo} onClick={control.undo}>
+            <Undo2 className="h-4 w-4" aria-hidden />
+          </RowAction>
+          <RowAction copy={MASCOT_COPY.footer.redo} disabled={!control.canRedo} onClick={control.redo}>
+            <Redo2 className="h-4 w-4" aria-hidden />
+          </RowAction>
+        </div>
         <Button variant="outline" disabled={!control.dirty} onClick={() => { setSelection(null); control.cancel(); }}>{MASCOT_COPY.footer.cancel}</Button>
         <Button disabled={!control.dirty} onClick={control.save}>{MASCOT_COPY.footer.save}</Button>
       </div>

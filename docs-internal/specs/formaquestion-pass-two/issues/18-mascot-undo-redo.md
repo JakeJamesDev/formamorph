@@ -1,6 +1,6 @@
 # 18: Mascot undo and redo
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 17
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

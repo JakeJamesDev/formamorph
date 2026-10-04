@@ -2,8 +2,11 @@ import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import type { MascotRig } from '@/lib/formaquestion/mascot';
 import {
-  cancelMascotDraft, editMascotDraft, isMascotDraftDirty, openMascotDraft, resetMascotDraft, saveMascotDraft, type MascotDraft,
+  cancelMascotDraft, editMascotDraft, isMascotDraftDirty, openMascotDraft, resetMascotDraft, saveMascotDraft, touchMascotDraft, type MascotDraft,
 } from '@/lib/formaquestion/mascotDraft';
+import {
+  EMPTY_HISTORY, canRedo, canUndo, closeHistoryStep, pushHistory, redoHistory, undoHistory, type History,
+} from '@/lib/formaquestion/mascotHistory';
 import { deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import {
   activeMascotPreset, addMascotPreset, deleteMascotPreset, duplicateMascotPreset, isDefaultMascot, mascotPresetOf, renameMascotPreset,
@@ -29,8 +32,19 @@ export interface MascotDraftControl {
   readonly readOnly: boolean;
   /** Bumped when the draft is dropped or reset, so an upload that started before it lands nowhere. */
   readonly generation: MutableRefObject<number>;
-  /** Applies an edit to the latest draft. The Default refuses it. */
-  readonly edit: (apply: (rig: MascotRig) => MascotRig) => void;
+  /**
+   * Applies an edit to the latest draft as one undo step. Edits that share a `group` join one step until
+   * `closeStep`. The Default refuses it.
+   */
+  readonly edit: (apply: (rig: MascotRig) => MascotRig, group?: string) => void;
+  /** Marks stored uploads as the draft's, so Save or Cancel deletes them even when an Undo or a removal left no rig holding them. */
+  readonly adopt: (ids: readonly string[]) => void;
+  /** Ends the open step: the next edit starts a new one. */
+  readonly closeStep: () => void;
+  readonly undo: () => void;
+  readonly redo: () => void;
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
   readonly reset: () => void;
   readonly save: () => void;
   readonly cancel: () => void;
@@ -78,6 +92,44 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     setHeld(next);
   };
 
+  // The undo history belongs to one draft; a draft the store replaced under it starts a new one.
+  const historyRef = useRef<{ history: History<MascotRig>; saved: MascotRig; mascotId: string }>({
+    history: EMPTY_HISTORY, saved: draft.saved, mascotId: draft.mascotId,
+  });
+  const historyOf = (of: MascotDraft): History<MascotRig> =>
+    historyRef.current.saved === of.saved && historyRef.current.mascotId === of.mascotId ? historyRef.current.history : EMPTY_HISTORY;
+  const keepHistory = (of: MascotDraft, history: History<MascotRig>) => {
+    historyRef.current = { history, saved: of.saved, mascotId: of.mascotId };
+  };
+  /** Holds a clean draft of the store's active mascot, with no history. */
+  const reopen = (store: MascotPresetStore) => {
+    const fresh = openMascotDraft(store);
+    keepHistory(fresh, EMPTY_HISTORY);
+    hold(fresh);
+  };
+  /** Holds `rig` over the held draft as a new step, joining the open step when `group` matches. */
+  const recordEdit = (rig: MascotRig, group: string | null) => {
+    const before = heldRef.current;
+    if (rig !== before.rig) keepHistory(before, pushHistory(historyOf(before), before.rig, group));
+    hold(editMascotDraft(before, rig));
+  };
+  /** Holds the rig a history step gives. Uploads in flight stay valid, so `generation` stays. */
+  const stepTo = (step: { history: History<MascotRig>; value: MascotRig } | null) => {
+    if (!step) return;
+    keepHistory(heldRef.current, step.history);
+    hold(editMascotDraft(heldRef.current, step.value));
+  };
+  const closeStep = () => keepHistory(heldRef.current, closeHistoryStep(historyOf(heldRef.current)));
+  // A pointer release ends a drag's step wherever it lands, so a drag that leaves the control still closes.
+  useEffect(() => {
+    window.addEventListener('pointerup', closeStep);
+    window.addEventListener('pointercancel', closeStep);
+    return () => {
+      window.removeEventListener('pointerup', closeStep);
+      window.removeEventListener('pointercancel', closeStep);
+    };
+  });
+
   const writeStore = (next: MascotPresetStore) => {
     storeRef.current = next;
     onChange({ mascotPresets: next });
@@ -87,25 +139,25 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     generation.current += 1;
     const dropped = heldRef.current.touched;
     writeStore(next);
-    hold(openMascotDraft(next));
+    reopen(next);
     dropMascotImages(unreferencedMascotImages(dropped, next));
   };
 
   const readOnly = isDefaultMascot(storeRef.current, draft.mascotId);
-  const edit = (apply: (rig: MascotRig) => MascotRig) => {
+  const edit = (apply: (rig: MascotRig) => MascotRig, group?: string) => {
     if (isDefaultMascot(storeRef.current, heldRef.current.mascotId)) return;
-    hold(editMascotDraft(heldRef.current, apply(heldRef.current.rig)));
+    recordEdit(apply(heldRef.current.rig), group ?? null);
   };
   const save = () => {
     const { store: next, orphans } = saveMascotDraft(storeRef.current, heldRef.current);
     writeStore(next);
-    hold(openMascotDraft(next));
+    reopen(next);
     dropMascotImages(orphans);
   };
   const cancel = () => {
     generation.current += 1;
     dropMascotImages(cancelMascotDraft(storeRef.current, heldRef.current));
-    hold(openMascotDraft(storeRef.current));
+    reopen(storeRef.current);
   };
   const guard = (action: () => void) => {
     if (isMascotDraftDirty(heldRef.current)) setPending(() => action);
@@ -123,10 +175,16 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     readOnly,
     generation,
     edit,
+    adopt: (ids) => hold(touchMascotDraft(heldRef.current, ids)),
+    closeStep,
+    undo: () => stepTo(undoHistory(historyOf(heldRef.current), heldRef.current.rig)),
+    redo: () => stepTo(redoHistory(historyOf(heldRef.current), heldRef.current.rig)),
+    canUndo: canUndo(historyOf(draft)),
+    canRedo: canRedo(historyOf(draft)),
     reset: () => {
       if (isDefaultMascot(storeRef.current, heldRef.current.mascotId)) return;
       generation.current += 1;
-      hold(resetMascotDraft(heldRef.current));
+      recordEdit(resetMascotDraft(heldRef.current).rig, null);
     },
     save,
     cancel,

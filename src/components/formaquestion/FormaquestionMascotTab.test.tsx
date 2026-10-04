@@ -28,6 +28,23 @@ import { tinyWebp as webp } from '@/test/webpFixture';
 /** Holds an import's store step until a test lets it go, and records the rigs it stored. */
 const importGate = vi.hoisted(() => ({ wait: Promise.resolve(), stored: [] as MascotRig[] }));
 
+/** The ids the image store handed out, in order, so a test can follow an upload it never sees land. */
+const uploaded = vi.hoisted(() => [] as string[]);
+/** Holds an upload's store step until a test lets it go. */
+const uploadGate = vi.hoisted(() => ({ wait: Promise.resolve() }));
+
+vi.mock('@/lib/formaquestion/mascotImageStore', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/formaquestion/mascotImageStore')>();
+  return {
+    ...real,
+    addMascotImage: async (blob: Blob) => {
+      await uploadGate.wait;
+      const id = await real.addMascotImage(blob);
+      uploaded.push(id);
+      return id;
+    },
+  };
+});
 vi.mock('@/lib/downloadBlob', () => ({ downloadBlob: vi.fn() }));
 vi.mock('@/lib/formaquestion/mascotCardFile', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/lib/formaquestion/mascotCardFile')>();
@@ -83,6 +100,7 @@ const fileInput = (id: string) => document.getElementById(`image-upload-${id}`) 
 const layerOf = (id: string) => drafted().layers.find((row) => row.id === id)!;
 
 beforeEach(async () => {
+  uploaded.length = 0;
   await clearMascotImages();
 });
 afterEach(() => {
@@ -608,6 +626,23 @@ describe('the Mask', () => {
     expect(drafted().mask).toEqual({ x: 872, y: 504, width: 16, height: 680 });
   });
 
+  it('undoes a Mask drag, and a run of handle nudges, as one step each', async () => {
+    mount();
+    const target = laidOut();
+    drag(target, grip('e'), { x: -10, y: 0 });
+    const dragged = drafted().mask!;
+    expect(dragged).not.toEqual(DEFAULT_MASCOT_RIG.mask);
+    const user = userEvent.setup();
+    grip('s').focus();
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}');
+    expect(drafted().mask!.height).toBe(dragged.height + 3);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(drafted().mask).toEqual(dragged);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(drafted().mask).toEqual(DEFAULT_MASCOT_RIG.mask);
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
+  });
+
   it('moves a focused handle one base pixel per arrow key, ten with Shift, on its own axis', async () => {
     mount();
     laidOut();
@@ -1009,5 +1044,228 @@ describe('the preset row', () => {
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save & Exit' }));
     expect(presetSelect()).toHaveTextContent('Default');
     expect(current.mascotPresets.mascots[0].rig.layers.map((layer) => layer.id)).not.toContain('sad');
+  });
+});
+
+describe('undo and redo', () => {
+  const undoButton = () => screen.getByRole('button', { name: 'Undo' });
+  const redoButton = () => screen.getByRole('button', { name: 'Redo' });
+  const slider = (name: string) => screen.getByRole('slider', { name });
+  /** The pointer release that ends a drag, wherever it lands. */
+  const release = () => fireEvent(window, new Event('pointerup'));
+  /** A slider drag: `moves` changes, then the release. */
+  const drag = (name: string, key: string, moves: number) => {
+    for (let move = 0; move < moves; move += 1) fireEvent.keyDown(slider(name), { key });
+    release();
+  };
+  const removeLayer = (name: string) => userEvent.click(within(layerRow(name)).getByRole('button', { name: 'Remove layer' }));
+  const layerIds = () => drafted().layers.map((layer) => layer.id);
+
+  it('starts with both buttons off, and Undo then Redo walk one change back and forward', async () => {
+    mount();
+    expect(undoButton()).toBeDisabled();
+    expect(redoButton()).toBeDisabled();
+    await removeLayer('Sad');
+    expect(undoButton()).toBeEnabled();
+    await userEvent.click(undoButton());
+    expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
+    expect(undoButton()).toBeDisabled();
+    expect(redoButton()).toBeEnabled();
+    await userEvent.click(redoButton());
+    expect(layerIds()).not.toContain('sad');
+    expect(redoButton()).toBeDisabled();
+  });
+
+  it('brings a removed layer back with its overlays, and a removed overlay too', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    const happy = layerOf('happy');
+    expect(happy.images).toHaveLength(2);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Remove overlay' })[0]);
+    expect(layerOf('happy').images).toHaveLength(1);
+    await userEvent.click(undoButton());
+    expect(layerOf('happy')).toEqual(happy);
+    await removeLayer('Happy');
+    expect(layerIds()).not.toContain('happy');
+    await userEvent.click(undoButton());
+    expect(layerOf('happy')).toEqual(happy);
+    expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
+  });
+
+  it('undoes a Reset in one step and restores the whole custom rig', async () => {
+    const id = await addMascotImage(png());
+    const mine: MascotRig = { ...DEFAULT_MASCOT_RIG, base: stored(id), voice: 'Gruff.', layers: DEFAULT_MASCOT_RIG.layers.slice(2) };
+    mount(mine);
+    await userEvent.click(screen.getByRole('button', { name: 'Reset Mascot' }));
+    expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
+    await userEvent.click(undoButton());
+    expect(drafted()).toEqual(mine);
+    expect(control.dirty).toBe(false);
+    expect(undoButton()).toBeDisabled();
+    // Nothing left the image store.
+    expect(await getMascotImage(id)).not.toBeNull();
+  });
+
+  it('keeps an upload in the image store when Undo removes it from the draft, until Cancel', async () => {
+    mount();
+    await userEvent.upload(fileInput('fq-mascot-base'), png('base.png'));
+    await waitFor(() => expect(drafted().base.kind).toBe('stored'));
+    const id = (drafted().base as { id: string }).id;
+    await userEvent.click(undoButton());
+    expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
+    expect(await getMascotImage(id)).not.toBeNull();
+    await userEvent.click(redoButton());
+    expect(drafted().base).toEqual(stored(id));
+    await userEvent.click(undoButton());
+    await userEvent.click(redoButton());
+    await userEvent.click(undoButton());
+    // Cancel is disabled on a clean draft, so edit once more, then cancel everything.
+    await removeLayer('Sad');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(async () => expect(await getMascotImage(id)).toBeNull());
+  });
+
+  it('undoes a slider drag as one step, and a second drag as the next step', async () => {
+    mount();
+    const start = DEFAULT_MASCOT_RIG.transition.jelly.squash;
+    drag('Squash', 'ArrowRight', 3);
+    const first = drafted().transition.jelly.squash;
+    expect(first).toBeCloseTo(start + 0.03);
+    drag('Squash', 'ArrowRight', 2);
+    expect(drafted().transition.jelly.squash).toBeCloseTo(start + 0.05);
+    await userEvent.click(undoButton());
+    expect(drafted().transition.jelly.squash).toBeCloseTo(first);
+    await userEvent.click(undoButton());
+    expect(drafted().transition.jelly.squash).toBe(start);
+    expect(undoButton()).toBeDisabled();
+  });
+
+  it('keeps two sliders in two steps even with no release between them', async () => {
+    mount();
+    fireEvent.keyDown(slider('Squash'), { key: 'ArrowRight' });
+    fireEvent.keyDown(slider('Overshoot'), { key: 'ArrowRight' });
+    await userEvent.click(undoButton());
+    expect(drafted().transition.jelly.overshoot).toBe(DEFAULT_MASCOT_RIG.transition.jelly.overshoot);
+    expect(drafted().transition.jelly.squash).toBeGreaterThan(DEFAULT_MASCOT_RIG.transition.jelly.squash);
+  });
+
+  it('undoes a typed run as one step, and a run after a blur as the next', async () => {
+    mount();
+    const voice = screen.getByRole('textbox', { name: 'Voice' });
+    await userEvent.type(voice, ' Dry.');
+    await userEvent.tab();
+    await userEvent.type(voice, ' Brief.');
+    expect(drafted().voice).toBe(`${DEFAULT_MASCOT_RIG.voice} Dry. Brief.`);
+    await userEvent.click(undoButton());
+    expect(drafted().voice).toBe(`${DEFAULT_MASCOT_RIG.voice} Dry.`);
+    await userEvent.click(undoButton());
+    expect(drafted().voice).toBe(DEFAULT_MASCOT_RIG.voice);
+    expect(undoButton()).toBeDisabled();
+  });
+
+  it('undoes an added layer and a layer reorder as one step each', async () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const row = this.closest<HTMLElement>('[data-mascot-layer]');
+      if (!row) return DOMRect.fromRect({ x: 0, y: 0, width: 300, height: 10000 });
+      return DOMRect.fromRect({ x: 0, y: [...row.parentElement!.children].indexOf(row) * 100, width: 300, height: 90 });
+    });
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole('button', { name: 'Add Layer' }));
+    const original = DEFAULT_MASCOT_RIG.layers.map((layer) => layer.id);
+    expect(layerIds().slice(0, -1)).toEqual(original);
+    within(layerRow('Wave')).getAllByRole('button').find((el) => el.getAttribute('aria-roledescription') === 'sortable')!.focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowDown]');
+    await user.keyboard('[Space]');
+    expect(layerIds().slice(0, 2)).toEqual(['rest', 'wave']);
+    await user.click(undoButton());
+    expect(layerIds().slice(0, -1)).toEqual(original);
+    expect(layerNames().at(-1)).toBe('New Layer');
+    await user.click(undoButton());
+    expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
+  });
+
+  it('deletes an upload that lands after its layer is gone, at Cancel', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
+    const input = fileInput('fq-mascot-overlay-happy');
+    // The upload starts, and the layer goes before the image store answers.
+    let release: () => void = () => undefined;
+    uploadGate.wait = new Promise<void>((resolve) => { release = resolve; });
+    fireEvent.change(input, { target: { files: [png('late.png')] } });
+    await removeLayer('Happy');
+    release();
+    uploadGate.wait = Promise.resolve();
+    await waitFor(() => expect(uploaded).toHaveLength(1));
+    expect(layerIds()).not.toContain('happy');
+    expect(await getMascotImage(uploaded[0])).not.toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(async () => expect(await getMascotImage(uploaded[0])).toBeNull());
+  });
+
+  it('drops the redo steps when a change follows an Undo', async () => {
+    mount();
+    await removeLayer('Sad');
+    await userEvent.click(undoButton());
+    expect(redoButton()).toBeEnabled();
+    await removeLayer('Happy');
+    expect(redoButton()).toBeDisabled();
+  });
+
+  it('clears the history at Save and at Cancel', async () => {
+    mount();
+    await removeLayer('Sad');
+    await save();
+    expect(undoButton()).toBeDisabled();
+    expect(redoButton()).toBeDisabled();
+    await removeLayer('Happy');
+    await userEvent.click(undoButton());
+    await removeLayer('Rest');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(undoButton()).toBeDisabled();
+    expect(redoButton()).toBeDisabled();
+  });
+
+  it('clears the history on a switch to another mascot', async () => {
+    mount();
+    await removeLayer('Sad');
+    await userEvent.click(screen.getByRole('button', { name: 'Duplicate Mascot' }));
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save & Exit' }));
+    expect(undoButton()).toBeDisabled();
+    expect(redoButton()).toBeDisabled();
+  });
+
+  describe('the shortcuts', () => {
+    const ctrlZ = (target: Element, shiftKey = false) => fireEvent.keyDown(target, { key: 'z', ctrlKey: true, shiftKey });
+
+    it('undo with Ctrl+Z and redo with Ctrl+Shift+Z or Ctrl+Y from a control in the tab', async () => {
+      mount();
+      await removeLayer('Sad');
+      const voice = screen.getByRole('textbox', { name: 'Voice' });
+      voice.focus();
+      ctrlZ(voice);
+      expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
+      ctrlZ(voice, true);
+      expect(layerIds()).not.toContain('sad');
+      ctrlZ(voice);
+      fireEvent.keyDown(voice, { key: 'y', ctrlKey: true });
+      expect(layerIds()).not.toContain('sad');
+    });
+
+    it('leave a key from outside the tab alone', async () => {
+      mount();
+      await removeLayer('Sad');
+      ctrlZ(document.body);
+      expect(layerIds()).not.toContain('sad');
+    });
+
+    it('leave a key from a dialog the tab opened alone', async () => {
+      mount();
+      await removeLayer('Sad');
+      await userEvent.click(screen.getByRole('button', { name: 'Rename Mascot' }));
+      ctrlZ(await screen.findByPlaceholderText('Preset name'));
+      expect(layerIds()).not.toContain('sad');
+    });
   });
 });
