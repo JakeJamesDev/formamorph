@@ -1,6 +1,7 @@
 # Spec: Ticket Gates
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-04. Tickets 01-03 done, last landing 93e804b8. Closed without gates.
 Spec session: ticket-gates — spec
 
 ## Problem Statement
