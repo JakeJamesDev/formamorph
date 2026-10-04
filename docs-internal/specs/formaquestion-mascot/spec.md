@@ -69,6 +69,7 @@ Settled with the user on 2026-10-03. A later ruling that refines an earlier one 
 | Q40 | The head view sits left of the pill at the top of the column on both desktop and mobile, at a fixed height (96px desktop, 64px mobile) with width from the Mask's aspect. The desktop toggle is one pill button before the ⋮ menu. Its memory is its own device key beside the window box. No Clear Mask control: Reset restores the default Mask. Refines Q24 |
 | Q41 | The Voice chip passed the bar (on 77.9%, off 76.7%) but uncovered questions miss the Not in Guide flag more often under it (24% against 10%), with more invented names and longer answers. Default on stays; a follow-up ticket adds a framing line that keeps the marker rule, measured in one batch |
 | Q42 | A pick keeps its layer when that layer changes kind. The layer still draws, the dropdown shows its name as unlisted, and no warning shows. Q21's warning covers blank faces only |
+| Q43 | Transition details: Dissolve has a duration only (default 250 ms, the Jelly range); the default rig uses Jelly at the prototype's defaults and keeps both modes' tuning; a restart mid-transition eases from the current frame with no jump; the tab's Play runs Thinking to the preview's look; range-end tests check the dip and peak only where the tuning is above 0 |
 
 ## User Stories
 
