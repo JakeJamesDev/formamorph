@@ -306,6 +306,30 @@ describe('the preview widget', () => {
   });
 });
 
+describe('the controls column', () => {
+  const sectionOf = (name: string) => screen.getByRole('heading', { name }).closest<HTMLElement>('section')!;
+
+  it('gives the Base Image and the layer list their own headings, with no label column', () => {
+    mount();
+    const base = sectionOf('Base Image');
+    expect(base).toContainElement(fileInput('fq-mascot-base'));
+    const layers = sectionOf('Layers');
+    for (const name of DEFAULT_MASCOT_RIG.layers.map((row) => row.name)) expect(layers).toContainElement(layerRow(name));
+    expect(within(layers).getByRole('button', { name: 'Add Layer' })).toBeInTheDocument();
+    // The heading is the only place each name shows, so no label cell sits beside the control.
+    expect(within(base).getAllByText('Base Image')).toHaveLength(1);
+    expect(within(layers).getAllByText('Layers')).toHaveLength(1);
+  });
+
+  it('keeps the switch, Voice, picks and card buttons in their own Sections', () => {
+    mount();
+    expect(sectionOf('Mascot')).toContainElement(screen.getByRole('textbox', { name: 'Voice' }));
+    const rig = sectionOf('Rig');
+    expect(rig).toContainElement(screen.getByRole('combobox', { name: 'Idle Look State' }));
+    expect(rig).toContainElement(screen.getByRole('button', { name: 'Reset Mascot' }));
+  });
+});
+
 describe('player images', () => {
   it('stores an uploaded overlay, puts its id in the rig, and draws it from an object URL', async () => {
     mount();
