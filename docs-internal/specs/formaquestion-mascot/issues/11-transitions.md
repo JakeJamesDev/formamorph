@@ -12,6 +12,7 @@ A face change plays a motion the player can tune.
 - One pure timing function: elapsed time and tuning in, scale and opacity out. Modes: None (a step), Dissolve (cross-fade over a duration), Jelly (the prototype's shape and defaults). The prototype, the tab preview and the window share it.
 - The rig gains the transition (mode and tuning), parsed with the rig; a rig without one reads as the default's.
 - The tab gets the mode select, its tuning controls within the prototype's ranges, and a Play button that runs it on the preview.
+- Ticket 07 landed the mascot piece holding every image the rig uses, so a face change never re-reads the store. The transition reads from that held set; no load waits inside it.
 - The window plays it on every composition change; a change mid-transition restarts from the current frame. The system's reduced-motion preference forces None, and the tab says so when it applies.
 
 Spec: Q31; Implementation → Transition.
