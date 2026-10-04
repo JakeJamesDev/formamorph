@@ -315,7 +315,7 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
   const previous = keptHistory(history, settings.historyLength).at(-1);
   const prompts = activeHelpPrompts(settings.presets);
   const prompt = renderHelpPrompt(prompts.pick, helpChipValues('pick', settings));
-  const observe = record && ((spec: AiRequestSpec, result?: AiStreamResult) => { record.pick = requestTrace('AI Picks', spec, isHelpPromptEdited(prompts, 'pick'), result); });
+  const observe = record && ((spec: AiRequestSpec, result?: AiStreamResult) => { record.pick = requestTrace('AI Search', spec, isHelpPromptEdited(prompts, 'pick'), result); });
   const pickSnapshot = helpSnapshot(snapshot, helpRoutes(settings).pick, PICK_REASONING);
   const [allPicks, semantic] = await Promise.all([
     on.aiPicks

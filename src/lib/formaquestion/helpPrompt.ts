@@ -7,7 +7,7 @@ import { HELP_CHIP, renderHelpPrompt } from './helpChips';
 export interface HelpPromptTexts {
   /** The system prompt of the answer request. */
   readonly answer: string;
-  /** The system prompt of the AI Picks request. */
+  /** The system prompt of the AI Search request. */
   readonly pick: string;
   /** The system prompt of the answer request in lookup mode. */
   readonly lookup: string;

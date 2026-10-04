@@ -42,7 +42,7 @@ function routeInfo(presetName: string | undefined, follows: string): string {
 }
 
 /**
- * The Endpoint tab: where answers and picks go, and the text-endpoint editor on the presets Settings uses.
+ * The Endpoint tab: where answers and searches go, and the text-endpoint editor on the presets Settings uses.
  * The editor edits the preset the Answer route resolves to.
  */
 export function EndpointTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {

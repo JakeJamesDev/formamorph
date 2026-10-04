@@ -213,7 +213,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     const help = page.getByRole('dialog', { name: 'Formaquestion Settings' });
     await expect(help).toBeVisible();
     await expect(helpWindow(page)).toBeHidden();
-    const picks = help.getByRole('checkbox', { name: 'AI Picks' });
+    const picks = help.getByRole('checkbox', { name: 'AI Search' });
     await picks.click();
     await expect(picks).toHaveAttribute('aria-checked', 'false');
     expect(await focusOwner(page)).toBe('dialog');
@@ -598,7 +598,7 @@ test.describe('Formaquestion on a desktop screen', () => {
   const PICK_MAX_TOKENS = 150;
 
   /**
-   * A text endpoint that answers every answer request with `answer` and every AI Picks request with a reply
+   * A text endpoint that answers every answer request with `answer` and every AI Search request with a reply
    * that picks nothing, so the keyword search alone finds the sections. It records each request body by kind.
    */
   async function openWithAi(page: Page, answer: string): Promise<{ answers: HelpBody[]; picks: HelpBody[] }> {
@@ -634,7 +634,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     await expect(conversation(page).getByRole('listitem')).toHaveCount(2);
     await expect(conversation(page)).toContainText('Select New Blueprint.');
     await expect(settings(page)).toBeVisible();
-    // One AI Picks request, then one answer request that carries the sections the search found.
+    // One AI Search request, then one answer request that carries the sections the search found.
     expect(bodies.picks).toHaveLength(1);
     expect(bodies.answers).toHaveLength(1);
     expect(bodies.answers[0].messages.map((message) => message.role)).toEqual(['system', 'user']);

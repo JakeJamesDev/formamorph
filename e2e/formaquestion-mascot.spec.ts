@@ -168,7 +168,7 @@ test.describe('the Mascot on a desktop screen', () => {
     await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
     await page.route('**/chat/completions', async (route) => {
       const body = route.request().postDataJSON() as { max_tokens: number };
-      // The AI Picks request picks nothing, so the keyword search alone finds the sections.
+      // The AI Search request picks nothing, so the keyword search alone finds the sections.
       const text = body.max_tokens === 150 ? 'No section of the list answers the question.' : '1. Open the **Traits** tab.\n2. Select **New Blueprint**.';
       const frame = `data: ${JSON.stringify({ choices: [{ delta: { content: text }, finish_reason: null }] })}\n\n`;
       await route.fulfill({ contentType: 'text/event-stream', body: `${frame}data: [DONE]\n\n` });
@@ -524,7 +524,7 @@ test.describe('the second pass controls', () => {
     });
   });
 
-  test('the Endpoint tab puts Answer and Pick on one row, over an editor headed by the active endpoint', async ({ page }) => {
+  test('the Endpoint tab puts Answer and Search on one row, over an editor headed by the active endpoint', async ({ page }) => {
     await openApp(page);
     await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'endpoint' });
     // The route selects carry no accessible name, so the two first selects of the tab stand for the two fields.
@@ -533,7 +533,7 @@ test.describe('the second pass controls', () => {
     await expect(routes.nth(1)).toContainText('Same as Answer');
     // The two labels top the two fields, so equal tops mean one row. A longer hint can push one select lower.
     const answerLabel = (await page.getByRole('dialog').locator('label', { hasText: 'Answer Endpoint' }).boundingBox())!;
-    const pickLabel = (await page.getByRole('dialog').locator('label', { hasText: 'Pick Endpoint' }).boundingBox())!;
+    const pickLabel = (await page.getByRole('dialog').locator('label', { hasText: 'Search Endpoint' }).boundingBox())!;
     expect(pickLabel.y).toBeCloseTo(answerLabel.y, 0);
     const answer = (await routes.first().boundingBox())!;
     const pick = (await routes.nth(1).boundingBox())!;

@@ -41,7 +41,7 @@ The player docs bundled into the app, split into sections at their headings, wit
 _Avoid_: knowledge base, embeddings, docs database
 
 **Search Source**:
-One way a help question finds its docs sections, with its own on/off switch in the help session: Keyword (the Docs Index search), AI Picks (one request in which the model picks sections from the guide's headings), or Semantic (sections ranked by meaning, with the embedding model on the device). The rankings of the sources that are on merge into one. The Search tab uses Keyword alone.
+One way a help question finds its docs sections, with its own on/off switch in the help session: Keyword (the Docs Index search), AI Search (one request in which the model chooses sections from the guide's headings), or Semantic (sections ranked by meaning, with the embedding model on the device). The rankings of the sources that are on merge into one. The Search tab uses Keyword alone.
 _Avoid_: retriever, provider, search mode, lookup (the docs lookup function of lookup mode)
 
 **Surface**:

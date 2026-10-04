@@ -11,7 +11,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | Term | Meaning |
 |---|---|
 | [Formaquestion](Formaquestion) | The help window. You can ask it a question, search this guide and read each page. The **Help** tab or F1 opens it. A Tool that you turn on lets it read the world you have open. |
-| [Search Source](Formaquestion#general) | One way Formaquestion finds guide sections for your question: **Keyword Search**, **AI Picks** or **Semantic Search**. You turn each one on or off in **Formaquestion Settings**. |
+| [Search Source](Formaquestion#general) | One way Formaquestion finds guide sections for your question: **Keyword Search**, **AI Search** or **Semantic Search**. You turn each one on or off in **Formaquestion Settings**. |
 | [Turn](How-to-Play) | One action from you and the AI's reply to it |
 | [Action](How-to-Play#how-to-take-an-action) | What you write in the action box: what you do next |
 | [Choice](How-to-Play#how-to-use-a-choice) | A ready-made action under the story. Select one to put its text in the action box. |

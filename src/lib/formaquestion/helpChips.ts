@@ -55,13 +55,13 @@ export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
     text: DOCS_LOOKUP.name,
   },
   [HELP_CHIP.pickLimit]: {
-    label: 'Pick Limit',
-    hint: 'Caps how many sections one pick reply names',
+    label: 'Search Limit',
+    hint: 'Caps how many sections one search reply names',
     text: String(HELP_PICK_LIMIT),
   },
   [HELP_CHIP.replyFormat]: {
     label: 'Reply Format',
-    hint: 'Sets how the pick reply is written, so the picks can be read',
+    hint: 'Sets how the search reply is written, so the app can read it',
     text: '- Reply with the lines of your picks alone, one on each line, each copied as the list writes it.',
   },
   [HELP_CHIP.voice]: {

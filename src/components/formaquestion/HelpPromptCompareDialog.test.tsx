@@ -23,7 +23,7 @@ describe('HelpPromptCompareDialog', () => {
 
   it('draws help chips as chips on both sides of the diff', () => {
     renderDialog(DEFAULT.replace(HELP_CHIP.replyFormat, ''));
-    expect(chipLabels()).toEqual(['Pick Limit', 'Reply Format']);
+    expect(chipLabels()).toEqual(['Search Limit', 'Reply Format']);
     expect(pre().querySelector('del [data-chip]')?.textContent).toBe('Reply Format');
     expect(pre().textContent).not.toContain('<PICK_LIMIT>');
   });
@@ -31,7 +31,7 @@ describe('HelpPromptCompareDialog', () => {
   it('keeps a chip whole next to a private-use character (sentinel allocation trap)', () => {
     // U+F8FF ends the sentinel block: a sentinel allocated past it would show as a CJK glyph.
     renderDialog(`${DEFAULT}\n`);
-    expect(chipLabels()).toEqual(['Pick Limit', 'Reply Format']);
+    expect(chipLabels()).toEqual(['Search Limit', 'Reply Format']);
     expect(pre().textContent).toContain('');
     expect(pre().textContent).not.toMatch(/[㐀-鿿]/);
   });
@@ -47,6 +47,6 @@ describe('HelpPromptCompareDialog', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Raw' }));
     expect(pre().querySelectorAll('ins, del')).toHaveLength(0);
     expect(pre().textContent).toContain('sharpest');
-    expect(chipLabels()).toEqual(['Pick Limit', 'Reply Format']);
+    expect(chipLabels()).toEqual(['Search Limit', 'Reply Format']);
   });
 });

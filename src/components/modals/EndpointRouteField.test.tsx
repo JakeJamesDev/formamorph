@@ -68,7 +68,7 @@ describe('EndpointRouteField', () => {
     const renderWithRow = (value: string | null, onChange = vi.fn()) => {
       render(
         <EndpointRouteField
-          label="Pick Endpoint"
+          label="Search Endpoint"
           description="Where picks go"
           info="Where they go now"
           value={value}

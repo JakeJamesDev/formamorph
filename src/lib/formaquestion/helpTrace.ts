@@ -62,7 +62,7 @@ export interface HelpSearchTrace {
   /** The sources that were on. */
   on: HelpSource[];
   queries: HelpQueryTrace[];
-  /** The AI Picks request, when that source was on. */
+  /** The AI Search request, when that source was on. */
   pick: HelpRequestTrace | null;
 }
 
@@ -79,7 +79,7 @@ export interface HelpTrace {
   search: HelpSearchTrace | null;
   /** The sections that reached the model in the prompt, in order. */
   sent: HelpTraceSection[];
-  /** The AI Picks request, when it ran, then the answer request. */
+  /** The AI Search request, when it ran, then the answer request. */
   requests: HelpRequestTrace[];
 }
 

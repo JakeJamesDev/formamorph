@@ -133,7 +133,7 @@ describe('the help chip vocabulary of a prompt', () => {
   it('knows every help chip, labels it, and offers only the chips of its prompt', () => {
     expect(vocabulary.isKnown(HELP_CHIP.marker)).toBe(true);
     expect(vocabulary.isKnown('<NOTES>')).toBe(false);
-    expect(vocabulary.label(HELP_CHIP.pickLimit)).toBe('Pick Limit');
+    expect(vocabulary.label(HELP_CHIP.pickLimit)).toBe('Search Limit');
     expect(vocabulary.hint?.(HELP_CHIP.pickLimit)).toBe(HELP_CHIPS[HELP_CHIP.pickLimit].hint);
     expect(vocabulary.palette().map((row) => row.token)).toEqual([HELP_CHIP.pickLimit, HELP_CHIP.replyFormat]);
     expect(vocabulary.acceptsPaletteToken?.(HELP_CHIP.replyFormat)).toBe(true);
