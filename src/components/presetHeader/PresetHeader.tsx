@@ -8,15 +8,13 @@ import { PresetHeaderMenu } from './PresetHeaderMenu';
 /**
  * A preset header: a label, the preset select, and the actions on the active preset. At `md` and up the
  * actions are icon buttons, destructive left of the select and file actions right. Below `md` one ⋯ menu
- * holds them all.
+ * holds them all. A caller that picks the preset elsewhere passes a `heading` instead of a label and select.
  */
-export function PresetHeader({ label, select, actions, testId }: {
-  label: string;
-  select: ReactNode;
+export function PresetHeader({ actions, testId, ...lead }: {
   /** In menu order, as `presetHeaderActions` builds them. */
   actions: PresetHeaderAction[];
   testId?: string;
-}) {
+} & ({ label: string; select: ReactNode; heading?: never } | { heading: string; label?: never; select?: never })) {
   const [confirming, setConfirming] = useState<PresetHeaderAction | null>(null);
   // The confirm is controlled, so it returns focus to what opened it by hand.
   const opener = useRef<Element | null>(null);
@@ -33,10 +31,12 @@ export function PresetHeader({ label, select, actions, testId }: {
   );
   return (
     <div className="flex flex-shrink-0 items-center gap-2" data-testid={testId}>
-      <span className="text-helper text-muted-foreground">{label}</span>
+      {lead.heading === undefined
+        ? <span className="text-helper text-muted-foreground">{lead.label}</span>
+        : <h3 className="text-label mr-auto min-w-0 truncate">{lead.heading}</h3>}
       {/* Mirrors the menu around the select: destructive actions outermost on the left. */}
       {gated.filter((a) => a.section === 'destructive').reverse().map(iconButton)}
-      {select}
+      {lead.select}
       {gated.filter((a) => a.section === 'file').map(iconButton)}
       <PresetHeaderMenu actions={gated} className="md:hidden" />
       <ConfirmDialog

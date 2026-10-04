@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, defaultPresetName, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
@@ -105,6 +105,43 @@ describe('TextEndpointEditor', () => {
     await user.click(screen.getByRole('combobox'));
     await user.click(await screen.findByRole('option', { name: 'llama' }));
     expect(model.onSelect).toHaveBeenCalledWith('llama');
+  });
+
+  it('duplicates the preset without a name dialog and selects the copy', async () => {
+    renderEditor();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Duplicate' }));
+    expect(screen.queryByPlaceholderText('Preset name')).toBeNull();
+    expect(screen.getByRole('combobox')).toHaveTextContent('llama (copy)');
+    expect(screen.getByLabelText(/Endpoint URL/)).toHaveValue('http://llama.test/v1');
+  });
+
+  it('resets and deletes through a confirm that names the preset', async () => {
+    const model = modelOn('vllm');
+    render(<TextEndpointEditor model={model} advanced onOpenConnectionGuide={() => {}} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+    const reset = await screen.findByRole('alertdialog');
+    expect(reset.textContent).toContain('Reset the "vllm" preset');
+    expect(model.onReset).not.toHaveBeenCalled();
+    await user.click(within(reset).getByRole('button', { name: 'Confirm' }));
+    expect(model.onReset).toHaveBeenCalledWith('vllm');
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
+    expect(model.onDelete).toHaveBeenCalledWith('vllm');
+  });
+
+  it('offers no Import or Export, and only Duplicate on a built-in preset', async () => {
+    const { unmount } = render(<TextEndpointEditor model={modelOn('vllm')} advanced onOpenConnectionGuide={() => {}} />);
+    expect(screen.queryByRole('button', { name: /Import|Export/ })).toBeNull();
+    unmount();
+
+    const builtIn = modelOn('default');
+    builtIn.edited = { ...builtIn.edited, builtIn: true };
+    render(<TextEndpointEditor model={builtIn} advanced onOpenConnectionGuide={() => {}} />);
+    for (const name of ['Rename', 'Reset', 'Delete']) expect(screen.queryByRole('button', { name })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument();
   });
 
   it('keeps Reset AI Endpoint in the footer, outside the scrolled fields', () => {

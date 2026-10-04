@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
-import { BUILTIN_ENGINE_PRESET_ID, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
+import { BUILTIN_ENGINE_PRESET_ID, DEFAULT_TEXT_PRESET_ID, defaultPresetName, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
 import { sentenceShapeViolation } from '@/test/copyShape';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import { ENDPOINT_COPY } from './formaquestionSettingsTabs';
@@ -136,13 +136,10 @@ describe('the Endpoint tab', () => {
     expect(row).toHaveClass('sm:grid-cols-2');
   });
 
-  it('keeps Pick on Same as Answer through an Add', async () => {
+  it('keeps Pick on Same as Answer through a Duplicate', async () => {
     renderTab({ answerEndpoint: 'small' });
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Add' }));
-    await user.type(within(await screen.findByRole('dialog')).getByRole('textbox'), 'Fresh');
-    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Add|Save|Create/ }));
-    expect(selects().pick).toHaveTextContent('Same as Answer (Fresh)');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Duplicate' }));
+    expect(selects().pick).toHaveTextContent('Same as Answer (small (copy))');
   });
 
   it('follows Answer in the heading and the fields', async () => {
@@ -159,32 +156,61 @@ describe('the Endpoint tab', () => {
     expect(screen.getByRole('heading', { name: 'Edit game (Active Endpoint)' })).toBeInTheDocument();
   });
 
-  async function addPreset(name: string) {
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Add' }));
-    const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByRole('textbox'), name);
-    await user.click(within(dialog).getByRole('button', { name: /Add|Save|Create/ }));
-  }
-
-  it('adds a copy of the Answer preset, moves Answer to it, and the editor follows', async () => {
+  it('duplicates the Answer preset, moves Answer to the copy, and the editor follows', async () => {
     renderTab({ answerEndpoint: 'small' });
-    await addPreset('Fresh');
-    const added = app.textEndpointPresets.find((p) => p.name === 'Fresh');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Duplicate' }));
+    const added = app.textEndpointPresets.find((p) => p.name === 'small (copy)');
     expect(added).toBeDefined();
     expect(app.textEndpointValuesFor(added!.id).model).toBe('small-model');
     expect(help.answerEndpoint).toBe(added!.id);
-    expect(screen.getByRole('heading', { name: 'Edit Fresh' })).toBeInTheDocument();
-    expect(selects().answer).toHaveTextContent('Fresh');
+    expect(screen.getByRole('heading', { name: 'Edit small (copy)' })).toBeInTheDocument();
+    expect(selects().answer).toHaveTextContent('small (copy)');
     expect(app.activeTextEndpointPresetId).toBe('game');
   });
 
-  it('copies the active preset when Answer follows it', async () => {
+  it('duplicates the active preset when Answer follows it', async () => {
     renderTab();
-    await addPreset('Fresh');
-    const added = app.textEndpointPresets.find((p) => p.name === 'Fresh');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Duplicate' }));
+    const added = app.textEndpointPresets.find((p) => p.name === 'game (copy)');
     expect(app.textEndpointValuesFor(added!.id).model).toBe('game-model');
     expect(help.answerEndpoint).toBe(added!.id);
+  });
+
+  it('shows the heading with the preset icons, and no Import or Export', () => {
+    renderTab({ answerEndpoint: 'small' });
+    const header = screen.getByRole('heading', { name: 'Edit small' }).parentElement!;
+    const names = Array.from(header.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
+    expect(names).toEqual(['Delete', 'Reset', 'Duplicate', 'Rename', 'Preset Actions']);
+  });
+
+  it('offers only Duplicate on the Built-In Engine', () => {
+    (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {};
+    try {
+      renderTab({ answerEndpoint: BUILTIN_ENGINE_PRESET_ID });
+      const header = screen.getByRole('heading', { name: 'Edit Built-In Engine' }).parentElement!;
+      const names = Array.from(header.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
+      expect(names).toEqual(['Duplicate', 'Preset Actions']);
+    } finally {
+      delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop;
+    }
+  });
+
+  it('renames the Answer preset from the header', async () => {
+    renderTab({ answerEndpoint: 'small' });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Rename' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox'), '2');
+    await user.click(within(dialog).getByRole('button', { name: /Save/ }));
+    expect(screen.getByRole('heading', { name: 'Edit small2' })).toBeInTheDocument();
+    expect(help.answerEndpoint).toBe('small');
+  });
+
+  it('offers only Duplicate on a built-in preset', async () => {
+    renderTab({ answerEndpoint: DEFAULT_TEXT_PRESET_ID });
+    const header = screen.getByRole('heading', { name: `Edit ${defaultPresetName()}` }).parentElement!;
+    const names = Array.from(header.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
+    expect(names).toEqual(['Duplicate', 'Preset Actions']);
   });
 
   it('moves Answer to Use Active Endpoint when its preset is deleted', async () => {
