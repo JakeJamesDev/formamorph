@@ -49,6 +49,12 @@ describe('PresetHeader', () => {
     expect(rowNames()).toEqual(['Delete', 'Reset', 'select', 'Duplicate', 'Rename', 'Import', 'Export', 'Publish']);
   });
 
+  it('puts a heading in place of the label and select, with the same icons', () => {
+    render(<PresetHeader heading="Edit Mine" testId="row" actions={presetHeaderActions(false, handlers())} />);
+    expect(screen.getByRole('heading', { name: 'Edit Mine' })).toBeInTheDocument();
+    expect(rowNames()).toEqual(['Delete', 'Reset', 'Duplicate', 'Rename', 'Import', 'Export', 'Publish']);
+  });
+
   it('lists every action in the ⋯ menu, destructive last', async () => {
     renderHeader(false, handlers());
     expect(await openMenu()).toEqual(['Duplicate', 'Rename', 'Import', 'Export', 'Publish', '---', 'Reset', 'Delete']);

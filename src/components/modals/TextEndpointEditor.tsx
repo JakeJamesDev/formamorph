@@ -14,6 +14,8 @@ import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl
 import { numInput } from '@/lib/numInput';
 import { cn } from '@/lib/utils';
 import { Hint, FieldError } from '@/components/ui/typography';
+import { PresetHeader } from '@/components/presetHeader/PresetHeader';
+import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { PresetNameDialog } from './PresetNameDialog';
 import { SamplerControl, type SamplerControlProps } from './SamplerControl';
 import type { TextEndpointEditorModel } from './textEndpointEditorModel';
@@ -29,11 +31,11 @@ const ENDPOINT_SAMPLERS = [
 ] as const;
 
 /**
- * The text-endpoint editor: the preset select with add, rename, delete and reset, then the edited preset's
- * fields. It renders as siblings so the caller's flex column lays it out. The read-only built-ins are the
- * shared endpoint ("Default") and, on desktop, the bundled engine — a preset rather than a mode so a single
+ * The text-endpoint editor: the shared preset header (duplicate, rename, reset, delete), then the edited
+ * preset's fields. It renders as siblings so the caller's flex column lays it out. The read-only built-ins are
+ * the shared endpoint ("Default") and, on desktop, the bundled engine — a preset rather than a mode so a single
  * prompt can be routed to it. The select stays visible for every preset, including the engine, or there'd be
- * no way back. A `heading` swaps the select for a title and an Add button.
+ * no way back. A `heading` swaps the select for a title.
  */
 export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, presetDescription = SETTINGS_COPY.textPreset.description, heading }: {
   model: TextEndpointEditorModel;
@@ -41,7 +43,7 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
   onOpenConnectionGuide: () => void;
   /** The help line under the preset select or heading. */
   presetDescription?: string;
-  /** Replaces the preset select with a title and an Add button, for a caller that picks the preset itself. */
+  /** Replaces the preset select with a title, for a caller that picks the preset itself. */
   heading?: string;
 }) {
   const { presets, edited, fields, edit, onSelect, onAdd, onRename, onDelete, onReset } = model;
@@ -65,6 +67,20 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
     if (presetDialog?.mode === 'add') onAdd(name);
     else if (presetDialog?.mode === 'rename') onRename(edited.id, name);
   };
+
+  // A copy needs no name dialog. The model's `onAdd` clones the edited preset and moves the caller to the copy.
+  const presetActions = presetHeaderActions(builtIn, {
+    duplicate: () => onAdd(`${edited.name} (copy)`),
+    rename: () => setPresetDialog({ mode: 'rename' }),
+    reset: {
+      run: () => onReset(edited.id),
+      description: `Reset the "${edited.name}" preset to its default values? This can't be undone.`,
+    },
+    delete: {
+      run: () => onDelete(edited.id),
+      description: `Delete the "${edited.name}" preset? This can't be undone.`,
+    },
+  });
 
   const handleResetEndpoint = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
@@ -116,51 +132,32 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
 
   return (
     <>
-      <div className="flex items-center gap-2 flex-shrink-0 pt-4">
-        {heading === undefined
-          ? <Hint as="span">{SETTINGS_COPY.textPreset.label}</Hint>
-          : <h3 className="text-label mr-auto min-w-0 truncate">{heading}</h3>}
-        {heading !== undefined && (
-          <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'add' })}>Add</Button>
-        )}
-        {!builtIn && (
-          <ConfirmDialog
-            title="Delete Preset"
-            description={`Delete the "${edited.name}" preset? This can't be undone.`}
-            onConfirm={() => onDelete(edited.id)}
-          >
-            <Button variant="outline" size="sm">Delete</Button>
-          </ConfirmDialog>
-        )}
-        {!builtIn && (
-          <ConfirmDialog
-            title="Reset Preset"
-            description={`Reset the "${edited.name}" preset to its default values? This can't be undone.`}
-            onConfirm={() => onReset(edited.id)}
-          >
-            <Button variant="outline" size="sm">Reset</Button>
-          </ConfirmDialog>
-        )}
-        {heading === undefined && (
-          <Select value={edited.id} onValueChange={handlePresetSelect}>
-            <SelectTrigger className="flex-1 min-w-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {presets.builtIn.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
-              {presets.user.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
-              <SelectSeparator />
-              <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-        {!builtIn && (
-          <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
-        )}
+      <div className="flex-shrink-0 pt-4">
+        <PresetHeader
+          actions={presetActions}
+          {...(heading === undefined
+            ? {
+                label: SETTINGS_COPY.textPreset.label,
+                select: (
+                  <Select value={edited.id} onValueChange={handlePresetSelect}>
+                    <SelectTrigger aria-label={SETTINGS_COPY.textPreset.label} className="flex-1 min-w-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {presets.builtIn.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                      {presets.user.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                      <SelectSeparator />
+                      <SelectItem value={ADD_PRESET_SENTINEL}>Add New Preset…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ),
+              }
+            : { heading })}
+        />
       </div>
       <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
