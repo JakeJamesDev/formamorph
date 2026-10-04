@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'react-toastify';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
+import { PromptsShell } from '@/components/PromptsShell';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import PromptField from '@/components/prompt/PromptField';
 import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
@@ -19,6 +20,7 @@ import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpS
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
+import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 import { randomUUID } from '@/lib/uuid';
@@ -50,7 +52,7 @@ type Pending = { kind: 'add' } | { kind: 'rename' } | null;
  * The Prompts tab: the shared preset header, and the three prompts in a rail, each with Edit | Preview and
  * an Options row. The Default preset shows its prompts read-only with a way to duplicate. A custom prompt
  * resets and compares to the default text from the footer, and the header resets the whole preset. A preset
- * exports to a help preset file, and a file imports as a new preset.
+ * exports to a help preset file, and a file imports as a new preset. Full screen lifts the whole tab.
  */
 export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
   const store = settings.presets;
@@ -72,6 +74,8 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   latest.current = settings;
   const { mascot, mascotPresets } = settings;
   const preview = useMemo(() => helpChipPreview(helpChipValues(key, { mascot, mascotPresets })), [key, mascot, mascotPresets]);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const morph = useMorphFullscreen(panelRef);
 
   const exportPreset = () => {
     const file = buildHelpPresetFile(settings, active.id, APP_VERSION);
@@ -110,7 +114,8 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
+    <div ref={panelRef} className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
+      <PromptsShell morph={morph} sourceRef={panelRef} title="Prompts">
       <PresetHeader
         label={PROMPTS_COPY.preset.label}
         actions={presetActions}
@@ -171,6 +176,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
               readOnly={readOnly}
               readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
               onRequestEdit={() => duplicate(copyName)}
+              onExitFullscreen={morph.contentInOverlay ? morph.toggle : undefined}
               onChange={(change) => setStore(editHelpOptions(store, active.id, key, change))}
             />
           ) : (
@@ -186,6 +192,8 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
               readOnly={readOnly}
               readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
               onRequestEdit={() => duplicate(copyName)}
+              fullscreen={morph.contentInOverlay}
+              onRequestFullscreen={morph.toggle}
               className="min-h-0 flex-1"
             />
           )}
@@ -211,6 +219,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         onOpenChange={(open) => { if (!open) setPending(null); }}
         onSubmit={(name) => (pending?.kind === 'rename' ? setStore(renameHelpPreset(store, active.id, name)) : duplicate(name))}
       />
+      </PromptsShell>
     </div>
   );
 }

@@ -554,7 +554,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   readOnlyReason?: string;
   /**
    * Hand fullscreen to the caller. Given this, the field stops rendering its own overlay and just reports
-   * the request — which is how Settings gets the prompt rail into the full screen alongside the editor,
+   * the request — which is how a prompts panel gets its rail into the full screen alongside the editor,
    * since the rail lives a level above this component and could never be pulled down into its overlay.
    * Call sites with no chrome of their own (world editor, dictionary entries) omit it and keep the
    * self-managed overlay.

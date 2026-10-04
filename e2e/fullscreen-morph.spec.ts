@@ -73,103 +73,131 @@ const samples = (page: import('@playwright/test').Page): Promise<Sample[]> =>
 
 const area = (s: Sample) => s.rect.w * s.rect.h;
 
+/** Each panel that lifts into the window whole: the trip is the same shell from either modal. */
+const SURFACES: { name: string; open: (page: import('@playwright/test').Page) => Promise<void> }[] = [
+  { name: 'Settings Prompts', open: async (page) => { await openApp(page); await openPromptEditor(page); } },
+  {
+    name: 'Formaquestion Prompts',
+    open: async (page) => {
+      // The player's path: the window's menu opens Formaquestion Settings and hides the window meanwhile.
+      // The dev route keeps both on screen, a state no player reaches.
+      await openApp(page, { FORMAMORPH_helpSettings: { mascot: false } });
+      await page.keyboard.press('F1');
+      await page.locator('#formaquestion-window').getByRole('button', { name: 'More Actions' }).click();
+      await page.getByRole('menuitem', { name: 'Settings' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Formaquestion Settings' });
+      // Below `sm` (640px) the tab strip is a select.
+      if (page.viewportSize()!.width >= 640) await dialog.getByRole('tab', { name: 'Prompts' }).click();
+      else {
+        await dialog.getByRole('combobox', { name: 'Tab' }).click();
+        await page.getByRole('option', { name: 'Prompts' }).click();
+      }
+      await dialog.getByRole('combobox', { name: 'Preset' }).waitFor();
+      // Settled first: a click on a still-zooming dialog waits for it, and the recorder's clock runs meanwhile.
+      await dialog.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+    },
+  },
+];
+
 /** The frames in which the window is visibly mid-travel: meaningfully smaller than its final size. */
 const travelFrames = (frames: Sample[], full: number) => frames.filter((s) => area(s) < full * 0.95);
 
-test('opening: the window grows through intermediate sizes, solid, over a dimmed backdrop', async ({ page }) => {
-  await openApp(page);
-  await openPromptEditor(page);
+for (const surface of SURFACES) test.describe(surface.name, () => {
+  test('opening: the window grows through intermediate sizes, solid, over a dimmed backdrop', async ({ page }) => {
+    await surface.open(page);
 
-  await record(page, 800);
-  await chrome.enterFullscreen(page).click();
-  await page.waitForTimeout(850);
+    await record(page, 800);
+    await chrome.enterFullscreen(page).click();
+    await page.waitForTimeout(850);
 
-  const frames = await samples(page);
-  expect(frames.length).toBeGreaterThan(10);
-  const full = area(frames[frames.length - 1]);
-  const travel = travelFrames(frames, full);
+    // The panel's window, not the field's own: a field's window is named by its label.
+    await expect(page.getByRole('dialog', { name: 'Prompts', exact: true })).toBeVisible();
+    const frames = await samples(page);
+    expect(frames.length).toBeGreaterThan(10);
+    const full = area(frames[frames.length - 1]);
+    const travel = travelFrames(frames, full);
 
-  // The travel itself: several distinct intermediate sizes, growing monotonically. One or two is a
-  // jump cut, which is exactly the bug this spec exists to catch.
-  expect(new Set(travel.map(area)).size).toBeGreaterThanOrEqual(4);
-  for (let i = 1; i < frames.length; i++) expect(area(frames[i])).toBeGreaterThanOrEqual(area(frames[i - 1]) - 1);
-  // It starts far from full size — the growth is from the docked slot, not a near-full pop.
-  expect(area(frames[0])).toBeLessThan(full * 0.85);
+    // The travel itself: several distinct intermediate sizes, growing monotonically. One or two is a
+    // jump cut, which is exactly the bug this spec exists to catch.
+    expect(new Set(travel.map(area)).size).toBeGreaterThanOrEqual(4);
+    for (let i = 1; i < frames.length; i++) expect(area(frames[i])).toBeGreaterThanOrEqual(area(frames[i - 1]) - 1);
+    // It starts far from full size — the growth is from the docked slot, not a near-full pop.
+    expect(area(frames[0])).toBeLessThan(full * 0.85);
 
-  // Solid while it moves — never translucent, the veil fully covering the contents — and carrying its
-  // own edge: a border and a shadow, because the panel is the same color as what it moves over, and
-  // the earliest frames are the ones where a small panel is actually distinguishable.
-  for (const s of travel) {
-    expect(s.opacity).toBeGreaterThan(0.95);
-    expect(s.veil).toBeGreaterThan(0.95);
-    expect(s.borderW).toBeGreaterThanOrEqual(1);
-    expect(s.shadow).toBe(true);
-  }
-  // Contrast: the dim fades in with the trip (an instant dim was the very first flash complaint), so
-  // the border and shadow above carry the earliest frames, and by mid-travel the dim must be solidly
-  // dark and doing the work.
-  const mid = travel[Math.floor(travel.length / 2)];
-  expect(mid.overlay).toBeGreaterThan(0.5);
+    // Solid while it moves — never translucent, the veil fully covering the contents — and carrying its
+    // own edge: a border and a shadow, because the panel is the same color as what it moves over, and
+    // the earliest frames are the ones where a small panel is actually distinguishable.
+    for (const s of travel) {
+      expect(s.opacity).toBeGreaterThan(0.95);
+      expect(s.veil).toBeGreaterThan(0.95);
+      expect(s.borderW).toBeGreaterThanOrEqual(1);
+      expect(s.shadow).toBe(true);
+    }
+    // Contrast: the dim fades in with the trip (an instant dim was the very first flash complaint), so
+    // the border and shadow above carry the earliest frames, and by mid-travel the dim must be solidly
+    // dark and doing the work.
+    const mid = travel[Math.floor(travel.length / 2)];
+    expect(mid.overlay).toBeGreaterThan(0.5);
 
-  // The reveal starts at landing, not after the settle buffer: the veil is fully off well before the
-  // buffered timeline (~600ms with click latency) could manage it.
-  const revealed = frames.find((s) => s.veil >= 0 && s.veil < 0.1);
-  expect(revealed).toBeTruthy();
-  expect(revealed!.t).toBeLessThan(560);
-});
+    // The reveal starts at landing, not after the settle buffer: the veil is fully off well before the
+    // buffered timeline (~600ms with click latency) could manage it.
+    const revealed = frames.find((s) => s.veil >= 0 && s.veil < 0.1);
+    expect(revealed).toBeTruthy();
+    expect(revealed!.t).toBeLessThan(560);
+  });
 
-test('closing: the window shrinks back into the docked slot, solid, with the panel restored under it', async ({ page }) => {
-  await openApp(page);
-  await openPromptEditor(page);
-  await chrome.enterFullscreen(page).click();
-  // Let the enter trip land fully, the way a person toggles.
-  await page.waitForTimeout(700);
+  test('closing: the window shrinks back into the docked slot, solid, with the panel restored under it', async ({ page }) => {
+    await surface.open(page);
+    await chrome.enterFullscreen(page).click();
+    // Let the enter trip land fully, the way a person toggles.
+    await page.waitForTimeout(700);
 
-  await record(page, 800);
-  await chrome.exitFullscreen(page).click();
-  await page.waitForTimeout(850);
+    await record(page, 800);
+    await chrome.exitFullscreen(page).click();
+    await page.waitForTimeout(850);
 
-  const all = await samples(page);
-  // The recorder starts before the click, so the first frames are the resting open state (veil down).
-  // The measured run begins when the close commits: the veil snaps opaque.
-  const start = all.findIndex((s) => s.veil > 0.95);
-  expect(start).toBeGreaterThanOrEqual(0);
-  const frames = all.slice(start);
-  expect(frames.length).toBeGreaterThan(5);
-  const full = area(frames[0]);
-  // Mid-travel only: after landing the window sits parked at the docked size until it unmounts, and
-  // those parked frames would otherwise drag the "middle of the travel" into the tail.
-  const docked = area(frames[frames.length - 1]);
-  const travel = frames.filter((s) => area(s) < full * 0.95 && area(s) > docked * 1.05);
+    const all = await samples(page);
+    // The recorder starts before the click, so the first frames are the resting open state (veil down).
+    // The measured run begins when the close commits: the veil snaps opaque.
+    const start = all.findIndex((s) => s.veil > 0.95);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const frames = all.slice(start);
+    expect(frames.length).toBeGreaterThan(5);
+    const full = area(frames[0]);
+    // Mid-travel only: after landing the window sits parked at the docked size until it unmounts, and
+    // those parked frames would otherwise drag the "middle of the travel" into the tail.
+    const docked = area(frames[frames.length - 1]);
+    const travel = frames.filter((s) => area(s) < full * 0.95 && area(s) > docked * 1.05);
 
-  // The return trip is real: several distinct intermediate sizes, shrinking monotonically, ending
-  // well below full size. An in-place fade-out records zero travel frames here.
-  expect(new Set(travel.map(area)).size).toBeGreaterThanOrEqual(4);
-  for (let i = 1; i < frames.length; i++) expect(area(frames[i])).toBeLessThanOrEqual(area(frames[i - 1]) + 1);
-  // Loose bound: on a phone the docked editor legitimately fills most of the screen, so the landing
-  // size is proven small only relative to full screen, not tiny in absolute terms.
-  expect(area(frames[frames.length - 1])).toBeLessThan(full * 0.85);
+    // The return trip is real: several distinct intermediate sizes, shrinking monotonically, ending
+    // well below full size. An in-place fade-out records zero travel frames here.
+    expect(new Set(travel.map(area)).size).toBeGreaterThanOrEqual(4);
+    for (let i = 1; i < frames.length; i++) expect(area(frames[i])).toBeLessThanOrEqual(area(frames[i - 1]) + 1);
+    // Loose bound: on a phone the docked editor legitimately fills most of the screen, so the landing
+    // size is proven small only relative to full screen, not tiny in absolute terms.
+    expect(area(frames[frames.length - 1])).toBeLessThan(full * 0.85);
 
-  // Solid and edged through the travel — the shrink is the animation, and it happens over content of
-  // the panel's own color.
-  for (const s of travel) {
-    expect(s.opacity).toBeGreaterThan(0.95);
-    expect(s.veil).toBeGreaterThan(0.95);
-    expect(s.borderW).toBeGreaterThanOrEqual(1);
-    expect(s.shadow).toBe(true);
-  }
-  // Then the reveal: once parked at the docked size, the window must fade away over the restored
-  // widget through real intermediate opacities. Without this it unmounts as a solid blank panel and
-  // the widget appears in a single frame — the pop the whole design exists to remove.
-  const landed = frames.filter((s) => area(s) <= docked * 1.05);
-  expect(landed.filter((s) => s.opacity > 0.05 && s.opacity < 0.95).length).toBeGreaterThanOrEqual(2);
-  for (const s of landed) expect(s.docked).toBe(true);
-  // The dim layer is still meaningfully dark halfway through the shrink — it fades with the trip, not
-  // ahead of it — and the docked panel is back underneath from the start of the travel, so the window
-  // lands flush on the real widget instead of an empty slot.
-  const midShrink = travel[Math.floor(travel.length / 2)];
-  expect(midShrink.overlay).toBeGreaterThan(0.25);
-  for (const s of travel) expect(s.docked).toBe(true);
+    // Solid and edged through the travel — the shrink is the animation, and it happens over content of
+    // the panel's own color.
+    for (const s of travel) {
+      expect(s.opacity).toBeGreaterThan(0.95);
+      expect(s.veil).toBeGreaterThan(0.95);
+      expect(s.borderW).toBeGreaterThanOrEqual(1);
+      expect(s.shadow).toBe(true);
+    }
+    // Then the reveal: once parked at the docked size, the window must fade away over the restored
+    // widget through real intermediate opacities. Without this it unmounts as a solid blank panel and
+    // the widget appears in a single frame — the pop the whole design exists to remove.
+    const landed = frames.filter((s) => area(s) <= docked * 1.05);
+    expect(landed.filter((s) => s.opacity > 0.05 && s.opacity < 0.95).length).toBeGreaterThanOrEqual(2);
+    for (const s of landed) expect(s.docked).toBe(true);
+    // The dim layer is still meaningfully dark halfway through the shrink — it fades with the trip, not
+    // ahead of it — and the docked panel is back underneath from the start of the travel, so the window
+    // lands flush on the real widget instead of an empty slot.
+    const midShrink = travel[Math.floor(travel.length / 2)];
+    expect(midShrink.overlay).toBeGreaterThan(0.25);
+    for (const s of travel) expect(s.docked).toBe(true);
 
-  await expect(page.getByRole('dialog', { name: /prompt/i })).toHaveCount(0);
+    await expect(page.getByRole('dialog', { name: /prompt/i })).toHaveCount(0);
+  });
 });
