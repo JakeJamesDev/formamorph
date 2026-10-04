@@ -308,6 +308,20 @@ describe('filter row reference', () => {
   });
 });
 
+describe('preset header reference', () => {
+  it('registers the production header, badge and Reset and Compare pair in the showcase', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Preset Header' }));
+
+    expect(screen.getByRole('region', { name: 'Preset Header Reference' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Editable, Wide' })).getByRole('button', { name: 'Duplicate' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Editable, Narrow' })).getByRole('button', { name: 'Preset Actions' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Missing Model' })).getByText(/^Reachable, but no/)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Single Prompt' })).getByRole('button', { name: 'Compare Narration Prompt' })).toBeInTheDocument();
+  });
+});
+
 describe('supporter flair reference', () => {
   it('shows badges, names, and ringed Profile Images in both themes beside the staff badges', async () => {
     const user = userEvent.setup();

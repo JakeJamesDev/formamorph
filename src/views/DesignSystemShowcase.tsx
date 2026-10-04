@@ -6,6 +6,7 @@ import { TravelHintPairReference } from '@/components/design-system/TravelHintPa
 import { FormaquestionReference } from '@/components/design-system/FormaquestionReference';
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
 import { SupporterFlairReference } from '@/components/design-system/SupporterFlairReference';
+import { PresetHeaderReference } from '@/components/design-system/PresetHeaderReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -360,6 +361,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Supporter Flair',
     description: 'Tier colors, badges, names, and Profile Image rings',
     Component: SupporterFlairReference,
+  },
+  {
+    id: 'preset-header',
+    label: 'Preset Header',
+    description: 'Preset select, actions, reachability, and Reset and Compare',
+    Component: PresetHeaderReference,
   },
 ];
 
