@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
@@ -118,6 +118,60 @@ describe('Settings → AI Endpoints → Image: off state', () => {
     await screen.findByText(OFF_LABEL);
     expect(screen.queryByRole('button', { name: 'Recheck' })).toBeNull();
     expect(probeImageEndpoint).not.toHaveBeenCalled();
+  });
+});
+
+describe('Settings → AI Endpoints → Image: preset header off state', () => {
+  const headerControls = () => {
+    const header = screen.getByTestId('image-preset-header');
+    return [
+      within(header).getByRole('combobox', { name: 'Preset' }),
+      ...['Duplicate', 'Rename', 'Reset', 'Delete', 'Preset Actions'].map((name) => within(header).getByRole('button', { name })),
+    ];
+  };
+
+  it('disables the select and every action while it is off, keeps the switch usable, and restores them on', async () => {
+    // Delete only shows with a second preset to fall back to.
+    localStorage.setItem(IMAGE_KEY, imageEndpointPresetCodec.serialize({
+      activeId: 'p0',
+      presets: [
+        { id: 'p0', name: 'Mine', overrides: { provider: 'comfyui', endpoint: 'http://comfy.test', model: '' } },
+        { id: 'p1', name: 'Other', overrides: {} },
+      ],
+    }));
+    localStorage.setItem(OFF_KEY, 'true');
+    probeImageEndpoint.mockResolvedValue('ok');
+    openImageEndpoints();
+    await screen.findByText(OFF_LABEL);
+
+    for (const control of headerControls()) expect(control, control.getAttribute('aria-label') ?? '').toBeDisabled();
+    expect(slot()).toBeTruthy();
+    expect(toggle()).toBeEnabled();
+
+    fireEvent.click(toggle());
+    await waitFor(() => expect(screen.queryByText(OFF_LABEL)).toBeNull());
+    for (const control of headerControls()) expect(control, control.getAttribute('aria-label') ?? '').toBeEnabled();
+
+    fireEvent.click(toggle());
+    await screen.findByText(OFF_LABEL);
+    for (const control of headerControls()) expect(control, control.getAttribute('aria-label') ?? '').toBeDisabled();
+  });
+
+  it('opens no actions menu from the ⋯ button while it is off, and opens it again on', async () => {
+    seed({ provider: 'comfyui', endpoint: 'http://comfy.test', model: '' });
+    localStorage.setItem(OFF_KEY, 'true');
+    probeImageEndpoint.mockResolvedValue('ok');
+    openImageEndpoints();
+    await screen.findByText(OFF_LABEL);
+
+    const menuButton = () => within(screen.getByTestId('image-preset-header')).getByRole('button', { name: 'Preset Actions' });
+    fireEvent.contextMenu(menuButton());
+    expect(screen.queryByRole('menu')).toBeNull();
+
+    fireEvent.click(toggle());
+    await waitFor(() => expect(screen.queryByText(OFF_LABEL)).toBeNull());
+    fireEvent.contextMenu(menuButton());
+    expect(await screen.findByRole('menu')).toBeTruthy();
   });
 });
 

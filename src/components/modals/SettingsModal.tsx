@@ -1087,8 +1087,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               label="Preset"
               actions={imagePresetActions}
               testId="image-preset-header"
+              disabled={imageGenDisabled}
               select={
-              <Select value={activeImageEndpointPresetId} onValueChange={handleImagePresetSelect}>
+              <Select value={activeImageEndpointPresetId} onValueChange={handleImagePresetSelect} disabled={imageGenDisabled}>
                 <SelectTrigger aria-label="Preset" className="flex-1 min-w-0">
                   <SelectValue />
                 </SelectTrigger>

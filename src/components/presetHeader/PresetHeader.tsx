@@ -12,10 +12,12 @@ import { PresetHeaderMenu } from './PresetHeaderMenu';
  * holds them all. A caller that picks the preset elsewhere passes a `heading` instead of a label and select.
  * A `layout` of `wide` or `narrow` pins one form instead of following the viewport.
  */
-export function PresetHeader({ actions, testId, layout = 'auto', ...lead }: {
+export function PresetHeader({ actions, testId, layout = 'auto', disabled, ...lead }: {
   /** In menu order, as `presetHeaderActions` builds them. */
   actions: PresetHeaderAction[];
   testId?: string;
+  /** Disables the action buttons and the ⋯ menu. The caller disables the `select` it passes. */
+  disabled?: boolean;
   /** `auto` follows the viewport. `wide` and `narrow` pin one form, for a reference that shows both at once. */
   layout?: 'auto' | 'wide' | 'narrow';
 } & ({ label: string; select: ReactNode; heading?: never } | { heading: string; label?: never; select?: never })) {
@@ -32,7 +34,7 @@ export function PresetHeader({ actions, testId, layout = 'auto', ...lead }: {
   const showMenu = layout !== 'wide';
   const iconButton = (action: PresetHeaderAction) => (
     <Tip key={action.key} tip={action.tip ?? action.label}>
-      <Button variant="ghost" size="icon" aria-label={action.label} className={cn('h-9 w-9 shrink-0', auto && 'hidden md:inline-flex')} onClick={action.run}>
+      <Button variant="ghost" size="icon" aria-label={action.label} className={cn('h-9 w-9 shrink-0', auto && 'hidden md:inline-flex')} disabled={disabled} onClick={action.run}>
         <action.icon className="h-4 w-4" aria-hidden />
       </Button>
     </Tip>
@@ -47,7 +49,7 @@ export function PresetHeader({ actions, testId, layout = 'auto', ...lead }: {
       {icons('destructive').reverse().map(iconButton)}
       {lead.select}
       {icons('file').map(iconButton)}
-      {showMenu && <PresetHeaderMenu actions={gated} className={auto ? 'md:hidden' : undefined} />}
+      {showMenu && <PresetHeaderMenu actions={gated} disabled={disabled} className={auto ? 'md:hidden' : undefined} />}
       <ConfirmDialog
         open={confirming !== null}
         onOpenChange={(open) => { if (!open) setConfirming(null); }}
