@@ -24,6 +24,7 @@ Settled with the user on 2026-10-04.
 |---|---|
 | Q1 | Incremental typecheck and the build classifier ship. The `isolate: false` vitest experiment and TypeScript 7 do not, until measured separately |
 | Q2 | The build stays in prepare for source changes. Prepare is the merge candidate, so no "build after landing" |
+| Q3 | After a clean run in a worktree, the typecheck script writes its build-info back to the main checkout (temp file, then rename), same drive only, so the next fresh worktree seeds warm. Nothing in the main checkout runs typecheck on its own, so without this the seed never exists (ticket 01 question) |
 
 ## User Stories
 
@@ -43,6 +44,7 @@ Settled with the user on 2026-10-04.
 
 - A project script replaces the bare `tsc --noEmit` in the gate list and in the `typecheck` npm script. It runs `tsc --noEmit --incremental --tsBuildInfoFile <path>`, where the path is a gitignored file at the worktree root (`*.tsbuildinfo` is already ignored). The file never lives under node_modules, which worktrees share through a junction.
 - Seeding: when the worktree has no build-info file and the main checkout (read from the worktree's git common dir) has one on the same drive, the script copies it first. Different drives skip the seed, since TypeScript stores absolute paths across drives.
+- Write-back (Q3): after a clean run in a worktree on the same drive, the script copies its build-info to the main checkout's path through a temp file and a rename, so a reader never sees a partial file. The main checkout's own run writes in place.
 - The script prints whether the run was cold, warm or seeded, and the wall time.
 - Correctness is proven, not assumed: a test plants a type error after a warm run and confirms a non-zero exit; a second test seeds from a build-info made on a tree where the erroring file was clean and confirms the error is still reported. Both run against a small fixture project, not the app.
 
