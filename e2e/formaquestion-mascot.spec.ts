@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { gotoDev, openApp } from './app';
+import { expectScrollArrow, stubLongAnswer } from './scrollArrow';
 
 /**
  * The Formaquestion Mascot beside the minimal chat column. jsdom has no layout and loads no image, so the
@@ -150,6 +151,16 @@ test.describe('the Mascot on a desktop screen', () => {
     const reloadedColumn = (await boxes(page)).column;
     expect(reloadedColumn).toMatchObject({ x: resized.x, y: resized.y, width: resized.width });
     expect(reloadedColumn.height).toBeCloseTo(resized.height, 0);
+  });
+
+  test('shows the scroll arrow above the ask pill once the player scrolls up, and a click returns to the end', async ({ page }) => {
+    await stubLongAnswer(page);
+    await openApp(page, { FORMAMORPH_endpointUrl: 'http://127.0.0.1:5190/v1/chat/completions' });
+    await openHelp(page);
+    await askField(page).fill('How do I make a blueprint?');
+    await page.keyboard.press('Enter');
+    await expect(helpWindow(page).getByRole('log', { name: 'Conversation' }).getByRole('listitem')).toHaveCount(40);
+    await expectScrollArrow(helpWindow(page), askField(page));
   });
 
   test('opens the reader beside the column from a source name, whole on the screen, and the pill moves all three', async ({ page }) => {

@@ -21,6 +21,7 @@ import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { useAutoGrowTextarea } from '@/lib/useAutoGrowTextarea';
 import { cn } from '@/lib/utils';
 import { SectionRows } from './GuideParts';
+import { ScrollArrow } from './ScrollArrow';
 import { FOCUS_RING, readerComponents } from './readerLinks';
 import { useFoldRule } from './useFoldRule';
 import type { HelpStage } from '@/lib/formaquestion/helpSession';
@@ -182,10 +183,11 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
   busy: boolean;
   onOpen: (id: string) => void;
 }) {
-  const { viewportRef, onScroll } = useFollowEnd(exchanges);
+  const { viewportRef, onScroll, away, toEnd } = useFollowEnd(exchanges);
   return (
+    <div className="relative min-h-0 flex-1">
     <ScrollArea
-      className="min-h-0 flex-1"
+      className="h-full"
       viewportRef={viewportRef}
       viewportProps={{ 'data-fq-scroll': 'conversation', onScroll }}
     >
@@ -202,6 +204,8 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
         ))}
       </div>
     </ScrollArea>
+    <ScrollArrow shown={away} onClick={toEnd} />
+    </div>
   );
 }
 

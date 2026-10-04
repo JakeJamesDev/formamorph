@@ -206,6 +206,17 @@ export function writeStoredWindow(stored: StoredWindow): void {
   } catch { /* blocked storage */ }
 }
 
+interface ScrollPosition {
+  scrollTop: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/** Whether a conversation shows its scroll arrow: the end is more than half a viewport height away. */
+export function showsScrollArrow({ scrollTop, scrollHeight, clientHeight }: ScrollPosition): boolean {
+  return scrollHeight - scrollTop - clientHeight > clientHeight / 2;
+}
+
 /** The head view's height left of the pill: on the desktop, and on the mobile sheet. Its width follows the Mask. */
 export const HEAD_HEIGHT = 96;
 export const SHEET_HEAD_HEIGHT = 64;
