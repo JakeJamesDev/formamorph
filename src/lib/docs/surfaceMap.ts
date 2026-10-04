@@ -112,6 +112,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'settingsEndpoints.tagPrompt': { page: 'Settings', anchor: 'tag-prompt' },
 
   'settings.prompts': { page: 'Prompts', anchor: '-prompts' },
+  settingsCompare: { page: 'Prompts', anchor: '-prompts' },
   worldPrompts: { page: 'Prompts', anchor: 'world-prompts-and-the-diff-viewer' },
   ...Object.fromEntries(tabsOf('settingsPrompts').map((id) => [id, THE_PROMPTS])),
   'settingsPromptPreset.overview': { page: 'Prompts', anchor: 'the-overview' },

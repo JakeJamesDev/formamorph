@@ -56,7 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select";
 import PromptField from '../prompt/PromptField';
-import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
+import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT, type PromptVariable } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { numInput } from '@/lib/numInput';
 import { FieldError } from '@/components/ui/typography';
@@ -67,6 +67,9 @@ import { imageReachabilityTarget } from '@/lib/imageGen/probe';
 import { TextEndpointEditor } from './TextEndpointEditor';
 import { activePresetEditor } from './textEndpointEditorModel';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
+import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
+import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
+import { promptVocabulary } from '@/lib/chipVocabulary';
 import { ATTACHMENT_PROMPTS, includesAttachments } from '@/lib/promptAttachments';
 import { useImageAttachments } from '@/lib/useImageAttachments';
 import { isMaxOutputKind, shippedMaxOutput } from '@/lib/promptMaxOutput';
@@ -80,7 +83,8 @@ import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } f
 import { PresetNameDialog } from './PresetNameDialog';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt, OPENING_SCENE_CUE } from '../game/GamePrompts';
+import { OPENING_SCENE_CUE, PROMPT_TEXT_DEFAULTS } from '../game/GamePrompts';
+import { buildStyledValues } from '@/lib/sectionStyle';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -91,6 +95,15 @@ import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
 import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutorials';
+
+/** One editable prompt template: its text, its shipped default, its setter and its chip palette. */
+type EditablePrompt = { value: string; def: string; set: (s: string) => void; variables: PromptVariable[] };
+
+/** The chip families of the Messages fields, for their compare views. */
+const NO_VARIABLES: PromptVariable[] = [];
+const NO_VARIABLES_VOCABULARY = promptVocabulary(NO_VARIABLES);
+const NOW_LINE_VOCABULARY = promptVocabulary(NOW_LINE_VARIABLES);
+const NARRATION_VOCABULARY = promptVocabulary(PROMPT_KIND_VARIABLES.narration);
 
 /** What the Model trigger shows for a NovelAI preset with no model set — the id the provider falls back to. */
 const novelaiDefaultLabel = NOVELAI_MODELS.find((m) => m.id === NOVELAI_DEFAULTS.model)?.label ?? NOVELAI_DEFAULTS.model;
@@ -247,6 +260,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   forcedMode?: SettingsMode;
 }) => {
   const devRoute = useDevRoute();
+  // DEV dev-router: `#dev?modal=settingsCompare` opens the compare view on a canned Narration edit.
+  const [devCompare, setDevCompare] = useState(false);
+  useEffect(() => { if (import.meta.env.DEV && devRoute?.modal === 'settingsCompare') setDevCompare(true); }, [devRoute]);
   const routeMode = import.meta.env.DEV && (devRoute?.mode === 'simple' || devRoute?.mode === 'advanced')
     ? devRoute.mode
     : undefined;
@@ -685,24 +701,26 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   );
   // The mobile selector's value for the Overview entry; prompt and surface entries use their own prefixes.
   const overviewOption = `preset:${OVERVIEW_ROUTE}`;
+  // Each prompt's default in the preset's section style, the text the whole-preset Reset writes too.
+  const styledDefaults = useMemo(() => buildStyledValues(PROMPT_TEXT_DEFAULTS, activeSectionStyle), [activeSectionStyle]);
   // Names come from the shared map, so a jump that says where it goes and the rail row it lands on cannot
   // call the same prompt two different things.
-  const promptResets: Record<string, { label: string; reset: () => void }> = {
-    narration: { label: PROMPT_LABELS.narration, reset: () => setSystemPrompt(defaultSystemPrompt) },
-    thinking: { label: PROMPT_LABELS.thinking, reset: () => setThinkingPrompt(defaultThinkingPrompt) },
-    choices: { label: PROMPT_LABELS.choices, reset: () => setChoicesPrompt(defaultChoicesPrompt) },
-    statupdates: { label: PROMPT_LABELS.statupdates, reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
-    location: { label: PROMPT_LABELS.location, reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
-    summary: { label: PROMPT_LABELS.summary, reset: () => setSummaryPrompt(defaultSummaryPrompt) },
-    milestone: { label: PROMPT_LABELS.milestone, reset: () => setMilestoneSelectPrompt(defaultMilestoneSelectPrompt) },
-    timepassed: { label: PROMPT_LABELS.timepassed, reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
-    timeopening: { label: PROMPT_LABELS.timeopening, reset: () => setOpeningTimePrompt(defaultOpeningTimePrompt) },
-    scenetags: { label: PROMPT_LABELS.scenetags, reset: () => setSceneTagsPrompt(defaultSceneTagsPrompt) },
-    diary: { label: PROMPT_LABELS.diary, reset: () => setDiaryPrompt(defaultDiaryPrompt) },
-    director: { label: PROMPT_LABELS.director, reset: () => setDirectorPrompt(defaultDirectorPrompt) },
-    character: { label: PROMPT_LABELS.character, reset: () => setCharacterPrompt(defaultCharacterPrompt) },
-    discover: { label: PROMPT_LABELS.discover, reset: () => setDiscoverEntityPrompt(defaultDiscoverEntityPrompt) },
-    storyboard: { label: PROMPT_LABELS.storyboard, reset: () => setStoryboardPrompt(defaultStoryboardPrompt) },
+  const editablePrompts: Record<string, EditablePrompt & { label: string }> = {
+    narration: { label: PROMPT_LABELS.narration, value: systemPrompt, def: styledDefaults.systemPrompt, set: setSystemPrompt, variables: PROMPT_KIND_VARIABLES.narration },
+    thinking: { label: PROMPT_LABELS.thinking, value: thinkingPrompt, def: styledDefaults.thinkingPrompt, set: setThinkingPrompt, variables: PROMPT_KIND_VARIABLES.thinking },
+    choices: { label: PROMPT_LABELS.choices, value: choicesPrompt, def: styledDefaults.choicesPrompt, set: setChoicesPrompt, variables: PROMPT_KIND_VARIABLES.choices },
+    statupdates: { label: PROMPT_LABELS.statupdates, value: statUpdatesPrompt, def: styledDefaults.statUpdatesPrompt, set: setStatUpdatesPrompt, variables: PROMPT_KIND_VARIABLES.statupdates },
+    location: { label: PROMPT_LABELS.location, value: locationChangePromptText, def: styledDefaults.locationChangePromptText, set: setLocationChangePromptText, variables: PROMPT_KIND_VARIABLES.location },
+    summary: { label: PROMPT_LABELS.summary, value: summaryPrompt, def: styledDefaults.summaryPrompt, set: setSummaryPrompt, variables: PROMPT_KIND_VARIABLES.summary },
+    milestone: { label: PROMPT_LABELS.milestone, value: milestoneSelectPrompt, def: styledDefaults.milestoneSelectPrompt, set: setMilestoneSelectPrompt, variables: PROMPT_KIND_VARIABLES.milestone },
+    timepassed: { label: PROMPT_LABELS.timepassed, value: timePassedPrompt, def: styledDefaults.timePassedPrompt, set: setTimePassedPrompt, variables: PROMPT_KIND_VARIABLES.timepassed },
+    timeopening: { label: PROMPT_LABELS.timeopening, value: openingTimePrompt, def: styledDefaults.openingTimePrompt, set: setOpeningTimePrompt, variables: PROMPT_KIND_VARIABLES.timeopening },
+    scenetags: { label: PROMPT_LABELS.scenetags, value: sceneTagsPrompt, def: styledDefaults.sceneTagsPrompt, set: setSceneTagsPrompt, variables: PROMPT_KIND_VARIABLES.scenetags },
+    diary: { label: PROMPT_LABELS.diary, value: diaryPrompt, def: styledDefaults.diaryPrompt, set: setDiaryPrompt, variables: PROMPT_KIND_VARIABLES.diary },
+    director: { label: PROMPT_LABELS.director, value: directorPrompt, def: styledDefaults.directorPrompt, set: setDirectorPrompt, variables: PROMPT_KIND_VARIABLES.director },
+    character: { label: PROMPT_LABELS.character, value: characterPrompt, def: styledDefaults.characterPrompt, set: setCharacterPrompt, variables: PROMPT_KIND_VARIABLES.character },
+    discover: { label: PROMPT_LABELS.discover, value: discoverEntityPrompt, def: styledDefaults.discoverEntityPrompt, set: setDiscoverEntityPrompt, variables: PROMPT_KIND_VARIABLES.discover },
+    storyboard: { label: PROMPT_LABELS.storyboard, value: storyboardPrompt, def: styledDefaults.storyboardPrompt, set: setStoryboardPrompt, variables: PROMPT_KIND_VARIABLES.storyboard },
   };
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
@@ -715,7 +733,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // Tag Prompt only exists while image generation is on; fall back to Image so the panel is never blank.
   const activeEndpointTab = imageGenDisabled && endpointTab === 'img-tagprompt' ? 'img-endpoint' : endpointTab;
   const visibleEndpointTabs = endpointTabsFor(advanced, !imageGenDisabled);
-  const selectedPrompt = promptResets[activePromptTab] ?? promptResets.narration;
+  const selectedPrompt = editablePrompts[activePromptTab] ?? editablePrompts.narration;
 
   // Each prompt has a System editor, an Options sub-tab, and — for the aux prompts — a User-message editor.
   // Narration additionally has a Messages view: the conditional user-slot lines that ride the narration
@@ -770,20 +788,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   };
   // The rail's groups, with prompts whose feature is off already removed.
   const railGroups = visibleGroups(promptAvailable);
-  const userPrompts: Record<string, { value: string; set: (s: string) => void; reset: () => void; variables: typeof PROMPT_KIND_VARIABLES.choices }> = {
+  const userPrompts: Record<string, EditablePrompt> = {
     // Narration's user template applies only with thinking off (GameViewer guard); hide the editor
     // in other modes so a change there can't silently do nothing.
-    ...(thinkingMode === 'off' ? { narration: { value: narrationUserPrompt, set: setNarrationUserPrompt, reset: () => setNarrationUserPrompt(defaultNarrationUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.narration ?? [] } } : {}),
-    choices: { value: choicesUserPrompt, set: setChoicesUserPrompt, reset: () => setChoicesUserPrompt(defaultChoicesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.choices ?? [] },
-    statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, reset: () => setStatUpdatesUserPrompt(defaultStatUpdatesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? [] },
-    location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, reset: () => setLocationChangeUserPrompt(defaultLocationChangeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.location ?? [] },
-    summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, reset: () => setSummaryUserPrompt(defaultSummaryUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.summary ?? [] },
-    milestone: { value: milestoneSelectUserPrompt, set: setMilestoneSelectUserPrompt, reset: () => setMilestoneSelectUserPrompt(defaultMilestoneSelectUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.milestone ?? [] },
-    timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, reset: () => setTimePassedUserPrompt(defaultTimePassedUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? [] },
-    timeopening: { value: openingTimeUserPrompt, set: setOpeningTimeUserPrompt, reset: () => setOpeningTimeUserPrompt(defaultOpeningTimeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timeopening ?? [] },
-    director: { value: directorUserPrompt, set: setDirectorUserPrompt, reset: () => setDirectorUserPrompt(defaultDirectorUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.director ?? [] },
-    scenetags: { value: sceneTagsUserPrompt, set: setSceneTagsUserPrompt, reset: () => setSceneTagsUserPrompt(defaultSceneTagsUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.scenetags ?? [] },
-    discover: { value: discoverEntityUserPrompt, set: setDiscoverEntityUserPrompt, reset: () => setDiscoverEntityUserPrompt(defaultDiscoverEntityUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.discover ?? [] },
+    ...(thinkingMode === 'off' ? { narration: { value: narrationUserPrompt, set: setNarrationUserPrompt, def: styledDefaults.narrationUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.narration ?? NO_VARIABLES } } : {}),
+    choices: { value: choicesUserPrompt, set: setChoicesUserPrompt, def: styledDefaults.choicesUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.choices ?? NO_VARIABLES },
+    statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, def: styledDefaults.statUpdatesUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? NO_VARIABLES },
+    location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, def: styledDefaults.locationChangeUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.location ?? NO_VARIABLES },
+    summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, def: styledDefaults.summaryUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.summary ?? NO_VARIABLES },
+    milestone: { value: milestoneSelectUserPrompt, set: setMilestoneSelectUserPrompt, def: styledDefaults.milestoneSelectUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.milestone ?? NO_VARIABLES },
+    timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, def: styledDefaults.timePassedUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? NO_VARIABLES },
+    timeopening: { value: openingTimeUserPrompt, set: setOpeningTimeUserPrompt, def: styledDefaults.openingTimeUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.timeopening ?? NO_VARIABLES },
+    director: { value: directorUserPrompt, set: setDirectorUserPrompt, def: styledDefaults.directorUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.director ?? NO_VARIABLES },
+    scenetags: { value: sceneTagsUserPrompt, set: setSceneTagsUserPrompt, def: styledDefaults.sceneTagsUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.scenetags ?? NO_VARIABLES },
+    discover: { value: discoverEntityUserPrompt, set: setDiscoverEntityUserPrompt, def: styledDefaults.discoverEntityUserPrompt, variables: PROMPT_KIND_USER_VARIABLES.discover ?? NO_VARIABLES },
   };
   const activeUserPrompt = userPrompts[activePromptTab];
   const showingUser = promptView === 'user' && !!activeUserPrompt;
@@ -803,23 +821,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const messageFields = [
     ...(recapAvailable ? [{
       key: 'recap', ...SETTINGS_COPY.recapMessage,
-      value: recapUserPrompt, set: setRecapUserPrompt, def: defaultRecapUserPrompt,
-      variables: undefined,
+      value: recapUserPrompt, set: setRecapUserPrompt, def: styledDefaults.recapUserPrompt,
+      variables: undefined, vocabulary: NO_VARIABLES_VOCABULARY,
     }] : []),
     ...(nowAvailable ? [{
       key: 'now', ...SETTINGS_COPY.nowMessage,
-      value: nowLinePrompt, set: setNowLinePrompt, def: defaultNowLinePrompt,
-      variables: NOW_LINE_VARIABLES,
+      value: nowLinePrompt, set: setNowLinePrompt, def: styledDefaults.nowLinePrompt,
+      variables: NOW_LINE_VARIABLES, vocabulary: NOW_LINE_VOCABULARY,
     }] : []),
     ...(recallAvailable ? [{
       key: 'recall', ...SETTINGS_COPY.recallMessage,
-      value: rehydrateUserPrompt, set: setRehydrateUserPrompt, def: defaultRehydrateUserPrompt,
-      variables: undefined,
+      value: rehydrateUserPrompt, set: setRehydrateUserPrompt, def: styledDefaults.rehydrateUserPrompt,
+      variables: undefined, vocabulary: NO_VARIABLES_VOCABULARY,
     }] : []),
     ...(directionAvailable ? [{
       key: 'direction', ...SETTINGS_COPY.directionMessage,
-      value: oocDirectivePrompt, set: setOocDirectivePrompt, def: defaultOocDirectivePrompt,
-      variables: undefined,
+      value: oocDirectivePrompt, set: setOocDirectivePrompt, def: styledDefaults.oocDirectivePrompt,
+      variables: undefined, vocabulary: NO_VARIABLES_VOCABULARY,
     }] : []),
   ];
   // The stacked Messages fields, by key, so a jump from the hub can land on the one it named.
@@ -911,12 +929,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // The hub: the prompt selected with no editor open. An editor the open prompt doesn't have lands here
   // too, rather than on a blank panel.
   const showingHub = promptView === null || !activeSurfaces.includes(promptView);
-  // The Reset button targets whichever template is on screen. `label` is the full noun ("Narration Prompt"
-  // or just "Message" for the user-message template), so the button reads "Reset <label>". The Messages
-  // view carries its own per-field resets, so the footer button hides there (like Options).
-  const resetTarget = showingUser && activeUserPrompt
-    ? { label: `${selectedPrompt.label} Message`, reset: activeUserPrompt.reset }
-    : { label: `${selectedPrompt.label} Prompt`, reset: selectedPrompt.reset };
+  // The footer's Reset and Compare target whichever template is on screen, named by its full noun. The
+  // Messages view carries a pair per field, so the footer hides there (like Options).
+  const footerPrompt = showingUser && activeUserPrompt
+    ? { name: `${selectedPrompt.label} Message`, ...activeUserPrompt }
+    : { name: `${selectedPrompt.label} Prompt`, ...selectedPrompt };
+  const footerVocabulary = useMemo(() => promptVocabulary(footerPrompt.variables), [footerPrompt.variables]);
 
   // Verbatim-turns control for the active prompt, shown once in the footer (like Reset).
   const promptVerbatim: Record<string, { value: number; set: (n: number) => void }> = {
@@ -1487,7 +1505,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                       <SelectGroup key={g.label}>
                         <SelectLabel>{g.label}</SelectLabel>
                         {g.tabs.map((t) => (
-                          <SelectItem key={t} value={`prompt:${t}`}>{promptResets[t]?.label ?? t}</SelectItem>
+                          <SelectItem key={t} value={`prompt:${t}`}>{editablePrompts[t]?.label ?? t}</SelectItem>
                         ))}
                       </SelectGroup>
                     ))}
@@ -1507,7 +1525,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
 
               <PromptNavigationRail
                 groups={railGroups}
-                labels={Object.fromEntries(Object.entries(promptResets).map(([id, prompt]) => [id, prompt.label]))}
+                labels={Object.fromEntries(Object.entries(editablePrompts).map(([id, prompt]) => [id, prompt.label]))}
                 activePrompt={activePromptTab}
                 surface={showingHub ? null : promptView}
                 surfaces={activeSurfaces}
@@ -1585,19 +1603,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                           ref={(node) => { messageFieldRefs.current[f.key] = node; }}
                           className="flex flex-col gap-1 scroll-mt-2"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-1.5 text-label font-medium">
+                          {/* Wraps rather than squeezes: on mobile the pair drops under the label, still right-aligned. */}
+                          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                            <span className="flex shrink-0 items-center gap-1.5 text-label font-medium">
                               {f.label}
                               <HintInfo>{f.info}</HintInfo>
                             </span>
                             {!activePresetIsBuiltIn && (
-                              <ConfirmDialog
-                                title={`Reset ${f.label}`}
-                                description={`Are you sure you want to reset the ${f.label} to its default value?`}
-                                onConfirm={() => f.set(f.def)}
-                              >
-                                <Button variant="outline" size="sm" disabled={f.value === f.def}>Reset</Button>
-                              </ConfirmDialog>
+                              <PromptResetCompare
+                                className="ml-auto"
+                                size="sm"
+                                name={f.label}
+                                value={f.value}
+                                defaultValue={f.def}
+                                onReset={() => f.set(f.def)}
+                                vocabulary={f.vocabulary}
+                                surface="settingsCompare"
+                              />
                             )}
                           </div>
                           {/* Read before the template: when this message is sent is runtime-conditional,
@@ -1880,21 +1902,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               </div>
             </Tabs>
 
-            {/* Reset targets the on-screen template; hidden on the Options sub-tab (edits no template)
-                and the Messages view (per-field resets). */}
-            <div className="flex flex-wrap justify-end items-center gap-2 flex-shrink-0">
-              {!activePresetIsBuiltIn && !showingOverview && !showingOptions && !showingMessages && !showingHub && (
-                <ConfirmDialog
-                  title={`Reset ${resetTarget.label}`}
-                  description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}
-                  onConfirm={resetTarget.reset}
-                >
-                  <Button variant="outline" className="flex items-center gap-2">
-                    Reset {resetTarget.label}
-                  </Button>
-                </ConfirmDialog>
-              )}
-            </div>
+            {/* The pair targets the on-screen template; hidden on the Options sub-tab (edits no template)
+                and the Messages view (a pair per field). */}
+            {!activePresetIsBuiltIn && !showingOverview && !showingOptions && !showingMessages && !showingHub && (
+              <PromptResetCompare
+                className="flex-shrink-0"
+                name={footerPrompt.name}
+                value={footerPrompt.value}
+                defaultValue={footerPrompt.def}
+                onReset={() => footerPrompt.set(footerPrompt.def)}
+                vocabulary={footerVocabulary}
+                surface="settingsCompare"
+              />
+            )}
             <PresetNameDialog
               open={presetDialog !== null}
               mode={presetDialog?.mode ?? 'add'}
@@ -2048,6 +2068,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       onOpenChange={setConnectionGuideOpen}
       endpointUrl={endpointUrl}
     />
+    {import.meta.env.DEV && (
+      <PromptCompareDialog
+        open={devCompare && isOpen}
+        onOpenChange={setDevCompare}
+        name={`${PROMPT_LABELS.narration} Prompt`}
+        defaultText={styledDefaults.systemPrompt}
+        text={`Write in present tense.\n${styledDefaults.systemPrompt.slice(0, Math.floor(styledDefaults.systemPrompt.length * 0.8))}`}
+        vocabulary={NARRATION_VOCABULARY}
+        surface="settingsCompare"
+      />
+    )}
     </>
   );
 };

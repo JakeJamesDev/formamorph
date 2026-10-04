@@ -31,7 +31,7 @@ The new preset is a copy of the preset that was active, and it is now the active
 4. Type in the editor. To add a value from the game, select a chip in the bar above the editor. See [The Chip Editor](#the-chip-editor).
 5. Open the **Preview** tab to read the text with sample values in place of the chips.
 
-The app saves each change at once. To go back to the shipped text, select **Reset *name* Prompt** under the editor, then confirm.
+The app saves each change at once. Under the editor, select **Compare** to see your changes against the shipped text. To go back to the shipped text, select **Reset**, then confirm. In the **Messages** view, each message has its own **Reset** and **Compare** beside its name.
 
 ## How to Route a Prompt to Another Endpoint
 <!-- keywords: different model, second model, small model, faster, separate api, two models, per task, cheaper, multiple backends, mix providers, assign, split work, reachable, dual setup -->
