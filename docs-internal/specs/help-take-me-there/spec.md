@@ -43,6 +43,15 @@ Settled with the user on 2026-10-04, numbered with the `formaquestion-pass-two` 
 | Q36 | The button renders only on an answer whose status is answered. A stopped answer, a failed one or the no-AI fallback gets none. "Top source" is the first source of the done event: the looked-up section in lookup mode, else the first prompt section. A route the resolver refuses shows no button (ticket 04 question) |
 | Q37 | "Top source" skips the open screen's lead section: the route comes from the first source that is not the lead, as the follow-up topic rule does; the lead counts only when it is the only source. Refines Q36. Found in use 2026-10-04: with Use the Open Screen on, the lead led the sources and the button never showed. Ticket 07 |
 | Q38 | A walkthrough section with numbered steps carries a route and names its tab in its first lines, like a how-to. Found in use 2026-10-04: "Example: RPG Classes" was the top hit for a class question, had no route, and never said Traits, so the answer copied the example without the tab. A scan of every stepped non-how-to section found it to be the only walkthrough; the rest describe mechanics. Docs pass on main, with the recall probe |
+| Q39 | The route bar is 90% over surfaced task questions. Here questions and none-expected keys are reported, never gated (2026-10-04) |
+| Q40 | A reference section the surface map ties to a screen, dialog or tab carries that surface's route, so a "what is this panel" answer gets the button. Reopens Q38's how-to-only rule. A source test keeps the map and the lines in step |
+| Q41 | A how-to routes to the deepest surface its steps use, not the parent screen. Four parent routes from ticket 05's miss table move down |
+| Q42 | The route stops at the first non-lead source. A fall-through to the first routed sent section is held until the docs fixes rerun the probe |
+| Q43 | Judgment calls from tickets 01 and 03 stand unless asked one by one. Q44–Q47 are the ones asked |
+| Q44 | "How to Turn On Tools" routes to the Output tab, where its first step is |
+| Q45 | "How to Add a Self Opening" routes to the entity's Openings tab; with no entity open it lands on the Entities tab (Q26) |
+| Q46 | "How to Enter a Contest" stays on the Publish dialog's World tab |
+| Q47 | "How to Publish a Prompt Preset" stays on the preset's Overview |
 
 ## User Stories
 
@@ -131,20 +140,14 @@ Other checks:
 
 - An AI-driven navigation function. A later ticket after the link proves itself (Q7).
 - Auto-navigation without a click.
-- Routes for sections that are neither how-tos nor stepped walkthroughs (Q38). Reference sections carry none, so a "what is this panel" answer gets no button.
+- Routes for sections that are neither how-tos, stepped walkthroughs (Q38), nor surface-map targets (Q40).
 - A link per source. Only the top source carries the button (Q18).
 - Highlighting the control on the opened surface.
 - Routes into the community site or the desktop shell.
 
 ## Open Decisions
 
-The user's calls, in the order they matter. None blocks the close.
-
-1. **The route bar (Q20).** First run: task 83%, here 50%. Set it over surfaced questions, all questions, or not at all.
-2. **Reference sections for here questions.** Six of 12 here keys point at a tab or dialog reference section, which carries no route by design (Q38). Either those sections get a route line, or here questions stay out of the bar.
-3. **Granularity.** Four task misses route to the parent of the control's surface (the Library screen for a Worlds-tab tile menu, the Prompts tab for a preset's Options). A one-line docs edit each, or accepted as is.
-4. **Ticket 01 and 03 judgment calls.** Listed in their Answers: "How to Publish a Prompt Preset" → the preset Overview; "How to Use a Preset for One World" → Enter World; "How to Turn On Tools" has no route (could take `settings`); and eight more on the ticket 03 list.
-5. **Fall-through rule.** Today the route stops at the first non-lead source. A fall-through to the first routed source among the sent sections would link more answers at the cost of some wrong-surface links. Held until the docs show what is left (Q38 context).
+Settled 2026-10-04 as Q39–Q47; ticket 08 carries them. Still held: the fall-through rule (Q42), to revisit after ticket 08's probe.
 
 ## Further Notes
 
