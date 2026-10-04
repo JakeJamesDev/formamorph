@@ -409,38 +409,139 @@ describe('the Mask', () => {
     expect(parseFloat(frame().width)).toBeCloseTo(115.63, 2);
   });
 
-  it('stores the box a drag draws, in base pixels, and the head preview follows while it runs', () => {
-    mount();
+  /** A Mask in the base's bottom-left corner, clear of the drags that draw a new box. */
+  const CORNER_MASK = { x: 0, y: 984, width: 200, height: 200 };
+  const box = () => document.querySelector<HTMLElement>('[data-fq-mask-box]')!;
+  const grip = (name: string) => document.querySelector<HTMLElement>(`[data-fq-mask-grip="${name}"]`)!;
+
+  /** Presses `on` at a preview point, drags the pointer by a preview offset, and lets go. */
+  function drag(target: HTMLElement, on: HTMLElement, by: { x: number; y: number }, release: 'up' | 'cancel' = 'up') {
+    fireEvent.pointerDown(on, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(target, { pointerId: 1, clientX: 100 + by.x, clientY: 100 + by.y });
+    if (release === 'up') fireEvent.pointerUp(target, { pointerId: 1 });
+    else fireEvent.pointerCancel(target, { pointerId: 1 });
+  }
+
+  it('fits the Head View of a wide Mask to its slot, shorter at the Mask aspect', () => {
+    mount({ ...DEFAULT_MASCOT_RIG, mask: { x: 0, y: 0, width: 888, height: 200 } });
+    laidOut();
+    expect(head().style.width).toBe('118px');
+    expect(parseFloat(head().style.height)).toBeCloseTo(26.58, 2);
+  });
+
+  it('stores the box a drag outside the Mask draws, in base pixels, and the head preview follows while it runs', () => {
+    mount({ ...DEFAULT_MASCOT_RIG, mask: CORNER_MASK });
     const target = laidOut();
     // Preview pixels (45, 30) to (135, 120) are base pixels (222, 148) to (666, 592).
     fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 55, clientY: 50 });
     fireEvent.pointerMove(target, { pointerId: 1, clientX: 145, clientY: 140 });
-    expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
+    expect(current.rig.mask).toEqual(CORNER_MASK);
     expect(head().style.width).toBe('96px');
     expect(parseFloat(frame().left)).toBeCloseTo(-50, 6);
     expect(parseFloat(frame().top)).toBeCloseTo(-33.33, 2);
     fireEvent.pointerUp(target, { pointerId: 1 });
     expect(current.rig.mask).toEqual({ x: 222, y: 148, width: 444, height: 444 });
-    expect(document.querySelector<HTMLElement>('[data-fq-mask-box]')!.style.left).toBe('25%');
+    expect(box().style.left).toBe('25%');
   });
 
   it('drops the box when the browser cancels the drag', () => {
-    mount();
+    mount({ ...DEFAULT_MASCOT_RIG, mask: CORNER_MASK });
     const target = laidOut();
     fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 55, clientY: 50 });
     fireEvent.pointerMove(target, { pointerId: 1, clientX: 145, clientY: 140 });
+    fireEvent.pointerCancel(target, { pointerId: 1 });
+    expect(current.rig.mask).toEqual(CORNER_MASK);
+    expect(head().style.width).toBe('96px');
+    expect(box().style.top).toBe(`${(984 / 1184) * 100}%`);
+  });
+
+  it('keeps the Mask through a press outside it that wobbles a pixel', () => {
+    mount({ ...DEFAULT_MASCOT_RIG, mask: CORNER_MASK });
+    const target = laidOut();
+    fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 80, clientY: 80 });
+    fireEvent.pointerMove(target, { pointerId: 1, clientX: 81, clientY: 81 });
+    fireEvent.pointerUp(target, { pointerId: 1 });
+    expect(current.rig.mask).toEqual(CORNER_MASK);
+  });
+
+  it('draws eight handles and a move grip on the box', () => {
+    mount();
+    laidOut();
+    for (const name of ['Top-Left Corner', 'Top Edge', 'Top-Right Corner', 'Right Edge', 'Bottom-Right Corner', 'Bottom Edge', 'Bottom-Left Corner', 'Left Edge', 'Move Mask']) {
+      expect(within(box()).getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+
+  // The default Mask is 768 by 680 from (100, 0). A preview drag of (-10, 10) is (-49, 49) base pixels.
+  it.each([
+    ['nw', { x: 51, y: 49, width: 817, height: 631 }],
+    ['n', { x: 100, y: 49, width: 768, height: 631 }],
+    ['ne', { x: 100, y: 49, width: 719, height: 631 }],
+    ['e', { x: 100, y: 0, width: 719, height: 680 }],
+    ['se', { x: 100, y: 0, width: 719, height: 729 }],
+    ['s', { x: 100, y: 0, width: 768, height: 729 }],
+    ['sw', { x: 51, y: 0, width: 817, height: 729 }],
+    ['w', { x: 51, y: 0, width: 817, height: 680 }],
+  ])('moves the edges the %s handle holds', (name, expected) => {
+    mount();
+    const target = laidOut();
+    drag(target, grip(name), { x: -10, y: 10 });
+    expect(current.rig.mask).toEqual(expected);
+  });
+
+  it('moves the box, at its size, from the center grip or anywhere inside it', () => {
+    mount();
+    const target = laidOut();
+    drag(target, within(box()).getByRole('button', { name: 'Move Mask' }), { x: 2, y: 10 });
+    expect(current.rig.mask).toEqual({ x: 110, y: 49, width: 768, height: 680 });
+    drag(target, box(), { x: -4, y: 20 });
+    expect(current.rig.mask).toEqual({ x: 90, y: 148, width: 768, height: 680 });
+  });
+
+  it('shows a handle drag in the head preview while it runs, and drops it when the browser cancels', () => {
+    mount();
+    const target = laidOut();
+    fireEvent.pointerDown(grip('s'), { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(target, { pointerId: 1, clientX: 100, clientY: 210 });
+    // The box is now 768 by 1184 deep: the head view narrows to that aspect.
+    expect(parseFloat(head().style.width)).toBeCloseTo(62.27, 2);
     fireEvent.pointerCancel(target, { pointerId: 1 });
     expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
     expect(parseFloat(head().style.width)).toBeCloseTo(108.42, 2);
   });
 
-  it('keeps the Mask through a press that wobbles a pixel', () => {
+  it('leaves the stored Mask alone on a click of a handle, even one that runs past the base', () => {
+    const past = { x: 600, y: 900, width: 500, height: 500 };
+    mount({ ...DEFAULT_MASCOT_RIG, mask: past });
+    const target = laidOut();
+    drag(target, grip('se'), { x: 0, y: 0 });
+    drag(target, box(), { x: 0, y: 0 });
+    expect(current.rig.mask).toEqual(past);
+  });
+
+  it('keeps the box inside the base and above the minimum size', () => {
     mount();
     const target = laidOut();
-    fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 80, clientY: 80 });
-    fireEvent.pointerMove(target, { pointerId: 1, clientX: 81, clientY: 81 });
-    fireEvent.pointerUp(target, { pointerId: 1 });
-    expect(current.rig.mask).toEqual(DEFAULT_MASCOT_RIG.mask);
+    drag(target, grip('ne'), { x: 100, y: -100 });
+    expect(current.rig.mask).toEqual({ x: 100, y: 0, width: 788, height: 680 });
+    drag(target, grip('w'), { x: 500, y: 0 });
+    expect(current.rig.mask).toEqual({ x: 872, y: 0, width: 16, height: 680 });
+    drag(target, box(), { x: 0, y: 500 });
+    expect(current.rig.mask).toEqual({ x: 872, y: 504, width: 16, height: 680 });
+  });
+
+  it('moves a focused handle one base pixel per arrow key, ten with Shift, on its own axis', async () => {
+    mount();
+    laidOut();
+    const user = userEvent.setup();
+    within(box()).getByRole('button', { name: 'Right Edge' }).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(current.rig.mask).toEqual({ x: 100, y: 0, width: 769, height: 680 });
+    await user.keyboard('{Shift>}{ArrowLeft}{/Shift}{ArrowUp}');
+    expect(current.rig.mask).toEqual({ x: 100, y: 0, width: 759, height: 680 });
+    within(box()).getByRole('button', { name: 'Move Mask' }).focus();
+    await user.keyboard('{Shift>}{ArrowDown}{/Shift}{ArrowUp}{ArrowLeft}');
+    expect(current.rig.mask).toEqual({ x: 99, y: 9, width: 759, height: 680 });
   });
 
   it('restores the default Mask on Reset', async () => {

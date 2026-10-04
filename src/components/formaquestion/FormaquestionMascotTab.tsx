@@ -1,8 +1,8 @@
-import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Info, Play, Plus, RotateCcw, X } from 'lucide-react';
+import { Info, Move, Play, Plus, RotateCcw, X } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -30,7 +30,9 @@ import {
   DISSOLVE_RANGES, JELLY_RANGES, MASCOT_TRANSITION_MODES, type JellyTuning, type MascotTransition, type MascotTransitionMode, type TuningRange,
 } from '@/lib/formaquestion/mascotTransition';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
-import { cropFrame, fitMask, headSize, maskFromDrag, type MascotPoint, type MascotSize } from '@/lib/formaquestion/mascotMask';
+import {
+  MASK_GRIPS, cropFrame, fitMask, gripKeyDelta, headSizeWithin, isMaskGrip, maskFromDrag, moveMaskGrip, type MascotPoint, type MascotSize, type MaskGrip,
+} from '@/lib/formaquestion/mascotMask';
 import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
 import { addMascotImage, clearMascotImages, deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
 import type { MascotCardData } from '@/lib/formaquestion/mascotCard';
@@ -52,12 +54,96 @@ import { useMascotImageUrls } from './useMascotImageUrls';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 
 const PREVIEW_HEIGHT = 240;
+/** The widest Head View preview: the 128px slot less its frame's padding and border. */
+const PREVIEW_HEAD_WIDTH = 118;
 
-/** A Mask drag: where it started in base pixels, the box it gives now, and the preview's box on screen. */
-interface MaskPress {
-  from: MascotPoint;
-  latest: MascotMask | null;
-  rect: DOMRect;
+/** A Mask drag: a new box drawn from outside the Mask, or a handle moved from the Mask it started on. */
+type MaskPress =
+  | { grip: null; from: MascotPoint; latest: MascotMask | null; rect: DOMRect }
+  | { grip: MaskGrip; from: MascotPoint; start: MascotMask; latest: MascotMask; rect: DOMRect };
+
+const sameMask = (a: MascotMask, b: MascotMask) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+
+const GRIP_ATTR = 'data-fq-mask-grip';
+
+/** The handle under a press, read from its element; null off the Mask. */
+function gripAt(target: EventTarget): MaskGrip | null {
+  const name = target instanceof Element ? target.closest(`[${GRIP_ATTR}]`)?.getAttribute(GRIP_ATTR) : null;
+  return name && isMaskGrip(name) ? name : null;
+}
+
+/** Each handle's place on the box and its resize cursor. */
+const GRIP_PLACES: { readonly [G in Exclude<MaskGrip, 'move'>]: string } = {
+  nw: 'left-0 top-0 cursor-nwse-resize',
+  n: 'left-1/2 top-0 cursor-ns-resize',
+  ne: 'left-full top-0 cursor-nesw-resize',
+  e: 'left-full top-1/2 cursor-ew-resize',
+  se: 'left-full top-full cursor-nwse-resize',
+  s: 'left-1/2 top-full cursor-ns-resize',
+  sw: 'left-0 top-full cursor-nesw-resize',
+  w: 'left-0 top-1/2 cursor-ew-resize',
+};
+
+/** Faint until the box is hovered, keyboard-focused or dragged; full on a coarse pointer; the fade itself only with motion allowed. */
+const GRIP_FADE = 'opacity-30 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 group-data-[dragging]:opacity-100 '
+  + '[@media(pointer:coarse)]:opacity-100 motion-safe:transition-opacity';
+
+const GRIP_BASE = 'absolute -translate-x-1/2 -translate-y-1/2 border-2 border-primary bg-background focus-visible:outline-none '
+  + 'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring';
+
+/** A wider press area around an edge handle. */
+const GRIP_HIT = "before:absolute before:-inset-2 before:content-['']";
+
+/** The Mask on the preview: the dashed box, which moves from anywhere inside, with eight edge handles and a center grip. */
+function MaskBox({ mask, base, dragging, onNudge }: {
+  mask: MascotMask;
+  base: MascotSize;
+  dragging: boolean;
+  onNudge: (grip: MaskGrip, delta: MascotPoint) => void;
+}) {
+  const keyDown = (grip: MaskGrip) => (event: KeyboardEvent<HTMLButtonElement>) => {
+    const delta = gripKeyDelta(grip, event.key, event.shiftKey);
+    if (!delta) return;
+    event.preventDefault();
+    onNudge(grip, delta);
+  };
+  return (
+    <div
+      role="group"
+      aria-label={MASCOT_COPY.mask.label}
+      data-fq-mask-box=""
+      {...{ [GRIP_ATTR]: 'move' }}
+      data-dragging={dragging ? '' : undefined}
+      className="group absolute cursor-move rounded-sm border-2 border-dashed border-primary"
+      style={{
+        left: `${(mask.x / base.width) * 100}%`,
+        top: `${(mask.y / base.height) * 100}%`,
+        width: `${(mask.width / base.width) * 100}%`,
+        height: `${(mask.height / base.height) * 100}%`,
+      }}
+    >
+      {/* First, so the edge handles stack over it on a small box. */}
+      <button
+        type="button"
+        aria-label={MASCOT_COPY.mask.move}
+        {...{ [GRIP_ATTR]: 'move' }}
+        onKeyDown={keyDown('move')}
+        className={`${GRIP_BASE} ${GRIP_FADE} left-1/2 top-1/2 grid h-6 w-6 cursor-move place-items-center rounded-full text-primary`}
+      >
+        <Move aria-hidden className="h-3.5 w-3.5" />
+      </button>
+      {MASK_GRIPS.map((grip) => (
+        <button
+          key={grip}
+          type="button"
+          aria-label={MASCOT_COPY.mask.grips[grip]}
+          {...{ [GRIP_ATTR]: grip }}
+          onKeyDown={keyDown(grip)}
+          className={`${GRIP_BASE} ${GRIP_FADE} ${GRIP_HIT} ${GRIP_PLACES[grip]} h-3 w-3 rounded-sm`}
+        />
+      ))}
+    </div>
+  );
 }
 
 const basePoint = (event: { clientX: number; clientY: number }, rect: DOMRect, base: MascotSize): MascotPoint => ({
@@ -369,6 +455,7 @@ export function MascotTab({ settings, onChange }: {
   const [base, setBase] = useState<MascotSize | null>(null);
   /** The box a Mask drag gives while it runs. The rig takes it on release. */
   const [draftMask, setDraftMask] = useState<MascotMask | null>(null);
+  const [maskDragging, setMaskDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   /** A card read from a picked file, waiting for the replace confirmation. */
@@ -470,19 +557,35 @@ export function MascotTab({ settings, onChange }: {
     start: (event) => {
       if (event.button !== 0 || !base) return null;
       const rect = event.currentTarget.getBoundingClientRect();
-      return { from: basePoint(event, rect, base), latest: null, rect };
+      const from = basePoint(event, rect, base);
+      const grip = gripAt(event.target);
+      setMaskDragging(true);
+      if (grip === null) return { grip, from, latest: null, rect };
+      const start = fitMask(latest.current.mask, base);
+      return { grip, from, start, latest: start, rect };
     },
     move: (press, event) => {
       if (!base) return;
-      press.latest = maskFromDrag(press.from, basePoint(event, press.rect, base), base);
+      const to = basePoint(event, press.rect, base);
+      if (press.grip === null) press.latest = maskFromDrag(press.from, to, base);
+      else press.latest = moveMaskGrip(press.start, press.grip, { x: to.x - press.from.x, y: to.y - press.from.y }, base);
       setDraftMask(press.latest);
     },
     end: (press, canceled) => {
       setDraftMask(null);
+      setMaskDragging(false);
       const next = press.latest;
-      if (next && !canceled) edit((current) => ({ ...current, mask: next }));
+      if (!next || canceled || (press.grip !== null && sameMask(next, press.start))) return;
+      edit((current) => ({ ...current, mask: next }));
     },
   });
+  /** An arrow key on a focused handle, committed at once. */
+  const nudgeMask = (grip: MaskGrip, delta: MascotPoint) => {
+    if (!base) return;
+    const from = fitMask(latest.current.mask, base);
+    const next = moveMaskGrip(from, grip, delta, base);
+    if (!sameMask(next, from)) edit((current) => ({ ...current, mask: next }));
+  };
 
   const handleLayerDragEnd = ({ active, over }: DragEndEvent) => {
     if (over && active.id !== over.id) edit((current) => moveMascotLayer(current, String(active.id), String(over.id)));
@@ -511,27 +614,16 @@ export function MascotTab({ settings, onChange }: {
                   size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
                   onBase={setBase}
                 />
-                {base && mask && (
-                  <div
-                    aria-hidden
-                    data-fq-mask-box=""
-                    className="pointer-events-none absolute rounded-sm border-2 border-dashed border-primary"
-                    style={{
-                      left: `${(mask.x / base.width) * 100}%`,
-                      top: `${(mask.y / base.height) * 100}%`,
-                      width: `${(mask.width / base.width) * 100}%`,
-                      height: `${(mask.height / base.height) * 100}%`,
-                    }}
-                  />
-                )}
+                {base && mask && <MaskBox mask={mask} base={base} dragging={maskDragging} onNudge={nudgeMask} />}
               </div>
-              <figure className="grid justify-items-center gap-1">
+              {/* A fixed slot, so the head resizing under a Mask drag never slides the mascot under the pointer. */}
+              <figure className="grid w-32 justify-items-center gap-1">
                 <div className="flex items-end rounded-md border border-border bg-background/60 p-1" style={{ minHeight: HEAD_HEIGHT + 8 }}>
                   <MascotPiece
                     view="head"
                     images={preview}
                     hold={refs}
-                    size={mask && headSize(mask, HEAD_HEIGHT)}
+                    size={mask && headSizeWithin(mask, HEAD_HEIGHT, PREVIEW_HEAD_WIDTH)}
                     frame={base && mask ? cropFrame(mask, base) : undefined}
                     onBase={setBase}
                   />

@@ -1,7 +1,68 @@
 import { describe, it, expect } from 'vitest';
-import { cropFrame, fitMask, headSize, maskFromDrag } from './mascotMask';
+import { cropFrame, fitMask, gripKeyDelta, headSize, headSizeWithin, maskFromDrag, moveMaskGrip, type MaskGrip } from './mascotMask';
 
 const BASE = { width: 888, height: 1184 };
+
+describe('moveMaskGrip', () => {
+  const MASK = { x: 100, y: 200, width: 400, height: 300 };
+  const by = (grip: MaskGrip, x: number, y: number) => moveMaskGrip(MASK, grip, { x, y }, BASE);
+
+  it('moves the one edge a side handle holds, on its own axis', () => {
+    expect(by('n', 7, -20)).toEqual({ x: 100, y: 180, width: 400, height: 320 });
+    expect(by('s', 7, 20)).toEqual({ x: 100, y: 200, width: 400, height: 320 });
+    expect(by('w', -30, 9)).toEqual({ x: 70, y: 200, width: 430, height: 300 });
+    expect(by('e', 30, 9)).toEqual({ x: 100, y: 200, width: 430, height: 300 });
+  });
+
+  it('moves the two edges a corner holds', () => {
+    expect(by('nw', -10, -20)).toEqual({ x: 90, y: 180, width: 410, height: 320 });
+    expect(by('ne', 10, -20)).toEqual({ x: 100, y: 180, width: 410, height: 320 });
+    expect(by('se', 10, 20)).toEqual({ x: 100, y: 200, width: 410, height: 320 });
+    expect(by('sw', -10, 20)).toEqual({ x: 90, y: 200, width: 410, height: 320 });
+  });
+
+  it('moves the whole box from the middle, keeping its size', () => {
+    expect(by('move', -40, 60)).toEqual({ x: 60, y: 260, width: 400, height: 300 });
+  });
+
+  it('keeps every edge inside the base', () => {
+    expect(by('nw', -500, -500)).toEqual({ x: 0, y: 0, width: 500, height: 500 });
+    expect(by('se', 5000, 5000)).toEqual({ x: 100, y: 200, width: 788, height: 984 });
+    expect(by('move', -500, 5000)).toEqual({ x: 0, y: 884, width: 400, height: 300 });
+    expect(by('move', 5000, -500)).toEqual({ x: 488, y: 0, width: 400, height: 300 });
+  });
+
+  it('stops an edge at the minimum size, whichever way it is dragged', () => {
+    expect(by('e', -1000, 0)).toEqual({ x: 100, y: 200, width: 16, height: 300 });
+    expect(by('w', 1000, 0)).toEqual({ x: 484, y: 200, width: 16, height: 300 });
+    expect(by('n', 0, 1000)).toEqual({ x: 100, y: 484, width: 400, height: 16 });
+    expect(by('s', 0, -1000)).toEqual({ x: 100, y: 200, width: 400, height: 16 });
+  });
+
+  it('gives whole base pixels for a drag measured in fractions', () => {
+    expect(by('se', 10.4, 19.6)).toEqual({ x: 100, y: 200, width: 410, height: 320 });
+    expect(by('move', 0.6, -0.4)).toEqual({ x: 101, y: 200, width: 400, height: 300 });
+  });
+});
+
+describe('gripKeyDelta', () => {
+  it('steps one base pixel per arrow key, ten with Shift', () => {
+    expect(gripKeyDelta('move', 'ArrowLeft', false)).toEqual({ x: -1, y: 0 });
+    expect(gripKeyDelta('move', 'ArrowDown', true)).toEqual({ x: 0, y: 10 });
+    expect(gripKeyDelta('se', 'ArrowRight', true)).toEqual({ x: 10, y: 0 });
+    expect(gripKeyDelta('nw', 'ArrowUp', false)).toEqual({ x: 0, y: -1 });
+  });
+
+  it('ignores a key off a side handle\'s axis, and any other key', () => {
+    expect(gripKeyDelta('e', 'ArrowUp', false)).toBeNull();
+    expect(gripKeyDelta('w', 'ArrowDown', false)).toBeNull();
+    expect(gripKeyDelta('n', 'ArrowLeft', false)).toBeNull();
+    expect(gripKeyDelta('s', 'ArrowRight', true)).toBeNull();
+    expect(gripKeyDelta('e', 'ArrowLeft', false)).toEqual({ x: -1, y: 0 });
+    expect(gripKeyDelta('s', 'ArrowUp', false)).toEqual({ x: 0, y: -1 });
+    expect(gripKeyDelta('move', 'Enter', false)).toBeNull();
+  });
+});
 
 describe('maskFromDrag', () => {
   it('gives the box between two points in whole base pixels, whichever way the drag went', () => {
@@ -38,6 +99,16 @@ describe('fitMask', () => {
 describe('headSize', () => {
   it('takes the height and the Mask aspect', () => {
     expect(headSize({ x: 0, y: 0, width: 300, height: 200 }, 64)).toEqual({ w: 96, h: 64 });
+  });
+});
+
+describe('headSizeWithin', () => {
+  it('keeps the height while the Mask aspect fits the width', () => {
+    expect(headSizeWithin({ x: 0, y: 0, width: 300, height: 200 }, 64, 96)).toEqual({ w: 96, h: 64 });
+  });
+
+  it('shrinks a wider Mask to the width at its aspect', () => {
+    expect(headSizeWithin({ x: 0, y: 0, width: 400, height: 100 }, 64, 120)).toEqual({ w: 120, h: 30 });
   });
 });
 

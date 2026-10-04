@@ -340,9 +340,9 @@ test.describe('the Mask', () => {
     await loaded(page, headPreview);
     const preview = await pieceBox(page, target);
 
-    // A quarter in from each side of the base: a 444 by 592 box, the base's own aspect.
-    const from = { x: preview.x + preview.width / 4, y: preview.y + preview.height / 4 };
-    const to = { x: preview.x + (preview.width * 3) / 4, y: preview.y + (preview.height * 3) / 4 };
+    // A quarter in from each side: a 444 by 592 box, drawn from below the default Mask's 680-pixel bottom.
+    const from = { x: preview.x + (preview.width * 3) / 4, y: preview.y + (preview.height * 3) / 4 };
+    const to = { x: preview.x + preview.width / 4, y: preview.y + preview.height / 4 };
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 6 });
@@ -351,10 +351,10 @@ test.describe('the Mask', () => {
     await page.mouse.up();
 
     const box = await pieceBox(page, '[data-fq-mask-box]');
-    expect(box.x).toBeCloseTo(from.x, 0);
-    expect(box.y).toBeCloseTo(from.y, 0);
-    expect(box.width).toBeCloseTo(to.x - from.x, 0);
-    expect(box.height).toBeCloseTo(to.y - from.y, 0);
+    expect(box.x).toBeCloseTo(to.x, 0);
+    expect(box.y).toBeCloseTo(to.y, 0);
+    expect(box.width).toBeCloseTo(from.x - to.x, 0);
+    expect(box.height).toBeCloseTo(from.y - to.y, 0);
 
     // The stored Mask reaches the window's head view after a reload.
     await page.reload();
@@ -371,7 +371,100 @@ test.describe('the Mask', () => {
     expect(frame.width).toBeCloseTo(drawn.width * 2, 0);
     expect(frame.x).toBeCloseTo(drawn.x - drawn.width / 2, 0);
   });
+
+  test('fades the handles until the pointer is on the box or a drag runs, with no fade under reduced motion', async ({ page }) => {
+    await openMaskTab(page);
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(false);
+    await page.mouse.move(0, 0);
+    await expect.poll(() => gripOpacities(page)).toEqual(Array(9).fill(FADED));
+
+    const box = await pieceBox(page, '[data-fq-mask-box]');
+    await page.mouse.move(box.x + box.width / 4, box.y + box.height / 4);
+    await expect.poll(() => gripOpacities(page)).toEqual(Array(9).fill(1));
+    expect(await gripTransition(page)).not.toBe('0s');
+
+    // A drag keeps them shown when the pointer runs off the box.
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 4, box.y + box.height + 40, { steps: 4 });
+    await page.mouse.move(0, 0, { steps: 4 });
+    await expect.poll(() => gripOpacities(page)).toEqual(Array(9).fill(1));
+    await page.mouse.up();
+    await expect.poll(() => gripOpacities(page)).toEqual(Array(9).fill(FADED));
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    expect(await gripTransition(page)).toBe('0s');
+  });
+
+  test('fades the handles again after a handle drag, and shows them for a keyboard focus', async ({ page }) => {
+    await openMaskTab(page);
+    const corner = page.getByRole('button', { name: 'Bottom-Right Corner' });
+    const at = (await corner.boundingBox())!;
+    await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(at.x - 20, at.y - 20, { steps: 4 });
+    await page.mouse.up();
+    await page.mouse.move(0, 0);
+    await expect.poll(() => gripOpacities(page)).toEqual(Array(9).fill(FADED));
+
+    await corner.focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(() => gripOpacities(page)).toEqual(Array(9).fill(1));
+  });
+
+  test('resizes a small box from an edge handle, not the move grip under it', async ({ page }) => {
+    await openMaskTab(page);
+    // Shrink the box toward its top-left corner until the move grip would cover the side handles.
+    const corner = (await page.getByRole('button', { name: 'Bottom-Right Corner' }).boundingBox())!;
+    const box = await pieceBox(page, '[data-fq-mask-box]');
+    await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 30, box.y + 30, { steps: 6 });
+    await page.mouse.up();
+    const small = await pieceBox(page, '[data-fq-mask-box]');
+    expect(small.width).toBeLessThan(40);
+
+    const edge = (await page.getByRole('button', { name: 'Right Edge' }).boundingBox())!;
+    await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(edge.x + edge.width / 2 + 40, edge.y + edge.height / 2, { steps: 4 });
+    await page.mouse.up();
+    const grown = await pieceBox(page, '[data-fq-mask-box]');
+    expect(grown.x).toBeCloseTo(small.x, 0);
+    expect(grown.width).toBeCloseTo(small.width + 40, 0);
+  });
 });
+
+test.describe('the Mask on a coarse pointer', () => {
+  test.use({ hasTouch: true });
+  // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'The touch screen here is a wide one, where the tab has room for the preview');
+  });
+
+  test('draws the handles at full opacity with no hover', async ({ page }) => {
+    await openMaskTab(page);
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+    await page.mouse.move(0, 0);
+    await expect.poll(() => gripOpacities(page)).toEqual(Array(9).fill(1));
+  });
+});
+
+/** The resting opacity of a Mask handle away from the box. */
+const FADED = 0.3;
+
+async function openMaskTab(page: Page): Promise<void> {
+  await openApp(page);
+  await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+  await loaded(page, '[data-fq-mask-target]');
+  await expect(page.locator('[data-fq-mask-box] button')).toHaveCount(9);
+}
+
+/** The painted opacity of the eight handles and the move grip. */
+const gripOpacities = (page: Page) =>
+  page.locator('[data-fq-mask-box] button').evaluateAll((grips) => grips.map((grip) => Number(getComputedStyle(grip).opacity)));
+
+const gripTransition = (page: Page) =>
+  page.locator('[data-fq-mask-box] button').first().evaluate((grip) => getComputedStyle(grip).transitionDuration);
 
 test.describe('the Mascot on a mobile-size screen', () => {
   test.use({ viewport: { width: 375, height: 812 } });

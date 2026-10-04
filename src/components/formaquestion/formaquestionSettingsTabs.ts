@@ -50,7 +50,16 @@ export const MASCOT_COPY = {
   preview: {
     label: 'Preview',
     hint: 'Shows the Idle look, or the layer or overlay you select',
-    info: 'Drag a box on the mascot to choose the head. **Head View** shows it as you drag.',
+    info: "Drag the Mask's edges, corners or middle to choose the head, or drag outside it to draw a new Mask. "
+      + 'Press an arrow key to move a focused handle one pixel, or ten with Shift. **Head View** shows it as you drag.',
+  },
+  mask: {
+    label: 'Mask',
+    move: 'Move Mask',
+    grips: {
+      nw: 'Top-Left Corner', n: 'Top Edge', ne: 'Top-Right Corner', e: 'Right Edge',
+      se: 'Bottom-Right Corner', s: 'Bottom Edge', sw: 'Bottom-Left Corner', w: 'Left Edge',
+    },
   },
   idleShown: 'Idle Look',
   overlayShown: (layer: string, n: number) => `${layer} · Overlay ${n}`,
