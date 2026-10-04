@@ -1,0 +1,77 @@
+# Spec: Ticket Gates
+
+Status: ready-for-agent
+
+## Problem Statement
+
+Every ticket lands through a prepare step that runs four gates in its worktree: typecheck, changed-files lint, affected tests, and a full production build. The affected-tests gate scales with the change. The other three do not. A one-line fix with a two-test change pays about four minutes of fixed cost, most of it a cold full-project typecheck and a full Vite build. With several tickets landing in a day, the fixed cost is the bulk of the wait.
+
+Research (2026-10-04, `docs-internal/notes/ticket-gates-research/notes.md`) found that the gate shape itself is standard: merge queues typecheck and test per change, then build the candidate. The savings are in making the per-change gates incremental and in not building when the change cannot change the bundle.
+
+## Solution
+
+Two changes to the gate commands, both inside the project. The prepare hook is unchanged.
+
+1. **Incremental typecheck.** The typecheck gate runs `tsc --noEmit --incremental` with a build-info file inside the worktree, on the same drive as the sources, never inside the shared node_modules junction. A fresh worktree seeds its file from the main checkout's when one exists, so the first run is warm too. Measured on this machine: 24 s cold, 5 s warm.
+2. **Build only when it can matter.** The build gate becomes a project script that reads the diff since Base and runs the Vite build only when a file in the bundle's input set changed. A tests-only change skips it. Docs changes do not skip it, because the help index bundles the docs.
+
+## Rulings
+
+Settled with the user on 2026-10-04.
+
+| # | Ruling |
+|---|---|
+| Q1 | Incremental typecheck and the build classifier ship. The `isolate: false` vitest experiment and TypeScript 7 do not, until measured separately |
+| Q2 | The build stays in prepare for source changes. Prepare is the merge candidate, so no "build after landing" |
+
+## User Stories
+
+1. As the author, I want a one-line ticket to prepare in under two minutes, so that landing small fixes is cheap.
+2. As the author, I want the typecheck to reuse the last run's work, so that a small change checks in seconds.
+3. As the author, I want a new worktree to start warm, so that the first prepare is not the slow one.
+4. As the author, I want a stale cache to still report a real type error, so that a fast gate is still a gate.
+5. As the author, I want a tests-only change to skip the build, so that test fixes land fast.
+6. As the author, I want a docs change to still build, so that the bundled help index is checked.
+7. As the author, I want the gate log to say when the build was skipped and why, so that a skip is never silent.
+8. As the author, I want both changes to live in the project, so that the global prepare hook stays generic.
+9. As a ticket session, I want the same four gate commands, so that nothing in the workflow doc changes.
+
+## Implementation Decisions
+
+### Typecheck gate
+
+- A project script replaces the bare `tsc --noEmit` in the gate list and in the `typecheck` npm script. It runs `tsc --noEmit --incremental --tsBuildInfoFile <path>`, where the path is a gitignored file at the worktree root (`*.tsbuildinfo` is already ignored). The file never lives under node_modules, which worktrees share through a junction.
+- Seeding: when the worktree has no build-info file and the main checkout (read from the worktree's git common dir) has one on the same drive, the script copies it first. Different drives skip the seed, since TypeScript stores absolute paths across drives.
+- The script prints whether the run was cold, warm or seeded, and the wall time.
+- Correctness is proven, not assumed: a test plants a type error after a warm run and confirms a non-zero exit; a second test seeds from a build-info made on a tree where the erroring file was clean and confirms the error is still reported. Both run against a small fixture project, not the app.
+
+### Build gate
+
+- A project script replaces the bare `npm run build` in the gate list. It takes `{base}`, lists the changed files since Base plus untracked files (the same list the affected-tests script uses), and classifies them.
+- The build runs when any changed path is outside the skip set. The skip set is exactly: test files (`*.test.*`), test helpers under the test folder, spec and notes folders under `docs-internal/`, and the ticket worktrees config. Everything else builds, docs included.
+- The script prints the decision and the paths that forced a build, or "build skipped: tests-only change" with the count.
+- A source test keeps the skip set honest: it asserts that no path in the skip set is reachable from the Vite entry graph or from the help docs bundle, by checking the patterns against the glob and raw imports the build uses.
+
+### Config
+
+- The gate list in the ticket worktrees config points at the two scripts. The prepare hook reads command strings and is unchanged.
+
+## Testing Decisions
+
+- The typecheck script's two correctness tests run on a fixture project under a temp folder: warm run after a planted error exits non-zero; a seeded stale file still reports the error.
+- The build script's classifier is a pure function over a path list, tested with tests-only, docs-only, mixed and source lists.
+- The skip-set source test guards the classifier against the bundle's inputs.
+- Timing: the ticket's Answer records cold, warm and seeded typecheck times and a tests-only prepare's total, measured once with no other prepare running.
+
+## Out of Scope
+
+- `pool: 'threads'` with `isolate: false`, happy-dom, or any vitest config change. A separate measured experiment.
+- TypeScript 7 native tsc. Blocked on typescript-eslint's API.
+- Changes to the global prepare hook or the lock.
+- Project references.
+- Skipping the build for docs-only changes.
+
+## Further Notes
+
+- The 69 s typecheck in the ticket 02 log was contention from a parallel prepare. The lock already serializes prepares; the cold run alone is 24 s.
+- The existing root `tsconfig.tsbuildinfo` is the minimal `{root, errors, version}` form from a non-incremental run and reuses nothing. The script may delete it on first run.
