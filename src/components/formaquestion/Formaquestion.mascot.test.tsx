@@ -2,11 +2,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { openDocs } from '@/lib/formaquestion/docsOpener';
-import { composeMascot, DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
+import { composeMascot, DEFAULT_MASCOT_RIG, type MascotPhase } from '@/lib/formaquestion/mascot';
 import { mascotImageUrl } from '@/lib/formaquestion/mascotAssets';
 import { NARROW_WIDTH } from '@/lib/formaquestion/windowBox';
-import { sseFrame, sseReply } from '@/test/aiTextFixtures';
+import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { openHelpSettings, stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
@@ -14,7 +15,10 @@ import type { HelpAi } from './useHelpAi';
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
 vi.mock('./useHelpAi', () => ({ useHelpAi: () => ai.current }));
 vi.mock('@/components/theme-provider', () => ({ useTheme: () => ({ resolvedTheme: 'dark' }) }));
-import { Formaquestion } from './Formaquestion';
+
+// Each test is a fresh app load: the Initial look is once per load.
+let Formaquestion: typeof import('./Formaquestion').Formaquestion;
+let openDocs: typeof import('@/lib/formaquestion/docsOpener').openDocs;
 
 const PAGES = {
   Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.\n',
@@ -31,6 +35,24 @@ const mascot = () => helpWindow().querySelector<HTMLElement>('[data-fq-piece="ma
 const column = () => helpWindow().querySelector<HTMLElement>('[data-fq-piece="column"]')!;
 const pill = () => helpWindow().querySelector<HTMLElement>('[data-fq-drag]')!;
 const drawn = () => [...mascot()!.querySelectorAll('img')].map((image) => image.getAttribute('src'));
+/** The default rig's images for a phase with no AI expression. Answering with none is the Idle look. */
+const look = (phase: MascotPhase) => composeMascot(DEFAULT_MASCOT_RIG, phase, null).map(mascotImageUrl);
+
+/** An answer stream that stays open until the test pushes its frames. */
+function heldReply() {
+  const encoder = new TextEncoder();
+  let stream!: ReadableStreamDefaultController<Uint8Array>;
+  const body = new ReadableStream<Uint8Array>({ start(controller) { stream = controller; } });
+  return {
+    respond: () => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }),
+    push: (frame: string) => act(() => { stream.enqueue(encoder.encode(frame)); }),
+    end: () => act(() => {
+      stream.enqueue(encoder.encode(sseFrame({}, 'stop')));
+      stream.enqueue(encoder.encode('data: [DONE]\n\n'));
+      stream.close();
+    }),
+  };
+}
 
 async function openWindow() {
   const view = render(<Formaquestion loadIndex={loadFixture} />);
@@ -52,6 +74,12 @@ async function send(field: HTMLElement, question: string) {
   await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 }
 
+async function reopen() {
+  await userEvent.click(screen.getByRole('button', { name: 'Close Formaquestion' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+  await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
+}
+
 async function setMascot(on: boolean) {
   await openHelpSettings();
   const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
@@ -61,7 +89,10 @@ async function setMascot(on: boolean) {
   await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  vi.resetModules();
+  ({ Formaquestion } = await import('./Formaquestion'));
+  ({ openDocs } = await import('@/lib/formaquestion/docsOpener'));
   localStorage.clear();
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
@@ -72,7 +103,7 @@ afterEach(() => {
 });
 
 describe('the minimal chrome', () => {
-  it('shows the column, the pill and the Mascot drawing the Idle look, with no frame, tabs or grip', async () => {
+  it('shows the column, the pill and the Mascot drawing the Initial look, with no frame, tabs or grip', async () => {
     await openWindow();
     expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
     expect(screen.queryByRole('tablist')).toBeNull();
@@ -80,7 +111,7 @@ describe('the minimal chrome', () => {
     expect(screen.queryByRole('button', { name: 'Wide View' })).toBeNull();
     expect(helpWindow().querySelector('[data-fq-resize]')).toBeNull();
     expect(within(pill()).getAllByRole('button').map((button) => button.getAttribute('aria-label'))).toEqual(['More Actions', 'Close Formaquestion']);
-    expect(drawn()).toEqual(composeMascot(DEFAULT_MASCOT_RIG, 'answering', null).map(mascotImageUrl));
+    expect(drawn()).toEqual(look('initial'));
   });
 
   it('stands the Mascot left of the column at the base aspect and the column height', async () => {
@@ -176,5 +207,97 @@ describe('the Mascot switch', () => {
     expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
     expect(conversation()).toHaveTextContent('How do I add a trait?');
     expect(conversation()).toHaveTextContent('Open the Traits tab.');
+  });
+});
+
+describe('the Mascot phases', () => {
+  it('waves across a close and reopen until the first send, and draws Idle on every open after it', async () => {
+    stubHelpStream(sseReply('Open the Traits tab.'));
+    const { field } = await openWindow();
+    expect(drawn()).toEqual(look('initial'));
+    await reopen();
+    expect(drawn()).toEqual(look('initial'));
+
+    await send(field, 'How do I add a trait?');
+    await within(conversation()).findByText(/Open the Traits tab/);
+    expect(drawn()).toEqual(look('answering'));
+    await reopen();
+    expect(drawn()).toEqual(look('answering'));
+  });
+
+  it('does not replay the wave on a remount after the first send', async () => {
+    stubHelpStream(sseReply('Open the Traits tab.'));
+    const { view, field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    await within(conversation()).findByText(/Open the Traits tab/);
+    view.unmount();
+
+    await openWindow();
+    expect(drawn()).toEqual(look('answering'));
+  });
+
+  it('keeps the wave through a Settings round trip that turns the Mascot on', async () => {
+    storeFramedWindow();
+    await openWindow();
+    expect(mascot()).toBeNull();
+    await setMascot(true);
+    expect(drawn()).toEqual(look('initial'));
+  });
+
+  it('thinks from the send through reasoning-only text, and rests at the first content token', async () => {
+    const reply = heldReply();
+    stubHelpStream(reply.respond);
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    expect(drawn()).toEqual(look('thinking'));
+
+    await reply.push(sseFrame({ reasoning_content: 'The player wants the Traits page.' }));
+    await within(conversation()).findByRole('button', { name: 'Thinking…' });
+    expect(drawn()).toEqual(look('thinking'));
+
+    await reply.push(sseFrame({ content: 'Open' }));
+    await waitFor(() => expect(drawn()).toEqual(look('answering')));
+    await reply.end();
+    await within(conversation()).findByText(/Open/);
+    expect(drawn()).toEqual(look('answering'));
+  });
+
+  it('keeps resting through a guide lookup that clears the text written before the call', async () => {
+    localStorage.setItem('FORMAMORPH_helpSettings', JSON.stringify({ lookup: true }));
+    const reasoning = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' as const } };
+    ai.current = helpAi({ snapshot: textSnapshot(textTarget({ reasoning })), answerTarget: { reasoning, localEngine: false, maxTokens: undefined }, revalidate: vi.fn(async () => true) });
+    const reply = heldReply();
+    let request = 0;
+    stubHelpStream(() => (request++ === 0
+      ? sseResponse([
+        sseFrame({ content: 'Let me check.' }),
+        sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: DOCS_LOOKUP.name, arguments: '{"sections":"Traits#how-to-add-a-trait"}' } }] }),
+        sseFrame({}, 'tool_calls'),
+        'data: [DONE]\n\n',
+      ])
+      : reply.respond()));
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(request).toBe(2));
+    expect(drawn()).toEqual(look('answering'));
+
+    await reply.push(sseFrame({ content: 'Open the Traits tab.' }));
+    await reply.end();
+    await within(conversation()).findByText(/Open the Traits tab/);
+    expect(drawn()).toEqual(look('answering'));
+  });
+
+  it('rests when a question stops before any content, and does not wave again after a clear', async () => {
+    const reply = heldReply();
+    stubHelpStream(reply.respond);
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    expect(drawn()).toEqual(look('thinking'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
+    await waitFor(() => expect(drawn()).toEqual(look('answering')));
+
+    await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Clear Conversation' }));
+    expect(drawn()).toEqual(look('answering'));
   });
 });

@@ -26,6 +26,8 @@ export interface HelpExchange {
   images: ImageAttachment[];
   /** The answer so far, as markdown. */
   answer: string;
+  /** Content text has arrived. It stays set when a function call clears the text written before it. */
+  answerStarted?: boolean;
   /** The model's reasoning so far, native or inline. */
   reasoning: string;
   /** How long the reasoning took, from its first text to the answer's first text. Absent while it runs. */
@@ -129,7 +131,7 @@ export function useHelpChat(index: DocsIndex | null, ai: HelpAi, settings: HelpS
         for await (const event of askHelp({ question, history, language, settings: sentSettings, snapshot, index, surface, images, world, signal: controller.signal })) {
           if (event.type === 'trace') change({ trace: event.trace });
           else if (event.type === 'stage') change({ stage: event.stage });
-          else if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, event.text !== ''), flagged: event.flagged });
+          else if (event.type === 'answer') change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, event.text !== ''), flagged: event.flagged, ...(event.text !== '' && { answerStarted: true }) });
           else change({ answer: event.text, reasoning: event.reasoning, reasoningMs: timeReasoning(event.reasoning, true), sources: event.sources, lead: event.lead, flagged: event.flagged, nearest: event.nearest, status: event.stopped ? 'stopped' : 'answered', stage: undefined });
         }
       } catch (error) {
