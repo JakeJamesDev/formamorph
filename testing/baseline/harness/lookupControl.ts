@@ -8,7 +8,7 @@ import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { createDocsLookup, DOCS_LOOKUP, DOCS_LOOKUP_CALL_LIMIT, sectionBlock } from '@/lib/formaquestion/docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from '@/lib/formaquestion/generalKnowledge';
 import { HELP_DOCS_CHAR_BUDGET, HELP_SECTION_LIMIT, helpSections, type HelpEvent } from '@/lib/formaquestion/helpSession';
-import { DEFAULT_HELP_ANSWER_OPTIONS } from '@/lib/formaquestion/helpPresets';
+import { DEFAULT_HELP_OPTIONS } from '@/lib/formaquestion/helpPresets';
 
 const SYSTEM_PROMPT = [
   'You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide.',
@@ -61,7 +61,7 @@ export async function* askHelpContentsLookup({ question, snapshot, index, fetchI
     systemPrompt: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: user }],
     requestType: 'help',
-    maxTokensOverride: DEFAULT_HELP_ANSWER_OPTIONS.maxTokens,
+    maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens,
     tools: [LOOKUP],
   });
   for await (const event of streamAiToolLoop(spec, { fetchImpl, execute: lookup.execute })) {
@@ -69,6 +69,6 @@ export async function* askHelpContentsLookup({ question, snapshot, index, fetchI
     const sources = [...lookup.fetched(), ...inPrompt];
     const answer = readMarker(stripReasoningLive(event.result.content), { final: true });
     const flagged = isGeneralKnowledge(answer.marked, sources.length);
-    yield { type: 'done', text: answer.text, sources, stopped: false, flagged, nearest: [] };
+    yield { type: 'done', text: answer.text, sources, stopped: false, flagged, nearest: [], reasoning: '' };
   }
 }
