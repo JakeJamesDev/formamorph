@@ -1,5 +1,3 @@
-import { RESET_COMPARE_COPY } from '@/components/prompt/promptResetCompareCopy';
-
 /** The tabs of Formaquestion Settings, in order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_SETTINGS_TABS = [
   { value: 'general', label: 'General' },
@@ -191,7 +189,6 @@ export const PROMPTS_COPY = {
     },
   },
   readOnly: (name: string) => `${name} is read-only`,
-  reset: { label: 'Reset to Default', hint: 'Returns this prompt to the text of this release' },
 } as const;
 
 /** The copy of the Tools tab. */
@@ -200,9 +197,4 @@ export const TOOLS_COPY = {
   rollSummary: 'Rolls the dice you name, and returns each die and the total',
   unsupported: "Your Answer Endpoint won't receive these functions. Its model doesn't support them, or support isn't confirmed yet.",
   worldText: 'Sends text from the world you have open when a Tool is on',
-} as const;
-
-export const COMPARE_COPY = {
-  action: { label: 'Compare to Default', hint: 'Shows how this prompt differs from the text of this release', same: 'This prompt matches the default text' },
-  title: (label: string) => RESET_COMPARE_COPY.compare.title(`${label} Prompt`),
 } as const;

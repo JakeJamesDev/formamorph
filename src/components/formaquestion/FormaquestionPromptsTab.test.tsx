@@ -12,7 +12,7 @@ import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
 import { helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { sentenceShapeViolation } from '@/test/copyShape';
 import { PromptsTab } from './FormaquestionPromptsTab';
-import { COMPARE_COPY, PROMPTS_COPY } from './formaquestionSettingsTabs';
+import { PROMPTS_COPY } from './formaquestionSettingsTabs';
 
 let help: HelpSettings;
 
@@ -29,7 +29,12 @@ const withMine = () => duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP
 
 const presetSelect = () => screen.getByRole('combobox', { name: 'Preset' });
 const editor = (name: string) => screen.getByRole('textbox', { name });
-const resetButton = () => screen.getByRole('button', { name: /Reset to Default/ });
+const resetButton = (prompt = 'Answer') => screen.getByRole('button', { name: `Reset ${prompt} Prompt` });
+const compareButton = (prompt = 'Answer') => screen.getByRole('button', { name: `Compare ${prompt} Prompt` });
+const queryPair = () => screen.queryAllByRole('button', { name: /^(Reset|Compare) \w+ Prompt$/ });
+const compareTitle = (prompt: string) => `${prompt} Prompt vs. Default`;
+/** Whether `a` comes before `b` in document order. */
+const precedes = (a: Element, b: Element) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 const headerRow = () => screen.getByTestId('help-preset-header-row');
 const headerButton = (name: string) => within(headerRow()).getByRole('button', { name });
 const queryHeaderButton = (name: string) => within(headerRow()).queryByRole('button', { name });
@@ -52,7 +57,7 @@ describe('the Prompts tab on the Default preset', () => {
     expect(screen.getByRole('button', { name: /Duplicate & Edit/ })).toBeInTheDocument();
     for (const name of ['Duplicate', 'Import', 'Export']) expect(headerButton(name), name).toBeInTheDocument();
     for (const name of ['Rename', 'Reset', 'Delete']) expect(queryHeaderButton(name), name).toBeNull();
-    expect(screen.queryByRole('button', { name: /Reset to Default/ })).toBeNull();
+    expect(queryPair()).toHaveLength(0);
   });
 
   it('draws the chips of each prompt, and the rail opens each prompt', async () => {
@@ -145,19 +150,55 @@ describe('the Prompts tab on a custom preset', () => {
     expect(resetButton()).toBeDisabled();
   });
 
-  it('disables Compare to Default for a prompt equal to the default, and opens the diff over the tab for an edited one', async () => {
+  it('disables Compare for a prompt equal to the default, and opens the diff over the tab for an edited one', async () => {
     renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'answer', `Be brief. ${DEFAULT_HELP_PROMPTS.answer}`) });
     const user = userEvent.setup();
-    const compare = () => screen.getByRole('button', { name: /Compare to Default/ });
-    expect(compare()).toBeEnabled();
-    await user.click(compare());
-    const dialog = await screen.findByRole('dialog', { name: COMPARE_COPY.title('Answer') });
+    expect(compareButton()).toBeEnabled();
+    await user.click(compareButton());
+    const dialog = await screen.findByRole('dialog', { name: compareTitle('Answer') });
     expect([...dialog.querySelectorAll('ins')].map((el) => el.textContent).join('')).toContain('brief');
     await user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: COMPARE_COPY.title('Answer') })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: compareTitle('Answer') })).toBeNull());
 
     await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Search' }));
-    expect(compare()).toBeDisabled();
+    expect(compareButton('Search')).toBeDisabled();
+  });
+
+  it('puts Reset then Compare in the footer, right-aligned, outside the field and its label row', () => {
+    renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'answer', 'Be brief.') });
+    const reset = resetButton();
+    const compare = compareButton();
+    expect(reset).toHaveTextContent('Reset');
+    expect(compare).toHaveTextContent('Compare');
+    expect(precedes(reset, compare)).toBe(true);
+    const footer = reset.parentElement!;
+    expect(footer).toBe(compare.parentElement);
+    expect(footer).toHaveClass('justify-end');
+    // The block before the footer holds the field and its label; the pair is a sibling of it, not inside.
+    const field = footer.previousElementSibling!;
+    expect(field.contains(editor('Answer Prompt'))).toBe(true);
+    expect(field.contains(screen.getByText('Answer', { selector: 'label' }))).toBe(true);
+    expect(field.contains(footer)).toBe(false);
+    expect(queryPair()).toHaveLength(2);
+  });
+
+  it('names the prompt it resets in the confirm and returns focus to Reset on cancel', async () => {
+    renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'pick', 'Pick well.') });
+    const user = userEvent.setup();
+    await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Search' }));
+    await user.click(resetButton('Search'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain('Search Prompt');
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(texts().pick).toBe('Pick well.');
+    expect(resetButton('Search')).toHaveFocus();
+  });
+
+  it('shows the pair on no Options view', async () => {
+    renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'answer', 'Be brief.') });
+    await userEvent.setup().click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Answer Options' }));
+    expect(queryPair()).toHaveLength(0);
   });
 
   it('resets all three prompts and their options from the header after a confirm that names the preset', async () => {
@@ -190,17 +231,12 @@ describe('the Prompts tab on a custom preset', () => {
     expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Duplicate', 'Rename', 'Import', 'Export', 'Reset', 'Delete']);
   });
 
-  it('shows no Compare to Default on the Default preset', () => {
-    renderTab();
-    expect(screen.queryByRole('button', { name: /Compare to Default/ })).toBeNull();
-  });
-
   it('keeps an edited text when the active prompt changes in the rail', async () => {
     renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'pick', 'Pick well.') });
     const user = userEvent.setup();
     await user.click(within(screen.getByRole('navigation', { name: 'Prompts' })).getByRole('button', { name: 'Search' }));
     expect(editor('Search Prompt')).toHaveTextContent('Pick well.');
-    expect(resetButton()).toBeEnabled();
+    expect(resetButton('Search')).toBeEnabled();
   });
 
   it('renames through the dialog', async () => {
@@ -238,7 +274,7 @@ describe('the Prompts tab on a custom preset', () => {
 
 describe('the Prompts copy', () => {
   it('writes each description as one short line', () => {
-    const hints = [PROMPTS_COPY.preset.hint, PROMPTS_COPY.reset.hint, COMPARE_COPY.action.hint, COMPARE_COPY.action.same, ...Object.values(PROMPTS_COPY.prompts).map((prompt) => prompt.hint)];
+    const hints = [PROMPTS_COPY.preset.hint, ...Object.values(PROMPTS_COPY.prompts).map((prompt) => prompt.hint)];
     for (const hint of hints) {
       expect(sentenceShapeViolation(hint), hint).toBeNull();
       expect(hint.split(/\s+/).length, hint).toBeLessThanOrEqual(12);
