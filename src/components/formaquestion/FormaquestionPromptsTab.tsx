@@ -1,21 +1,18 @@
 import { Fragment, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { GitCompare, RotateCcw } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import PromptField from '@/components/prompt/PromptField';
-import { Button } from '@/components/ui/button';
+import { PromptResetCompare } from '@/components/prompt/PromptResetCompare';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { helpChipPreview, helpChipValues, helpChipVocabulary } from '@/lib/formaquestion/helpChips';
 import { buildHelpPresetFile, helpPresetFileName, importHelpPresetFile, parseHelpPresetFile } from '@/lib/formaquestion/helpPresetFile';
 import {
   activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, isDefaultHelpPresetActive,
-  isHelpPromptEdited, renameHelpPreset, resetHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
+  renameHelpPreset, resetHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, HELP_PROMPT_KEYS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
@@ -26,8 +23,7 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 import { randomUUID } from '@/lib/uuid';
 import { APP_VERSION } from '@/lib/version';
-import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
-import { COMPARE_COPY, PROMPTS_COPY } from './formaquestionSettingsTabs';
+import { PROMPTS_COPY } from './formaquestionSettingsTabs';
 import { RequestOptions } from './RequestOptions';
 
 const ADD_PRESET = '__add__';
@@ -48,13 +44,13 @@ const selectionOf = (value: string): { key: HelpPromptKey; options: boolean } | 
   return key && { key, options: value !== key };
 };
 
-type Pending = { kind: 'add' } | { kind: 'rename' } | { kind: 'reset'; key: HelpPromptKey } | null;
+type Pending = { kind: 'add' } | { kind: 'rename' } | null;
 
 /**
  * The Prompts tab: the shared preset header, and the three prompts in a rail, each with Edit | Preview and
- * an Options row. The Default preset shows its prompts read-only with a way to duplicate; a custom prompt
- * resets to the default text, and the header resets the whole preset. A preset exports to a help preset
- * file, and a file imports as a new preset.
+ * an Options row. The Default preset shows its prompts read-only with a way to duplicate. A custom prompt
+ * resets and compares to the default text from the footer, and the header resets the whole preset. A preset
+ * exports to a help preset file, and a file imports as a new preset.
  */
 export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void }) {
   const store = settings.presets;
@@ -63,13 +59,12 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
   const [key, setKey] = useState<HelpPromptKey>('answer');
   const [showOptions, setShowOptions] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
-  const [comparing, setComparing] = useState(false);
-  const open = (next: HelpPromptKey, options: boolean) => { setKey(next); setShowOptions(options); setComparing(false); };
+  const open = (next: HelpPromptKey, options: boolean) => { setKey(next); setShowOptions(options); };
   const setStore = (next: HelpPresetStore) => onChange({ presets: next });
   const duplicate = (name: string) => setStore(duplicateHelpPreset(store, active.id, randomUUID(), name));
   const copyName = `${active.name} (copy)`;
   const prompt = PROMPTS_COPY.prompts[key];
-  const edited = isHelpPromptEdited(active.prompts, key);
+  const promptName = `${prompt.label} Prompt`;
   const fileRef = useRef<HTMLInputElement>(null);
   const mounted = useMountedRef();
   // The import reads the settings after the file text arrives, not as they were at the click.
@@ -182,7 +177,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
             <PromptField
               key={`${active.id}:${key}`}
               label={prompt.label}
-              ariaLabel={`${prompt.label} Prompt`}
+              ariaLabel={promptName}
               hint={prompt.hint}
               value={active.prompts[key]}
               onChange={(text) => setStore(editHelpPrompt(store, active.id, key, text))}
@@ -191,50 +186,30 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
               readOnly={readOnly}
               readOnlyReason={readOnly ? PROMPTS_COPY.readOnly(active.name) : undefined}
               onRequestEdit={() => duplicate(copyName)}
-              labelAside={!readOnly && (
-                <div className="flex items-center gap-2">
-                  <Tip tip={edited ? COMPARE_COPY.action.hint : COMPARE_COPY.action.same} labelsChild={false}>
-                    <Button variant="outline" size="sm" className="h-7 px-2" disabled={!edited} onClick={() => setComparing(true)}>
-                      <GitCompare className="mr-1 h-3.5 w-3.5" aria-hidden /> {COMPARE_COPY.action.label}
-                    </Button>
-                  </Tip>
-                  <Tip tip={PROMPTS_COPY.reset.hint} labelsChild={false}>
-                    <Button
-                      variant="outline" size="sm" className="h-7 px-2"
-                      disabled={!edited}
-                      onClick={() => setPending({ kind: 'reset', key })}
-                    >
-                      <RotateCcw className="mr-1 h-3.5 w-3.5" aria-hidden /> {PROMPTS_COPY.reset.label}
-                    </Button>
-                  </Tip>
-                </div>
-              )}
               className="min-h-0 flex-1"
             />
           )}
         </div>
       </div>
 
-      <HelpPromptCompareDialog
-        open={comparing && !readOnly}
-        onOpenChange={setComparing}
-        label={prompt.label}
-        defaultText={DEFAULT_HELP_PROMPTS[key]}
-        text={active.prompts[key]}
-      />
+      {/* The pair targets the prompt on screen: none on the Default preset or an Options view. */}
+      {!readOnly && !showOptions && (
+        <PromptResetCompare
+          className="flex-shrink-0"
+          name={promptName}
+          value={active.prompts[key]}
+          defaultValue={DEFAULT_HELP_PROMPTS[key]}
+          onReset={() => setStore(resetHelpPrompt(store, active.id, key))}
+          vocabulary={VOCABULARIES[key]}
+          surface="formaquestionCompare"
+        />
+      )}
       <PresetNameDialog
         open={pending?.kind === 'add' || pending?.kind === 'rename'}
         mode={pending?.kind === 'rename' ? 'rename' : 'add'}
         initialName={pending?.kind === 'rename' ? active.name : copyName}
         onOpenChange={(open) => { if (!open) setPending(null); }}
         onSubmit={(name) => (pending?.kind === 'rename' ? setStore(renameHelpPreset(store, active.id, name)) : duplicate(name))}
-      />
-      <ConfirmDialog
-        open={pending?.kind === 'reset'}
-        onOpenChange={(open) => { if (!open) setPending(null); }}
-        title="Reset Prompt"
-        description={`Reset the ${prompt.label} prompt of "${active.name}" to its default text? This can't be undone.`}
-        onConfirm={() => setStore(resetHelpPrompt(store, active.id, key))}
       />
     </div>
   );

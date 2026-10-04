@@ -219,7 +219,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 4. Select **Answer**, **Search** or **Lookup**, and edit the text. Keep the chips that the app reads back.
 5. Close the dialog and ask a question. The next request uses your text.
 
-**Default** is read-only, so your copy is the one you edit. Select **Compare to Default** to see what a new release changed, or **Reset to Default** to start again. Select **Preview** above a prompt to read it as your AI gets it. See [Prompts](#prompts).
+**Default** is read-only, so your copy is the one you edit. Select **Compare** to see what a new release changed, or **Reset** to start again. Select **Preview** above a prompt to read it as your AI gets it. See [Prompts](#prompts).
 
 ## How to Change the Length of a Help Reply
 <!-- keywords: tokens, token limit, temperature, repetition penalty, shorter replies, longer answers, creative, sampler, search options, lookup options, custom checkbox, reply length, cut off answer -->
@@ -441,8 +441,8 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 - **Default** is read-only. Its text comes from the app, so each release updates it.
 - **Duplicate & Edit** in the notice above a Default prompt makes a copy of the preset and opens it for edits. The **Duplicate** button beside the preset list does the same. **Add New Preset…** in the list asks for a name first.
 - A custom preset has **Rename**, **Reset** and **Delete** beside the list. On a narrow screen, they are in the **Preset Actions** menu. **Reset** returns all three prompts and their options to the text of this release, after it asks. When you delete the preset in use, help goes back to **Default**.
-- **Reset to Default** above a custom prompt returns that one prompt to the text of this release. A custom preset does not get the updates of a release on its own.
-- **Compare to Default** above a custom prompt opens a diff of your text against the text of this release. Text you added is tinted. Text you removed is struck through. **Raw** shows your text as it is. The button is off for a prompt that equals the default.
+- **Reset** at the bottom right of a custom prompt returns that one prompt to the text of this release, after it asks. A custom preset does not get the updates of a release on its own.
+- **Compare**, beside **Reset**, opens a diff of your text against the text of this release. Text you added is tinted. Text you removed is struck through. **Raw** shows your text as it is. The button is off for a prompt that equals the default.
 - This device keeps the presets, with the other Formaquestion settings.
 - **Export** beside the list saves the preset to a file, with your **My Tools** and the switches of the **Tools** tab. **Default** exports too, and importing that file adds a custom preset.
 - **Import** beside the list adds the preset from a file and makes it the one in use.

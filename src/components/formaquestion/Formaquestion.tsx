@@ -30,7 +30,7 @@ import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChan
 import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { FormaquestionSettings } from './FormaquestionSettings';
 import { FormaquestionAiContext } from './FormaquestionAiContext';
-import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
+import { HELP_CHIP, helpChipVocabulary } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
 import { cropFrame, fitMask, headSize, type MascotSize } from '@/lib/formaquestion/mascotMask';
 import { activeMascotRig } from '@/lib/formaquestion/mascotPresets';
@@ -39,8 +39,7 @@ import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
 import { appLoadQuestion, mascotFace, mascotPhase } from './mascotPhase';
 import { MinimalChat } from './MinimalChat';
-import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
-import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
+import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS } from '@/lib/formaquestion/helpPrompt';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
 import { useMascotScale } from './useMascotScale';
@@ -48,8 +47,12 @@ import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
 import { useSemanticSearch } from './useSemanticSearch';
 import { usePointerDrag, type PointerDrag } from './usePointerDrag';
+import { PromptCompareDialog } from '@/components/prompt/PromptCompareDialog';
 
 const WINDOW_ID = 'formaquestion-window';
+
+/** The chips of the answer prompt, for the DEV compare view. */
+const DEV_COMPARE_VOCABULARY = helpChipVocabulary(HELP_PROMPT_CHIPS.answer);
 
 /** The dialogs the window opens. */
 type FormaquestionDialog = 'settings' | 'aiContext';
@@ -596,13 +599,15 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         exchanges={tracedExchanges}
       />
       {import.meta.env.DEV && (
-        <HelpPromptCompareDialog
+        <PromptCompareDialog
           open={devCompare}
           onOpenChange={setDevCompare}
-          label="Answer"
+          name="Answer Prompt"
           defaultText={DEFAULT_HELP_PROMPTS.answer}
           text={`Be brief.
 ${DEFAULT_HELP_PROMPTS.answer.replace(HELP_CHIP.marker, '')}`}
+          vocabulary={DEV_COMPARE_VOCABULARY}
+          surface="formaquestionCompare"
         />
       )}
     </>,

@@ -1,20 +1,21 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { HELP_CHIP } from '@/lib/formaquestion/helpChips';
-import { DEFAULT_HELP_PROMPTS } from '@/lib/formaquestion/helpPrompt';
-import { HelpPromptCompareDialog } from './HelpPromptCompareDialog';
+import { HELP_CHIP, helpChipVocabulary } from '@/lib/formaquestion/helpChips';
+import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS } from '@/lib/formaquestion/helpPrompt';
+import { PromptCompareDialog } from './PromptCompareDialog';
 
 const DEFAULT = DEFAULT_HELP_PROMPTS.pick;
+const VOCABULARY = helpChipVocabulary(HELP_PROMPT_CHIPS.pick);
 
 function renderDialog(text: string) {
-  return render(<HelpPromptCompareDialog open onOpenChange={() => {}} label="Picks" defaultText={DEFAULT} text={text} />);
+  return render(<PromptCompareDialog open onOpenChange={() => {}} name="Search Prompt" defaultText={DEFAULT} text={text} vocabulary={VOCABULARY} surface="formaquestionCompare" />);
 }
 
 const pre = () => within(screen.getByRole('dialog')).getByText((_, el) => el?.tagName === 'PRE');
 const chipLabels = () => [...pre().querySelectorAll('[data-chip]')].map((el) => el.textContent);
 
-describe('HelpPromptCompareDialog', () => {
+describe('PromptCompareDialog on a help prompt', () => {
   it('marks the words the custom text added and removed', () => {
     renderDialog(DEFAULT.replace('best one first', 'sharpest one first'));
     expect([...pre().querySelectorAll('ins')].map((el) => el.textContent).join('')).toContain('sharpest');
