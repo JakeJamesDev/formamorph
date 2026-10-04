@@ -12,6 +12,7 @@ import { CheckRow, OptionSwitcher, Row, Section, ValueSlider } from '@/component
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tip } from '@/components/ui/tooltip';
@@ -22,8 +23,9 @@ import { historyShortcut } from '@/lib/canvasHistory';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
-import { randomUUID } from '@/lib/uuid';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { randomUUID } from '@/lib/uuid';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import {
   MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotPickWarnings, type MascotImageRef, type MascotLayer,
@@ -58,6 +60,8 @@ import { useMascotImageUrls } from './useMascotImageUrls';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 import { dropMascotImages, type MascotDraftControl } from './useMascotDraft';
 
+/** Tailwind's `lg`: from here the tab is two columns that scroll alone. */
+const WIDE_QUERY = '(min-width: 1024px)';
 const PREVIEW_HEIGHT = 240;
 /** The widest Head View preview: the 128px slot less its frame's padding and border. */
 const PREVIEW_HEAD_WIDTH = 118;
@@ -487,6 +491,7 @@ export function MascotTab({ settings, onChange, control }: {
   const { rig } = control.draft;
   const { readOnly, mascot: selected } = control;
   const mounted = useMountedRef();
+  const wide = useMediaQuery(WIDE_QUERY);
   /** What the preview shows. The expanded layer is the selected one. */
   const [selection, setSelection] = useState<MascotSelection | null>(null);
   // A switch to another mascot clears the selection; a prompt the player answers with Cancel keeps it.
@@ -624,6 +629,166 @@ export function MascotTab({ settings, onChange, control }: {
   };
 
   const copy = MASCOT_COPY.preset;
+  const previewWidget = (
+    <section
+      aria-label={MASCOT_COPY.preview.label}
+      data-fq-mascot-preview=""
+      className="grid gap-3 rounded-md border border-border bg-muted/30 p-3"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <WidgetLabel copy={{ label: MASCOT_COPY.preview.label, hint: MASCOT_COPY.preview.info }} />
+        <Meta className="min-w-0 truncate">{caption}</Meta>
+      </div>
+      <div className="flex flex-wrap items-end justify-center gap-3" style={{ minHeight: PREVIEW_HEIGHT }}>
+        <div {...maskDrag} data-fq-mask-target="" className={`relative touch-none select-none ${readOnly ? '' : 'cursor-crosshair'}`}>
+          <MascotPiece
+            images={preview}
+            hold={refs}
+            replay={play ? { id: play.id, from: play.from, transition: rig.transition } : undefined}
+            size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
+            onBase={setBase}
+          />
+          {base && mask && <MaskBox mask={mask} base={base} dragging={maskDragging} readOnly={readOnly} onNudge={nudgeMask} />}
+        </div>
+        {/* A fixed slot, so the head resizing under a Mask drag never slides the mascot under the pointer. */}
+        <figure className="grid w-32 justify-items-center gap-1">
+          <div className="flex items-end rounded-md border border-border bg-background/60 p-1" style={{ minHeight: HEAD_HEIGHT + 8 }}>
+            <MascotPiece
+              view="head"
+              images={preview}
+              hold={refs}
+              size={mask && headSizeWithin(mask, HEAD_HEIGHT, PREVIEW_HEAD_WIDTH)}
+              frame={base && mask ? cropFrame(mask, base) : undefined}
+              onBase={setBase}
+            />
+          </div>
+          <Meta as="figcaption">{MASCOT_COPY.headView}</Meta>
+        </figure>
+      </div>
+      <Hint>{MASCOT_COPY.preview.hint}</Hint>
+      <MascotScaleRow />
+      <TransitionControls
+        transition={rig.transition}
+        readOnly={readOnly}
+        onTransition={(transition, group) => edit((current) => ({ ...current, transition }), group)}
+        onPlay={playNext}
+      />
+    </section>
+  );
+  const controlsColumn = (
+    <div data-fq-mascot-controls="" className="grid content-start gap-6 py-4">
+      {readOnly && <ReadOnlyNotice reason={copy.readOnly(selected.name)} onRequestEdit={control.duplicate} />}
+      <Section title="Mascot">
+        <Row top htmlFor="fq-mascot-voice" {...MASCOT_COPY.voice}>
+          <Textarea
+            id="fq-mascot-voice"
+            rows={3}
+            value={rig.voice}
+            readOnly={readOnly}
+            onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice }), 'voice'); }}
+          />
+        </Row>
+      </Section>
+      {/* Base Image and Layers drop the label column, so a layer row has the whole column for its name. */}
+      <Section title={MASCOT_COPY.base.label} hint={MASCOT_COPY.base.hint}>
+        {readOnly ? <Meta>{MASCOT_COPY.bundledOverlay}</Meta> : (
+          <ImageUpload
+            id="fq-mascot-base"
+            // The bundled base leaves the slot empty, so a click or a drop uploads yours.
+            value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
+            onFile={(file) => void uploadImages([file], (current, [ref]) => setMascotBase(current, ref))}
+            onChange={(value) => { if (value === '') edit(removeMascotBase); }}
+          />
+        )}
+      </Section>
+      <Section title={MASCOT_COPY.layers.label} hint={MASCOT_COPY.layers.hint}>
+        <div className="grid gap-2">
+          <EditorDndContext onDragEnd={handleLayerDragEnd}>
+            <StableSortableContext items={rig.layers} strategy={verticalListSortingStrategy}>
+              {/* Shrinks with the narrow controls column, so a long name truncates instead of pushing Remove out. */}
+              <EditorRowList className="min-w-0">
+                {rig.layers.map((layer) => {
+                  const own = shown?.layer.id === layer.id ? shown : null;
+                  const pickOverlay = (index: number) => setSelection((was) => selectOverlay(was, layer.id, index));
+                  return (
+                    <SortableLayer
+                      key={layer.id}
+                      layer={layer}
+                      expanded={own !== null}
+                      selected={own?.overlay === null}
+                      urlOf={urlOf}
+                      readOnly={readOnly}
+                      onSelect={() => setSelection((was) => selectLayer(was, layer.id))}
+                      onToggle={() => setSelection((was) => toggleLayer(was, layer.id))}
+                      onSelectOverlay={pickOverlay}
+                      onPatch={patchLayer(layer.id)}
+                      onRemove={() => {
+                        edit((current) => removeMascotLayer(current, layer.id));
+                        setSelection((was) => selectionAfterLayerRemove(was, layer.id));
+                      }}
+                    >
+                      <LayerBody
+                        layer={layer}
+                        urlOf={urlOf}
+                        readOnly={readOnly}
+                        selectedOverlay={own?.overlay ?? null}
+                        onSelectOverlay={pickOverlay}
+                        onPatch={patchLayer(layer.id)}
+                        onAddFiles={(files) => void uploadImages(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
+                        onRemoveOverlay={(index) => {
+                          edit((current) => removeMascotOverlay(current, layer.id, index));
+                          setSelection((was) => selectionAfterRemove(was, layer.id, index));
+                        }}
+                        onMoveOverlay={(from, to) => {
+                          edit((current) => moveMascotOverlay(current, layer.id, from, to));
+                          setSelection((was) => selectionAfterMove(was, layer.id, from, to));
+                        }}
+                      />
+                    </SortableLayer>
+                  );
+                })}
+              </EditorRowList>
+            </StableSortableContext>
+          </EditorDndContext>
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="justify-self-start"
+              onClick={() => {
+                const id = randomUUID();
+                edit((current) => addMascotLayer(current, id));
+                setSelection({ layerId: id, overlay: null });
+              }}
+            >
+              <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
+            </Button>
+          )}
+          {error && <p className="text-helper text-destructive">{error}</p>}
+        </div>
+      </Section>
+      <Section title="Rig">
+        {MASCOT_PICK_NAMES.map((pick) => (
+          <Row key={pick} {...MASCOT_COPY.picks[pick]}>
+            <div className="flex gap-2">
+              {MASCOT_LAYER_KINDS.map((slot) => (
+                <PickSelect
+                  key={slot}
+                  rig={rig}
+                  pick={pick}
+                  slot={slot}
+                  disabled={readOnly}
+                  onPick={(layerId) => edit((current) => setMascotPick(current, pick, slot, layerId))}
+                />
+              ))}
+            </div>
+          </Row>
+        ))}
+        {warnings.length > 0 && <Row><PickWarnings rig={rig} warnings={warnings} /></Row>}
+      </Section>
+    </div>
+  );
+
   return (
     // Focus leaving a control closes the step a typed run or key nudge opened.
     <div className="flex min-h-0 flex-1 flex-col" onKeyDown={shortcut} onBlur={control.closeStep}>
@@ -674,167 +839,25 @@ export function MascotTab({ settings, onChange, control }: {
         />
       </div>
       <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{copy.hint}</p>
-      {/* Under lg the whole tab scrolls as one; at lg each column scrolls alone, so the preview stays in view. */}
-      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[22rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-6 lg:overflow-hidden">
-        <div className="pt-4 lg:min-h-0 lg:overflow-y-auto lg:pb-4">
-          <section
-            aria-label={MASCOT_COPY.preview.label}
-            data-fq-mascot-preview=""
-            className="grid gap-3 rounded-md border border-border bg-muted/30 p-3"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <WidgetLabel copy={{ label: MASCOT_COPY.preview.label, hint: MASCOT_COPY.preview.info }} />
-              <Meta className="min-w-0 truncate">{caption}</Meta>
-            </div>
-            <div className="flex flex-wrap items-end justify-center gap-3" style={{ minHeight: PREVIEW_HEIGHT }}>
-              <div {...maskDrag} data-fq-mask-target="" className={`relative touch-none select-none ${readOnly ? '' : 'cursor-crosshair'}`}>
-                <MascotPiece
-                  images={preview}
-                  hold={refs}
-                  replay={play ? { id: play.id, from: play.from, transition: rig.transition } : undefined}
-                  size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
-                  onBase={setBase}
-                />
-                {base && mask && <MaskBox mask={mask} base={base} dragging={maskDragging} readOnly={readOnly} onNudge={nudgeMask} />}
-              </div>
-              {/* A fixed slot, so the head resizing under a Mask drag never slides the mascot under the pointer. */}
-              <figure className="grid w-32 justify-items-center gap-1">
-                <div className="flex items-end rounded-md border border-border bg-background/60 p-1" style={{ minHeight: HEAD_HEIGHT + 8 }}>
-                  <MascotPiece
-                    view="head"
-                    images={preview}
-                    hold={refs}
-                    size={mask && headSizeWithin(mask, HEAD_HEIGHT, PREVIEW_HEAD_WIDTH)}
-                    frame={base && mask ? cropFrame(mask, base) : undefined}
-                    onBase={setBase}
-                  />
-                </div>
-                <Meta as="figcaption">{MASCOT_COPY.headView}</Meta>
-              </figure>
-            </div>
-            <Hint>{MASCOT_COPY.preview.hint}</Hint>
-            <MascotScaleRow />
-            <TransitionControls
-              transition={rig.transition}
-              readOnly={readOnly}
-              onTransition={(transition, group) => edit((current) => ({ ...current, transition }), group)}
-              onPlay={playNext}
-            />
-          </section>
-        </div>
-        <div data-fq-mascot-controls="" className="grid content-start gap-6 py-4 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
-          {readOnly && <ReadOnlyNotice reason={copy.readOnly(selected.name)} onRequestEdit={control.duplicate} />}
-          <Section title="Mascot">
-            <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
-            <Row top htmlFor="fq-mascot-voice" {...MASCOT_COPY.voice}>
-              <Textarea
-                id="fq-mascot-voice"
-                rows={3}
-                value={rig.voice}
-                readOnly={readOnly}
-                onChange={(event) => { const voice = event.target.value; edit((current) => ({ ...current, voice }), 'voice'); }}
-              />
-            </Row>
-          </Section>
-          {/* Base Image and Layers drop the label column, so a layer row has the whole column for its name. */}
-          <Section title={MASCOT_COPY.base.label} hint={MASCOT_COPY.base.hint}>
-            {readOnly ? <Meta>{MASCOT_COPY.bundledOverlay}</Meta> : (
-              <ImageUpload
-                id="fq-mascot-base"
-                // The bundled base leaves the slot empty, so a click or a drop uploads yours.
-                value={rig.base.kind === 'stored' ? urlOf(rig.base) : null}
-                onFile={(file) => void uploadImages([file], (current, [ref]) => setMascotBase(current, ref))}
-                onChange={(value) => { if (value === '') edit(removeMascotBase); }}
-              />
-            )}
-          </Section>
-          <Section title={MASCOT_COPY.layers.label} hint={MASCOT_COPY.layers.hint}>
-            <div className="grid gap-2">
-              <EditorDndContext onDragEnd={handleLayerDragEnd}>
-                <StableSortableContext items={rig.layers} strategy={verticalListSortingStrategy}>
-                  {/* Shrinks with the narrow controls column, so a long name truncates instead of pushing Remove out. */}
-                  <EditorRowList className="min-w-0">
-                    {rig.layers.map((layer) => {
-                      const own = shown?.layer.id === layer.id ? shown : null;
-                      const pickOverlay = (index: number) => setSelection((was) => selectOverlay(was, layer.id, index));
-                      return (
-                        <SortableLayer
-                          key={layer.id}
-                          layer={layer}
-                          expanded={own !== null}
-                          selected={own?.overlay === null}
-                          urlOf={urlOf}
-                          readOnly={readOnly}
-                          onSelect={() => setSelection((was) => selectLayer(was, layer.id))}
-                          onToggle={() => setSelection((was) => toggleLayer(was, layer.id))}
-                          onSelectOverlay={pickOverlay}
-                          onPatch={patchLayer(layer.id)}
-                          onRemove={() => {
-                            edit((current) => removeMascotLayer(current, layer.id));
-                            setSelection((was) => selectionAfterLayerRemove(was, layer.id));
-                          }}
-                        >
-                          <LayerBody
-                            layer={layer}
-                            urlOf={urlOf}
-                            readOnly={readOnly}
-                            selectedOverlay={own?.overlay ?? null}
-                            onSelectOverlay={pickOverlay}
-                            onPatch={patchLayer(layer.id)}
-                            onAddFiles={(files) => void uploadImages(files, (current, refs) => addMascotOverlays(current, layer.id, refs))}
-                            onRemoveOverlay={(index) => {
-                              edit((current) => removeMascotOverlay(current, layer.id, index));
-                              setSelection((was) => selectionAfterRemove(was, layer.id, index));
-                            }}
-                            onMoveOverlay={(from, to) => {
-                              edit((current) => moveMascotOverlay(current, layer.id, from, to));
-                              setSelection((was) => selectionAfterMove(was, layer.id, from, to));
-                            }}
-                          />
-                        </SortableLayer>
-                      );
-                    })}
-                  </EditorRowList>
-                </StableSortableContext>
-              </EditorDndContext>
-              {!readOnly && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="justify-self-start"
-                  onClick={() => {
-                    const id = randomUUID();
-                    edit((current) => addMascotLayer(current, id));
-                    setSelection({ layerId: id, overlay: null });
-                  }}
-                >
-                  <Plus className="mr-1 h-4 w-4" />{MASCOT_COPY.addLayer}
-                </Button>
-              )}
-              {error && <p className="text-helper text-destructive">{error}</p>}
-            </div>
-          </Section>
-          <Section title="Rig">
-            {MASCOT_PICK_NAMES.map((pick) => (
-              <Row key={pick} {...MASCOT_COPY.picks[pick]}>
-                <div className="flex gap-2">
-                  {MASCOT_LAYER_KINDS.map((slot) => (
-                    <PickSelect
-                      key={slot}
-                      rig={rig}
-                      pick={pick}
-                      slot={slot}
-                      disabled={readOnly}
-                      onPick={(layerId) => edit((current) => setMascotPick(current, pick, slot, layerId))}
-                    />
-                  ))}
-                </div>
-              </Row>
-            ))}
-            {warnings.length > 0 && <Row><PickWarnings rig={rig} warnings={warnings} /></Row>}
-          </Section>
-        </div>
+      <div className="flex-shrink-0 pt-4" data-testid="mascot-switch-row">
+        <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
       </div>
+      {/* From lg each column scrolls alone, so the preview stays in view; under it one scroller holds both. */}
+      {wide ? (
+        <div className="grid min-h-0 flex-1 grid-cols-[22rem_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-6">
+          <ScrollArea type="auto" className="min-h-0" viewportProps={{ 'data-fq-scroll': 'mascot-preview' }}>
+            <div className="py-4">{previewWidget}</div>
+          </ScrollArea>
+          <ScrollArea type="auto" className="min-h-0" viewportProps={{ 'data-fq-scroll': 'mascot-controls' }}>
+            {controlsColumn}
+          </ScrollArea>
+        </div>
+      ) : (
+        <ScrollArea type="auto" className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'mascot-tab' }}>
+          <div className="pt-4">{previewWidget}</div>
+          {controlsColumn}
+        </ScrollArea>
+      )}
       <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border py-3" data-testid="mascot-footer">
         <div className="mr-auto flex gap-1">
           <RowAction copy={MASCOT_COPY.footer.undo} disabled={!control.canUndo} onClick={control.undo}>

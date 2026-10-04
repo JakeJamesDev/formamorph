@@ -248,6 +248,12 @@ test.describe('the Mascot on a desktop screen', () => {
 
 const pieceBox = async (page: Page, selector: string) => (await page.locator(selector).boundingBox())!;
 
+/** A Mascot tab scroller's viewport, the element that scrolls. */
+const scroller = (page: Page, name: 'mascot-preview' | 'mascot-controls') => page.locator(`[data-fq-scroll="${name}"]`);
+/** The shared ScrollArea's vertical bar, which draws only while the viewport overflows. */
+const scrollbar = (page: Page, name: 'mascot-preview' | 'mascot-controls') =>
+  scroller(page, name).locator('xpath=..').locator('> [data-orientation="vertical"]');
+
 /** Waits until every image under the selector has loaded and the piece has a size. */
 async function loaded(page: Page, selector: string): Promise<void> {
   await expect.poll(() => page.locator(selector).evaluate((el) => [...el.querySelectorAll('img')].every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
@@ -504,17 +510,22 @@ test.describe('the second pass controls', () => {
   test.describe('on a short screen', () => {
     test.use({ viewport: { width: 1280, height: 700 } });
 
-    test('the Mascot tab keeps its preview in place while the controls scroll', async ({ page }) => {
+    test('the Mascot tab keeps its preview in place while the controls scroll, and both columns show the shared scrollbar', async ({ page }) => {
       await openApp(page);
       await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
       await loaded(page, '[data-fq-mask-target]');
       const preview = page.locator('[data-fq-mascot-preview]');
-      const controls = page.locator('[data-fq-mascot-controls]');
+      const controls = scroller(page, 'mascot-controls');
       const before = (await preview.boundingBox())!;
       const side = (await controls.boundingBox())!;
       // The preview sits left of the controls.
       expect(before.x + before.width).toBeLessThanOrEqual(side.x);
       expect(await controls.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+
+      await expect(scrollbar(page, 'mascot-controls')).toHaveCount(1);
+      // The preview column is too short for its content here, so it scrolls and shows the bar too.
+      await expect(scrollbar(page, 'mascot-preview')).toHaveCount(1);
+      await expect.poll(() => scroller(page, 'mascot-preview').evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
 
       await controls.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
       await expect.poll(() => controls.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
@@ -522,6 +533,57 @@ test.describe('the second pass controls', () => {
       expect(after.y).toBeCloseTo(before.y, 0);
       expect(after.x).toBeCloseTo(before.x, 0);
     });
+  });
+
+  test.describe('on a tall screen', () => {
+    // The widget is 744px with its padding; the column holds it from about 1180px of viewport height.
+    test.use({ viewport: { width: 1920, height: 1200 } });
+
+    test('the Mascot tab preview column holds its content with no scrollbar', async ({ page }) => {
+      await openApp(page);
+      await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+      await loaded(page, '[data-fq-mask-target]');
+      await expect(scroller(page, 'mascot-preview')).toBeVisible();
+      expect(await scroller(page, 'mascot-preview').evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(false);
+      await expect(scrollbar(page, 'mascot-preview')).toHaveCount(0);
+    });
+  });
+
+  test.describe('below the wide layout', () => {
+    test.use({ viewport: { width: 900, height: 700 } });
+
+    test('the Mascot tab stack has one scroller, which holds the preview and the controls', async ({ page }) => {
+      await openApp(page);
+      await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+      await loaded(page, '[data-fq-mask-target]');
+      const stack = page.locator('[data-fq-scroll="mascot-tab"]');
+      await expect(stack).toHaveCount(1);
+      await expect(scroller(page, 'mascot-preview')).toHaveCount(0);
+      await expect(scroller(page, 'mascot-controls')).toHaveCount(0);
+      expect(await stack.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+      await expect(stack.locator('[data-fq-mascot-preview]')).toHaveCount(1);
+      await expect(stack.locator('[data-fq-mascot-controls]')).toHaveCount(1);
+      await expect(stack.locator('xpath=..').locator('> [data-orientation="vertical"]')).toHaveCount(1);
+      // The switch row stays outside it.
+      await expect(stack.getByTestId('mascot-switch-row')).toHaveCount(0);
+    });
+  });
+
+  test('the Mascot switch stays put in its row while the controls scroll', async ({ page }) => {
+    await openApp(page);
+    await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+    await loaded(page, '[data-fq-mask-target]');
+    const row = page.getByTestId('mascot-switch-row');
+    const presetRow = (await page.getByTestId('mascot-preset-row').boundingBox())!;
+    const before = (await row.boundingBox())!;
+    expect(before.y).toBeGreaterThan(presetRow.y + presetRow.height - 1);
+    const controls = scroller(page, 'mascot-controls');
+    await controls.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+    await expect.poll(() => controls.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    expect((await row.boundingBox())!.y).toBeCloseTo(before.y, 0);
+    // The row sits above both columns.
+    const top = (await scroller(page, 'mascot-preview').boundingBox())!.y;
+    expect(before.y + before.height).toBeLessThanOrEqual(top);
   });
 
   test('the Endpoint tab puts Answer and Search on one row, over an editor headed by the active endpoint', async ({ page }) => {

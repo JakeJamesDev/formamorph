@@ -359,12 +359,82 @@ describe('the controls column', () => {
     expect(within(layers).getAllByText('Layers')).toHaveLength(1);
   });
 
-  it('keeps the switch, Voice and picks in their own Sections, and the card buttons in the preset row', () => {
+  it('keeps Voice and the picks in their own Sections, and the card buttons in the preset row', () => {
     mount();
     expect(sectionOf('Mascot')).toContainElement(screen.getByRole('textbox', { name: 'Voice' }));
     expect(sectionOf('Rig')).toContainElement(screen.getByRole('combobox', { name: 'Idle Look State' }));
     const row = screen.getByTestId('mascot-preset-row');
     for (const name of ['Reset Mascot', 'Import Mascot', 'Export Mascot']) expect(row).toContainElement(screen.getByRole('button', { name }));
+  });
+});
+
+describe('the switch row', () => {
+  const switchRow = () => screen.getByTestId('mascot-switch-row');
+  const widget = () => document.querySelector<HTMLElement>('[data-fq-mascot-preview]')!;
+  const controls = () => document.querySelector<HTMLElement>('[data-fq-mascot-controls]')!;
+
+  it('sits under the preset row and above both columns, outside every scroller', () => {
+    mount();
+    const box = screen.getByRole('checkbox', { name: 'Mascot' });
+    expect(switchRow()).toContainElement(box);
+    expect(box.closest('[data-fq-scroll]')).toBeNull();
+    expect(controls()).not.toContainElement(box);
+    expect(widget()).not.toContainElement(box);
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(screen.getByTestId('mascot-preset-row'), switchRow())).toBe(true);
+    expect(follows(switchRow(), widget())).toBe(true);
+    expect(follows(switchRow(), controls())).toBe(true);
+  });
+
+  it('turns the chrome on and off at once, with a dirty draft untouched, on a custom mascot', async () => {
+    mount();
+    await userEvent.click(within(layerRow('Rest')).getByRole('checkbox', { name: 'Enable Rest' }));
+    const dirtyRig = drafted();
+    expect(control.dirty).toBe(true);
+    expect(current.mascot).toBe(true);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mascot' }));
+    expect(current.mascot).toBe(false);
+    expect(control.dirty).toBe(true);
+    expect(drafted()).toBe(dirtyRig);
+    expect(saved()).toEqual(DEFAULT_MASCOT_RIG);
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mascot' }));
+    expect(current.mascot).toBe(true);
+  });
+
+  it('works on the read-only Default mascot too', async () => {
+    mountDefault();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mascot' }));
+    expect(current.mascot).toBe(false);
+  });
+});
+
+describe('the scrollers', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const viewport = (name: string) => document.querySelector<HTMLElement>(`[data-fq-scroll="${name}"]`);
+
+  it('puts both columns in one scroller below the wide layout, so the stack has one scrolling owner', () => {
+    mount();
+    const owner = viewport('mascot-tab')!;
+    expect(owner).not.toBeNull();
+    expect(owner).toContainElement(document.querySelector('[data-fq-mascot-preview]') as HTMLElement);
+    expect(owner).toContainElement(document.querySelector('[data-fq-mascot-controls]') as HTMLElement);
+    expect(viewport('mascot-preview')).toBeNull();
+    expect(viewport('mascot-controls')).toBeNull();
+  });
+
+  it('gives each column its own scroller from the wide layout', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width'), media: query, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+    mount();
+    const preview = viewport('mascot-preview')!;
+    const side = viewport('mascot-controls')!;
+    expect(preview).toContainElement(document.querySelector('[data-fq-mascot-preview]') as HTMLElement);
+    expect(side).toContainElement(document.querySelector('[data-fq-mascot-controls]') as HTMLElement);
+    expect(preview).not.toContainElement(side);
+    expect(viewport('mascot-tab')).toBeNull();
   });
 });
 
