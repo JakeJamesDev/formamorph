@@ -23,6 +23,7 @@ The dot next to a Tool's name is filled while the Tool is on in that preset. A n
 
 ## How to Make a Tool
 <!-- keywords: create, custom, new function, function calling, script, write, build my own, define arguments, inputs the ai sends, clone a built in, save button disabled, plugin authoring, javascript helper -->
+<!-- route: settings.tools -->
 
 1. Open the **Tools** tab.
 2. Under **My Tools**, select **New Tool**.
@@ -40,6 +41,7 @@ To start from a built-in Tool, select it and then **Duplicate**. To change your 
 
 ## How to Try a Tool
 <!-- keywords: test, run, debug, preview, check, dry run, simulate a call, sample output, manual input values, red message, result is stale, see raw definition -->
+<!-- route: settings.tools -->
 
 1. Select the Tool in the **Tools** tab, or open it with **Edit**.
 2. Under **Try It**, type a value for each parameter. A parameter of type **True/False** or **One of a List** shows a list.
@@ -51,6 +53,7 @@ Open **What the AI Receives** under **Try It** to read the Tool's definition as 
 
 ## How to Share Your Tools
 <!-- keywords: export, import, file, json, send, copy, back up, give to a friend, move to other device, load someone elses, security warning, is it malicious, bundle with preset -->
+<!-- route: settings.tools -->
 
 1. Open the **Tools** tab.
 2. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.
