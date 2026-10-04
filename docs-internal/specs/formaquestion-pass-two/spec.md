@@ -78,6 +78,7 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 | Q42 | On a phone, Settings and AI Context slide over the help sheet, which waits under them; the shielded layer sinks under dialogs and is inert while covered (ticket 06) |
 | Q43 | The whole Mask box interior is the move area; the center grip is the visible, focusable keyboard target; only a press outside the box draws a new one (ticket 07) |
 | Q44 | Arrow keys on a side handle move its own axis only; corners and the center grip move on both. Each key press commits to the rig at once, with no draft (ticket 07) |
+| Q45 | The preview's Head View sits in a fixed 128px slot; a wide Mask's preview head shrinks to fit that width, shorter than its usual height. Without the fixed slot, a width change mid-drag slid the centered preview up to 70px under the pointer. The window's head view is unchanged (ticket 07, user) |
 
 ## User Stories
 
