@@ -42,7 +42,7 @@ import { MinimalChat } from './MinimalChat';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS } from '@/lib/formaquestion/helpPrompt';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
-import { useMascotPlacement, useMascotScale } from './useMascotDevice';
+import { setMascotPlacement, useMascotPlacement, useMascotScale } from './useMascotDevice';
 import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
 import { useSemanticSearch } from './useSemanticSearch';
@@ -426,6 +426,19 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // Below, she centers under the column; beside, she takes the side the reader leaves.
   const mascotSide = below ? null : side;
   const readerSide = layout?.readerSide ?? 'right';
+  // Picking Below clamps the column to the cap at once and keeps that height (Q9).
+  const shownPlacement = useRef(placement);
+  const drawnPlacement = layout?.placement;
+  const drawnHeight = layout?.column.h;
+  useEffect(() => {
+    if (shownPlacement.current === placement) return;
+    shownPlacement.current = placement;
+    const kept = boxOf(stored, chrome);
+    if (drawnPlacement !== 'below' || drawnHeight === undefined || drawnHeight === kept.h) return;
+    const next = withBox(stored, chrome, { ...kept, h: drawnHeight });
+    setStored(next);
+    writeStoredWindow(next);
+  }, [placement, drawnPlacement, drawnHeight, stored, chrome]);
   // A drag starts from the box as drawn, which a small screen can shift.
   const drawn = layout?.column ?? box;
   const boxDrag = (step: typeof movePieces): PointerDrag<BoxPress> => ({
@@ -462,6 +475,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     onClear: chat.exchanges.length > 0 ? chat.clear : undefined,
     chatStyle: settings.chatStyle,
     onChatStyleChange: (chatStyle) => changeSettings({ chatStyle }),
+    ...(sheet ? {} : { mascotPlacement: placement, onMascotPlacementChange: setMascotPlacement }),
   };
 
   const wholeMascot = layout && settings.mascot && !(minimal && showHead) && (

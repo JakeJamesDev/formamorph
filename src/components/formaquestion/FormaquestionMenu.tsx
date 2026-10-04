@@ -14,12 +14,13 @@ import {
 import { Tip } from '@/components/ui/tooltip';
 import { openBubbleMenu } from '@/lib/bubbleMenuOpen';
 import { isChatStyle, type ChatStyle } from '@/lib/formaquestion/helpSettings';
+import { isMascotPlacement, type MascotPlacement } from '@/lib/formaquestion/windowBox';
 import { cn } from '@/lib/utils';
 import { GENERAL_COPY } from './formaquestionSettingsTabs';
 
 /**
  * The ⋮ menu of both chromes: Clear Conversation, which is off while the conversation is empty, the Chat Style
- * choices, then AI Context and Settings. It hangs from the corner of the button that has room, so it always comes from the button. The chosen action runs after the menu has closed, so a dialog it opens does not
+ * choices, the Mascot Position choices where a Mascot can stand, then AI Context and Settings. It hangs from the corner of the button that has room, so it always comes from the button. The chosen action runs after the menu has closed, so a dialog it opens does not
  * fight the menu's focus return. `container` is where the menu renders; the window sits in a layer above the
  * dialogs, so its menu must render in that layer too.
  */
@@ -35,9 +36,12 @@ export interface MenuActions {
   /** The Chat Style the radio items mark. A pick applies after the menu closes, since it can swap the chrome that holds the menu. */
   chatStyle: ChatStyle;
   onChatStyleChange: (chatStyle: ChatStyle) => void;
+  /** The Mascot Position the radio items mark. The sheet draws no Mascot, so it leaves the choices out. */
+  mascotPlacement?: MascotPlacement;
+  onMascotPlacementChange?: (placement: MascotPlacement) => void;
 }
 
-export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, chatStyle, onChatStyleChange, container, large = false, round = false }: MenuActions & {
+export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, chatStyle, onChatStyleChange, mascotPlacement, onMascotPlacementChange, container, large = false, round = false }: MenuActions & {
   container?: HTMLElement;
   large?: boolean;
   /** A round button with no border, as the other buttons of the minimal chrome's pill. */
@@ -89,6 +93,7 @@ export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, ch
         <ContextMenuSeparator />
         <ContextMenuLabel>{GENERAL_COPY.chatStyle.label}</ContextMenuLabel>
         <ContextMenuRadioGroup
+          aria-label={GENERAL_COPY.chatStyle.label}
           value={chatStyle}
           onValueChange={(value) => {
             if (isChatStyle(value) && value !== chatStyle) pending.current = () => onChatStyleChange(value);
@@ -99,6 +104,23 @@ export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, ch
             <ContextMenuRadioItem key={value} value={value} checked={chatStyle === value}>{label}</ContextMenuRadioItem>
           ))}
         </ContextMenuRadioGroup>
+        {mascotPlacement && onMascotPlacementChange && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuLabel>{GENERAL_COPY.mascotPosition.label}</ContextMenuLabel>
+            <ContextMenuRadioGroup
+              aria-label={GENERAL_COPY.mascotPosition.label}
+              value={mascotPlacement}
+              onValueChange={(value) => {
+                if (isMascotPlacement(value) && value !== mascotPlacement) pending.current = () => onMascotPlacementChange(value);
+              }}
+            >
+              {GENERAL_COPY.mascotPosition.options.map(({ value, label }) => (
+                <ContextMenuRadioItem key={value} value={value} checked={mascotPlacement === value}>{label}</ContextMenuRadioItem>
+              ))}
+            </ContextMenuRadioGroup>
+          </>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={() => { pending.current = onOpenAiContext; }}>
           <ScrollText className="h-4 w-4 shrink-0" aria-hidden />

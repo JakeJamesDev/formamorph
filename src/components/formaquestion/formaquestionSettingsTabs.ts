@@ -1,3 +1,5 @@
+import { MASCOT_BELOW_CAP } from '@/lib/formaquestion/windowBox';
+
 /** The tabs of Formaquestion Settings, in order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_SETTINGS_TABS = [
   { value: 'general', label: 'General' },
@@ -25,6 +27,18 @@ export const GENERAL_COPY = {
       { value: 'full', label: 'Full' },
     ],
   },
+  mascotPosition: {
+    label: 'Mascot Position',
+    hint: 'Sets whether the Mascot stands beside or under the chat',
+    info: '- **Beside** stands the Mascot next to the chat.\n'
+      + `- **Below** stands it under the chat and caps the chat at ${Math.round(MASCOT_BELOW_CAP * 100)}% of the screen height.\n`
+      + '- **Auto** stands it under a short chat and beside a tall one.',
+    options: [
+      { value: 'beside', label: 'Beside' },
+      { value: 'below', label: 'Below' },
+      { value: 'auto', label: 'Auto' },
+    ],
+  },
   scrimOpacity: {
     label: 'Backdrop',
     hint: 'Shades the screen behind the chat so the text stands out',
@@ -44,7 +58,7 @@ export const GENERAL_COPY = {
 
 /** The copy of the Mascot tab. */
 export const MASCOT_COPY = {
-  mascot: { label: 'Mascot', hint: 'Shows a character beside a bare chat column' },
+  mascot: { label: 'Mascot', hint: 'Shows the Mascot with a bare chat column' },
   voice: { label: 'Voice', hint: 'Tells your AI how help answers sound while the mascot is on' },
   scale: { label: 'Scale', hint: "Sizes the Mascot beside the chat. Auto fits the chat's height." },
   preview: {

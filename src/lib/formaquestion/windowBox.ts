@@ -331,7 +331,7 @@ export function writeStoredMascotScale(scale: MascotScale): void {
 
 const MASCOT_PLACEMENT_KEY = 'formamorph.formaquestion.mascotPlacement';
 const MASCOT_PLACEMENTS: readonly string[] = ['beside', 'below', 'auto'] satisfies readonly MascotPlacement[];
-const isMascotPlacement = (value: unknown): value is MascotPlacement => typeof value === 'string' && MASCOT_PLACEMENTS.includes(value);
+export const isMascotPlacement = (value: unknown): value is MascotPlacement => typeof value === 'string' && MASCOT_PLACEMENTS.includes(value);
 
 /** The Mascot placement this device stored. Auto when nothing is stored, it is damaged, or storage is blocked. */
 export function readStoredMascotPlacement(): MascotPlacement {

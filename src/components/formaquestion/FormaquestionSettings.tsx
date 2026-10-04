@@ -23,6 +23,7 @@ import { MascotTab } from './FormaquestionMascotTab';
 import { PromptsTab } from './FormaquestionPromptsTab';
 import { ToolsTab } from './FormaquestionToolsTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
+import { setMascotPlacement, useMascotPlacement } from './useMascotDevice';
 import { useMascotDraft } from './useMascotDraft';
 import type { SemanticSearch } from './useSemanticSearch';
 import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
@@ -95,6 +96,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
   semantic: SemanticSearch;
   answerTarget: ReasoningFieldTarget;
 }) {
+  const placement = useMascotPlacement();
   return (
     <div className="grid gap-6 py-4">
       <Section title="Window">
@@ -104,6 +106,18 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
             value={settings.chatStyle}
             options={GENERAL_COPY.chatStyle.options}
             onChange={(chatStyle) => onChange({ chatStyle })}
+          />
+        </Row>
+        <Row
+          label={GENERAL_COPY.mascotPosition.label}
+          hint={GENERAL_COPY.mascotPosition.hint}
+          info={<HintInfo>{GENERAL_COPY.mascotPosition.info}</HintInfo>}
+        >
+          <OptionSwitcher
+            ariaLabel={GENERAL_COPY.mascotPosition.label}
+            value={placement}
+            options={GENERAL_COPY.mascotPosition.options}
+            onChange={setMascotPlacement}
           />
         </Row>
         <Row htmlFor="fq-scrim-opacity" label={GENERAL_COPY.scrimOpacity.label} hint={GENERAL_COPY.scrimOpacity.hint}>
