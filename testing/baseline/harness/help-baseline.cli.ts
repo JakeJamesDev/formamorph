@@ -26,6 +26,8 @@
 //   floor-alt  with `--floor-alt N`: retrieval with the score floor at N, to compare two floors
 //   v-goal, v-close, v-labels, v-order  with `--variants a,b`: retrieval with the answer request rewritten as
 //              `help-answer-variants.ts` says, as measured in ticket 51
+//   frame-a, frame-b  with `--frames a,b`: retrieval with the Voice framed as `help-voice-frames.ts`
+//              says, as measured in ticket 16
 //   no-docs    the control: the same model, samplers, screen line and language, with no guide text and no Voice
 //
 // A follow-up runs after its first question in the same arm and run, with that answer as the history.
@@ -50,6 +52,7 @@
 // Usage: npm run probe:help -- [--endpoint URL] [--model default] [--token T] [--runs 5] [--parallel 4]
 //          [--lookup] [--keyword-only] [--pick-old] [--keep-old] [--howto-old] [--old] [--rank-old] [--follow-old] [--unfiltered] [--hub-old] [--screen-old] [--floor-old] [--floor-alt 0.35] [--variants v-goal,v-close,v-labels,v-order] [--only id,id] [--kinds task,here,followUp,language,changelog,uncovered] [--worst 10] [--show]
 //          [--mascot on|off] [--voice TEXT] [--mascot-off]  (the Mascot switch, on as shipped, and the rig's Voice, the default rig's when absent)
+//          [--frames frame-a,frame-b]  (needs the Mascot on and a Voice)
 //          [--rescore FILE]  (scores a saved batch again with the keys as they are now; sends nothing)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -69,6 +72,7 @@ import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
 import { mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
 import { ANSWER_VARIANTS, answerVariant, type AnswerVariant } from './help-answer-variants';
+import { VOICE_FRAMES, voiceFrame, type VoiceFrame } from './help-voice-frames';
 import { BASELINE_KINDS, loadBaselineCases, type BaselineCase, type BaselineKind } from './help-baseline-cases';
 import { inLanguage, scoreAnswer, summarize, worstQuestions, type ScoredRow, type Summary } from './help-baseline-score';
 
@@ -88,12 +92,18 @@ const variantArgs = argVal('--variants', '').split(',').filter(Boolean);
 const unknownVariant = variantArgs.find((variant) => !isVariant(variant));
 if (unknownVariant) throw new Error(`--variants takes ${ANSWER_VARIANTS.join(', ')}, not ${unknownVariant}`);
 const variants = variantArgs.filter(isVariant);
+const isFrame = (arm: string): arm is VoiceFrame => (VOICE_FRAMES as readonly string[]).includes(arm);
+const frameArgs = argVal('--frames', '').split(',').filter(Boolean);
+const unknownFrame = frameArgs.find((frame) => !isFrame(frame));
+if (unknownFrame) throw new Error(`--frames takes ${VOICE_FRAMES.join(', ')}, not ${unknownFrame}`);
+const frames = frameArgs.filter(isFrame);
 const mascotArg = argVal('--mascot', 'on');
 if (mascotArg !== 'on' && mascotArg !== 'off') throw new Error(`--mascot takes on or off, not ${mascotArg}`);
 /** The Mascot settings every session arm carries. */
 const mascotSettings = { mascot: mascotArg === 'on', rig: { ...DEFAULT_MASCOT_RIG, voice: argVal('--voice', DEFAULT_MASCOT_RIG.voice) } };
+if (frames.length > 0 && !(mascotSettings.mascot && mascotSettings.rig.voice.trim())) throw new Error('--frames needs the Mascot on and a Voice');
 
-type Arm = AnswerVariant | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'mascot-off' | 'no-docs';
+type Arm = AnswerVariant | VoiceFrame | 'retrieval' | 'keyword-only' | 'pick-old' | 'keep-old' | 'howto-old' | 'old' | 'rank-old' | 'follow-old' | 'unfiltered' | 'hub-old' | 'screen-old' | 'floor-old' | 'floor-alt' | 'lookup' | 'mascot-off' | 'no-docs';
 
 interface Sample extends Usage {
   /** The time from the question to the end of the answer, in milliseconds. A saved batch can have none. */
@@ -168,7 +178,8 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
   const previous = history.at(-1);
   const fetchImpl = arm === 'pick-old'
     ? withoutEarlierAnswer(sessionFetch(usage), PICK_LINES, { question: c.question, earlier: previous?.question, earlierAnswer: previous?.answer, where: surfaceHint(c.surface, index)?.where })
-    : isVariant(arm) ? answerVariant(sessionFetch(usage), arm) : sessionFetch(usage);
+    : isVariant(arm) ? answerVariant(sessionFetch(usage), arm)
+    : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotSettings.rig.voice.trim()) : sessionFetch(usage);
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
     settings: helpSettingsOf({ lookup, ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), ...(arm === 'keyword-only' && { sources: { aiPicks: false } }) }),
@@ -247,7 +258,7 @@ async function runBatch(): Promise<Batch> {
     token: argVal('--token', process.env.PROBE_TOKEN ?? ''),
   };
   const runs = Number(argVal('--runs', '5'));
-  const arms: Arm[] = ['retrieval', ...variants, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), ...(args.includes('--mascot-off') ? ['mascot-off' as const] : []), 'no-docs'];
+  const arms: Arm[] = ['retrieval', ...variants, ...frames, ...(args.includes('--keyword-only') ? ['keyword-only' as const] : []), ...(args.includes('--pick-old') ? ['pick-old' as const] : []), ...(args.includes('--keep-old') ? ['keep-old' as const] : []), ...(args.includes('--howto-old') ? ['howto-old' as const] : []), ...(args.includes('--old') ? ['old' as const] : []), ...(args.includes('--rank-old') ? ['rank-old' as const] : []), ...(args.includes('--follow-old') ? ['follow-old' as const] : []), ...(args.includes('--unfiltered') ? ['unfiltered' as const] : []), ...(args.includes('--hub-old') ? ['hub-old' as const] : []), ...(args.includes('--screen-old') ? ['screen-old' as const] : []), ...(args.includes('--floor-old') ? ['floor-old' as const] : []), ...(floorAlt ? ['floor-alt' as const] : []), ...(args.includes('--lookup') ? ['lookup' as const] : []), ...(args.includes('--mascot-off') ? ['mascot-off' as const] : []), 'no-docs'];
   const ask = (arm: Arm, c: BaselineCase, history: EarlierExchange[]) =>
     (arm === 'no-docs' ? askNoDocs(target, c, history) : arm === 'old' ? askOld(target, c, history) : askSession(target, arm, c, history));
 

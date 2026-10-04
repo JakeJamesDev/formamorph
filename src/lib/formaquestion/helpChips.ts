@@ -33,7 +33,7 @@ const NO_VALUES: HelpChipValues = { voice: '' };
 type HelpChipEntry = { label: string; hint: string } & ({ text: string } | { value: keyof HelpChipValues; frame: (value: string) => string });
 
 /** The Voice with the lines that keep the guide's steps and names above its tone. */
-const frameVoice = (voice: string): string =>
+export const frameVoice = (voice: string): string =>
   `Speak in this voice: ${voice}\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.`;
 
 /** Each chip: its label on the chip, its tooltip, and the text it sends. */
