@@ -2,11 +2,11 @@ import { useRef, useState, type ReactNode } from 'react';
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { Info, Plus, RotateCcw, X } from 'lucide-react';
+import { Info, Play, Plus, RotateCcw, X } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
-import { CheckRow, OptionSwitcher, Row, Section } from '@/components/SettingsRows';
+import { CheckRow, OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,10 @@ import {
   DEFAULT_MASCOT_RIG, MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotPickWarnings, type MascotImageRef, type MascotLayer,
   type MascotLayerKind, type MascotMask, type MascotPickName, type MascotPickWarning, type MascotRig,
 } from '@/lib/formaquestion/mascot';
+import {
+  DISSOLVE_RANGES, JELLY_RANGES, MASCOT_TRANSITION_MODES, type JellyTuning, type MascotTransition, type MascotTransitionMode, type TuningRange,
+} from '@/lib/formaquestion/mascotTransition';
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cropFrame, fitMask, headSize, maskFromDrag, type MascotPoint, type MascotSize } from '@/lib/formaquestion/mascotMask';
 import { HEAD_HEIGHT } from '@/lib/formaquestion/windowBox';
 import { addMascotImage, clearMascotImages, deleteMascotImage } from '@/lib/formaquestion/mascotImageStore';
@@ -30,6 +34,7 @@ import {
 } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
 import { usePointerDrag } from './usePointerDrag';
+import type { MascotReplay } from './useMascotMotion';
 import { useMascotImageUrls } from './useMascotImageUrls';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 
@@ -217,6 +222,82 @@ function PickWarnings({ rig, warnings }: { rig: MascotRig; warnings: readonly Ma
   );
 }
 
+const MODE_OPTIONS: readonly { value: MascotTransitionMode; label: string }[] =
+  MASCOT_TRANSITION_MODES.map((mode) => ({ value: mode, label: MASCOT_COPY.transition.modes[mode] }));
+
+const ms = (value: number) => `${value} ms`;
+const percent = (value: number) => `${Math.round(value * 100)}%`;
+
+const JELLY_FORMATS: { readonly [K in keyof JellyTuning]: (value: number) => string } = {
+  durationMs: ms,
+  squash: percent,
+  overshoot: percent,
+  settle: String,
+};
+
+/** One tuning slider, held to its range. */
+function TuningRow({ id, copy, range, value, format, onChange }: {
+  id: string;
+  copy: { label: string; hint: string };
+  range: TuningRange;
+  value: number;
+  format: (value: number) => string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <Row htmlFor={id} {...copy}>
+      <ValueSlider id={id} ariaLabel={copy.label} value={value} min={range.min} max={range.max} step={range.step} format={format} onChange={onChange} />
+    </Row>
+  );
+}
+
+/** The transition's mode, the chosen mode's tuning, and Play. */
+function TransitionRows({ transition, onTransition, onPlay }: {
+  transition: MascotTransition;
+  onTransition: (next: MascotTransition) => void;
+  onPlay: () => void;
+}) {
+  const reduced = usePrefersReducedMotion();
+  const copy = MASCOT_COPY.transition;
+  const setJelly = (key: keyof JellyTuning) => (value: number) => onTransition({ ...transition, jelly: { ...transition.jelly, [key]: value } });
+  return (
+    <>
+      <Row top {...copy.mode}>
+        <div className="grid gap-2" data-row-stacked>
+          <OptionSwitcher ariaLabel={copy.mode.label} value={transition.mode} options={MODE_OPTIONS} onChange={(mode) => onTransition({ ...transition, mode })} />
+          {reduced && <p className="text-helper text-muted-foreground">{copy.reducedMotion}</p>}
+        </div>
+      </Row>
+      {transition.mode === 'jelly' && (Object.keys(JELLY_RANGES) as (keyof JellyTuning)[]).map((key) => (
+        <TuningRow
+          key={key}
+          id={`fq-mascot-jelly-${key}`}
+          copy={copy.jelly[key]}
+          range={JELLY_RANGES[key]}
+          value={transition.jelly[key]}
+          format={JELLY_FORMATS[key]}
+          onChange={setJelly(key)}
+        />
+      ))}
+      {transition.mode === 'dissolve' && (
+        <TuningRow
+          id="fq-mascot-dissolve-duration"
+          copy={copy.dissolveDuration}
+          range={DISSOLVE_RANGES.durationMs}
+          value={transition.dissolve.durationMs}
+          format={ms}
+          onChange={(durationMs) => onTransition({ ...transition, dissolve: { durationMs } })}
+        />
+      )}
+      <Row hint={copy.play.hint}>
+        <Button variant="outline" size="sm" onClick={onPlay}>
+          <Play className="mr-1 h-4 w-4" />{copy.play.label}
+        </Button>
+      </Row>
+    </>
+  );
+}
+
 /**
  * The Mascot tab of Formaquestion Settings: the switch and the rig editor. Player images go to the mascot
  * image store; an edit that leaves an image unreferenced deletes it.
@@ -236,6 +317,8 @@ export function MascotTab({ settings, onChange }: {
   const [draftMask, setDraftMask] = useState<MascotMask | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  /** Each Play: the run it starts on the preview, from the Thinking look. */
+  const [play, setPlay] = useState<Omit<MascotReplay, 'transition'> | null>(null);
   // Bumped by Reset, so an upload that started before it lands nowhere.
   const generation = useRef(0);
   const refs = mascotImageRefs(rig);
@@ -322,6 +405,7 @@ export function MascotTab({ settings, onChange }: {
                 <MascotPiece
                   images={preview}
                   hold={refs}
+                  replay={play ? { ...play, transition: rig.transition } : undefined}
                   size={base && { w: Math.round((PREVIEW_HEIGHT * base.width) / base.height), h: PREVIEW_HEIGHT }}
                   onBase={setBase}
                 />
@@ -415,6 +499,11 @@ export function MascotTab({ settings, onChange }: {
             </Row>
           ))}
           {warnings.length > 0 && <Row><PickWarnings rig={rig} warnings={warnings} /></Row>}
+          <TransitionRows
+            transition={rig.transition}
+            onTransition={(transition) => edit((current) => ({ ...current, transition }))}
+            onPlay={() => setPlay((last) => ({ id: (last?.id ?? 0) + 1, from: composeMascot(latest.current, 'thinking', null) }))}
+          />
           <Row hint={MASCOT_COPY.reset.hint}>
             <Button variant="outline" size="sm" onClick={() => setConfirmReset(true)}>
               <RotateCcw className="mr-1 h-4 w-4" />{MASCOT_COPY.reset.label}

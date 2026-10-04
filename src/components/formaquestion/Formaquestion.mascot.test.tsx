@@ -10,6 +10,7 @@ import { HELP_FACE } from '@/lib/formaquestion/helpFace';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
+import { stubReducedMotion } from '@/test/reducedMotion';
 import { openHelpSettings, stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
@@ -38,7 +39,10 @@ const conversation = () => screen.getByRole('log', { name: 'Conversation' });
 const mascot = () => helpWindow().querySelector<HTMLElement>('[data-fq-piece="mascot"]');
 const column = () => helpWindow().querySelector<HTMLElement>('[data-fq-piece="column"]')!;
 const pill = () => helpWindow().querySelector<HTMLElement>('[data-fq-drag]')!;
-const drawn = () => [...mascot()!.querySelectorAll('img')].map((image) => image.getAttribute('src'));
+/** The newest look: the one on screen, or the one a running transition moves to. */
+const drawn = () => [...mascot()!.querySelectorAll('[data-fq-look="new"] img')].map((image) => image.getAttribute('src'));
+/** Every look on screen, bottom first. */
+const lookImages = () => [...mascot()!.querySelectorAll('[data-fq-look]')].map((look) => [...look.querySelectorAll('img')].map((image) => image.getAttribute('src')));
 /** The default rig's images for a phase with no AI expression. Answering with none is the Idle look. */
 const look = (phase: MascotPhase) => composeMascot(DEFAULT_MASCOT_RIG, phase, null).map(mascotImageUrl);
 
@@ -67,7 +71,7 @@ async function openWindow() {
 
 /** jsdom loads no image, so the base reports its natural size here. */
 function loadBase() {
-  const base = mascot()!.querySelector('img')!;
+  const base = mascot()!.querySelector('[data-fq-look="new"] img')!;
   Object.defineProperty(base, 'naturalWidth', { configurable: true, value: 888 });
   Object.defineProperty(base, 'naturalHeight', { configurable: true, value: 1184 });
   fireEvent.load(base);
@@ -341,6 +345,22 @@ describe('the Mascot phases', () => {
     expect(mascot()).toBeNull();
     await setMascot(true);
     expect(drawn()).toEqual(look('initial'));
+  });
+
+  it("plays the rig's transition on a change of look: the old look stays under the new one until it lands", async () => {
+    stubHelpStream(heldReply().respond);
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    expect(lookImages()).toEqual([look('initial'), look('thinking')]);
+    await waitFor(() => expect(lookImages()).toEqual([look('thinking')]));
+  });
+
+  it('swaps the look at once under the reduced-motion preference', async () => {
+    stubReducedMotion();
+    stubHelpStream(heldReply().respond);
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    expect(lookImages()).toEqual([look('thinking')]);
   });
 
   it('thinks from the send through reasoning-only text, and rests at the first content token', async () => {

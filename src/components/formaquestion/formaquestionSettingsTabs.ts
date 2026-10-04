@@ -60,6 +60,19 @@ export const MASCOT_COPY = {
   noLayer: 'None',
   missingLayer: 'Missing Layer',
   pickWarning: "These looks name a layer that's off or gone, so it draws nothing. Pick another or turn the layer on:",
+  transition: {
+    mode: { label: 'Transition', hint: 'Moves the mascot each time its look changes' },
+    modes: { none: 'None', dissolve: 'Dissolve', jelly: 'Jelly' },
+    reducedMotion: "Swaps looks at once while your system's reduced-motion setting is on",
+    jelly: {
+      durationMs: { label: 'Duration', hint: 'Sets how long the bounce takes' },
+      squash: { label: 'Squash', hint: 'Sets how far the mascot squashes before the new look' },
+      overshoot: { label: 'Overshoot', hint: 'Sets how far the new look stretches past full height' },
+      settle: { label: 'Settle Count', hint: 'Sets how many times the mascot bounces before it rests' },
+    },
+    dissolveDuration: { label: 'Duration', hint: 'Sets how long the new look takes to fade in' },
+    play: { label: 'Play', hint: 'Plays the change from the Thinking look on the preview' },
+  },
 } as const;
 
 /** The copy of the AI Context dialog. */

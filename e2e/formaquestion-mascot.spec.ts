@@ -24,7 +24,9 @@ async function openHelp(page: Page): Promise<void> {
   await expect.poll(async () => (await piece(page, 'mascot').boundingBox())?.width ?? 0).toBeGreaterThan(0);
 }
 
+/** The pieces' boxes at rest: a face change bounces the Mascot first. */
 async function boxes(page: Page) {
+  await expect.poll(() => piece(page, 'mascot').evaluate((el) => getComputedStyle(el).transform)).toBe('none');
   return { mascot: (await piece(page, 'mascot').boundingBox())!, column: (await piece(page, 'column').boundingBox())! };
 }
 
@@ -159,6 +161,77 @@ async function loaded(page: Page, selector: string): Promise<void> {
   await expect.poll(() => page.locator(selector).evaluate((el) => [...el.querySelectorAll('img')].every((img) => img.complete && img.naturalWidth > 0))).toBe(true);
   await expect.poll(async () => (await page.locator(selector).boundingBox())?.width ?? 0).toBeGreaterThan(0);
 }
+
+test.describe('the face change', () => {
+  // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'The Mascot piece is the desktop form');
+  });
+
+  /** A text endpoint that answers every request with one short reply. */
+  async function openWithAi(page: Page): Promise<void> {
+    await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
+    await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
+    await page.route('**/chat/completions', (route) => route.fulfill({
+      contentType: 'text/event-stream',
+      body: `data: ${JSON.stringify({ choices: [{ delta: { content: 'Open the **Traits** tab.' }, finish_reason: null }] })}\n\ndata: [DONE]\n\n`,
+    }));
+    await openApp(page, { FORMAMORPH_endpointUrl: 'http://127.0.0.1:5190/v1/chat/completions' });
+  }
+
+  interface Sample { scaleX: number; scaleY: number; looks: number; newest: string }
+
+  /** Sends a question and reads the painted scale of the Mascot and its number of looks on every frame for `ms`. */
+  async function sampleSend(page: Page, ms: number): Promise<Sample[]> {
+    await page.evaluate((duration) => {
+      const samples: { scaleX: number; scaleY: number; looks: number; newest: string }[] = [];
+      const until = performance.now() + 100 + duration;
+      const read = () => {
+        const piece = document.querySelector<HTMLElement>('#formaquestion-window [data-fq-piece="mascot"]');
+        if (piece) {
+          const matrix = new DOMMatrixReadOnly(getComputedStyle(piece).transform);
+          const newest = [...piece.querySelectorAll('[data-fq-look="new"] img')].map((img) => img.getAttribute('src')).join(' ');
+          samples.push({ scaleX: matrix.a, scaleY: matrix.d, looks: piece.querySelectorAll('[data-fq-look]').length, newest });
+        }
+        if (performance.now() < until) requestAnimationFrame(read);
+        else (window as unknown as { fqSamples: typeof samples }).fqSamples = samples;
+      };
+      requestAnimationFrame(read);
+    }, ms);
+    await askField(page).fill('How do I add a trait?');
+    await helpWindow(page).getByRole('button', { name: 'Send' }).click();
+    await page.waitForFunction(() => 'fqSamples' in window);
+    return page.evaluate(() => (window as unknown as { fqSamples: Sample[] }).fqSamples);
+  }
+
+  test('squashes below full height, stretches past it, and settles back, as the look swaps', async ({ page }) => {
+    await openWithAi(page);
+    await openHelp(page);
+    const samples = await sampleSend(page, 700);
+    const heights = samples.map((sample) => sample.scaleY);
+    const dip = heights.indexOf(Math.min(...heights));
+    const peak = heights.indexOf(Math.max(...heights));
+    // The default Jelly dips to 82% and stretches to 112%; the frames land near, not on, the extremes.
+    expect(heights[dip]).toBeLessThan(0.9);
+    expect(heights[peak]).toBeGreaterThan(1.06);
+    expect(dip).toBeLessThan(peak);
+    expect(samples[dip].scaleX).toBeGreaterThan(1);
+    // The old look stays under the new one only until the dip.
+    expect(samples.some((sample) => sample.looks === 2)).toBe(true);
+    expect(samples.at(-1)).toMatchObject({ scaleX: 1, scaleY: 1, looks: 1 });
+  });
+
+  test('swaps the look at once under the reduced-motion preference', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openWithAi(page);
+    await openHelp(page);
+    const samples = await sampleSend(page, 700);
+    expect(samples.length).toBeGreaterThan(10);
+    // The look did change while the frames were read.
+    expect(new Set(samples.map((sample) => sample.newest)).size).toBeGreaterThan(1);
+    expect(samples.every((sample) => sample.scaleX === 1 && sample.scaleY === 1 && sample.looks === 1)).toBe(true);
+  });
+});
 
 test.describe('the Mask', () => {
   // eslint-disable-next-line no-empty-pattern -- Playwright requires a destructuring first argument.

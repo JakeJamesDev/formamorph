@@ -392,6 +392,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       view="head"
       images={mascotImages}
       hold={mascotImageRefs(settings.rig)}
+      transition={settings.rig.transition}
       size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : HEAD_HEIGHT)}
       frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
       onBase={setMascotBase}
@@ -431,7 +432,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: origin ? `${origin.x - layout.group.x}px ${origin.y - layout.group.y}px` : undefined,
           } : undefined}
         >
-          {layout && !showHead && <MascotPiece images={mascotImages} hold={mascotImageRefs(settings.rig)} size={layout.mascot} onBase={setMascotBase} />}
+          {layout && !showHead && <MascotPiece images={mascotImages} hold={mascotImageRefs(settings.rig)} transition={settings.rig.transition} size={layout.mascot} onBase={setMascotBase} />}
           <MinimalChat
             guide={guide}
             failed={failed}
