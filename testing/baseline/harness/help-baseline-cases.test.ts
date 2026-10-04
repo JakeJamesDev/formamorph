@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
-import { SURFACE_IDS } from '@/lib/docs/surfaceMap';
+import { SURFACE_EXCLUSIONS, SURFACE_IDS } from '@/lib/docs/surfaceMap';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import { BASELINE_KINDS, loadBaselineCases } from './help-baseline-cases';
 import { CHECKED_LANGUAGES, hasName } from './help-baseline-score';
@@ -84,6 +84,19 @@ describe('the help baseline question set', () => {
     const unknown = here.flatMap((c) => [c.surface!.screen, c.surface!.dialog, ...c.surface!.tabs].filter((id) => id !== null && !known.has(id)).map((id) => `${c.id}: ${id}`));
     expect(unknown).toEqual([]);
     expect(here.filter((c) => surfaceHint(c.surface, index) === null).map((c) => c.id)).toEqual([]);
+  });
+
+  it('gives each task and here question an expected surface the app has: a surface id, or null for no single surface', () => {
+    const asked = cases.filter((c) => c.kind === 'task' || c.kind === 'here');
+    const known = new Set<string>(SURFACE_IDS);
+    expect(asked.filter((c) => c.expectSurface === undefined).map((c) => c.id)).toEqual([]);
+    expect(asked.filter((c) => c.expectSurface && (!known.has(c.expectSurface) || c.expectSurface in SURFACE_EXCLUSIONS)).map((c) => `${c.id}: ${c.expectSurface}`)).toEqual([]);
+  });
+
+  it('expects a here question to be about a surface the player has open', () => {
+    const here = cases.filter((c) => c.kind === 'here');
+    const outside = here.filter((c) => c.expectSurface && ![c.surface!.screen, c.surface!.dialog, ...c.surface!.tabs].includes(c.expectSurface));
+    expect(outside.map((c) => c.id)).toEqual([]);
   });
 
   it('asks each follow-up after a task question', () => {
