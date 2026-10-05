@@ -18,8 +18,8 @@ export const MIN_HEIGHT = 320;
 export const WIDE_FROM = 560;
 export const NARROW_WIDTH = 400;
 export const WIDE_WIDTH = 720;
-/** The default window's share of the screen height. */
-const DEFAULT_HEIGHT_SHARE = 0.6;
+/** The default window's share of the screen height. The Bubble chat room shows the same share before the first answer. */
+export const DEFAULT_HEIGHT_SHARE = 0.6;
 /** Space the window keeps from the screen edge at its default place and at its largest size. */
 export const SCREEN_MARGIN = 16;
 /** Room the default place leaves for the Help tab, which starts on the right edge. */
@@ -118,7 +118,7 @@ export interface WindowPieces {
   readonly placement?: MascotPlacement;
   /** The reader piece, which only the minimal chrome draws. */
   readonly showReader?: boolean;
-  /** The side the Mascot stands on now. It decides a tie between the two gaps. Defaults to left. */
+  /** The side the Mascot stands on now, which the layout keeps: only a drag flips it (Q33). Without one, the wider free gap picks it. */
   readonly side?: MascotSide;
   /** The Mascot's size. Defaults to Auto. */
   readonly scale?: MascotScale;
@@ -160,10 +160,10 @@ function widerSide(x: number, w: number, viewport: Viewport, current: MascotSide
  * the cap's height instead.
  */
 export function windowLayout(chrome: BoxChrome, box: WindowBox, viewport: Viewport, pieces: WindowPieces): WindowLayout {
-  const { mascotAspect, showReader = false, side: previous = 'left', scale = 'auto', baseHeight, placement = 'beside' } = pieces;
+  const { mascotAspect, showReader = false, side: kept, scale = 'auto', baseHeight, placement = 'beside' } = pieces;
   const w = clamp(chrome === 'minimal' ? Math.min(box.w, NARROW_WIDTH) : box.w, MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
   const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
-  const side = widerSide(clamp(box.x, 0, viewport.width - w), w, viewport, previous);
+  const side = kept ?? widerSide(clamp(box.x, 0, viewport.width - w), w, viewport, 'left');
   const room = Math.max(0, viewport.width - SCREEN_MARGIN * 2 - w);
   const readerSpace = showReader && chrome === 'minimal' ? Math.min(READER_GAP + READER_WIDTH, room) : 0;
   const readerW = Math.max(0, readerSpace - READER_GAP);
@@ -205,8 +205,9 @@ interface BelowPieces {
 /**
  * The column over the Mascot, the group's bottom edge at the screen margin. Under Auto scale she fills the room under
  * the column, and the column stops where that room would drop under what the cap leaves. A percent Mascot
- * clamps the column's top so she fits, and takes the room when even the top lacks it (Q6). She centers under
- * the column; the reader stands on the wider side (Q7).
+ * clamps the column's top so she fits, and takes the room when even the top lacks it (Q6). A percent Mascot
+ * stands right under the column, so she moves with it. She centers under the column; the reader stands on the
+ * wider side (Q7).
  */
 function belowLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): WindowLayout {
   const { aspect, cap, side, readerSpace, readerW, scale, baseHeight } = pieces;
@@ -220,6 +221,7 @@ function belowLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): W
   const overhang = Math.max(0, Math.min((viewport.width - SCREEN_MARGIN * 2 - w) / 2, viewport.width - w - readerSpace));
   const mascotW = Math.max(0, Math.min((asked === null ? roomH : Math.min(asked, roomH)) * aspect, w + overhang * 2));
   const mascot = mascotW > 0 ? { w: mascotW, h: mascotW / aspect } : null;
+  const mascotTop = asked === null ? bottom - (mascot?.h ?? 0) : y + h;
   const hang = Math.max(0, (mascotW - w) / 2);
   const readerLeft = side === 'left' ? readerSpace : 0;
   const readerRight = side === 'right' ? readerSpace : 0;
@@ -229,23 +231,83 @@ function belowLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): W
   return {
     column: { x, y, w, h },
     mascot,
-    mascotAt: mascot && { x: x + (w - mascot.w) / 2, y: bottom - mascot.h },
+    mascotAt: mascot && { x: x + (w - mascot.w) / 2, y: mascotTop },
     reader: readerW > 0 ? { w: readerW, h } : null,
     placement: 'below',
     side,
     readerSide: side,
-    group: { x: left, y, w: right - left, h: mascot ? bottom - y : h },
+    group: { x: left, y, w: right - left, h: mascot ? mascotTop + mascot.h - y : h },
   };
 }
 
-/** The column or frame a pill or title bar drag of (dx, dy) gives, from where the drag started. The pieces stay whole on the screen. */
-export function movePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
-  return windowLayout(chrome, moveBox(start, dx, dy, viewport), viewport, pieces).column;
+/** The side after a drag: the side kept, flipped once the dragged piece's center crossed the screen's middle (Q33). */
+function sideAfter(kept: MascotSide, centerBefore: number, centerAfter: number, viewport: Viewport): MascotSide {
+  const middle = viewport.width / 2;
+  const crossed = (centerBefore < middle) !== (centerAfter < middle);
+  return crossed ? (kept === 'left' ? 'right' : 'left') : kept;
 }
 
-/** The column or frame a handle drag of (dx, dy) gives. The edges the handle does not hold stay put while the pieces have room. */
+/** A drag's result: the pieces as laid out, whose `column` the device stores and whose `side` the next layout keeps. */
+export type Dragged = WindowLayout;
+
+/** The pieces a pill or title bar drag of (dx, dy) gives, from where the drag started. The column is the dragged piece: it flips her side as it crosses the middle. */
+export function dragColumn(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): Dragged {
+  const from = windowLayout(chrome, start, viewport, pieces);
+  const moved = moveBox(start, dx, dy, viewport);
+  const side = sideAfter(from.side, start.x + start.w / 2, moved.x + moved.w / 2, viewport);
+  return windowLayout(chrome, moved, viewport, { ...pieces, side });
+}
+
+/**
+ * The pieces a drag of the Mascot by (dx, dy) gives. She is the dragged piece: she stays under the pointer,
+ * and the column takes her other side once she crosses the middle, so the flip never moves her (Q33). Under
+ * her, and without her, the column moves as from the pill.
+ */
+export function dragMascot(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): Dragged {
+  const from = windowLayout(chrome, start, viewport, pieces);
+  if (!from.mascot || !from.mascotAt || from.placement !== 'beside') return dragColumn(chrome, start, dx, dy, viewport, pieces);
+  const herX = from.mascotAt.x + dx;
+  const side = sideAfter(from.side, from.mascotAt.x + from.mascot.w / 2, herX + from.mascot.w / 2, viewport);
+  const x = side === 'left' ? herX + from.mascot.w : herX - from.column.w;
+  return windowLayout(chrome, { ...start, x, y: start.y + dy }, viewport, { ...pieces, side });
+}
+
+/** The column a pill or title bar drag of (dx, dy) gives. */
+export function movePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
+  return dragColumn(chrome, start, dx, dy, viewport, pieces).column;
+}
+
+/** The column a drag of the Mascot by (dx, dy) gives. */
+export function moveMascotPieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
+  return dragMascot(chrome, start, dx, dy, viewport, pieces).column;
+}
+
+/**
+ * The column or frame a handle drag of (dx, dy) gives. An edge the handle does not hold never moves: when the
+ * pieces lack room and the layout would push it, the growth that pushed it gives back and the drag stops there.
+ */
+export function dragHandle(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces, handle: ResizeHandle = 'se'): Dragged {
+  const laidAt = (share: number) => windowLayout(chrome, resizeBox(start, dx * share, dy * share, viewport, handle), viewport, pieces);
+  const held = (edge: string) => handle.includes(edge);
+  const same = (a: number, b: number) => Math.abs(a - b) < 1e-3;
+  const keeps = ({ column: box }: WindowLayout) =>
+    (held('n') || same(box.y, start.y)) && (held('w') || same(box.x, start.x))
+    && (held('s') || same(box.y + box.h, start.y + start.h)) && (held('e') || same(box.x + box.w, start.x + start.w));
+  const whole = laidAt(1);
+  if (keeps(whole)) return whole;
+  // The room runs out somewhere along the drag: the largest share of it that moves no unheld edge, by bisection.
+  let fits = 0;
+  let fails = 1;
+  for (let step = 0; step < 30; step += 1) {
+    const mid = (fits + fails) / 2;
+    if (keeps(laidAt(mid))) fits = mid; else fails = mid;
+  }
+  return laidAt(fits);
+}
+
+/** The column or frame a handle drag of (dx, dy) gives. */
 export function resizePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces, handle: ResizeHandle = 'se'): WindowBox {
-  return windowLayout(chrome, resizeBox(start, dx, dy, viewport, handle), viewport, pieces).column;
+  return dragHandle(chrome, start, dx, dy, viewport, pieces, handle).column;
 }
 
 export interface WindowSize {

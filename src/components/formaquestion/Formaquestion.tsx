@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
 import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
-  boxOf, defaultWindow, type MascotSide, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
+  boxOf, defaultWindow, type MascotSide, dragColumn, dragHandle, dragMascot, isWide, readStoredHeadView, readStoredWindow, swapWidth, viewportOf, windowLayout, withBox,
   headHeight, writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, READER_GAP, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
   type BoxChrome, type ResizeHandle, type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
 } from '@/lib/formaquestion/windowBox';
@@ -85,6 +85,8 @@ interface BoxPress {
   chrome: BoxChrome;
   stored: StoredWindow;
   start: WindowBox;
+  /** Her side when the drag started: a flip is measured from here, so a crossing flips once and not on every move. */
+  side: MascotSide | undefined;
   latest: WindowBox;
 }
 
@@ -453,8 +455,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const readerShown = guide !== null && readerId !== null;
   const showHead = sheet || headView;
   const mascotAspect = settings.mascot && mascotBase && !(minimal && showHead) ? mascotBase.width / mascotBase.height : null;
-  // The side flips once as the column crosses the middle; the last side decides a tie.
-  const sideRef = useRef<MascotSide>('left');
+  // The side flips only as the dragged piece crosses the middle: the column from the pill, she from her body (Q33). The first layout picks it.
+  const sideRef = useRef<MascotSide | undefined>(undefined);
   const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current, scale, baseHeight: mascotBase?.height, placement };
   const layout = sheet || bubble ? null : windowLayout(boxChrome, box, viewport, pieces);
   if (layout) sideRef.current = layout.side;
@@ -478,20 +480,22 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [placement, drawnPlacement, drawnHeight, stored, boxChrome]);
   // A drag starts from the box as drawn, which a small screen can shift.
   const drawn = layout?.column ?? box;
-  const boxDrag = (step: typeof movePieces): PointerDrag<BoxPress> => ({
+  const boxDrag = (step: typeof dragColumn): PointerDrag<BoxPress> => ({
     start: (event) => (event.button !== 0 || (event.target as HTMLElement).closest('button')
       ? null
-      : { x: event.clientX, y: event.clientY, chrome: boxChrome, stored, start: drawn, latest: drawn }),
+      : { x: event.clientX, y: event.clientY, chrome: boxChrome, stored, start: drawn, side: sideRef.current, latest: drawn }),
     move: (press, event) => {
-      press.latest = step(press.chrome, press.start, event.clientX - press.x, event.clientY - press.y, viewportOf(window), pieces);
+      const laid = step(press.chrome, press.start, event.clientX - press.x, event.clientY - press.y, viewportOf(window), { ...pieces, side: press.side });
+      press.latest = laid.column;
+      sideRef.current = laid.side;
       setStored(withBox(press.stored, press.chrome, press.latest));
     },
     // The device keeps the place and the chrome's size the player left the window at.
     end: (press) => writeStoredWindow(withBox(press.stored, press.chrome, press.latest)),
   });
-  const moveHandlers = usePointerDrag(boxDrag(movePieces));
+  const moveHandlers = usePointerDrag(boxDrag(dragColumn));
   // One drag per handle, in a fixed order, so the hooks hold still across renders.
-  const resizeFrom = (handle: ResizeHandle): typeof movePieces => (chrome, start, dx, dy, viewport, pieces) => resizePieces(chrome, start, dx, dy, viewport, pieces, handle);
+  const resizeFrom = (handle: ResizeHandle): typeof dragColumn => (chrome, start, dx, dy, viewport, pieces) => dragHandle(chrome, start, dx, dy, viewport, pieces, handle);
   const resizeHandlers: ResizeHandlers = {
     n: usePointerDrag(boxDrag(resizeFrom('n'))),
     e: usePointerDrag(boxDrag(resizeFrom('e'))),
@@ -565,11 +569,13 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     chatStyle: settings.chatStyle,
     onChatStyleChange: (chatStyle) => changeSettings({ chatStyle }),
     // Bubble ignores Mascot Position (Q9).
-    ...(sheet || bubble ? {} : { mascotPlacement: placement, onMascotPlacementChange: setMascotPlacement }),
+    ...(sheet || bubble || !settings.mascot ? {} : { mascotPlacement: placement, onMascotPlacementChange: setMascotPlacement }),
   };
 
+  // She is a drag target beside or under the box, as she is under Bubble, and stays under the pointer while the column flips sides (Q33); the sheet has no moves.
+  const mascotMoveHandlers = usePointerDrag(boxDrag(dragMascot));
   const wholeMascot = layout && settings.mascot && !(minimal && showHead) && (
-    <MascotPiece images={mascotImages} hold={mascotImageRefs(rig)} transition={rig.transition} size={layout.mascot} onBase={setMascotBase} />
+    <MascotPiece images={mascotImages} hold={mascotImageRefs(rig)} transition={rig.transition} size={layout.mascot} move={sheet ? undefined : mascotMoveHandlers} onBase={setMascotBase} />
   );
   const readerSize = bubbleView?.reader ?? layout?.reader;
   const readerPiece = readerSize && guide && readerId && (
@@ -585,6 +591,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       transition={rig.transition}
       size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : headHeight(scale, crop.height, layout?.column.h ?? HEAD_HEIGHT))}
       frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
+      move={sheet ? undefined : moveHandlers}
       onBase={setMascotBase}
     />
   );
@@ -712,7 +719,6 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             layout={bubbleView}
             page={page}
             mascot={bubbleMascot}
-            headView={headView}
             guide={guide}
             failed={failed}
             onRetry={load}

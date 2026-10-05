@@ -4,13 +4,14 @@ import { cn } from '@/lib/utils';
 import type { MascotFrame, MascotSize } from '@/lib/formaquestion/mascotMask';
 import type { MascotTransition } from '@/lib/formaquestion/mascotTransition';
 import { useMascotImageUrls } from './useMascotImageUrls';
+import type { DragHandlers } from './usePointerDrag';
 import { useMascotMotion, type MascotReplay } from './useMascotMotion';
 
 /**
  * The Mascot: the composition's images, bottom first, each stretched to the base size. The first image is
  * the base; its natural size gives the aspect the caller lays the piece out at.
  */
-export function MascotPiece({ images, hold = [], size, frame, view = 'full', transition, replay, onBase }: {
+export function MascotPiece({ images, hold = [], size, frame, view = 'full', transition, replay, move, onBase }: {
   /** The composition, as `composeMascot` returns it. */
   images: readonly MascotImageRef[];
   /** Images to keep resolved while they are not drawn, such as the whole rig, so a change of look draws at once. */
@@ -24,6 +25,8 @@ export function MascotPiece({ images, hold = [], size, frame, view = 'full', tra
   transition?: MascotTransition;
   /** Plays from another look to `images` on each new id, as the tab's Play does. */
   replay?: MascotReplay;
+  /** Pointer handlers that make her a drag target. Without them she takes no presses. */
+  move?: DragHandlers;
   /** The base's natural size, once it loads and whenever it changes. */
   onBase: (size: MascotSize) => void;
 }) {
@@ -47,7 +50,9 @@ export function MascotPiece({ images, hold = [], size, frame, view = 'full', tra
       aria-hidden
       data-fq-piece="mascot"
       data-fq-view={view}
-      className="pointer-events-none relative shrink-0 origin-bottom self-end overflow-hidden"
+      data-fq-body={move ? '' : undefined}
+      {...move}
+      className={cn('relative shrink-0 origin-bottom self-end overflow-hidden', move ? 'pointer-events-auto cursor-move touch-none' : 'pointer-events-none')}
       style={size ? { width: size.w, height: size.h } : { width: 0, height: 0 }}
     >
       <div
