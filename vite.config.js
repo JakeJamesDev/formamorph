@@ -45,7 +45,9 @@ const holdUpdates = {
     }
     server.ws.send = (payload, ...rest) => {
       const held = typeof payload === 'object' && (payload.type === 'update' || payload.type === 'full-reload')
-      if (!held) return send(payload, ...rest)
+      // A dep re-optimization (path '*', no triggering file) deletes the chunks the page holds, so it always reloads.
+      const depsRebuilt = held && payload.type === 'full-reload' && payload.path === '*' && !payload.triggeredBy
+      if (!held || depsRebuilt) return send(payload, ...rest)
       server.config.logger.info(`${payload.type} held`, { timestamp: true })
       for (const client of server.ws.clients) {
         const q = queueOf(client)
