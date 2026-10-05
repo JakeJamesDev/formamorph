@@ -122,7 +122,33 @@ function Tip({ tip, children, side = "top", align = "center", labelsChild }: Tip
   )
 }
 
+/**
+ * A tip that confirms an action at its control, such as **Copied** on a copy button. It shows `tip` at
+ * `anchor` while `open` and fades out on close. Unlike `Tip` it opens on tap and on keyboard activation,
+ * and a live region announces it.
+ */
+function FlashTip({ anchor, tip, open, side = "top" }: {
+  anchor: React.RefObject<Element | null>
+  tip: string
+  open: boolean
+  side?: TooltipPrimitive.Positioner.Props["side"]
+}) {
+  return (
+    <>
+      <span role="status" className="sr-only">{open ? tip : ""}</span>
+      <TooltipPrimitive.Root open={open}>
+        <TooltipPrimitive.Portal>
+          <TooltipPositioner anchor={anchor} side={side}>
+            <TooltipPopup data-flash-tip="">{tip}</TooltipPopup>
+          </TooltipPositioner>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </>
+  )
+}
+
 export {
+  FlashTip,
   Tip,
   Tooltip,
   TooltipProvider,

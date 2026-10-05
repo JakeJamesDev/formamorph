@@ -52,7 +52,8 @@ describe('code blocks in the help window', () => {
     await ask(ANSWER);
     await userEvent.click(await within(conversation()).findByRole('button', { name: 'Copy' }));
     expect(writeText).toHaveBeenCalledExactlyOnceWith('return stats.hp - 1;');
-    await waitFor(() => expect(success).toHaveBeenCalledWith('Copied'));
+    await waitFor(() => expect(document.querySelector('[data-flash-tip]')).toHaveTextContent('Copied'));
+    expect(success).not.toHaveBeenCalled();
   });
 
   it('shows Copy on a flagged answer', async () => {

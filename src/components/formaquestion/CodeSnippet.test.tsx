@@ -20,6 +20,14 @@ function renderReader(text: string) {
   return { ...view, seen };
 }
 
+/** The visible confirm tip, outside the live region that announces the same words. */
+const queryFlashTip = () => document.querySelector<HTMLElement>('[data-flash-tip]');
+const flashTip = () => waitFor(() => {
+  const tip = queryFlashTip();
+  expect(tip).not.toBeNull();
+  return tip!;
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -39,14 +47,26 @@ describe('help code blocks', () => {
     expect(seen.at(-1)?.meta).toBeUndefined();
   });
 
-  it('copies the block text and confirms it', async () => {
+  it('copies the block text and confirms it in a tip that goes away, with no toast', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
     const success = vi.spyOn(toast, 'success');
     renderReader(FENCE);
     await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
     expect(writeText).toHaveBeenCalledExactlyOnceWith('return stats.hp - 1;');
-    await waitFor(() => expect(success).toHaveBeenCalledWith('Copied'));
+    expect(await flashTip()).toHaveTextContent('Copied');
+    expect(screen.getByRole('status')).toHaveTextContent('Copied');
+    await waitFor(() => expect(queryFlashTip()).toBeNull(), { timeout: 3000 });
+    expect(success).not.toHaveBeenCalled();
+  });
+
+  it('says so in the tip when the copy fails', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('denied')) } });
+    const error = vi.spyOn(toast, 'error');
+    renderReader(FENCE);
+    await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(await flashTip()).toHaveTextContent("Couldn't copy");
+    expect(error).not.toHaveBeenCalled();
   });
 
   it('keeps one toolbar per block', () => {
