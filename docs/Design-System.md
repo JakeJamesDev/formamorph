@@ -759,6 +759,69 @@ The live reference renders four of the five production strips against their own 
 - **Unverified:** the section headings "Five Tabs" (entity and location), "A Tab Name the Editor Also Uses", and "Two Tabs, Two Hosts", and the four `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
 - **Unverified:** the entity bodies for Traits and Openings, "The entity's own traits and groups, each one opening on the editor's Traits tab" and "The entity's openings, drawn when a player starts at one of its locations", and the location body for Openings, "The location's openings, drawn when a game starts at this location", have terminology review against the production tab contents only; vocabulary and grammar evidence is not recorded.
 
+## Pattern: Edge Rail
+
+**Purpose:** Navigate a view's top-level tabs from its outer edge, so the cards inside keep their full width and the tab count can grow.
+
+**Rule:**
+
+- The rail is a full-height column on the view's outer left edge, outside every card. It shows one icon per tab and no captions.
+- Tabs are grouped. A separator draws between two groups. A group with no visible tab draws nothing, not even its separator.
+- Pointing at an icon, or focusing it with the keyboard, flies out a label that reads "Group · Tab". Focus that a click brings shows no label. The label never takes pointer events.
+- The active tab carries a primary accent bar on the rail's edge and the foreground color. The others are muted.
+- The rail has no expanded state, no toggle and no stored preference.
+- The rail is a real tab list. One tab root wraps the rail and the cards, with vertical orientation, so the arrow keys move along it.
+- When something replaces the tab panels, the rail stays drawn with every tab disabled.
+
+**Density:** Compact. The rail is 48px wide and each tab is 40px tall.
+
+### Composition
+
+- One registry holds the tabs in order, each with its value, name, group and icon, and the groups in order. A helper returns the groups one mode shows and drops the empty ones.
+- Each tab's accessible name is its tab name, held in visually hidden text. The icon and the flyout are hidden from assistive technology.
+- On mobile the rail becomes a **Sections** bar under the header. The bar names the current tab and folds the grouped tab list below it, with a caption per group. It shares its disclosure with the Enter World **Categories** bar. The body is `inert` while closed, and a pick closes it and returns focus to the bar.
+
+The World Editor groups its tabs this way:
+
+| Group | Tabs |
+| --- | --- |
+| World | Overview · Stats · Entities · Locations · Traits |
+| Text | Dictionary · Placeholders (Advanced only) |
+| Logic | None yet, so it draws nothing |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The rail | `EdgeRail` in [`EdgeRail.tsx`](../src/components/editor/EdgeRail.tsx) |
+| The mobile Sections bar | `EditorSectionsBar` in [`EditorSectionsBar.tsx`](../src/components/editor/EditorSectionsBar.tsx) |
+| The shared disclosure | `NavDisclosure` in [`NavDisclosure.tsx`](../src/components/NavDisclosure.tsx), also used by [`EnterWorldWorkspace.tsx`](../src/views/EnterWorldWorkspace.tsx) |
+| The registry and its groups | [`worldEditorTabs.ts`](../src/views/worldEditorTabs.ts) |
+| The host | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
+| Isolated reference | [`EdgeRailReference.tsx`](../src/components/design-system/EdgeRailReference.tsx) |
+
+### Responsive behavior
+
+The rail is desktop-only. Below `md` the editor shows one card, and the Sections bar takes the rail's place under the header. The bar uses a manual tab activation, so the arrow keys move through the open list without picking.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Default | The first tab is selected and carries the accent bar. |
+| Selected | Accent bar, background, and foreground color. |
+| Hover | A lighter background and the flyout label. |
+| Focus | The shared inset focus ring and the flyout label. Arrow keys move along the rail. |
+| Disabled | Every tab is disabled at half opacity. The selection is kept. |
+| Empty group | Nothing draws, so no separator is left without tabs under it. |
+
+The live reference draws the production registry as the rail and as the Sections bar, with a Simple and Advanced switch. It holds its tab and mode in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
+
+### Writing review
+
+- Tab and group names come from the production registry, so the reference and the editor cannot drift.
+- **Unverified:** the reference's tab bodies, section headings and `Meta` lines have terminology review only; vocabulary and grammar evidence is not recorded.
+
 ## Pattern: Narration Turn
 
 **Purpose:** Show one turn of the story the same way in the Pages and Chat layouts, so a turn's actions and its scene image controls cannot differ between them.
