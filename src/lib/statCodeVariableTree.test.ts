@@ -191,6 +191,11 @@ describe('entities, the persona and dictionaries', () => {
     ]);
   });
 
+  it('inserts a trait with a space in bracket form', () => {
+    const traits = worldTraitPlaces({ traits: [trait('t-iron', 'Iron Will')], traitGroups: [] }, []);
+    expect(inserts(buildVariableTree({ ...editorNames(), traits }), 'Traits', 'Iron Will', 'enabled')).toBe('traits["Iron Will"].enabled');
+  });
+
   it('unions the persona entities’ traits and placeholders, once per code name, with the owner as the trail', () => {
     const traits = pick(tree, 'Persona', 'Traits');
     expect(traits.kind === 'names' && traits.rows.map(({ name, trail }) => ({ name, trail }))).toEqual([
@@ -282,6 +287,12 @@ describe('template mode', () => {
     const enabled = leaf(templateTree, 'Entities', TEMPLATE_NAME, 'Traits', TEMPLATE_NAME, 'enabled');
     expect(enabled.insert).toBe('entities["Name"].traits["Name"].enabled');
     expect(enabled.selection).toEqual({ from: 'entities["'.length, to: 'entities["Name'.length });
+  });
+
+  it('keeps the type-over name selected on pin, not the empty text', () => {
+    const pin = leaf(templateTree, 'Placeholders', TEMPLATE_NAME, 'pin');
+    expect(pin.insert).toBe('placeholders["Name"].pin("")');
+    expect(selected(pin)).toBe(TEMPLATE_NAME);
   });
 
   it('leaves the rest of the tree as it is in a world', () => {

@@ -21,7 +21,7 @@ import {
   DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
-  isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
+  isIdentifier, isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathLabel, placeholderPathMap,
   walkPlaceholderPath, type PlaceholderPathMap, type PlaceholderPathNode,
 } from '@/lib/statCodePaths';
 
@@ -216,8 +216,6 @@ function expressionBeforeDot(code: string, dotPos: number): string | null {
   return text.length > 0 ? text : null;
 }
 
-const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
-
 /** What one entry of a name-keyed sandbox map is called in a message. */
 type EntryNoun = 'placeholder' | 'trait' | 'stat' | 'entity' | 'dictionary';
 
@@ -229,7 +227,7 @@ const PLURAL: Record<EntryNoun, string> = {
  *  rest need bracket syntax. */
 function mapNameEntries(names: readonly string[], kind: EntryNoun, dotted: boolean): SurfaceEntry[] {
   return [...new Set(names)]
-    .filter((name) => !dotted || IDENTIFIER.test(name))
+    .filter((name) => !dotted || isIdentifier(name))
     .map((name) => ({ name, detail: kind, info: `The “${name}” ${kind} in this world.` }));
 }
 
@@ -278,7 +276,7 @@ export const personaTraitsOf = (entities: readonly CodeEntityNames[] | undefined
 /** One entry per distinct persona trait name. `dotted` keeps only the names a `.` can reach. */
 const personaTraitEntries = (names: readonly string[], dotted: boolean): SurfaceEntry[] =>
   [...new Set(names)]
-    .filter((name) => !dotted || IDENTIFIER.test(name))
+    .filter((name) => !dotted || isIdentifier(name))
     .map((name) => ({ name, detail: 'trait', info: `The “${name}” trait a persona in this world holds.` }));
 
 /** One member step of a path: `.Name`, `?.Name`, `["Name"]`, `?.["Name"]`. */
@@ -401,7 +399,7 @@ function looksLikeStat(code: string, tree: Tree, expression: string): boolean {
 function indexesStat(text: string, name: string): boolean {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (new RegExp(`\\bstats\\s*(?:\\?\\.)?\\[\\s*(["'\`])${escaped}\\1\\s*\\]`).test(text)) return true;
-  return IDENTIFIER.test(name) && new RegExp(`\\bstats\\s*\\??\\.\\s*${escaped}(?![\\w$])`).test(text);
+  return isIdentifier(name) && new RegExp(`\\bstats\\s*\\??\\.\\s*${escaped}(?![\\w$])`).test(text);
 }
 
 /**
@@ -433,10 +431,10 @@ function placeholderMembersAt(
   placeholders: CodePlaceholders, segments: readonly string[], start: PlaceholderPathNode | null,
 ): readonly SurfaceEntry[] | null {
   const map = pathMapOf(placeholders);
-  if (!start && segments.length === 0) return map.top.filter((node) => IDENTIFIER.test(node.name)).map(nodeEntry);
+  if (!start && segments.length === 0) return map.top.filter((node) => isIdentifier(node.name)).map(nodeEntry);
   const { node, rest } = walkPlaceholderPath(map, segments, start);
   if (rest.length === 0 && node) {
-    const children = node.children.filter((child) => IDENTIFIER.test(child.name)).map(nodeEntry);
+    const children = node.children.filter((child) => isIdentifier(child.name)).map(nodeEntry);
     if (!node.placeholder) return children;
     // A child named like a member lost to it, so the member is what the list offers for that name.
     const fields = placeholderEntryFields(placeholderKindNoun(node.placeholder));
