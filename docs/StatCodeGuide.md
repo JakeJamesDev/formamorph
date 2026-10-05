@@ -100,6 +100,31 @@ A turn runs your code twice, once on each side of the AI:
 
 > 💡 Both boxes run even when the stat request is off, or when it fails. On such a turn `delta.ai` reads zeros in the after box too, so code that scales an ask leaves the value where it stood.
 
+## Quick Reference
+<!-- keywords: cheat sheet, api, syntax, members, fields, properties, objects, globals, what can code read, what can code write, how to access, dot notation, available variables -->
+
+Stat code can use only these objects. A word in angle brackets stands for a name from your world, `<n>` for a number, and `<text>` for text. A name with a space needs brackets: `stats["<Stat>"]`.
+
+| Object | Members | Read | Write |
+| --- | --- | --- | --- |
+| `self` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `self.value` | `self.value = <n>` |
+| `stats` | `id`, `name`, `type`, `description`, `enabled`, `min`, `max`, `value`, `regen`, `previous`, `delta` | `stats.<Stat>.value` | Read-only |
+| `clock` | `day`, `daypart`, `deltaHours`, `elapsedHours`, `previous` | `clock.day` | Read-only |
+| `traits` | `enabled`, `acquired`, `id`, `name`, `mode`, `available`, `group`, `playerToggle` | `traits.<Trait>.enabled` | `traits.<Trait>.enabled = true` |
+| `persona` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders` | `persona.traits.<Trait>.enabled` | `persona.traits.<Trait>.enabled = true` |
+| `entities` | `id`, `name`, `type`, `pronouns`, `inScene`, `traits`, `placeholders` | `entities.<Entity>.traits.<Trait>.enabled` | `entities.<Entity>.traits.<Trait>.enabled = true` |
+| `placeholders` | `id`, `name`, `value`, `values`, `text`, `roll()`, `pin()`, `unpin()` | `placeholders.<Placeholder>.text` | `placeholders.<Placeholder>.pin(<text>)` |
+| `dictionaries` | `id`, `name`, `placeholders` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.text` | `dictionaries.<Dictionary>.placeholders.<Placeholder>.pin(<text>)` |
+| `console` | `log()` | — | `console.log(<text>)` |
+
+Follow these rules:
+
+- **A stat compares through `.value`.** Write `stats.<Stat>.value > <n>`. `stats.<Stat>` and `self` alone are whole entries, not numbers.
+- **A trait switches through `.enabled`.** Write `traits.<Trait>.enabled = true`. The editor underlines `traits.<Trait> = true`.
+- **A trait sits under its owner.** `traits` holds the world's own traits only. A trait on the played persona, the custom persona included, is under `persona.traits`. A trait on another entity is under `entities.<Entity>.traits`.
+- **"After N days" is `clock.day > <n>`.** `clock.day` starts at 1. For timing in hours, use `clock.elapsedHours`. The time of day is `clock.daypart`.
+- **`self` takes writes to `value`, `min`, `max` and `regen`.** Its other fields are read-only. Write your own stat through `self`.
+
 ## Writing Stat Code
 
 ### Basic Syntax
@@ -320,7 +345,7 @@ A write to an unknown trait name is ignored. **Test Code** and the Test Bench bo
 > ℹ️ **A trait name with a placeholder chip in it reads in code as the placeholder's own name.** A trait named `{{Beast}} Fury` is `traits["Beast Fury"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name, and the turn log still writes it.
 
 ### Persona
-<!-- keywords: hero object, who is being played, main character perks, current player body, nobody chosen, test run ignores it -->
+<!-- keywords: hero object, who is being played, main character perks, current player body, nobody chosen, test run ignores it, custom persona, my character, my own character traits, player character trait -->
 
 `persona` is the entity the player plays: the picked persona, or the **Custom Persona** entity when the player picks **None**.
 
@@ -347,7 +372,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 > ℹ️ **The editor offers the traits of every entity that can be played.** A library persona can bring traits and placeholders the world doesn't have, so an unknown name after `persona.traits` or `persona.placeholders` is a warning, not an error.
 
 ### Entities
-<!-- keywords: companion status, is someone nearby, does character exist, invented ones missing, duplicate names -->
+<!-- keywords: companion status, is someone nearby, does character exist, invented ones missing, duplicate names, npc, npc traits, companion traits, another character's trait, side character -->
 
 `entities` holds every entity in play by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
 
