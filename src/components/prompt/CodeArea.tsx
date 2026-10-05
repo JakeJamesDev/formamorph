@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable, type LucideIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
@@ -16,7 +16,7 @@ import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnipp
 import { buildVariableTree, type VariableNode } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeSession } from '@/components/prompt/codeSession';
-import type { CodeEntityNames, CodePlaceholders } from '@/lib/statCodeAnalysis';
+import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 
 function InsertMenu({ items, label, Icon, onPick }: {
   items: readonly InsertSnippet[]; label: string; Icon: LucideIcon; onPick: (snippet: InsertSnippet) => void;
@@ -64,8 +64,8 @@ interface CodeAreaProps {
   selfName?: string;
   /** The world's placeholders, completed after `placeholders` and checked by name. */
   placeholders?: CodePlaceholders;
-  /** The world's trait names, completed after `traits` and checked by name. */
-  traits?: readonly string[];
+  /** The world's own traits, completed after `traits`, checked by name, and listed in their groups by the Variable menu. */
+  traits?: readonly CodeTraitPlace[];
   /** The world's entities and their trait names, completed after `entities` and `persona.traits` and checked by name. */
   entities?: readonly CodeEntityNames[];
   /** What the code produces. Given this, the field grows the Edit | Preview pair, which becomes a
@@ -287,7 +287,7 @@ export function CodeArea(props: CodeAreaProps) {
         statNames: latest.current.statNames,
         selfName: latest.current.selfName,
         placeholders: latest.current.placeholders,
-        traits: latest.current.traits,
+        traits: latest.current.traits?.map((trait) => trait.name),
         entities: latest.current.entities,
         onChange: (next) => latest.current.onChange(next),
         onUpdate,
@@ -307,7 +307,9 @@ export function CodeArea(props: CodeAreaProps) {
   useEffect(() => { session?.setStatNames(props.statNames); }, [session, props.statNames]);
   useEffect(() => { session?.setSelfName(props.selfName); }, [session, props.selfName]);
   useEffect(() => { session?.setPlaceholders(props.placeholders); }, [session, props.placeholders]);
-  useEffect(() => { session?.setTraits(props.traits); }, [session, props.traits]);
+  // The session completes and checks names; the groups are the Variable menu's alone.
+  const traitNames = useMemo(() => props.traits?.map((trait) => trait.name), [props.traits]);
+  useEffect(() => { session?.setTraits(traitNames); }, [session, traitNames]);
   useEffect(() => { session?.setEntities(props.entities); }, [session, props.entities]);
 
   return (

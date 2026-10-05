@@ -7,11 +7,17 @@ import type { CodeSurface } from '@/lib/codeSurface';
 import { STAT_CODE_SURFACE, STAT_FIELDS } from '@/lib/statCodeSurface';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SCRIPT_SURFACE as SCRIPT } from '@/test/scriptSurface';
+import { phValues } from '@/test/placeholderValues';
+import type { Dictionary, Entity, Placeholder, Trait } from '@/types';
+import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
+import { codeDictionaries } from '@/lib/statCodePlaceholders';
+import { entityTraitNames, worldTraitPlaces } from '@/lib/statCodeTraits';
+import type { VariableTreeNames } from '@/lib/statCodeVariableTree';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
  *  testing it uncontrolled would exercise a wiring nothing ships. */
-function Harness({ slots = false, preview = false, initial = '', statNames, surface = STAT_CODE_SURFACE }: {
-  slots?: boolean; preview?: boolean; initial?: string; statNames?: string[]; surface?: CodeSurface;
+function Harness({ slots = false, preview = false, initial = '', statNames, names, surface = STAT_CODE_SURFACE }: {
+  slots?: boolean; preview?: boolean; initial?: string; statNames?: string[]; names?: VariableTreeNames; surface?: CodeSurface;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -22,6 +28,7 @@ function Harness({ slots = false, preview = false, initial = '', statNames, surf
         ariaLabel="Stat code"
         surface={surface}
         statNames={statNames}
+        {...names}
         slots={slots}
         preview={preview ? <p>what this makes</p> : undefined}
       />
@@ -67,10 +74,51 @@ async function type(
  *  run pushes the event later too. This is the beat a real author takes; nothing here polls for it. */
 const settle = () => new Promise(resolve => { setTimeout(resolve, 150); });
 
+/** A name level's row, by its name alone: the row's own name also carries its trail. */
+const nameRow = (name: string) => screen.getAllByRole('option').find((option) => within(option).queryByText(name));
+
 /** Opens the Variable menu and clicks down the named rows, the last one a field. */
 async function pick(user: ReturnType<typeof userEvent.setup>, ...rows: string[]) {
   await user.click(screen.getByLabelText('Variable'));
-  for (const row of rows) await user.click(screen.getByRole('button', { name: row }));
+  for (const row of rows) {
+    // A plain row by its name, else a name level's row; the last lookup fails with the row's name.
+    await user.click(screen.queryByRole('button', { name: row }) ?? nameRow(row) ?? screen.getByRole('button', { name: row }));
+  }
+}
+
+const ph = (id: string, name: string, over: Partial<Placeholder> = {}): Placeholder =>
+  ({ id, name, values: phValues(['one']), ...over });
+const trait = (id: string, name: string): Trait => ({ id, name, statChanges: [] });
+
+/** A world with a name in each list. Iron Will and Mira sit in a group or folder, Mira holds a grouped trait, and
+ *  both entities are personas. */
+// The tests read only the fields the editor's name lists take, so the fixtures leave the rest out.
+const nameWorld = {
+  traits: [trait('t-brave', 'Brave'), { ...trait('t-iron', 'Iron Will'), groupId: 'tg-virtues' }],
+  traitGroups: [{ id: 'tg-virtues', name: 'Virtues', parentId: null }],
+  placeholders: [ph('mood', 'Mood')],
+  entityGroups: [{ id: 'g-crew', name: 'Crew', parentId: null }],
+  entities: [
+    {
+      id: 'mira', name: 'Mira', persona: true, groupId: 'g-crew',
+      traits: [{ ...trait('t-scar', 'Scarred'), groupId: 'tg-wounds' }, trait('t-keen', 'Keen')],
+      traitGroups: [{ id: 'tg-wounds', name: 'Wounds', parentId: null }],
+      placeholders: [ph('m-eye', 'Eye Color')],
+    },
+    { id: 'tom', name: 'Old Tom', persona: true, traits: [trait('t-grim', 'Grim')], placeholders: [ph('t-hat', 'Hat')] },
+  ] as unknown as Entity[],
+  dictionaries: [{ id: 'lore', name: 'Lore', entries: [], placeholders: [ph('era', 'Era')] }] as unknown as Dictionary[],
+};
+
+/** The names as the stat box hands them to the editor. */
+function worldNames(): VariableTreeNames {
+  const list = allPlaceholders(nameWorld);
+  return {
+    statNames: ['Health', 'Max Mana'],
+    traits: worldTraitPlaces(nameWorld, list),
+    entities: entityTraitNames(nameWorld, list),
+    placeholders: { list, owners: placeholderOwners(nameWorld), dictionaries: codeDictionaries(nameWorld.dictionaries, list) },
+  };
 }
 
 /** The Variable menu's current level, by its label. */
@@ -595,22 +643,23 @@ describe('CodeArea', () => {
       await user.keyboard('{ArrowUp}{ArrowUp}');
       expect(screen.getByRole('button', { name: 'Clock' })).toHaveFocus();
       await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
-      // Each level opens on its Back row, which names the level.
+      // A name level opens on its search box, its first row active.
       expect(level('Stats')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Stats' })).toHaveFocus();
-      await user.keyboard('{ArrowDown}{Enter}');
+      expect(screen.getByRole('combobox')).toHaveFocus();
+      await user.keyboard('{Enter}');
+      // Each other level opens on its Back row, which names the level.
       expect(screen.getByRole('button', { name: 'Health' })).toHaveFocus();
       await user.keyboard('{ArrowDown}');
       expect(within(level('Health')!).getByRole('button', { name: 'id' })).toHaveFocus();
 
       await user.keyboard('{Backspace}');
       expect(level('Stats')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Stats' })).toHaveFocus();
+      expect(screen.getByRole('combobox')).toHaveFocus();
       await user.keyboard('{ArrowLeft}');
       expect(level('Variable')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'This Stat' })).toHaveFocus();
 
-      await user.keyboard('{ArrowDown}{Enter}{ArrowDown}{Enter}{ArrowDown}{Enter}');
+      await user.keyboard('{ArrowDown}{Enter}{Enter}{ArrowDown}{Enter}');
       expect(owned()).toBe('stats.Health.id');
       expect(level('Health')).toBeNull();
     });
@@ -658,6 +707,114 @@ describe('CodeArea', () => {
       expect(owned()).toBe('stats["Name"].value');
 
       await type(user, 'Mood', (typed) => `stats["${typed}"].value`);
+    });
+
+    describe('at a name level', () => {
+      const rowNames = () => screen.queryAllByRole('option').map((option) => option.textContent);
+
+      it.each([
+        [['Stats'], 'Search stats', ['Health', 'Max Mana']],
+        // In Traits-tab order, a group's traits first, as the template slot picker lists them.
+        [['Traits'], 'Search traits', ['Iron WillVirtues', 'BraveWorld']],
+        [['Entities'], 'Search entities', ['MiraCrew', 'Old Tom']],
+        [['Placeholders'], 'Search placeholders', ['Mood']],
+        [['Dictionaries'], 'Search dictionaries', ['Lore']],
+        [['Entities', 'Mira', 'Traits'], 'Search traits', ['ScarredWounds', 'Keen']],
+        [['Entities', 'Mira', 'Placeholders'], 'Search placeholders', ['Eye Color']],
+        [['Persona', 'Traits'], 'Search traits', ['ScarredMira › Wounds', 'KeenMira', 'GrimOld Tom']],
+        [['Persona', 'Placeholders'], 'Search placeholders', ['Eye ColorMira', 'HatOld Tom']],
+      ])('%j shows a focused search box over its names and their trails', async (path, placeholder, rows) => {
+        const user = userEvent.setup();
+        render(<Harness names={worldNames()} />);
+        await editor();
+        await pick(user, ...path);
+
+        expect(screen.getByRole('combobox')).toHaveFocus();
+        expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', placeholder);
+        // The Back row still leads the level.
+        expect(screen.getByRole('button', { name: path[path.length - 1] })).toBeInTheDocument();
+        expect(rowNames()).toEqual(rows);
+      });
+
+      it('filters by name and by trail, and says so when nothing matches', async () => {
+        const user = userEvent.setup();
+        render(<Harness names={worldNames()} />);
+        await editor();
+        await pick(user, 'Entities');
+
+        await user.keyboard('crew');
+        expect(rowNames()).toEqual(['MiraCrew']);
+        await user.clear(screen.getByRole('combobox'));
+        await user.keyboard('tom');
+        expect(rowNames()).toEqual(['Old Tom']);
+        await user.keyboard('z');
+        expect(rowNames()).toEqual([]);
+        expect(screen.getByText('No matches')).toBeInTheDocument();
+      });
+
+      it('edits a search with Backspace and Left, and goes back once it is empty', async () => {
+        const user = userEvent.setup();
+        render(<Harness names={worldNames()} />);
+        await editor();
+        await pick(user, 'Stats');
+        const search = screen.getByRole('combobox');
+
+        await user.keyboard('He{ArrowLeft}');
+        expect(level('Stats')).toBeInTheDocument();
+        await user.keyboard('{ArrowRight}{Backspace}');
+        expect(search).toHaveValue('H');
+        await user.keyboard('{Backspace}');
+        expect(search).toHaveValue('');
+        expect(level('Stats')).toBeInTheDocument();
+
+        await user.keyboard('{Backspace}');
+        expect(level('Variable')).toBeInTheDocument();
+
+        await user.keyboard('{ArrowDown}{Enter}');
+        expect(level('Stats')).toBeInTheDocument();
+        await user.keyboard('{ArrowLeft}');
+        expect(level('Variable')).toBeInTheDocument();
+      });
+
+      it('drills into the active row with Enter and inserts its field', async () => {
+        const user = userEvent.setup();
+        render(<Harness names={worldNames()} />);
+        await user.click(await editor());
+        await pick(user, 'Stats');
+
+        await user.keyboard('mana{Enter}');
+        expect(level('Max Mana')).toBeInTheDocument();
+        await user.keyboard('{ArrowDown}{Enter}');
+        expect(owned()).toBe('stats["Max Mana"].id');
+      });
+
+      it('moves between the Back row and the search box with the arrows', async () => {
+        const user = userEvent.setup();
+        render(<Harness names={worldNames()} />);
+        await editor();
+        await pick(user, 'Stats');
+
+        await user.keyboard('{Shift>}{Tab}{/Shift}');
+        expect(screen.getByRole('button', { name: 'Stats' })).toHaveFocus();
+        await user.keyboard('{ArrowDown}');
+        expect(screen.getByRole('combobox')).toHaveFocus();
+        // In the search box the arrows move the list's active row.
+        await user.keyboard('{ArrowDown}');
+        expect(screen.getByRole('combobox')).toHaveFocus();
+        expect(nameRow('Max Mana')).toHaveAttribute('aria-selected', 'true');
+      });
+
+      it('closes on Escape from the search box', async () => {
+        const user = userEvent.setup();
+        render(<Harness names={worldNames()} />);
+        await editor();
+        await pick(user, 'Stats');
+        await user.keyboard('He');
+
+        await user.keyboard('{Escape}');
+        expect(level('Stats')).toBeNull();
+        expect(owned()).toBe('');
+      });
     });
   });
 

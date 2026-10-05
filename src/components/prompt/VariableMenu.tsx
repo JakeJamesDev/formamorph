@@ -6,35 +6,34 @@ import { Tip } from '@/components/ui/tooltip';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { MENU_ROW } from '@/components/menuRow';
 import { InsertMenuButton } from '@/components/prompt/InsertMenuButton';
-import type { VariableField, VariableNode } from '@/lib/statCodeVariableTree';
+import { BreadcrumbPickerList, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
+import type { VariableField, VariableNameRow, VariableNode } from '@/lib/statCodeVariableTree';
 import { cn } from '@/lib/utils';
 
 /** One row of a level: one that opens a level, a field to insert, or an empty group's marker. */
 type Row =
-  | { kind: 'drill'; label: string; trail: readonly string[]; open: () => Level }
+  | { kind: 'drill'; label: string; open: () => Level }
   | { kind: 'field'; field: VariableField }
   | { kind: 'empty'; message: string };
 
-interface Level {
-  label: string;
-  rows: readonly Row[];
-}
+/** A level of plain rows, or a name list, which searches its names and their trails. */
+type Level =
+  | { kind: 'rows'; label: string; rows: readonly Row[] }
+  | { kind: 'names'; label: string; names: readonly VariableNameRow[] };
 
-const levelOf = (label: string, nodes: readonly VariableNode[]): Level => ({ label, rows: nodes.map(rowOf) });
+const levelOf = (label: string, nodes: readonly VariableNode[]): Level => ({ kind: 'rows', label, rows: nodes.map(rowOf) });
 
 function rowOf(node: VariableNode): Row {
   switch (node.kind) {
     case 'field': return { kind: 'field', field: node };
     case 'empty': return node;
-    case 'group': return { kind: 'drill', label: node.label, trail: [], open: () => levelOf(node.label, node.children) };
-    case 'names': return {
-      kind: 'drill', label: node.label, trail: [], open: () => ({
-        label: node.label,
-        rows: node.rows.map((row): Row => ({ kind: 'drill', label: row.name, trail: row.trail, open: () => levelOf(row.name, row.children) })),
-      }),
-    };
+    case 'group': return { kind: 'drill', label: node.label, open: () => levelOf(node.label, node.children) };
+    case 'names': return { kind: 'drill', label: node.label, open: () => ({ kind: 'names', label: node.label, names: node.rows }) };
   }
 }
+
+const pickerRows = (names: readonly VariableNameRow[]): BreadcrumbPickerRow<VariableNameRow>[] =>
+  names.map((row, index) => ({ key: String(index), value: row, name: row.name, breadcrumb: row.trail }));
 
 const ROW_TEXT = 'min-w-0 flex-1 break-words [overflow-wrap:anywhere]';
 
@@ -50,10 +49,13 @@ function VariablePanel({ build, onPick, onClose }: {
   const depth = stack.length - 1;
   const level = stack[depth];
 
-  const enabledRows = () => [...(panelRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
+  // The rows the arrows step through. A name level's search box is one stop; its list moves itself.
+  const enabledRows = () => [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input') ?? [])];
 
-  // Each level focuses its first row as it opens: Back, below the top.
-  useLayoutEffect(() => { enabledRows()[0]?.focus(); }, [stack]);
+  // Each level focuses its first row as it opens: Back, below the top. A name level focuses its search box.
+  useLayoutEffect(() => {
+    (panelRef.current?.querySelector<HTMLInputElement>('input') ?? enabledRows()[0])?.focus();
+  }, [stack]);
 
   const drill = (next: Level) => {
     setStack([...stack, next]);
@@ -66,13 +68,17 @@ function VariablePanel({ build, onPick, onClose }: {
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    // The name list's own keys: it moves its active row and drills with Enter.
+    if (event.defaultPrevented) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const rows = enabledRows();
-      const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+      const at = rows.indexOf(document.activeElement as HTMLElement);
       const step = event.key === 'ArrowDown' ? 1 : -1;
       rows[(at + step + rows.length) % rows.length]?.focus();
     } else if (event.key === 'Backspace' || event.key === 'ArrowLeft') {
+      // A search box with text keeps both keys to edit it.
+      if (event.target instanceof HTMLInputElement && event.target.value !== '') return;
       event.preventDefault();
       back();
     }
@@ -94,33 +100,45 @@ function VariablePanel({ build, onPick, onClose }: {
             <div role="separator" className="-mx-1 my-1 h-px bg-border" />
           </>
         )}
-        <ScrollArea className="max-h-[min(20rem,calc(var(--radix-popover-content-available-height)-4rem))]">
-          <div role="group" aria-label={level.label}>
-            {level.rows.map((row, index) => {
-              if (row.kind === 'empty') {
-                return <button key={index} type="button" disabled className={MENU_ROW}>{row.message}</button>;
-              }
-              if (row.kind === 'field') {
-                return (
-                  <Tip key={index} tip={row.field.info} side="right" labelsChild={false}>
-                    <button type="button" className={MENU_ROW} onClick={() => onPick(row.field)}>
-                      <span className={ROW_TEXT}>{row.field.label}</span>
-                    </button>
-                  </Tip>
-                );
-              }
-              return (
-                <button key={index} type="button" className={MENU_ROW} onClick={() => drill(row.open())}>
-                  <span className={ROW_TEXT}>
-                    {row.label}
-                    {row.trail.length > 0 && <span className="text-meta text-muted-foreground"> {row.trail.join(' / ')}</span>}
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                </button>
-              );
-            })}
+        {level.kind === 'names' ? (
+          // Edge to edge, as the Back row's separator runs; the list leaves room for Back and the search box.
+          <div
+            role="group"
+            aria-label={level.label}
+            className="-mx-1 -mb-1 [&_[cmdk-list]]:max-h-[min(300px,calc(var(--radix-popover-content-available-height)-6.5rem))]"
+          >
+            <BreadcrumbPickerList
+              sections={[{ rows: pickerRows(level.names) }]}
+              onPick={(row) => drill(levelOf(row.name, row.children))}
+              searchPlaceholder={`Search ${level.label.toLowerCase()}`}
+            />
           </div>
-        </ScrollArea>
+        ) : (
+          <ScrollArea className="max-h-[min(20rem,calc(var(--radix-popover-content-available-height)-4rem))]">
+            <div role="group" aria-label={level.label}>
+              {level.rows.map((row, index) => {
+                if (row.kind === 'empty') {
+                  return <button key={index} type="button" disabled className={MENU_ROW}>{row.message}</button>;
+                }
+                if (row.kind === 'field') {
+                  return (
+                    <Tip key={index} tip={row.field.info} side="right" labelsChild={false}>
+                      <button type="button" className={MENU_ROW} onClick={() => onPick(row.field)}>
+                        <span className={ROW_TEXT}>{row.field.label}</span>
+                      </button>
+                    </Tip>
+                  );
+                }
+                return (
+                  <button key={index} type="button" className={MENU_ROW} onClick={() => drill(row.open())}>
+                    <span className={ROW_TEXT}>{row.label}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        )}
       </DrillSlide>
     </div>
   );
@@ -148,7 +166,7 @@ export function VariableMenu({ build, onPick }: { build: () => readonly Variable
       <PopoverContent
         portal={false}
         align="start"
-        className="w-60 overflow-hidden p-1"
+        className="w-64 overflow-hidden p-1"
         onOpenAutoFocus={(event) => event.preventDefault()}
         onCloseAutoFocus={(event) => { if (picked.current) event.preventDefault(); }}
       >
