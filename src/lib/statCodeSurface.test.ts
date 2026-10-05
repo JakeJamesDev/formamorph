@@ -6,6 +6,7 @@ import {
   SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, nearestSurfaceName,
 } from './statCodeSurface';
 import { runStatCodeTurn } from './statCodeTurn';
+import { STAT_CODE_SNIPPETS } from './codeSnippets';
 import { STAT_CODE_TIMINGS, type StatCodeTiming } from './statCodeTiming';
 import type { PlayerStat, Stat } from '@/types';
 
@@ -203,6 +204,18 @@ const turnProbe = async (timing: StatCodeTiming, code: string): Promise<number |
   });
   return out.stats[0].value;
 };
+
+describe('the Variable menu', () => {
+  // An unknown name still reads as a blank entry, so every insert must run before the author renames it.
+  it.each(STAT_CODE_SNIPPETS.map((s) => [s.label, s.text]))('inserts %s as code the sandbox runs', async (_label, text) => {
+    await expect(run(`const read = ${text}; return 1;`)).resolves.toEqual({ value: 1, error: null });
+  });
+
+  it('offers a lookup for every global but console', () => {
+    const reached = new Set(STAT_CODE_SNIPPETS.map((s) => s.text.match(/^\w+/)![0]));
+    expect(SANDBOX_GLOBALS.map((g) => g.name).filter((name) => !reached.has(name))).toEqual(['console']);
+  });
+});
 
 describe('the described surface in each of the two boxes', () => {
   it.each(STAT_CODE_TIMINGS.flatMap(
