@@ -24,6 +24,7 @@ Every how-to section whose last step names a control gets its target in one swee
 | Q5 | One sweep across every how-to section in the guide whose last step names a control. A section that ends at a tab keeps the bare route |
 | Q6 | The fragment is chosen over a second comment line because the route line is already required and checked per section; a fragment rides inside an existing check and sits where anyone editing the route looks |
 | Q7 | The Landing Pulse pattern is approved (ticket 02, landed). Hosts adopt it through the shared landing-pulse helpers: one runs the pulse on a row and returns a cancel, honoring reduced motion; one picks the visible control to focus and skips the label's ⓘ button. The pulse reaches 12 px past the row, so a host's scroll viewport keeps at least that much inner padding or the fade clips (spec session, 2026-10-04) |
+| Q8 | A section whose last-step row shows only after an earlier step (a checkbox, a mode, a switcher value) targets the always-visible gate row instead, so the landing always points somewhere. Authoring rule only; no registry or route shape change. Q4's silent fallback stays for a row hidden at runtime. The Messages-field jump folds into the hook with scroll and focus only; the pulse is Take Me There's alone, per the Design System entry (user, 2026-10-04) |
 
 ## User Stories
 
@@ -85,7 +86,7 @@ Every how-to section whose last step names a control gets its target in one swee
 
 ### Docs sweep
 
-- One pass over every guide page. Each how-to section whose last step names a control gets the fragment; a section that ends at a tab keeps the bare route (Q5). The sweep lands page by page in one unit, with the registry entries each page needs.
+- One pass over every guide page. Each how-to section whose last step names a control gets the fragment; a section that ends at a tab keeps the bare route (Q5). A gated last-step row yields to its always-visible gate row (Q8). The sweep lands page by page in one unit, with the registry entries each page needs.
 
 ## Testing Decisions
 
