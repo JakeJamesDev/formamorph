@@ -4,7 +4,7 @@ import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
 /** How long the pill stays up after the window opens, and after the pointer or focus leaves it. */
-export const PILL_FADE_DELAY_MS = 3000;
+export const PILL_FADE_DELAY_MS = 1000;
 
 /** What a faded piece needs: the state it reports, its look, and the handlers that wake it. */
 export type PillFadeProps = Pick<HTMLAttributes<HTMLElement>, 'onPointerEnter' | 'onPointerLeave' | 'onFocus' | 'onBlur'> & {
