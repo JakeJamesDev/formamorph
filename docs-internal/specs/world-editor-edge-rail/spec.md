@@ -1,8 +1,8 @@
 # World Editor Edge Rail
 
-Status: ready-for-agent
+Status: done
 Spec session: world-editor-edge-rail — spec
-Status note: Settled by prototype. Branch `prototype/world-editor-tabs` (worktree `.claude/worktrees/prototype-world-editor-tabs`, launch entry `proto-world-editor-tabs`, port 5245, open `/?variant=E#dev?modal=worldEditor`). Rounds: a06bc057 (A side drawer, C icon strip, D overflow menu), 80090132 (B grouped rows, inner rail, G captioned strip), 45aeac43 (E edge rail, F menu bar, H group rail), 1f3955e9 (F on hover), fdc2f52c and 47bcdfe1 (help button and List/Canvas). E won.
+Status note: Closed 2026-10-05, tickets 01–04 done, last landing 4aa45f34. Closed without gates.
 
 ## Problem Statement
 
@@ -118,6 +118,8 @@ A good test calls the public seam with real inputs and asserts what an author wo
 - The detail pane's panel tab strips (entity, location, stat, trait).
 
 ## Further Notes
+
+- Settled by prototype. Branch `prototype/world-editor-tabs` (worktree `.claude/worktrees/prototype-world-editor-tabs`, launch entry `proto-world-editor-tabs`, port 5245, open `/?variant=E#dev?modal=worldEditor`). Rounds: a06bc057 (A side drawer, C icon strip, D overflow menu), 80090132 (B grouped rows, inner rail, G captioned strip), 45aeac43 (E edge rail, F menu bar, H group rail), 1f3955e9 (F on hover), fdc2f52c and 47bcdfe1 (help button and List/Canvas). E won.
 
 - The prototype's rail used plain buttons because its tab root could not span the panel group; the real build wraps the root around both so the rail is a true tab list (Q5) and the test harness's tab lookup keeps working.
 - The prototype moved the `?` for both layouts, so the mobile header with Find, the Bench flask, Simple/Advanced and the `?` has been seen at 800px only. Check it at phone width during the build.
