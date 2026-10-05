@@ -58,3 +58,4 @@ export function BenchPopover({ open, onClose, issues, onFixRule, onOpenPanel, ch
     </Popover>
   );
 }
+// scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input

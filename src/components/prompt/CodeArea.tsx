@@ -331,3 +331,4 @@ export function CodeArea(props: CodeAreaProps) {
 }
 
 export default CodeArea;
+// scroll-guard: allow native-editor: caret, selection, and editing are bound to the scrolling element

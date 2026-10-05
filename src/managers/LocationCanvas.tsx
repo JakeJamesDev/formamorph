@@ -1480,3 +1480,4 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
 };
 
 export default LocationCanvas;
+// scroll-guard: allow canvas: canvas panels and popups own their wheel input

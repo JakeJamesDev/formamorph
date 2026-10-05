@@ -352,3 +352,4 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
 }
 
 export default ChipTypeaheadPlugin;
+// scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input

@@ -12,3 +12,4 @@ export const Code = ({ children }: { children: ReactNode }) => (
 export const Snippet = ({ children }: { children: ReactNode }) => (
   <pre className="overflow-x-auto rounded bg-muted p-2 font-mono text-meta">{children}</pre>
 );
+// scroll-guard: allow horizontal: code blocks scroll sideways

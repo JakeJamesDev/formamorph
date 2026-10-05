@@ -2982,3 +2982,4 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 };
 
 export default MainMenu;
+// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

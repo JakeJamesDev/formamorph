@@ -42,3 +42,4 @@ export function SentMessagesDialog({ open, onOpenChange, userId, username, refre
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

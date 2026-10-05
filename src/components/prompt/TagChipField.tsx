@@ -186,3 +186,4 @@ const TagChipField = ({ value, onChange, placeholders, ownerId, placeholder, ari
 };
 
 export default TagChipField;
+// scroll-guard: allow native-editor: caret, selection, and editing are bound to the scrolling element

@@ -133,3 +133,4 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

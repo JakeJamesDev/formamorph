@@ -396,3 +396,4 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

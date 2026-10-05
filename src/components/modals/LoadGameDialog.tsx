@@ -472,3 +472,4 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     </>
   );
 }
+// scroll-guard: allow drag-list: drag and drop needs the native scrolling ancestor for autoscroll

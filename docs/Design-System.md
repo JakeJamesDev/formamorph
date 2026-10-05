@@ -585,6 +585,28 @@ Use [`ScrollArea`](../src/components/ui/scroll-area.tsx) for bounded vertical co
 
 The [scrollbar and list inventory](../docs-internal/designs/design-system/rich-lists-scrollbars-review.md) groups remaining native and specialized surfaces by limitation. It is follow-up scope, not authorization for an app-wide migration.
 
+### Scroll guard
+
+A test, [`scrollGuard.test.ts`](../src/lib/scrollGuard.test.ts), fails when a source file under `src` holds a native overflow scroller (`overflow-auto`, `overflow-y-auto`, `overflow-x-auto`, `overflow-scroll`, or the inline style). The file passes when it imports `ScrollArea` or carries one allow comment. The check works per file, so one import or one comment covers every scroller in that file. Put the comment on its own line. The end of the file keeps it clear of other edits:
+
+```ts
+// scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input
+```
+
+The name after `allow` is one row of the table below. The text after the colon says why this file relies on it.
+
+| Name | Exception |
+| --- | --- |
+| `native-editor` | Editors and editable regions bound to the scrolling element |
+| `popover-list` | Lists hosted in a popover |
+| `horizontal` | Toolbars, tables, and code blocks that scroll sideways |
+| `canvas` | Canvases that own wheel input |
+| `drag-list` | Drag lists and virtualizers that need the native scrolling ancestor |
+| `responsive-columns` | One pane that becomes two independent columns |
+| `migration-candidate` | A native pane that can move to `ScrollArea` once its behavior is checked |
+
+Remove the comment when the file moves to `ScrollArea`.
+
 ## Pattern: Paired Footer Actions
 
 **Purpose:** Make acceptance predictable by keeping a negative action before its affirmative partner.

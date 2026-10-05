@@ -225,3 +225,4 @@ export function FormaquestionReference() {
     </Card>
   );
 }
+// scroll-guard: allow horizontal: wide reference rows scroll sideways

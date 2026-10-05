@@ -173,3 +173,4 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: overview list capped by max height only

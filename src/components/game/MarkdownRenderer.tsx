@@ -141,3 +141,4 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     </div>
   );
 });
+// scroll-guard: allow horizontal: wide tables scroll sideways

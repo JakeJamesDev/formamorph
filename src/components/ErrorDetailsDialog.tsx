@@ -67,3 +67,4 @@ export function ErrorDetailsHost() {
     </Dialog>
   );
 }
+// scroll-guard: allow horizontal: preformatted text scrolls on both axes

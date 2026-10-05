@@ -108,3 +108,4 @@ export function PlaceholderSectionList({
 }
 
 export default PlaceholderSectionList;
+// scroll-guard: allow migration-candidate: small editor utility; keyboard reveal and drop targets not checked

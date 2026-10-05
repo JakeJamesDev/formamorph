@@ -1249,3 +1249,4 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 
 MultiSelect.displayName = "MultiSelect";
 export type { MultiSelectOption, MultiSelectGroup, MultiSelectProps };
+// scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input

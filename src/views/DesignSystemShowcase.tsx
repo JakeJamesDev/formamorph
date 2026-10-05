@@ -430,3 +430,4 @@ export function DesignSystemShowcase() {
 }
 
 export default DesignSystemShowcase;
+// scroll-guard: allow migration-candidate: whole-page scroller for the showcase
