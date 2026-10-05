@@ -176,6 +176,8 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Q31.** (User ruling 2026-10-05, after an agent review of a scratch-world design.) Ticket 09 landed the stand-in persona: on Formaquestion's run the empty persona holds every persona-capable trait name, and those switches return as pending. A full scratch world (assumed traits, placeholders, entities) was rejected: the analysis exposes no name set, the nearest-name split miscalls a new `Rage` beside `Race`, and a blank world hides `Helth` beside `Health`. Ticket 10 does the two parts that hold: unknown names with no near match are tagged *not in this world, create it*, and unknown stats are assumed at 0 in 0–100 so `value / max` is a number. 08 waits for 10 so the GPU window is spent once.
 
+- **Q32.** (Ticket 10 landing, 2026-10-05.) The create-it tag needs no near match among every owner's names, not only the owner the code reached, so a typo of a name another owner holds stays an error. Result shape: top-level `notInWorld [{line, kind, name, path}]` and `run.assumed` (stat names). Untested edge: two persona-capable entities sharing a placeholder name give the stand-in two children of that name; the pin reports pending and the values check follows sandbox key order.
+
 ## Backlog
 
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
