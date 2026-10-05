@@ -1,6 +1,7 @@
 # Spec: Bubble Chat Style
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-05. Tickets 01-07 done. Last landing 852aa6f6. Gates green on 2026-10-05.
 Spec session: bubble-chat-style — spec
 
 ## Problem Statement
