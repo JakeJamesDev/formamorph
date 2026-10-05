@@ -46,6 +46,7 @@ On a code question, or when a stat's Code tab is open, the help request carries 
 | Q27 | In Simple editor mode the stat panel has no Code tab, so it does not register for Insert. Insert is disabled and its tooltip says to switch the editor to Advanced and open a stat's Code tab. Insert never changes the editor mode itself |
 | Q28 | The replace confirm keeps the templates' title "Replace The Existing Code" with the description "This box already has code. Inserting this code overwrites it." |
 | Q29 | On the mobile sheet, the sheet closes as soon as the panel takes the insert: on the write, or when it raises the replace confirm, so the confirm is never hidden behind the sheet |
+| Q30 | On desktop the help window closes while the panel's replace confirm is open and reopens when it closes, Confirm or Cancel, the same rule the window applies to its own dialogs. The window sits above every dialog and covered the Confirm button at 1024 wide |
 
 ## User Stories
 
