@@ -1136,7 +1136,7 @@ Supporter Flair marks an account that supports the project on Patreon. It is a p
 
 ### Composition
 
-- 🎨 **Two tier tokens.** `--supporter` is coral. `--supporter-plus` is magenta. Both stay the same in every palette, so a palette never blurs a tier against its own primary color.
+- 🎨 **Two tier tokens.** `--supporter` is magenta. `--supporter-plus` is purple. Both stay the same in every palette, so a palette never blurs a tier against its own primary color.
 - 🏷️ **Badges.** A pill with an icon. Supporter has a heart on a light tint. Supporter+ has a heart with a plus, a stronger tint, and an outline, so the tiers differ by shape and not only by hue.
 - 🔤 **Names.** The name takes its tier color. Use no other change to the name.
 - 🖼️ **Profile Image ring.** A ring in the tier color with a gap to the image, drawn inside the image's own footprint so the element keeps its size and no container clips it. The ring is 1 pixel at the two small sizes, 2 pixels at the middle sizes, and 3 pixels at the largest size.
