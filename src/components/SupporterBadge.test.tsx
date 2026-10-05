@@ -48,6 +48,12 @@ describe('the heartbeat on arrival', () => {
   const heart = (container: HTMLElement) => container.querySelector('.supporter-heart') as SVGElement;
   const arrives = (container: HTMLElement) => heart(container).classList.contains('supporter-heart-arrive');
 
+  it('is a tab stop, so a keyboard reaches the beat and the tenure', () => {
+    const { container } = render(<SupporterBadge tier="supporter" beatKey="acct-tab" />);
+
+    expect((container.querySelector('.supporter-badge') as HTMLElement).tabIndex).toBe(0);
+  });
+
   it('beats the first badge for an account', () => {
     const { container } = render(<SupporterBadge tier="supporter" beatKey="acct-first" />);
 

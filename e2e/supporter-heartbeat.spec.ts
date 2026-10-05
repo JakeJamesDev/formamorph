@@ -94,6 +94,26 @@ test('the heart beats on arrival, rests, and beats again on every hover', async 
   expect(distinct(await hoverFrames(page), 'icon').size).toBeGreaterThan(1);
 });
 
+test('keyboard focus beats the heart', async ({ page }) => {
+  await openReference(page);
+  await stopSampling(page);
+  await page.mouse.move(1, 1);
+  await page.waitForTimeout(200);
+  await startSampling(page);
+  // Tab from just before the badge, so the focus is keyboard-made and :focus-visible applies.
+  await page.locator(PILL).first().evaluate((el) => {
+    const probe = document.createElement('button');
+    probe.textContent = 'probe';
+    el.parentElement!.insertBefore(probe, el);
+    probe.focus();
+  });
+  await page.keyboard.press('Tab');
+  await expect(page.locator(PILL).first()).toBeFocused();
+  await page.waitForTimeout(800);
+
+  expect(distinct(await stopSampling(page), 'icon').size).toBeGreaterThan(1);
+});
+
 test('the second pulse is smaller than the first', async ({ page }) => {
   await openReference(page);
   const [first, second, ...more] = pulsePeaks(await hoverFrames(page));
