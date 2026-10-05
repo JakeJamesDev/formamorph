@@ -1,4 +1,4 @@
-import { Heart, Sparkles } from "lucide-react";
+import { Heart, HeartPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
 import { SUPPORTER_BADGE_STYLES, SUPPORTER_LABELS, supporterTenure } from "@/lib/supporterFlair";
@@ -18,7 +18,7 @@ interface SupporterBadgeProps {
  * adds an outline and a second icon; the tiers do not rest on hue alone.
  */
 export function SupporterBadge({ tier, since, className }: SupporterBadgeProps) {
-  const Icon = tier === 'supporter_plus' ? Sparkles : Heart;
+  const Icon = tier === 'supporter_plus' ? HeartPlus : Heart;
 
   const tenure = supporterTenure(since);
 
