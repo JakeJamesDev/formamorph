@@ -197,7 +197,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   }, [focusField, onTabChange]);
 
   // The help window's Insert writes a box the way typing does, then shows that box on the Code tab.
-  const landOnBox = useLanding(findBox, { pulse: true, focus: boxEditor });
+  const landOnBox = useLanding(findBox, { focus: boxEditor });
   const [pendingInsert, setPendingInsert] = useState<{ timing: StatCodeTiming; code: string } | null>(null);
   const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
     apply({ [CODE_FIELD[timing]]: code });

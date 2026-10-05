@@ -123,13 +123,14 @@ export default defineConfig({
             // baseline harness writes dumps, profiles and docs of its own. A reload mid-run kills the scripted
             // turn it was driving ("Execution context was destroyed" / "__baseline is undefined").
             // Worktrees and build output too: a ticket's `npm run build` holds files in its dist/, and a watch
-            // on a held file throws EBUSY, which kills the main checkout's dev server.
+            // on a held file throws EBUSY, which kills the main checkout's dev server. The worktree ignore is
+            // anchored to this config's own folder: a `**/` form also matches a worktree server's own sources.
             ignored: [
               '**/graphify-out/**',
               '**/testing/**',
               '**/graph.json',
               '**/GRAPH_REPORT.md',
-              '**/.claude/worktrees/**',
+              path.resolve(__dirname, '.claude/worktrees/**').replace(/\\/g, '/'),
               '**/.scratch/**',
               '**/dist/**',
             ],

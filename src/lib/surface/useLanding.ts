@@ -6,7 +6,7 @@ import { findTargetRow } from './surfaceTargets';
 const LANDING_FRAMES = 30;
 
 export interface LandingOptions {
-  /** Draws the Landing Pulse on the row. */
+  /** Draws the Landing Pulse on the row. On unless a landing turns it off. */
   pulse?: boolean;
   /** Where the row sits in its scroller after the scroll. */
   block?: ScrollLogicalPosition;
@@ -35,7 +35,7 @@ export function useLanding<T>(find: (target: T) => HTMLElement | null, options: 
         if (++frames < LANDING_FRAMES) frame = requestAnimationFrame(look);
         return;
       }
-      const { pulse = false, block = 'nearest', focus = landingControl } = latest.current.options;
+      const { pulse = true, block = 'nearest', focus = landingControl } = latest.current.options;
       row.scrollIntoView({ block });
       focus(row)?.focus({ preventScroll: true });
       if (pulse) cancelPulse = pulseLanding(row);
@@ -53,7 +53,7 @@ const findInDocument = (route: string) => findTargetRow(document, route);
 
 /** The function form of `useTargetLanding`, for a host that lands from an event handler. */
 export function useRouteLanding(): (route: string) => void {
-  return useLanding(findInDocument, { pulse: true });
+  return useLanding(findInDocument);
 }
 
 /**

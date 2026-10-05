@@ -7,7 +7,10 @@ test('all design references fit the viewport and remain reachable', async ({ pag
   const showcase = page.locator('[data-design-system-showcase]');
   await expect(showcase).toBeVisible();
 
-  for (const name of ['Settings', 'Markdown', 'Community Cards', 'Find', 'Code Templates', 'Locations', 'Context Menu', 'Rich Lists', 'Footer Actions', 'Panel Tabs', 'Formaquestion', 'Preset Header', 'Landing Pulse']) {
+  // The tabs come from the showcase's own registry, so a new reference needs no edit here.
+  const names = await showcase.getByRole('tab').allTextContents();
+  expect(names.length).toBeGreaterThan(0);
+  for (const name of names) {
     const tab = page.getByRole('tab', { name, exact: true });
     await tab.click();
     await expect(tab).toHaveAttribute('aria-selected', 'true');
