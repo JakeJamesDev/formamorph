@@ -1,6 +1,7 @@
 # Spec: Take Me There Targets
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-04, tickets 01 to 08, last landing 81247ec9. Closed without gates.
 Spec session: take-me-there-targets — spec
 
 ## Problem Statement
