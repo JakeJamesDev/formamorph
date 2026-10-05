@@ -743,4 +743,111 @@ describe('the stats map in stat code', () => {
       expect(messages('const o = { clock: { time: 1 } }; return o.clock.time;')).toEqual([]);
     });
   });
+
+  describe('whole stats used as numbers', () => {
+    /** The text each diagnostic underlines, beside its message. */
+    const flagged = (code: string, options?: Parameters<typeof statCodeDiagnostics>[1]) =>
+      statCodeDiagnostics(code, options).map((problem) => [code.slice(problem.from, problem.to), problem.severity, problem.message]);
+    const wholeStat = (text: string) => [text, 'error', `${text} is a whole stat, not a number. Use ${text}.value.`];
+
+    it('flags a stat compared to a number and suggests .value', () => {
+      expect(flagged('return stats.Courage >= 50;')).toEqual([wholeStat('stats.Courage')]);
+    });
+
+    it('flags self in arithmetic', () => {
+      expect(flagged('return self + 1;')).toEqual([wholeStat('self')]);
+    });
+
+    it('flags a bracketed stat inside an if condition', () => {
+      expect(flagged('if (stats["Hit Points"] > 0) return 1;\nreturn 0;')).toEqual([wholeStat('stats["Hit Points"]')]);
+    });
+
+    it('flags a stat reached by a computed key or through ?.', () => {
+      expect(flagged('return stats[self.name] * 2;')).toEqual([wholeStat('stats[self.name]')]);
+      expect(flagged('return stats?.Courage < 5;')).toEqual([wholeStat('stats?.Courage')]);
+    });
+
+    it('flags each comparison and arithmetic operator, on either side', () => {
+      for (const op of ['<', '>', '<=', '>=', '+', '-', '*', '/', '%', '**']) {
+        expect(flagged(`return self ${op} 2;`), op).toEqual([wholeStat('self')]);
+        expect(flagged(`return 2 ${op} stats.Int;`), op).toEqual([wholeStat('stats.Int')]);
+      }
+    });
+
+    it('flags both operands when both are whole stats', () => {
+      expect(flagged('return stats.A - stats.B;')).toEqual([wholeStat('stats.A'), wholeStat('stats.B')]);
+    });
+
+    it('looks through parentheses', () => {
+      expect(flagged('return ((self)) * 2;')).toEqual([wholeStat('self')]);
+    });
+
+    it('looks past comments around the operator', () => {
+      expect(flagged('return self /* hp */ + 1;')).toEqual([wholeStat('self')]);
+      expect(flagged('return - /* hp */ self;')).toEqual([wholeStat('self')]);
+      expect(flagged('return self === /* n */ 3;')).toEqual([wholeStat('self')]);
+    });
+
+    it('flags unary minus and plus', () => {
+      expect(flagged('return -self;')).toEqual([wholeStat('self')]);
+      expect(flagged('return +stats.Int;')).toEqual([wholeStat('stats.Int')]);
+    });
+
+    it('flags equality only against a number literal', () => {
+      expect(flagged('return stats.Level === 3;')).toEqual([wholeStat('stats.Level')]);
+      expect(flagged('return 3 != self;')).toEqual([wholeStat('self')]);
+      expect(flagged('return self == -1;')).toEqual([wholeStat('self')]);
+      expect(flagged('return (stats.Level) !== (3);')).toEqual([wholeStat('stats.Level')]);
+      expect(flagged('return self === -(3);')).toEqual([wholeStat('self')]);
+    });
+
+    it('accepts identity checks between entries and against null', () => {
+      for (const code of [
+        'return Object.values(stats).find((s) => s !== self);',
+        'return stats.A === stats.B;',
+        'if (self == null) return 0;\nreturn 1;',
+        'return stats.Mood === "happy";',
+      ]) {
+        expect(statCodeDiagnostics(code), code).toEqual([]);
+      }
+    });
+
+    it('accepts .value forms, member reads and entries passed to functions', () => {
+      for (const code of [
+        'return stats.Courage.value >= 50;',
+        'return self.value + 1;',
+        'return stats["Hit Points"].value > 0 ? 1 : 0;',
+        'return self.max - self.value;',
+        'return -self.value;',
+        'return Math.min(stats.Int.max, 1) + JSON.stringify(self).length;',
+      ]) {
+        expect(statCodeDiagnostics(code), code).toEqual([]);
+      }
+    });
+
+    it('leaves logical operators, negation and compound assignment alone', () => {
+      for (const code of ['return self && 1;', 'return stats.A ?? 0;', 'return !self;', 'let x = 1;\nx += self;\nreturn x;']) {
+        expect(statCodeDiagnostics(code), code).toEqual([]);
+      }
+    });
+
+    it('leaves a self or stats the code declared itself alone', () => {
+      expect(statCodeDiagnostics('const self = 3;\nreturn self + 1;')).toEqual([]);
+      expect(statCodeDiagnostics('const stats = { A: 1 };\nreturn stats.A + 1;')).toEqual([]);
+    });
+
+    it('does not read an entry off another object that ends in stats', () => {
+      expect(statCodeDiagnostics('const o = { stats: { A: 1 } };\nreturn o.stats.A + 1;')).toEqual([]);
+    });
+
+    it('flags a stat named by a slot in the template editor', () => {
+      expect(flagged('return stats[{{who:stat}}] > {{n:number=1}};', { slots: true })).toEqual([wholeStat('stats[{{who:stat}}]')]);
+      expect(statCodeDiagnostics('return stats[{{who:stat}}].value > {{n:number=1}};', { slots: true })).toEqual([]);
+    });
+
+    it('leaves an operator a slot holds alone in the template editor', () => {
+      expect(statCodeDiagnostics('return self.value {{op:choice(>=|<=)}} {{n:number=1}};', { slots: true })).toEqual([]);
+      expect(statCodeDiagnostics('return {{x:choice(self+1|2)}};', { slots: true })).toEqual([]);
+    });
+  });
 });

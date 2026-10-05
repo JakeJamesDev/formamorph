@@ -43,6 +43,11 @@ describe('a surface other than stat code', () => {
     expect(messages('return clock.time;', SCRIPT)).toEqual(['“clock” isn’t available in this script.']);
   });
 
+  it('does not read self or stats as whole stats, since neither is one of its names', () => {
+    expect(messages('return self + stats.A;', SCRIPT))
+      .toEqual(['“self” isn’t available in this script.', '“stats” isn’t available in this script.']);
+  });
+
   it('accepts its own names, built-ins and language names', () => {
     expect(messages('return JSON.stringify({ n: Math.max(1, 2), who: args.name, w: world });', SCRIPT)).toEqual([]);
   });
