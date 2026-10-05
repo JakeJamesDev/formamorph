@@ -1139,7 +1139,7 @@ Supporter Flair marks an account that supports the project on Patreon. It is a p
 - 🎨 **Two tier tokens.** `--supporter` is coral. `--supporter-plus` is magenta. Both stay the same in every palette, so a palette never blurs a tier against its own primary color.
 - 🏷️ **Badges.** A pill with an icon. Supporter has a heart on a light tint. Supporter+ has a sparkle, a stronger tint, and an outline, so the tiers differ by shape and not only by hue.
 - 🔤 **Names.** The name takes its tier color. Use no other change to the name.
-- 🖼️ **Profile Image ring.** A ring in the tier color with a gap to the image. The ring is 1 pixel at the two small sizes, 2 pixels at the middle sizes, and 3 pixels at the largest size.
+- 🖼️ **Profile Image ring.** A ring in the tier color with a gap to the image, drawn inside the image's own footprint so the element keeps its size and no container clips it. The ring is 1 pixel at the two small sizes, 2 pixels at the middle sizes, and 3 pixels at the largest size.
 - 🧭 **Beside staff.** The staff badges stay square text tags in blue, green, and the palette's primary. A pill with an icon never reads as a staff tag.
 
 ### When to use it
@@ -1167,7 +1167,7 @@ The Admin badge takes the palette's primary color. In Rose and Bubble Gum the pr
 | Tier labels and styles, ring classes | [`supporterFlair.ts`](../src/lib/supporterFlair.ts) |
 | Badge | `SupporterBadge` in [`SupporterBadge.tsx`](../src/components/SupporterBadge.tsx) |
 | Staff badge for comparison | `RoleBadge` in [`RoleBadge.tsx`](../src/components/RoleBadge.tsx) |
-| Profile Image | `UserAvatar` in [`UserAvatar.tsx`](../src/components/UserAvatar.tsx), with `supporterRing` as its `className` |
+| Profile Image | `UserAvatar` in [`UserAvatar.tsx`](../src/components/UserAvatar.tsx), which wraps the face in the `supporterRing` box when a tier is set |
 
 Open `#dev?modal=designSystem&tab=supporter-flair` for the light and dark panels side by side.
 

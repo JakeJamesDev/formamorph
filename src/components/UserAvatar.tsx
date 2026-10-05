@@ -44,36 +44,34 @@ export function UserAvatar({ username, avatarUrl, size = 'sm', supporter, classN
 
   const tier = flairTier(supporter);
 
-  const shared = cn(
-    'shrink-0 rounded-full object-cover select-none',
-    SIZES[size],
-    tier && supporterRing(tier, size),
-    className
-  );
-
-  if (showImage && src) {
-    return (
-      <img
-        src={src}
-        // Read out as the person, not as "avatar" — the name beside it is often the same word, and a
-        // screen reader saying it twice is noise.
-        alt={username || 'Profile image'}
-        loading="lazy"
-        onError={() => setFailed(src)}
-        className={shared}
-      />
-    );
-  }
+  // The sized box. With a tier it is a ringed wrapper and the face fills what the ring's gap leaves,
+  // so the footprint on the page never changes and nothing extends past the element.
+  const box = cn('shrink-0 rounded-full select-none', SIZES[size], tier && supporterRing(tier, size), className);
+  const face = cn('rounded-full object-cover', tier ? 'h-full w-full' : box);
 
   const hue = avatarHue(username);
 
-  return (
+  const inner = showImage && src ? (
+    <img
+      src={src}
+      // Read out as the person, not as "avatar" — the name beside it is often the same word, and a
+      // screen reader saying it twice is noise.
+      alt={username || 'Profile image'}
+      loading="lazy"
+      onError={() => setFailed(src)}
+      className={face}
+    />
+  ) : (
     <span
       aria-hidden="true"
-      className={cn(shared, 'inline-flex items-center justify-center font-semibold text-white')}
+      className={cn(face, 'inline-flex items-center justify-center font-semibold text-white')}
       style={{ backgroundColor: `hsl(${hue} 45% 42%)` }}
     >
       {avatarInitial(username)}
     </span>
   );
+
+  if (!tier) return inner;
+
+  return <span className={cn(box, 'inline-block')}>{inner}</span>;
 }

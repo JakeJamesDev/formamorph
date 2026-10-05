@@ -3,7 +3,7 @@ import { Meta, SectionTitle } from '@/components/ui/typography';
 import { RoleBadge } from '@/components/RoleBadge';
 import { SupporterBadge } from '@/components/SupporterBadge';
 import { UserAvatar, type AvatarSize } from '@/components/UserAvatar';
-import { SUPPORTER_LABELS, SUPPORTER_NAME_STYLES, SUPPORTER_TIERS, supporterRing } from '@/lib/supporterFlair';
+import { SUPPORTER_LABELS, SUPPORTER_NAME_STYLES, SUPPORTER_TIERS } from '@/lib/supporterFlair';
 import type { SupporterTier } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +33,7 @@ function Swatch({ tier }: { tier: SupporterTier }) {
 function ThreadRow({ name, tier, role }: Sample) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <UserAvatar username={name} size="md" className={tier ? supporterRing(tier, 'md') : undefined} />
+      <UserAvatar username={name} size="md" supporter={tier ? { tier, since: null } : null} />
       <span className={cn('truncate text-label font-medium', tier && SUPPORTER_NAME_STYLES[tier])}>{name}</span>
       {tier && <SupporterBadge tier={tier} />}
       <RoleBadge role={role} />
@@ -83,7 +83,7 @@ function Sample() {
         <div className="flex flex-wrap items-center gap-4">
           {TIERS.map((tier) => (
             <div key={tier} className="flex items-center gap-3 p-1">
-              {SIZES.map((size) => <UserAvatar key={size} username="river-quill" size={size} className={supporterRing(tier, size)} />)}
+              {SIZES.map((size) => <UserAvatar key={size} username="river-quill" size={size} supporter={{ tier, since: null }} />)}
             </div>
           ))}
         </div>
