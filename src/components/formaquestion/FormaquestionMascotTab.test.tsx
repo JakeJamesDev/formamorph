@@ -64,15 +64,19 @@ vi.mock('@/lib/formaquestion/mascotCardFile', async (importOriginal) => {
 
 let current: HelpSettings;
 let control: MascotDraftControl;
+const openGeneral = vi.fn();
+/** Flips the Mascot switch the way the General tab does. */
+let setMascotOn: (on: boolean) => void;
 
 /** The tab over the draft, with the unsaved-changes prompt Formaquestion Settings draws beside it. */
 function Harness({ initial }: { initial: HelpSettings }) {
   const [settings, setSettings] = useState(initial);
   current = settings;
+  setMascotOn = (mascot) => setSettings((was) => helpSettingsOf({ mascot }, was));
   control = useMascotDraft(settings, (change) => setSettings((was) => helpSettingsOf(change, was)));
   return (
     <>
-      <MascotTab settings={settings} onChange={(change) => setSettings((was) => helpSettingsOf(change, was))} control={control} />
+      <MascotTab settings={settings} control={control} onOpenGeneral={openGeneral} />
       <UnsavedChangesDialog {...control.leavePrompt} />
     </>
   );
@@ -80,6 +84,8 @@ function Harness({ initial }: { initial: HelpSettings }) {
 
 /** The tab on a custom mascot, "Mine", holding `rig`. */
 const mount = (rig: MascotRig = DEFAULT_MASCOT_RIG) => render(<Harness initial={{ ...DEFAULT_HELP_SETTINGS, mascotPresets: mascotStoreOf(rig) }} />);
+/** The tab on "Mine" with the Mascot off. */
+const mountOff = (rig: MascotRig = DEFAULT_MASCOT_RIG) => render(<Harness initial={{ ...DEFAULT_HELP_SETTINGS, mascot: false, mascotPresets: mascotStoreOf(rig) }} />);
 /** The tab on the Default mascot. */
 const mountDefault = () => render(<Harness initial={DEFAULT_HELP_SETTINGS} />);
 /** The draft's rig: what the tab shows. */
@@ -100,6 +106,7 @@ const fileInput = (id: string) => document.getElementById(`image-upload-${id}`) 
 const layerOf = (id: string) => drafted().layers.find((row) => row.id === id)!;
 
 beforeEach(async () => {
+  openGeneral.mockClear();
   uploaded.length = 0;
   await clearMascotImages();
 });
@@ -368,45 +375,82 @@ describe('the controls column', () => {
   });
 });
 
-describe('the switch row', () => {
-  const switchRow = () => screen.getByTestId('mascot-switch-row');
+describe('the Mascot off state', () => {
+  const OFF_LINE = 'The Mascot is off. Select “General” to turn it on.';
+  const status = () => screen.getByTestId('mascot-off-status');
   const widget = () => document.querySelector<HTMLElement>('[data-fq-mascot-preview]')!;
-  const controls = () => document.querySelector<HTMLElement>('[data-fq-mascot-controls]')!;
+  /** Every control the tab draws, the status line's link aside. */
+  const tabControls = () => [...document.querySelectorAll<HTMLElement>('button, input, textarea, select, [role="slider"], [role="combobox"]')]
+    .filter((el) => !status().contains(el));
 
-  it('sits under the preset row and above both columns, outside every scroller', () => {
-    mount();
-    const box = screen.getByRole('checkbox', { name: 'Mascot' });
-    expect(switchRow()).toContainElement(box);
-    expect(box.closest('[data-fq-scroll]')).toBeNull();
-    expect(controls()).not.toContainElement(box);
-    expect(widget()).not.toContainElement(box);
-    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(follows(screen.getByTestId('mascot-preset-row'), switchRow())).toBe(true);
-    expect(follows(switchRow(), widget())).toBe(true);
-    expect(follows(switchRow(), controls())).toBe(true);
+  it('has no Mascot switch on the tab, on or off', () => {
+    const view = mount();
+    expect(screen.queryByRole('checkbox', { name: 'Mascot' })).toBeNull();
+    view.unmount();
+    mountOff();
+    expect(screen.queryByRole('checkbox', { name: 'Mascot' })).toBeNull();
   });
 
-  it('turns the chrome on and off at once, with a dirty draft untouched, on a custom mascot', async () => {
+  it('draws no line and leaves every control enabled while the Mascot is on', () => {
+    mount();
+    expect(status()).toBeEmptyDOMElement();
+    expect(screen.queryByText(/The Mascot is off/)).toBeNull();
+    expect(document.querySelector('fieldset[disabled]')).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Preset' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(within(widget()).getByRole('button', { name: 'Play' })).toBeEnabled();
+  });
+
+  it('draws one line, in an announced region, when the Mascot is off', () => {
+    mountOff();
+    expect(status()).toHaveTextContent(OFF_LINE);
+    expect(screen.getAllByText(/The Mascot is off/)).toHaveLength(1);
+    expect(status()).toHaveAttribute('role', 'status');
+  });
+
+  it('opens General from the link, and the link stays usable', async () => {
+    mountOff();
+    const link = within(status()).getByRole('button', { name: 'General' });
+    expect(link).toBeEnabled();
+    expect(link.closest('fieldset')).toBeNull();
+    await userEvent.click(link);
+    expect(openGeneral).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the preset header, the preview and its Play, the editor and the footer, all hidden', () => {
+    mountOff();
+    const controls = tabControls();
+    // The preset select and its actions, the preview, the editor rows and the footer are all in this list.
+    expect(controls.length).toBeGreaterThan(20);
+    for (const el of controls) {
+      expect(el.closest('fieldset[disabled]'), el.outerHTML.slice(0, 80)).not.toBeNull();
+      if (el.matches('button, input, textarea, select')) expect(el).toBeDisabled();
+    }
+    for (const control of [screen.getByRole('combobox', { name: 'Preset' }), screen.getByRole('button', { name: 'Duplicate' }), screen.getByRole('textbox', { name: 'Voice' }), within(widget()).getByRole('button', { name: 'Play' }), screen.getByRole('button', { name: 'Undo' }), screen.getByRole('button', { name: 'Save' })]) {
+      expect(control).toBeDisabled();
+    }
+    // jsdom loads no CSS, so the hiding class is the claim here; the e2e spec proves it paints hidden.
+    expect(widget().closest('.hidden')).not.toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Voice' }).closest('.hidden')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Save' }).closest('.hidden')).toBeNull();
+  });
+
+  it('keeps a dirty draft through the off state and brings every control back when the Mascot is on again', async () => {
     mount();
     await userEvent.click(within(layerRow('Rest')).getByRole('checkbox', { name: 'Enable Rest' }));
     const dirtyRig = drafted();
-    expect(control.dirty).toBe(true);
-    expect(current.mascot).toBe(true);
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Mascot' }));
-    expect(current.mascot).toBe(false);
+    act(() => setMascotOn(false));
+    expect(status()).toHaveTextContent(OFF_LINE);
+    expect(screen.getByRole('combobox', { name: 'Preset' })).toBeDisabled();
     expect(control.dirty).toBe(true);
     expect(drafted()).toBe(dirtyRig);
-    expect(saved()).toEqual(DEFAULT_MASCOT_RIG);
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Mascot' }));
-    expect(current.mascot).toBe(true);
-  });
-
-  it('works on the read-only Default mascot too', async () => {
-    mountDefault();
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Mascot' }));
-    expect(current.mascot).toBe(false);
+    act(() => setMascotOn(true));
+    expect(status()).toBeEmptyDOMElement();
+    expect(screen.getByRole('combobox', { name: 'Preset' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    expect(drafted()).toBe(dirtyRig);
   });
 });
 
@@ -657,11 +701,21 @@ describe('the Mask', () => {
     expect(drafted().mask).toEqual(CORNER_MASK);
   });
 
+  const HANDLES = ['Top-Left Corner', 'Top Edge', 'Top-Right Corner', 'Right Edge', 'Bottom-Right Corner', 'Bottom Edge', 'Bottom-Left Corner', 'Left Edge', 'Move Mask'];
+
   it('draws eight handles and a move grip on the box', () => {
     mount();
     laidOut();
-    for (const name of ['Top-Left Corner', 'Top Edge', 'Top-Right Corner', 'Right Edge', 'Bottom-Right Corner', 'Bottom Edge', 'Bottom-Left Corner', 'Left Edge', 'Move Mask']) {
+    for (const name of HANDLES) {
       expect(within(box()).getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('disables every handle while the Mascot is off', () => {
+    mountOff();
+    laidOut();
+    for (const name of HANDLES) {
+      expect(within(box()).getByRole('button', { name, hidden: true }), name).toBeDisabled();
     }
   });
 
@@ -1044,12 +1098,11 @@ describe('full screen', () => {
   const mascotWindow = () => screen.getByRole('dialog', { name: 'Mascot' });
   const enter = () => userEvent.click(screen.getByRole('button', { name: 'View full screen' }));
 
-  it('lifts the whole tab into the window: header, switch row, both columns and the footer', async () => {
+  it('lifts the whole tab into the window: header, both columns and the footer', async () => {
     mount();
     await enter();
     const box = within(mascotWindow());
     expect(box.getByTestId('mascot-preset-row')).toBeInTheDocument();
-    expect(box.getByTestId('mascot-switch-row')).toBeInTheDocument();
     expect(box.getByRole('region', { name: 'Preview' })).toBeInTheDocument();
     expect(box.getByRole('textbox', { name: 'Voice' })).toBeInTheDocument();
     expect(box.getByTestId('mascot-footer')).toBeInTheDocument();

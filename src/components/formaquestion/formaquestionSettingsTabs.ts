@@ -18,6 +18,7 @@ export function asFormaquestionSettingsTab(value: string | undefined): Formaques
 
 /** The label and the description of each General row. */
 export const GENERAL_COPY = {
+  mascot: { label: 'Mascot', hint: 'Shows the Mascot with a bare chat column' },
   chatStyle: {
     label: 'Chat Style',
     hint: 'Sets how the window looks. Auto is Minimal with the Mascot on.',
@@ -58,7 +59,9 @@ export const GENERAL_COPY = {
 
 /** The copy of the Mascot tab. */
 export const MASCOT_COPY = {
-  mascot: { label: 'Mascot', hint: 'Shows the Mascot with a bare chat column' },
+  title: 'Mascot',
+  /** The status line of the off state. The link is the General tab's name, quoted like a control label. */
+  off: { before: 'The Mascot is off. Select “', link: 'General', after: '” to turn it on.' },
   voice: { label: 'Voice', hint: 'Tells your AI how help answers sound while the mascot is on' },
   scale: { label: 'Scale', hint: "Sizes the Mascot beside the chat. Auto fits the chat's height." },
   preview: {

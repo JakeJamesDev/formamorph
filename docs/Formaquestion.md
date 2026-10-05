@@ -397,13 +397,14 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 - This device keeps each setting. The settings are not in a backup or an export.
 
 ### General
-<!-- keywords: chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
+<!-- keywords: mascot switch, turn off the mascot, turn on the mascot, chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
 <!-- route: formaquestionSettings.general -->
 
-The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Chat Style**, **Mascot Position** and **Backdrop** are in **Window**.
+The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Mascot**, **Chat Style**, **Mascot Position** and **Backdrop** are in **Window**.
 
 | Setting | Default | What it does |
 |---|---|---|
+| **Mascot** | On | Shows the mascot with a bare chat column. It takes effect at once, with no **Save**. With it off, the **Mascot** tab disables every control and shows a link back to this row. |
 | **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Minimal** with the **Mascot** on. The **⋮** menu has the same three choices. |
 | **Mascot Position** | Auto | Sets whether the mascot stands beside or under the chat: **Beside**, **Below** or **Auto**. **Auto** stands the mascot under a short chat and beside a tall one. The **⋮** menu has the same three choices. |
 | **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Minimal** style. Set 0 for none. |
@@ -546,7 +547,7 @@ A Tool that's on reads the world you have open, so text from that world can go t
 <!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot, mascot full screen -->
 <!-- route: formaquestionSettings.mascot -->
 
-The **Mascot** tab turns the mascot on or off and edits its rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions.
+The **Mascot** tab edits the mascot's rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions. The **Mascot** switch is in the **Window** group on the **General** tab. With the mascot off, this tab disables every control and shows "The Mascot is off. Select “General” to turn it on." Select **General** in that line to open the **General** tab.
 
 You can keep more than one mascot. The **Preset** list at the top of the tab picks the one Formaquestion shows. **Default** is the mascot that comes with the app. It is read-only, and it updates with each release. To change it, select **Duplicate** and edit the copy.
 
