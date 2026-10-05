@@ -98,7 +98,7 @@ The row is the first item on the **Search** tab and on the **Guide** tab. It nam
 <!-- route: formaquestion -->
 
 1. Drag the title bar to move the window. In the minimal chat, drag the grip on the pill.
-2. Drag the bottom right corner to change its size. Each chat style keeps its own size.
+2. Move your pointer near any side or corner of the window and drag the handle that shows there. A side changes one dimension, a corner changes both. Each chat style keeps its own size.
 
 To see the contents and a section side by side, select **Wide View** in the title bar. Select it again to go back.
 
@@ -115,13 +115,13 @@ With the keyboard, press Tab until the **Help** tab has focus. Then press the ar
 <!-- route: formaquestionSettings.general#chat-style -->
 
 1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column or over the mascot.
-2. Under **Chat Style**, select **Auto**, **Bubble**, **Minimal** or **Full**.
+2. Under **Chat Style**, select **Auto**, **Minimal** or **Full**.
 
 You can also set it in the **Window** group of the **General** tab. Both places change the same setting.
 
 - **Auto** is **Bubble** while the mascot is on, and **Full** while it's off.
-- **Bubble** shows the mascot speaking the newest answer from a speech bubble. With the mascot off, **Bubble** shows **Minimal**.
-- In **Bubble**, the pill and the mascot's grip show when the window opens and hide after one second, and the speech bubble's box fades with them. The chat's corner grip stays in view. They come back when your pointer is over the mascot or a piece, when keyboard focus is on a piece, and while the **⋮** menu is open. On a touch screen they stay up. With reduced motion, they show and hide with no fade.
+- **Bubble** shows the mascot speaking the newest answer from a speech bubble. It needs the mascot, so **Auto** is the only way to it.
+- In **Bubble**, drag the mascot to move the window. The pill and the mascot's grip show when the window opens and hide after one second, and the speech bubble's box fades with them. The chat's grip stays in view, on the chat corner with the most free screen beyond the window. They come back when your pointer is over the mascot or a piece, when keyboard focus is on a piece, and while the **⋮** menu is open. On a touch screen they stay up. With reduced motion, they show and hide with no fade.
 - **Minimal** is a bare chat column. **Full** is the framed window.
 - **Full** with the mascot on keeps the mascot beside the frame.
 - The window stays where it was, and your conversation stays. Each style keeps its own size. See [The Window](#the-window).

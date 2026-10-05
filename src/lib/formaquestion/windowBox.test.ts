@@ -103,6 +103,28 @@ describe('moveBox and resizeBox', () => {
     expect(largest.x + largest.w).toBeLessThanOrEqual(SCREEN.width);
     expect(largest.y + largest.h).toBeLessThanOrEqual(SCREEN.height);
   });
+
+  it('moves only the edge a side handle holds', () => {
+    expect(resizeBox(start, 100, 60, SCREEN, 'e')).toEqual({ ...start, w: 500 });
+    expect(resizeBox(start, 100, 60, SCREEN, 's')).toEqual({ ...start, h: 560 });
+    expect(resizeBox(start, -100, 60, SCREEN, 'w')).toEqual({ ...start, x: 500, w: 500 });
+    expect(resizeBox(start, 100, -60, SCREEN, 'n')).toEqual({ ...start, y: 140, h: 560 });
+  });
+
+  it('keeps the far edges put from a top left corner drag, and stops at the minimum size and the screen edge', () => {
+    expect(resizeBox(start, -50, -40, SCREEN, 'nw')).toEqual({ x: 550, y: 160, w: 450, h: 540 });
+    const smallest = resizeBox(start, 5000, 5000, SCREEN, 'nw');
+    expect(smallest).toEqual({ x: 1000 - MIN_WIDTH, y: 700 - MIN_HEIGHT, w: MIN_WIDTH, h: MIN_HEIGHT });
+    const largest = resizeBox(start, -5000, -5000, SCREEN, 'nw');
+    expect(largest).toMatchObject({ x: 0, y: 0 });
+    expect(largest.x + largest.w).toBe(1000);
+    expect(largest.y + largest.h).toBe(700);
+  });
+
+  it('passes the handle through resizePieces', () => {
+    const pieces = { mascotAspect: null, placement: 'beside' as const };
+    expect(resizePieces('full', start, -100, 0, SCREEN, pieces, 'w')).toEqual({ ...start, x: 500, w: 500 });
+  });
 });
 
 describe('the stored window', () => {

@@ -401,8 +401,6 @@ describe('the Chat Style', () => {
   it.each([
     { chatStyle: 'auto', mascot: true, chrome: 'bubble', drawsMascot: true },
     { chatStyle: 'auto', mascot: false, chrome: 'full', drawsMascot: false },
-    { chatStyle: 'bubble', mascot: true, chrome: 'bubble', drawsMascot: true },
-    { chatStyle: 'bubble', mascot: false, chrome: 'minimal', drawsMascot: false },
     { chatStyle: 'minimal', mascot: true, chrome: 'minimal', drawsMascot: true },
     { chatStyle: 'minimal', mascot: false, chrome: 'minimal', drawsMascot: false },
     { chatStyle: 'full', mascot: true, chrome: 'full', drawsMascot: true },
@@ -670,7 +668,6 @@ describe('the Scrim', () => {
 
   it.each([
     { chatStyle: 'auto', mascot: true, drawn: true },
-    { chatStyle: 'bubble', mascot: true, drawn: true },
     { chatStyle: 'minimal', mascot: true, drawn: true },
     { chatStyle: 'minimal', mascot: false, drawn: true },
     { chatStyle: 'auto', mascot: false, drawn: false },

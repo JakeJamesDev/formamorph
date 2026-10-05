@@ -19,7 +19,7 @@ import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
   boxOf, defaultWindow, type MascotSide, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
   headHeight, writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, READER_GAP, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
-  type BoxChrome, type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
+  type BoxChrome, type ResizeHandle, type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
 } from '@/lib/formaquestion/windowBox';
 import { bubbleLayout, resizeChat, resizeMascot, FALLBACK_BASE, type BubbleHeights, type BubbleInput, type BubbleLayout } from '@/lib/formaquestion/bubbleLayout';
 import { chatChrome } from '@/lib/formaquestion/helpSettings';
@@ -27,7 +27,7 @@ import type { MenuActions } from './FormaquestionMenu';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
-import { FormaquestionFrame } from './FormaquestionFrame';
+import { FormaquestionFrame, type ResizeHandlers } from './FormaquestionFrame';
 import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
 import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { FormaquestionSettings } from './FormaquestionSettings';
@@ -490,7 +490,18 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     end: (press) => writeStoredWindow(withBox(press.stored, press.chrome, press.latest)),
   });
   const moveHandlers = usePointerDrag(boxDrag(movePieces));
-  const resizeHandlers = usePointerDrag(boxDrag(resizePieces));
+  // One drag per handle, in a fixed order, so the hooks hold still across renders.
+  const resizeFrom = (handle: ResizeHandle): typeof movePieces => (chrome, start, dx, dy, viewport, pieces) => resizePieces(chrome, start, dx, dy, viewport, pieces, handle);
+  const resizeHandlers: ResizeHandlers = {
+    n: usePointerDrag(boxDrag(resizeFrom('n'))),
+    e: usePointerDrag(boxDrag(resizeFrom('e'))),
+    s: usePointerDrag(boxDrag(resizeFrom('s'))),
+    w: usePointerDrag(boxDrag(resizeFrom('w'))),
+    nw: usePointerDrag(boxDrag(resizeFrom('nw'))),
+    ne: usePointerDrag(boxDrag(resizeFrom('ne'))),
+    sw: usePointerDrag(boxDrag(resizeFrom('sw'))),
+    se: usePointerDrag(boxDrag(resizeFrom('se'))),
+  };
   const wide = !sheet && isWide(drawn);
   const swap = () => {
     const toggled = swapWidth(drawn, viewportOf(window));

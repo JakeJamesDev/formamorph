@@ -81,15 +81,13 @@ export const SCRIM_OPACITY_MIN = 0;
 export const SCRIM_OPACITY_MAX = 100;
 export const SCRIM_OPACITY_STEP = 5;
 
-export const CHAT_STYLES = ['auto', 'bubble', 'minimal', 'full'] as const;
+export const CHAT_STYLES = ['auto', 'minimal', 'full'] as const;
 export type ChatStyle = (typeof CHAT_STYLES)[number];
 export const isChatStyle = (value: unknown): value is ChatStyle => CHAT_STYLES.some((style) => style === value);
 
-/** The chrome the window draws: Auto is Bubble while the Mascot is on, and Bubble without her has no speaker, so it draws Minimal. */
+/** The chrome the window draws: Auto is Bubble while the Mascot is on, and Full without her. Bubble is never picked by hand, since it needs her. */
 export function chatChrome({ chatStyle, mascot }: Pick<HelpSettings, 'chatStyle' | 'mascot'>): WindowChrome {
-  if (chatStyle === 'auto') return mascot ? 'bubble' : 'full';
-  if (chatStyle === 'bubble' && !mascot) return 'minimal';
-  return chatStyle;
+  return chatStyle === 'auto' ? (mascot ? 'bubble' : 'full') : chatStyle;
 }
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */

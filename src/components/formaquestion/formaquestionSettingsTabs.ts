@@ -24,7 +24,6 @@ export const GENERAL_COPY = {
     hint: 'Sets how the window looks. Auto is Bubble with the Mascot on.',
     options: [
       { value: 'auto', label: 'Auto' },
-      { value: 'bubble', label: 'Bubble' },
       { value: 'minimal', label: 'Minimal' },
       { value: 'full', label: 'Full' },
     ],

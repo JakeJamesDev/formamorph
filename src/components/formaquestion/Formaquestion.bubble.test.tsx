@@ -177,11 +177,14 @@ describe('the bubble chrome', () => {
     expect(helpWindow()).toHaveAttribute('data-fq-side', 'left');
   });
 
-  it('moves the window by the pill too', async () => {
+  it('leaves the window put from a drag on the pill: she is the handle, so the pill draws no grip icon', async () => {
     await openWindow();
+    const pill = helpWindow().querySelector<HTMLElement>('[data-fq-drag]')!;
+    expect(pill).not.toHaveClass('cursor-move');
+    expect(pill.querySelector('svg.lucide-grip-vertical')).toBeNull();
     const before = left();
-    drag(helpWindow().querySelector<HTMLElement>('[data-fq-drag]')!, -30, 0);
-    expect(left()).toBe(before - 30);
+    drag(pill, -30, 0);
+    expect(left()).toBe(before);
   });
 
   it("sets her scale in the device's Scale store from her own grip, and leaves the chat width alone", async () => {
@@ -458,16 +461,16 @@ describe('Mascot Position under Bubble', () => {
     expect(within(dialog).getByRole('radiogroup', { name: 'Mascot Position' })).toBeInTheDocument();
   });
 
-  it('lists four Chat Styles in the ⋮ menu and the General row', async () => {
+  it('lists three Chat Styles in the ⋮ menu and the General row', async () => {
     await openWindow();
     await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
     const menu = await screen.findByRole('group', { name: 'Chat Style' });
-    expect(within(menu).getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual(['Auto', 'Bubble', 'Minimal', 'Full']);
+    expect(within(menu).getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual(['Auto', 'Minimal', 'Full']);
     await userEvent.keyboard('{Escape}');
 
     await openHelpSettings();
     const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
     expect(within(within(dialog).getByRole('radiogroup', { name: 'Chat Style' })).getAllByRole('radio').map((item) => item.textContent))
-      .toEqual(['Auto', 'Bubble', 'Minimal', 'Full']);
+      .toEqual(['Auto', 'Minimal', 'Full']);
   });
 });

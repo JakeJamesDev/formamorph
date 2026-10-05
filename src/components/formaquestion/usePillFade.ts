@@ -1,4 +1,4 @@
-import { useEffect, useState, type FocusEvent, type HTMLAttributes } from 'react';
+import { useEffect, useRef, useState, type FocusEvent, type HTMLAttributes } from 'react';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
@@ -70,5 +70,35 @@ export function usePillFade(enabled: boolean): PillFade | null {
       setMenuOpen(open);
       if (!open) { setPointer(false); setFocus(false); }
     },
+  };
+}
+
+/** What a handle that shows on hover needs: its state, its look, and the handlers that reveal it. */
+export interface HoverReveal {
+  className: string;
+  'data-fq-fade': 'shown' | 'hidden';
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
+}
+
+/**
+ * Hover-revealed marks, one per key, as the resize handles use: a mark shows while the pointer is over its handle
+ * and hides {@link PILL_FADE_DELAY_MS} after it leaves, with the pill's transition. `always` keys stay shown, for a
+ * touch screen with no hover; `never` keys stay hidden. The pointer is over one handle at a time, so one key holds.
+ */
+export function useHoverReveal<Key extends string>(always: readonly Key[], never: readonly Key[]): (key: Key) => HoverReveal {
+  const reduced = usePrefersReducedMotion();
+  const [hot, setHot] = useState<Key | null>(null);
+  const timer = useRef<number | null>(null);
+  const clear = () => { if (timer.current !== null) { window.clearTimeout(timer.current); timer.current = null; } };
+  useEffect(() => clear, []);
+  return (key) => {
+    const shown = always.includes(key) || (hot === key && !never.includes(key));
+    return {
+      className: cn(!shown && 'opacity-0', !reduced && 'transition-opacity duration-300'),
+      'data-fq-fade': shown ? 'shown' : 'hidden',
+      onPointerEnter: () => { clear(); setHot(key); },
+      onPointerLeave: () => { clear(); timer.current = window.setTimeout(() => { timer.current = null; setHot((current) => (current === key ? null : current)); }, PILL_FADE_DELAY_MS); },
+    };
   };
 }
