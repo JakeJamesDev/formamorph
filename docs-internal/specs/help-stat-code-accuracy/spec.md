@@ -190,8 +190,11 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Ticket 12 result.** (2026-10-05.) `brave-at-courage` and `quotes-pin` accept `self.value` beside the named stat. 08's 1621 s baseline re-scored offline from its saved answers (the old rates reproduce: rider 21/25, test 19/25): rider **100% (25/25)**, test **88% (22/25)**, against 84% and 76% as first recorded. `brave-at-courage` was 1/5 rider and 2/5 test, now 5/5 on both. The persona case is unchanged (rider 5/5, test 2/5). The stopped re-run saved no answers, so it cannot be re-scored. Each known case's context dependency is listed in the audit note in `help-code-cases.ts`.
 
+- **Q39.** (Ticket 13 intent, 2026-10-05.) No rider change: the surface line already names the open stat on the Code tab, and a `self` line would be a prompt change with its own arm. Done-state: smoke, then the five known cases × 5 runs on the cloud default, rider arm, focus on the fixture stat, numbers recorded here. The Dictionary Editor's entry panel has no tab ledger, so it does not register a focus; the five world-editor panels and the Entity Editor's entity panel do. A trait opened inside an entity's Traits tab leaves the entity as the focus.
+
 ## Backlog
 
+- The Dictionary Editor's entry panel registers a help focus once it reports a tab ledger. Raised by ticket 13.
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
 - Whole-stat error follow-ups from ticket 04's review: a number slot counts as a number literal for equality; bitwise operators join the flagged set; a non-name member such as `stats.length` gets a message that says `stats` holds entries by name. User's call on a ticket.
 - Fence tag-line drift: on the quotes-pin case, 5 of 8 runs put the slot tag on its own line, so the fence failed. A rider wording fix with its own probe. Raised by ticket 07.
