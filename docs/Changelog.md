@@ -97,6 +97,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Semantic Memory, Semantic Lore, Scene Recall and Diary Recall load the files that run their model from the app, not from another website.** Before, each load downloaded these files, about 21 MB, from cdn.jsdelivr.net, even with the model already downloaded.
 - **🛠️ Developer tooling**
   - **The Enter World tests in `MainMenu.entry.test.tsx` finish inside Vitest's 5-second limit during a full `npm test` run.** Before, each pick in the Enter World setup rendered the whole main menu, about 1,000 components, because the menu held the setup choices. `EnterWorldFlow` now holds them, so a pick renders only the setup dialog, and a test fails when a pick renders the menu again. The two longest tests are now four shorter ones with the same checks.
+  - **The Stat Code guide's last example now closes its code block, and a docs check fails on any unclosed one.** The help window sends that section to the model as written. The check names the page and line.
 
 ---
 

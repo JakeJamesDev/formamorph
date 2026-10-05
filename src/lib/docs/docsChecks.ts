@@ -1,5 +1,5 @@
 /** The docs coverage checks: one readable line per problem, over docs passed in as data. */
-import { docHeadings, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText, ROUTE_LINE, routeParts, type DocHeading } from './headingAnchors';
+import { docHeadings, FENCE, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText, ROUTE_LINE, routeParts, type DocHeading } from './headingAnchors';
 import { docsHrefs, docTargetId, hrefParts, type DocTarget } from './docsLinks';
 
 /** Docs pages by wiki page name (the file name without `.md`). */
@@ -155,6 +155,23 @@ export function keywordLineProblems(pages: DocsPages): string[] {
       const list = KEYWORD_LINE.exec(next)?.[1] ?? '';
       if (!/[\p{L}\p{N}]/u.test(list)) problems.push(`${page}:${heading.line + 1} heading ${text} has no keyword line under it`);
     }
+  }
+  return problems;
+}
+
+/** Code fences a page opens and never closes, each named by page and opening line. */
+export function unclosedFenceProblems(pages: DocsPages): string[] {
+  const problems: string[] = [];
+  for (const [page, markdown] of Object.entries(pages)) {
+    let open: { marker: string; line: number } | null = null;
+    const lines = markdown.split(/\r?\n/);
+    for (let line = 0; line < lines.length; line++) {
+      const marker = FENCE.exec(lines[line])?.[1];
+      if (marker === undefined) continue;
+      if (open === null) open = { marker, line };
+      else if (marker === open.marker) open = null;
+    }
+    if (open !== null) problems.push(`${page}:${open.line + 1} code fence is never closed`);
   }
   return problems;
 }

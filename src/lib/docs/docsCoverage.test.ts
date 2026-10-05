@@ -3,7 +3,7 @@ import { HELP_TOPICS } from '@/lib/helpTopics';
 import { SURFACE_TARGETS } from '@/lib/surface/surfaceTargets';
 import {
   docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, keywordLineProblems, routeLineProblems,
-  surfaceCoverageProblems, surfaceRouteProblems, untargetedSections, HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
+  surfaceCoverageProblems, surfaceRouteProblems, unclosedFenceProblems, untargetedSections, HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
   type SurfaceRouteInput,
 } from './docsChecks';
 import { createDocsIndex } from './docsIndex';
@@ -57,6 +57,10 @@ describe('docs coverage of the app', () => {
 
   it('points every route line at a surface players see, and a target it registers', () => {
     expect(routeLineProblems(DOCS, { surfaceIds: SURFACE_IDS, exclusions: SURFACE_EXCLUSIONS, targets: SURFACE_TARGETS })).toEqual([]);
+  });
+
+  it('closes every code fence on every page', () => {
+    expect(unclosedFenceProblems(DOCS)).toEqual([]);
   });
 
   it('reports how-to sections that could name a target (report only)', () => {
@@ -340,6 +344,24 @@ describe('routeLineProblems', () => {
   it('checks no route line inside code or outside the guide', () => {
     const pages = { P: '# P\n\n```md\n<!-- route: nope -->\n```\n', 'Writing-Guide': '# W\n\n<!-- route: nope -->\n' };
     expect(routeLineProblems(pages, surfaces)).toEqual([]);
+  });
+});
+
+describe('unclosedFenceProblems', () => {
+  it('passes closed fences of either marker', () => {
+    expect(unclosedFenceProblems({ P: '# P\n\n```js\nreturn 1;\n```\n\n~~~\ntext\n~~~\n' })).toEqual([]);
+  });
+
+  it('fails a fence left open, naming the page and the opening line', () => {
+    expect(unclosedFenceProblems({ P: '# P\n\n```js\nreturn 1;\n\n### Next\n' })).toEqual(['P:3 code fence is never closed']);
+  });
+
+  it('does not close a fence with the other marker', () => {
+    expect(unclosedFenceProblems({ P: '~~~\ntext\n```\n' })).toEqual(['P:1 code fence is never closed']);
+  });
+
+  it('checks each page on its own', () => {
+    expect(unclosedFenceProblems({ A: '```\nx\n', B: '```\nx\n```\n' })).toEqual(['A:1 code fence is never closed']);
   });
 });
 

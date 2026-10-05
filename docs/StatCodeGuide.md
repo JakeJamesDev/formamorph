@@ -691,3 +691,4 @@ const wisdomBonus = Math.sqrt(wisdom) * 5;
 const manaFactor = 0.5 + (0.5 * (mana / maxMana));
 
 return (basePower + wisdomBonus) * manaFactor;
+```
