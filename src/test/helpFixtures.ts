@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
 import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
+import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE, type HelpPresetStore } from '@/lib/formaquestion/helpPresets';
 import { DEFAULT_MASCOT_RIG, type MascotRig } from '@/lib/formaquestion/mascot';
 import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 import type { MascotPresetStore } from '@/lib/formaquestion/mascotPresets';
@@ -12,6 +13,10 @@ import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
 import type { Tool } from '@/types';
 import { sseReply, sseResponse } from './aiTextFixtures';
+
+/** A custom help preset with its Code rider changed, active. */
+export const riderPreset = (code: string): HelpPresetStore =>
+  editHelpPrompt(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', 'code', code);
 
 /** The default answer prompt as a player who changed nothing sends it: the mascot on, with the default Voice. */
 export const VOICED_HELP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: DEFAULT_MASCOT_RIG.voice, name: DEFAULT_MASCOT_NAME });

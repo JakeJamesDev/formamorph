@@ -17,10 +17,10 @@ import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { withImageParts } from '@/lib/aiRequest/imageParts';
 import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
-import { createCodeTest, HELP_CODE_TEST } from './helpCodeTest';
+import { CODE_TEST_RIDER_LINE, createCodeTest, HELP_CODE_TEST } from './helpCodeTest';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { helpChipValues, renderHelpPrompt } from './helpChips';
-import { isCodeTurn, isOnCodeTab, QUICK_REFERENCE_SECTION, withCodeRider } from './helpCodeRider';
+import { isCodeTurn, isOnCodeTab, QUICK_REFERENCE_SECTION, withCodeRider, withRiderLine } from './helpCodeRider';
 import { createFaceCall } from './helpFace';
 import { requestPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
@@ -419,7 +419,9 @@ export async function* askHelp({
   const turnMessage = bare
     ? question
     : lookup ? helpLookupUserMessage(question, inPrompt, where) : helpUserMessage(question, inPrompt, where);
-  const userMessage = codeTurn ? withCodeRider(turnMessage, prompts.code) : turnMessage;
+  // The test-first line belongs to the code test, so it rides a cleared rider too.
+  const rider = codeTest ? withRiderLine(prompts.code, CODE_TEST_RIDER_LINE) : prompts.code;
+  const userMessage = codeTurn ? withCodeRider(turnMessage, rider) : turnMessage;
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup, the face call and the code test keep their
   // own executors; the roll and the Tools run on the one world snapshot of the question, which the roll does not read.

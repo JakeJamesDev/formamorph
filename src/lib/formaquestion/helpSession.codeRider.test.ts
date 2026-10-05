@@ -4,9 +4,10 @@ import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
+import { riderPreset } from '@/test/helpFixtures';
 import { HELP_CHIP } from './helpChips';
 import { DEFAULT_CODE_RIDER, STAT_CODE_TAB } from './helpCodeRider';
-import { DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpPrompt, EMPTY_HELP_PRESET_STORE, type HelpPresetStore } from './helpPresets';
+import { CODE_TEST_RIDER_LINE } from './helpCodeTest';
 import { helpUserMessage } from './helpPrompt';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettings } from './helpSettings';
@@ -30,10 +31,6 @@ const settingsOf = (over: Partial<HelpSettings> = {}) => helpSettingsOf({ source
 
 /** An endpoint known to take function calls, so lookup mode runs. */
 const CAPABLE = textSnapshot(textTarget({ reasoning: { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' } } }));
-
-/** A custom preset with its rider changed, active. */
-const riderPreset = (code: string): HelpPresetStore =>
-  editHelpPrompt(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', 'code', code);
 
 async function ask(question: string, over: Partial<HelpQuestion> = {}) {
   const fetchImpl: FetchSpy = vi.fn(async () => sseResponse(sseReply('Done.')));
@@ -91,7 +88,10 @@ describe('the Code rider', () => {
 
   it('rides lookup mode and a bare question too', async () => {
     const lookup = await ask(CODE_QUESTION, { settings: settingsOf({ lookup: true }), snapshot: CAPABLE });
-    expect(userOf(lookup.fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}`)).toBe(true);
+    // The code test rides lookup mode too, so the test-first line ends the rider.
+    expect(userOf(lookup.fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}\n${CODE_TEST_RIDER_LINE}`)).toBe(true);
+    const plainLookup = await ask(CODE_QUESTION, { settings: settingsOf({ lookup: true, codeTest: false }), snapshot: CAPABLE });
+    expect(userOf(plainLookup.fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}`)).toBe(true);
     const bare = settingsOf({ openScreen: false, lookup: false, sources: { keyword: false, aiPicks: false, semantic: false } });
     expect(userOf((await ask(CODE_QUESTION, { settings: bare })).fetchImpl)).toBe(`${CODE_QUESTION}\n\n${DEFAULT_CODE_RIDER}`);
   });

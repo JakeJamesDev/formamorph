@@ -7,9 +7,10 @@ import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/reasoningEffort';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { emptyCodeWorld, openWorld, pastPicks } from '@/test/helpFixtures';
+import { emptyCodeWorld, openWorld, pastPicks, riderPreset } from '@/test/helpFixtures';
 import type { Stat } from '@/types';
-import { HELP_CODE_TEST, HELP_CODE_TEST_CALL_LIMIT } from './helpCodeTest';
+import { DEFAULT_CODE_RIDER, SANDBOX_GLOBAL_NAMES } from './helpCodeRider';
+import { CODE_TEST_RIDER_LINE, HELP_CODE_TEST, HELP_CODE_TEST_CALL_LIMIT } from './helpCodeTest';
 import type { CodeTestResult } from './helpCodeTestRun';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
@@ -100,6 +101,44 @@ describe('the code test offer', () => {
       await collect(ask(unsupported, {}, { snapshot: endpoint(tools) }));
       expect(toolNames(bodyOf(unsupported))).toEqual([]);
     }
+  });
+});
+
+describe('the test-first rider line', () => {
+  const userOf = (spy: FetchSpy) => bodyOf(spy).messages.at(-1)!.content ?? '';
+
+  it('ends the rider while the code test is offered', async () => {
+    const fetchImpl = script(sseReply('Done.'));
+    await collect(ask(fetchImpl));
+    expect(userOf(fetchImpl).endsWith(`\n\n${DEFAULT_CODE_RIDER}\n${CODE_TEST_RIDER_LINE}`)).toBe(true);
+  });
+
+  it('leaves the rider as it is while the code test is not offered', async () => {
+    const off = script(sseReply('Done.'));
+    await collect(ask(off, { codeTest: false }));
+    expect(userOf(off).endsWith(`\n\n${DEFAULT_CODE_RIDER}`)).toBe(true);
+
+    const unsupported = script(sseReply('Done.'));
+    await collect(ask(unsupported, {}, { snapshot: endpoint(false) }));
+    expect(userOf(unsupported).endsWith(`\n\n${DEFAULT_CODE_RIDER}`)).toBe(true);
+  });
+
+  // Q35: the line belongs to the code test, so a cleared rider still sends it.
+  it('goes alone after the message with an empty rider, and follows a custom one', async () => {
+    const empty = script(sseReply('Done.'));
+    await collect(ask(empty, { presets: riderPreset(' \n') }));
+    expect(userOf(empty).endsWith(`.\n\n${CODE_TEST_RIDER_LINE}`)).toBe(true);
+    expect(userOf(empty)).not.toContain(DEFAULT_CODE_RIDER.split('\n')[0]);
+
+    const custom = script(sseReply('Done.'));
+    await collect(ask(custom, { presets: riderPreset('Answer with code.\n') }));
+    expect(userOf(custom).endsWith(`\n\nAnswer with code.\n${CODE_TEST_RIDER_LINE}`)).toBe(true);
+  });
+
+  it('names the function, and no example code or sandbox member', () => {
+    expect(CODE_TEST_RIDER_LINE).toContain(`\`${HELP_CODE_TEST.name}\``);
+    expect(CODE_TEST_RIDER_LINE).not.toMatch(/[=;(){}[\]]|\breturn\b/);
+    expect(CODE_TEST_RIDER_LINE).not.toMatch(new RegExp(`\\b(?:${SANDBOX_GLOBAL_NAMES.join('|')})\\b`));
   });
 });
 
