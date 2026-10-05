@@ -30,8 +30,8 @@ import { CodeInsert } from './CodeInsert';
 import type { SnippetActions } from './CodeSnippet';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { answerList, useAnswerFolds, type AnswerFolds, type Fold } from './useAnswerFolds';
-import type { HelpStage } from '@/lib/formaquestion/helpSession';
-import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
+import type { HelpChat, HelpExchange } from './useHelpChat';
+import { emptyRoomLine, fallbackLine, speakerName, stageLine } from '@/lib/formaquestion/helpSpeaker';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
 
 /** An answer's code blocks offer Insert beside Copy; guide pages offer Copy alone. */
@@ -44,20 +44,6 @@ const FALLBACK_RESULT_LIMIT = 5;
 const ASK_FIELD_LINE_H = 40;
 const ASK_FIELD_MAX_H = 240;
 
-/** The line above the docs search that takes the place of an answer, or of the rest of one. */
-/** The wait line of each stage, under the question until its answer text starts. */
-const STAGE_LINE: Record<HelpStage, string> = {
-  checking: 'Checking your AI…',
-  searching: 'Searching the guide…',
-  picking: 'Searching with your AI…',
-  waiting: 'Waiting for your AI…',
-  lookingUp: 'Looking up…',
-};
-
-function fallbackLine(status: Extract<HelpStatus, 'no-ai' | 'failed'>, partial: boolean, matched: boolean): string {
-  const cause = status === 'no-ai' ? 'No AI is connected' : partial ? 'The answer did not finish' : 'The AI did not answer';
-  return matched ? `${cause}. These guide sections match your question.` : `${cause}, and no guide section matches your question`;
-}
 
 /** A source under an answer: the page, then the section. It opens the section in the reader. */
 function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSection; onOpen: (id: string) => void }) {
@@ -105,12 +91,12 @@ function FoldToggle({ open, label, onToggle }: { open: boolean; label: ReactNode
 }
 
 /** The model's reasoning, muted, above its answer. The header pulses until the answer text starts. */
-function Thinking({ text, ms, active, fold, toggles }: { text: string; ms: number; active: boolean; fold: Fold; toggles: boolean }) {
+function Thinking({ text, ms, active, fold, toggles, who }: { text: string; ms: number; active: boolean; fold: Fold; toggles: boolean; who: string | null }) {
   if (!text) return null;
   if (!toggles) return fold.open ? <ReasoningBody text={text} className="[&_:first-child]:mt-0" /> : null;
   return (
     <div role="group" aria-label="Thinking" className="flex flex-col gap-1">
-      <FoldToggle open={fold.open} label={<ThinkingLabel active={active} ms={ms} />} onToggle={fold.toggle} />
+      <FoldToggle open={fold.open} label={<ThinkingLabel active={active} ms={ms} who={who} />} onToggle={fold.toggle} />
       {fold.open && <ReasoningBody text={text} className="[&_:first-child]:mt-0" />}
     </div>
   );
@@ -155,10 +141,12 @@ function SourcesPopover({ guide, label, sections, onOpen }: { guide: Guide; labe
 }
 
 /** The answer's Thinking toggle, its Sources popover and its Take Me There, for a strip outside the answer. */
-export function AnswerToggles({ guide, exchange, folds, onOpen, onGo }: {
+export function AnswerToggles({ guide, exchange, folds, who, onOpen, onGo }: {
   guide: Guide;
   exchange: HelpExchange;
   folds: AnswerFolds;
+  /** Who answers, for the Thinking header; null for the generic line. */
+  who: string | null;
   onOpen: (id: string) => void;
   onGo: (route: SurfaceRoute) => void;
 }) {
@@ -169,7 +157,7 @@ export function AnswerToggles({ guide, exchange, folds, onOpen, onGo }: {
       {exchange.reasoning && (
         <FoldToggle
           open={folds.thinking.open}
-          label={<ThinkingLabel active={exchange.status === 'writing' && !exchange.answer} ms={exchange.reasoningMs ?? 0} />}
+          label={<ThinkingLabel active={exchange.status === 'writing' && !exchange.answer} ms={exchange.reasoningMs ?? 0} who={who} />}
           onToggle={folds.thinking.toggle}
         />
       )}
@@ -197,8 +185,9 @@ export function Answer(props: AnswerProps) {
 /** An answer at given folds. Without toggles it draws the answer and the open Thinking text; `AnswerToggles` draws the rest. */
 export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, toggles }: AnswerProps & { folds: AnswerFolds; toggles: boolean }) {
   const { answer, reasoning, reasoningMs, status, stage, question, flagged } = exchange;
+  const who = speakerName(settings);
   // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
-  const waitLine = status === 'writing' && !answer && stage && !(reasoning && stage === 'waiting') ? STAGE_LINE[stage] : null;
+  const waitLine = status === 'writing' && !answer && stage && !(reasoning && stage === 'waiting') ? stageLine(stage, who) : null;
   const { listed, listLabel } = answerList(exchange);
   const fold = folds.sources;
   const components = useMemo(() => readerComponents(onOpen, insertAction), [onOpen]);
@@ -215,7 +204,7 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
   );
   return (
     <div className="flex flex-col gap-2 text-label">
-      <Thinking text={reasoning} ms={reasoningMs ?? 0} active={status === 'writing' && !answer} fold={folds.thinking} toggles={toggles} />
+      <Thinking text={reasoning} ms={reasoningMs ?? 0} active={status === 'writing' && !answer} fold={folds.thinking} toggles={toggles} who={who} />
       {flagged && answer && <GeneralKnowledgeNotice />}
       {answer && (
         <div data-reveal className="[&_:first-child]:mt-0" style={revealVars(spec) as CSSProperties}>
@@ -234,7 +223,7 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
       {status === 'stopped' && <Meta>Stopped</Meta>}
       {(status === 'no-ai' || status === 'failed') && (
         <div className="flex flex-col gap-1">
-          <Hint>{fallbackLine(status, answer !== '', matches.length > 0)}</Hint>
+          <Hint>{fallbackLine(status, answer !== '', matches.length > 0, who)}</Hint>
           {matches.length > 0 && <SectionRows guide={guide} sections={matches} onOpen={onOpen} />}
         </div>
       )}
@@ -270,7 +259,7 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
       viewportProps={{ 'data-fq-scroll': 'conversation', onScroll }}
     >
       <div role="log" aria-label="Conversation" aria-busy={busy} className="flex flex-col gap-3 p-3">
-        {exchanges.length === 0 && <Hint className="py-6 text-center">Ask how to do something in Formamorph</Hint>}
+        {exchanges.length === 0 && <Hint className="py-6 text-center">{emptyRoomLine(speakerName(settings))}</Hint>}
         {exchanges.map((exchange) => (
           <div key={exchange.id} className="flex flex-col gap-3">
             <div className="ml-8 flex flex-col items-end gap-2 self-end">

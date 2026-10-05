@@ -19,6 +19,7 @@ import type { BubblePage } from './useBubblePage';
 import { usePillFade, type PillFadeProps } from './usePillFade';
 import { ScrollArrow } from './ScrollArrow';
 import { useFollowEnd } from './useAskParts';
+import { speakerName } from '@/lib/formaquestion/helpSpeaker';
 import type { HelpChat, HelpExchange } from './useHelpChat';
 import type { DragHandlers } from './usePointerDrag';
 
@@ -139,7 +140,7 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
             </button>
           </Tip>
           <div className="flex min-w-0 flex-wrap items-center gap-2 [&>*]:pointer-events-auto">
-            <AnswerToggles guide={guide} exchange={exchange} folds={folds} onOpen={onOpen} onGo={onGo} />
+            <AnswerToggles guide={guide} exchange={exchange} folds={folds} who={speakerName(settings)} onOpen={onOpen} onGo={onGo} />
           </div>
           <Tip tip="Next Answer">
             <button

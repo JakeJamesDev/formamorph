@@ -322,6 +322,17 @@ describe('the wait line', () => {
     await waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
     expect(conversation()).not.toHaveTextContent('Waiting for your AI…');
   });
+
+  it('names the Mascot while she is on, and the empty room asks her', async () => {
+    // Minimal: the column that shows the empty room and the wait line with her beside it.
+    storeFramedWindow({ mascot: true, chatStyle: 'minimal' });
+    stubHelpStream(() => new Response(new ReadableStream(), { headers: { 'Content-Type': 'text/event-stream' } }));
+    const { field } = await openAsk();
+    expect(conversation()).toHaveTextContent('Ask Morphie how to do something in Formamorph');
+    await send(field, 'How do I add a trait?');
+    await waitFor(() => expect(conversation()).toHaveTextContent('Asking Morphie…'));
+    expect(conversation()).not.toHaveTextContent('Waiting for your AI…');
+  });
 });
 
 describe('with no AI connected', () => {
