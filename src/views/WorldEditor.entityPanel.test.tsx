@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, panelTabLayout, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -41,8 +41,8 @@ const GROUPED_WORLD: World = benchEditorWorld({
   entityGroups: [{ id: 'g1', name: 'Fen Folk', parentId: null }],
 });
 
-// These tabs switch on mouseDown, not click.
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
+// On mobile the editor's tabs sit behind the Sections bar, which the shared helper opens.
+const openTab = openEditorTab;
 
 const FIELD_LABELS =
   /^(Name|Aliases|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Image|Image Tags|3D Model)$/;

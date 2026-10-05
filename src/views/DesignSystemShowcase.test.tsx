@@ -337,3 +337,25 @@ describe('supporter flair reference', () => {
     }
   });
 });
+
+describe('edge rail reference', () => {
+  it('draws the editor registry as a rail and a Sections bar, and follows the mode switch', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Edge Rail' }));
+
+    const region = screen.getByRole('region', { name: 'Edge Rail' });
+    const rail = within(region).getByRole('tablist', { name: 'Sample Editor Sections' });
+    expect(within(rail).getAllByRole('tab')).toHaveLength(7);
+    await user.click(within(rail).getByRole('tab', { name: 'Traits' }));
+    expect(within(region).getByText('The trait tree beside the selected trait\'s details.')).toBeInTheDocument();
+
+    await user.click(within(region).getByRole('button', { name: /^Sections/ }));
+    await user.click(within(within(region).getByRole('tablist', { name: 'Editor Sections' })).getByRole('tab', { name: 'Dictionary' }));
+    expect(within(region).getByRole('button', { name: /^Sections/ })).toHaveTextContent('Dictionary');
+
+    await user.click(within(region).getByRole('radio', { name: 'Simple' }));
+    expect(within(rail).getAllByRole('tab')).toHaveLength(6);
+    expect(localStorage).toHaveLength(0);
+  });
+});

@@ -42,6 +42,7 @@ import { MainMenuContextMenuReference } from '@/components/design-system/MainMen
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
+import { EdgeRailReference } from '@/components/design-system/EdgeRailReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
 import { PromptChipsReference } from '@/components/design-system/PromptChipsReference';
 
@@ -315,6 +316,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Panel Tabs',
     description: 'Editor detail panel tab strips',
     Component: PanelTabStripReference,
+  },
+  {
+    id: 'edge-rail',
+    label: 'Edge Rail',
+    description: 'Grouped icon tabs on a view\'s outer edge',
+    Component: EdgeRailReference,
   },
   {
     id: 'prompt-navigation',

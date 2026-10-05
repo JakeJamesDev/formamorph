@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, clickFlask, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, clickFlask, clickOpenBench, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 
 /**
  * Guards the Bench's three chromes through the real editor: the flask's quick-triage popover, the panel
@@ -52,8 +52,12 @@ const setup = () => renderWorldEditorBench(WORLD, 'advanced');
 const flask = () => screen.getByRole('button', { name: /^Test Bench/ });
 /** The full panel is showing when its own chrome is: the popover has neither control. */
 const benchPanelShown = () => screen.queryByRole('button', { name: 'Close Test Bench' }) !== null;
-/** The editor's own list panel is showing when its tab strip is. */
-const editorTabsShown = () => screen.queryByRole('tab', { name: 'Entities' }) !== null;
+/** The editor's own list panel is showing when its rail is live; the embedded Bench draws the rail disabled. */
+const editorTabsShown = () => {
+  const tab = screen.queryByRole('tab', { name: 'Entities' });
+  return tab !== null && !(tab as HTMLButtonElement).disabled;
+};
+const editorRailTabs = () => within(screen.getByRole('tablist', { name: 'Editor Sections' })).getAllByRole('tab');
 const popoverShown = () => screen.queryByRole('button', { name: 'Open Test Bench' }) !== null;
 /** The mobile sheet, whose open/closed is read off it: vaul keeps its content mounted for the exit
  *  animation, and jsdom runs no animations to finish. */
@@ -160,10 +164,15 @@ describe('WorldEditor — the Publish Size bar', () => {
 describe('WorldEditor — where the full Bench sits', () => {
   it('opens embedded, taking the editor list and leaving the detail panel live', async () => {
     setup();
+    openEditorTab(/^Entities$/);
     await clickOpenBench();
 
     expect(benchPanelShown()).toBe(true);
     expect(editorTabsShown()).toBe(false);
+    // The rail stays drawn, every tab disabled, and the editor's own tab is kept behind the Bench.
+    expect(editorRailTabs().length).toBeGreaterThan(0);
+    editorRailTabs().forEach((tab) => expect(tab).toBeDisabled());
+    expect(screen.getByRole('tab', { name: 'Entities', selected: true })).toBeInTheDocument();
     // The Bench replaced the list, not the editor: its header and footer are still reachable mid-triage.
     expect(screen.getByRole('button', { name: 'Find and replace' })).toBeInTheDocument();
 

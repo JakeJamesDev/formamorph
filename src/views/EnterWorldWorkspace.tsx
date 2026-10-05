@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Check, ChevronDown, ListTree, User } from 'lucide-react';
+import { BookOpen, Check, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NavDisclosure } from '@/components/NavDisclosure';
 import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { WORLD_OWNER, groupPickState, type GateStates } from '@/lib/traitGates';
@@ -306,50 +307,18 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         </div>
       </header>
       <div className={cn('flex min-h-0 flex-1', categoriesCollapsed ? 'flex-col' : 'flex-row')}>
-        <aside
-          className={cn(
-            'relative z-10 shrink-0',
-            categoriesCollapsed
-              ? cn('border-b bg-secondary/60', categoryNavigationOpen ? 'border-muted-foreground/30' : 'border-border')
-              : 'w-80 border-r bg-background',
-          )}
-        >
-          {categoriesCollapsed && (
-            <button
-              ref={categoryNavigationButton}
-              type="button"
-              aria-expanded={categoryNavigationOpen}
-              aria-controls="setup-category-tree"
-              className="flex min-h-11 w-full items-center gap-2 px-4 py-2 text-left text-label"
-              onClick={() => setCategoryNavigationOpen((open) => !open)}
-            >
-              <ListTree className="h-4 w-4 shrink-0" />
-              <span className="font-medium">Categories</span>
-              <span className="ml-auto min-w-0 truncate text-helper text-muted-foreground">
-                {current?.name ?? 'Setup'}
-              </span>
-              <ChevronDown
-                className={cn(
-                  'h-4 w-4 shrink-0 transition-transform duration-150 motion-reduce:transition-none',
-                  categoryNavigationOpen && 'rotate-180',
-                )}
-              />
-            </button>
-          )}
-          <div
-            id="setup-category-tree"
-            aria-hidden={categoriesCollapsed ? !categoryNavigationOpen : undefined}
-            {...(categoriesCollapsed && !categoryNavigationOpen ? { inert: '' } : {})}
-            className={cn(
-              categoriesCollapsed && 'grid transition-[grid-template-rows] duration-150 ease-out motion-reduce:transition-none',
-              !categoriesCollapsed && 'h-full min-h-0',
-            )}
-            style={categoriesCollapsed ? { gridTemplateRows: categoryNavigationOpen ? '1fr' : '0fr' } : undefined}
+        <aside className={cn('relative z-10 shrink-0', !categoriesCollapsed && 'w-80 border-r bg-background')}>
+          <NavDisclosure
+            ref={categoryNavigationButton}
+            collapsed={categoriesCollapsed}
+            open={categoryNavigationOpen}
+            onOpenChange={setCategoryNavigationOpen}
+            label="Categories"
+            current={current?.name ?? 'Setup'}
+            bodyId="setup-category-tree"
           >
-            <div className={cn('min-h-0', categoriesCollapsed ? 'overflow-hidden' : 'h-full')}>
-              {navigation}
-            </div>
-          </div>
+            {navigation}
+          </NavDisclosure>
         </aside>
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {current?.kind !== 'library' && (

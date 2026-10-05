@@ -4,7 +4,9 @@ import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
-import { editorTabsFor } from './worldEditorTabs';
+import { editorTabGroupsFor, editorTabsFor } from './worldEditorTabs';
+import { EdgeRail } from '@/components/editor/EdgeRail';
+import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { TutorialPopover } from '@/components/TutorialPopover';
@@ -36,7 +38,7 @@ import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Save, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
@@ -220,7 +222,9 @@ const WorldEditorInner = ({
   const dismissTutorial = useCallback(() => dismiss(EDITOR_MODE_TUTORIAL_ID), [dismiss]);
   const offerAnchor = useTourAnchor(offerPending ? TOUR_STEPS[0].anchor : null);
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
+  const tabGroups = useMemo(() => editorTabGroupsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState(initialTab ?? "overview");
+  const [sectionsOpen, setSectionsOpen] = useState(false);
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab, requestKey]);
   // The Bench's drawer on mobile and its popover sit outside the editor's own tree, so the lookup is page-wide.
   const landTarget = useRouteLanding();
@@ -929,17 +933,6 @@ const WorldEditorInner = ({
   const tourBar = tour.running && (
     <TourBar tour={tour} onBackToTour={() => { if (tour.step) showTourStep(tour.step); }} />
   );
-  // The strip fills its row and the tabs share it out. Not on mobile: there the strip is the one that
-  // scrolls sideways, and tabs told to share a width they already overflow would squeeze rather than scroll.
-  const tabsList = (
-    <TabsList className={cn('flex-shrink-0', !isMobile && 'w-full')}>
-      {visibleTabs.map((t) => (
-        <TabsTrigger key={t.value} value={t.value} className={isMobile ? undefined : 'flex-1'}>
-          {t.label}
-        </TabsTrigger>
-      ))}
-    </TabsList>
-  );
   // One panel per tab so every trigger's `aria-controls` resolves. Only the active tab has a body, so the
   // rest render empty; `contents` keeps that body a direct flex child of the tab root, as it was unwrapped.
   const tabPanels = (body: ReactNode) => visibleTabs.map((t) => (
@@ -965,9 +958,10 @@ const WorldEditorInner = ({
       ))}
     </ToggleGroup>
   );
-  // A tab with no list (Overview) renders no row.
+  // A tab with no list (Overview) renders no row, so its body starts at the top of the card.
   const addSearchBar = listEditorParts
-    && listEditorParts.toolbar('mt-4', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
+    && listEditorParts.toolbar('', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
+  const bodyGap = addSearchBar ? 'mt-4' : undefined;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   const footerBar = (
@@ -1077,20 +1071,30 @@ const WorldEditorInner = ({
           <div className="h-full w-full">
             <Card className="h-full flex flex-col rounded-none border-x-0">
               <CardHeader className="space-y-0 p-2">{headerBar}{tourBar}</CardHeader>
-              <CardContent className="flex-grow flex flex-col overflow-hidden p-2">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-                  {/* The tab strip doesn't fit mobile, so it scrolls horizontally. */}
-                  <div className="overflow-x-auto flex-shrink-0">{tabsList}</div>
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                orientation="vertical"
+                activationMode="manual"
+                className="flex-grow flex flex-col min-h-0"
+              >
+                <EditorSectionsBar
+                  groups={tabGroups}
+                  value={activeTab}
+                  open={sectionsOpen}
+                  onOpenChange={setSectionsOpen}
+                />
+                <CardContent className="flex-grow flex flex-col overflow-hidden p-2">
                   {addSearchBar}
                   {tabPanels(!listEditorParts ? (
                     // Overview isn't master-detail — stack its two forms.
-                    <ScrollArea landingRoom className="flex-grow min-h-0 mt-4">
+                    <ScrollArea landingRoom className="flex-grow min-h-0">
                       {listContent}
                       {detailContent}
                     </ScrollArea>
                   ) : (
                     <ListDetail
-                      className="mt-4"
+                      className={bodyGap}
                       showDetail={listEditorParts.showDetail}
                       onBack={listEditorParts.onBack}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
@@ -1101,36 +1105,44 @@ const WorldEditorInner = ({
                       detailFooter={detailFooter}
                     />
                   ))}
-                </Tabs>
-              </CardContent>
+                </CardContent>
+              </Tabs>
               {footerBar}
             </Card>
           </div>
         ) : (
-          <PanelGroup direction="horizontal" ref={panelGroupRef}>
+          // One tab root spans the rail and the panels; the rail is its list, the list card holds its panels.
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            orientation="vertical"
+            className="flex flex-grow min-w-0"
+          >
+          {/* The embedded Bench replaces the panels, so the rail stays drawn but inert behind it. */}
+          <EdgeRail groups={tabGroups} value={activeTab} disabled={bench.embedded} />
+          <PanelGroup direction="horizontal" ref={panelGroupRef} className="min-w-0">
             {/* The Bench comes and goes, so every panel carries an id+order for the group to track it. */}
             <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
               <div className="h-full p-3">
                 <Card className="h-full flex flex-col">
                   <CardHeader className="space-y-0 p-3 pb-2">{headerBar}{tourBar}</CardHeader>
                   <CardContent className="flex-grow flex flex-col overflow-hidden p-3">
-                    {/* The embedded Bench takes the tab strip, the add/search bar and the list; the detail
-                        panel beside it stays live, so a finding's item opens visibly next to the list being
-                        triaged. The editor's own tab and selection state is untouched behind it. */}
+                    {/* The embedded Bench takes the add/search bar and the list; the detail panel beside it
+                        stays live, so a finding's item opens visibly next to the list being triaged. The
+                        editor's own tab and selection state is untouched behind it. */}
                     {bench.embedded ? (
                       <div className="flex-grow min-h-0">{benchPanel}</div>
                     ) : (
-                      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-                        {tabsList}
+                      <>
                         {addSearchBar}
                         {/* The detail pane is the other half of a master-detail split, in its own resizable
-                            panel outside the tab root — the tab's own content is this list. */}
+                            panel — the tab's own content is this list. */}
                         {tabPanels(
-                          <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
+                          <div className={cn('flex-grow min-h-0', bodyGap)} onClick={deselectOnListClick}>
                             {listOwnsSlot ? listContent : <ScrollArea landingRoom className="h-full">{listContent}</ScrollArea>}
                           </div>
                         )}
-                      </Tabs>
+                      </>
                     )}
                   </CardContent>
                   {footerBar}
@@ -1173,6 +1185,7 @@ const WorldEditorInner = ({
               </>
             )}
           </PanelGroup>
+          </Tabs>
         )}
       </div>
       {/* Mobile has no room for a third pane, so the Bench arrives as a full-height sheet over the editor. */}

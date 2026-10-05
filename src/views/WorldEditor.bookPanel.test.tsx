@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, panelTabLayout, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -39,8 +39,8 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-// These tabs switch on mouseDown, not click.
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
+// On mobile the editor's tabs sit behind the Sections bar, which the shared helper opens.
+const openTab = openEditorTab;
 
 /** The book panel's own strip, read by its name: the editor's top-level strip is on the same screen. */
 const panelStrip = () => screen.queryByRole('tablist', { name: 'Dictionary Fields' });

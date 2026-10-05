@@ -117,11 +117,13 @@ export const renderWorldEditorBench = (
   };
 };
 
-/** Open one of the editor's own tabs. The entity panel's Traits tab shares a name with the editor's, so the
- *  strip is told apart by its label. These tabs switch on mouseDown, not click. */
-export const openEditorTab = (name: RegExp) => fireEvent.mouseDown(
-  screen.getAllByRole('tab', { name }).find((t) => t.closest('[role="tablist"]')?.getAttribute('aria-label') !== 'Entity Fields')!,
-);
+/** Open one of the editor's own tabs, from the rail or, on mobile, through the Sections bar. Panel strips
+ *  share tab names with the editor's, so the list is found by its label. These tabs switch on mouseDown. */
+export const openEditorTab = (name: RegExp) => {
+  const sections = screen.queryByRole('button', { name: /^Sections/, expanded: false });
+  if (sections) fireEvent.click(sections);
+  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Editor Sections' })).getByRole('tab', { name }));
+};
 
 /** The entity panel's own tab, apart from the editor's tab of the same name. */
 export const entityFieldsTab = (name: string) =>
