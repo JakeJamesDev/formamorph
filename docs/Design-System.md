@@ -759,27 +759,25 @@ The live reference renders four of the five production strips against their own 
 - **Unverified:** the section headings "Five Tabs" (entity and location), "A Tab Name the Editor Also Uses", and "Two Tabs, Two Hosts", and the four `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
 - **Unverified:** the entity bodies for Traits and Openings, "The entity's own traits and groups, each one opening on the editor's Traits tab" and "The entity's openings, drawn when a player starts at one of its locations", and the location body for Openings, "The location's openings, drawn when a game starts at this location", have terminology review against the production tab contents only; vocabulary and grammar evidence is not recorded.
 
-## Pattern: Edge Rail
+## Pattern: Sections Bar
 
-**Purpose:** Navigate a view's top-level tabs from its outer edge, so the cards inside keep their full width and the tab count can grow.
+**Purpose:** Pick a view's top-level tab on mobile from one bar that names where you are, so the tab list takes no room until you open it.
 
 **Rule:**
 
-- The rail is a full-height column on the view's outer left edge, outside every card. It shows one icon per tab and no captions.
-- The landing tab stands alone at the top, ahead of every group. A separator draws under it and between two groups. A group with no visible tab draws nothing, not even its separator.
-- Pointing at an icon, or focusing it with the keyboard, flies out a label that reads "Group · Tab", or the tab's name alone for the landing tab. Focus that a click brings shows no label. The label never takes pointer events.
-- The active tab carries a primary accent bar on the rail's edge and the foreground color. The others are muted.
-- The rail has no expanded state, no toggle and no stored preference.
-- The rail is a real tab list. One tab root wraps the rail and the cards, with vertical orientation, so the arrow keys move along it.
-- When something replaces the tab panels, the rail stays drawn with every tab disabled.
+- The bar is full width, under the header. It shows a tree icon, the label **Sections**, the current tab's name at the right, and a chevron that turns when open.
+- Opening it expands the tab list below the bar with a grid-rows reveal. The body is `inert` while closed.
+- The landing tab is a lone row above the first caption. Each group has a caption. A group with no visible tab draws nothing.
+- A pick closes the bar and returns focus to it.
+- The list is a real tab list in a vertical tab root with manual activation, so the arrow keys move through the open list without picking.
 
-**Density:** Compact. The rail is 48px wide and each tab is 40px tall.
+**Density:** Comfortable. Each row is 44px tall, a touch target.
 
 ### Composition
 
 - One registry holds the tabs in order, each with its value, name, icon and group, and the groups in order. The landing tab has no group. A helper returns the landing slot first, then the groups one mode shows, and drops the empty ones.
-- Each tab's accessible name is its tab name, held in visually hidden text. The icon and the flyout are hidden from assistive technology.
-- On mobile the rail becomes a **Sections** bar under the header. The bar names the current tab and folds the tab list below it. The landing tab is a lone row above the first caption, and each group has a caption. It shares its disclosure with the Enter World **Categories** bar. The body is `inert` while closed, and a pick closes it and returns focus to the bar.
+- The disclosure is shared with the Enter World **Categories** bar, so both screens open and close the same way.
+- Desktop keeps the horizontal tab strip in the list card. The bar is mobile-only.
 
 The World Editor groups its tabs this way:
 
@@ -794,34 +792,28 @@ The World Editor groups its tabs this way:
 
 | Need | Component |
 | --- | --- |
-| The rail | `EdgeRail` in [`EdgeRail.tsx`](../src/components/editor/EdgeRail.tsx) |
-| The mobile Sections bar | `EditorSectionsBar` in [`EditorSectionsBar.tsx`](../src/components/editor/EditorSectionsBar.tsx) |
+| The bar | `EditorSectionsBar` in [`EditorSectionsBar.tsx`](../src/components/editor/EditorSectionsBar.tsx) |
 | The shared disclosure | `NavDisclosure` in [`NavDisclosure.tsx`](../src/components/NavDisclosure.tsx), also used by [`EnterWorldWorkspace.tsx`](../src/views/EnterWorldWorkspace.tsx) |
 | The registry and its groups | [`worldEditorTabs.ts`](../src/views/worldEditorTabs.ts) |
 | The host | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
-| Isolated reference | [`EdgeRailReference.tsx`](../src/components/design-system/EdgeRailReference.tsx) |
-
-### Responsive behavior
-
-The rail is desktop-only. Below `md` the editor shows one card, and the Sections bar takes the rail's place under the header. The bar uses a manual tab activation, so the arrow keys move through the open list without picking.
+| Isolated reference | [`SectionsBarReference.tsx`](../src/components/design-system/SectionsBarReference.tsx) |
 
 ### State reference
 
 | State | Treatment |
 | --- | --- |
-| Default | The first tab is selected and carries the accent bar. |
-| Selected | Accent bar, background, and foreground color. |
-| Hover | A lighter background and the flyout label. |
-| Focus | The shared inset focus ring and the flyout label. Arrow keys move along the rail. |
-| Disabled | Every tab is disabled at half opacity. The selection is kept. |
-| Empty group | Nothing draws, so no separator is left without tabs under it. |
+| Closed | The bar names the current tab. The list is `inert` and hidden from assistive technology. |
+| Open | The chevron turns and the list shows below the bar. |
+| Selected | The active row takes the muted background and the semibold foreground. |
+| Focus | The shared inset focus ring. Arrow keys move through the open list. |
+| Empty group | Nothing draws, so no caption is left without tabs under it. |
 
-The live reference draws the production registry as the rail and as the Sections bar, with a Simple and Advanced switch. It holds its tab and mode in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
+The live reference draws the production registry as the Sections bar, with a Simple and Advanced switch. It holds its tab and mode in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
 
 ### Writing review
 
 - Tab and group names come from the production registry, so the reference and the editor cannot drift.
-- **Unverified:** the reference's tab bodies, section headings and `Meta` lines have terminology review only; vocabulary and grammar evidence is not recorded.
+- **Unverified:** the reference's tab bodies and description have terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Narration Turn
 

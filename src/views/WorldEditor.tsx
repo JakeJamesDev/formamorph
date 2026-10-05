@@ -5,7 +5,6 @@ import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { editorTabGroupsFor, editorTabsFor } from './worldEditorTabs';
-import { EdgeRail } from '@/components/editor/EdgeRail';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
@@ -38,7 +37,7 @@ import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Save, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
@@ -933,6 +932,16 @@ const WorldEditorInner = ({
   const tourBar = tour.running && (
     <TourBar tour={tour} onBackToTour={() => { if (tour.step) showTourStep(tour.step); }} />
   );
+  // The desktop strip fills its row and the tabs share it out. Mobile picks tabs from the Sections bar.
+  const tabsList = (
+    <TabsList aria-label="Editor Sections" className="flex-shrink-0 w-full">
+      {visibleTabs.map((t) => (
+        <TabsTrigger key={t.value} value={t.value} className="flex-1">
+          {t.label}
+        </TabsTrigger>
+      ))}
+    </TabsList>
+  );
   // One panel per tab so every trigger's `aria-controls` resolves. Only the active tab has a body, so the
   // rest render empty; `contents` keeps that body a direct flex child of the tab root, as it was unwrapped.
   const tabPanels = (body: ReactNode) => visibleTabs.map((t) => (
@@ -958,10 +967,10 @@ const WorldEditorInner = ({
       ))}
     </ToggleGroup>
   );
-  // A tab with no list (Overview) renders no row, so its body starts at the top of the card.
+  // A tab with no list (Overview) renders no row. On mobile nothing sits above the row, so it takes no gap.
   const addSearchBar = listEditorParts
-    && listEditorParts.toolbar('', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
-  const bodyGap = addSearchBar ? 'mt-4' : undefined;
+    && listEditorParts.toolbar(isMobile ? '' : 'mt-4', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
+  const mobileBodyGap = addSearchBar ? 'mt-4' : undefined;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   const footerBar = (
@@ -1094,7 +1103,7 @@ const WorldEditorInner = ({
                     </ScrollArea>
                   ) : (
                     <ListDetail
-                      className={bodyGap}
+                      className={mobileBodyGap}
                       showDetail={listEditorParts.showDetail}
                       onBack={listEditorParts.onBack}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
@@ -1111,38 +1120,30 @@ const WorldEditorInner = ({
             </Card>
           </div>
         ) : (
-          // One tab root spans the rail and the panels; the rail is its list, the list card holds its panels.
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            orientation="vertical"
-            className="flex flex-grow min-w-0"
-          >
-          {/* The embedded Bench replaces the panels, so the rail stays drawn but inert behind it. */}
-          <EdgeRail groups={tabGroups} value={activeTab} disabled={bench.embedded} />
-          <PanelGroup direction="horizontal" ref={panelGroupRef} className="min-w-0">
+          <PanelGroup direction="horizontal" ref={panelGroupRef}>
             {/* The Bench comes and goes, so every panel carries an id+order for the group to track it. */}
             <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
               <div className="h-full p-3">
                 <Card className="h-full flex flex-col">
                   <CardHeader className="space-y-0 p-3 pb-2">{headerBar}{tourBar}</CardHeader>
                   <CardContent className="flex-grow flex flex-col overflow-hidden p-3">
-                    {/* The embedded Bench takes the add/search bar and the list; the detail panel beside it
-                        stays live, so a finding's item opens visibly next to the list being triaged. The
-                        editor's own tab and selection state is untouched behind it. */}
+                    {/* The embedded Bench takes the tab strip, the add/search bar and the list; the detail
+                        panel beside it stays live, so a finding's item opens visibly next to the list being
+                        triaged. The editor's own tab and selection state is untouched behind it. */}
                     {bench.embedded ? (
                       <div className="flex-grow min-h-0">{benchPanel}</div>
                     ) : (
-                      <>
+                      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
+                        {tabsList}
                         {addSearchBar}
                         {/* The detail pane is the other half of a master-detail split, in its own resizable
-                            panel — the tab's own content is this list. */}
+                            panel outside the tab root — the tab's own content is this list. */}
                         {tabPanels(
-                          <div className={cn('flex-grow min-h-0', bodyGap)} onClick={deselectOnListClick}>
+                          <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
                             {listOwnsSlot ? listContent : <ScrollArea landingRoom className="h-full">{listContent}</ScrollArea>}
                           </div>
                         )}
-                      </>
+                      </Tabs>
                     )}
                   </CardContent>
                   {footerBar}
@@ -1185,7 +1186,6 @@ const WorldEditorInner = ({
               </>
             )}
           </PanelGroup>
-          </Tabs>
         )}
       </div>
       {/* Mobile has no room for a third pane, so the Bench arrives as a full-height sheet over the editor. */}

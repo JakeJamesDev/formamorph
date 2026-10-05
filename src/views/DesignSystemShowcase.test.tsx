@@ -338,28 +338,26 @@ describe('supporter flair reference', () => {
   });
 });
 
-describe('edge rail reference', () => {
-  it('draws the editor registry as a rail and a Sections bar, and follows the mode switch', async () => {
+describe('sections bar reference', () => {
+  it('draws the editor registry as a Sections bar, and follows the mode switch', async () => {
     const user = userEvent.setup();
     renderShowcase();
-    await user.click(screen.getByRole('tab', { name: 'Edge Rail' }));
+    await user.click(screen.getByRole('tab', { name: 'Sections Bar' }));
 
-    const region = screen.getByRole('region', { name: 'Edge Rail' });
-    const rail = within(region).getByRole('tablist', { name: 'Sample Editor Sections' });
-    expect(within(rail).getAllByRole('tab')).toHaveLength(7);
-    await user.click(within(rail).getByRole('tab', { name: 'Traits' }));
+    const region = screen.getByRole('region', { name: 'Sections Bar' });
+    const sections = () => within(region).getByRole('button', { name: /^Sections/ });
+    const bar = () => within(region).getByRole('tablist', { name: 'Editor Sections' });
+    await user.click(sections());
+    expect(within(bar()).getAllByRole('tab')).toHaveLength(7);
+    expect(within(bar()).getByText('Content')).toBeInTheDocument();
+    expect(within(bar()).getByText('Vocabulary')).toBeInTheDocument();
+    await user.click(within(bar()).getByRole('tab', { name: 'Traits' }));
+    expect(sections()).toHaveTextContent('Traits');
     expect(within(region).getByText('The trait tree beside the selected trait\'s details.')).toBeInTheDocument();
 
-    await user.click(within(region).getByRole('button', { name: /^Sections/ }));
-    const bar = within(region).getByRole('tablist', { name: 'Editor Sections' });
-    expect(within(bar).getByText('Content')).toBeInTheDocument();
-    expect(within(bar).getByText('Vocabulary')).toBeInTheDocument();
-    expect(within(bar).queryByText('World')).toBeNull();
-    await user.click(within(bar).getByRole('tab', { name: 'Dictionary' }));
-    expect(within(region).getByRole('button', { name: /^Sections/ })).toHaveTextContent('Dictionary');
-
     await user.click(within(region).getByRole('radio', { name: 'Simple' }));
-    expect(within(rail).getAllByRole('tab')).toHaveLength(6);
+    await user.click(sections());
+    expect(within(bar()).getAllByRole('tab')).toHaveLength(6);
     expect(localStorage).toHaveLength(0);
   });
 });

@@ -1,6 +1,6 @@
 import { BookOpen, Braces, ChartColumn, Globe, MapPin, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 
-/** The World Editor's tab groups, in rail order. A group with no tab in the current mode draws nothing. */
+/** The World Editor's tab groups, in Sections bar order. A group with no tab in the current mode draws nothing. */
 export const WORLD_EDITOR_TAB_GROUPS = [
   { id: 'content', label: 'Content' },
   { id: 'vocabulary', label: 'Vocabulary' },
@@ -18,7 +18,7 @@ export interface WorldEditorTab {
   advancedOnly?: boolean;
 }
 
-/** The World Editor's top-level tabs, in order. Single source of truth: the rail and the mobile Sections bar
+/** The World Editor's top-level tabs, in order. Single source of truth: the desktop strip and the mobile Sections bar
  *  render from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditor`) is guarded against it in
  *  `devRouter.test.ts`. */
 export const WORLD_EDITOR_TABS = [

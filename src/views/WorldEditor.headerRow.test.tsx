@@ -37,7 +37,7 @@ const WORLD = benchEditorWorld({});
 
 const findButton = () => screen.getByRole('button', { name: 'Find and replace' });
 const helpButtons = () => screen.queryAllByRole('button', { name: /^About / });
-/** The list card's body: whatever rows the tab adds above its panels, then the panels. The editor's tab
+/** The tab root: the desktop strip, whatever rows the tab adds, then the panels. The editor's tab
  *  list is read hidden too, since on mobile it waits behind the closed Sections bar. */
 const panelsHost = () => {
   const tabs = screen.getByRole('tablist', { name: 'Editor Sections', hidden: true });
@@ -64,7 +64,8 @@ describe.each([['desktop'], ['mobile']])('World Editor header row (%s)', (layout
   it('renders no toolbar row on Overview, so the panel starts the card', async () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
     await screen.findByRole('button', { name: 'About Overview' });
-    const rows = Array.from(panelsHost().children);
+    // The desktop strip shares the tab root; past it, nothing but panels.
+    const rows = Array.from(panelsHost().children).filter((row) => row.getAttribute('role') !== 'tablist');
     expect(rows.every((row) => row.getAttribute('role') === 'tabpanel')).toBe(true);
     expect(findButton().nextElementSibling).toBe(screen.getByRole('button', { name: 'About Overview' }));
   });
