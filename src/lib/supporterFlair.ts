@@ -53,13 +53,16 @@ const RING_COLORS: Record<SupporterTier, string> = {
 
 /** Ring width and gap per Profile Image size: small images take a thin ring so it does not crowd the face. */
 const RING_WIDTHS: Record<AvatarSize, string> = {
-  xs: 'ring-1 ring-offset-1',
-  sm: 'ring-1 ring-offset-1',
-  md: 'ring-2 ring-offset-2',
-  lg: 'ring-2 ring-offset-2',
-  xl: 'ring-[3px] ring-offset-2',
+  xs: 'ring-1 p-0.5',
+  sm: 'ring-1 p-0.5',
+  md: 'ring-2 p-1',
+  lg: 'ring-2 p-1',
+  xl: 'ring-[3px] p-[5px]',
 };
 
-/** Classes that draw the tier ring around a Profile Image of this size. */
+/**
+ * Classes that draw the tier ring on the box around a Profile Image of this size. The ring is inset and
+ * the padding holds the gap, so the whole ring sits inside the element and no clipping ancestor cuts it.
+ */
 export const supporterRing = (tier: SupporterTier, size: AvatarSize): string =>
-  `${RING_WIDTHS[size]} ring-offset-background ${RING_COLORS[tier]}`;
+  `${RING_WIDTHS[size]} ring-inset ${RING_COLORS[tier]}`;
