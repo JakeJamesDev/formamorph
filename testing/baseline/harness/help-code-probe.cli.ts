@@ -27,6 +27,7 @@
 //
 // Usage: npx vite-node testing/baseline/harness/help-code-probe.cli.ts --
 //          [--endpoint URL] [--model default] [--token T] [--runs 8] [--parallel 4] [--only id,id] [--arms a,b] [--alt FILE,FILE] [--docs-alt PAGE=FILE] [--tools] [--show]
+import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import sidebar from '../../../docs/_Sidebar.md?raw';
@@ -134,6 +135,8 @@ const snapshot = probeSnapshot({ endpoint, model, token }, tools);
 
 interface Sample {
   answer: string; finish: string | null; usage: Usage;
+  /** The prompt tokens of the question's largest single request. */
+  largestPrompt: number;
   /** The code test calls the answer made. */
   tests: number;
   /** Whether the last code test came back with no error and no dropped write; null with no call. */
@@ -159,9 +162,11 @@ async function ask(arm: Arm, c: HelpCodeCase): Promise<Sample> {
   const usage = noUsage();
   let finish: string | null = null;
   let tests = 0;
+  let largestPrompt = 0;
   let last: CodeTestResult | null = null;
   // The pick request comes first; the answer's finish is the one the cap shows on.
   const fetchImpl = sessionFetch(usage, (body, completion) => {
+    largestPrompt = Math.max(largestPrompt, completion.usage?.prompt_tokens ?? 0);
     if (String(body.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT)) return;
     finish = completion.choices?.[0]?.finish_reason ?? null;
     tests += (completion.choices?.[0]?.message?.tool_calls ?? []).filter((call) => call.function.name === HELP_CODE_TEST.name).length;
@@ -173,8 +178,24 @@ async function ask(arm: Arm, c: HelpCodeCase): Promise<Sample> {
     if (event.type === 'done') answer = event.text;
   }
   // A call whose result never came back counts as not clean.
-  return { answer, finish, usage, tests, lastClean: tests ? last !== null && testsClean(last) : null };
+  return { answer, finish, usage, largestPrompt, tests, lastClean: tests ? last !== null && testsClean(last) : null };
 }
+
+/** The loaded model's slot count and context, from `lms ps --json`; null off LM Studio or when the CLI is absent. */
+function lmsLoad(): { parallel: number; contextLength: number } | null {
+  if (!/localhost:1234|127\.0\.0\.1:1234/.test(endpoint)) return null;
+  try {
+    const list = JSON.parse(execSync('lms ps --json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) as { identifier: string; parallel?: number; contextLength?: number }[];
+    const loaded = list.find((m) => m.identifier === model) ?? list[0];
+    return loaded?.parallel && loaded.contextLength ? { parallel: loaded.parallel, contextLength: loaded.contextLength } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The most requests that fit the loaded context at once: LM Studio shares it across its slots, so two in flight each get half. */
+const safeParallel = (load: { parallel: number; contextLength: number }, largestPrompt: number, maxTokens: number) =>
+  Math.max(1, Math.min(load.parallel, Math.floor(load.contextLength / (largestPrompt + maxTokens))));
 
 async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> {
   const results: T[] = new Array(jobs.length);
@@ -201,15 +222,20 @@ for (let run = 1; run <= runs; run++) {
     for (const arm of ARMS) {
       jobs.push(async () => {
         const row = { caseId: c.id, kind: c.kind, arm, run };
+        let out: Row;
         try {
           const sample = await ask(arm, c);
           const score = await scoreCodeAnswer(sample.answer, fixtureRunner);
-          if (!c.names) return { ...row, sample, score };
-          const names = scoreNames(sample.answer, c.names);
-          return { ...row, sample, score, names, pass: passesCase(score, names) };
+          const names = c.names ? scoreNames(sample.answer, c.names) : undefined;
+          out = { ...row, sample, score, ...(names && { names, pass: passesCase(score, names) }) };
         } catch (error) {
-          return { ...row, sample: null, score: null, error: error instanceof Error ? error.message : String(error) };
+          out = { ...row, sample: null, score: null, error: error instanceof Error ? error.message : String(error) };
         }
+        // One line per answer as it lands, so a run in progress can be read and stopped.
+        console.log(out.error
+          ? `  ${run} ${c.id.padEnd(25)} ${arm.padEnd(8)} FAILED ${out.error.slice(0, 80)}`
+          : `  ${run} ${c.id.padEnd(25)} ${arm.padEnd(8)} calls ${out.sample!.tests} · fence ${out.score!.fence ? 'ok' : 'no'} · ${out.pass === undefined ? `runs ${out.score!.runs ? 'ok' : 'no'}` : out.pass ? 'PASS' : 'MISS'} · ${out.sample!.largestPrompt} tok`);
+        return out;
       });
     }
   }
@@ -220,7 +246,15 @@ const modelRoot = await fetch(new URL('/v1/models', endpoint))
   .catch(() => '?');
 console.log(`help-code-probe · ${endpoint} · model ${model} (root ${modelRoot}) · ${cases.length} cases × ${ARMS.length} arms × ${runs} runs`);
 const started = Date.now();
-const rows = await pool(jobs, parallel);
+// The first question runs alone: it is the smoke line, and its largest request sizes the slots the rest may use.
+const first = await jobs[0]();
+const load = lmsLoad();
+let limit = parallel;
+if (load && first.sample) {
+  limit = Math.min(parallel, safeParallel(load, first.sample.largestPrompt, DEFAULT_HELP_OPTIONS.answer.maxTokens));
+  console.log(`lms ps: parallel ${load.parallel}, context ${load.contextLength} · largest request ${first.sample.largestPrompt} + ${DEFAULT_HELP_OPTIONS.answer.maxTokens} tokens · running ${limit} at a time${limit < parallel ? ` (asked ${parallel})` : ''}`);
+}
+const rows = [first, ...(await pool(jobs.slice(1), limit))];
 console.log(`${rows.length} questions in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
 
 const known = new Set(cases.filter((c) => c.names).map((c) => c.id));
