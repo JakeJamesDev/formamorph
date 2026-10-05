@@ -41,8 +41,10 @@ export interface MenuActions {
   onMascotPlacementChange?: (placement: MascotPlacement) => void;
 }
 
-export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, chatStyle, onChatStyleChange, mascotPlacement, onMascotPlacementChange, container, large = false, round = false }: MenuActions & {
+export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, chatStyle, onChatStyleChange, mascotPlacement, onMascotPlacementChange, container, onOpenChange, large = false, round = false }: MenuActions & {
   container?: HTMLElement;
+  /** Called as the menu opens and closes. */
+  onOpenChange?: (open: boolean) => void;
   large?: boolean;
   /** A round button with no border, as the other buttons of the minimal chrome's pill. */
   round?: boolean;
@@ -50,7 +52,7 @@ export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, ch
   const pending = useRef<(() => void) | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   return (
-    <ContextMenu>
+    <ContextMenu onOpenChange={onOpenChange}>
       <Tip tip="More Actions">
         <ContextMenuTrigger asChild>
           <Button

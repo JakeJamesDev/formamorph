@@ -18,6 +18,7 @@ import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
 import { ResizeGrip } from './FormaquestionFrame';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { ScrollArrow } from './ScrollArrow';
+import type { PillFade } from './usePillFade';
 import { FormaquestionMenu, type MenuActions } from './FormaquestionMenu';
 import type { HelpChat } from './useHelpChat';
 import type { DragHandlers } from './usePointerDrag';
@@ -31,13 +32,24 @@ export interface HeadToggle {
 }
 
 /** The only chrome: it moves the window, swaps the Mascot's view, holds the ⋮ menu, and closes the window. */
-export function Pill({ move, large, headToggle, menu, onClose, className }: { move?: DragHandlers; large: boolean; headToggle?: HeadToggle; menu: MenuProps; onClose: () => void; className?: string }) {
+export function Pill({ move, large, headToggle, menu, onClose, className, fade }: {
+  move?: DragHandlers;
+  large: boolean;
+  headToggle?: HeadToggle;
+  menu: MenuProps;
+  onClose: () => void;
+  className?: string;
+  /** Fades the pill out when idle. Null keeps it up. */
+  fade?: PillFade | null;
+}) {
   const headLabel = headToggle?.showingHead ? 'Show Full Mascot' : 'Show Head Only';
+  const { className: fadeClass, ...fading } = fade?.props ?? {};
   return (
     <div
       data-fq-drag=""
       {...move}
-      className={cn(FLOATING, 'flex shrink-0 select-none items-center self-end rounded-full border bg-background p-0.5', move && 'cursor-move touch-none', className)}
+      {...fading}
+      className={cn(FLOATING, 'flex shrink-0 select-none items-center self-end rounded-full border bg-background p-0.5', move && 'cursor-move touch-none', className, fadeClass)}
     >
       {move && <GripVertical aria-hidden className="mx-0.5 h-4 w-4 text-muted-foreground" />}
       {headToggle && (
@@ -47,7 +59,7 @@ export function Pill({ move, large, headToggle, menu, onClose, className }: { mo
           </button>
         </Tip>
       )}
-      <FormaquestionMenu {...menu} large={large} round />
+      <FormaquestionMenu {...menu} onOpenChange={fade?.onMenuOpenChange} large={large} round />
       <Tip tip={large ? 'Close' : 'Close (F1)'}>
         <button type="button" aria-label="Close Formaquestion" onClick={onClose} className={cn(PILL_BUTTON, large ? 'h-12 w-12' : 'h-8 w-8')}>
           <X aria-hidden className="h-4 w-4" />
