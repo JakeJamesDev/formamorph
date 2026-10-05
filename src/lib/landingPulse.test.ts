@@ -148,8 +148,23 @@ describe('landingControl', () => {
   };
 
   it('skips the label info button for the control', () => {
-    const node = rowWith('<button aria-label="More info"></button><input id="field" />');
+    const node = rowWith('<button aria-label="More info" data-hint-info></button><input id="field" />');
     expect(landingControl(node)?.id).toBe('field');
+  });
+
+  it('takes a field over a button before it', () => {
+    const node = rowWith('<button id="option" role="radio" data-state="off"></button><input id="field" />');
+    expect(landingControl(node)?.id).toBe('field');
+  });
+
+  it('takes the first enabled button of a row of buttons', () => {
+    const node = rowWith('<button aria-label="More info" data-hint-info></button><button id="previous" disabled></button><button id="next"></button>');
+    expect(landingControl(node)?.id).toBe('next');
+  });
+
+  it('takes the first live link button of a pager', () => {
+    const node = rowWith('<a id="previous" href="#" aria-disabled="true"></a><a id="page" href="#" aria-current="page"></a>');
+    expect(landingControl(node)?.id).toBe('page');
   });
 
   it('picks the control on screen over a hidden twin', () => {
@@ -166,6 +181,6 @@ describe('landingControl', () => {
   });
 
   it('finds nothing in a row with no control', () => {
-    expect(landingControl(rowWith('<button aria-label="More info"></button>'))).toBeNull();
+    expect(landingControl(rowWith('<button aria-label="More info" data-hint-info></button>'))).toBeNull();
   });
 });

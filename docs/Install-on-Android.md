@@ -33,7 +33,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 
 ## How to Get Beta Builds
 <!-- keywords: pre-release, prerelease, test version, early access, channel, nightly, preview version, experimental, unstable, opt in, insider, upcoming features, back to stable -->
-<!-- route: mainMenu -->
+<!-- route: mainMenu#app-version -->
 
 1. Tap the version number on the main menu.
 2. Set **Release channel** to **Pre-release**.

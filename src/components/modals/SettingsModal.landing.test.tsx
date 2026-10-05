@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
@@ -9,6 +9,7 @@ import { resolveSurface } from '@/lib/surface/surfaceRoute';
 import { routeText, SURFACE_TARGETS } from '@/lib/surface/surfaceTargets';
 import { settingsLanding } from '@/lib/surface/useSurfaceOpenRequest';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { frames, recordScrolls, rowOf } from '@/test/landing';
 import { SettingsModal } from './SettingsModal';
 import { endpointTabForRoute } from './settingsTabs';
 
@@ -42,22 +43,11 @@ const tree = (props: Props) => (
   </ThemeProvider>
 );
 
-const rowOf = (route: string) => document.querySelector<HTMLElement>(`[data-surface-target="${route}"]`);
-
-/** Lets the landing's frames run out. */
-const frames = (count: number) => act(async () => {
-  for (let i = 0; i < count; i++) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-});
-
-let scrolled: Element[];
-const realScroll = Element.prototype.scrollIntoView;
+const scrolled = recordScrolls();
 beforeEach(() => {
-  scrolled = [];
   toasts.calls = [];
-  Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
 });
 afterEach(() => {
-  Element.prototype.scrollIntoView = realScroll;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -125,7 +115,7 @@ describe('Settings Take Me There landing', () => {
       initialEndpointTab: landing.endpointTab,
       initialPromptTab: landing.promptTab,
       initialPromptSurface: landing.promptSurface,
-      initialTarget: landing.target,
+      initialTarget: route,
       requestKey: 'a',
     }));
     await waitFor(() => expect(scrolled).toContain(rowOf(route)));

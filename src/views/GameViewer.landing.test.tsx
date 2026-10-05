@@ -1,8 +1,9 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { frames, recordScrolls, rowOf } from '@/test/landing';
 import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
 import type { World } from '@/types';
 
@@ -29,17 +30,11 @@ const PAGER = 'gameViewer#pager';
 const STORY_FORMAT = 'export#story-format';
 
 let requester: ReturnType<typeof createSurfaceRequester>;
-let scrolled: Element[];
-const realScroll = Element.prototype.scrollIntoView;
+const scrolled = recordScrolls();
 
-const rowOf = (route: string) => document.querySelector<HTMLElement>(`[data-surface-target="${route}"]`);
 const endPulse = (row: HTMLElement) => row.dispatchEvent(
   Object.assign(new Event('animationend', { bubbles: true }), { animationName: LANDING_PULSE_CLASS }),
 );
-/** Lets the landing's frames run out. */
-const frames = (count: number) => act(async () => {
-  for (let i = 0; i < count; i++) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-});
 
 /** Enter the game and dismiss the AI setup gate the default endpoint raises, as a player does. */
 async function enterGame() {
@@ -51,11 +46,8 @@ async function enterGame() {
 beforeEach(() => {
   localStorage.clear();
   requester = createSurfaceRequester();
-  scrolled = [];
-  Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
 });
 afterEach(() => {
-  Element.prototype.scrollIntoView = realScroll;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -95,11 +87,13 @@ describe('Take Me There landing on the game screen', () => {
     expect(rowOf(ACTION_BOX)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
   });
 
-  it('lands on the pager', async () => {
+  it('lands on the pager and focuses its first enabled button', async () => {
     await enterGame();
     requester.send('gameViewer', 'pager');
     await waitFor(() => expect(scrolled).toContain(rowOf(PAGER)));
     expect(rowOf(PAGER)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    // One page: Previous and Next are dead, so the current page's button takes focus.
+    expect(document.activeElement).toBe(screen.getByRole('link', { current: 'page' }));
   });
 
   it('opens the export dialog, then lands on its format buttons', async () => {

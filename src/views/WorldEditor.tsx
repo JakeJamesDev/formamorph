@@ -2,9 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, ty
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
-import { landingControl } from '@/lib/landingPulse';
-import { TARGET_ATTRIBUTE, targetAttribute } from '@/lib/surface/surfaceTargets';
-import { useLanding } from '@/lib/surface/useLanding';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
+import { useRouteLanding } from '@/lib/surface/useLanding';
 import { editorTabsFor } from './worldEditorTabs';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
@@ -231,12 +230,8 @@ const WorldEditorInner = ({
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState(initialTab ?? "overview");
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab, requestKey]);
-  // The Bench's drawer on mobile and its popover sit outside the editor's own tree, so the lookup is document-wide.
-  const landTarget = useLanding(
-    (route: string) => document.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${route}"]`),
-    // A row with only a button, the Bench's Placeholder Rolls, focuses that button.
-    { pulse: true, focus: (row) => landingControl(row) ?? row.querySelector<HTMLElement>('button') },
-  );
+  // The Bench's drawer on mobile and its popover sit outside the editor's own tree, so the lookup is page-wide.
+  const landTarget = useRouteLanding();
   useEffect(() => { if (initialTarget) landTarget(initialTarget); }, [initialTarget, requestKey, landTarget]);
   // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
   useEffect(() => {

@@ -945,6 +945,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   class=""
                 >
                   <a
+                    aria-disabled="true"
                     aria-label="Go to next page"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5 pointer-events-none opacity-50"
                     href="#"

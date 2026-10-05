@@ -6,8 +6,7 @@ import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { SurfaceTab } from '@/components/ui/surface';
-import { findTarget, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
-import { landingControl } from '@/lib/landingPulse';
+import { findTargetRow, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useLanding } from '@/lib/surface/useLanding';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
@@ -326,9 +325,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   useEffect(() => { if (requestedEndpointTab) setEndpointTab(requestedEndpointTab); }, [requestedEndpointTab, requestKey]);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const landTarget = useLanding(
-    (route: string) => findTarget(route, dialogRef.current),
-    // A row of buttons takes its first enabled one.
-    { pulse: true, focus: (row) => landingControl(row) ?? row.querySelector<HTMLElement>('button:not(:disabled)') },
+    (route: string) => (dialogRef.current ? findTargetRow(dialogRef.current, route) : null),
+    { pulse: true },
   );
   useEffect(() => { if (initialTarget) landTarget(initialTarget); }, [initialTarget, requestKey, landTarget]);
   const settings = useSettings();
@@ -951,7 +949,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     presets: routableEndpoints,
     onChange: (id: string | null) => setPromptEndpoint(activeKind, id),
     // Probed only while pinned — an unpinned prompt uses the active endpoint, which the setup gate covers.
-    target: {
+    reachability: {
       url: promptTarget.url,
       apiToken: promptTarget.apiToken,
       model: promptTarget.model,
@@ -1953,6 +1951,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               onToggleFullscreen={toolsMorph.toggle}
               appVersion={APP_VERSION}
               openWorld={toolWorld}
+              targets={{ shareTools: targetAttribute('settings.tools', 'share-tools') }}
               // Selection only: Add opens a dialog that lives in the Prompts tab.
               presetSelector={(
                 <div className="flex items-center gap-2">

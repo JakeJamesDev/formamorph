@@ -1,8 +1,9 @@
-import { act, screen, cleanup, waitFor } from '@testing-library/react';
+import { screen, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderMainMenu } from '@/test/mainMenu';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { frames, recordScrolls, rowOf } from '@/test/landing';
 import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
 import { routeText } from '@/lib/surface/surfaceTargets';
 import WorldStorageService, { type StoredWorldRecord } from '@/services/WorldStorageService';
@@ -29,16 +30,8 @@ const world = (): StoredWorldRecord => ({
   },
 } as unknown as StoredWorldRecord);
 
-const rowOf = (route: string) => document.querySelector<HTMLElement>(`[data-surface-target="${route}"]`);
-
-/** Lets the landing's frames run out. */
-const frames = (count: number) => act(async () => {
-  for (let i = 0; i < count; i++) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-});
-
 let requester: ReturnType<typeof createSurfaceRequester>;
-let scrolled: Element[];
-const realScroll = Element.prototype.scrollIntoView;
+const scrolled = recordScrolls();
 
 beforeEach(async () => {
   localStorage.clear();
@@ -48,12 +41,9 @@ beforeEach(async () => {
   })));
   await WorldStorageService.storeWorld(world());
   requester = createSurfaceRequester();
-  scrolled = [];
-  Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
 });
 afterEach(() => {
   cleanup();
-  Element.prototype.scrollIntoView = realScroll;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });

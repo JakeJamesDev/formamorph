@@ -20,7 +20,7 @@ const renderField = (value: string | null, onChange = vi.fn(), enabled = true) =
       activeName="Default"
       presets={presets}
       onChange={onChange}
-      target={{ ...target, enabled }}
+      reachability={{ ...target, enabled }}
     />,
   );
   return onChange;
@@ -76,7 +76,7 @@ describe('EndpointRouteField', () => {
           extraRows={[{ value: 'same', label: 'Same as Answer (Llama)' }]}
           presets={presets}
           onChange={onChange}
-          target={{ ...target, enabled: false }}
+          reachability={{ ...target, enabled: false }}
         />,
       );
       return onChange;

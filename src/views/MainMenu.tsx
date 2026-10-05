@@ -41,10 +41,9 @@ import {
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { asSettingsTab, type SettingsTabId } from '../components/modals/settingsTabs';
 import { useSettingsOpenRequest } from '@/lib/useSettingsOpenRequest';
-import { closesWorldEditor, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from '@/lib/surface/useSurfaceOpenRequest';
+import { landsOnPage, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from '@/lib/surface/useSurfaceOpenRequest';
 import { stepTab, type SurfaceSteps } from '@/lib/surface/surfaceRoute';
 import { targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
-import { useTargetLanding } from '@/lib/surface/useLanding';
 import { useSettings } from "@/contexts/SettingsContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AiSetupGate, type GateReason } from '../components/AiSetupGate';
@@ -1322,7 +1321,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // --- Surface requests ------------------------------------------------------------------------------
   const surfaceNav = useSurfaceNav();
-  useTargetLanding(surfaceNav.pageTarget, surfaceNav.key);
   // The World Editor's leave step, which asks about unsaved edits before it lets go.
   const editorLeaveRef = useRef<((then: () => void) => void) | null>(null);
   const openSurfaceHere = (steps: SurfaceSteps) => {
@@ -1367,7 +1365,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   useSurfaceOpenRequest((steps, clear) => {
     clear();
     const leave = editorLeaveRef.current;
-    if (!showWorldEditor || !closesWorldEditor(steps) || !leave) {
+    // Settings and the World Editor open over the editor; a surface the page lands closes it.
+    if (!showWorldEditor || !landsOnPage(steps) || !leave) {
       openSurfaceHere(steps);
       return;
     }
@@ -1900,7 +1899,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialEndpointTab={settingsEndpointTab}
         initialPromptTab={surfaceNav.settings?.promptTab ?? devRoute?.subtab}
         initialPromptSurface={surfaceNav.settings?.promptSurface ?? devRoute?.surface}
-        initialTarget={surfaceNav.settings?.target}
+        initialTarget={surfaceNav.target}
         requestKey={surfaceNav.key}
         onWorldsRestored={refreshWorlds}
         onStartAuthoringTour={() => { setShowSettings(false); void handleCreateNewWorld({ tour: true }); }}

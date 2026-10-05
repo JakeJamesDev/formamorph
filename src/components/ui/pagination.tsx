@@ -270,6 +270,7 @@ function Pager({
               e.preventDefault()
               if (!atStart) onPageChange(page - 1)
             }}
+            aria-disabled={atStart || undefined}
             className={atStart ? "pointer-events-none opacity-50" : ""}
           />
         </PaginationItem>
@@ -281,6 +282,7 @@ function Pager({
               e.preventDefault()
               if (!atEnd) onPageChange(page + 1)
             }}
+            aria-disabled={atEnd || undefined}
             className={atEnd ? "pointer-events-none opacity-50" : ""}
           />
         </PaginationItem>

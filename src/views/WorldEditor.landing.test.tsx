@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
 import { routeText, SURFACE_TARGETS } from '@/lib/surface/surfaceTargets';
 import { stubReducedMotion } from '@/test/reducedMotion';
+import { frames, recordScrolls, rowOf } from '@/test/landing';
 
 /** Take Me There landing in the World Editor: the control a request names is scrolled to, focused, and pulsed once. */
 
@@ -27,22 +28,11 @@ vi.mock('react-toastify', () => ({
 const WORLD = benchEditorWorld({});
 const STATS_BAR = 'worldEditor.stats#list-toolbar';
 
-const rowOf = (route: string) => document.querySelector<HTMLElement>(`[data-surface-target="${route}"]`);
-
-/** Lets the landing's frames run out. */
-const frames = (count: number) => act(async () => {
-  for (let i = 0; i < count; i++) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-});
-
-let scrolled: Element[];
-const realScroll = Element.prototype.scrollIntoView;
+const scrolled = recordScrolls();
 beforeEach(() => {
   localStorage.clear();
-  scrolled = [];
-  Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
 });
 afterEach(() => {
-  Element.prototype.scrollIntoView = realScroll;
   vi.unstubAllGlobals();
 });
 
