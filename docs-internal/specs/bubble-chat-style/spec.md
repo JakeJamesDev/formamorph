@@ -39,6 +39,11 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 | Q20 | The pill's drag handle is the vertical grip icon, to take less room |
 | Q21 | Scrolling content uses the shared ScrollArea, never a native overflow scrollbar. A guard flags a native overflow scroller in components unless the file uses ScrollArea or carries a one-line allow comment naming the Design System exception (ticket 04) |
 | Q22 | The Sources list opens as a popover from the strip's Sources button, each section a link, with the flagged answer's nearest sections there too. The bubble holds the answer and the Thinking fold only. Take Me There stays in the strip (ticket 01) |
+| Q23 | The chat grip sets the chat's room, width and height, stored per device beside her place. With nothing set, the room is 400px wide (the Minimal column width) and the bubble fits its answer up to the screen margin. The chat width no longer follows her size (replaces that part of Q7) |
+| Q24 | As in Minimal, the bubble never expands past what its answer needs. The Scrim fills the room, the grip sits on the room's corner, the bubble sits at the room's bottom and scrolls only past the room's height |
+| Q25 | The tail draws under the bubble, so it never covers text or the scroll bar |
+| Q26 | The fade masks the whole bubble piece, box included, as Minimal fades its bubbles. The chat grip sits outside the bubble, so the fade never hides it |
+| Q27 | The Sources trigger uses the Thinking toggle's leading chevron, turned up toward the popover while it is open, with the same transition |
 
 ## User Stories
 
@@ -117,5 +122,5 @@ A good test calls the public seam with real inputs and asserts the observable re
 
 ## Further Notes
 
-- The pill fade delay, the Auto height share and the bubble caps are tuning values. One constant each, set from the live window after the build.
+- The pill fade delay (one second), the Auto height share and the bubble caps are tuning values. One constant each, set from the live window after the build.
 - Mascot Position stays built for Minimal and Full. Its spec is `docs-internal/specs/mascot-below/spec.md`.
