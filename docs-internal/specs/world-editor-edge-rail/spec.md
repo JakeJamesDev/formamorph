@@ -10,7 +10,7 @@ The World Editor's top-level tabs sit in one horizontal strip inside the list ca
 
 ## Solution
 
-The tab strip leaves the card. A full-height **edge rail** sits on the editor's outer left edge, left of both cards, one icon per tab. Tabs are grouped (World, Text, Logic) with a separator between groups. Hovering or focusing an icon flies out a label that names the group and the tab, "World · Entities". The active icon carries an accent bar. The rail has no expanded state and no toggle; the list card keeps its full width.
+The tab strip leaves the card. A full-height **edge rail** sits on the editor's outer left edge, left of both cards, one icon per tab. Overview stands alone at the top as the landing tab; below a separator the rest are grouped (Content, Vocabulary, Logic) with a separator between groups. Hovering or focusing an icon flies out a label that names the group and the tab, "Content · Entities"; Overview's reads "Overview". The active icon carries an accent bar. The rail has no expanded state and no toggle; the list card keeps its full width.
 
 The `?` moves into the header row, right of Find. Overview loses its empty toolbar row. On Locations the List and Canvas switch becomes two icons with tooltips and sits after the search box, at the row's right end.
 
@@ -21,7 +21,7 @@ Mobile drops the horizontal strip for the disclosure bar the Enter World flow us
 | # | Ruling |
 |---|---|
 | Q1 | Desktop navigation is an edge rail on the editor's outer left edge, outside every card, full height, icons only. The horizontal strip inside the list card goes |
-| Q2 | Tabs are grouped: **World** (Overview, Stats, Entities, Locations, Traits), **Text** (Dictionary, Placeholders), **Logic** (reserved for Scripts and Tools). A separator draws between groups. A group with no visible tab draws nothing, so Logic is absent until a tab exists in it. Simple mode hides Placeholders as today, so Text shows Dictionary alone |
+| Q2 | Grouping and names superseded by Q15 and Q16. Tabs are grouped: **World** (Overview, Stats, Entities, Locations, Traits), **Text** (Dictionary, Placeholders), **Logic** (reserved for Scripts and Tools). A separator draws between groups. A group with no visible tab draws nothing, so Logic is absent until a tab exists in it. Simple mode hides Placeholders as today, so Text shows Dictionary alone |
 | Q3 | Hovering or keyboard-focusing a rail item flies out a label reading "Group · Tab". No expanded state, no collapse toggle, no stored preference |
 | Q4 | The active item carries a primary accent bar on the rail's edge and foreground color; the rest are muted. Every item has an accessible name equal to its tab label |
 | Q5 | The rail is a real tab list: one tab root wraps the rail and the cards, the rail is its vertical list, each icon a tab trigger, and the tab panels stay in the list card. Arrow keys move along the rail as they do along the strip today |
@@ -34,6 +34,8 @@ Mobile drops the horizontal strip for the disclosure bar the Enter World flow us
 | Q12 | Mobile navigation is the Enter World flow's collapsed Categories widget: a full-width disclosure bar under the header with a tree icon, the label **Sections**, the current tab's name at the right, and a chevron that turns when open. Opening it expands the grouped tab list below the bar with the same grid-rows transition and `inert` while closed; picking a tab closes it. The horizontal scrolling strip goes. Replaces Q6's strip |
 | Q13 | The World Editor's back arrow draws with no outline: a plain ghost icon. Every icon button in the header row keeps its square size and never shrinks, on both layouts, so Find is never squeezed when the row gets tight |
 | Q14 | One changelog line for the effort. Every ticket's fragment carries the exact lead **The World Editor's tabs move to an icon rail on the window's edge.** and its own sentence after it; the first to land creates the line and the rest fold in. Ticket 03's sentence: "On Locations, List and Canvas are icons with tooltips at the right end of the search row." |
+| Q15 | Overview stands alone at the top of the rail as the landing tab: an ungrouped first slot, then a separator, then the groups. Its flyout reads "Overview" with no group part. The mobile Sections bar shows Overview as a lone row above the first caption. Replaces Overview's place in Q2's first group (ticket 04) |
+| Q16 | Group names: **Content** (Stats, Entities, Locations, Traits), **Vocabulary** (Dictionary, Placeholders), **Logic** (reserved). Replaces World and Text in Q2. Rejected: World (sits beside an Overview that is also about the world), Build (a verb, near the Bench's wording), Language (clashes with the AI Language directive), Lore (misses Placeholders), Writing (vague) (ticket 04) |
 
 ## User Stories
 
@@ -68,7 +70,7 @@ Mobile drops the horizontal strip for the disclosure bar the Enter World flow us
 
 ### Tab registry
 
-- Each tab in the World Editor's tab registry gains a group id and an icon. The registry exports the groups in order (World, Text, Logic) with a label and the tabs one editor mode shows, and a helper that returns the groups for a mode with their visible tabs, dropping empty groups (Q2).
+- Each tab in the World Editor's tab registry gains a group id and an icon. The registry exports the groups in order (Content, Vocabulary, Logic) with a label and the tabs one editor mode shows, and a helper that returns the groups for a mode with their visible tabs, dropping empty groups (Q2, Q16). Overview carries no group; the helper returns it ahead of the groups and both renderers draw it as a lone slot with a separator after it (Q15).
 - The dev-router ledger guard keeps checking the tab list against the registry. Nothing in the dev-router changes.
 
 ### Edge rail component
