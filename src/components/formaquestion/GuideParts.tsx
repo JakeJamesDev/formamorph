@@ -10,6 +10,7 @@ import { Hint, Meta } from '@/components/ui/typography';
 import type { DocSection, DocsContentsPage } from '@/lib/docs/docsIndex';
 import { sectionBody, sectionExcerpt, withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { cn } from '@/lib/utils';
 import { isSearchable } from './formaquestionTabs';
 import { FOCUS_RING, readerComponents } from './readerLinks';
@@ -25,7 +26,7 @@ export function SearchField({ value, onChange, takesFocus = true, className }: {
   className?: string;
 }) {
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative', className)} {...targetAttribute('formaquestion.search', 'search-field')}>
       <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         data-fq-autofocus={takesFocus ? '' : undefined}

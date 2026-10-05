@@ -25,6 +25,7 @@ import { answerRoute } from './answerRoute';
 import { SectionRows } from './GuideParts';
 import { ScrollArrow } from './ScrollArrow';
 import { FOCUS_RING, readerComponents } from './readerLinks';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { useFoldRule } from './useFoldRule';
 import type { HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
@@ -241,7 +242,7 @@ function AskField({ draft, onDraftChange, chat }: {
       {readsImages && (
         <AttachmentThumbs attachments={pending} onRemove={(id) => setPending((prev) => withoutAttachment(prev, id))} className="pt-1.5" />
       )}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-2" {...targetAttribute('formaquestion.ask', 'question-field')}>
         {readsImages && (
           <AttachImagesButton attaching={attaching} onFiles={(files) => void attachFiles(files)} variant="outline" className="shrink-0" />
         )}

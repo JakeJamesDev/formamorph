@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { Answer } from './AskParts';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
 import { ResizeGrip } from './FormaquestionFrame';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { ScrollArrow } from './ScrollArrow';
 import { FormaquestionMenu, type MenuActions } from './FormaquestionMenu';
 import type { HelpChat } from './useHelpChat';
@@ -70,7 +71,10 @@ function AskPill({ draft, onDraftChange, chat }: { draft: string; onDraftChange:
       {readsImages && pending.length > 0 && (
         <AttachmentThumbs attachments={pending} onRemove={(id) => setPending((prev) => withoutAttachment(prev, id))} className="pointer-events-auto self-end" />
       )}
-      <div className={cn(FLOATING, 'flex items-end gap-1 rounded-3xl border bg-background p-1 shadow-lg focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring', readsImages ? 'pl-1' : 'pl-4', dragOver && 'ring-2 ring-inset ring-ring')}>
+      <div
+        className={cn(FLOATING, 'flex items-end gap-1 rounded-3xl border bg-background p-1 shadow-lg focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring', readsImages ? 'pl-1' : 'pl-4', dragOver && 'ring-2 ring-inset ring-ring')}
+        {...targetAttribute('formaquestion.ask', 'question-field')}
+      >
         {readsImages && (
           <AttachImagesButton attaching={attaching} onFiles={(files) => void attachFiles(files)} variant="ghost" className="h-9 w-9 shrink-0 rounded-full" />
         )}

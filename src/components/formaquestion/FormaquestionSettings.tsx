@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { Settings } from 'lucide-react';
 import { CheckRow, HintInfo, OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
 import { PromptReasoningField } from '@/components/modals/PromptOptionFields';
@@ -17,7 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   HELP_HISTORY_MAX, SCRIM_OPACITY_MAX, SCRIM_OPACITY_MIN, SCRIM_OPACITY_STEP, type HelpSettings, type HelpSettingsChange,
 } from '@/lib/formaquestion/helpSettings';
-import { landingControl, pulseLanding } from '@/lib/landingPulse';
+import { routeText, targetAttribute } from '@/lib/surface/surfaceTargets';
+import { useRouteLanding } from '@/lib/surface/useLanding';
 import { toolsSupported } from '@/lib/reasoningEffort';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import { MascotTab } from './FormaquestionMascotTab';
@@ -60,6 +61,7 @@ function SemanticStatus({ semantic }: { semantic: SemanticSearch }) {
 
 /** The answer request's reasoning, with the effort list and the budget of the endpoint answers resolve to. */
 function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; onChange: (change: HelpSettingsChange) => void; target: ReasoningFieldTarget }) {
+  const row = targetAttribute('formaquestionSettings.general', 'reasoning');
   const copy = GENERAL_COPY.reasoning;
   const field = promptReasoningFieldProps({
     target, kind: 'help', setting: settings.reasoning, budgetPct: settings.reasoningBudget, suppressed: false, showAwaitingProof: true,
@@ -69,13 +71,13 @@ function ReasoningRow({ settings, onChange, target }: { settings: HelpSettings; 
   // No field: the model is ruled out, since the call is never suppressed and a pending proof still draws one.
   if (!field) {
     return (
-      <Row muted label={copy.label}>
+      <Row muted target={row} label={copy.label}>
         <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
       </Row>
     );
   }
   return (
-    <Row top htmlFor="fq-reasoning" label={copy.label} hint={copy.hint} info={<HintInfo>{copy.info}</HintInfo>}>
+    <Row top target={row} htmlFor="fq-reasoning" label={copy.label} hint={copy.hint} info={<HintInfo>{copy.info}</HintInfo>}>
       <PromptReasoningField {...field} id="fq-reasoning" copy={null} switchLabel={copy.label} />
     </Row>
   );
@@ -91,33 +93,24 @@ function AnswerRevealRow({ settings, onChange }: { settings: HelpSettings; onCha
   );
 }
 
-function GeneralTab({ settings, onChange, semantic, answerTarget, landOnMascot, onLanded }: {
+function GeneralTab({ settings, onChange, semantic, answerTarget }: {
   settings: HelpSettings;
   onChange: (change: HelpSettingsChange) => void;
   semantic: SemanticSearch;
   answerTarget: ReasoningFieldTarget;
-  /** True once, when the Mascot tab's off-state link opened this tab: the Mascot row gets the Landing Pulse. */
-  landOnMascot: boolean;
-  onLanded: () => void;
 }) {
   const placement = useMascotPlacement();
-  const mascotRow = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const row = mascotRow.current;
-    if (!landOnMascot || !row) return;
-    row.scrollIntoView?.({ block: 'nearest' });
-    // The pulse ends with its own animation; clearing the flag must not cancel it.
-    pulseLanding(row);
-    landingControl(row)?.focus();
-    onLanded();
-  }, [landOnMascot, onLanded]);
   return (
     <div className="grid gap-6 py-4">
       <Section title="Window">
-        <div ref={mascotRow} data-testid="fq-mascot-row">
-          <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...GENERAL_COPY.mascot} />
-        </div>
-        <Row label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint}>
+        <CheckRow
+          htmlFor="fq-mascot"
+          checked={settings.mascot}
+          onChange={(mascot) => onChange({ mascot })}
+          target={targetAttribute('formaquestionSettings.general', 'mascot-switch')}
+          {...GENERAL_COPY.mascot}
+        />
+        <Row target={targetAttribute('formaquestionSettings.general', 'chat-style')} label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint}>
           <OptionSwitcher
             ariaLabel={GENERAL_COPY.chatStyle.label}
             value={settings.chatStyle}
@@ -126,6 +119,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget, landOnMascot, 
           />
         </Row>
         <Row
+          target={targetAttribute('formaquestionSettings.general', 'mascot-position')}
           label={GENERAL_COPY.mascotPosition.label}
           hint={GENERAL_COPY.mascotPosition.hint}
           info={<HintInfo>{GENERAL_COPY.mascotPosition.info}</HintInfo>}
@@ -137,7 +131,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget, landOnMascot, 
             onChange={setMascotPlacement}
           />
         </Row>
-        <Row htmlFor="fq-scrim-opacity" label={GENERAL_COPY.scrimOpacity.label} hint={GENERAL_COPY.scrimOpacity.hint}>
+        <Row htmlFor="fq-scrim-opacity" target={targetAttribute('formaquestionSettings.general', 'backdrop')} label={GENERAL_COPY.scrimOpacity.label} hint={GENERAL_COPY.scrimOpacity.hint}>
           <ValueSlider
             id="fq-scrim-opacity"
             ariaLabel={GENERAL_COPY.scrimOpacity.label}
@@ -158,6 +152,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget, landOnMascot, 
       <Section title="Search">
         <CheckRow
           htmlFor="fq-keyword"
+          target={targetAttribute('formaquestionSettings.general', 'keyword-search')}
           checked={settings.sources.keyword}
           onChange={(keyword) => onChange({ sources: { keyword } })}
           {...GENERAL_COPY.keyword}
@@ -168,7 +163,13 @@ function GeneralTab({ settings, onChange, semantic, answerTarget, landOnMascot, 
           onChange={(aiPicks) => onChange({ sources: { aiPicks } })}
           {...GENERAL_COPY.aiPicks}
         />
-        <CheckRow htmlFor="fq-semantic" checked={semantic.on} onChange={semantic.setOn} {...GENERAL_COPY.semantic} />
+        <CheckRow
+          htmlFor="fq-semantic"
+          checked={semantic.on}
+          onChange={semantic.setOn}
+          target={targetAttribute('formaquestionSettings.general', 'semantic-search')}
+          {...GENERAL_COPY.semantic}
+        />
         <SemanticStatus semantic={semantic} />
       </Section>
       <Section title="Request">
@@ -211,10 +212,12 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
 }) {
   const mascotDraft = useMascotDraft(settings, onChange);
   const changeTab = (next: FormaquestionSettingsTab) => mascotDraft.guard(() => onTabChange(next));
-  // Set by the Mascot tab's off-state link; the General tab lands on its Mascot row once and clears it.
-  const [landOnMascot, setLandOnMascot] = useState(false);
-  const onLanded = useCallback(() => setLandOnMascot(false), []);
-  const openGeneralAtMascot = () => mascotDraft.guard(() => { onTabChange('general'); setLandOnMascot(true); });
+  // The Mascot tab's off-state link lands on the switch it names, as Take Me There lands on a row.
+  const land = useRouteLanding();
+  const openGeneralAtMascot = () => mascotDraft.guard(() => {
+    onTabChange('general');
+    land(routeText('formaquestionSettings.general', 'mascot-switch'));
+  });
   return (
     <>
       {/* A close drops the draft, so an upload a clean draft no longer holds goes with it. */}
@@ -247,7 +250,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
             </TabsList>
             <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
               <ScrollArea landingRoom className="min-h-0 flex-1">
-                <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} landOnMascot={landOnMascot} onLanded={onLanded} />
+                <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} />
               </ScrollArea>
             </TabsContent>
             <TabsContent value="endpoint" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">

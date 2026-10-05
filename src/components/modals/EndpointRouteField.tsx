@@ -2,6 +2,7 @@ import { HintInfo } from '@/components/SettingsRows';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
 import { EndpointReachabilityBadge } from './EndpointReachabilityBadge';
 import type { ReachabilityTarget } from '@/lib/useEndpointReachable';
+import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 
 /** Sentinel for the Use Active Endpoint row — Radix Select cannot hold an empty-string value, and "unpinned" is
  *  stored as an absent entry rather than an id. */
@@ -11,7 +12,7 @@ const FOLLOW_ACTIVE = '__follow__';
  * Which text-endpoint preset a request sends to. Use Active Endpoint (`null`) follows the globally-selected
  * preset; any other choice pins this request alone. A pin naming a deleted preset is the caller's to map to `null`.
  */
-export function EndpointRouteField({ label, description, info, value, activeName, extraRows = [], presets, onChange, target, disabled }: {
+export function EndpointRouteField({ label, description, info, value, activeName, extraRows = [], presets, onChange, target, disabled, row }: {
   label: string;
   description: string;
   /** The `ⓘ` markdown, which names where the current choice sends the request. */
@@ -25,9 +26,11 @@ export function EndpointRouteField({ label, description, info, value, activeName
   /** The routed target to probe. `enabled` is false while following the active endpoint, which shows no badge. */
   target: ReachabilityTarget;
   disabled?: boolean;
+  /** Marks the field as a Take Me There target. */
+  row?: TargetAttribute;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1" {...row}>
       <div className="flex items-center gap-1.5">
         <label className="text-label">{label}</label>
         <HintInfo>{info}</HintInfo>

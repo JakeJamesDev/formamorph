@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
+import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import type { PresetHeaderAction } from '@/lib/presetHeaderActions';
 import { PresetHeaderMenu } from './PresetHeaderMenu';
 
@@ -12,7 +13,7 @@ import { PresetHeaderMenu } from './PresetHeaderMenu';
  * holds them all. A caller that picks the preset elsewhere passes a `heading` instead of a label and select.
  * A `layout` of `wide` or `narrow` pins one form instead of following the viewport.
  */
-export function PresetHeader({ actions, testId, layout = 'auto', disabled, ...lead }: {
+export function PresetHeader({ actions, testId, layout = 'auto', disabled, target, ...lead }: {
   /** In menu order, as `presetHeaderActions` builds them. */
   actions: PresetHeaderAction[];
   testId?: string;
@@ -20,6 +21,8 @@ export function PresetHeader({ actions, testId, layout = 'auto', disabled, ...le
   disabled?: boolean;
   /** `auto` follows the viewport. `wide` and `narrow` pin one form, for a reference that shows both at once. */
   layout?: 'auto' | 'wide' | 'narrow';
+  /** Marks the header as a Take Me There target. */
+  target?: TargetAttribute;
 } & ({ label: string; select: ReactNode; heading?: never } | { heading: string; label?: never; select?: never })) {
   const [confirming, setConfirming] = useState<PresetHeaderAction | null>(null);
   // The confirm is controlled, so it returns focus to what opened it by hand.
@@ -41,7 +44,7 @@ export function PresetHeader({ actions, testId, layout = 'auto', disabled, ...le
   );
   const icons = (section: PresetHeaderAction['section']) => (showIcons ? gated.filter((a) => a.section === section) : []);
   return (
-    <div className="flex flex-shrink-0 items-center gap-2" data-testid={testId}>
+    <div className="flex flex-shrink-0 items-center gap-2" data-testid={testId} {...target}>
       {lead.heading === undefined
         ? <span className="shrink-0 text-helper text-muted-foreground">{lead.label}</span>
         : <h3 className="text-label mr-auto min-w-0 truncate">{lead.heading}</h3>}

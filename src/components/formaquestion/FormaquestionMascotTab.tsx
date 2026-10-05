@@ -21,6 +21,7 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { ImageUpload } from '@/lib/UtilityComponents';
 import { historyShortcut } from '@/lib/canvasHistory';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
 import { presetHeaderActions, type PresetHeaderAction } from '@/lib/presetHeaderActions';
@@ -673,7 +674,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
       </div>
       {/* One row at any width: the mascot gives up height before the Head View gives up its place. */}
       <div ref={rowRef} data-fq-preview-row="" className="flex items-end justify-center" style={{ minHeight: PREVIEW_HEIGHT, columnGap: PREVIEW_ROW_GAP }}>
-        <div {...maskDrag} data-fq-mask-target="" className={`relative shrink-0 touch-none select-none ${readOnly ? '' : 'cursor-crosshair'}`}>
+        <div {...maskDrag} {...targetAttribute('formaquestionSettings.mascot', 'mask')} data-fq-mask-target="" className={`relative shrink-0 touch-none select-none ${readOnly ? '' : 'cursor-crosshair'}`}>
           <MascotPiece
             images={preview}
             hold={refs}
@@ -871,7 +872,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
       {/* From lg each column scrolls alone, so the preview stays in view; under it one scroller holds both. */}
       {wide ? (
         <div data-fq-mascot-columns="" className={`grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 ${morph.contentInOverlay ? COLUMNS_FULL_SCREEN : COLUMNS_DOCKED}`}>
-          <ScrollArea type="auto" className="min-h-0" viewportProps={{ 'data-fq-scroll': 'mascot-preview' }}>
+          <ScrollArea landingRoom type="auto" className="min-h-0" viewportProps={{ 'data-fq-scroll': 'mascot-preview' }}>
             <div className="py-4">{previewWidget}</div>
           </ScrollArea>
           <ScrollArea type="auto" className="min-h-0" viewportProps={{ 'data-fq-scroll': 'mascot-controls' }}>
@@ -879,7 +880,7 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
           </ScrollArea>
         </div>
       ) : (
-        <ScrollArea type="auto" className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'mascot-tab' }}>
+        <ScrollArea landingRoom type="auto" className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'mascot-tab' }}>
           <div className="pt-4">{previewWidget}</div>
           {controlsColumn}
         </ScrollArea>

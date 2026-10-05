@@ -8,7 +8,8 @@ import { useDevRoute } from '@/lib/devRouter';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
 import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
-import { opensInHelpWindow, resolveSurface, stepTab, type SurfaceRoute } from '@/lib/surface/surfaceRoute';
+import { opensInHelpWindow, resolveSurface, stepTab, targetRoute, type SurfaceRoute } from '@/lib/surface/surfaceRoute';
+import { useRouteLanding } from '@/lib/surface/useLanding';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
@@ -313,13 +314,18 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   // Take Me There. The window opens its own surfaces; any other goes to the app, and the sheet steps aside (Q24, Q30).
   const { requestSurface } = ai;
+  // A target the surface registers lands once its tab has mounted; one that is not on screen lands nothing.
+  const land = useRouteLanding();
   const go = useCallback((route: SurfaceRoute) => {
-    const steps = resolveSurface(route.id);
+    const steps = resolveSurface(route.id, route.target);
     if (!steps) return;
+    const target = targetRoute(steps);
     if (!opensInHelpWindow(steps)) {
       requestSurface(route);
       if (sheet) closeWindow();
-    } else if (steps.dialog === 'formaquestionSettings') {
+      return;
+    }
+    if (steps.dialog === 'formaquestionSettings') {
       setSettingsTab(asFormaquestionSettingsTab(stepTab(steps, 'formaquestionSettings')) ?? 'general');
       openDialog('settings');
     } else if (steps.dialog === 'formaquestionAiContext') {
@@ -328,7 +334,8 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       const tab = stepTab(steps, 'formaquestion');
       if (tab) changeViewInWindow({ tab });
     }
-  }, [requestSurface, sheet, closeWindow, openDialog, changeViewInWindow]);
+    if (target) land(target);
+  }, [requestSurface, sheet, closeWindow, openDialog, changeViewInWindow, land]);
 
   // A failed load drops the request, so a later Try Again does not jump the view.
   useEffect(() => {

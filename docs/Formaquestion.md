@@ -16,7 +16,7 @@ The window stays open when you go to a different screen or open a dialog. You ca
 
 ## How to Ask a Question
 <!-- keywords: help, ai help, chat, assistant, support, faq, answer, chatbot, citations, where it came from, query, explain to me, bot, inquire -->
-<!-- route: formaquestion.ask -->
+<!-- route: formaquestion.ask#question-field -->
 
 1. Open Formaquestion.
 2. Select the **Ask** tab. In the wide layout, the conversation is on the right.
@@ -28,7 +28,7 @@ Your AI writes the answer from the guide sections that match your question. To e
 
 ## How to Ask a Follow-Up Question
 <!-- keywords: more, another, next, keep, continue, conversation, clear, new topic, reset chat, start over, thread, wipe history, remembers previous -->
-<!-- route: formaquestion.ask -->
+<!-- route: formaquestion.ask#question-field -->
 
 1. Ask a question.
 2. After the answer, type your next question in **Ask a Question**, such as "and then?".
@@ -38,7 +38,7 @@ The AI gets your earlier questions and its answers, so you do not have to say th
 
 ## How to Go to the Screen an Answer Describes
 <!-- keywords: take me there, jump, go there, open the screen, open the tab, navigate, link, shortcut, show me where, find the control, button under the answer, open settings from help, direct me, takes me to the dialog -->
-<!-- route: formaquestion.ask -->
+<!-- route: formaquestion.ask#question-field -->
 
 1. Ask a question.
 2. Under the answer, select **Take Me There**.
@@ -51,7 +51,7 @@ The button opens the screen, dialog or tab that the top source under **Sources**
 
 ## How to Ask About a Screenshot
 <!-- keywords: image, picture, paste, upload, attach, what is this, screen capture, photo, snip, print screen, vision model, clipboard, identify button, show my screen, drag file -->
-<!-- route: formaquestion.ask -->
+<!-- route: formaquestion.ask#question-field -->
 
 1. Turn on **Image Attachments**. See [Settings](Settings).
 2. Open Formaquestion and select the **Ask** tab.
@@ -63,7 +63,7 @@ Your model must read images. The screenshot goes with that question only. A foll
 
 ## How to Search the Guide
 <!-- keywords: find, look up, docs, wiki, manual, help, without ai, offline, keyword, documentation, results list, topic, query box, no network, filter -->
-<!-- route: formaquestion.search -->
+<!-- route: formaquestion.search#search-field -->
 
 1. Open Formaquestion.
 2. Select the **Search** tab.
@@ -112,7 +112,7 @@ With the keyboard, press Tab until the **Help** tab has focus. Then press the ar
 
 ## How to Change the Chat Style
 <!-- keywords: window style, minimal, full, auto, framed window, bare column, no title bar, switch chrome, pill, frame, title bar back, bring back the frame, unframed -->
-<!-- route: formaquestionSettings.general -->
+<!-- route: formaquestionSettings.general#chat-style -->
 
 1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column.
 2. Under **Chat Style**, select **Auto**, **Minimal** or **Full**.
@@ -126,7 +126,7 @@ You can also set it in the **Window** group of the **General** tab. Both places 
 
 ## How to Make the Bare Chat Easier to Read
 <!-- keywords: hard to read, text over my screen, busy background, see through, transparent, backdrop, panel behind the chat, contrast, readability, scrim, opacity, dim, minimal chat text -->
-<!-- route: formaquestionSettings.general -->
+<!-- route: formaquestionSettings.general#backdrop -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Under **Window**, move **Backdrop**.
@@ -135,7 +135,7 @@ The backdrop is a panel behind the bare chat column, in the color of the app. A 
 
 ## How to Return to the Newest Answer
 <!-- keywords: scroll down, jump to the end, long conversation, old messages, bottom, latest answer, down arrow, scroll to end, lost my place, newest message -->
-<!-- route: formaquestion.ask -->
+<!-- route: formaquestion.ask#scroll-to-end -->
 
 1. Scroll up in the conversation to read an earlier answer.
 2. Select **Scroll to End**, the round arrow above the question field.
@@ -144,7 +144,7 @@ The arrow shows when the end of the conversation is more than half a window heig
 
 ## How to Put the Mascot Under the Chat
 <!-- keywords: mascot below, mascot under the chat, mascot beside, mascot position, move the mascot, short chat, tall chat, mascot stands, beside or below -->
-<!-- route: formaquestionSettings.general -->
+<!-- route: formaquestionSettings.general#mascot-position -->
 
 1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column.
 2. Under **Mascot Position**, select **Beside**, **Below** or **Auto**.
@@ -159,7 +159,7 @@ You can also set it in the **Window** group of the **General** tab. Both places 
 
 ## How to Change the Size of the Mascot
 <!-- keywords: bigger mascot, smaller mascot, scale, resize mascot, mascot too big, mascot too small, size slider, auto size, fit the chat, percent -->
-<!-- route: formaquestionSettings.mascot -->
+<!-- route: formaquestionSettings.mascot#scale -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Mascot** tab.
@@ -171,7 +171,7 @@ The preview does not change with **Scale**. The window does. This device keeps t
 
 ## How to Set the Head View With the Mask
 <!-- keywords: crop, mask handles, head only, face crop, resize the box, move the box, trim, drag the edges, corners, arrow keys, head view box, face box, keyboard -->
-<!-- route: formaquestionSettings.mascot -->
+<!-- route: formaquestionSettings.mascot#mask -->
 
 1. Open the **Mascot** tab in **Formaquestion Settings**.
 2. Point at the preview. The Mask box shows eight handles and a center grip.
@@ -182,7 +182,7 @@ To draw a new box, drag on the preview outside the current one. With the keyboar
 
 ## How to Use a Different AI for Help
 <!-- keywords: other model, separate ai, help uses another endpoint, change the model for help, faster help, free model for help, different server, own endpoint, answer endpoint, search endpoint, small model -->
-<!-- route: formaquestionSettings.endpoint -->
+<!-- route: formaquestionSettings.endpoint#answer-endpoint -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Endpoint** tab.
@@ -193,7 +193,7 @@ Your game keeps its own AI. The editor always edits the preset that **Answer End
 
 ## How to Edit the Preset That Help Uses
 <!-- keywords: change the endpoint settings, edit the model, edit the url, change the token, which preset am I editing, endpoint editor heading, answer preset, copy a preset, tune a variant, delete a preset, follow active, editor has no list -->
-<!-- route: formaquestionSettings.endpoint -->
+<!-- route: formaquestionSettings.endpoint#answer-endpoint -->
 
 1. Open the **Endpoint** tab in **Formaquestion Settings**.
 2. Read the heading above the editor. It says **Edit** and the name of the preset that **Answer Endpoint** uses.
@@ -204,7 +204,7 @@ While **Answer Endpoint** is **Use Active Endpoint**, the heading names the acti
 
 ## How to Turn On Reasoning for Help
 <!-- keywords: thinking, think harder, reasoning model, hard question, effort, reasoning level, show thinking, think before answering, better answers, deep answer, slow answers, thinking block -->
-<!-- route: formaquestionSettings.general -->
+<!-- route: formaquestionSettings.general#reasoning -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Select the **Reasoning** checkbox.
@@ -215,7 +215,7 @@ Answers take longer with reasoning on. The row shows a note instead of the check
 
 ## How to Turn On Semantic Search
 <!-- keywords: search by meaning, meaning search, embedding, download search model, better matches, similar words, find sections by idea, small model download, smarter search, retry download -->
-<!-- route: formaquestionSettings.general -->
+<!-- route: formaquestionSettings.general#semantic-search -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Select the **Semantic Search** checkbox.
@@ -226,7 +226,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 
 ## How to Write Your Own Help Prompt
 <!-- keywords: change how answers read, custom prompt, edit the help prompt, answer style, shorter answers, tone of help, duplicate default, rewrite instructions, reset prompt, compare to default, prompt chips -->
-<!-- route: formaquestionSettings.prompts -->
+<!-- route: formaquestionSettings.prompts#preset -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Prompts** tab.
@@ -238,7 +238,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 
 ## How to Change the Length of a Help Reply
 <!-- keywords: tokens, token limit, temperature, repetition penalty, shorter replies, longer answers, creative, sampler, search options, lookup options, custom checkbox, reply length, cut off answer -->
-<!-- route: formaquestionSettings.prompts -->
+<!-- route: formaquestionSettings.prompts#preset -->
 
 1. Open the **Prompts** tab in **Formaquestion Settings**.
 2. Select a custom preset. **Default** shows its options read-only.
@@ -249,7 +249,7 @@ Each prompt has its own options for its own request. **Code** has none: it goes 
 
 ## How to Add a Tool to Formaquestion
 <!-- keywords: custom tool, own tool, new function, chat assistant, world lookup, create a tool, tool for help, function call, my tools, script tool, give the ai a function, extend the assistant -->
-<!-- route: formaquestionSettings.tools -->
+<!-- route: formaquestionSettings.tools#new-tool -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Tools** tab.
@@ -263,7 +263,7 @@ Your AI calls the Tool when the question needs what it returns. The endpoint mus
 
 ## How to Move a Custom Preset to Another Device
 <!-- keywords: export preset, import preset, back up help prompts, share my prompts, copy to a new pc, transfer, preset file, help-preset.json, send to a friend, sync prompts, new computer -->
-<!-- route: formaquestionSettings.prompts -->
+<!-- route: formaquestionSettings.prompts#preset -->
 
 1. On the first device, open the **Prompts** tab.
 2. Select your custom preset.
@@ -285,7 +285,7 @@ The dialog shows one question per page, the newest first, with its request cards
 
 ## How to Use Formaquestion as a Plain Chat
 <!-- keywords: chat assistant, no guide, ordinary chat, talk to the ai, turn off search, no sources, bare question, general chatbot, roleplay assistant, stop the guide, only my question -->
-<!-- route: formaquestionSettings.general -->
+<!-- route: formaquestionSettings.general#keyword-search -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Clear **Keyword Search**.

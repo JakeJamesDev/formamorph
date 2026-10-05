@@ -1,5 +1,6 @@
 import { ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +15,7 @@ export function ScrollArrow({ shown, onClick }: { shown: boolean; onClick: () =>
         variant="outline"
         size="icon"
         aria-label="Scroll to End"
+        {...targetAttribute('formaquestion.ask', 'scroll-to-end')}
         onClick={onClick}
         className={cn('pointer-events-auto size-8 rounded-full bg-background shadow-md', !reduceMotion && 'animate-in fade-in zoom-in-95')}
       >

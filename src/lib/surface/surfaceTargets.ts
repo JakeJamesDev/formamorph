@@ -19,7 +19,7 @@ export const SURFACE_TARGETS = {
   menu: ['import-save'],
   backup: ['start-backup', 'start-restore'],
   avatar: ['finalize-character'],
-  'worldEditor': ['editor-mode', 'find-button'],
+  'worldEditor':['editor-mode', 'find-button'],
   'worldEditor.overview': ['thumbnail', 'background-music', 'custom-prompts'],
   'worldEditor.stats': ['list-toolbar'],
   'worldEditor.entities': ['list-toolbar'],
@@ -29,6 +29,15 @@ export const SURFACE_TARGETS = {
   'worldEditor.placeholders': ['list-toolbar'],
   'worldEditorBench.triggers': ['scene-text'],
   'worldEditorBench.opening': ['placeholder-rolls'],
+  'formaquestion.ask': ['question-field', 'scroll-to-end'],
+  'formaquestion.search': ['search-field'],
+  'formaquestionSettings.general': [
+    'mascot-switch', 'chat-style', 'mascot-position', 'backdrop', 'reasoning', 'keyword-search', 'semantic-search',
+  ],
+  'formaquestionSettings.endpoint': ['answer-endpoint'],
+  'formaquestionSettings.prompts': ['preset'],
+  'formaquestionSettings.tools': ['new-tool'],
+  'formaquestionSettings.mascot': ['scale', 'mask'],
 } as const satisfies Partial<Record<SurfaceId, readonly string[]>>;
 
 export type TargetedSurface = keyof typeof SURFACE_TARGETS;
@@ -48,6 +57,12 @@ export function isSurfaceTarget(surface: string, target: string): boolean {
 /** A route as the guide writes it: `<surface>#<target>`, or the bare surface id. */
 export function routeText(surface: string, target?: string): string {
   return target === undefined ? surface : `${surface}#${target}`;
+}
+
+/** The row a route names. Of several, the one on screen wins: a layout can draw a control twice and hide one. */
+export function findTargetRow(root: ParentNode, route: string): HTMLElement | null {
+  const rows = Array.from(root.querySelectorAll<HTMLElement>(`[${TARGET_ATTRIBUTE}="${route}"]`));
+  return rows.find((row) => row.getClientRects().length > 0) ?? rows[0] ?? null;
 }
 
 /** The data attribute for a control that is a registered target of its surface. */
