@@ -86,8 +86,9 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
   };
 
   // A copy needs no name dialog. The model's `onAdd` clones the edited preset and moves the caller to the copy.
+  // The engine has no fields to vary, so a copy of it is just a second engine.
   const presetActions = presetHeaderActions(builtIn, {
-    duplicate: () => onAdd(`${edited.name} (copy)`),
+    duplicate: edited.engine ? undefined : () => onAdd(`${edited.name} (copy)`),
     rename: () => setPresetDialog({ mode: 'rename' }),
     reset: {
       run: () => onReset(edited.id),
