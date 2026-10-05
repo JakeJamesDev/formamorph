@@ -36,7 +36,15 @@ export function pulseLanding(row: HTMLElement, options: { reducedMotion?: boolea
     row.removeEventListener('animationend', onEnd);
     row.removeEventListener('animationcancel', onEnd);
     row.classList.remove(name);
+    row.style.removeProperty('--landing-sx');
+    row.style.removeProperty('--landing-sy');
   };
+  // The ring starts 4px outside the row and ends 10px out; the scale per axis gets it there from the row's size.
+  const { width, height } = row.getBoundingClientRect();
+  if (width > 0 && height > 0) {
+    row.style.setProperty('--landing-sx', String((width + 20) / (width + 8)));
+    row.style.setProperty('--landing-sy', String((height + 20) / (height + 8)));
+  }
   // The earlier pulse's cancel took its class off; a reflow before the add restarts the animation.
   void row.offsetWidth;
   row.classList.add(name);

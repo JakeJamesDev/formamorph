@@ -1222,7 +1222,7 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 ### Composition
 
 - 🎯 **One row.** The ring goes on the whole row: the label, the control and its hint. It never goes on a section or a tab.
-- ⭕ **Ring.** A 2px outline in the `ring` color, 4px outside the row. It uses `outline`, so it moves nothing. The row takes `--radius` minus 2px while the ring shows, and the ring's corners grow with its offset. Use the pattern on rows with no fill or border of their own, so the corner change does not show.
+- ⭕ **Ring.** A 2px border in the `ring` color, 4px outside the row, drawn by a pseudo-element on the row. It is absolutely placed, so it moves nothing, and it grows by `transform` and fades by `opacity`, so it runs on the compositor, sub-pixel, and a busy main thread never stalls it. The row is `position: relative` while the ring shows. Use the pattern on rows that do not position their own children against the row.
 - ⏱️ **Pulse.** 1500ms in all. The ring holds for the first 40%, then grows to 10px out and fades to clear. It runs once, and the class leaves the row when the animation ends.
 - ♿ **Reduced motion.** The same ring, still, for the same 1500ms. Then it goes away at once.
 - 🛑 **Canceled.** When the row hides mid-pulse, the class comes off with the animation.
