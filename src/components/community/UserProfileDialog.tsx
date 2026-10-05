@@ -133,7 +133,7 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
           <div className="min-w-0 space-y-1">
             <div className="flex items-center justify-center gap-2 min-w-0">
               <h3 className={cn("text-title font-semibold truncate", tier && SUPPORTER_NAME_STYLES[tier])}>{name || 'Unknown'}</h3>
-              {tier && <SupporterBadge tier={tier} since={profile?.supporter?.since} />}
+              {tier && <SupporterBadge tier={tier} since={profile?.supporter?.since} beatKey={userId} />}
               <RoleBadge role={profile?.role} />
             </div>
 

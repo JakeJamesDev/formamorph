@@ -1,4 +1,5 @@
 @import './styles/community.css';
+@import './styles/supporter-heart.css';
 
 @tailwind base;
 @tailwind components;
