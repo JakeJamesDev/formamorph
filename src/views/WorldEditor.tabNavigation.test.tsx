@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { asMobile, benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 
-/** The World Editor's top-level navigation: the Edge Rail on desktop, the Sections bar on mobile. */
+/** The World Editor's top-level navigation: the tab strip on desktop, the Sections bar on mobile. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -26,9 +26,6 @@ const WORLD = benchEditorWorld({});
 
 const editorTabs = () => screen.getByRole('tablist', { name: 'Editor Sections' });
 const tabNames = () => within(editorTabs()).getAllByRole('tab').map((tab) => tab.textContent);
-/** The rail's children in order, read as tab names and separators. */
-const railSequence = () => Array.from(editorTabs().children).map((child) =>
-  (child.getAttribute('role') === 'tab' ? child.textContent : child.hasAttribute('data-rail-separator') ? '|' : '?'));
 /** The list panel: the resizable panel that holds the editor's active tab panel. */
 const listCard = () => {
   const active = within(editorTabs()).getByRole('tab', { selected: true });
@@ -37,12 +34,12 @@ const listCard = () => {
 
 beforeEach(() => { localStorage.clear(); });
 
-describe('World Editor rail (desktop)', () => {
-  it('draws seven tabs in Advanced mode, outside the list card, which has no strip of its own', () => {
+describe('World Editor tab strip (desktop)', () => {
+  it('draws seven tabs in Advanced mode, inside the list card', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     expect(tabNames()).toEqual(['Overview', 'Stats', 'Entities', 'Locations', 'Traits', 'Dictionary', 'Placeholders']);
-    expect(listCard().contains(editorTabs())).toBe(false);
-    expect(within(listCard()).queryByRole('tablist')).toBeNull();
+    expect(listCard().contains(editorTabs())).toBe(true);
+    expect(screen.queryByRole('button', { name: /^Sections/ })).toBeNull();
   });
 
   it('draws six tabs in Simple mode', () => {
@@ -50,41 +47,12 @@ describe('World Editor rail (desktop)', () => {
     expect(tabNames()).toEqual(['Overview', 'Stats', 'Entities', 'Locations', 'Traits', 'Dictionary']);
   });
 
-  it('stands Overview alone at the top, with a separator under it and between the groups, none after the last', () => {
-    renderWorldEditorBench(WORLD, 'advanced');
-    expect(railSequence()).toEqual(
-      ['Overview', '|', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary', 'Placeholders'],
-    );
-  });
-
-  it('draws the same rail without Placeholders in Simple mode', () => {
-    renderWorldEditorBench(WORLD, 'simple');
-    expect(railSequence()).toEqual(['Overview', '|', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary']);
-  });
-
-  it('flies out Overview alone, and the others as Group · Tab', async () => {
-    const user = userEvent.setup();
-    renderWorldEditorBench(WORLD, 'advanced');
-    const flyout = () => document.querySelector('[data-rail-flyout]')?.textContent ?? null;
-    await user.hover(within(editorTabs()).getByRole('tab', { name: 'Overview' }));
-    expect(flyout()).toBe('Overview');
-    await user.hover(within(editorTabs()).getByRole('tab', { name: 'Entities' }));
-    expect(flyout()).toBe('Content · Entities');
-    await user.hover(within(editorTabs()).getByRole('tab', { name: 'Dictionary' }));
-    expect(flyout()).toBe('Vocabulary · Dictionary');
-  });
-
-  it('opens a tab\'s list from the rail, and moves along it with the arrow keys', async () => {
-    const user = userEvent.setup();
+  it('opens the list of a tab picked on the strip', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     // jsdom gives the resize handles zero-size boxes that claim every pointerdown, so the click is a mouseDown.
-    const stats = within(editorTabs()).getByRole('tab', { name: 'Stats' });
-    fireEvent.mouseDown(stats);
+    fireEvent.mouseDown(within(editorTabs()).getByRole('tab', { name: 'Stats' }));
     expect(within(editorTabs()).getByRole('tab', { selected: true })).toHaveTextContent('Stats');
     expect(screen.getByPlaceholderText('Search or add new stats')).toBeInTheDocument();
-    act(() => stats.focus());
-    await user.keyboard('{ArrowDown}');
-    expect(within(editorTabs()).getByRole('tab', { selected: true })).toHaveTextContent('Entities');
   });
 });
 

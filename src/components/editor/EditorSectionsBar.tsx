@@ -2,16 +2,29 @@ import { Fragment, useRef } from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { NavDisclosure } from '@/components/NavDisclosure';
 import { cn } from '@/lib/utils';
-import type { EdgeRailGroup } from './EdgeRail';
+import type { LucideIcon } from 'lucide-react';
+
+export interface SectionsTab {
+  value: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+export interface SectionsGroup {
+  id: string;
+  /** Captions the group in the list. A group without one is a lone slot. */
+  label?: string;
+  tabs: readonly SectionsTab[];
+}
 
 export interface EditorSectionsBarProps {
-  groups: readonly EdgeRailGroup[];
+  groups: readonly SectionsGroup[];
   value: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** The mobile form of the Edge Rail: a Sections bar folding the grouped tab list. Must sit inside a vertical
+/** The World Editor's mobile tab picker: a Sections bar folding the grouped tab list. Must sit inside a vertical
  *  `Tabs` root with manual activation, so arrows browse the open list and a pick closes it. */
 export function EditorSectionsBar({ groups, value, open, onOpenChange }: EditorSectionsBarProps) {
   const bar = useRef<HTMLButtonElement>(null);
