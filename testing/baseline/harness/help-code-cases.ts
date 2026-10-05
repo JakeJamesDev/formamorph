@@ -99,6 +99,12 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   { id: 'rested-when-full', kind: 'code', question: 'How do I turn on the Rested trait when this stat is full?', surface: CODE_TAB },
   { id: 'night-regen', kind: 'code', question: 'How can this stat recover 1 point per hour, but only at night?', surface: CODE_TAB },
   // Known cases: the tasks of one player session on a stat's Code tab, each asked on its own.
+  // A case accepts every answer that is right under the context the request gives. Audit, per case:
+  //   prowler-at-night, seasoned-after-two-weeks: the open Code tab; the trait and clock names come from the question.
+  //   seasoned-on-persona: the question says the trait sits on a custom character, so the persona path is required.
+  //   brave-at-courage ("my Courage"), quotes-pin ("my Int"): the request names no open stat, so the open stat may
+  //     be that stat. `self.value` is as right as the named stat's own path.
+  //   quotes-pin also reads the persona or world trait path, since "I have the trait" names no owner.
   {
     id: 'prowler-at-night', kind: 'code', surface: CODE_TAB,
     question: 'I want a trait called Prowler to activate when it\'s nighttime. Could you write it for me?',
@@ -118,14 +124,14 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   {
     id: 'brave-at-courage', kind: 'code', surface: CODE_TAB,
     question: 'I want the Brave trait to activate when my Courage is 50 or more.',
-    names: { present: [ref('stats.Courage.value'), ref('traits.Brave.enabled', 'persona.traits.Brave.enabled')] },
+    names: { present: [ref('stats.Courage.value', 'self.value'), ref('traits.Brave.enabled', 'persona.traits.Brave.enabled')] },
   },
   {
     id: 'quotes-pin', kind: 'code', surface: CODE_TAB,
     question: 'Set the Quotes placeholder to \'The wind is howling\', but only after a month has passed, my Int is over 30, and I have the trait Grumpy.',
     names: {
       present: [
-        ref('clock.day'), ref('stats.Int.value'), ref('traits.Grumpy.enabled', 'persona.traits.Grumpy.enabled'),
+        ref('clock.day'), ref('stats.Int.value', 'self.value'), ref('traits.Grumpy.enabled', 'persona.traits.Grumpy.enabled'),
         ref('placeholders.Quotes.pin', 'placeholders.Quotes.value'),
       ],
     },
