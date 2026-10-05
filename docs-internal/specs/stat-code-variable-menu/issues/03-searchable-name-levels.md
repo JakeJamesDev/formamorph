@@ -11,6 +11,8 @@ Spec: [spec.md](../spec.md), decision 2, rulings Q5, Q15.
 
 A name level in the drill menu renders the existing breadcrumb picker list: a search box, one row per name with its folder or group trail, and the picker's empty message when a search misses. The search box takes focus when the level opens, so typing filters at once. Backspace or Left in a non-empty search box edits the text; in an empty one, it goes back a level. Enter on the active row drills into it. The Back row stays above the list. Group and field levels are unchanged.
 
+Note from ticket 02: the menu's key handler prevents Backspace and Left with no target check. Narrow it so a non-empty search box keeps both keys. Each level opens on its Back row; keep that, and move focus into the search box after it.
+
 Workload: cmdk's own key handling must share the Popover with the drill's keyboard; the empty-search Backspace rule is the trap. A top model at high effort.
 
 ## Acceptance criteria
