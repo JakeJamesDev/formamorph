@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, ty
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
-import { targetAttribute } from '@/lib/surface/surfaceTargets';
+import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { editorTabsFor } from './worldEditorTabs';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
@@ -103,17 +103,10 @@ import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { useHelpWorldSource } from '@/lib/formaquestion/helpWorld';
 
-/** The Take Me There mark for a tab's search and add row; Overview has no list. */
-function listToolbarTarget(tab: string) {
-  switch (tab) {
-    case 'stats': return targetAttribute('worldEditor.stats', 'list-toolbar');
-    case 'entities': return targetAttribute('worldEditor.entities', 'list-toolbar');
-    case 'locations': return targetAttribute('worldEditor.locations', 'list-toolbar');
-    case 'traits': return targetAttribute('worldEditor.traits', 'list-toolbar');
-    case 'dictionary': return targetAttribute('worldEditor.dictionary', 'list-toolbar');
-    case 'placeholders': return targetAttribute('worldEditor.placeholders', 'list-toolbar');
-    default: return undefined;
-  }
+/** The Take Me There mark for a tab's search and add row. The registry says which tabs have one; Overview has no list. */
+function listToolbarTarget(tab: string): TargetAttribute | undefined {
+  const surface = `worldEditor.${tab}`;
+  return isSurfaceTarget(surface, 'list-toolbar') ? { [TARGET_ATTRIBUTE]: routeText(surface, 'list-toolbar') } : undefined;
 }
 
 const WorldEditorInner = ({
@@ -631,7 +624,7 @@ const WorldEditorInner = ({
   // The Dictionary steps' test line once the author edits it, for this world only. It is never saved.
   const [testLineEdit, setTestLineEdit] = useState<{ worldId: string | null; text: string } | null>(null);
   const tourTestLine = {
-    testLineEdit: testLineEdit?.worldId === worldId ? testLineEdit.text : null,
+    testLineEdit: testLineEdit !== null && testLineEdit.worldId === worldId ? testLineEdit.text : null,
     onTestLineEdit: (text: string) => setTestLineEdit({ worldId, text }),
   };
   // Mobile's In Play sheet. It closes for good when the Bench opens, so the two sheets are never open together.

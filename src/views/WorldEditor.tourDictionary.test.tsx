@@ -229,4 +229,14 @@ describe('Authoring Tour — Dictionary steps', () => {
     await waitFor(() => expect(within(narration())
       .getByText('Nothing reaches the AI on this line')).toBeInTheDocument());
   });
+
+  it('opens a world whose file has no id before any test line is edited', async () => {
+    // Hand-authored world files and the dev fixtures arrive without the key.
+    const world = benchEditorWorld({});
+    delete (world as Partial<World>).id;
+    const { ctx } = renderWorldEditorBench(world, 'simple');
+    await waitFor(() => expect(ctx().worldOverview.name).toBe('Sedge Landing'));
+    expect(ctx().worldId).toBeUndefined();
+    expect(screen.getByRole('tab', { name: /Overview/ })).toBeInTheDocument();
+  });
 });
