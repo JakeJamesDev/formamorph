@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fixtureRunner } from './help-code-cases';
-import { readFences, scoreCodeAnswer, summarizeCodeScores } from './help-code-score';
+import { inventedNames, readFences, ref, scoreCodeAnswer, scoreNames, summarizeCodeScores } from './help-code-score';
 
 const fence = (info: string, code: string, close = true) => [`\`\`\`${info}`, code, ...(close ? ['```'] : [])].join('\n');
 
@@ -100,5 +100,77 @@ describe('summarizeCodeScores', () => {
   it('counts a failed request against every share', async () => {
     const scores = [await scoreCodeAnswer(fence('javascript after', 'return 1;'), fixtureRunner)];
     expect(summarizeCodeScores(scores, 1)).toMatchObject({ n: 2, fence: 0.5, runs: 0.5 });
+  });
+});
+
+describe('ref', () => {
+  it('matches a path in dot or bracket form', () => {
+    const check = ref('traits.Prowler.enabled');
+    expect(['traits.Prowler.enabled = true', 'traits["Prowler"].enabled', "traits['Prowler'] . enabled"].map((code) => check.pattern.test(code))).toEqual([true, true, true]);
+  });
+
+  it('matches a path read through optional chaining', () => {
+    expect(ref('stats.Int.value').pattern.test('stats.Int?.value > 30')).toBe(true);
+  });
+
+  it('matches no longer name and no path under another owner', () => {
+    expect(ref('clock.day').pattern.test('clock.daypart')).toBe(false);
+    expect(ref('traits.Seasoned').pattern.test('persona.traits.Seasoned.enabled')).toBe(false);
+  });
+
+  it('matches any of its paths, and labels itself with them', () => {
+    const check = ref('traits.Grumpy.enabled', 'persona.traits.Grumpy.enabled');
+    expect(check.pattern.test('persona.traits.Grumpy.enabled')).toBe(true);
+    expect(check.label).toBe('traits.Grumpy.enabled | persona.traits.Grumpy.enabled');
+  });
+});
+
+describe('inventedNames', () => {
+  it('names each clock field the sandbox does not have', () => {
+    expect(inventedNames('if (clock.time >= 20 || clock.days > 14 || clock.previous.hour < 5) {}')).toEqual(['clock.time', 'clock.days', 'clock.previous.hour']);
+  });
+
+  it('names an unknown clock field read in bracket form or through optional chaining', () => {
+    expect(inventedNames('if (clock["time"] > 20 || clock?.days > 14 || clock.previous?.["hour"] < 5) {}')).toEqual(['clock.time', 'clock.days', 'clock.previous.hour']);
+  });
+
+  it('reads an arrow as no comparison', () => {
+    expect(inventedNames('const read = () => self;\nconst list = [1].map((n) => stats.Int);')).toEqual([]);
+  });
+
+  it('reads `//` inside a string as text, not a comment', () => {
+    expect(inventedNames("placeholders.Quotes.pin('see http://x'); if (clock.time > 2) {}")).toEqual(['clock.time']);
+  });
+
+  it('names a whole stat compared, on either side and in bracket form', () => {
+    expect(inventedNames('if (stats.Courage >= 50) {}')).toEqual(['stats.Courage >=']);
+    expect(inventedNames('if (30 < self && stats["Int"] === 4) {}')).toEqual(['< self', 'stats["Int"] ===']);
+  });
+
+  it('names nothing in code that reads the real fields', () => {
+    const code = 'if (clock.day > 14 && clock.daypart === "night" && clock.previous.day < clock.day && stats.Int.value > 30 && self.value >= stats["Int"].value) {}';
+    expect(inventedNames(code)).toEqual([]);
+  });
+
+  it('reads past comments', () => {
+    expect(inventedNames('// clock.time is not a field\n/* stats.Int > 3 */\nreturn clock.day;')).toEqual([]);
+  });
+});
+
+describe('scoreNames', () => {
+  const names = { present: [ref('clock.day'), ref('traits.Seasoned.enabled')], absent: [ref('traits.Brave')] };
+
+  it('scores an answer whose fences hold every real name and no invented one as clean', () => {
+    const answer = [fence('javascript before', 'const late = clock.day > 14;'), fence('javascript after', 'traits.Seasoned.enabled = late;')].join('\n');
+    expect(scoreNames(answer, names)).toEqual({ missing: [], invented: [] });
+  });
+
+  it('lists each missing name, each invented one and each one the case rules out', () => {
+    const answer = fence('javascript before', 'if (clock.days >= 14) traits.Brave.enabled = true;');
+    expect(scoreNames(answer, names)).toEqual({ missing: ['clock.day', 'traits.Seasoned.enabled'], invented: ['clock.days', 'traits.Brave'] });
+  });
+
+  it('reads names only inside fences', () => {
+    expect(scoreNames('Use `clock.day` and `traits.Seasoned.enabled`.', names).missing).toEqual(['clock.day', 'traits.Seasoned.enabled']);
   });
 });

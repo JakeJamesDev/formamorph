@@ -83,11 +83,12 @@ describe('the rider', () => {
     expect(DEFAULT_CODE_RIDER).toMatch(/in one sentence: \*\*/);
   });
 
-  it('names self, stats, traits, entities, persona, placeholders and clock on the line that reads the stat', () => {
+  // Q10 leaves `entities` and `persona` out of this line.
+  it('names self, stats, traits, placeholders and clock on the line that reads the stat', () => {
     const line = DEFAULT_CODE_RIDER.split('\n').find((l) => l.startsWith('- Read the stat'));
     expect(line).toBeDefined();
     const named = [...(line ?? '').matchAll(/`(\w+)`/g)].map(([, name]) => name);
-    expect(named).toEqual(['self', 'stats', 'traits', 'entities', 'persona', 'placeholders', 'clock']);
+    expect(named).toEqual(['self', 'stats', 'traits', 'placeholders', 'clock']);
     for (const name of named) expect(SANDBOX_GLOBAL_NAMES, name).toContain(name);
   });
 

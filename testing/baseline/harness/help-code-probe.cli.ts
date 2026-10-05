@@ -1,30 +1,41 @@
 // Help-code probe — does the Code rider bring a code question back as fenced stat code that runs?
 //
-// Each question runs in two arms inside the same batch, so the endpoint's drift hits both:
+// Each question runs in every arm inside the same batch, so the endpoint's drift hits them all:
 //   rider    the app's help session with the Default preset, whose Code rider rides every code turn
+//   names    the Default rider with `entities` and `persona` named beside `traits` (the Q10 arm; only through `--arms`)
+//   noqr     the Default preset over docs with no Quick Reference section, so no code turn pins it
 //   control  the same session with a custom preset whose rider is empty, so no turn carries one
 //   <name>   with `--alt FILE,FILE`: per file, the session with a custom preset whose rider is the file's text,
 //            as an arm named after the file
+//   <name>   with `--docs-alt PAGE=FILE,PAGE=FILE`: per file, the Default preset over docs whose page PAGE is
+//            the file's text, as an arm named after the file
 //
 // A code case asks with code words, or with a stat's Code tab open. A prose case is a how-to control: no turn
-// of it is a code turn, so it wants no fence on any arm.
+// of it is a code turn, so it wants no fence on any arm. A known case carries its real names: it passes when
+// every fence runs, the fences hold those names, and they hold no invented one (an unknown clock field, a whole
+// stat compared, or a name the case rules out).
 //
 // Checks, per answer (help-code-score.ts): fence, closed, tagged (per fence), runs (every fence runs in the
-// stat-code sandbox against the fixture stat), truncated (an open fence, of the fenced answers), and `cap`
-// (the answer request stopped on the token cap). The bar is Q7 on the rider arm's code cases: fence ≥ 90%,
-// runs ≥ 80%.
+// stat-code sandbox against the fixture stat), truncated (an open fence, of the fenced answers), `cap` (the
+// answer request stopped on the token cap), and on known cases `pass`. Bars: Q7 on the rider arm's code cases
+// (fence ≥ 90%, runs ≥ 80%); Q9 on the rider arm's known cases (pass ≥ 80%, 5+ runs, the other code cases' runs
+// not below noqr's); Q10 compares names with rider on the known cases.
 //
 // Usage: npx vite-node testing/baseline/harness/help-code-probe.cli.ts --
-//          [--endpoint URL] [--model default] [--token T] [--runs 8] [--parallel 4] [--only id,id] [--alt FILE,FILE] [--show]
+//          [--endpoint URL] [--model default] [--token T] [--runs 8] [--parallel 4] [--only id,id] [--arms a,b] [--alt FILE,FILE] [--docs-alt PAGE=FILE] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
+import sidebar from '../../../docs/_Sidebar.md?raw';
+import { BUNDLED_DOCS, bundledDocsIndex } from '@/lib/docs/bundledDocsIndex';
+import { createDocsIndex, type DocsIndex } from '@/lib/docs/docsIndex';
+import { sectionWithId } from '@/lib/docs/docsReader';
+import { DEFAULT_CODE_RIDER, QUICK_REFERENCE_SECTION } from '@/lib/formaquestion/helpCodeRider';
 import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { DEFAULT_HELP_OPTIONS, type HelpPresetStore } from '@/lib/formaquestion/helpPresets';
 import { askHelp } from '@/lib/formaquestion/helpSession';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { HELP_CODE_CASES, fixtureRunner, type HelpCodeCase, type HelpCodeKind } from './help-code-cases';
-import { scoreCodeAnswer, summarizeCodeScores, type CodeScore } from './help-code-score';
+import { passesCase, scoreCodeAnswer, scoreNames, summarizeCodeScores, type CodeScore, type NameScore } from './help-code-score';
 import { noUsage, pct, probeSnapshot, sessionFetch, type Usage } from './help-probe-shared';
 
 const args = process.argv.slice(2);
@@ -40,12 +51,30 @@ const parallel = Number(argVal('--parallel', '4'));
 const only = argVal('--only', '');
 const show = args.includes('--show');
 const altFiles = argVal('--alt', '').split(',').filter(Boolean);
+const armList = argVal('--arms', '').split(',').filter(Boolean);
+const docsAlts = argVal('--docs-alt', '').split(',').filter(Boolean).map((spec) => {
+  const at = spec.indexOf('=');
+  if (at <= 0) {
+    console.error(`help-code-probe: --docs-alt takes PAGE=FILE, not ${spec}`);
+    process.exit(1);
+  }
+  return { page: spec.slice(0, at), file: spec.slice(at + 1) };
+});
 
-/** `rider`, `control`, or an alt arm's file name. */
+/** `rider`, `names`, `noqr`, `control`, or an alt arm's file name. */
 type Arm = string;
 const altName = (file: string) => path.basename(file, path.extname(file));
-const ARMS: Arm[] = ['rider', ...altFiles.map(altName), 'control'];
+const ALL_ARMS: Arm[] = ['rider', 'names', 'noqr', ...altFiles.map(altName), ...docsAlts.map((alt) => altName(alt.file)), 'control'];
+// `names` asks a settled question (Q10), so it runs only when `--arms` names it.
+const ARMS = armList.length ? ALL_ARMS.filter((arm) => armList.includes(arm)) : ALL_ARMS.filter((arm) => arm !== 'names');
 const cases = only ? HELP_CODE_CASES.filter((c) => only.split(',').includes(c.id)) : HELP_CODE_CASES;
+
+const NAMES_AFTER = 'traits through `traits`';
+const NAMES_CLAUSE = ', entities through `entities`, the played persona through `persona`';
+if (ARMS.includes('names') && (!DEFAULT_CODE_RIDER.includes(NAMES_AFTER) || DEFAULT_CODE_RIDER.includes(NAMES_CLAUSE))) {
+  console.error('help-code-probe: the names arm needs a Default rider that names traits and not entities or persona');
+  process.exit(1);
+}
 
 /** Settings whose active preset is the Default one with `code` as its rider. */
 const withRider = (code: string): HelpSettings => {
@@ -57,11 +86,34 @@ const withRider = (code: string): HelpSettings => {
 };
 const SETTINGS: Record<Arm, HelpSettings> = {
   rider: DEFAULT_HELP_SETTINGS,
+  names: withRider(DEFAULT_CODE_RIDER.replace(NAMES_AFTER, NAMES_AFTER + NAMES_CLAUSE)),
+  noqr: DEFAULT_HELP_SETTINGS,
   control: withRider(''),
   ...Object.fromEntries(altFiles.map((file) => [altName(file), withRider(readFileSync(file, 'utf8').trim())])),
+  ...Object.fromEntries(docsAlts.map((alt) => [altName(alt.file), DEFAULT_HELP_SETTINGS])),
 };
 
 const index = bundledDocsIndex();
+// The same pages with no Quick Reference section in the guide.
+const noQuickReference = createDocsIndex({
+  pages: Object.fromEntries(Object.entries(BUNDLED_DOCS).map(([page, markdown]) =>
+    [page, markdown.replace(/^## Quick Reference\n[\s\S]*?(?=^## )/m, '')])),
+  sidebar,
+});
+if (!sectionWithId(index, QUICK_REFERENCE_SECTION) || sectionWithId(noQuickReference, QUICK_REFERENCE_SECTION)) {
+  console.error('help-code-probe: the noqr arm needs the Quick Reference in the bundled docs and out of its own index');
+  process.exit(1);
+}
+const INDEX: Record<Arm, DocsIndex> = {
+  ...Object.fromEntries(ALL_ARMS.map((arm) => [arm, arm === 'noqr' ? noQuickReference : index])),
+  ...Object.fromEntries(docsAlts.map(({ page, file }) => {
+    if (!(page in BUNDLED_DOCS)) {
+      console.error(`help-code-probe: --docs-alt names ${page}, which is no bundled docs page`);
+      process.exit(1);
+    }
+    return [altName(file), createDocsIndex({ pages: { ...BUNDLED_DOCS, [page]: readFileSync(file, 'utf8') }, sidebar })];
+  })),
+};
 const snapshot = probeSnapshot({ endpoint, model, token });
 
 interface Sample { answer: string; finish: string | null; usage: Usage }
@@ -75,7 +127,7 @@ async function ask(arm: Arm, c: HelpCodeCase): Promise<Sample> {
     if (!String(body.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT)) finish = completion.choices?.[0]?.finish_reason ?? null;
   });
   let answer = '';
-  for await (const event of askHelp({ question: c.question, settings: SETTINGS[arm], snapshot, index, fetchImpl, surface: c.surface })) {
+  for await (const event of askHelp({ question: c.question, settings: SETTINGS[arm], snapshot, index: INDEX[arm], fetchImpl, surface: c.surface })) {
     if (event.type === 'done') answer = event.text;
   }
   return { answer, finish, usage };
@@ -93,7 +145,11 @@ async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> 
   return results;
 }
 
-interface Row { caseId: string; kind: HelpCodeKind; arm: Arm; run: number; sample: Sample | null; score: CodeScore | null; error?: string }
+interface Row {
+  caseId: string; kind: HelpCodeKind; arm: Arm; run: number; sample: Sample | null; score: CodeScore | null;
+  /** On a known case: its names, and whether it passed. */
+  names?: NameScore; pass?: boolean; error?: string;
+}
 
 // One job per run, case and arm, with the arms of a question next to each other in time.
 const jobs: (() => Promise<Row>)[] = [];
@@ -104,7 +160,10 @@ for (let run = 1; run <= runs; run++) {
         const row = { caseId: c.id, kind: c.kind, arm, run };
         try {
           const sample = await ask(arm, c);
-          return { ...row, sample, score: await scoreCodeAnswer(sample.answer, fixtureRunner) };
+          const score = await scoreCodeAnswer(sample.answer, fixtureRunner);
+          if (!c.names) return { ...row, sample, score };
+          const names = scoreNames(sample.answer, c.names);
+          return { ...row, sample, score, names, pass: passesCase(score, names) };
         } catch (error) {
           return { ...row, sample: null, score: null, error: error instanceof Error ? error.message : String(error) };
         }
@@ -121,6 +180,8 @@ const started = Date.now();
 const rows = await pool(jobs, parallel);
 console.log(`${rows.length} questions in ${((Date.now() - started) / 1000).toFixed(0)}s, ${rows.filter((r) => r.error).length} failed`);
 
+const known = new Set(cases.filter((c) => c.names).map((c) => c.id));
+
 /** Every metric of one arm over a set of rows, as printable cells. */
 function cells(set: Row[]) {
   const scored = set.filter((r): r is Row & { score: CodeScore } => r.score !== null);
@@ -133,14 +194,19 @@ function cells(set: Row[]) {
       `runs ${p(m.runs, m.n)}`, `fence-runs ${p(m.fenceRuns, m.fences)}`, `truncated ${p(m.truncated, m.fenced)}`,
       `cap ${pct(scored.filter((r) => r.sample?.finish === 'length').length, m.n)}`,
       `tok ${Math.round(scored.reduce((sum, r) => sum + (r.sample?.usage.answerTokens ?? 0), 0) / Math.max(1, scored.length))}`,
+      // A failed request on a known case counts as a miss.
+      ...(set.some((r) => known.has(r.caseId)) ? [`pass ${pct(set.filter((r) => r.pass).length, set.length)}`] : []),
     ].join('  '),
   };
 }
 const of = (arm: Arm, keep: (r: Row) => boolean) => rows.filter((r) => r.arm === arm && keep(r));
+const isKnown = (r: Row) => known.has(r.caseId);
+const share = (set: Row[], pick: (r: Row) => boolean) => (set.length ? set.filter(pick).length / set.length : 0);
+const percent = (value: number) => `${Math.round(value * 100)}%`;
 
-console.log('\ncase                arm');
+console.log(`\n${'case'.padEnd(25)} arm`);
 for (const c of cases) {
-  for (const arm of ARMS) console.log(`${c.id.padEnd(19)} ${arm.padEnd(8)} ${cells(of(arm, (r) => r.caseId === c.id)).line}`);
+  for (const arm of ARMS) console.log(`${c.id.padEnd(25)} ${arm.padEnd(8)} ${cells(of(arm, (r) => r.caseId === c.id)).line}`);
 }
 
 console.log('\nTOTALS');
@@ -148,12 +214,31 @@ for (const kind of ['code', 'prose'] as const) {
   for (const arm of ARMS) console.log(`${kind.padEnd(6)} ${arm.padEnd(8)} ${cells(of(arm, (r) => r.kind === kind)).line}`);
 }
 for (const arm of ARMS) console.log(`code, Code tab open  ${arm.padEnd(8)} ${cells(of(arm, (r) => r.kind === 'code' && cases.find((c) => c.id === r.caseId)?.surface !== undefined)).line}`);
+for (const arm of ARMS) console.log(`known cases          ${arm.padEnd(8)} ${cells(of(arm, isKnown)).line}`);
+for (const arm of ARMS) console.log(`other code cases     ${arm.padEnd(8)} ${cells(of(arm, (r) => r.kind === 'code' && !isKnown(r))).line}`);
 
 const bar = cells(of('rider', (r) => r.kind === 'code')).m;
-const prose = (['rider', 'control'] as const).map((arm) => cells(of(arm, (r) => r.kind === 'prose')).m.fence);
-console.log(`\nQ7 bar, rider arm: fence ${Math.round(bar.fence * 100)}% (≥90%) ${bar.fence >= 0.9 ? 'MET' : 'MISSED'}`
-  + ` · runs ${Math.round(bar.runs * 100)}% (≥80%) ${bar.runs >= 0.8 ? 'MET' : 'MISSED'}`
-  + ` · prose controls fenced: rider ${Math.round(prose[0] * 100)}%, control ${Math.round(prose[1] * 100)}%`);
+const prose = ARMS.filter((arm) => arm === 'rider' || arm === 'control').map((arm) => `${arm} ${percent(cells(of(arm, (r) => r.kind === 'prose')).m.fence)}`);
+console.log(`\nQ7 bar, rider arm: fence ${percent(bar.fence)} (≥90%) ${bar.fence >= 0.9 ? 'MET' : 'MISSED'}`
+  + ` · runs ${percent(bar.runs)} (≥80%) ${bar.runs >= 0.8 ? 'MET' : 'MISSED'}`
+  + ` · prose controls fenced: ${prose.join(', ')}`);
+
+if (known.size && ARMS.includes('rider')) {
+  const knownPass = (arm: Arm) => share(of(arm, isKnown), (r) => r.pass === true);
+  const pass = knownPass('rider');
+  const otherRuns = (arm: Arm) => cells(of(arm, (r) => r.kind === 'code' && !isKnown(r))).m.runs;
+  const held = ARMS.includes('noqr') ? ` · other code cases runs ${percent(otherRuns('rider'))} vs noqr ${percent(otherRuns('noqr'))} ${otherRuns('rider') >= otherRuns('noqr') ? 'HELD' : 'DROPPED'}` : '';
+  console.log(`Q9 bar, rider arm: known cases pass ${percent(pass)} (≥80%) ${pass >= 0.8 ? 'MET' : 'MISSED'}${runs < 5 ? ' (under 5 runs)' : ''}${held}`);
+  if (ARMS.includes('names')) console.log(`Q10 rider names: known cases pass names ${percent(knownPass('names'))} vs rider ${percent(pass)}`);
+}
+
+const nameMisses = rows.flatMap((r) => [...(r.names?.missing ?? []).map((name) => `missing ${name}`), ...(r.names?.invented ?? [])]
+  .map((name) => `${r.caseId} · ${r.arm}: ${name}`));
+if (nameMisses.length) {
+  const counts = new Map<string, number>();
+  for (const line of nameMisses) counts.set(line, (counts.get(line) ?? 0) + 1);
+  console.log(`\nknown-case names:\n${[...counts].map(([line, count]) => `${count}× ${line}`).join('\n')}`);
+}
 
 const errors = rows.flatMap((r) => (r.score?.errors ?? []).map((error) => `${r.caseId} · ${r.arm}: ${error.split('\n')[0]}`));
 if (errors.length) console.log(`\nsandbox errors:\n${[...new Set(errors)].join('\n')}`);
