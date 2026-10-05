@@ -10,6 +10,10 @@ const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'ut
 // The ONNX runtime's dist folder, which its package exports do not expose (src/lib/embeddingWorker.ts).
 const ortDist = path.dirname(createRequire(import.meta.url).resolve('onnxruntime-web'))
 const syncAppOrigin = process.env.E2E_SYNC_APP_ORIGIN
+// Worktrees link node_modules to the main checkout, so each checkout and port gets its own dep cache.
+const portArg = process.argv.findIndex((arg) => arg === '--port' || arg.startsWith('--port='))
+const cachePort = portArg < 0 ? '5173' : process.argv[portArg].split('=')[1] ?? process.argv[portArg + 1]
+const devCacheDir = path.resolve(__dirname, 'node_modules/.vite', `${path.basename(__dirname)}-${cachePort}`)
 
 const directSyncAppModules = {
   name: 'direct-sync-app-modules',
@@ -76,9 +80,7 @@ const docsIndexMarkdown = {
 
 export default defineConfig({
   plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown],
-  ...(process.env.E2E_SYNC_APP
-    ? { cacheDir: path.resolve(__dirname, 'node_modules/.vite-sync-app') }
-    : {}),
+  cacheDir: process.env.E2E_SYNC_APP ? path.resolve(__dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Expose the package.json version to the app (single source of truth for the app/world/save stamp).
   define: {
