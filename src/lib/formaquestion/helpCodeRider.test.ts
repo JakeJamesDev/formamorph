@@ -79,6 +79,18 @@ describe('the rider', () => {
     expect(DEFAULT_CODE_RIDER).not.toMatch(/[=;(){}[\]]|\breturn\b|\bfunction\b/);
   });
 
+  it('puts a space after the colon that ends the box-name sentence', () => {
+    expect(DEFAULT_CODE_RIDER).toMatch(/in one sentence: \*\*/);
+  });
+
+  it('names self, stats, traits, entities, persona, placeholders and clock on the line that reads the stat', () => {
+    const line = DEFAULT_CODE_RIDER.split('\n').find((l) => l.startsWith('- Read the stat'));
+    expect(line).toBeDefined();
+    const named = [...(line ?? '').matchAll(/`(\w+)`/g)].map(([, name]) => name);
+    expect(named).toEqual(['self', 'stats', 'traits', 'entities', 'persona', 'placeholders', 'clock']);
+    for (const name of named) expect(SANDBOX_GLOBAL_NAMES, name).toContain(name);
+  });
+
   it('names each sandbox object it names alone, never with a member', () => {
     const named = [...DEFAULT_CODE_RIDER.matchAll(new RegExp(`\`(${SANDBOX_GLOBAL_NAMES.join('|')})([^\`]*)\``, 'g'))];
     expect(named.length).toBeGreaterThan(0);
