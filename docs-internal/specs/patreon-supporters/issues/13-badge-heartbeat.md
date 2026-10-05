@@ -1,6 +1,6 @@
 # 13: Badge Heartbeat
 
-Status: ready-for-human
+Status: done
 Status note: Built in d295cad7 and aed24e0a; the spec-session review added the tab stop. Playwright: 8 checks across desktop and mobile.
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)

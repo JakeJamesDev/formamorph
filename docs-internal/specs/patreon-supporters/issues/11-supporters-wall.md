@@ -1,6 +1,6 @@
 # 11: Supporters Wall
 
-Status: ready-for-human
+Status: done
 Status note: Built. Server commits 9d5dccf and aeff7e2 in FormamorphServer, client commit b5ff0486. The wall excludes suspended accounts (spec session ruling): a wall name must open a profile. Live look at both viewports and themes was done with computed styles and one mobile screenshot.
 Base: 6f2f5727
 Blocked by: 04, 08
