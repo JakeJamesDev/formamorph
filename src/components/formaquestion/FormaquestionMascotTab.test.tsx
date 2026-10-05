@@ -117,30 +117,6 @@ afterEach(() => {
 
 const SCALE_KEY = 'formamorph.formaquestion.mascotScale';
 
-describe('the Scale slider', () => {
-  afterEach(() => localStorage.clear());
-
-  it('starts at the smallest percent, steps to Auto and back, and stores each on this device', async () => {
-    mount();
-    const slider = screen.getByRole('slider', { name: 'Scale' });
-    expect(screen.getByText('25%')).toBeInTheDocument();
-    expect(slider).toHaveAttribute('aria-valuetext', '25%');
-    slider.focus();
-    await userEvent.keyboard('{ArrowLeft}');
-    expect(localStorage.getItem(SCALE_KEY)).toBe('auto');
-    expect(slider).toHaveAttribute('aria-valuetext', 'Auto');
-    expect(screen.getByText('Auto')).toBeInTheDocument();
-    await userEvent.keyboard('{ArrowRight}');
-    expect(localStorage.getItem(SCALE_KEY)).toBe('25');
-    expect(slider).toHaveAttribute('aria-valuetext', '25%');
-    await userEvent.keyboard('{End}');
-    expect(localStorage.getItem(SCALE_KEY)).toBe('150');
-    await userEvent.keyboard('{Home}');
-    expect(localStorage.getItem(SCALE_KEY)).toBe('auto');
-    expect(current).toEqual(expect.not.objectContaining({ scale: expect.anything() }));
-  });
-});
-
 describe('the layer list', () => {
   it('lists every layer in order with its kind and its switch', () => {
     mount();
@@ -908,7 +884,7 @@ describe('the transition rows', () => {
     expect(drafted().transition.dissolve.durationMs).toBe(DISSOLVE_RANGES.durationMs.min);
 
     await userEvent.click(modeButton('None'));
-    expect(screen.getAllByRole('slider').map((thumb) => thumb.getAttribute('aria-label'))).toEqual(['Scale']);
+    expect(screen.queryAllByRole('slider')).toEqual([]);
     await userEvent.click(modeButton('Jelly'));
     expect(drafted().transition).toEqual({
       mode: 'jelly',
@@ -1050,7 +1026,6 @@ describe('the mascot card', () => {
     await upload(cardFile(cardRig));
     await waitFor(() => expect(saved().voice).toBe('Gruff.'));
     expect(localStorage.getItem(SCALE_KEY)).toBe('75');
-    expect(screen.getByText('75%')).toBeInTheDocument();
   });
 
   it('names the bad field of a refused card and changes nothing', async () => {
@@ -1251,7 +1226,7 @@ describe('the preset row', () => {
     expect(within(layerRow('Happy')).getByRole('checkbox', { name: 'Enable Happy' })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: 'Idle Look State' })).toBeDisabled();
     expect(screen.getByRole('radio', { name: MASCOT_COPY.transition.modes.jelly })).toBeDisabled();
-    for (const slider of screen.getAllByRole('slider').filter((el) => el.getAttribute('aria-label') !== 'Scale')) {
+    for (const slider of screen.getAllByRole('slider')) {
       expect(slider).toHaveAttribute('data-disabled');
     }
     expect(screen.getByRole('button', { name: MASCOT_COPY.transition.play.label })).toBeEnabled();
