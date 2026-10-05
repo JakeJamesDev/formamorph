@@ -1,6 +1,6 @@
 # 14: Extract the tuned defaults
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 08, 09, 11
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

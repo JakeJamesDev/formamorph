@@ -79,24 +79,23 @@ const NO_PICK: MascotPick = { expression: null, state: null };
 /** The rig a player starts with, and the fallback for a stored rig that cannot be read. */
 export const DEFAULT_MASCOT_RIG: MascotRig = {
   base: bundled('base'),
-  // Provisional art. Each face stacks its overlays as the layered file does: mouth, eyes, winks, blush, eyebrows.
-  // The Thinking hand covers the mouth, so the Thinking state carries its :O.
+  // Each face stacks its overlays in the order the layered file does: mouth, eyes, winks, blush, eyebrows.
+  // The AI and the player see the names; the ids stay stable for picks and saved rigs.
   layers: [
     defaultLayer('wave', 'Wave', 'state', ['arms-wave', 'arms-no-thinking']),
     defaultLayer('rest', 'Rest', 'state', ['arms-no-wave', 'arms-no-thinking']),
-    defaultLayer('thinking', 'Thinking', 'state', ['mouth-open', 'arms-no-wave', 'arms-thinking']),
+    defaultLayer('thinking', 'Thinking', 'state', ['arms-no-wave', 'arms-thinking']),
     defaultLayer('happy', 'Happy', 'expression', ['mouth-grin', 'eyes-closed']),
-    defaultLayer('excited', 'Excited', 'expression', ['mouth-grin', 'eyes-wide', 'eyebrows-raised']),
-    defaultLayer('surprised', 'Surprised', 'expression', ['mouth-open', 'eyes-shocked', 'eyebrows-raised']),
-    defaultLayer('pondering', 'Pondering', 'expression', ['eyes-looking-up']),
-    defaultLayer('confused', 'Confused', 'expression', ['mouth-wiggly', 'eyebrows-furrowed']),
-    defaultLayer('sad', 'Sad', 'expression', ['mouth-frown', 'eyes-crying']),
-    defaultLayer('sleepy', 'Sleepy', 'expression', ['mouth-cat', 'eyes-lidded']),
-    defaultLayer('smitten', 'Smitten', 'expression', ['mouth-grin', 'eyes-heart', 'blush']),
+    defaultLayer('excited', 'Blushing', 'expression', ['mouth-grin', 'eyes-closed', 'blush']),
+    defaultLayer('surprised', 'Surprised', 'expression', ['mouth-open', 'eyes-shocked']),
+    defaultLayer('pondering', 'Pondering', 'expression', ['eyes-looking-up', 'mouth-small-o']),
+    defaultLayer('confused', 'Confused', 'expression', ['mouth-small-o', 'eyebrows-raised']),
+    defaultLayer('sad', 'Crying', 'expression', ['mouth-wiggly', 'eyes-crying', 'eyebrows-furrowed']),
+    defaultLayer('smitten', 'Smitten', 'expression', ['mouth-grin', 'eyes-heart']),
     defaultLayer('dizzy', 'Dizzy', 'expression', ['mouth-wiggly', 'eyes-dizzy']),
     defaultLayer('wink', 'Wink', 'expression', ['mouth-grin', 'right-closed']),
-    defaultLayer('flustered', 'Flustered', 'expression', ['mouth-cat', 'eyes-tiny', 'blush']),
-    defaultLayer('unimpressed', 'Unimpressed', 'expression', ['mouth-frown', 'eyes-blank']),
+    defaultLayer('flustered', 'Slighted', 'expression', ['mouth-cat', 'eyes-lidded', 'left-closed', 'eyebrows-furrowed']),
+    defaultLayer('unimpressed', 'Unimpressed', 'expression', ['mouth-frown', 'eyes-lidded', 'eyebrows-raised']),
   ],
   mask: { x: 100, y: 0, width: 768, height: 680 },
   picks: {

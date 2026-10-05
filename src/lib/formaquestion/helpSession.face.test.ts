@@ -23,7 +23,7 @@ const endpoint = (tools: boolean | null) => {
 const CAPABLE = endpoint(true);
 
 /** The default rig's faces, in list order. */
-const EXPRESSIONS = ['Happy', 'Excited', 'Surprised', 'Pondering', 'Confused', 'Sad', 'Sleepy', 'Smitten', 'Dizzy', 'Wink', 'Flustered', 'Unimpressed'];
+const EXPRESSIONS = ['Happy', 'Blushing', 'Surprised', 'Pondering', 'Confused', 'Crying', 'Smitten', 'Dizzy', 'Wink', 'Slighted', 'Unimpressed'];
 
 /** The default rig with the layers `ids` switched off. */
 const without = (...ids: string[]): MascotRig => ({
@@ -119,7 +119,7 @@ describe('the face call', () => {
   });
 
   it('yields one face event per call, in call order, across rounds', async () => {
-    const fetchImpl = script(faceFrames('Happy', 'Wink'), faceFrames('Sad'), sseReply('Select **Add Trait**.'));
+    const fetchImpl = script(faceFrames('Happy', 'Wink'), faceFrames('Crying'), sseReply('Select **Add Trait**.'));
     const events = await collect(ask(fetchImpl));
     expect(faceEvents(events).map((event) => event.face)).toEqual(['happy', 'wink', 'sad']);
   });
