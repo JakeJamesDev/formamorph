@@ -10,6 +10,7 @@ import { snapshotToolExecutor } from '@/lib/tools/toolOffer';
 import { isTool, type OfferedFunction } from '@/lib/tools/toolSchema';
 import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { CHANGELOG_PAGE, type DocSection, type DocsIndex } from '@/lib/docs/docsIndex';
+import { sectionWithId } from '@/lib/docs/docsReader';
 import { toDebugEndpoint } from '@/lib/promptEndpoints';
 import { resolvePromptReasoning, resolvePromptReasoningSetting, toolsSupported, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
@@ -18,7 +19,7 @@ import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { helpChipValues, renderHelpPrompt } from './helpChips';
-import { isCodeTurn, withCodeRider } from './helpCodeRider';
+import { isCodeTurn, isOnCodeTab, QUICK_REFERENCE_SECTION, withCodeRider } from './helpCodeRider';
 import { createFaceCall } from './helpFace';
 import { requestPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
@@ -78,7 +79,10 @@ export interface HelpQuestion {
   settings: HelpSettings;
   snapshot: AiSettingsSnapshot;
   index: DocsIndex;
-  /** What the player has open when they send. Its mapped section leads the docs; an excluded Surface adds nothing. */
+  /**
+   * What the player has open when they send. Its mapped section leads the docs, except on a code turn off the
+   * Code tab; an excluded Surface adds nothing.
+   */
   surface?: Surface;
   /** The images the player attached to this question. They go on the question alone, never on history. */
   images?: readonly ImageAttachment[];
@@ -246,18 +250,20 @@ const POINTS_AT_SCREEN = /\b(?:here|this|these)\b/i;
 
 /**
  * The docs block for a question, best first, while the text stays inside the budget and the section limit.
- * The lead section, when given, goes first and counts once toward both. The top hit is always kept. A
- * follow-up such as "and then?" has few keywords of its own, so its own top hit favors the page of the
- * previous answer's topic, and after it come the hits of the previous question and the follow-up
- * searched together. A question that points at the open screen gets the lead page's best how-to sections
- * next, so a "here" question reaches them; any other question keeps those slots for its own hits. Any
+ * The lead section, when given, goes first, then the pinned sections; each is always kept and counts once
+ * toward both. The top hit is always kept. A follow-up such as "and then?" has few keywords of its own, so
+ * its own top hit favors the page of the previous answer's topic, and after it come the hits of the previous
+ * question and the follow-up searched together. A question that points at the open screen gets the lead
+ * page's best how-to sections next, so a "here" question reaches them; any other question keeps those slots for its own hits. Any
  * other hit under the score floor of its own search stays out.
  */
-export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead, howToRule = true }: {
+export function helpSections(index: DocsIndex, question: string, { history = [], budget = HELP_DOCS_CHAR_BUDGET, lead, pinned = [], howToRule = true }: {
   /** The exchanges the request carries. The newest with answer text is the one a follow-up continues. */
   history?: readonly EarlierExchange[];
   budget?: number;
   lead?: DocSection;
+  /** The sections every request of the turn sends after the lead, whatever the search finds. */
+  pinned?: readonly DocSection[];
   howToRule?: HelpQuestion['howToRule'];
 } = {}): DocSection[] {
   const previous = answered(history).at(-1);
@@ -269,8 +275,9 @@ export function helpSections(index: DocsIndex, question: string, { history = [],
   // The open page's how-tos skip the floor: a "here" question's key often scores far below its top hit.
   const onPage = addsPageHowTos ? index.search(question, Infinity, undefined, { onSurface: true }).filter((hit) => hit.page === lead.page && hit.id !== lead.id && HOW_TO_HEADING.test(hit.heading)).slice(0, HELP_PAGE_HITS) : [];
   const ordered = [...hits.slice(0, 1), ...onPage, ...hits.slice(1)];
-  const kept: DocSection[] = lead ? [lead] : [];
-  let size = lead?.markdown.length ?? 0;
+  const kept: DocSection[] = [];
+  for (const section of [...(lead ? [lead] : []), ...pinned]) if (!kept.some((held) => held.id === section.id)) kept.push(section);
+  let size = kept.reduce((sum, section) => sum + section.markdown.length, 0);
   for (const hit of ordered) {
     if (kept.length === HELP_SECTION_LIMIT) break;
     if (kept.some((section) => section.id === hit.id)) continue;
@@ -338,6 +345,16 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
 }
 
 /**
+ * The sections a turn sends before its search hits, and the screen its message names. A code turn sends the
+ * Quick Reference: after the lead on the Code tab, and as the lead on any other screen, which then goes unnamed.
+ */
+function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, onCodeTab: boolean): { lead?: DocSection; pinned: DocSection[]; where?: string } {
+  if (!quickReference) return { lead: hint?.section, pinned: [], where: hint?.where };
+  if (hint && onCodeTab) return { lead: hint.section, pinned: [quickReference], where: hint.where };
+  return { lead: quickReference, pinned: [] };
+}
+
+/**
  * Asks one help question, after the earlier exchanges. The mode is picked before anything is sent, and a
  * failed request is never sent again in the other mode (ADR-0008).
  *
@@ -352,7 +369,8 @@ export async function helpSearch({ question, history = [], settings, snapshot, i
  * - The face call joins either mode on the same gate while the Mascot is on and the rig has an enabled
  *   expression. It is no source either.
  * - Retrieval mode, everywhere else: one request. The capability check does not run.
- * - A bare question, when every source is off, lookup mode is off and the open screen adds no section: the
+ * - A code turn sends the Quick Reference in either mode, with every source off too.
+ * - A bare question, when every source is off, lookup mode is off and no lead section applies: the
  *   question alone, with no search. A search that runs and misses still sends the empty guide block.
  *
  * The player's Formaquestion Tools that are on go with the request on the same gate, in either mode. They
@@ -364,6 +382,10 @@ export async function* askHelp({
   question, history = [], language = '', settings, snapshot, index, surface, images = [], world = emptyToolSnapshot, screenRule, howToRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = settings.openScreen ? surfaceHint(surface, index) : null;
+  // The Code tab counts only while the open screen does.
+  const openSurface = settings.openScreen ? surface : null;
+  const codeTurn = isCodeTurn(question, openSurface);
+  const { lead, pinned, where } = turnLead(hint, codeTurn ? sectionWithId(index, QUICK_REFERENCE_SECTION) : null, isOnCodeTab(openSurface));
   const kept = keptHistory(history, settings.historyLength);
   const answerSnapshot = helpSnapshot(snapshot, helpRoutes(settings).answer, settings.reasoning, settings.reasoningBudget);
   const takesFunctions = toolsSupported(answerSnapshot.resolveTarget('help').reasoning);
@@ -371,27 +393,25 @@ export async function* askHelp({
   const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
   const face = settings.mascot && takesFunctions ? createFaceCall(activeMascotRig(settings.mascotPresets)) : null;
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
-  const bare = !hint && !lookupMode && !Object.values(settings.sources).some(Boolean);
+  const bare = !lead && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
   // The keyword search is instant. The pick request and the semantic ranking take time, and picks take the name.
   if (record && settings.sources.aiPicks) yield { type: 'stage', stage: 'picking' };
   else if (record && settings.sources.semantic) yield { type: 'stage', stage: 'searching' };
   const search = record ? await helpSearch({ question, history, settings, snapshot, index, hint, screenRule, embedder, signal, fetchImpl, record }) : index;
   if (signal?.aborted) {
-    yield { type: 'done', text: '', sources: [], lead: hint?.section, stopped: true, flagged: false, nearest: [], reasoning: '' };
+    yield { type: 'done', text: '', sources: [], lead, stopped: true, flagged: false, nearest: [], reasoning: '' };
     return;
   }
-  const inPrompt = bare ? [] : helpSections(search, question, { history: kept, lead: hint?.section, howToRule });
+  const inPrompt = bare ? [] : helpSections(search, question, { history: kept, lead, pinned, howToRule });
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
-  // The Code tab counts only while the open screen does.
-  const codeTurn = isCodeTurn(question, settings.openScreen ? surface : null);
   const turnMessage = bare
     ? question
-    : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
+    : lookup ? helpLookupUserMessage(question, inPrompt, where) : helpUserMessage(question, inPrompt, where);
   const userMessage = codeTurn ? withCodeRider(turnMessage, prompts.code) : turnMessage;
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup and the face call keep their own executors;
@@ -424,7 +444,7 @@ export async function* askHelp({
   const traceOf = (result?: AiStreamResult): HelpTrace => ({
     surface: surface ? surfaceWords(surface) : null,
     openScreen: settings.openScreen,
-    ...(hint && { lead: traceSection(hint.section) }),
+    ...(lead && { lead: traceSection(lead) }),
     preset: activeHelpPreset(settings.presets).name,
     search: record && searchTraceOf(record, inPrompt),
     sent: inPrompt.map(traceSection),
@@ -477,7 +497,7 @@ export async function* askHelp({
       }
       const flagged = !bare && isGeneralKnowledge(answer.marked, sources.length);
       const nearest = flagged ? helpSections(search, question, { history: kept }) : [];
-      yield { type: 'done', text: answer.text, sources, lead: hint?.section, stopped, flagged, nearest, reasoning: reasoningNow() };
+      yield { type: 'done', text: answer.text, sources, lead, stopped, flagged, nearest, reasoning: reasoningNow() };
     }
   }
 }

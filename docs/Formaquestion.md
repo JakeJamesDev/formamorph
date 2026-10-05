@@ -419,7 +419,9 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | **Use the Open Screen** | On | Sends the screen you have open and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
 
-With **Keyword Search**, **AI Search** and **Use the Open Screen** all off, no guide section can reach your AI. The request then holds your question alone, and the answer has no note that it is not from the guide.
+A question about code always sends the **Quick Reference** of the Stat Code Guide. On a stat's **Code** tab, it comes second, after the tab's own section. From any other screen, it comes first, and the answer request does not name the screen.
+
+With **Keyword Search**, **AI Search** and **Use the Open Screen** all off, no other guide section can reach your AI. A question that is not about code then goes alone, and the answer has no note that it is not from the guide.
 
 When a search runs and finds no section, the answer still gets that note.
 
