@@ -6,6 +6,8 @@ import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { endpointTabForRoute, endpointTabsFor, settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { SETTINGS_DIALOG_SIZE } from '@/components/modals/settingsDialogSize';
 import { SurfaceTab } from '@/components/ui/surface';
+import { TARGET_ATTRIBUTE, targetAttribute } from '@/lib/surface/surfaceTargets';
+import { useLanding } from '@/lib/surface/useLanding';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
 import { blankTool } from '@/lib/tools/toolDraft';
@@ -192,7 +194,7 @@ function PromptOptionsPanel({ endpoint, attachments, maxOutput, verbatim, reason
   );
 }
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, requestKey, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, initialTarget, requestKey, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -214,6 +216,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   initialPromptSurface?: string;
   /** Which stacked field of the Messages view to scroll to and focus on arrival. */
   initialPromptField?: MessageField;
+  /** The route text of the row a Take Me There request lands on. */
+  initialTarget?: string;
   /** Changes with each outside request, so a repeat request for the tab already set selects it again. */
   requestKey?: string;
   /** Overrides the stored Simple/Advanced preference (the dev-router's `mode` param; tests set it directly). */
@@ -311,6 +315,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab, requestKey]);
   useEffect(() => { if (requestedEndpointTab) setEndpointTab(requestedEndpointTab); }, [requestedEndpointTab, requestKey]);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const landTarget = useLanding(
+    (route: string) => dialogRef.current?.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${route}"]`) ?? null,
+    { pulse: true },
+  );
+  useEffect(() => { if (initialTarget) landTarget(initialTarget); }, [initialTarget, requestKey, landTarget]);
   const settings = useSettings();
   const imageAttachmentsOn = useImageAttachments();
   const {
@@ -700,8 +710,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // exchange (Recap, Recall, Direction), stacked with per-field resets, each hidden with its feature.
   // Null is the Anatomy hub — the prompt with no editor open, which is where selecting one lands.
   const [promptView, setPromptView] = useState<PromptSurface | null>(null);
-  // Which stacked field of the Messages view to scroll to and focus on arrival, set by a hub jump.
-  const [jumpField, setJumpField] = useState<MessageField | null>(null);
+  // The stacked Messages fields, by key, so a jump from the hub can land on the one it named.
+  const messageFieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Instant, not smooth: the field has to be under the cursor by the time focus lands on it. A built-in
+  // preset's editors are read-only, so there is nothing to put a caret in; the scroll is the whole jump.
+  const landField = useLanding((field: MessageField) => messageFieldRefs.current[field] ?? null, {
+    pulse: true,
+    block: 'start',
+    focus: (field) => field.querySelector<HTMLElement>('[data-lexical-editor][contenteditable="true"]'),
+  });
   // Which chip the arriving editor should scroll to and ring, set by a hub jump onto one.
   const [jumpChip, setJumpChip] = useState<string | null>(null);
   // How the hub draws a request. Held here rather than in the panel so a trip into an editor and back
@@ -716,8 +733,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         ? null
         : (initialPromptSurface as PromptSurface),
     );
-    setJumpField(initialPromptField ?? null);
-  }, [initialPromptSurface, initialPromptTab, initialPromptField, requestKey]);
+    if (initialPromptField) landField(initialPromptField);
+  }, [initialPromptSurface, initialPromptTab, initialPromptField, requestKey, landField]);
   // Fullscreen for the whole Prompts panel (rail included), not for one field — see PanelShell. The
   // morph is the single source of truth: fields read `contentInOverlay`, so they return to their docked
   // form the moment the close starts — under the overlay, by then a fading solid panel.
@@ -735,7 +752,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   }, [initialTab, initialPromptTab]);
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.
-  const selectPromptTab = (t: string) => { setOverviewOpen(false); setPromptTab(t); setPromptView(null); setJumpField(null); };
+  const selectPromptTab = (t: string) => { setOverviewOpen(false); setPromptTab(t); setPromptView(null); };
   const selectPromptView = (s: PromptSurface | null) => { setOverviewOpen(false); setPromptView(s); };
   /** A clicked run or chip in the anatomy: open the prompt, the editor that owns it, and — for a chip —
    *  the placement itself. A target with no surface is another prompt's hub. */
@@ -743,7 +760,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setOverviewOpen(false);
     setPromptTab(target.tab);
     setPromptView(target.surface ?? null);
-    setJumpField(target.field ?? null);
+    if (target.field) landField(target.field);
     setJumpChip(target.chip ?? null);
   };
   // The rail's groups, with prompts whose feature is off already removed.
@@ -800,17 +817,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       variables: undefined, vocabulary: NO_VARIABLES_VOCABULARY,
     }] : []),
   ];
-  // The stacked Messages fields, by key, so a jump from the hub can land on the one it named.
-  const messageFieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  useEffect(() => {
-    if (!jumpField || !showingMessages) return;
-    const node = messageFieldRefs.current[jumpField];
-    // Instant, not smooth: the field has to be under the cursor by the time focus lands on it. A built-in
-    // preset's editors are read-only, so there is nothing to put a caret in — the scroll is the whole jump.
-    node?.scrollIntoView({ block: 'start' });
-    node?.querySelector<HTMLElement>('[data-lexical-editor][contenteditable="true"]')?.focus();
-    setJumpField(null);
-  }, [jumpField, showingMessages]);
   // A chip jump lands on the editor holding it; the reveal waits out that editor's mount on its own.
   useEffect(() => {
     if (!jumpChip || !promptView) return;
@@ -1018,6 +1024,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           rather than a list of controls, and the extra width is what lets the editor show edit and
           preview side by side instead of one at a time. */}
       <DialogContent
+        ref={dialogRef}
         surface="settings"
         aria-describedby={undefined}
         // One width for every tab, matching the Feedback hub — Prompts wanted a wider window only to fit
@@ -1035,6 +1042,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 onModeChange={(next) => { dismissTutorial(); setMode(next); }}
                 hasHiddenValues={hasHiddenValues}
                 className="ml-auto"
+                // The Data tab's guide sections need Advanced, so they land on this switch.
+                {...targetAttribute('settings.data', 'settings-mode')}
               />
             </TutorialPopover>
           </div>
@@ -1061,13 +1070,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           </TabsList>
 
           <TabsContent value="display" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea landingRoom className="flex-1 min-h-0">
               <DisplaySettingsSection source={settingsSource} mode={mode} />
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="output" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea landingRoom className="flex-1 min-h-0">
               <OutputSettingsSection source={settingsSource} mode={mode} nativeReasoningRuledOut={activeNoNativeReasoning} />
             </ScrollArea>
           </TabsContent>
@@ -1568,13 +1577,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               <>
               <TabsContent value="narration" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
                 {showingMessages ? (
-                  <ScrollArea className="flex-1 min-h-0">
-                    <div className="flex flex-col gap-5 pr-3">
+                  // The padding is the Landing Pulse's room; the negative margin keeps the fields in place.
+                  <ScrollArea landingRoom className="-my-3 flex-1 min-h-0">
+                    <div className="flex flex-col gap-5 pr-3 py-3">
                       {messageFields.map((f) => (
                         <div
                           key={f.key}
                           ref={(node) => { messageFieldRefs.current[f.key] = node; }}
-                          className="flex flex-col gap-1 scroll-mt-2"
+                          className="flex flex-col gap-1 scroll-my-3"
                         >
                           {/* Wraps rather than squeezes: on mobile the pair drops under the label, still right-aligned. */}
                           <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
@@ -1950,7 +1960,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           )}
 
           <TabsContent value="data" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea landingRoom className="flex-1 min-h-0">
             <div className="grid gap-6 py-4">
               <Section title="Saves">
               <CheckRow

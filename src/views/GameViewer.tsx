@@ -5368,6 +5368,7 @@ const GameViewer = ({
         initialPromptTab={surfaceNav.settings?.promptTab ?? settingsPrompt?.tab ?? devRoute?.subtab}
         initialPromptSurface={surfaceNav.settings?.promptSurface ?? settingsPrompt?.surface ?? devRoute?.surface}
         initialPromptField={settingsPrompt?.field}
+        initialTarget={surfaceNav.settings?.target}
         requestKey={surfaceNav.key}
       />
 

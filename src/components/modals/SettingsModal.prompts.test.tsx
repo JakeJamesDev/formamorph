@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
 import { SURFACE_LABELS, HUB_LABEL } from '@/lib/promptGroups';
 import { CONTEXT_LABELS } from '@/lib/requestAnatomy';
+import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
 
 const anatomy = vi.hoisted(() => ({ build: vi.fn() }));
@@ -293,6 +294,21 @@ describe('Settings → Prompts jumps', () => {
     // The Messages view stacks the live conditional lines, each under its own name.
     expect(screen.getByText('Recap Message')).toBeInTheDocument();
     expect(screen.getByText('Now Message')).toBeInTheDocument();
+  });
+
+  it('scrolls the Messages view to the field the jump names, and pulses it', async () => {
+    const scrolled: Element[] = [];
+    const realScroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
+    try {
+      openPrompts();
+      fireEvent.click(anatomyRun('Now Message'));
+      await waitFor(() => expect(scrolled.map((el) => el.textContent)).toContainEqual(expect.stringContaining('Now Message')));
+      expect(scrolled.map((el) => el.textContent)).not.toContainEqual(expect.stringContaining('Recap Message'));
+      expect(scrolled.at(-1)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+    } finally {
+      Element.prototype.scrollIntoView = realScroll;
+    }
   });
 });
 

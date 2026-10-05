@@ -16,6 +16,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Slider } from '@/components/ui/slider';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { useRootSnapshot } from '@/lib/useRootSnapshot';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { hslTripleToHex } from '@/lib/hslColor';
 import type { SettingsMode } from '@/lib/settingsMode';
 import type { DisplaySettingsSource } from './settingsSource';
@@ -179,7 +180,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
       </Section>
 
       <Section title="Narration">
-      <Row {...rowCopy('narrationLayout')}>
+      <Row target={targetAttribute('settings.display', 'narration-layout')} {...rowCopy('narrationLayout')}>
         <OptionSwitcher
           ariaLabel="Narration Layout"
           value={narrationLayout}
@@ -243,7 +244,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
       {/* These rows sit with the rest of what the story looks like; the section keeps the word
           "Accessibility" so the term stays findable. */}
       <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app.">
-      <Row htmlFor="narrationFont" {...rowCopy('narrationFont')}>
+      <Row htmlFor="narrationFont" target={targetAttribute('settings.display', 'narration-font')} {...rowCopy('narrationFont')}>
         <div className="flex items-center gap-3">
           <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
             <SelectTrigger id="narrationFont" className="w-56">
@@ -295,6 +296,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
         htmlFor="quoteColor"
         checked={quoteColor}
         onChange={setQuoteColor}
+        target={targetAttribute('settings.display', 'quote-color')}
         {...rowCopy('quoteColor')}
       />
       {quoteColor && (

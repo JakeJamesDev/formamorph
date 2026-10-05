@@ -28,6 +28,7 @@ describe('isSurfaceTarget', () => {
     expect(isSurfaceTarget('settings.display', 'narration-layout')).toBe(true);
     expect(isSurfaceTarget('settings.display', 'narration')).toBe(false);
     expect(isSurfaceTarget('settings.output', 'narration-layout')).toBe(false);
+    expect(isSurfaceTarget('settings.output', 'thinking-mode')).toBe(true);
     expect(isSurfaceTarget('nowhere', 'narration-layout')).toBe(false);
   });
 });
@@ -42,7 +43,9 @@ describe('targetAttribute', () => {
   it('rejects a target the registry lacks at compile time', () => {
     // @ts-expect-error: settings.display registers no such target.
     targetAttribute('settings.display', 'narration-font-size');
-    // @ts-expect-error: settings.output registers no targets.
+    // @ts-expect-error: settings.output registers no such target.
     targetAttribute('settings.output', 'narration-layout');
+    // @ts-expect-error: settings.endpoints registers no targets.
+    targetAttribute('settings.endpoints', 'narration-layout');
   });
 });

@@ -4,7 +4,7 @@
  */
 import { DEV_MODAL_TABS, DEV_VIEWS, type DevModal, type DevView } from '@/lib/devRoutes';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, type SurfaceId } from '@/lib/docs/surfaceMap';
-import { isSurfaceTarget } from './surfaceTargets';
+import { isSurfaceTarget, routeText } from './surfaceTargets';
 
 export type TabKey = keyof typeof DEV_MODAL_TABS;
 type LedgerTab<L extends TabKey> = (typeof DEV_MODAL_TABS)[L][number];
@@ -142,6 +142,13 @@ const VIEWS: ReadonlySet<string> = new Set(DEV_VIEWS);
 export function resolveSurface(id: string, target?: string): SurfaceSteps | null {
   const steps = surfaceSteps(id);
   return steps && target !== undefined && isSurfaceTarget(id, target) ? { ...steps, target } : steps;
+}
+
+/** The route text a set of steps lands on, as its target's row carries it, or undefined with no target. */
+export function targetRoute(steps: SurfaceSteps): string | undefined {
+  // A registered surface opens as its own last step (the registry test holds that).
+  const surface = steps.tabs.at(-1) ?? steps.dialog ?? steps.view;
+  return steps.target === undefined || surface === null ? undefined : routeText(surface, steps.target);
 }
 
 function surfaceSteps(id: string): SurfaceSteps | null {

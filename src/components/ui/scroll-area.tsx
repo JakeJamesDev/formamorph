@@ -30,11 +30,14 @@ const ScrollArea = React.forwardRef<
     marks?: ScrollMark[]
     /** Called with a tick's position in `marks` when it is clicked. */
     onMarkSelect?: (index: number) => void
+    /** Pads the viewport 12px a side for the Landing Pulse, and pulls the root out by the same, so the
+     *  content and the bar keep their place. */
+    landingRoom?: boolean
   }
->(({ className, children, viewportRef, viewportProps, marks, onMarkSelect, ...props }, ref) => (
+>(({ className, children, viewportRef, viewportProps, marks, onMarkSelect, landingRoom, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
-    className={cn("relative flex flex-col overflow-hidden", className)}
+    className={cn("relative flex flex-col overflow-hidden", landingRoom && "-ml-3 -mr-px", className)}
     {...props}>
     {/* The viewport is sized by flex (`flex-auto min-h-0`), not `h-full`: a percentage height cannot
         resolve when an ancestor is capped only by `max-h-*` (its height is indefinite), so the viewport
@@ -49,7 +52,7 @@ const ScrollArea = React.forwardRef<
     <ScrollAreaPrimitive.Viewport
       {...viewportProps}
       ref={viewportRef}
-      className={cn("w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block", viewportProps?.className)}>
+      className={cn("w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block", landingRoom && "px-3", viewportProps?.className)}>
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar marks={marks} onMarkSelect={onMarkSelect} />

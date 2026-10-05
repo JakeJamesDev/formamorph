@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import type { SettingsMode } from '@/lib/settingsMode';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { ReasoningSwitch } from './ReasoningSwitch';
 import type { OutputSettingsSource } from './settingsSource';
 
@@ -89,7 +90,11 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       </Section>
 
       <Section title="Reasoning">
-      <Row top {...optionRowCopy('thinking', THINKING_OPTIONS.find((o) => o.value === thinkingMode))}>
+      <Row
+        top
+        target={targetAttribute('settings.output', 'thinking-mode')}
+        {...optionRowCopy('thinking', THINKING_OPTIONS.find((o) => o.value === thinkingMode))}
+      >
         <div>
           <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
           {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}

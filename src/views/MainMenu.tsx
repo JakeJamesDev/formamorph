@@ -1888,6 +1888,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialEndpointTab={settingsEndpointTab}
         initialPromptTab={surfaceNav.settings?.promptTab ?? devRoute?.subtab}
         initialPromptSurface={surfaceNav.settings?.promptSurface ?? devRoute?.surface}
+        initialTarget={surfaceNav.settings?.target}
         requestKey={surfaceNav.key}
         onWorldsRestored={refreshWorlds}
         onStartAuthoringTour={() => { setShowSettings(false); void handleCreateNewWorld({ tour: true }); }}
