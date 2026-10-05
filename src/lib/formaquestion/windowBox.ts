@@ -78,12 +78,12 @@ export type ResizeHandle = 'n' | 'e' | 's' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
 export const RESIZE_HANDLES: readonly ResizeHandle[] = ['se', 'sw', 'ne', 'nw', 'n', 'e', 's', 'w'];
 
 /** The box a handle drag of (dx, dy) gives. The edges the handle holds move; the opposite edges stay put. */
-export function resizeBox(start: WindowBox, dx: number, dy: number, viewport: Viewport, handle: ResizeHandle = 'se'): WindowBox {
+export function resizeBox(start: WindowBox, dx: number, dy: number, viewport: Viewport, handle: ResizeHandle = 'se', maxW = Infinity): WindowBox {
   const right = start.x + start.w;
   const bottom = start.y + start.h;
   let { x, y, w, h } = start;
-  if (handle.includes('e')) w = Math.min(start.w + dx, viewport.width - start.x);
-  if (handle.includes('w')) { x = clamp(start.x + dx, 0, right - MIN_WIDTH); w = right - x; }
+  if (handle.includes('e')) w = Math.min(start.w + dx, viewport.width - start.x, maxW);
+  if (handle.includes('w')) { x = clamp(start.x + dx, Math.max(0, right - maxW), right - MIN_WIDTH); w = right - x; }
   if (handle.includes('s')) h = Math.min(start.h + dy, viewport.height - start.y);
   if (handle.includes('n')) { y = clamp(start.y + dy, 0, bottom - MIN_HEIGHT); h = bottom - y; }
   return clampBox({ x, y, w, h }, viewport);
@@ -267,7 +267,8 @@ function aboveLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): W
   const bottom = viewport.height - SCREEN_MARGIN;
   const asked = scale === 'auto' || !baseHeight ? null : (baseHeight * scale) / 100;
   const keep = asked === null ? bottom - top - cap : Math.min(asked, bottom - top - h);
-  const y = clamp(box.y, top + keep, bottom - h);
+  // The column may sit flush with the screen bottom, as it does beside her.
+  const y = clamp(box.y, top + keep, viewport.height - h);
   const roomH = y - top;
   const overhang = Math.max(0, Math.min((viewport.width - SCREEN_MARGIN * 2 - w) / 2, viewport.width - w - readerSpace));
   const mascotW = Math.max(0, Math.min((asked === null ? roomH : Math.min(asked, roomH)) * aspect, w + overhang * 2));
@@ -338,22 +339,33 @@ export function moveMascotPieces(chrome: BoxChrome, start: WindowBox, dx: number
  * pieces lack room and the layout would push it, the growth that pushed it gives back and the drag stops there.
  */
 export function dragHandle(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces, handle: ResizeHandle = 'se'): Dragged {
-  const laidAt = (share: number) => windowLayout(chrome, resizeBox(start, dx * share, dy * share, viewport, handle), viewport, pieces);
+  // The minimal column never grows past the narrow width, so its width stops there instead of pulling the far edge.
+  const maxW = chrome === 'minimal' ? NARROW_WIDTH : Infinity;
+  const laidAt = (acrossShare: number, downShare: number) =>
+    windowLayout(chrome, resizeBox(start, dx * acrossShare, dy * downShare, viewport, handle, maxW), viewport, pieces);
   const held = (edge: string) => handle.includes(edge);
   const same = (a: number, b: number) => Math.abs(a - b) < 1e-3;
   const keeps = ({ column: box }: WindowLayout) =>
     (held('n') || same(box.y, start.y)) && (held('w') || same(box.x, start.x))
     && (held('s') || same(box.y + box.h, start.y + start.h)) && (held('e') || same(box.x + box.w, start.x + start.w));
-  const whole = laidAt(1);
+  const whole = laidAt(1, 1);
   if (keeps(whole)) return whole;
-  // The room runs out somewhere along the drag: the largest share of it that moves no unheld edge, by bisection.
-  let fits = 0;
-  let fails = 1;
-  for (let step = 0; step < 30; step += 1) {
-    const mid = (fits + fails) / 2;
-    if (keeps(laidAt(mid))) fits = mid; else fails = mid;
-  }
-  return laidAt(fits);
+  // The room runs out somewhere along the drag: the largest share that moves no unheld edge, by bisection.
+  const largest = (fitsAt: (share: number) => boolean) => {
+    let fits = 0;
+    let fails = 1;
+    for (let step = 0; step < 30; step += 1) {
+      const mid = (fits + fails) / 2;
+      if (fitsAt(mid)) fits = mid; else fails = mid;
+    }
+    return fits;
+  };
+  // Each axis runs out on its own, so a diagonal drag keeps going on the axis that still has room.
+  const across = dx === 0 ? 0 : largest((share) => keeps(laidAt(share, 0)));
+  const down = dy === 0 ? 0 : largest((share) => keeps(laidAt(0, share)));
+  if (keeps(laidAt(across, down))) return laidAt(across, down);
+  const both = largest((share) => keeps(laidAt(across * share, down * share)));
+  return laidAt(across * both, down * both);
 }
 
 /** The column or frame a handle drag of (dx, dy) gives. */

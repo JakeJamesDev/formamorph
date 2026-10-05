@@ -27,7 +27,8 @@ const input = (change: Partial<BubbleInput> = {}): BubbleInput => ({
 const bottomOf = (box: WindowBox) => box.y + box.h;
 const rightOf = (box: WindowBox) => box.x + box.w;
 const M = SCREEN_MARGIN;
-const whole = (box: WindowBox) => box.x >= M && box.y >= M && rightOf(box) <= SCREEN.width - M && bottomOf(box) <= SCREEN.height - M;
+// The bottom edge may sit flush with the screen; the other three keep the margin.
+const whole = (box: WindowBox) => box.x >= M && box.y >= M && rightOf(box) <= SCREEN.width - M && bottomOf(box) <= SCREEN.height;
 
 describe('the bubble layout in full view', () => {
   it('sets the bubble bottom at the bottom of her head', () => {
@@ -141,7 +142,15 @@ describe('the bubble layout in full view', () => {
     const layout = bubbleLayout(input({ scale: MASCOT_SCALE_MAX, base: { width: 600, height: 1200 }, mask: { x: 100, y: 0, width: 400, height: 400 } }));
     expect(layout.bubble.y).toBeGreaterThanOrEqual(SCREEN_MARGIN);
     expect(layout.bubble.h).toBeGreaterThanOrEqual(BUBBLE_MIN_HEIGHT);
-    expect(bottomOf(layout.her)).toBeLessThanOrEqual(SCREEN.height - SCREEN_MARGIN);
+    expect(bottomOf(layout.her)).toBeLessThanOrEqual(SCREEN.height);
+  });
+
+  it('lets her feet and the column stand flush with the screen bottom, in both views', () => {
+    const full = bubbleLayout(input({ at: { x: 1300, y: 2000 } }));
+    expect(bottomOf(full.her)).toBe(SCREEN.height);
+    expect(bottomOf(full.input)).toBe(SCREEN.height);
+    const head = bubbleLayout(input({ headView: true, scale: 'auto', at: { x: 1300, y: 2000 } }));
+    expect(bottomOf(head.input)).toBe(SCREEN.height);
   });
 
   it('stands her at the bottom right by default', () => {

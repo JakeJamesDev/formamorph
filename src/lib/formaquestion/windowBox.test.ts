@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  boxOf, clampBox, defaultBox, defaultWindow, dragColumn, dragMascot, isWide, moveBox, movePieces, readStoredHeadView, readStoredWindow, resizeBox,
+  boxOf, clampBox, defaultBox, defaultWindow, dragColumn, dragHandle, dragMascot, isWide, moveBox, movePieces, readStoredHeadView, readStoredWindow, resizeBox,
   resizePieces, swapWidth, windowLayout, withBox, writeStoredHeadView, writeStoredWindow,
   headHeight, readStoredMascotScale, writeStoredMascotScale, readStoredMascotPlacement, writeStoredMascotPlacement, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale,
   MASCOT_BELOW_CAP, MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH, type StoredWindow, type Viewport,
@@ -145,6 +145,16 @@ describe('moveBox and resizeBox', () => {
     // The column drag flips on the column's own crossing, and the kept side holds between drags.
     expect(windowLayout('full', flipped.column, SCREEN, { ...pieces, side: 'right' }).side).toBe('right');
     expect(dragColumn('full', { ...flipped.column, x: 900 }, -400, 0, SCREEN, { ...pieces, side: 'right' }).side).toBe('left');
+  });
+
+  it('grows the minimal column up the whole way from a diagonal corner drag, though its width is at the cap', () => {
+    const pieces = { mascotAspect: 0.75, placement: 'inside' as const, scale: 25, baseHeight: 1184 };
+    const at = windowLayout('minimal', { x: 1156, y: 288, w: NARROW_WIDTH, h: 540 }, SCREEN, pieces).column;
+    const straight = dragHandle('minimal', at, 0, -400, SCREEN, pieces, 'n').column;
+    const diagonal = dragHandle('minimal', at, -300, -400, SCREEN, pieces, 'nw').column;
+    expect(straight.y).toBe(0);
+    expect(diagonal).toEqual({ ...straight, w: NARROW_WIDTH });
+    expect(diagonal.x + diagonal.w).toBe(at.x + at.w);
   });
 
   it('stops a left handle drag at her room beside the frame, and never moves the right edge', () => {
@@ -534,6 +544,8 @@ describe('the Mascot below', () => {
     expect(above.group.y).toBe(16);
     expect(above.group.y + above.group.h).toBe(480 + 400);
     expect(below({ x: 1100, y: 0, w: NARROW_WIDTH, h: 800 }, { placement: 'above' }).column.h).toBe(CAP);
+    // The column may stand flush with the screen bottom, as beside her.
+    expect(below({ x: 1100, y: 2000, w: NARROW_WIDTH, h: 400 }, { placement: 'above' }).column.y).toBe(SCREEN.height - 400);
   });
 
   it('stands a percent Mascot over the column under Above, and keeps the column low enough for her', () => {

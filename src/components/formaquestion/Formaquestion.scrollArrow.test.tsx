@@ -61,6 +61,23 @@ describe.each([
     expect(arrow()).toBeNull();
   });
 
+  it('leaves once the window grows enough to show the end, with no scroll', async () => {
+    const observers: Array<() => void> = [];
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { observers.push(callback); }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+    const scrollTo = await openChat();
+    scrollTo(100);
+    expect(arrow()).toBeInTheDocument();
+    // The viewport grows to hold the whole conversation.
+    Object.defineProperty(scroller(), 'clientHeight', { configurable: true, value: SCROLL_HEIGHT });
+    act(() => { for (const notify of observers) notify(); });
+    expect(arrow()).toBeNull();
+  });
+
   it('scrolls to the end on a click and leaves', async () => {
     const scrollTo = await openChat();
     scrollTo(0);
