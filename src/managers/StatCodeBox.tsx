@@ -1,12 +1,8 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LayoutTemplate } from "lucide-react";
-import { CODE_BOUND_FIELDS, entityTraitsPath, executeStatCode, type CodeBoundField } from "@/lib/statCodeExecutor";
-import { codePinText } from "@/lib/placeholderPins";
-import { sandboxDictionaries, sandboxPlaceholders } from "@/lib/statCodePlaceholders";
-import { placeholderPathLabel } from "@/lib/statCodePaths";
 import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
-import { sandboxTraits, unplayedEntities } from "@/lib/statCodeTraits";
+import { analysisOptionsOf, runTestCode } from "@/lib/statCodeTestRun";
 import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from "@/lib/statCodeAnalysis";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
@@ -14,16 +10,6 @@ import { STAT_CODE_SURFACE } from "@/lib/statCodeSurface";
 import { CODE_BOX_TARGET, TIMING_LABEL, type StatCodeTiming } from "@/lib/statCodeTiming";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import type { Stat, Trait } from "@/types";
-
-/** Test Code names each bound a run wrote with its Details field label. */
-const BOUND_LABELS: Record<CodeBoundField, string> = { min: "Min", max: "Max", regen: "Regen" };
-
-/** The clock each box reads under Test Code: the turn start the before box gets, a one-hour turn for the
- *  after box. Zero elapsed puts the before run on the opening turn, which its templates are written for. */
-const TEST_CLOCK: Record<StatCodeTiming, { deltaHours: number; elapsedHours: number }> = {
-  before: { deltaHours: 0, elapsedHours: 0 },
-  after: { deltaHours: 1, elapsedHours: 1 },
-};
 
 /** Everything both boxes complete against and run under, derived once by the panel that holds them. */
 export interface StatCodeBoxContext {
@@ -107,69 +93,21 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
       // Only the editor's chunk holds the reader, and CodeArea fetches that chunk on demand — so this
       // stays off the world editor's own bundle.
       const { statCodeDiagnostics, summarizeProblems } = await import('@/lib/statCodeAnalysis');
-      setProblems(summarizeProblems(statCodeDiagnostics(value, {
-        placeholders, traits: traitNames, entities, statNames, selfName,
-      })));
+      setProblems(summarizeProblems(statCodeDiagnostics(value, analysisOptionsOf({ statNames, placeholders, traitNames, entities }, selfName))));
     } catch {
       // What the run itself found is the point; the count is what the editor adds to it.
     }
 
     try {
-      // No playthrough behind the editor: an unrolled placeholder reads as a fresh draw, no one holds a trait,
-      // and no persona plays. A switch is reported here and never applied.
-      const placeholderEntries = sandboxPlaceholders({
-        placeholders: placeholders.list, owners: placeholders.owners, rolls: {},
-      });
-      const owners = placeholderEntries.owners;
-      const traitEntries = sandboxTraits(
-        { acquired: [], disabledTraitIds: [], appliedValues: {}, world: { traits: [...traits], groups: [] } },
-        placeholders.list,
-      );
-      const outcome = await executeStatCode(
-        // A half-filled stat still runs: the executor defaults every number it marshals, so only the id
-        // and the code name have to be real.
-        value, codeNamedStats, { ...stat, name: selfName } as Stat,
-        {
-          clock: TEST_CLOCK[timing], placeholders: placeholderEntries.top, traits: traitEntries,
-          entities: unplayedEntities(entities, owners),
-          dictionaries: sandboxDictionaries(placeholders.dictionaries ?? [], owners),
-        },
-      );
-      if (outcome.error) {
-        setError(outcome.error);
+      // A switch is reported here and never applied.
+      const report = await runTestCode(value, timing, { ...stat, name: selfName }, { codeNamedStats, placeholders, traits, entities });
+      if (report.error) {
+        setError(report.error);
         return;
       }
-      const parts = [
-        ...(outcome.value !== null ? [`Result: ${outcome.value}`] : []),
-        ...CODE_BOUND_FIELDS.flatMap((field) => {
-          const bound = outcome.bounds?.[field];
-          return bound === undefined ? [] : [`${BOUND_LABELS[field]}: ${bound}`];
-        }),
-        ...(outcome.placeholders ?? []).map((entry) => {
-          // The path the code wrote, not the placeholder's bare name: that is what the author typed.
-          const at = placeholderPathLabel(entry.path);
-          return 'unpin' in entry ? `${at} unpinned` : `${at} = ${codePinText(entry.value)}`;
-        }),
-        ...(outcome.traits ?? []).map((entry) => `${entry.name} switched ${entry.enabled ? 'on' : 'off'}`),
-        ...(outcome.entities ?? []).flatMap(({ entity, traits: switched = [] }) =>
-          switched.map((entry) => `${entityTraitsPath(entity)}.${entry.name} switched ${entry.enabled ? 'on' : 'off'}`)),
-      ];
+      const parts = [...(report.value !== null ? [`Result: ${report.value}`] : []), ...report.writes];
       if (parts.length) setResult(parts.join(' · '));
-      setWarnings([
-        ...(outcome.unknownPlaceholders ? [`Unknown placeholder paths. Writes ignored: ${outcome.unknownPlaceholders.join(', ')}.`] : []),
-        ...(outcome.unknownOwnerPlaceholders ? [`Placeholders of owners not in play. Writes ignored: ${outcome.unknownOwnerPlaceholders.join(', ')}.`] : []),
-        ...(outcome.unknownTraits ? [`Unknown trait names. Writes ignored: ${outcome.unknownTraits.join(', ')}.`] : []),
-        ...(outcome.acquiredWrites ? [`acquired is read-only. Writes ignored: ${outcome.acquiredWrites.join(', ')}.`] : []),
-        ...(outcome.unknownEntities ? [`Unknown entity names. Writes ignored: ${outcome.unknownEntities.join(', ')}.`] : []),
-        ...(outcome.readOnlyWrites ? [`Read-only fields. Writes ignored: ${outcome.readOnlyWrites.join(', ')}.`] : []),
-        ...(outcome.entities ?? []).flatMap(({ entity, unknownTraits, acquiredWrites }) => {
-          const at = (names: string[]) => names.map((name) => `${entityTraitsPath(entity)}.${name}`).join(', ');
-          return [
-            ...(unknownTraits ? [`Unknown trait names. Writes ignored: ${at(unknownTraits)}.`] : []),
-            ...(acquiredWrites ? [`acquired is read-only. Writes ignored: ${at(acquiredWrites)}.`] : []),
-          ];
-        }),
-      ]);
+      setWarnings(report.dropped);
     } catch (thrown) {
       setError((thrown as Error).message);
     } finally {

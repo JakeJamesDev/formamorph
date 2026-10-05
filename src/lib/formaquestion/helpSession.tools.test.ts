@@ -6,7 +6,7 @@ import { UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability } from '@/lib/re
 import { toolSchema } from '@/lib/tools/toolSchema';
 import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
-import { helpTool, pastPicks } from '@/test/helpFixtures';
+import { helpTool, openWorld, pastPicks } from '@/test/helpFixtures';
 import { DOCS_LOOKUP } from './docsLookup';
 import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { helpSettingsOf, type HelpSettingsChange } from './helpSettings';
@@ -94,7 +94,7 @@ describe('the Formaquestion Tools in a help request', () => {
 
   it('runs a Tool round on the open world and the answer follows it', async () => {
     const fetchImpl = script(callFrames(FIND_PERSON.name, { name: 'Wren' }), sseReply('Wren is a trader.'));
-    const events = await collect(ask(fetchImpl, { world: sampleToolSnapshot }));
+    const events = await collect(ask(fetchImpl, { world: openWorld(sampleToolSnapshot) }));
 
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     const second = bodyOf(fetchImpl, 1);
@@ -121,7 +121,7 @@ describe('the Formaquestion Tools in a help request', () => {
       ],
       sseReply('Wren, under a clear sky.'),
     );
-    await collect(ask(fetchImpl, { world, settings: settings({ toolSwitches: { 'h-1': true, 'h-2': true } }) }));
+    await collect(ask(fetchImpl, { world: openWorld(world), settings: settings({ toolSwitches: { 'h-1': true, 'h-2': true } }) }));
     expect(world).toHaveBeenCalledTimes(1);
     expect(toolResults(bodyOf(fetchImpl, 1))[1]).toBe('Clear.');
   });
@@ -136,7 +136,7 @@ describe('the Formaquestion Tools in a help request', () => {
       ],
       sseReply('Bell, and a trait.'),
     );
-    const events = await collect(ask(fetchImpl, { world: sampleToolSnapshot, settings: settings({ lookup: true }) }));
+    const events = await collect(ask(fetchImpl, { world: openWorld(sampleToolSnapshot), settings: settings({ lookup: true }) }));
     const [guide, person] = toolResults(bodyOf(fetchImpl, 1));
     expect(guide).toContain('<section id="Traits#how-to-add-a-trait">');
     expect(JSON.parse(person)).toMatchObject({ matches: [{ id: 'bell' }] });

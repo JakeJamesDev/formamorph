@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import { helpTool as tool } from '@/test/helpFixtures';
 import { DOCS_LOOKUP } from './docsLookup';
+import { HELP_CODE_TEST } from './helpCodeTest';
 import { HELP_FACE } from './helpFace';
 import { HELP_ROLL } from './helpRoll';
 import {
@@ -9,9 +10,9 @@ import {
 } from './helpTools';
 
 describe('the fixed functions of a help request', () => {
-  it('are the guide lookup, the dice roll and the face call, and their names are the reserved Tool names', () => {
-    expect(HELP_FIXED_FUNCTIONS).toEqual([DOCS_LOOKUP, HELP_ROLL, HELP_FACE]);
-    expect(HELP_RESERVED_TOOL_NAMES).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, HELP_FACE.name]);
+  it('are the guide lookup, the dice roll, the face call and the code test, and their names are the reserved Tool names', () => {
+    expect(HELP_FIXED_FUNCTIONS).toEqual([DOCS_LOOKUP, HELP_ROLL, HELP_FACE, HELP_CODE_TEST]);
+    expect(HELP_RESERVED_TOOL_NAMES).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, HELP_FACE.name, HELP_CODE_TEST.name]);
   });
 
   it('refuse a Tool named as the face call, at save and on read', () => {

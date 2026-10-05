@@ -19,6 +19,9 @@ describe('the default help settings', () => {
       lookupCallLimit: 3,
       roll: false,
       rollCallLimit: 4,
+      // Offered on code turns alone, and the bar run's endpoint takes no function calls.
+      codeTest: true,
+      codeTestCallLimit: 3,
       openScreen: true,
       historyLength: 4,
       reasoning: { enabled: false, level: 'global' },
@@ -71,7 +74,7 @@ describe('the stored help settings', () => {
     expect(stored({})).toEqual(DEFAULT_HELP_SETTINGS);
   });
 
-  it.each(['lookupCallLimit', 'rollCallLimit'] as const)('keep a %s from 1 to the most the field takes, and take the default for anything else', (field) => {
+  it.each(['lookupCallLimit', 'rollCallLimit', 'codeTestCallLimit'] as const)('keep a %s from 1 to the most the field takes, and take the default for anything else', (field) => {
     expect(stored({ [field]: 1 })[field]).toBe(1);
     expect(stored({ [field]: HELP_CALL_LIMIT_MAX })[field]).toBe(HELP_CALL_LIMIT_MAX);
     for (const bad of [0, HELP_CALL_LIMIT_MAX + 1, 2.5, '2', null]) {
@@ -82,6 +85,11 @@ describe('the stored help settings', () => {
   it('keep the roll switch, and take off for anything else', () => {
     expect(stored({ roll: true }).roll).toBe(true);
     expect(stored({ roll: 'yes' }).roll).toBe(false);
+  });
+
+  it('keep the code test switch, and take on for anything else', () => {
+    expect(stored({ codeTest: false }).codeTest).toBe(false);
+    expect(stored({ codeTest: 'no' }).codeTest).toBe(true);
   });
 
   it('keep a preset id or Follow Active for each route, and take the default for anything else', () => {

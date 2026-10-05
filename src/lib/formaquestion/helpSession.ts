@@ -17,6 +17,7 @@ import type { Surface } from '@/lib/surface/surfaceRegistry';
 import { withImageParts } from '@/lib/aiRequest/imageParts';
 import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
+import { createCodeTest, HELP_CODE_TEST } from './helpCodeTest';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { helpChipValues, renderHelpPrompt } from './helpChips';
 import { isCodeTurn, isOnCodeTab, QUICK_REFERENCE_SECTION, withCodeRider } from './helpCodeRider';
@@ -34,7 +35,7 @@ import {
   emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection,
   type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
 } from './helpTrace';
-import type { ToolSnapshotSource } from './helpWorld';
+import type { OpenWorld } from './helpWorld';
 import { mergeRanks } from './rankMerge';
 import { surfaceHint, surfaceWords, type SurfaceHint } from './surfaceHint';
 import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
@@ -86,8 +87,11 @@ export interface HelpQuestion {
   surface?: Surface;
   /** The images the player attached to this question. They go on the question alone, never on history. */
   images?: readonly ImageAttachment[];
-  /** The open world as a Tool Snapshot, read once at the first Tool call. None: a Tool runs on an empty snapshot (Q36). */
-  world?: ToolSnapshotSource;
+  /**
+   * The open world, read once at the first call that needs it. None: a Tool runs on an empty snapshot (Q36),
+   * and the code test checks no names.
+   */
+  world?: OpenWorld;
   /** Off lets every pick count on a question that points at the open screen: tests and a probe's control arm. */
   screenRule?: boolean;
   /** Off adds the open page's how-tos to every question: tests and a probe's control arm. */
@@ -368,6 +372,8 @@ function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, o
  *   calls. It is no source, so it never decides the mode.
  * - The face call joins either mode on the same gate while the Mascot is on and the rig has an enabled
  *   expression. It is no source either.
+ * - The code test joins a code turn of either mode on the same gate while its setting is on. It reads the
+ *   open world's authored data, and is no source.
  * - Retrieval mode, everywhere else: one request. The capability check does not run.
  * - A code turn sends the Quick Reference in either mode, with every source off too.
  * - A bare question, when every source is off, lookup mode is off and no lead section applies: the
@@ -379,7 +385,7 @@ function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, o
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', settings, snapshot, index, surface, images = [], world = emptyToolSnapshot, screenRule, howToRule, embedder, signal, fetchImpl,
+  question, history = [], language = '', settings, snapshot, index, surface, images = [], world, screenRule, howToRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
   const hint = settings.openScreen ? surfaceHint(surface, index) : null;
   // The Code tab counts only while the open screen does.
@@ -392,6 +398,7 @@ export async function* askHelp({
   const lookupMode = settings.lookup && takesFunctions;
   const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
   const face = settings.mascot && takesFunctions ? createFaceCall(activeMascotRig(settings.mascotPresets)) : null;
+  const codeTest = codeTurn && settings.codeTest && takesFunctions ? createCodeTest(world?.authored) : null;
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !lead && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
@@ -414,19 +421,21 @@ export async function* askHelp({
     : lookup ? helpLookupUserMessage(question, inPrompt, where) : helpUserMessage(question, inPrompt, where);
   const userMessage = codeTurn ? withCodeRider(turnMessage, prompts.code) : turnMessage;
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
-  // The fixed functions first, then the player's Tools. The lookup and the face call keep their own executors;
-  // the roll and the Tools run on the one world snapshot of the question, which the roll does not read.
+  // The fixed functions first, then the player's Tools. The lookup, the face call and the code test keep their
+  // own executors; the roll and the Tools run on the one world snapshot of the question, which the roll does not read.
   const offered: OfferedFunction[] = [
     ...(lookup ? [{ ...DOCS_LOOKUP, callLimit: settings.lookupCallLimit }] : []),
     ...(settings.roll && takesFunctions ? [{ ...HELP_ROLL, callLimit: settings.rollCallLimit }] : []),
     ...(face ? [face.fn] : []),
+    ...(codeTest ? [{ ...HELP_CODE_TEST, callLimit: settings.codeTestCallLimit }] : []),
     ...playerTools,
   ];
-  const runTool = snapshotToolExecutor(world);
+  const runTool = snapshotToolExecutor(world?.snapshot ?? emptyToolSnapshot);
   // The offered functions without a handler, by id: each is offered only while its executor is here.
   const internal = new Map<string, ToolExecutor<OfferedFunction>>([
     ...(lookup ? [[DOCS_LOOKUP.id, lookup.execute] as const] : []),
     ...(face ? [[face.fn.id, face.execute] as const] : []),
+    ...(codeTest ? [[HELP_CODE_TEST.id, codeTest] as const] : []),
   ]);
   const execute: ToolExecutor<OfferedFunction> = (fn, argumentsText, callSignal) =>
     (isTool(fn) ? runTool(fn, argumentsText, callSignal) : internal.get(fn.id)!(fn, argumentsText, callSignal));

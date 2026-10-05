@@ -7,11 +7,12 @@ import type { Tool, ToolEnabledMap } from '@/types';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
 import { parseTool, parseToolEnabledMap, toolNameProblem } from '@/lib/tools/toolValidation';
 import { DOCS_LOOKUP } from './docsLookup';
+import { HELP_CODE_TEST } from './helpCodeTest';
 import { HELP_FACE } from './helpFace';
 import { HELP_ROLL } from './helpRoll';
 
 /** The app's own functions of a help request. A Tool cannot take their names. */
-export const HELP_FIXED_FUNCTIONS: readonly OfferedFunction[] = [DOCS_LOOKUP, HELP_ROLL, HELP_FACE];
+export const HELP_FIXED_FUNCTIONS: readonly OfferedFunction[] = [DOCS_LOOKUP, HELP_ROLL, HELP_FACE, HELP_CODE_TEST];
 
 /** The names a Formaquestion Tool cannot take. */
 export const HELP_RESERVED_TOOL_NAMES: readonly string[] = HELP_FIXED_FUNCTIONS.map((fn) => fn.name);

@@ -219,6 +219,7 @@ export const PROMPTS_COPY = {
 export const TOOLS_COPY = {
   lookupSummary: 'Reads guide sections on function-calling endpoints. Roughly quadruples input tokens per question.',
   rollSummary: 'Rolls the dice you name, and returns each die and the total',
+  codeTestSummary: "Tests stat code before your AI answers. Sends your open world's names.",
   unsupported: "Your Answer Endpoint won't receive these functions. Its model doesn't support them, or support isn't confirmed yet.",
   worldText: 'Sends text from the world you have open when a Tool is on',
 } as const;

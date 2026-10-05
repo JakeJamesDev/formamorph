@@ -11,6 +11,7 @@ import {
 import type { Codec } from '@/lib/usePersistentState';
 import type { Tool, ToolEnabledMap } from '@/types';
 import { DOCS_LOOKUP_CALL_LIMIT } from './docsLookup';
+import { HELP_CODE_TEST_CALL_LIMIT } from './helpCodeTest';
 import { EMPTY_HELP_PRESET_STORE, parseHelpPresetStore, type HelpPresetStore } from './helpPresets';
 import { DEFAULT_HELP_REVEAL, parseHelpReveal, type HelpReveal } from './helpReveal';
 import { parseHelpTools, parseHelpToolSwitches } from './helpTools';
@@ -46,6 +47,10 @@ export interface HelpSettings {
   readonly roll: boolean;
   /** The most help dice roll calls one help question runs. */
   readonly rollCallLimit: number;
+  /** The code test is offered on a code turn, where the endpoint takes function calls. */
+  readonly codeTest: boolean;
+  /** The most code test calls one help question runs. */
+  readonly codeTestCallLimit: number;
   /** The open screen's section leads the docs, and the request names the screen. */
   readonly openScreen: boolean;
   /** The most earlier exchanges one help request carries, newest kept. */
@@ -100,6 +105,8 @@ export const DEFAULT_HELP_SETTINGS: HelpSettings = {
   roll: false,
   // The catalog roll's limit, so a roll behaves the same in help and in play (Q61).
   rollCallLimit: DEFAULT_TOOL_CALL_LIMIT,
+  codeTest: true,
+  codeTestCallLimit: HELP_CODE_TEST_CALL_LIMIT,
   openScreen: true,
   historyLength: 4,
   reasoning: defaultPromptReasoningSetting('help'),
@@ -162,6 +169,8 @@ export const helpSettingsCodec: Codec<HelpSettings> = {
       lookupCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       roll: isBool,
       rollCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
+      codeTest: isBool,
+      codeTestCallLimit: isBetween(1, HELP_CALL_LIMIT_MAX),
       openScreen: isBool,
       historyLength: isCount(HELP_HISTORY_MAX),
       reasoning: (value) => isRecord(value) && parsePromptReasoningSetting(value) !== null,

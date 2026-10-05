@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { helpTool } from '@/test/helpFixtures';
 import type { Tool } from '@/types';
 import { DOCS_LOOKUP } from './docsLookup';
+import { HELP_CODE_TEST } from './helpCodeTest';
 import { HELP_ROLL } from './helpRoll';
 import { parseHelpPrompt } from './helpChips';
 import {
@@ -48,7 +49,7 @@ describe('buildHelpPresetFile', () => {
     expect(Object.keys(file.options).sort()).toEqual(['answer', 'lookup', 'pick']);
     for (const block of Object.values(file.options)) expect(Object.keys(block).sort()).toEqual(['maxTokens', 'repetitionPenalty', 'temperature']);
     // The face call has no switch and no call limit, so it has no row.
-    expect(Object.keys(file.functions)).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name]);
+    expect(Object.keys(file.functions)).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, HELP_CODE_TEST.name]);
     expect(Object.keys(file.functions[DOCS_LOOKUP.name]).sort()).toEqual(['enabled', 'maxCalls']);
     for (const entry of file.tools) expect(Object.keys(entry).sort()).toEqual(['enabled', 'tool']);
   });
@@ -102,7 +103,7 @@ describe('export then import on a clean profile', () => {
   it('leaves every device setting the file does not hold', () => {
     const device = helpSettingsOf({ answerEndpoint: 'mine', historyLength: 2 });
     const { change } = importHelpPresetFile(device, parseHelpPresetFile(textOf(fileOf(customized()))), mint);
-    expect(Object.keys(change).sort()).toEqual(['lookup', 'lookupCallLimit', 'presets', 'roll', 'rollCallLimit', 'toolSwitches', 'tools']);
+    expect(Object.keys(change).sort()).toEqual(['codeTest', 'codeTestCallLimit', 'lookup', 'lookupCallLimit', 'presets', 'roll', 'rollCallLimit', 'toolSwitches', 'tools']);
   });
 });
 
@@ -148,11 +149,11 @@ describe('importHelpPresetFile', () => {
 
   it('applies the switch of each added Tool and of the fixed functions only', () => {
     const device = helpSettingsOf({ tools: [helpTool({ id: 'other', name: 'other_tool' })], toolSwitches: { other: true } });
-    const functions = { [DOCS_LOOKUP.name]: { enabled: false, maxCalls: 2 }, [HELP_ROLL.name]: { enabled: true, maxCalls: 7 } };
+    const functions = { [DOCS_LOOKUP.name]: { enabled: false, maxCalls: 2 }, [HELP_ROLL.name]: { enabled: true, maxCalls: 7 }, [HELP_CODE_TEST.name]: { enabled: false, maxCalls: 5 } };
     const { change } = importHelpPresetFile(device, file({ functions }), mint);
     const result = helpSettingsOf(change, device);
     expect(result.toolSwitches.other).toBe(true);
-    expect(result).toMatchObject({ lookup: false, lookupCallLimit: 2, roll: true, rollCallLimit: 7 });
+    expect(result).toMatchObject({ lookup: false, lookupCallLimit: 2, roll: true, rollCallLimit: 7, codeTest: false, codeTestCallLimit: 5 });
   });
 
   it('reports an added Script Tool that the file turns on', () => {
@@ -194,6 +195,10 @@ describe('parseHelpPresetFile', () => {
     ['a malformed Tool', (f: Record<string, unknown>) => ({ ...f, tools: [{ tool: { name: 'x' }, enabled: true }] }), 'a Tool that can’t be read: "x"'],
     ['a Tool without a switch', (f: Record<string, unknown>) => ({ ...f, tools: [{ tool: helpTool() }] }), 'tools.0.enabled'],
     ['a missing fixed function', (f: Record<string, unknown>) => ({ ...f, functions: {} }), `functions.${DOCS_LOOKUP.name}`],
+    ['a missing code test', (f: Record<string, unknown>) => {
+      const { [HELP_CODE_TEST.name]: _, ...others } = f.functions as Record<string, unknown>;
+      return { ...f, functions: others };
+    }, `functions.${HELP_CODE_TEST.name}`],
     ['a limit out of range', (f: Record<string, unknown>) => ({ ...f, functions: { [DOCS_LOOKUP.name]: { enabled: true, maxCalls: 0 } } }), `functions.${DOCS_LOOKUP.name}.maxCalls`],
   ])('refuses %s and names the field', (_, broken, field) => {
     expect(refused(broken(good()))).toThrow(field);

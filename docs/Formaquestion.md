@@ -341,7 +341,7 @@ Until the answer starts, a line under your question says what it waits on: **Che
 - **Take Me There**, next to **Sources**, opens the screen that the top source describes. See [How to Go to the Screen an Answer Describes](#how-to-go-to-the-screen-an-answer-describes).
 - **Thinking**, above an answer, shows how the AI reasoned, when your model reasons. It starts closed. Open or close one, and later answers start the same way.
 - When the guide does not cover your question, the AI answers from general knowledge. A note above the answer says that it is not from the guide and can be wrong about Formamorph. **Nearest Sections** then takes the place of **Sources** and lists the guide sections closest to your question.
-- The request holds your question and those guide sections. It holds nothing from your worlds or your saves.
+- The request holds your question and those guide sections. It holds nothing from your saves. It holds nothing from your worlds either, unless **test_stat_code** or one of your **My Tools** reads the world you have open. See [Tools](#tools).
 - The request also holds your last four questions and the AI's answers to them, as text. It does not hold their guide sections again. **History Length** sets how many.
 - Before the answer, the app sends one more short request, while **AI Search** is on. In it, your AI gets the list of every guide heading and chooses the sections that answer your question. The answer then uses those sections together with the sections that the other searches find. When that request fails or chooses no section, the answer uses the other searches alone.
 - The search for a follow-up also uses your previous question, so a short question such as "and then?" finds the same topic.
@@ -505,7 +505,7 @@ See [How to Move a Custom Preset to Another Device](#how-to-move-a-custom-preset
 - A file from a different version, or a file that is not complete, is refused. Nothing changes.
 
 ### Tools
-<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text, dice, roll, random number -->
+<!-- keywords: functions, function calls, guide lookup, lookup mode, read_guide, read more sections, local model, max calls, tool calls, not supported, my tools, own tools, custom tools, chat assistant, new tool, import tools, export tools, tool pack, world text, dice, roll, random number, test stat code, check code, test_stat_code, code test, broken code -->
 <!-- route: formaquestionSettings.tools -->
 
 
@@ -515,11 +515,12 @@ The **Tools** tab lists the functions your AI can call while it answers. It uses
 |---|---|---|
 | **read_guide** | Off | The guide lookup. It starts off, and it runs only while the **Answer Endpoint** takes function calls. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. It roughly quadruples the input tokens of a question. |
 | **roll** | Off | A dice roll. Ask your AI to roll, such as "roll two six-sided dice", and it rolls and gives you the total. |
+| **test_stat_code** | On | The code test. On a question about stat code, your AI checks its code and runs it once before it answers, as **Test Code** does. It reads the world you have open, so the names of its stats, traits, entities, placeholders and dictionaries can go to your **Answer Endpoint**. It never changes the world. With no world open, it checks the code without the names and does not run it. Your AI is told to fix what the test finds, and to give its best code and name the error that remains after its last call. |
 
 - **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
-- **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default: 3 for **read_guide**, 4 for **roll**.
+- **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default: 3 for **read_guide**, 4 for **roll**, 3 for **test_stat_code**.
 - The panel also shows the text your AI reads about the function, and its parameters.
-- **read_guide** and **roll** are part of the app. You can't edit, copy or delete them.
+- **read_guide**, **roll** and **test_stat_code** are part of the app. You can't edit, copy or delete them.
 - The **Tools** switch under **Settings** → **Output** does not apply to Formaquestion.
 
 A function goes out only when the **Answer Endpoint** takes function calls. If it doesn't, or the app hasn't confirmed it yet, the tab shows a note, and each question goes out as one request with no function. The default cloud endpoint takes no function calls.

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ToolsTab as ToolsLayout, type FixedFunction, type FixedFunctions } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, type ToolsView } from '@/components/modals/toolsView';
 import { DOCS_LOOKUP, DOCS_LOOKUP_CALL_LIMIT } from '@/lib/formaquestion/docsLookup';
+import { HELP_CODE_TEST, HELP_CODE_TEST_CALL_LIMIT } from '@/lib/formaquestion/helpCodeTest';
 import { HELP_ROLL, HELP_ROLL_CALL_LIMIT } from '@/lib/formaquestion/helpRoll';
 import { callLimitOf, HELP_CALL_LIMIT_MAX, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { deleteHelpTool, dropHelpToolSwitch, saveHelpTool } from '@/lib/formaquestion/helpTools';
@@ -16,20 +17,21 @@ interface FixedRow {
   fn: OfferedFunction;
   summary: string;
   defaultCallLimit: number;
-  switchKey: 'lookup' | 'roll';
-  limitKey: 'lookupCallLimit' | 'rollCallLimit';
+  switchKey: 'lookup' | 'roll' | 'codeTest';
+  limitKey: 'lookupCallLimit' | 'rollCallLimit' | 'codeTestCallLimit';
 }
 
 const FIXED_ROWS: readonly FixedRow[] = [
   { fn: DOCS_LOOKUP, summary: TOOLS_COPY.lookupSummary, defaultCallLimit: DOCS_LOOKUP_CALL_LIMIT, switchKey: 'lookup', limitKey: 'lookupCallLimit' },
   { fn: HELP_ROLL, summary: TOOLS_COPY.rollSummary, defaultCallLimit: HELP_ROLL_CALL_LIMIT, switchKey: 'roll', limitKey: 'rollCallLimit' },
+  { fn: HELP_CODE_TEST, summary: TOOLS_COPY.codeTestSummary, defaultCallLimit: HELP_CODE_TEST_CALL_LIMIT, switchKey: 'codeTest', limitKey: 'codeTestCallLimit' },
 ];
 
 const rowOf = (id: string): FixedRow | undefined => FIXED_ROWS.find((row) => row.fn.id === id);
 
 /**
  * The Tools tab of Formaquestion Settings: the functions a help answer request can call, switched on this
- * device. The guide lookup and the dice roll are fixed rows; the lookup's switch is lookup mode. Under them,
+ * device. The guide lookup, the dice roll and the code test are fixed rows; the lookup's switch is lookup mode. Under them,
  * the player's own Formaquestion Tools: a list apart from the gameplay Tools (ADR-0010), with the Tool editor
  * and the Tool pack file.
  */
@@ -76,7 +78,7 @@ export function ToolsTab({ settings, onChange, toolsSupported }: {
         onSetEnabled={setEnabled}
         view={view}
         onViewChange={setView}
-        openWorld={openWorld}
+        openWorld={openWorld?.snapshot}
       />
       <p className="flex-shrink-0 text-helper text-muted-foreground">{TOOLS_COPY.worldText}</p>
     </div>
