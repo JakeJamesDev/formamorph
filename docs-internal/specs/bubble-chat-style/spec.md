@@ -23,7 +23,7 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 | Q4 | Head view. One column: answer bubble, tail pointing down, head pill, strip, question, input. The pill stays visible. The head sits at the pill's end nearest the screen edge |
 | Q5 | The pill sits over her head inside her bounds. It shows when the window opens, fades after a short delay, and returns on hover or keyboard focus. On touch it stays visible. Reduced motion shows and hides it with no fade. Her body is the drag handle; the pill keeps its grip too. The delay is one tuning constant |
 | Q6 | Crossing the screen's center line mirrors the whole group: bubble, tail, strip, question, input, grip. It snaps, no transition. Text inside stays left-aligned |
-| Q7 | The resize grip sits on the bubble's corner that faces the most open screen space. It sets her scale; the bubble's width and height caps follow her size |
+| Q7 | The resize grip sits on the bubble's corner that faces the most open screen space. Superseded by Q19: it resizes the chat, and a second grip on the Mascot sets her scale |
 | Q8 | Each exchange keeps the face the AI set for its answer. Paging to an exchange shows that face. The newest page shows the live phase and face. While an answer streams and the player has paged back, the next chevron carries a mark |
 | Q9 | Mascot Position (Beside, Below, Auto) applies to Minimal and Full only. Bubble ignores it, and its row and ⋮ menu entry are hidden under Bubble |
 | Q10 | The mobile sheet is unchanged. Bubble on the sheet draws what Minimal draws there |
@@ -33,6 +33,12 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 | Q14 | The Sources list and the Thinking fold open inside the bubble under the answer text. The strip holds their toggles, with Take Me There beside Sources as today |
 | Q15 | The window's stored box under Bubble is her position only. Her size comes from Scale and the grip (Q7). The 60% default height and the Below cap do not apply |
 | Q16 | The mock shows layout only, not chrome. Bubble draws with the Minimal style's pieces: the same pill, bubble, input and strip surfaces, tokens, radii and shadows, and the Scrim. Nothing new in the Design System |
+| Q17 | Under Bubble with Scale on Auto she draws at a fixed share of the viewport height, one tuning constant starting at 60%, capped so the whole group fits inside the screen margins. The first grip drag writes a percent to the per-device Scale store, as the Mascot tab's slider does; after that the stored percent rules. Head view under Auto keeps today's head height (ticket 01) |
+| Q18 | A grip drag keeps her feet and her outer side fixed, the corner opposite the grip, and she grows toward the open space. The group follows her (ticket 01) |
+| Q19 | Two grips, in both views. The bubble's grip resizes the chat. A grip on the Mascot sets her Scale, with Q18's anchor. The Mascot grip fades with the pill (ticket 03). Replaces the single grip in Q7 |
+| Q20 | The pill's drag handle is the vertical grip icon, to take less room |
+| Q21 | Scrolling content uses the shared ScrollArea, never a native overflow scrollbar. A guard flags a native overflow scroller in components unless the file uses ScrollArea or carries a one-line allow comment naming the Design System exception (ticket 04) |
+| Q22 | The Sources list opens as a popover from the strip's Sources button, each section a link, with the flagged answer's nearest sections there too. The bubble holds the answer and the Thinking fold only. Take Me There stays in the strip (ticket 01) |
 
 ## User Stories
 
@@ -74,15 +80,16 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 - A Bubble variant in the pure layout. Inputs: her box (position and scale), the viewport, head view, the bubble's content height. Outputs: her rectangle, the bubble rectangle, the tail anchor and direction, the strip, question and input rectangles, the grip corner, and the side (Q3, Q4, Q6, Q7).
 - The side is a pure function of her center against the viewport's center. The grip corner is the bubble corner farthest from the nearest screen edges.
 - The bubble's height caps at the room from her head's bottom edge to the screen margin; past that the bubble scrolls (Q3). In head view the cap is the room above the pill.
-- Her scale from the grip writes the same per-device Scale store the Mascot tab uses (Q7, Q15).
+- Her scale from the grip writes the same per-device Scale store the Mascot tab uses (Q7, Q15). Auto is a viewport share, one constant, capped so the group fits; a drag anchors her feet and outer side (Q17, Q18).
 
 ### Window
 
 - A `BubbleChat` component beside `MinimalChat`: the pill, her piece, the bubble with the answer renderer, the strip, the question pill, and the ask input. It reads the same `HelpChat` and settings as the other chromes.
 - A page index in the window: it follows the newest exchange on a new question and on Clear Conversation, and the chevrons move it (Q2). The index is view state, never stored.
 - The face: `composeMascot` takes the paged exchange's face, or the live face and phase on the newest page (Q8). `HelpExchange.face` already holds the per-answer value; nothing new is stored.
-- The pill fade: a visible state set on open and cleared by a timer, re-armed by hover and focus; touch devices and reduced motion skip the timer (Q5). Her piece takes the drag handlers (Q5).
-- The Sources list and the Thinking fold render inside the bubble under the answer; their toggles sit in the strip (Q14).
+- The pill fade: a visible state set on open and cleared by a timer, re-armed by hover and focus; touch devices and reduced motion skip the timer (Q5). The Mascot grip shares that state (Q19). Her piece takes the drag handlers (Q5); the pill's handle is the vertical grip icon (Q20).
+- The answer bubble scrolls through the shared ScrollArea with the Minimal column's top fade (Q21).
+- The Thinking fold renders inside the bubble under the answer; its toggle sits in the strip (Q14). The Sources list is a popover from the strip's Sources button (Q22).
 - The mobile sheet keeps its chrome (Q10). The reader piece keeps its placement helper (Q11).
 
 - Bubble reuses the Minimal chrome's floating pieces and classes; the answer bubble is the assistant bubble with a tail (Q16).
@@ -110,5 +117,5 @@ A good test calls the public seam with real inputs and asserts the observable re
 
 ## Further Notes
 
-- The pill fade delay and the bubble caps are tuning values. One constant each, set from the live window after the build.
+- The pill fade delay, the Auto height share and the bubble caps are tuning values. One constant each, set from the live window after the build.
 - Mascot Position stays built for Minimal and Full. Its spec is `docs-internal/specs/mascot-below/spec.md`.
