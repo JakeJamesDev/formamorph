@@ -168,11 +168,12 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
       <div className="relative min-h-0 flex-1">
       {/* A grid content wrapper lets the log fill a short column, so the bubbles sit at its foot. */}
       <ScrollArea
+        data-fq-fade=""
         className={cn('h-full', TOP_FADE)}
         viewportRef={viewportRef}
         viewportProps={{ 'data-fq-scroll': 'conversation', onScroll, className: '[&>div]:!grid [&>div]:min-h-full' }}
       >
-        <div role="log" aria-label="Conversation" aria-busy={chat.busy} className="flex min-h-full flex-col justify-end gap-2 px-1 pb-1 pt-8">
+        <div role="log" aria-label="Conversation" aria-busy={chat.busy} className="flex min-h-full flex-col justify-end gap-2 px-1 py-1">
           {!guide && (failed ? (
             <div role="alert" className={cn(ASSISTANT_BUBBLE, 'flex flex-col items-start gap-2')}>
               <span>The guide did not load</span>
