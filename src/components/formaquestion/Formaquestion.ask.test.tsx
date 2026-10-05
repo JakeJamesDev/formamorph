@@ -330,7 +330,7 @@ describe('the wait line', () => {
     const { field } = await openAsk();
     expect(conversation()).toHaveTextContent('Ask Morphie how to do something in Formamorph');
     await send(field, 'How do I add a trait?');
-    await waitFor(() => expect(conversation()).toHaveTextContent('Asking Morphie…'));
+    await waitFor(() => expect(conversation()).toHaveTextContent('Morphie is thinking…'));
     expect(conversation()).not.toHaveTextContent('Waiting for your AI…');
   });
 });

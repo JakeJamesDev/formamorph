@@ -136,7 +136,8 @@ describe('the Thinking block of an answer', () => {
     // The header pulses while the model reasons, and the time shows once the answer starts.
     await within(conversation()).findByRole('button', { name: 'Morphie is thinking…' });
     // The pulsing header is the wait line while the model reasons.
-    expect(conversation()).not.toHaveTextContent('Asking Morphie…');
+    // The wait line and the header share the words; the line itself is gone, the header stands.
+    expect(within(conversation()).getAllByText('Morphie is thinking…')).toHaveLength(1);
 
     await act(async () => { finish(); });
     await vi.waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
