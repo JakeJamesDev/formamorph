@@ -82,6 +82,10 @@ describe('the code test offer', () => {
     expect(HELP_CODE_TEST.description).toMatch(/A pending write .*It is not an error/);
   });
 
+  it('describes names not in the world and assumed stats as no errors, to create by kind', () => {
+    expect(HELP_CODE_TEST.description).toMatch(/A notInWorld name and an assumed stat are not errors: keep the code, tell the player to create each one, and name its kind/);
+  });
+
   it('stays out with its switch off, on a turn that is not a code turn, and on an endpoint without function calls', async () => {
     const off = script(sseReply('Done.'));
     await collect(ask(off, { codeTest: false }));
@@ -106,9 +110,9 @@ describe('a code test call', () => {
     const authored = vi.fn(() => world);
     const code = [
       'traits.Brave.enabled = stats.Courage.value >= 30;',
-      'traits.Seasoned.enabled = true;',
+      'traits.Brav.enabled = true;',
       'self.value = 7;',
-      'const wit = stats.Wisdom;',
+      'const wit = stats.Courag;',
     ].join('\n');
     const fetchImpl = script(testFrames({ code, stat: 'Int' }, { code: 'return self.value + 1;', box: 'after' }), sseReply('Here is your code.'));
     await collect(ask(fetchImpl, {}, { world: openWorld(undefined, authored) }));
@@ -116,15 +120,17 @@ describe('a code test call', () => {
     const [first, second] = results(fetchImpl);
     expect(first.world).toBe(true);
     expect(first.errors).toEqual([
-      { line: 2, text: 'Seasoned', message: 'No trait is named “Seasoned”.' },
-      { line: 4, text: 'Wisdom', message: 'No stat is named “Wisdom”.' },
+      { line: 2, text: 'Brav', message: 'No trait is named “Brav”. Did you mean “Brave”?' },
+      { line: 4, text: 'Courag', message: 'No stat is named “Courag”. Did you mean “Courage”?' },
     ]);
+    expect(first.notInWorld).toEqual([]);
     expect(first.run).toEqual({
       error: null,
       value: 7,
       writes: ['Brave switched on'],
       pending: [],
-      dropped: ['Unknown trait names. Writes ignored: Seasoned.'],
+      assumed: [],
+      dropped: ['Unknown trait names. Writes ignored: Brav.'],
     });
     expect(second.run).toMatchObject({ error: null, value: 41 });
     expect(world).toEqual(before);
@@ -155,6 +161,7 @@ describe('a code test call', () => {
       value: null,
       writes: [],
       pending: ['persona.traits.Seasoned switched off'],
+      assumed: [],
       dropped: [
         'Unknown trait names. Writes ignored: persona.traits.Loyal, persona.traits.Brave.',
         'acquired is read-only. Writes ignored: persona.traits.Seasoned.',
@@ -198,6 +205,7 @@ describe('a code test call', () => {
     await collect(ask(fetchImpl));
     const [names, syntax] = results(fetchImpl);
     expect(names).toMatchObject({ world: false, run: null });
+    expect(names).not.toHaveProperty('notInWorld');
     expect(names.errors.map((error) => error.message)).toEqual([
       expect.stringContaining('clock has no field “time”'),
       expect.stringContaining('stats.Courage is a whole stat, not a number'),
@@ -226,5 +234,114 @@ describe('a code test call', () => {
     const traces = events.flatMap((event): HelpTrace[] => (event.type === 'trace' ? [event.trace] : []));
     const [round] = traces.at(-1)!.requests.at(-1)!.record.toolRounds ?? [];
     expect(round.calls).toEqual([expect.objectContaining({ name: HELP_CODE_TEST.name, result: expect.stringContaining('"world":true') })]);
+  });
+});
+
+describe('a code test call on a half-built world', () => {
+  // Wren can be played and owns Mood; Ash cannot and owns Grudge. Seasoned is on Wren alone.
+  const halfBuilt = (): StatCodeWorld => ({
+    ...sedge(),
+    entities: [
+      {
+        id: 'wren', name: 'Wren', persona: true, traits: [{ id: 'seasoned', name: 'Seasoned', statChanges: [] }],
+        placeholders: [{ id: 'mood', name: 'Mood', values: [{ id: 'calm', text: 'calm' }, { id: 'wary', text: 'wary' }] }],
+      },
+      {
+        id: 'ash', name: 'Ash', traits: [{ id: 'loyal', name: 'Loyal', statChanges: [] }],
+        placeholders: [{ id: 'grudge', name: 'Grudge', values: [{ id: 'old', text: 'old' }] }],
+      },
+    ],
+  });
+  const testOn = async (world: StatCodeWorld, ...calls: TestCall[]) => {
+    const fetchImpl = script(testFrames(...calls), sseReply('Done.'));
+    await collect(ask(fetchImpl, {}, { world: openWorld(undefined, () => world) }));
+    return results(fetchImpl);
+  };
+
+  it('tags a name nothing is near as not in this world, with its kind, and keeps a typo an error', async () => {
+    const code = [
+      'traits.Rested.enabled = true;',
+      'traits.Brav.enabled = true;',
+      'persona.traits.Prowler.enabled = true;',
+      "placeholders.Quotes.pin('The wind is howling');",
+      "entities.Mara.placeholders.Hat.pin('red');",
+      "persona.placeholders.Scar.pin('left');",
+      'entities.Wren.traits.Quiet.enabled = true;',
+      'const words = dictionaries.Lore;',
+      "entities.Wren.placeholders.Hat.pin('red');",
+    ].join('\n');
+    const [result] = await testOn(halfBuilt(), { code });
+
+    expect(result.errors).toEqual([{ line: 2, text: 'Brav', message: 'No trait is named “Brav”. Did you mean “Brave”?' }]);
+    expect(result.warnings).toEqual([]);
+    expect(result.notInWorld).toEqual([
+      { line: 1, kind: 'trait', name: 'Rested', path: 'traits.Rested' },
+      { line: 3, kind: 'trait', name: 'Prowler', path: 'persona.traits.Prowler' },
+      { line: 4, kind: 'placeholder', name: 'Quotes', path: 'placeholders.Quotes' },
+      { line: 5, kind: 'entity', name: 'Mara', path: 'entities.Mara' },
+      { line: 6, kind: 'placeholder', name: 'Scar', path: 'persona.placeholders.Scar' },
+      { line: 7, kind: 'trait', name: 'Quiet', path: 'entities.Wren.traits.Quiet' },
+      { line: 8, kind: 'dictionary', name: 'Lore', path: 'dictionaries.Lore' },
+      { line: 9, kind: 'placeholder', name: 'Hat', path: 'entities.Wren.placeholders.Hat' },
+    ]);
+    expect(result.run).toEqual({ error: null, value: null, writes: [], pending: [], assumed: [], dropped: ['Unknown trait names. Writes ignored: Brav.'] });
+  });
+
+  it('keeps a name another owner holds, or one near it, an error or a dropped write, never a tag', async () => {
+    const code = [
+      'traits.Seasoned.enabled = clock.day > 14;',
+      'persona.traits.Brave.enabled = true;',
+      'entities.Ash.traits.Seasoned.enabled = true;',
+      "placeholders.Grudge.pin('new');",
+      'traits.Seasone.enabled = true;',
+      "placeholders.Grudg.pin('new');",
+    ].join('\n');
+    const [result] = await testOn(halfBuilt(), { code });
+
+    expect(result.notInWorld).toEqual([]);
+    expect(result.errors.map(({ line }) => line)).toEqual([1, 4, 5, 6]);
+    expect(result.warnings.map(({ line }) => line)).toEqual([2, 3]);
+    expect(result.run?.dropped).toEqual([
+      'Unknown placeholder paths. Writes ignored: Grudge, Grudg.',
+      'Unknown trait names. Writes ignored: Seasoned, Seasone.',
+      'Unknown trait names. Writes ignored: entities.Ash.traits.Seasoned.',
+      'Unknown trait names. Writes ignored: persona.traits.Brave.',
+    ]);
+  });
+
+  it('assumes a stat nothing is near at 0 in 0–100, lists it, and leaves a typo stat out', async () => {
+    const [ratio, range] = await testOn(
+      halfBuilt(),
+      { code: 'const typo = stats.Courag;\nreturn stats.Wisdom.value / stats.Wisdom.max;' },
+      { code: 'return stats.Wisdom.max - stats.Wisdom.min + stats.Wisdom.value;' },
+    );
+    expect(ratio.notInWorld).toEqual([{ line: 2, kind: 'stat', name: 'Wisdom', path: 'stats.Wisdom' }]);
+    expect(ratio.errors.map(({ text }) => text)).toEqual(['Courag']);
+    expect(ratio.run).toMatchObject({ error: null, value: 0, writes: [], assumed: ['Wisdom'], dropped: [] });
+    expect(range.run).toMatchObject({ error: null, value: 100, assumed: ['Wisdom'] });
+  });
+
+  it('lists a persona pin on a placeholder a playable entity owns as pending, in the scene', async () => {
+    const code = [
+      "persona.placeholders.Mood.pin('wary');",
+      "persona.placeholders.Grudge.pin('new');",
+      'return persona.inScene ? 1 : 0;',
+    ].join('\n');
+    const [result] = await testOn(halfBuilt(), { code });
+
+    expect(result.notInWorld).toEqual([]);
+    expect(result.run).toEqual({
+      error: null,
+      value: 1,
+      writes: [],
+      pending: ['persona.placeholders.Mood = wary'],
+      assumed: [],
+      dropped: ['Unknown placeholder paths. Writes ignored: persona › Grudge.'],
+    });
+  });
+
+  it('lists the stats it assumed on a run that throws', async () => {
+    const [result] = await testOn(halfBuilt(), { code: 'const w = stats.Wisdom.value;\nreturn wisdom.value;' });
+    expect(result.run).toMatchObject({ error: expect.any(String), writes: [], pending: [], assumed: ['Wisdom'], dropped: [] });
   });
 });

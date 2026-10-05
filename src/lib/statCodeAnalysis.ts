@@ -32,6 +32,16 @@ export interface CodeDiagnostic {
   to: number;
   severity: DiagnosticSeverity;
   message: string;
+  /** Set on an unknown name that no owner in the world holds and no near name matches. */
+  missing?: MissingName;
+}
+
+/** A name the world does not have yet, by the global the code reaches it through. */
+export interface MissingName {
+  kind: EntryNoun;
+  root: 'stats' | 'traits' | 'placeholders' | 'entities' | 'persona' | 'dictionaries';
+  /** The keys from the root to the name, the owner's name first under `entities` and `dictionaries`. */
+  segments: readonly string[];
 }
 
 /** Which list a completion came from, so the popup can badge it. Mirrors CodeMirror's own vocabulary. */
@@ -217,7 +227,7 @@ function expressionBeforeDot(code: string, dotPos: number): string | null {
 }
 
 /** What one entry of a name-keyed sandbox map is called in a message. */
-type EntryNoun = 'placeholder' | 'trait' | 'stat' | 'entity' | 'dictionary';
+export type EntryNoun = 'placeholder' | 'trait' | 'stat' | 'entity' | 'dictionary';
 
 const PLURAL: Record<EntryNoun, string> = {
   placeholder: 'placeholders', trait: 'traits', stat: 'stats', entity: 'entities', dictionary: 'dictionaries',
@@ -320,7 +330,7 @@ interface PlaceholderRoute {
 }
 
 /** The global each route hangs off. */
-const ROUTE_GLOBAL: Record<PlaceholderRouteKind, keyof StatRules> = {
+const ROUTE_GLOBAL: Record<PlaceholderRouteKind, Exclude<MissingName['root'], 'stats' | 'traits'>> = {
   world: 'placeholders', entity: 'entities', persona: 'persona', dictionary: 'dictionaries',
 };
 
@@ -674,12 +684,14 @@ const routeOfChain = (chain: PlaceholderChain): PlaceholderRoute =>
   ({ kind: chain.kind, owner: chain.owner?.name, segments: chain.refs.map((ref) => ref.name) });
 
 /** What is wrong with a reference to the `noun` called `name`: none has it, or several share it. `winner`
- *  is how the last-authored one displays, where that differs from the name as written. */
+ *  is how the last-authored one displays, where that differs from the name as written. `missing` tags a
+ *  miss with no near name. */
 function checkEntryName(
   { name, from, to }: EntryRef,
   names: readonly string[],
   noun: EntryNoun,
   winner: (last: number) => string = () => name,
+  missing?: MissingName,
 ): CodeDiagnostic | null {
   const count = names.filter((n) => n === name).length;
   if (count === 1) return null;
@@ -693,10 +705,28 @@ function checkEntryName(
   }
   const suggestion = nearestName(name, [...new Set(names)]);
   const message = suggestion ? `No ${noun} is named “${name}”. Did you mean “${suggestion}”?` : `No ${noun} is named “${name}”.`;
-  return { from, to, severity: 'error', message };
+  return tagMissing({ from, to, severity: 'error', message }, suggestion, missing ?? false);
 }
 
-const checkTraitName = (ref: EntryRef, names: readonly string[]) => checkEntryName(ref, names, 'trait');
+/** Whether some owner holds `name` or a name near it: a wrong owner or a typo, not a missing name. */
+const heldNear = (name: string, held: ReadonlySet<string>) => held.has(name) || nearestName(name, [...held]) !== null;
+
+/** A world trait name. One an entity holds is a wrong owner, not a missing trait. */
+const checkTraitName = (ref: EntryRef, names: readonly string[], held: ReadonlySet<string>) =>
+  checkEntryName(ref, names, 'trait', undefined, heldNear(ref.name, held) ? undefined : { kind: 'trait', root: 'traits', segments: [ref.name] });
+
+/** The diagnostic with `missing` set when it suggests no name. */
+const tagMissing = (diagnostic: CodeDiagnostic, suggestion: string | null, missing: MissingName | false): CodeDiagnostic =>
+  (suggestion || !missing ? diagnostic : { ...diagnostic, missing });
+
+/** Every name a node of `map` takes, under any owner. */
+function placeholderNames(map: PlaceholderPathMap): Set<string> {
+  const names = new Set<string>();
+  const walk = (nodes: readonly PlaceholderPathNode[]) => nodes.forEach((node) => { names.add(node.name); walk(node.children); });
+  walk(map.top);
+  for (const owner of map.owners.values()) walk(owner.children);
+  return names;
+}
 
 /** What is wrong with a name several of the world's own rows share: the last one authored reads. */
 function checkSharedKey(map: PlaceholderPathMap, { name, from, to }: EntryRef): CodeDiagnostic | null {
@@ -729,10 +759,11 @@ function checkPlaceholderPath(refs: readonly EntryRef[], placeholders: CodePlace
   const suggestion = nearestName(ref.name, candidates);
   const lead = node ? `Unknown placeholder name “${ref.name}” under “${placeholderPathLabel(node.path)}”`
     : `Unknown placeholder name “${ref.name}”`;
-  out.push({
+  const segments = refs.slice(0, refs.length - rest.length + 1).map((at) => at.name);
+  out.push(tagMissing({
     from: ref.from, to: ref.to, severity: 'error',
     message: suggestion ? `${lead}. Did you mean “${suggestion}”?` : `${lead}.`,
-  });
+  }, suggestion, !suggestion && !heldNear(ref.name, placeholderNames(map)) && { kind: 'placeholder', root: 'placeholders', segments }));
   return out;
 }
 
@@ -751,7 +782,8 @@ function checkOwnedPlaceholderPath(
   const route = routeOfChain(chain);
   const start = routeStart(route, placeholders, options, rules);
   if (!start || !chain.refs.length) return null;
-  const { node, rest, shadowed } = walkPlaceholderPath(pathMapOf(placeholders), route.segments, start);
+  const map = pathMapOf(placeholders);
+  const { node, rest, shadowed } = walkPlaceholderPath(map, route.segments, start);
   if (rest.length === 0 || !node) return null;
   const ref = chain.refs[chain.refs.length - rest.length];
   if (shadowed) return shadowedChild(ref, node);
@@ -760,10 +792,11 @@ function checkOwnedPlaceholderPath(
     : chain.kind === 'persona' ? `Unknown persona placeholder name “${ref.name}”. A library persona can have it.`
       : `“${route.owner}” has no placeholder named “${ref.name}”.`;
   const suggestion = nearestName(ref.name, node.children.map((child) => child.name));
-  return {
+  const segments = [...route.owner === undefined ? [] : [route.owner], ...route.segments.slice(0, route.segments.length - rest.length + 1)];
+  return tagMissing({
     from: ref.from, to: ref.to, severity: 'warning',
     message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead,
-  };
+  }, suggestion, !suggestion && !heldNear(ref.name, placeholderNames(map)) && { kind: 'placeholder', root: ROUTE_GLOBAL[chain.kind], segments });
 }
 
 /** What is wrong with an assignment to a whole owned placeholder rather than to its `value`. */
@@ -932,7 +965,10 @@ function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' 
   if (names.includes(ref.name)) return checkEntryName(ref, names, noun);
   const lead = `Unknown ${noun} name “${ref.name}”. A library ${noun} can have it.`;
   const suggestion = nearestName(ref.name, [...new Set(names)]);
-  return { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+  return tagMissing(
+    { from: ref.from, to: ref.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead },
+    suggestion, { kind: noun, root: noun === 'entity' ? 'entities' : 'dictionaries', segments: [ref.name] },
+  );
 }
 
 const checkEntityName = (ref: EntryRef, entities: readonly CodeEntityNames[]) =>
@@ -941,22 +977,28 @@ const checkEntityName = (ref: EntryRef, entities: readonly CodeEntityNames[]) =>
 /** What is wrong with a trait name on a known entity: its set has no trait called that. A later library
  *  entity can take the name with another set, so this is only a warning. */
 function checkEntityTraitName(
-  { entity, trait }: { entity: EntryRef; trait: EntryRef }, entities: readonly CodeEntityNames[],
+  { entity, trait }: { entity: EntryRef; trait: EntryRef }, entities: readonly CodeEntityNames[], held: ReadonlySet<string>,
 ): CodeDiagnostic | null {
   const names = traitsOfEntity(entities, entity.name);
   if (!names || names.includes(trait.name)) return null;
   const suggestion = nearestName(trait.name, [...new Set(names)]);
   const lead = `“${entity.name}” has no trait named “${trait.name}”.`;
-  return { from: trait.from, to: trait.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+  return tagMissing(
+    { from: trait.from, to: trait.to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead },
+    suggestion, !heldNear(trait.name, held) && { kind: 'trait', root: 'entities', segments: [entity.name, trait.name] },
+  );
 }
 
 /** What is wrong with a persona trait name: no persona in the world holds it. A library persona may still
  *  hold it, so this is only a warning. */
-function checkPersonaTraitName({ name, from, to }: EntryRef, names: readonly string[]): CodeDiagnostic | null {
+function checkPersonaTraitName({ name, from, to }: EntryRef, names: readonly string[], held: ReadonlySet<string>): CodeDiagnostic | null {
   if (names.includes(name)) return null;
   const lead = `Unknown persona trait name “${name}”. A library persona can have it.`;
   const suggestion = nearestName(name, [...new Set(names)]);
-  return { from, to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+  return tagMissing(
+    { from, to, severity: 'warning', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead },
+    suggestion, !heldNear(name, held) && { kind: 'trait', root: 'persona', segments: [name] },
+  );
 }
 
 
@@ -1120,6 +1162,8 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const traitsInScope = rules.traits && !declared.has('traits');
   const personaInScope = rules.persona && !declared.has('persona');
   const personaTraits = personaTraitsOf(options.entities);
+  // Every trait name any owner holds: a miss among these is a wrong owner, not a missing trait.
+  const heldTraits = new Set([...options.traits ?? [], ...(options.entities ?? []).flatMap((entity) => entity.traits.map((trait) => trait.name))]);
   const entitiesInScope = rules.entities && !declared.has('entities');
   const dictionariesInScope = rules.dictionaries && !declared.has('dictionaries');
   const statsInScope = rules.stats && !declared.has('stats');
@@ -1213,25 +1257,25 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     }
     if (cursor.type.name === 'MemberExpression' && options.traits && traitsInScope) {
       const ref = entryRef(cursor.node, code, 'traits');
-      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkTraitName(ref, options.traits) : null;
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkTraitName(ref, options.traits, heldTraits) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && personaTraits && personaInScope) {
       const ref = personaTraitRef(cursor.node, code);
-      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPersonaTraitName(ref, personaTraits) : null;
+      const problem = ref && !overlapsAny(ref.from, ref.to, ranges) ? checkPersonaTraitName(ref, personaTraits, heldTraits) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && options.entities && entitiesInScope) {
       const entity = entryRef(cursor.node, code, 'entities');
       const parts = entityTraitParts(cursor.node, code);
       const problem = entity && !overlapsAny(entity.from, entity.to, ranges) ? checkEntityName(entity, options.entities)
-        : parts && !overlapsAny(parts.trait.from, parts.trait.to, ranges) ? checkEntityTraitName(parts, options.entities) : null;
+        : parts && !overlapsAny(parts.trait.from, parts.trait.to, ranges) ? checkEntityTraitName(parts, options.entities, heldTraits) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && options.statNames && statsInScope) {
       const ref = entryRef(cursor.node, code, 'stats');
       // The empty key reaches an unnamed stat, which no name list carries.
-      const problem = ref?.name && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat') : null;
+      const problem = ref?.name && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat', undefined, { kind: 'stat', root: 'stats', segments: [ref.name] }) : null;
       if (problem) diagnostics.push(problem);
     }
     if (cursor.type.name === 'MemberExpression' && clockInScope) {
