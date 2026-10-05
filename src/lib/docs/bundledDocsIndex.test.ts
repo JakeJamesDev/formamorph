@@ -168,3 +168,13 @@ describe('hub sections in the bundled docs', () => {
     expect(index.search('What does Settings → Output hold?', 5).map((s) => s.id)).toContain('Settings#output');
   });
 });
+
+describe('the Variable menu section of the Stat Code Guide', () => {
+  it.each([
+    "how do I reference an entity's trait in stat code?",
+    'how do I insert a trait of an entity into my stat code?',
+    'what does the Variable menu hold?',
+  ])('is in the top 3 for "%s"', (question) => {
+    expect(index.search(question, 3).map((s) => s.id)).toContain('StatCodeGuide#how-to-insert-a-name-from-your-world');
+  });
+});
