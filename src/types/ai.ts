@@ -180,6 +180,9 @@ export interface AITurnResult {
    *  reload and a saved scene stays reproducible without carrying its pixels. Absent until a scene image is
    *  made. The images themselves are deliberately NOT here — see lib/sceneImages. */
   sceneTags?: string;
+  /** Whether the planner put the player in this turn's picture, so the scene cast knows to draw the persona.
+   *  Absent when no planner ran and on saves written before the flag; absent reads as in frame. */
+  playerInFrame?: boolean;
   /** A reasoning model's (or inline-thinking) private scratchpad for this turn, shown as a collapsible aside
    *  above the narration. `ms` is the think duration. Absent when the model didn't reason / on pre-2.1.0 saves. */
   reasoning?: { text: string; ms: number };

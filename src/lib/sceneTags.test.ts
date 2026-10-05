@@ -1,7 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { composeSceneTags, deriveCountTags, splitTags, stripNames, stripPlaces, MAX_SCENE_CHARACTERS } from './sceneTags';
+import { composeSceneTags, deriveCountTags, pickSceneCast, splitTags, stripNames, stripPlaces, MAX_SCENE_CHARACTERS } from './sceneTags';
+import type { Entity } from '@/types';
 
 const girl = (name: string, extra = '') => ({ name, tags: `1girl, ${extra}`.replace(/,\s*$/, '') });
+const ent = (name: string): Entity => ({ id: name, name });
+
+describe('pickSceneCast', () => {
+  const cast = [ent('Mira'), ent('Tam'), ent('Vos')];
+  const persona = ent('Wren');
+
+  it('leads with the persona when the planner put the player in the picture', () => {
+    expect(pickSceneCast({ participants: ['Mira'], entities: cast, persona, playerInFrame: true }).map((e) => e.name))
+      .toEqual(['Wren', 'Mira']);
+  });
+
+  it('leaves the persona out when the planner kept the player out of it', () => {
+    expect(pickSceneCast({ participants: ['Mira', 'Tam'], entities: cast, persona, playerInFrame: false }).map((e) => e.name))
+      .toEqual(['Mira', 'Tam']);
+  });
+
+  it('reads no planner call as the player being in frame', () => {
+    expect(pickSceneCast({ participants: ['Mira'], entities: cast, persona, playerInFrame: undefined }).map((e) => e.name))
+      .toEqual(['Wren', 'Mira']);
+  });
+
+  it('gives the persona one of the capped slots', () => {
+    const picked = pickSceneCast({ participants: ['Mira', 'Tam', 'Vos'], entities: cast, persona, playerInFrame: true });
+    expect(picked).toHaveLength(MAX_SCENE_CHARACTERS);
+    expect(picked.map((e) => e.name)).toEqual(['Wren', 'Mira']);
+  });
+
+  it('is the participants alone when no persona is played', () => {
+    expect(pickSceneCast({ participants: ['Tam', 'Nobody'], entities: cast, persona: null, playerInFrame: true }).map((e) => e.name))
+      .toEqual(['Tam']);
+  });
+});
 
 describe('deriveCountTags', () => {
   it('merges two same-kind characters into one plural count', () => {
