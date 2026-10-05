@@ -9,6 +9,10 @@ import type { World } from '@/types';
 
 /** Take Me There landing on the game screen: the row a request names is scrolled to, focused, and pulsed once. */
 
+// The hosted build: the Default preset is the Demo AI, so entering a game raises the gate the tests dismiss.
+// Pinned here so a developer's `.env.local` endpoint cannot hide the gate.
+vi.hoisted(() => { vi.stubEnv('VITE_DEFAULT_ENDPOINT', ''); });
+
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
 vi.mock('kokoro-js', () => ({ KokoroTTS: { from_pretrained: vi.fn() } }));
 vi.mock('react-toastify', () => ({

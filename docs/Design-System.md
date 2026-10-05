@@ -1287,7 +1287,7 @@ The pattern adds no player-facing text. The reference labels **Play Landing**, *
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.
 
-For a new pattern, show a proposal inside a representative Formamorph app screen at desktop and mobile sizes. Keep it separate from the approved registry until the user approves that concrete proposal. Record the approval with the artifacts before adoption.
+For a new pattern, add a reference to the showcase registry and show it inside a representative Formamorph app screen at desktop and mobile sizes. The showcase is where the user approves it. Until the approval note is on its section here, the pattern is a proposal and no production surface adopts it.
 
 The reference navigation uses equal flexible columns that wrap into additional rows. Every tab keeps enough width for its label, so all references remain readable and reachable without horizontal page scrolling.
 
@@ -1295,6 +1295,6 @@ The reference navigation uses equal flexible columns that wrap into additional r
 
 The live shell renders `DESIGN_SYSTEM_REFERENCES` from [`DesignSystemShowcase.tsx`](../src/views/DesignSystemShowcase.tsx). Add one definition with an ID, label, description, and production-backed component; the reference navigation and responsive shell update from that registry.
 
-Add a matching `## Pattern:` section here with its purpose, density, desktop/mobile behavior, component mapping, and applicable states. Demonstrate a new visual pattern inside a representative Formamorph screen at desktop and mobile sizes, then get product approval before adding it to this reference.
+Add a matching `## Pattern:` section here with its purpose, density, desktop/mobile behavior, component mapping, and applicable states. Mark it a proposal until the user approves it in the showcase, then record the approval on the section before any production surface adopts it.
 
 Keep the guide and registry synchronized when an approved reference changes; retain the existing shell and shared semantic values.

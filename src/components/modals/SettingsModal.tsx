@@ -326,7 +326,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const landTarget = useLanding(
     (route: string) => (dialogRef.current ? findTargetRow(dialogRef.current, route) : null),
-    { pulse: true },
   );
   useEffect(() => { if (initialTarget) landTarget(initialTarget); }, [initialTarget, requestKey, landTarget]);
   const settings = useSettings();
@@ -723,7 +722,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // Instant, not smooth: the field has to be under the cursor by the time focus lands on it. A built-in
   // preset's editors are read-only, so there is nothing to put a caret in; the scroll is the whole jump.
   const landField = useLanding((field: MessageField) => messageFieldRefs.current[field] ?? null, {
-    pulse: true,
     block: 'start',
     focus: (field) => field.querySelector<HTMLElement>('[data-lexical-editor][contenteditable="true"]'),
   });
