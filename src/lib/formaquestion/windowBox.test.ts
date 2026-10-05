@@ -410,15 +410,15 @@ describe('the Mascot scale', () => {
 });
 
 describe('the stored Mascot scale', () => {
-  it('reads Auto until a percent is stored, and comes back as stored', () => {
-    expect(readStoredMascotScale()).toBe('auto');
+  it('reads the smallest percent until a scale is stored, and comes back as stored', () => {
+    expect(readStoredMascotScale()).toBe(MASCOT_SCALE_MIN);
     writeStoredMascotScale(75);
     expect(readStoredMascotScale()).toBe(75);
     writeStoredMascotScale('auto');
     expect(readStoredMascotScale()).toBe('auto');
   });
 
-  it('clamps a stored percent to the slider range and reads damage as Auto', () => {
+  it('clamps a stored percent to the slider range, reads damage as Auto and an empty value as the smallest', () => {
     localStorage.setItem('formamorph.formaquestion.mascotScale', '400');
     expect(readStoredMascotScale()).toBe(MASCOT_SCALE_MAX);
     localStorage.setItem('formamorph.formaquestion.mascotScale', '3');
@@ -426,14 +426,14 @@ describe('the stored Mascot scale', () => {
     localStorage.setItem('formamorph.formaquestion.mascotScale', 'big');
     expect(readStoredMascotScale()).toBe('auto');
     localStorage.setItem('formamorph.formaquestion.mascotScale', '');
-    expect(readStoredMascotScale()).toBe('auto');
+    expect(readStoredMascotScale()).toBe(MASCOT_SCALE_MIN);
   });
 
-  it('reads Auto and does not throw when storage is blocked', () => {
+  it('reads the smallest percent and does not throw when storage is blocked', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
     expect(() => writeStoredMascotScale(50)).not.toThrow();
-    expect(readStoredMascotScale()).toBe('auto');
+    expect(readStoredMascotScale()).toBe(MASCOT_SCALE_MIN);
   });
 });
 

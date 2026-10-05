@@ -175,36 +175,35 @@ describe('the pill fade under Bubble', () => {
   });
 });
 
-describe('the chromes whose pill never fades', () => {
-  it('keeps the head view pill up', async () => {
+describe('the head view pill', () => {
+  it('fades as the pill over her whole body does', async () => {
     localStorage.setItem('formamorph.formaquestion.mascotView', 'head');
     await openWindow();
-    wait(PILL_FADE_DELAY_MS * 3);
-    expect(pill()).not.toHaveAttribute('data-fq-fade');
-    expect(pill()).not.toHaveClass('opacity-0');
-  });
-
-  it('keeps the pill up when the Mascot swaps to her head, and fades it again on her whole body', async () => {
-    await openWindow();
-    fireEvent.click(within(pill()).getByRole('button', { name: 'Show Head Only' }));
-    wait(PILL_FADE_DELAY_MS * 3);
-    expect(pill()).not.toHaveAttribute('data-fq-fade');
-
-    fireEvent.click(within(pill()).getByRole('button', { name: 'Show Full Mascot' }));
     expect(fadeOf(pill())).toBe('shown');
     wait(PILL_FADE_DELAY_MS);
     expect(fadeOf(pill())).toBe('hidden');
+    expect(pill()).toHaveClass('opacity-0');
+    hover(body());
+    expect(fadeOf(pill())).toBe('shown');
   });
 
-  it('fades on her whole body even when the pointer was over the pill as it swapped to her head', async () => {
+  it('keeps fading across a swap between her head and her whole body', async () => {
     await openWindow();
-    hover(pill());
     fireEvent.click(within(pill()).getByRole('button', { name: 'Show Head Only' }));
+    expect(fadeOf(pill())).toBe('shown');
+    wait(PILL_FADE_DELAY_MS);
+    expect(fadeOf(pill())).toBe('hidden');
+
+    hover(pill());
     fireEvent.click(within(pill()).getByRole('button', { name: 'Show Full Mascot' }));
+    expect(fadeOf(pill())).toBe('shown');
+    unhover(pill());
     wait(PILL_FADE_DELAY_MS);
     expect(fadeOf(pill())).toBe('hidden');
   });
+});
 
+describe('the chromes whose pill never fades', () => {
   it.each(['minimal', 'full'] as const)('keeps the %s chrome pieces up', async (chatStyle) => {
     storeMinimalWindow({ chatStyle });
     await openWindow();

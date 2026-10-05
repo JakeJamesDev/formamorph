@@ -120,16 +120,19 @@ const SCALE_KEY = 'formamorph.formaquestion.mascotScale';
 describe('the Scale slider', () => {
   afterEach(() => localStorage.clear());
 
-  it('starts at Auto, steps to a percent and back, and stores each on this device', async () => {
+  it('starts at the smallest percent, steps to Auto and back, and stores each on this device', async () => {
     mount();
     const slider = screen.getByRole('slider', { name: 'Scale' });
-    expect(screen.getByText('Auto')).toBeInTheDocument();
-    expect(slider).toHaveAttribute('aria-valuetext', 'Auto');
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    expect(slider).toHaveAttribute('aria-valuetext', '25%');
     slider.focus();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(localStorage.getItem(SCALE_KEY)).toBe('auto');
+    expect(slider).toHaveAttribute('aria-valuetext', 'Auto');
+    expect(screen.getByText('Auto')).toBeInTheDocument();
     await userEvent.keyboard('{ArrowRight}');
     expect(localStorage.getItem(SCALE_KEY)).toBe('25');
     expect(slider).toHaveAttribute('aria-valuetext', '25%');
-    expect(screen.getByText('25%')).toBeInTheDocument();
     await userEvent.keyboard('{End}');
     expect(localStorage.getItem(SCALE_KEY)).toBe('150');
     await userEvent.keyboard('{Home}');

@@ -35,15 +35,15 @@ describe('the bubble layout in full view', () => {
     expect(bottomOf(layout.bubble)).toBe(layout.her.y + 200);
   });
 
-  it('keeps a one-line answer tall enough to reach the tail at her head center', () => {
+  it('keeps a one-line answer tall enough to reach the tail at her mouth', () => {
     const layout = bubbleLayout(input({ heights: { content: 20, question: 32, input: 44 } }));
     expect(layout.bubble.y).toBeLessThan(layout.tail.y);
-    expect(layout.tail.y).toBe(layout.her.y + 100);
+    expect(layout.tail.y).toBe(layout.her.y + 140);
   });
 
-  it('leaves the tail from the edge nearest her at the center of her head', () => {
+  it('leaves the tail from the edge nearest her at her mouth, on the lower half of her head', () => {
     const layout = bubbleLayout(input());
-    expect(layout.tail).toEqual({ x: rightOf(layout.bubble), y: layout.her.y + 100, points: 'right' });
+    expect(layout.tail).toEqual({ x: rightOf(layout.bubble), y: layout.her.y + 140, points: 'right' });
     expect(rightOf(layout.bubble)).toBeLessThan(layout.her.x);
   });
 
@@ -127,14 +127,14 @@ describe('the bubble layout in full view', () => {
 describe('the bubble layout in head view', () => {
   const head = (change: Partial<BubbleInput> = {}) => bubbleLayout(input({ headView: true, scale: 'auto', ...change }));
 
-  it('stacks the bubble, the head row, the strip, the question and the input in one column', () => {
+  it('stacks the bubble, the strip, the question and the input in one column, with the head above the input', () => {
     const layout = head();
-    const row = layout.pillRow as WindowBox;
-    expect(bottomOf(layout.bubble)).toBeLessThan(row.y);
-    expect(bottomOf(row)).toBeLessThanOrEqual(layout.strip.y);
+    expect(bottomOf(layout.bubble)).toBeLessThan(layout.strip.y);
     expect(bottomOf(layout.strip)).toBeLessThanOrEqual(layout.question.y);
     expect(bottomOf(layout.question)).toBeLessThanOrEqual(layout.input.y);
-    for (const box of [layout.bubble, row, layout.strip, layout.question, layout.input]) expect(box.x).toBe(layout.bubble.x);
+    expect(bottomOf(layout.her)).toBeLessThanOrEqual(layout.input.y);
+    expect(bottomOf(layout.bubble)).toBeLessThan(layout.her.y);
+    for (const box of [layout.bubble, layout.input]) expect(box.x).toBe(layout.bubble.x);
   });
 
   it('points the tail down at the head', () => {
@@ -142,18 +142,33 @@ describe('the bubble layout in head view', () => {
     expect(layout.tail).toEqual({ x: layout.her.x + layout.her.w / 2, y: bottomOf(layout.bubble), points: 'down' });
   });
 
-  it('sets the head at the end of the pill row nearest the screen edge', () => {
+  it('stands the head in the column corner nearest the screen edge, with the strip and the question beside it', () => {
     const right = head();
-    expect(rightOf(right.her)).toBe(rightOf(right.pillRow as WindowBox));
+    expect(rightOf(right.her)).toBe(rightOf(right.bubble));
+    expect(right.strip.x).toBe(right.bubble.x);
+    expect(rightOf(right.strip)).toBeLessThan(right.her.x);
+    expect(rightOf(right.question)).toBeLessThan(right.her.x);
     const left = head({ at: { x: 300, y: 850 } });
-    expect(left.her.x).toBe((left.pillRow as WindowBox).x);
+    expect(left.her.x).toBe(left.bubble.x);
+    expect(left.strip.x).toBeGreaterThan(rightOf(left.her));
+    expect(rightOf(left.strip)).toBe(rightOf(left.bubble));
   });
 
-  it('keeps the Auto head at the fixed head height', () => {
+  it('stands a tall head on the input and hangs the strip under the bubble', () => {
+    const layout = head({ scale: MASCOT_SCALE_MAX });
+    expect(layout.her.h).toBeGreaterThan(layout.question.y - layout.strip.y);
+    expect(bottomOf(layout.her)).toBe(layout.input.y - BUBBLE_GAP);
+    expect(layout.strip.y).toBe(layout.her.y);
+    expect(bottomOf(layout.question)).toBe(bottomOf(layout.her));
+  });
+
+  it('keeps the Auto head at the fixed head height, and a large head to half the column', () => {
     expect(head().her.h).toBe(HEAD_HEIGHT);
+    const large = head({ scale: MASCOT_SCALE_MAX });
+    expect(large.her.w).toBe(large.bubble.w / 2);
   });
 
-  it('caps a long answer at the room above the head row', () => {
+  it('caps a long answer at the room above the head', () => {
     const layout = head({ heights: { content: 5000, question: 32, input: 44 } });
     expect(layout.bubble.y).toBe(SCREEN_MARGIN);
   });
@@ -195,7 +210,8 @@ describe('the Mascot grip', () => {
   });
 
   it('keeps the head view head on its outer side', () => {
-    const headInput = input({ headView: true, scale: 100 });
+    // Half the Mask, so the drag grows the head under the column's cap.
+    const headInput = input({ headView: true, scale: 50 });
     const start = bubbleLayout(headInput);
     const { scale, at } = resizeMascot(headInput, start, -40, -40);
     const after = bubbleLayout({ ...headInput, scale, at });

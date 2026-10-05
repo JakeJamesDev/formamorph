@@ -103,8 +103,9 @@ beforeEach(async () => {
   ({ Formaquestion } = await import('./Formaquestion'));
   ({ openDocs } = await import('@/lib/formaquestion/docsOpener'));
   localStorage.clear();
-  // These tests read the Minimal chrome's Beside geometry; 'the Mascot below' starts from the Auto default.
+  // These tests read the Minimal chrome's Beside geometry on Auto, which a new device no longer starts on.
   localStorage.setItem(PLACEMENT_KEY, 'beside');
+  localStorage.setItem('formamorph.formaquestion.mascotScale', 'auto');
   storeMinimalWindow();
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
