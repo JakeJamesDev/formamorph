@@ -10,11 +10,20 @@ export interface InsertSnippet {
   select?: string;
 }
 
-/** The two lookups every template needs. The first needs the map's bracket syntax, which completions
- *  can't write around a name; the second is `self.value`, kept alongside it so the menu teaches both. */
+/** One lookup per sandbox global. The map entries use bracket syntax, which completions can't write
+ *  around a name, and leave the name selected to type over. */
 export const STAT_CODE_SNIPPETS: InsertSnippet[] = [
   { label: 'Another stat’s value', text: 'stats["Health"].value', select: 'Health' },
   { label: 'This stat’s value', text: 'self.value' },
+  { label: 'A placeholder’s value', text: 'placeholders["Name"].value', select: 'Name' },
+  { label: 'A trait is on', text: 'traits["Name"].enabled', select: 'Name' },
+  { label: 'An entity is in the scene', text: 'entities["Name"].inScene', select: 'Name' },
+  { label: 'An entity’s trait is on', text: 'entities["Name"].traits["Trait"].enabled', select: 'Name' },
+  { label: 'An entity’s placeholder', text: 'entities["Name"].placeholders["Placeholder"].value', select: 'Name' },
+  { label: 'The persona’s trait is on', text: 'persona.traits["Name"].enabled', select: 'Name' },
+  { label: 'A dictionary’s placeholder', text: 'dictionaries["Name"].placeholders["Placeholder"].value', select: 'Name' },
+  { label: 'The story day', text: 'clock.day' },
+  { label: 'The daypart', text: 'clock.daypart' },
 ];
 
 /** The slot forms a template may declare. Only offered in the template editor — a stat's own code has no
