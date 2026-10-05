@@ -135,18 +135,58 @@ describe('the Locations tab', () => {
     expect(shownName()).toBeNull();
   });
 
+  describe('the view switch', () => {
+    /** The toolbar's controls in DOM order: the +, the search box, then each view button by its name. */
+    const toolbarOrder = () => {
+      const box = screen.getByPlaceholderText('Search or add new locations');
+      return [...box.parentElement!.querySelectorAll<HTMLElement>('button, input')].map((el) =>
+        el === box ? 'search' : el.getAttribute('aria-label') ?? el.textContent);
+    };
+    const viewButtons = () => ['List', 'Canvas'].map((name) => screen.getByRole('radio', { name }));
+
+    const expectIconSwitch = () => {
+      expect(toolbarOrder().slice(0, 4)).toEqual(['Add to Locations', 'search', 'List', 'Canvas']);
+      for (const b of viewButtons()) {
+        expect(b.textContent).toBe('');
+        expect(b.querySelector('svg')).not.toBeNull();
+      }
+    };
+
+    it('draws List and Canvas as named icon buttons past the search box', () => {
+      renderWorldEditorBench(WORLD, 'advanced');
+      openEditorTab(/Locations/);
+      expectIconSwitch();
+    });
+
+    it('draws the same switch on mobile', () => {
+      const restore = asMobile();
+      try {
+        renderWorldEditorBench(WORLD, 'advanced');
+        openEditorTab(/Locations/);
+        expectIconSwitch();
+      } finally { restore(); }
+    });
+
+    it('switches to the canvas and back to the list', () => {
+      renderWorldEditorBench(WORLD, 'advanced');
+      openEditorTab(/Locations/);
+      openCanvas();
+      expect(canvasShown()).toBe(true);
+      fireEvent.click(screen.getByRole('radio', { name: 'List' }));
+      expect(canvasShown()).toBe(false);
+      expect(treeRow('Hollow')).toBeTruthy();
+    });
+  });
+
   describe('in the Canvas view', () => {
-    it('keeps the view toggle in the toolbar and draws the canvas', () => {
+    it('keeps the view toggle in a toolbar row apart from the tab strip', () => {
       renderWorldEditorBench(WORLD, 'advanced');
       openEditorTab(/Locations/);
 
-      // The toggle and the search box share a row that holds nothing else of the editor, not its tab strip.
       const box = screen.getByPlaceholderText('Search or add new locations');
       let row: HTMLElement = screen.getByRole('radio', { name: 'Canvas' });
       while (!row.contains(box)) row = row.parentElement!;
       expect(row.querySelector('[role="tablist"]')).toBeNull();
-      openCanvas();
-      expect(canvasShown()).toBe(true);
     });
 
     it('ignores the search and keeps the canvas', () => {
