@@ -93,8 +93,8 @@ describe('the help preset on the device', () => {
     await userEvent.type(await screen.findByRole('textbox', { name: 'Ask a Question' }), 'How do I add a trait?');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
     await answered(spy);
-    // The copy keeps the Default's name with its mark, so she goes by it until the player renames her.
-    expect(systemOf(spy, 1)).toContain('\n\nYou are Morphie (copy). Speak in this voice: Speak like a ship captain.\n');
+    // The copy keeps the Default's name, numbered, so she goes by it until the player renames her.
+    expect(systemOf(spy, 1)).toContain('\n\nYou are Morphie 2. Speak in this voice: Speak like a ship captain.\n');
   });
 
   it("sends the prompt with no Voice while the Mascot is off", async () => {
