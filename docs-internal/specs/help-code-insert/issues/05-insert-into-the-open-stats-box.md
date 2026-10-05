@@ -1,6 +1,6 @@
 # 05: Insert into the Open Stat's Box
 
-Status: ready-for-human
+Status: done
 Blocked by: 02 — Code Block Toolbar with Copy
 Status note: Also blocked by take-me-there-targets tickets 02 (Landing Pulse Pattern) and 07 (Landing in World Editor Panels); start only when both are ready-for-human
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
