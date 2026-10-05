@@ -9,7 +9,7 @@ const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
-  'gpuDeviceIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
+  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
 ];
 
 const keysOf = (s) => Object.keys(s).sort();
@@ -63,16 +63,37 @@ describe('llmEngine status transitions', () => {
   it('reports the device pin the start asked for, and where the pick came from', async () => {
     // The renderer's only window onto which GPU the engine was restricted to — a wrong pin has to be
     // readable off one screenshot rather than reproduced.
-    const s = await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceOrigin: 'manual' });
+    const s = await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 3, gpuDeviceOrigin: 'manual' });
     expect(s.gpuDeviceIndex).toBe(1);
+    expect(s.gpuDeviceRawIndex).toBe(3);
     expect(s.gpuDeviceOrigin).toBe('manual');
+  });
+
+  it('refuses a pin that carries no raw index, naming the device, before anything loads', async () => {
+    // GGML_VK_VISIBLE_DEVICES takes a raw Vulkan index. Pinning by the enumeration's position is the bug
+    // being fixed, so a start that has only the position must not guess.
+    const options = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'];
+    const s = await start({ port: 1234, modelPath: 'model.gguf', gpuDeviceIndex: 1, gpuDeviceOrigin: 'manual', gpuDeviceOptions: options });
+    expect(s.status).toBe('error');
+    expect(s.error).toContain('No Vulkan device index found for NVIDIA GeForce RTX 4080');
+    // Refused before the backend initialized: no backend, no env filter left behind.
+    expect(s.gpuBackend).toBeNull();
+    expect(process.env.GGML_VK_VISIBLE_DEVICES).toBeUndefined();
+    // The readout still says which device, out of which, the start asked for.
+    expect(s.gpuDeviceIndex).toBe(1);
+    expect(s.gpuDeviceOptions).toEqual(options);
+  });
+
+  it('restricts the backend to the raw index, not the position in the list', async () => {
+    await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 3, gpuDeviceOrigin: 'manual', gpuDeviceOptions: ['a', 'b'] });
+    expect(process.env.GGML_VK_VISIBLE_DEVICES).toBe('3');
   });
 
   it('reports the device list the pin was chosen from, which a pinned backend can no longer enumerate', async () => {
     // "Which device, out of which" is the whole answer to a wrong-device report — the pinned engine only
     // ever sees its own, so the list has to travel with the request.
     const options = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'];
-    const s = await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceOrigin: 'auto', gpuDeviceOptions: options });
+    const s = await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 1, gpuDeviceOrigin: 'auto', gpuDeviceOptions: options });
     expect(s.gpuDeviceOptions).toEqual(options);
     // The index indexes into it, which is what lets a reader name the pinned device.
     expect(s.gpuDeviceOptions[s.gpuDeviceIndex]).toBe('NVIDIA GeForce RTX 4080');
@@ -80,7 +101,7 @@ describe('llmEngine status transitions', () => {
 
   it('keeps its own copy of that list, so the caller cannot rewrite it after the fact', async () => {
     const options = ['Intel(R) UHD Graphics 770', 'NVIDIA GeForce RTX 4080'];
-    await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceOrigin: 'auto', gpuDeviceOptions: options });
+    await start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 1, gpuDeviceOrigin: 'auto', gpuDeviceOptions: options });
     options[1] = 'tampered';
     expect(getState().gpuDeviceOptions[1]).toBe('NVIDIA GeForce RTX 4080');
   });
@@ -88,6 +109,7 @@ describe('llmEngine status transitions', () => {
   it('reports no pin when the start carried none', async () => {
     const s = await start({ port: 1234 });
     expect(s.gpuDeviceIndex).toBeNull();
+    expect(s.gpuDeviceRawIndex).toBeNull();
     expect(s.gpuDeviceOrigin).toBeNull();
   });
 

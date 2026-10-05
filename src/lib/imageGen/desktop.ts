@@ -126,6 +126,9 @@ export interface LocalLlmState {
   /** The device index the backend was restricted to, or null when it was left unfiltered. Pinning one
    *  device is what stops llama.cpp aggregating several adapters' memory into a budget belonging to none. */
   gpuDeviceIndex: number | null;
+  /** The raw Vulkan device index the backend was restricted to. Vulkan's own list holds adapters the
+   *  enumeration drops or reorders, so this can differ from `gpuDeviceIndex`. Null when nothing was pinned. */
+  gpuDeviceRawIndex: number | null;
   /** Where the pin came from — the automatic policy, the player's choice, or a chosen device that no
    *  longer exists (so the policy chose instead). Null when nothing was pinned. */
   gpuDeviceOrigin: EngineDeviceOrigin | null;

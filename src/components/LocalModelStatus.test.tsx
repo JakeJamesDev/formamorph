@@ -11,7 +11,7 @@ const stopped: LocalLlmState = {
   contextSize: null, gpuLayers: null, flashAttention: null, parallelRequests: null,
   maxContextSize: null, engineVramMB: null,
   gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null,
-  gpuDeviceIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null,
+  gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null,
 };
 
 const engine = (over: Partial<LocalLlmState>): LocalLlmState => ({ ...stopped, ...over });
