@@ -208,7 +208,7 @@ describe('the chromes whose pill never fades', () => {
     storeMinimalWindow({ chatStyle });
     await openWindow();
     wait(PILL_FADE_DELAY_MS * 3);
-    expect(document.querySelector('[data-fq-fade]')).toBeNull();
+    expect(document.querySelector('[data-fq-drag]')).not.toHaveAttribute('data-fq-fade');
     expect(document.querySelector('[data-fq-drag]')).not.toHaveClass('opacity-0');
   });
 });

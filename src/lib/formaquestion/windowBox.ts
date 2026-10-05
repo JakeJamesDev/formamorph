@@ -72,13 +72,21 @@ export function moveBox(start: WindowBox, dx: number, dy: number, viewport: View
   return clampBox({ ...start, x: start.x + dx, y: start.y + dy }, viewport);
 }
 
-/** The box a corner grip drag of (dx, dy) gives. The top left corner stays put. */
-export function resizeBox(start: WindowBox, dx: number, dy: number, viewport: Viewport): WindowBox {
-  return clampBox({
-    ...start,
-    w: Math.min(start.w + dx, viewport.width - start.x),
-    h: Math.min(start.h + dy, viewport.height - start.y),
-  }, viewport);
+/** A resize handle: a side holds one edge, a corner holds two. */
+export type ResizeHandle = 'n' | 'e' | 's' | 'w' | 'nw' | 'ne' | 'sw' | 'se';
+/** Every handle, corners first and the bottom right first of all, as the window draws them. */
+export const RESIZE_HANDLES: readonly ResizeHandle[] = ['se', 'sw', 'ne', 'nw', 'n', 'e', 's', 'w'];
+
+/** The box a handle drag of (dx, dy) gives. The edges the handle holds move; the opposite edges stay put. */
+export function resizeBox(start: WindowBox, dx: number, dy: number, viewport: Viewport, handle: ResizeHandle = 'se'): WindowBox {
+  const right = start.x + start.w;
+  const bottom = start.y + start.h;
+  let { x, y, w, h } = start;
+  if (handle.includes('e')) w = Math.min(start.w + dx, viewport.width - start.x);
+  if (handle.includes('w')) { x = clamp(start.x + dx, 0, right - MIN_WIDTH); w = right - x; }
+  if (handle.includes('s')) h = Math.min(start.h + dy, viewport.height - start.y);
+  if (handle.includes('n')) { y = clamp(start.y + dy, 0, bottom - MIN_HEIGHT); h = bottom - y; }
+  return clampBox({ x, y, w, h }, viewport);
 }
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
@@ -235,9 +243,9 @@ export function movePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: 
   return windowLayout(chrome, moveBox(start, dx, dy, viewport), viewport, pieces).column;
 }
 
-/** The column or frame a corner grip drag of (dx, dy) gives. The top left corner stays put while the pieces have room. */
-export function resizePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
-  return windowLayout(chrome, resizeBox(start, dx, dy, viewport), viewport, pieces).column;
+/** The column or frame a handle drag of (dx, dy) gives. The edges the handle does not hold stay put while the pieces have room. */
+export function resizePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces, handle: ResizeHandle = 'se'): WindowBox {
+  return windowLayout(chrome, resizeBox(start, dx, dy, viewport, handle), viewport, pieces).column;
 }
 
 export interface WindowSize {

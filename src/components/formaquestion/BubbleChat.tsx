@@ -248,7 +248,8 @@ export function BubbleChat({
   // The pill and her grip fade when idle over her head, in both views (Q5, Q31).
   const fade = usePillFade(true);
   const hover = fade && { onPointerEnter: fade.props.onPointerEnter, onPointerLeave: fade.props.onPointerLeave };
-  const pill = <Pill move={move} large={false} headToggle={headToggle} menu={menu} onClose={onClose} fade={fade} />;
+  // She is the drag handle under Bubble, so the pill takes no move and draws no grip icon (Q32).
+  const pill = <Pill large={false} headToggle={headToggle} menu={menu} onClose={onClose} fade={fade} />;
 
   return (
     <>

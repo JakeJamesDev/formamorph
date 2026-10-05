@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SectionTitle } from '@/components/ui/typography';
 import { EdgeTabButton } from '@/components/formaquestion/EdgeTab';
-import { FormaquestionFrame } from '@/components/formaquestion/FormaquestionFrame';
+import { FormaquestionFrame, type ResizeHandlers } from '@/components/formaquestion/FormaquestionFrame';
 import type { MenuActions } from '@/components/formaquestion/FormaquestionMenu';
 import type { DragHandlers } from '@/components/formaquestion/usePointerDrag';
 import { useGuideView } from '@/components/formaquestion/formaquestionTabs';
@@ -114,6 +114,7 @@ const sampleMenu = (settings: HelpSettings, change: (next: HelpSettingsChange) =
 
 /** Grip handlers that draw the grip and resize nothing. */
 const INERT_DRAG: DragHandlers = { onPointerDown: () => {}, onPointerMove: () => {}, onPointerUp: () => {}, onPointerCancel: () => {} };
+const INERT_RESIZE: ResizeHandlers = { n: INERT_DRAG, e: INERT_DRAG, s: INERT_DRAG, w: INERT_DRAG, nw: INERT_DRAG, ne: INERT_DRAG, sw: INERT_DRAG, se: INERT_DRAG };
 
 function SampleWindow() {
   const [wide, setWide] = useState(false);
@@ -177,7 +178,7 @@ function SampleMinimalChrome() {
           head={head}
           headToggle={{ showingHead, onToggle: () => setShowingHead((current) => !current) }}
           menu={sampleMenu(settings, changeSettings, chat.exchanges.length > 0 ? chat.clear : undefined)}
-          resize={INERT_DRAG}
+          resize={INERT_RESIZE}
           onClose={() => {}}
         />
       </div>

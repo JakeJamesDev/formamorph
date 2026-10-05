@@ -28,8 +28,10 @@ export const TAIL_MOUTH_SHARE = 0.7;
 export const STRIP_HEIGHT = 32;
 /** The head view's largest head, as a share of the screen height. */
 const HEAD_CAP_SHARE = 0.3;
-/** The head view's widest head, as a share of the column, so the strip and the question keep room beside it. */
+/** The head view's widest head, as a share of the column, so the strip and the question keep room beside it. The smallest Scale is a floor under it. */
 const HEAD_COLUMN_SHARE = 0.5;
+/** The narrowest room beside the head: the strip's two chevrons and one toggle. */
+const BESIDE_MIN_WIDTH = 180;
 
 /** The measured heights the layout stacks: the answer's content with padding, the question pill, and the ask input. */
 export interface BubbleHeights {
@@ -173,10 +175,14 @@ function fullLayout({ at, base, mask, scale, viewport, heights, width, height, e
 
 function headLayout({ at, mask, scale, viewport, heights, width, height, empty, showReader }: BubbleInput): BubbleLayout {
   const { width: vw, height: vh } = viewport;
-  const w = bubbleWidthFor(width, vw - SCREEN_MARGIN * 2);
   const aspect = mask.width / mask.height;
-  const headW = Math.min(headHeightAt(scale, mask, viewport) * aspect, w * HEAD_COLUMN_SHARE);
+  const room = vw - SCREEN_MARGIN * 2;
+  const asked = bubbleWidthFor(width, room);
+  // The column caps the head at half its width, but never under the smallest Scale; the chat widens to keep room beside that.
+  const floorW = headHeightAt(MASCOT_SCALE_MIN, mask, viewport) * aspect;
+  const headW = Math.max(Math.min(headHeightAt(scale, mask, viewport) * aspect, asked * HEAD_COLUMN_SHARE), floorW);
   const headH = headW / aspect;
+  const w = Math.min(Math.max(asked, headW + BUBBLE_GAP + BESIDE_MIN_WIDTH), room);
   // The zone between the bubble and the input: her head on the outer side, the strip and the question beside it.
   const besideH = empty ? 0 : STRIP_HEIGHT + BUBBLE_GAP + heights.question;
   const zoneH = Math.max(headH, besideH);
@@ -219,16 +225,18 @@ const stackBelow = (heights: BubbleHeights, empty: boolean): number =>
 
 type Placed = Omit<BubbleLayout, 'grip' | 'mascotGrip' | 'reader' | 'group'>;
 
-/** The grip corners, the reader on the wider free side at the bubble's height (Q11), and the box around them all. */
+/** The grip corners (Q32), the reader on the wider free side at the bubble's height (Q11), and the box around them all. */
 function finish(placed: Placed, viewport: Viewport, showReader: boolean): BubbleLayout {
   const { side, her, chat, input } = placed;
   const left = Math.min(her.x, chat.x);
   const right = Math.max(her.x + her.w, chat.x + chat.w);
   const top = Math.min(her.y, chat.y);
   const bottom = Math.max(bottomOf(her), bottomOf(input));
+  // The chat grip takes the chat corner that faces the most free screen on each axis, beyond the whole group.
   const open = viewport.height - bottom > top ? 's' : 'n';
+  const across = viewport.width - right > left ? 'e' : 'w';
   const inner = side === 'right' ? 'w' : 'e';
-  const grip: GripCorner = `${open}${inner}`;
+  const grip: GripCorner = `${open}${across}`;
   const mascotGrip: GripCorner = `n${inner}`;
   const freeLeft = left - SCREEN_MARGIN;
   const freeRight = viewport.width - SCREEN_MARGIN - right;

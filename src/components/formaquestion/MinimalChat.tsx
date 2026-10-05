@@ -16,7 +16,7 @@ import { ASSISTANT_BUBBLE, BUBBLE, FLOATING, PILL_BUTTON, TOP_FADE } from './flo
 import { cn } from '@/lib/utils';
 import { Answer } from './AskParts';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
-import { ResizeGrip } from './FormaquestionFrame';
+import { ResizeHandles, type ResizeHandlers } from './FormaquestionFrame';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { ScrollArrow } from './ScrollArrow';
 import type { PillFade } from './usePillFade';
@@ -134,8 +134,8 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   onGo: (route: SurfaceRoute) => void;
   /** Pointer handlers for the pill, where the window moves. */
   move?: DragHandlers;
-  /** Pointer handlers for the corner grip under the ask field. */
-  resize?: DragHandlers;
+  /** Pointer handlers for the resize handles on the column's edges. */
+  resize?: ResizeHandlers;
   /** Sheet-size controls. */
   large: boolean;
   /** The Mascot's head view, drawn at the pill's end on the Mascot's side. */
@@ -149,9 +149,8 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   height?: number;
 }) {
   const { viewportRef, onScroll, away, toEnd } = useFollowEnd(chat.exchanges);
-  // The grip takes a strip under the ask field, clear of the Send button.
   return (
-    <div data-fq-piece="column" className={cn('relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2', resize && 'pb-3')} style={height === undefined ? undefined : { height }}>
+    <div data-fq-piece="column" className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col gap-2" style={height === undefined ? undefined : { height }}>
       {/* The Scrim: a panel of the app background, inset past the column. It sits behind every piece of the window, whose section is its own stacking context. */}
       {settings.scrimOpacity > 0 && (
         <div
@@ -199,7 +198,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
       <ScrollArrow shown={away} onClick={toEnd} />
       </div>
       <AskPill draft={draft} onDraftChange={onDraftChange} chat={chat} />
-      {resize && <ResizeGrip resize={resize} className="pointer-events-auto" />}
+      {resize && <ResizeHandles resize={resize} className="pointer-events-auto" />}
     </div>
   );
 }

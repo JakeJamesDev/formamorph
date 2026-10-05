@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Tool } from '@/types';
-import { chatChrome, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
+import { chatChrome, CHAT_STYLES, DEFAULT_HELP_SETTINGS, HELP_HISTORY_MAX, HELP_CALL_LIMIT_MAX, SAME_AS_ANSWER, helpSettingsCodec, helpSettingsOf } from './helpSettings';
 import { DEFAULT_HELP_REVEAL } from './helpReveal';
 import { duplicateHelpPreset, EMPTY_HELP_PRESET_STORE } from './helpPresets';
 import { DEFAULT_MASCOT_RIG } from './mascot';
@@ -195,16 +195,12 @@ describe('the chat style', () => {
   it('gives the chrome: Auto follows the Mascot switch, the others pin', () => {
     expect(chatChrome(helpSettingsOf({ chatStyle: 'auto', mascot: true }))).toBe('bubble');
     expect(chatChrome(helpSettingsOf({ chatStyle: 'auto', mascot: false }))).toBe('full');
-    expect(chatChrome(helpSettingsOf({ chatStyle: 'bubble', mascot: true }))).toBe('bubble');
     expect(chatChrome(helpSettingsOf({ chatStyle: 'minimal', mascot: false }))).toBe('minimal');
     expect(chatChrome(helpSettingsOf({ chatStyle: 'full', mascot: true }))).toBe('full');
   });
 
-  it('draws Minimal for a pinned Bubble with the Mascot off, since Bubble has no speaker', () => {
-    expect(chatChrome(helpSettingsOf({ chatStyle: 'bubble', mascot: false }))).toBe('minimal');
-  });
-
-  it('keeps a stored Bubble style', () => {
-    expect(helpSettingsCodec.parse(JSON.stringify({ chatStyle: 'bubble' })).chatStyle).toBe('bubble');
+  it('offers no Bubble style by hand: Auto alone draws it, with the Mascot on', () => {
+    expect(CHAT_STYLES).not.toContain('bubble');
+    expect(helpSettingsCodec.parse(JSON.stringify({ chatStyle: 'bubble' })).chatStyle).toBe('auto');
   });
 });

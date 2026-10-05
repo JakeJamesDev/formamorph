@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bubbleLayout, resizeChat, resizeMascot, BUBBLE_AUTO_SHARE, BUBBLE_GAP, BUBBLE_MIN_HEIGHT, type BubbleInput, type BubbleLayout,
 } from './bubbleLayout';
-import { HEAD_HEIGHT, MASCOT_SCALE_MAX, SCREEN_MARGIN, type WindowBox } from './windowBox';
+import { HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, SCREEN_MARGIN, type WindowBox } from './windowBox';
 
 const SCREEN = { width: 1600, height: 900 };
 // Her head is the top third of a 300 × 600 base: its center sits at a sixth of her height.
@@ -81,6 +81,15 @@ describe('the bubble layout in full view', () => {
     expect(left.side).toBe('left');
     expect(left.bubble.x).toBeGreaterThan(rightOf(left.her));
     expect(left.tail).toMatchObject({ x: left.bubble.x, points: 'left' });
+  });
+
+  it('sets the chat grip on the chat corner that faces the most free screen beyond the group, her side included', () => {
+    // A group at the top left faces free screen below it and to its right, so the grip sits on the chat corner nearest her.
+    const topLeft = bubbleLayout(input({ scale: 50, at: { x: 300, y: 350 } }));
+    expect(topLeft.side).toBe('left');
+    expect(topLeft.grip).toBe('se');
+    const headRight = bubbleLayout(input({ headView: true, scale: 'auto', at: { x: 1500, y: 850 } }));
+    expect(headRight.grip).toBe('nw');
   });
 
   it('sets the grip on the bubble corner away from the nearest edges', () => {
@@ -166,6 +175,16 @@ describe('the bubble layout in head view', () => {
     expect(head().her.h).toBe(HEAD_HEIGHT);
     const large = head({ scale: MASCOT_SCALE_MAX });
     expect(large.her.w).toBe(large.bubble.w / 2);
+  });
+
+  it('never caps the head under the smallest Scale: a narrow chat widens to keep room beside it', () => {
+    // The smallest head is 50 × 50 here; a chat too narrow for it and the strip grows.
+    const wide = head({ scale: MASCOT_SCALE_MIN, width: 1000 });
+    const narrow = head({ scale: MASCOT_SCALE_MIN, width: 60 });
+    expect(narrow.her.h).toBe(wide.her.h);
+    expect(narrow.her.h).toBe(MASK.height * MASCOT_SCALE_MIN / 100);
+    expect(narrow.strip.w).toBeGreaterThanOrEqual(180);
+    expect(narrow.bubble.w).toBeGreaterThanOrEqual(narrow.her.w + BUBBLE_GAP + 180);
   });
 
   it('caps a long answer at the room above the head', () => {
