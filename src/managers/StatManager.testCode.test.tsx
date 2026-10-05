@@ -304,6 +304,8 @@ describe('what Test Code reports', () => {
 
     await waitFor(() => expect(row()).toHaveTextContent('Unknown trait names. Writes ignored: persona.traits.Scarred.'));
     expect(row()).toHaveTextContent('acquired is read-only. Writes ignored: persona.traits.Marked.');
+    // Mira can be played, so Formaquestion's code test calls Scarred pending; the editor still runs the empty persona.
+    expect(executeStatCode.mock.calls[0][3].persona).toBeUndefined();
   });
 
   it('runs with every authored entity listed and nothing chosen, and lists an entity switch without making it', async () => {

@@ -78,6 +78,10 @@ describe('the code test offer', () => {
     expect(offered.map((tool) => tool.function.name)).toEqual([HELP_CODE_TEST.name]);
   });
 
+  it('describes pending writes as no error', () => {
+    expect(HELP_CODE_TEST.description).toMatch(/A pending write .*It is not an error/);
+  });
+
   it('stays out with its switch off, on a turn that is not a code turn, and on an endpoint without function calls', async () => {
     const off = script(sseReply('Done.'));
     await collect(ask(off, { codeTest: false }));
@@ -119,11 +123,54 @@ describe('a code test call', () => {
       error: null,
       value: 7,
       writes: ['Brave switched on'],
+      pending: [],
       dropped: ['Unknown trait names. Writes ignored: Seasoned.'],
     });
     expect(second.run).toMatchObject({ error: null, value: 41 });
     expect(world).toEqual(before);
     expect(authored).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists a persona switch on a trait a playable entity holds as pending, and drops one on any other name', async () => {
+    // Wren can be played and Ash cannot, and Brave is the world's own.
+    const world: StatCodeWorld = {
+      ...sedge(),
+      entities: [
+        { id: 'wren', name: 'Wren', persona: true, traits: [{ id: 'seasoned', name: 'Seasoned', statChanges: [] }] },
+        { id: 'ash', name: 'Ash', traits: [{ id: 'loyal', name: 'Loyal', statChanges: [] }] },
+      ],
+    };
+    const code = [
+      'persona.traits.Seasoned.enabled = clock.day > 14;',
+      'persona.traits.Loyal.enabled = true;',
+      'persona.traits.Brave.enabled = true;',
+      'persona.traits.Seasoned.acquired = true;',
+    ].join('\n');
+    const fetchImpl = script(testFrames({ code }), sseReply('Done.'));
+    await collect(ask(fetchImpl, {}, { world: openWorld(undefined, () => world) }));
+
+    const [result] = results(fetchImpl);
+    expect(result.run).toEqual({
+      error: null,
+      value: null,
+      writes: [],
+      pending: ['persona.traits.Seasoned switched off'],
+      dropped: [
+        'Unknown trait names. Writes ignored: persona.traits.Loyal, persona.traits.Brave.',
+        'acquired is read-only. Writes ignored: persona.traits.Seasoned.',
+      ],
+    });
+  });
+
+  it('lists no pending writes on a run that throws', async () => {
+    const world: StatCodeWorld = {
+      ...sedge(),
+      entities: [{ id: 'wren', name: 'Wren', persona: true, traits: [{ id: 'seasoned', name: 'Seasoned', statChanges: [] }] }],
+    };
+    const fetchImpl = script(testFrames({ code: 'persona.traits.Seasoned.enabled = true;\nreturn wisdom.value;' }), sseReply('Fixed.'));
+    await collect(ask(fetchImpl, {}, { world: openWorld(undefined, () => world) }));
+    const [result] = results(fetchImpl);
+    expect(result.run).toMatchObject({ error: expect.any(String), writes: [], pending: [] });
   });
 
   it('reports a run that throws, with no writes', async () => {
