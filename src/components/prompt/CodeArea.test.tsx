@@ -4,7 +4,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
 import type { CodeSurface } from '@/lib/codeSurface';
-import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import { STAT_CODE_SURFACE, STAT_FIELDS } from '@/lib/statCodeSurface';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { SCRIPT_SURFACE as SCRIPT } from '@/test/scriptSurface';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
@@ -66,6 +67,15 @@ async function type(
  *  run pushes the event later too. This is the beat a real author takes; nothing here polls for it. */
 const settle = () => new Promise(resolve => { setTimeout(resolve, 150); });
 
+/** Opens the Variable menu and clicks down the named rows, the last one a field. */
+async function pick(user: ReturnType<typeof userEvent.setup>, ...rows: string[]) {
+  await user.click(screen.getByLabelText('Variable'));
+  for (const row of rows) await user.click(screen.getByRole('button', { name: row }));
+}
+
+/** The Variable menu's current level, by its label. */
+const level = (label: string) => screen.queryByRole('group', { name: label });
+
 describe('CodeArea', () => {
   // The split preference is shared and persisted, so one test's toggle would otherwise decide the next.
   beforeEach(() => localStorage.clear());
@@ -120,8 +130,7 @@ describe('CodeArea', () => {
     // Put the caret back in the gap the snippet belongs in.
     await user.keyboard('{ArrowLeft>5/}');
 
-    await user.click(screen.getByLabelText('Variable'));
-    await user.click(screen.getByText('This stat’s value'));
+    await pick(user, 'This Stat', 'value');
 
     expect(owned()).toBe('return self.value + 1;');
   });
@@ -144,10 +153,12 @@ describe('CodeArea', () => {
     render(<Harness />);
     await user.click(await editor());
     await type(user, 'return ');
-    await user.click(screen.getByLabelText('Variable'));
-    await user.click(screen.getByText('This stat’s value'));
+    await pick(user, 'This Stat', 'value');
     expect(owned()).toBe('return self.value');
+    await type(user, ';', () => 'return self.value;');
 
+    await user.click(screen.getByLabelText('Undo'));
+    expect(owned()).toBe('return self.value');
     await user.click(screen.getByLabelText('Undo'));
     expect(owned()).toBe('return ');
   });
@@ -529,6 +540,127 @@ describe('CodeArea', () => {
     await waitFor(() => expect(marks()).toEqual([]), { timeout: 3000 });
   });
 
+  describe('the stat code Variable menu', () => {
+    it('drills Stats to a stat’s field and inserts its whole path, then closes', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health', 'Max Mana']} />);
+      await user.click(await editor());
+      await type(user, 'return ');
+
+      await pick(user, 'Stats', 'Health', 'value');
+      expect(owned()).toBe('return stats.Health.value');
+      expect(level('Health')).toBeNull();
+
+      // The caret sits after the path, back in the editor.
+      await type(user, ';', () => 'return stats.Health.value;');
+      await pick(user, 'Stats', 'Max Mana', 'max');
+      expect(owned()).toBe('return stats.Health.value;stats["Max Mana"].max');
+    });
+
+    it('goes back one level from the Back row', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health']} />);
+      await editor();
+      await pick(user, 'Stats', 'Health');
+      expect(level('Health')).toBeInTheDocument();
+
+      // The Back row names the level it leaves.
+      await user.click(screen.getByRole('button', { name: 'Health' }));
+      expect(level('Stats')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Stats' }));
+      expect(level('Variable')).toBeInTheDocument();
+    });
+
+    it('opens at the top level every time', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health']} />);
+      await editor();
+      await pick(user, 'Stats', 'Health');
+      await user.keyboard('{Escape}');
+      expect(level('Health')).toBeNull();
+
+      await user.click(screen.getByLabelText('Variable'));
+      expect(level('Variable')).toBeInTheDocument();
+    });
+
+    it('moves with the arrows, drills and inserts with Enter, and goes back with Backspace and Left', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health']} />);
+      await user.click(await editor());
+      await user.click(screen.getByLabelText('Variable'));
+      expect(screen.getByRole('button', { name: 'This Stat' })).toHaveFocus();
+
+      await user.keyboard('{ArrowDown}');
+      expect(screen.getByRole('button', { name: 'Stats' })).toHaveFocus();
+      await user.keyboard('{ArrowUp}{ArrowUp}');
+      expect(screen.getByRole('button', { name: 'Clock' })).toHaveFocus();
+      await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+      // Each level opens on its Back row, which names the level.
+      expect(level('Stats')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Stats' })).toHaveFocus();
+      await user.keyboard('{ArrowDown}{Enter}');
+      expect(screen.getByRole('button', { name: 'Health' })).toHaveFocus();
+      await user.keyboard('{ArrowDown}');
+      expect(within(level('Health')!).getByRole('button', { name: 'id' })).toHaveFocus();
+
+      await user.keyboard('{Backspace}');
+      expect(level('Stats')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Stats' })).toHaveFocus();
+      await user.keyboard('{ArrowLeft}');
+      expect(level('Variable')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'This Stat' })).toHaveFocus();
+
+      await user.keyboard('{ArrowDown}{Enter}{ArrowDown}{Enter}{ArrowDown}{Enter}');
+      expect(owned()).toBe('stats.Health.id');
+      expect(level('Health')).toBeNull();
+    });
+
+    it('closes on Escape without inserting', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health']} />);
+      await editor();
+      await user.click(screen.getByLabelText('Variable'));
+      await user.keyboard('{Enter}');
+      expect(level('This Stat')).toBeInTheDocument();
+
+      await user.keyboard('{Escape}');
+      expect(level('This Stat')).toBeNull();
+      expect(owned()).toBe('');
+    });
+
+    it('describes a field in its tooltip and keeps the field name as its name', async () => {
+      const user = userEvent.setup();
+      render(<TooltipProvider><Harness /></TooltipProvider>);
+      await editor();
+      await pick(user, 'This Stat');
+
+      await user.hover(screen.getByRole('button', { name: 'regen' }));
+      const regen = STAT_FIELDS.find((entry) => entry.name === 'regen')!;
+      expect(await screen.findByText(regen.info, { selector: 'div' })).toBeVisible();
+    });
+
+    it('keeps an empty group, with its one marker row disabled', async () => {
+      const user = userEvent.setup();
+      render(<Harness statNames={['Health']} />);
+      await editor();
+      await pick(user, 'Traits');
+
+      expect(screen.getByRole('button', { name: 'No traits in this world' })).toBeDisabled();
+      // Focus lands on Back, the one row that can take it.
+      expect(screen.getByRole('button', { name: 'Traits' })).toHaveFocus();
+    });
+
+    it('leaves a template’s type-over name selected', async () => {
+      const user = userEvent.setup();
+      render(<Harness slots statNames={['Health']} />);
+      await editor();
+      await pick(user, 'Stats', 'Name', 'value');
+      expect(owned()).toBe('stats["Name"].value');
+
+      await type(user, 'Mood', (typed) => `stats["${typed}"].value`);
+    });
+  });
+
   describe('on a surface other than stat code', () => {
     it('offers that surface’s inserts in the Variable menu, and none of stat code’s', async () => {
       const user = userEvent.setup();
@@ -536,7 +668,7 @@ describe('CodeArea', () => {
       await user.click(await editor());
 
       await user.click(screen.getByLabelText('Variable'));
-      expect(screen.queryByText('This stat’s value')).toBeNull();
+      expect(screen.queryByText('This Stat')).toBeNull();
       await user.click(screen.getByText('An argument'));
 
       expect(owned()).toBe('args.name');

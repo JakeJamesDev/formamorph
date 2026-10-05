@@ -10,21 +10,17 @@ export interface InsertSnippet {
   select?: string;
 }
 
-/** One lookup per sandbox global. The map entries use bracket syntax, which completions can't write
- *  around a name, and leave the name selected to type over. */
-export const STAT_CODE_SNIPPETS: InsertSnippet[] = [
-  { label: 'Another stat’s value', text: 'stats["Health"].value', select: 'Health' },
-  { label: 'This stat’s value', text: 'self.value' },
-  { label: 'A placeholder’s value', text: 'placeholders["Name"].value', select: 'Name' },
-  { label: 'A trait is on', text: 'traits["Name"].enabled', select: 'Name' },
-  { label: 'An entity is in the scene', text: 'entities["Name"].inScene', select: 'Name' },
-  { label: 'An entity’s trait is on', text: 'entities["Name"].traits["Trait"].enabled', select: 'Name' },
-  { label: 'An entity’s placeholder', text: 'entities["Name"].placeholders["Placeholder"].value', select: 'Name' },
-  { label: 'The persona’s trait is on', text: 'persona.traits["Name"].enabled', select: 'Name' },
-  { label: 'A dictionary’s placeholder', text: 'dictionaries["Name"].placeholders["Placeholder"].value', select: 'Name' },
-  { label: 'The story day', text: 'clock.day' },
-  { label: 'The daypart', text: 'clock.daypart' },
-];
+/** Offsets into an inserted text: the part left selected afterwards. */
+export interface InsertSelection {
+  from: number;
+  to: number;
+}
+
+/** Where a snippet's `select` falls in its text, or nothing to select. */
+export function snippetSelection(snippet: InsertSnippet): InsertSelection | undefined {
+  const from = snippet.select ? snippet.text.indexOf(snippet.select) : -1;
+  return from >= 0 ? { from, to: from + snippet.select!.length } : undefined;
+}
 
 /** The slot forms a template may declare. Only offered in the template editor — a stat's own code has no
  *  slots to fill, so the menu would only ever generate something the sandbox chokes on. */

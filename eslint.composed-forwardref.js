@@ -21,6 +21,7 @@ export const REF_SAFE_COMPOSED_CHILDREN = [
   'Checkbox', // src/components/ui/checkbox.tsx
   'RemoteImg', // src/lib/useRemoteImage.tsx
   'EdgeTabButton', // src/components/formaquestion/EdgeTab.tsx
+  'InsertMenuButton', // src/components/prompt/InsertMenuButton.tsx
   'Handle', // @xyflow/react — memo(forwardRef(...))
   // Radix triggers forward their ref, and pass anything else they are handed down through their own
   // `asChild` — which is how a tip and a popover share one button.

@@ -9,7 +9,6 @@
  */
 
 import { DELTA_SOURCES, type DeltaSource } from '@/lib/statCodeExecutor';
-import { STAT_CODE_SNIPPETS } from '@/lib/codeSnippets';
 import { nearestName, surfaceKnownNames, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
 
@@ -271,7 +270,8 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   builtins: SANDBOX_BUILTINS,
   members: BUILTIN_MEMBERS,
   languageNames: LANGUAGE_NAMES,
-  snippets: STAT_CODE_SNIPPETS,
+  // The Variable menu is the drill tree in `statCodeVariableTree`.
+  snippets: [],
   missingReturn: 'This code never returns a number or writes self.value, so the stat keeps its value.',
   statMaps: true,
 };
