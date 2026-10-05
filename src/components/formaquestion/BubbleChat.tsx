@@ -16,6 +16,7 @@ import { BUBBLE, FLOATING, TOP_FADE } from './floatingPieces';
 import { AskPill, Pill, type HeadToggle, type MenuProps } from './MinimalChat';
 import { useAnswerFolds } from './useAnswerFolds';
 import type { BubblePage } from './useBubblePage';
+import { usePillFade, type PillFadeProps } from './usePillFade';
 import { ScrollArrow } from './ScrollArrow';
 import { useFollowEnd } from './useAskParts';
 import type { HelpChat, HelpExchange } from './useHelpChat';
@@ -36,10 +37,11 @@ const TAIL_EDGES: Record<BubbleTail['points'], string> = {
   down: 'border-b border-r',
 };
 
-/** A corner grip: the drag area on the corner of its box, with an L mark that opens toward the box. */
-function Grip({ corner, handlers, name }: { corner: GripCorner; handlers: DragHandlers; name: string }) {
+/** A corner grip: the drag area on the corner of its box, with an L mark that opens toward the box. A `fade` makes it fade with the pill. */
+function Grip({ corner, handlers, name, fade }: { corner: GripCorner; handlers: DragHandlers; name: string; fade?: PillFadeProps | null }) {
+  const { className: fadeClass, ...fading } = fade ?? {};
   return (
-    <div {...{ [`data-fq-${name}`]: corner }} aria-hidden {...handlers} className={cn('pointer-events-auto absolute z-10 h-5 w-5 touch-none', GRIP_PLACE[corner])}>
+    <div {...{ [`data-fq-${name}`]: corner }} aria-hidden {...handlers} {...fading} className={cn('pointer-events-auto absolute z-10 h-5 w-5 touch-none', GRIP_PLACE[corner], fadeClass)}>
       <span className={cn('absolute h-2 w-2 border-muted-foreground/60', GRIP_MARK[corner])} />
     </div>
   );
@@ -238,7 +240,10 @@ export function BubbleChat({
     ...(sized ? { height: box.h } : {}),
   });
   const columnTop = speaking ? layout.chat.y : (layout.pillRow ?? layout.input).y;
-  const pill = <Pill move={move} large={false} headToggle={headToggle} menu={menu} onClose={onClose} />;
+  // The pill and her grip fade when idle over her head; head view keeps its pill (Q4).
+  const fade = usePillFade(!headView);
+  const hover = fade && { onPointerEnter: fade.props.onPointerEnter, onPointerLeave: fade.props.onPointerLeave };
+  const pill = <Pill move={move} large={false} headToggle={headToggle} menu={menu} onClose={onClose} fade={fade} />;
 
   return (
     <>
@@ -290,14 +295,14 @@ export function BubbleChat({
         </div>
       ) : (
         <>
-          <div data-fq-body="" {...move} className="pointer-events-auto flex cursor-move touch-none items-end" style={place(layout.her)}>{mascot}</div>
+          <div data-fq-body="" {...move} {...hover} className="pointer-events-auto flex cursor-move touch-none items-end" style={place(layout.her)}>{mascot}</div>
           {/* The pill stands over her head, inside her bounds. */}
           <div className="flex justify-center" style={place(layout.her, false)}>{pill}</div>
         </>
       )}
       {/* Her grip, on her top corner on the bubble side (Q19). */}
       <div className="pointer-events-none" style={place(layout.her)}>
-        <Grip corner={layout.mascotGrip} handlers={mascotResize} name="mascot-resize" />
+        <Grip corner={layout.mascotGrip} handlers={mascotResize} name="mascot-resize" fade={fade?.props} />
       </div>
       {reader && layout.reader && <div className="flex" style={place(layout.reader)}>{reader}</div>}
     </>
