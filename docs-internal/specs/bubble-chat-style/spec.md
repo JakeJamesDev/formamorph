@@ -124,4 +124,5 @@ A good test calls the public seam with real inputs and asserts the observable re
 ## Further Notes
 
 - The pill fade delay (one second), the Auto height share and the bubble caps are tuning values. One constant each, set from the live window after the build.
+- Q28 supersedes formaquestion-mascot Q9, Q10 and Q36: the Initial look no longer ends for good at the app load's first send. It shows whenever no exchange exists, so Clear Conversation brings it back. Close-and-reopen still keeps the conversation, so it keeps the current look.
 - Mascot Position stays built for Minimal and Full. Its spec is `docs-internal/specs/mascot-below/spec.md`.
