@@ -9,7 +9,7 @@ import { helpSettingsCodec, helpSettingsOf } from '@/lib/formaquestion/helpSetti
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { openSseReply, sseFrame, sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream } from '@/test/helpFixtures';
+import { storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import { AI_CONTEXT_COPY } from './formaquestionSettingsTabs';
 import type { HelpAi } from './useHelpAi';
@@ -61,7 +61,8 @@ async function openAsk() {
 async function send(field: HTMLElement, question: string) {
   await userEvent.type(field, question);
   await userEvent.click(screen.getByRole('button', { name: 'Send' }));
-  await within(conversation()).findByRole('group', { name: 'Sources' });
+  // The answer is done when its sources show: a Sources toggle under Minimal, a Sources button in the strip under Bubble.
+  await screen.findByRole('button', { name: /^Sources/ });
 }
 
 /** The dialog's question line reads this. The quote marks are CSS, so the text has none. */
@@ -173,6 +174,8 @@ describe('AI Context in Formaquestion', () => {
   });
 
   it('shows one question per page, opens on the newest, and pages back to an earlier one', async () => {
+    // Minimal lists every answer, which the wait below counts.
+    storeMinimalWindow();
     stubHelpStream(sseReply('Select **Add Trait**.'));
     const { field } = await openAsk();
     await send(field, 'How do I add a trait?');

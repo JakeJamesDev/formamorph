@@ -11,7 +11,7 @@ import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { stubReducedMotion } from '@/test/reducedMotion';
-import { mascotStoreOf, openHelpSettings, stubHelpStream, storeFramedWindow } from '@/test/helpFixtures';
+import { mascotStoreOf, openHelpSettings, stubHelpStream, storeFramedWindow, storeMinimalWindow } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
@@ -103,8 +103,9 @@ beforeEach(async () => {
   ({ Formaquestion } = await import('./Formaquestion'));
   ({ openDocs } = await import('@/lib/formaquestion/docsOpener'));
   localStorage.clear();
-  // These tests read the Beside geometry; 'the Mascot below' starts from the Auto default.
+  // These tests read the Minimal chrome's Beside geometry; 'the Mascot below' starts from the Auto default.
   localStorage.setItem(PLACEMENT_KEY, 'beside');
+  storeMinimalWindow();
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {
@@ -142,7 +143,7 @@ describe('the minimal chrome', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('blocked', 'SecurityError'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('blocked', 'SecurityError'); });
     await openWindow();
-    expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
+    expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'bubble');
     expect(mascot()).not.toBeNull();
   });
 
@@ -360,6 +361,7 @@ describe('the Mascot switch', () => {
   });
 
   it('swaps the chrome in place both ways and keeps the conversation', async () => {
+    storeFramedWindow({ mascot: true });
     stubHelpStream(sseReply('Open the Traits tab.'));
     const { field } = await openWindow();
     await send(field, 'How do I add a trait?');
@@ -371,8 +373,8 @@ describe('the Mascot switch', () => {
     expect(conversation()).toHaveTextContent('Open the Traits tab.');
 
     await setMascot(true);
-    expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
-    expect(conversation()).toHaveTextContent('How do I add a trait?');
+    expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'bubble');
+    expect(screen.getByRole('note', { name: 'Your Question' })).toHaveTextContent('How do I add a trait?');
     expect(conversation()).toHaveTextContent('Open the Traits tab.');
   });
 });
@@ -396,8 +398,10 @@ describe('the Chat Style', () => {
   }
 
   it.each([
-    { chatStyle: 'auto', mascot: true, chrome: 'minimal', drawsMascot: true },
+    { chatStyle: 'auto', mascot: true, chrome: 'bubble', drawsMascot: true },
     { chatStyle: 'auto', mascot: false, chrome: 'full', drawsMascot: false },
+    { chatStyle: 'bubble', mascot: true, chrome: 'bubble', drawsMascot: true },
+    { chatStyle: 'bubble', mascot: false, chrome: 'minimal', drawsMascot: false },
     { chatStyle: 'minimal', mascot: true, chrome: 'minimal', drawsMascot: true },
     { chatStyle: 'minimal', mascot: false, chrome: 'minimal', drawsMascot: false },
     { chatStyle: 'full', mascot: true, chrome: 'full', drawsMascot: true },
@@ -407,7 +411,7 @@ describe('the Chat Style', () => {
     await openWindow();
     expect(chromeOf()).toBe(chrome);
     expect(anyMascot() !== null).toBe(drawsMascot);
-    if (chrome === 'minimal') expect(within(pill()).queryByRole('button', { name: /^Show / }) !== null).toBe(drawsMascot);
+    if (chrome !== 'full') expect(within(helpWindow()).queryByRole('button', { name: /^Show / }) !== null).toBe(drawsMascot);
   });
 
   it('stands the whole Mascot left of the full frame at its height, whatever the stored head view', async () => {
@@ -438,6 +442,7 @@ describe('the Chat Style', () => {
   });
 
   it('swaps the chrome in place from the ⋮ menu, keeps the conversation, and agrees with the General row', async () => {
+    storeFramedWindow({ mascot: true });
     stubHelpStream(sseReply('Open the Traits tab.'));
     const { field } = await openWindow();
     await send(field, 'How do I add a trait?');
@@ -456,7 +461,7 @@ describe('the Chat Style', () => {
     expect(await checkedInMenu()).toEqual(['Full']);
     // A swap back while still open draws in place too.
     await pickInMenu('Auto');
-    expect(chromeOf()).toBe('minimal');
+    expect(chromeOf()).toBe('bubble');
     expect(helpWindow().className).not.toContain('zoom-in-75');
     await pickInMenu('Full');
 
@@ -664,6 +669,7 @@ describe('the Scrim', () => {
 
   it.each([
     { chatStyle: 'auto', mascot: true, drawn: true },
+    { chatStyle: 'bubble', mascot: true, drawn: true },
     { chatStyle: 'minimal', mascot: true, drawn: true },
     { chatStyle: 'minimal', mascot: false, drawn: true },
     { chatStyle: 'auto', mascot: false, drawn: false },
@@ -673,7 +679,8 @@ describe('the Scrim', () => {
     storeFramedWindow({ chatStyle, mascot: on });
     await openWindow();
     expect(scrim() !== null).toBe(expected);
-    if (expected) expect(column()).toContainElement(scrim());
+    // Minimal draws it in the column; Bubble behind its column of pieces.
+    if (expected && chatStyle === 'minimal') expect(column()).toContainElement(scrim());
   });
 
   it('draws the stored opacity, and nothing at 0', async () => {

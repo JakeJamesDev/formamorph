@@ -192,10 +192,19 @@ describe('the chat style', () => {
     }
   });
 
-  it('gives the chrome: Auto follows the Mascot switch, Minimal and Full pin', () => {
-    expect(chatChrome(helpSettingsOf({ chatStyle: 'auto', mascot: true }))).toBe('minimal');
+  it('gives the chrome: Auto follows the Mascot switch, the others pin', () => {
+    expect(chatChrome(helpSettingsOf({ chatStyle: 'auto', mascot: true }))).toBe('bubble');
     expect(chatChrome(helpSettingsOf({ chatStyle: 'auto', mascot: false }))).toBe('full');
+    expect(chatChrome(helpSettingsOf({ chatStyle: 'bubble', mascot: true }))).toBe('bubble');
     expect(chatChrome(helpSettingsOf({ chatStyle: 'minimal', mascot: false }))).toBe('minimal');
     expect(chatChrome(helpSettingsOf({ chatStyle: 'full', mascot: true }))).toBe('full');
+  });
+
+  it('draws Minimal for a pinned Bubble with the Mascot off, since Bubble has no speaker', () => {
+    expect(chatChrome(helpSettingsOf({ chatStyle: 'bubble', mascot: false }))).toBe('minimal');
+  });
+
+  it('keeps a stored Bubble style', () => {
+    expect(helpSettingsCodec.parse(JSON.stringify({ chatStyle: 'bubble' })).chatStyle).toBe('bubble');
   });
 });

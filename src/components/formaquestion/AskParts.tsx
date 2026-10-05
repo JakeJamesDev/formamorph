@@ -1,10 +1,11 @@
-import { useMemo, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight, Info, SendHorizontal, Square } from 'lucide-react';
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { ReasoningBody, ThinkingLabel } from '@/components/game/ReasoningBlock';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tip } from '@/components/ui/tooltip';
@@ -26,7 +27,7 @@ import { SectionRows } from './GuideParts';
 import { ScrollArrow } from './ScrollArrow';
 import { FOCUS_RING, readerComponents } from './readerLinks';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
-import { useFoldRule } from './useFoldRule';
+import { answerList, useAnswerFolds, type AnswerFolds, type Fold } from './useAnswerFolds';
 import type { HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
@@ -94,16 +95,9 @@ function FoldToggle({ open, label, onToggle }: { open: boolean; label: ReactNode
 }
 
 /** The model's reasoning, muted, above its answer. The header pulses until the answer text starts. */
-function Thinking({ text, ms, active, settings, onSettingsChange }: {
-  text: string;
-  ms: number;
-  active: boolean;
-  settings: HelpSettings;
-  onSettingsChange: (change: HelpSettingsChange) => void;
-}) {
-  // The answer takes the default when its first reasoning text arrives.
-  const fold = useFoldRule(text !== '', settings.thinkingOpen, (thinkingOpen) => onSettingsChange({ thinkingOpen }));
+function Thinking({ text, ms, active, fold, toggles }: { text: string; ms: number; active: boolean; fold: Fold; toggles: boolean }) {
   if (!text) return null;
+  if (!toggles) return fold.open ? <ReasoningBody text={text} className="[&_:first-child]:mt-0" /> : null;
   return (
     <div role="group" aria-label="Thinking" className="flex flex-col gap-1">
       <FoldToggle open={fold.open} label={<ThinkingLabel active={active} ms={ms} />} onToggle={fold.toggle} />
@@ -121,23 +115,82 @@ function TakeMeThere({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** One answer: its reasoning, text, wait line, fallback, sources and Take Me There. */
-export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, onGo }: {
+/** The source links of an answer, wrapped. */
+function SourceLinks({ guide, sections, onOpen }: { guide: Guide; sections: readonly DocSection[]; onOpen: (id: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {sections.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
+    </div>
+  );
+}
+
+/** The answer's sources, or a flagged answer's nearest sections, in a popover from a button (Q22). A link closes it. */
+function SourcesPopover({ guide, label, sections, onOpen }: { guide: Guide; label: string; sections: readonly DocSection[]; onOpen: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        {/* As the Thinking toggle beside it; the chevron turns toward the popover above while it is open. */}
+        <button type="button" className={cn('flex w-fit items-center gap-1 rounded text-meta text-muted-foreground', FOCUS_RING)}>
+          <ChevronRight aria-hidden className={cn('h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none', open && '-rotate-90')} />
+          {`${label} (${sections.length})`}
+        </button>
+      </PopoverTrigger>
+      {/* Inline, so it stays in the window's layer above every dialog. */}
+      <PopoverContent portal={false} side="top" align="start" aria-label={label} className="pointer-events-auto w-80 p-2">
+        <SourceLinks guide={guide} sections={sections} onOpen={(id) => { setOpen(false); onOpen(id); }} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** The answer's Thinking toggle, its Sources popover and its Take Me There, for a strip outside the answer. */
+export function AnswerToggles({ guide, exchange, folds, onOpen, onGo }: {
+  guide: Guide;
+  exchange: HelpExchange;
+  folds: AnswerFolds;
+  onOpen: (id: string) => void;
+  onGo: (route: SurfaceRoute) => void;
+}) {
+  const { listed, listLabel } = answerList(exchange);
+  const route = answerRoute(exchange);
+  return (
+    <>
+      {exchange.reasoning && (
+        <FoldToggle
+          open={folds.thinking.open}
+          label={<ThinkingLabel active={exchange.status === 'writing' && !exchange.answer} ms={exchange.reasoningMs ?? 0} />}
+          onToggle={folds.thinking.toggle}
+        />
+      )}
+      {listed.length > 0 && <SourcesPopover guide={guide} label={listLabel} sections={listed} onOpen={onOpen} />}
+      {listed.length > 0 && route && <TakeMeThere onClick={() => onGo(route)} />}
+    </>
+  );
+}
+
+interface AnswerProps {
   guide: Guide;
   exchange: HelpExchange;
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
   onGo: (route: SurfaceRoute) => void;
-}) {
-  const { answer, reasoning, reasoningMs, status, stage, sources, question, flagged, nearest } = exchange;
+}
+
+/** One answer: its reasoning, text, wait line, fallback, sources and Take Me There. */
+export function Answer(props: AnswerProps) {
+  const folds = useAnswerFolds(props.exchange, props.settings, props.onSettingsChange);
+  return <AnswerBody {...props} folds={folds} toggles />;
+}
+
+/** An answer at given folds. Without toggles it draws the answer and the open Thinking text; `AnswerToggles` draws the rest. */
+export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, toggles }: AnswerProps & { folds: AnswerFolds; toggles: boolean }) {
+  const { answer, reasoning, reasoningMs, status, stage, question, flagged } = exchange;
   // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
   const waitLine = status === 'writing' && !answer && stage && !(reasoning && stage === 'waiting') ? STAGE_LINE[stage] : null;
-  // A flagged answer lists the nearest sections in place of its sources.
-  const listed = flagged ? nearest : sources;
-  const listLabel = flagged ? 'Nearest Sections' : 'Sources';
-  // Sources and Nearest Sections share one fold, set when the list arrives.
-  const fold = useFoldRule(listed.length > 0, settings.sourcesOpen, (sourcesOpen) => onSettingsChange({ sourcesOpen }));
+  const { listed, listLabel } = answerList(exchange);
+  const fold = folds.sources;
   const components = useMemo(() => readerComponents(onOpen), [onOpen]);
   const reduceMotion = usePrefersReducedMotion();
   const spec = useMemo(() => helpRevealSpec(settings.reveal, reduceMotion), [settings.reveal, reduceMotion]);
@@ -152,7 +205,7 @@ export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, on
   );
   return (
     <div className="flex flex-col gap-2 text-label">
-      <Thinking text={reasoning} ms={reasoningMs ?? 0} active={status === 'writing' && !answer} settings={settings} onSettingsChange={onSettingsChange} />
+      <Thinking text={reasoning} ms={reasoningMs ?? 0} active={status === 'writing' && !answer} fold={folds.thinking} toggles={toggles} />
       {flagged && answer && <GeneralKnowledgeNotice />}
       {answer && (
         <div data-reveal className="[&_:first-child]:mt-0" style={revealVars(spec) as CSSProperties}>
@@ -175,18 +228,14 @@ export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, on
           {matches.length > 0 && <SectionRows guide={guide} sections={matches} onOpen={onOpen} />}
         </div>
       )}
-      {listed.length > 0 && (
+      {toggles && listed.length > 0 && (
         <div role="group" aria-label={listLabel} className="flex flex-col gap-1">
           {/* The footer row: the list's toggle, then Take Me There. */}
           <div className="flex flex-wrap items-center gap-2">
             <FoldToggle open={fold.open} label={fold.open ? listLabel : `${listLabel} (${listed.length})`} onToggle={fold.toggle} />
             {route && <TakeMeThere onClick={() => onGo(route)} />}
           </div>
-          {fold.open && (
-            <div className="flex flex-wrap gap-1">
-              {listed.map((section) => <SourceLink key={section.id} guide={guide} section={section} onOpen={onOpen} />)}
-            </div>
-          )}
+          {fold.open && <SourceLinks guide={guide} sections={listed} onOpen={onOpen} />}
         </div>
       )}
     </div>

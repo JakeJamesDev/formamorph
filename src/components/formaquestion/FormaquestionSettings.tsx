@@ -15,7 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  HELP_HISTORY_MAX, SCRIM_OPACITY_MAX, SCRIM_OPACITY_MIN, SCRIM_OPACITY_STEP, type HelpSettings, type HelpSettingsChange,
+  chatChrome, HELP_HISTORY_MAX, SCRIM_OPACITY_MAX, SCRIM_OPACITY_MIN, SCRIM_OPACITY_STEP, type HelpSettings, type HelpSettingsChange,
 } from '@/lib/formaquestion/helpSettings';
 import { routeText, targetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
@@ -118,19 +118,22 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
             onChange={(chatStyle) => onChange({ chatStyle })}
           />
         </Row>
-        <Row
-          target={targetAttribute('formaquestionSettings.general', 'mascot-position')}
-          label={GENERAL_COPY.mascotPosition.label}
-          hint={GENERAL_COPY.mascotPosition.hint}
-          info={<HintInfo>{GENERAL_COPY.mascotPosition.info}</HintInfo>}
-        >
-          <OptionSwitcher
-            ariaLabel={GENERAL_COPY.mascotPosition.label}
-            value={placement}
-            options={GENERAL_COPY.mascotPosition.options}
-            onChange={setMascotPlacement}
-          />
-        </Row>
+        {/* Bubble ignores Mascot Position (Q9). */}
+        {chatChrome(settings) !== 'bubble' && (
+          <Row
+            target={targetAttribute('formaquestionSettings.general', 'mascot-position')}
+            label={GENERAL_COPY.mascotPosition.label}
+            hint={GENERAL_COPY.mascotPosition.hint}
+            info={<HintInfo>{GENERAL_COPY.mascotPosition.info}</HintInfo>}
+          >
+            <OptionSwitcher
+              ariaLabel={GENERAL_COPY.mascotPosition.label}
+              value={placement}
+              options={GENERAL_COPY.mascotPosition.options}
+              onChange={setMascotPlacement}
+            />
+          </Row>
+        )}
         <Row htmlFor="fq-scrim-opacity" target={targetAttribute('formaquestionSettings.general', 'backdrop')} label={GENERAL_COPY.scrimOpacity.label} hint={GENERAL_COPY.scrimOpacity.hint}>
           <ValueSlider
             id="fq-scrim-opacity"

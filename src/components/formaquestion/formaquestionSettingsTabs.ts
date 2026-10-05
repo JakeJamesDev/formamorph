@@ -21,9 +21,10 @@ export const GENERAL_COPY = {
   mascot: { label: 'Mascot', hint: 'Shows the Mascot with a bare chat column' },
   chatStyle: {
     label: 'Chat Style',
-    hint: 'Sets how the window looks. Auto is Minimal with the Mascot on.',
+    hint: 'Sets how the window looks. Auto is Bubble with the Mascot on.',
     options: [
       { value: 'auto', label: 'Auto' },
+      { value: 'bubble', label: 'Bubble' },
       { value: 'minimal', label: 'Minimal' },
       { value: 'full', label: 'Full' },
     ],

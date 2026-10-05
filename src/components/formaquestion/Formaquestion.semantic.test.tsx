@@ -151,7 +151,8 @@ describe('the Semantic Search switch', () => {
 
     await userEvent.type(field, 'How do I add a trait?');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await screen.findByRole('group', { name: 'Sources' });
+    // Its sources show under either chrome: a toggle under Minimal, a button in the strip under Bubble.
+    await screen.findByRole('button', { name: /^Sources/ });
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(model.embed).not.toHaveBeenCalled();
