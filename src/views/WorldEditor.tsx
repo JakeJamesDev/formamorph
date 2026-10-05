@@ -1304,3 +1304,4 @@ const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
 };
 
 export default WorldEditor;
+// scroll-guard: allow horizontal: the tab strip scrolls sideways when the tabs overflow

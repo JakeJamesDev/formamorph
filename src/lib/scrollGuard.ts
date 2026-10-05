@@ -16,7 +16,6 @@ export interface ScrollGuardViolation {
 
 const NATIVE_CLASS = /(?<![\w-])overflow-(?:[xy]-)?(?:auto|scroll)(?![\w-])/;
 const NATIVE_STYLE = /\boverflow[XY]?\s*:\s*['"](?:auto|scroll)['"]/;
-const SHARED_IMPORT = /from\s+['"][^'"]*\/scroll-area['"]/;
 const ALLOW = /^\s*\/\/\s*scroll-guard:\s*allow\s+([a-z-]+):\s+\S/m;
 
 const isAllowed = (source: string): boolean => {
@@ -24,9 +23,9 @@ const isAllowed = (source: string): boolean => {
   return tag !== undefined && (SCROLL_GUARD_TAGS as readonly string[]).includes(tag);
 };
 
-/** Lists each native overflow scroller in a source file that neither uses ScrollArea nor carries an allow comment. */
+/** Lists each native overflow scroller in a source file with no allow comment, whether or not it imports ScrollArea. */
 export function checkScrollSource(source: string): ScrollGuardViolation[] {
-  if (SHARED_IMPORT.test(source) || isAllowed(source)) return [];
+  if (isAllowed(source)) return [];
   return source.split('\n').flatMap((text, i) =>
     NATIVE_CLASS.test(text) || NATIVE_STYLE.test(text) ? [{ line: i + 1, text: text.trim().slice(0, 100) }] : [],
   );

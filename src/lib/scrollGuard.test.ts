@@ -4,15 +4,26 @@ import { join, relative, resolve } from 'node:path';
 import { SCROLL_GUARD_TAGS, checkScrollSource } from './scrollGuard';
 
 const NATIVE = `export const A = () => <div className="max-h-40 overflow-y-auto">x</div>;\n`;
-const SHARED = `import { ScrollArea } from '@/components/ui/scroll-area';\n` + NATIVE;
+const IMPORT = `import { ScrollArea } from '@/components/ui/scroll-area';\n`;
+const MIXED = IMPORT + NATIVE;
 
 describe('checkScrollSource', () => {
-  it('flags a native scroller in a file with no ScrollArea and no allow comment', () => {
+  it('flags a native scroller in a file with no allow comment', () => {
     expect(checkScrollSource(NATIVE)).toEqual([expect.objectContaining({ line: 1 })]);
   });
 
-  it('passes a file that uses the shared ScrollArea', () => {
-    expect(checkScrollSource(SHARED)).toEqual([]);
+  it('flags a native scroller in a file that imports ScrollArea', () => {
+    expect(checkScrollSource(MIXED)).toEqual([expect.objectContaining({ line: 2 })]);
+  });
+
+  it('passes a file that imports ScrollArea and carries an allow comment', () => {
+    const src = MIXED +`// scroll-guard: allow horizontal: the code block scrolls sideways\n`;
+    expect(checkScrollSource(src)).toEqual([]);
+  });
+
+  it('passes a file that imports ScrollArea and holds no native scroller', () => {
+    const src = IMPORT + `export const A = () => <ScrollArea className="h-40">x</ScrollArea>;\n`;
+    expect(checkScrollSource(src)).toEqual([]);
   });
 
   it('passes a file with an allow comment that names an exception and a reason', () => {
@@ -67,12 +78,12 @@ const sourceFiles = (dir: string): string[] =>
   });
 
 describe('native scrollers in the app source', () => {
-  it('uses ScrollArea or carries a scroll-guard allow comment in every file', () => {
+  it('carries a scroll-guard allow comment in every file with a native scroller', () => {
     const offenders = sourceFiles(SRC).flatMap((file) =>
       checkScrollSource(readFileSync(file, 'utf8')).map(
         (v) => `${relative(SRC, file).replaceAll('\\', '/')}:${v.line} ${v.text}`,
       ),
     );
-    expect(offenders, `Use ScrollArea, or add "// scroll-guard: allow <${SCROLL_GUARD_TAGS.join('|')}>: <reason>"`).toEqual([]);
+    expect(offenders, `Move the scroller to ScrollArea, or add "// scroll-guard: allow <${SCROLL_GUARD_TAGS.join('|')}>: <reason>"`).toEqual([]);
   });
 });
