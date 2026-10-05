@@ -513,7 +513,8 @@ describe('player images', () => {
     const id = (drafted().base as { id: string }).id;
     await waitFor(() => expect(preview()[0]).toMatch(/^blob:/));
     await save();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove image' }));
+    // The slot reads its own object URL after the draft and the preview, and shows Remove only once it has one.
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove image' }));
     expect(drafted().base).toEqual(DEFAULT_MASCOT_RIG.base);
     expect(await getMascotImage(id)).not.toBeNull();
     await save();
@@ -525,7 +526,7 @@ describe('player images', () => {
     await userEvent.upload(fileInput('fq-mascot-base'), png('base.png'));
     await waitFor(() => expect(drafted().base.kind).toBe('stored'));
     const id = (drafted().base as { id: string }).id;
-    await userEvent.click(screen.getByRole('button', { name: 'Remove image' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove image' }));
     expect(control.dirty).toBe(false);
     unmount();
     await waitFor(async () => expect(await getMascotImage(id)).toBeNull());
