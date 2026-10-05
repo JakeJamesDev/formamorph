@@ -61,7 +61,7 @@ export const GENERAL_COPY = {
 export const MASCOT_COPY = {
   title: 'Mascot',
   /** The status line of the off state. The link is the General tab's name, quoted like a control label. */
-  off: { before: 'The Mascot is off. Select “', link: 'General', after: '” to turn it on.' },
+  off: { before: 'The Mascot is off. Enable it in “', link: 'General', after: '” to customize it.' },
   voice: { label: 'Voice', hint: 'Tells your AI how help answers sound while the mascot is on' },
   scale: { label: 'Scale', hint: "Sizes the Mascot beside the chat. Auto fits the chat's height." },
   preview: {

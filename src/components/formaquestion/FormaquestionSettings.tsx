@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Settings } from 'lucide-react';
 import { CheckRow, HintInfo, OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
 import { PromptReasoningField } from '@/components/modals/PromptOptionFields';
@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   HELP_HISTORY_MAX, SCRIM_OPACITY_MAX, SCRIM_OPACITY_MIN, SCRIM_OPACITY_STEP, type HelpSettings, type HelpSettingsChange,
 } from '@/lib/formaquestion/helpSettings';
+import { landingControl, pulseLanding } from '@/lib/landingPulse';
 import { toolsSupported } from '@/lib/reasoningEffort';
 import { EndpointTab } from './FormaquestionEndpointTab';
 import { MascotTab } from './FormaquestionMascotTab';
@@ -90,17 +91,32 @@ function AnswerRevealRow({ settings, onChange }: { settings: HelpSettings; onCha
   );
 }
 
-function GeneralTab({ settings, onChange, semantic, answerTarget }: {
+function GeneralTab({ settings, onChange, semantic, answerTarget, landOnMascot, onLanded }: {
   settings: HelpSettings;
   onChange: (change: HelpSettingsChange) => void;
   semantic: SemanticSearch;
   answerTarget: ReasoningFieldTarget;
+  /** True once, when the Mascot tab's off-state link opened this tab: the Mascot row gets the Landing Pulse. */
+  landOnMascot: boolean;
+  onLanded: () => void;
 }) {
   const placement = useMascotPlacement();
+  const mascotRow = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = mascotRow.current;
+    if (!landOnMascot || !row) return;
+    row.scrollIntoView?.({ block: 'nearest' });
+    // The pulse ends with its own animation; clearing the flag must not cancel it.
+    pulseLanding(row);
+    landingControl(row)?.focus();
+    onLanded();
+  }, [landOnMascot, onLanded]);
   return (
     <div className="grid gap-6 py-4">
       <Section title="Window">
-        <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...GENERAL_COPY.mascot} />
+        <div ref={mascotRow} data-testid="fq-mascot-row">
+          <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...GENERAL_COPY.mascot} />
+        </div>
         <Row label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint}>
           <OptionSwitcher
             ariaLabel={GENERAL_COPY.chatStyle.label}
@@ -195,6 +211,10 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
 }) {
   const mascotDraft = useMascotDraft(settings, onChange);
   const changeTab = (next: FormaquestionSettingsTab) => mascotDraft.guard(() => onTabChange(next));
+  // Set by the Mascot tab's off-state link; the General tab lands on its Mascot row once and clears it.
+  const [landOnMascot, setLandOnMascot] = useState(false);
+  const onLanded = useCallback(() => setLandOnMascot(false), []);
+  const openGeneralAtMascot = () => mascotDraft.guard(() => { onTabChange('general'); setLandOnMascot(true); });
   return (
     <>
       {/* A close drops the draft, so an upload a clean draft no longer holds goes with it. */}
@@ -227,7 +247,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
             </TabsList>
             <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
               <ScrollArea className="min-h-0 flex-1">
-                <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} />
+                <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} landOnMascot={landOnMascot} onLanded={onLanded} />
               </ScrollArea>
             </TabsContent>
             <TabsContent value="endpoint" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
@@ -240,7 +260,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
               <ToolsTab settings={settings} onChange={onChange} toolsSupported={toolsSupported(answerTarget.reasoning)} />
             </TabsContent>
             <TabsContent value="mascot" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-              <MascotTab settings={settings} control={mascotDraft} onOpenGeneral={() => changeTab('general')} />
+              <MascotTab settings={settings} control={mascotDraft} onOpenGeneral={openGeneralAtMascot} />
             </TabsContent>
           </Tabs>
         </DialogContent>
