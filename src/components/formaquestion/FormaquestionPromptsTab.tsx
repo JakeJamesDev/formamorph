@@ -22,6 +22,7 @@ import { toastError } from '@/lib/linkToast';
 import { presetHeaderActions } from '@/lib/presetHeaderActions';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 import { randomUUID } from '@/lib/uuid';
 import { APP_VERSION } from '@/lib/version';
@@ -121,6 +122,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
         label={PROMPTS_COPY.preset.label}
         actions={presetActions}
         testId="help-preset-header-row"
+        target={targetAttribute('formaquestionSettings.prompts', 'preset')}
         select={(
           <Select value={active.id} onValueChange={(value) => (value === ADD_PRESET ? setPending({ kind: 'add' }) : setStore(selectHelpPreset(store, value)))}>
             <SelectTrigger aria-label={PROMPTS_COPY.preset.label} className="min-w-0 flex-1">

@@ -24,6 +24,7 @@ import { buildToolPack, copyTool, parseToolPack, planToolImport } from '@/lib/to
 import { userCanStore } from '@/lib/tools/toolValidation';
 import { blankTool, finishDraft } from '@/lib/tools/toolDraft';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
+import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { sampleToolSnapshot, type ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { toolSummary, type ToolsView } from './toolsView';
 import { ToolEditor } from './ToolEditor';
@@ -160,6 +161,8 @@ interface ToolsTabProps {
   onToggleFullscreen?: () => void;
   /** The Tool Snapshot of the world the player has open. Absent, Try It runs on the sample world. */
   openWorld?: () => ToolSnapshot;
+  /** Marks the New Tool button as a Take Me There target. */
+  newToolTarget?: TargetAttribute;
 }
 
 const TEXT_ENDPOINT_NOTE = "Your text endpoint won't receive Tools. Its model doesn't support them, or support isn't confirmed yet.";
@@ -171,7 +174,7 @@ const TEXT_ENDPOINT_NOTE = "Your text endpoint won't receive Tools. Its model do
  */
 export function ToolsTab({
   catalogTools, fixed, userTools, enabledTools, toolsSupported, unsupportedNote = TEXT_ENDPOINT_NOTE, toolsEnabled, onSaveTool, onDeleteTool,
-  onSetEnabled, view, onViewChange, presetSelector, fullscreen = false, onToggleFullscreen, appVersion, fileTransfer, singleRequest = false, openWorld,
+  onSetEnabled, view, onViewChange, presetSelector, fullscreen = false, onToggleFullscreen, appVersion, fileTransfer, singleRequest = false, openWorld, newToolTarget,
 }: ToolsTabProps & (MyToolsProps | { [K in keyof MyToolsProps]?: undefined })) {
   const [confirmDelete, setConfirmDelete] = useState<Tool | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -350,6 +353,7 @@ export function ToolsTab({
               type="button"
               onClick={() => onViewChange({ ...view, draft: blankTool(randomUUID(), my.singleRequest ? [] : undefined), editTab: 'definition', keptHandlers: {} })}
               className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground"
+              {...newToolTarget}
             >
               <Plus className="h-4 w-4" />New Tool
             </button>

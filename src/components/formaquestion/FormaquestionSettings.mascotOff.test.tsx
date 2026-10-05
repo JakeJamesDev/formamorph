@@ -8,6 +8,7 @@ import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { findTargetRow, routeText } from '@/lib/surface/surfaceTargets';
 import { mascotStoreOf } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
 import { FormaquestionSettings } from './FormaquestionSettings';
@@ -95,8 +96,8 @@ describe('the Mascot tab off state', () => {
     await userEvent.click(within(offStatus()).getByRole('button', { name: 'General' }));
     expect(tab('General')).toHaveAttribute('data-state', 'active');
     // The link lands on the Mascot row: the Landing Pulse ring and focus on the switch, as Take Me There does.
-    const row = within(dialog()).getByTestId('fq-mascot-row');
-    expect(row).toHaveClass(LANDING_PULSE_CLASS);
+    const row = findTargetRow(dialog(), routeText('formaquestionSettings.general', 'mascot-switch'))!;
+    await waitFor(() => expect(row).toHaveClass(LANDING_PULSE_CLASS));
     expect(within(row).getByRole('checkbox', { name: 'Mascot' })).toHaveFocus();
     // The switch is the way back: on again, and the tab's controls work.
     await userEvent.click(within(dialog()).getByRole('checkbox', { name: 'Mascot' }));

@@ -4,6 +4,7 @@ import { EndpointRouteField } from '@/components/modals/EndpointRouteField';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { TextEndpointEditor } from '@/components/modals/TextEndpointEditor';
 import { presetEditor, type PresetEditorView } from '@/components/modals/textEndpointEditorModel';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { helpRoutes } from '@/lib/formaquestion/helpRoutes';
 import { SAME_AS_ANSWER, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { useMountedRef } from '@/lib/useMountedRef';
@@ -81,6 +82,7 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
       <div className="grid flex-shrink-0 gap-4 pt-4 sm:grid-cols-2">
         <EndpointRouteField
           {...ENDPOINT_COPY.answer}
+          row={targetAttribute('formaquestionSettings.endpoint', 'answer-endpoint')}
           info={routeInfo(answerPreset?.name, ENDPOINT_COPY.followsActive)}
           value={answerPreset?.id ?? null}
           activeName={s.activeTextEndpointPresetName}

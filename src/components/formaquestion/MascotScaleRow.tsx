@@ -1,4 +1,5 @@
 import { Slider } from '@/components/ui/slider';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale } from '@/lib/formaquestion/windowBox';
 import { MASCOT_COPY } from './formaquestionSettingsTabs';
 import { setMascotScale, useMascotScale } from './useMascotDevice';
@@ -16,7 +17,7 @@ const labelOf = (scale: MascotScale): string => (scale === 'auto' ? 'Auto' : `${
 export function MascotScaleRow() {
   const scale = useMascotScale();
   return (
-    <WidgetRow id="fq-mascot-scale" copy={MASCOT_COPY.scale}>
+    <WidgetRow id="fq-mascot-scale" copy={MASCOT_COPY.scale} target={targetAttribute('formaquestionSettings.mascot', 'scale')}>
       <div className="flex items-center gap-3">
         <Slider
           id="fq-mascot-scale"

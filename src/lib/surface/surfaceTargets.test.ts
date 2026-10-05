@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { SURFACE_IDS } from '@/lib/docs/surfaceMap';
 import { resolveSurface } from './surfaceRoute';
-import { isSurfaceTarget, SURFACE_TARGETS, targetAttribute } from './surfaceTargets';
+import { findTargetRow, isSurfaceTarget, SURFACE_TARGETS, targetAttribute } from './surfaceTargets';
 
 describe('SURFACE_TARGETS', () => {
   it('keys every entry by a surface id', () => {
@@ -30,6 +31,27 @@ describe('isSurfaceTarget', () => {
     expect(isSurfaceTarget('settings.output', 'narration-layout')).toBe(false);
     expect(isSurfaceTarget('settings.output', 'thinking-mode')).toBe(true);
     expect(isSurfaceTarget('nowhere', 'narration-layout')).toBe(false);
+  });
+});
+
+describe('findTargetRow', () => {
+  const page = (html: string) => {
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    return root;
+  };
+
+  it('finds the row a route names, and nothing for another route', () => {
+    const root = page('<div id="a" data-surface-target="settings.display#quote-color"></div>');
+    expect(findTargetRow(root, 'settings.display#quote-color')?.id).toBe('a');
+    expect(findTargetRow(root, 'settings.display#narration-font')).toBeNull();
+  });
+
+  it('prefers the twin on screen over a hidden one', () => {
+    const root = page('<div id="hidden" data-surface-target="r"></div><div id="shown" data-surface-target="r"></div>');
+    const shown = root.querySelector<HTMLElement>('#shown')!;
+    shown.getClientRects = () => [new DOMRect(0, 0, 40, 20)] as unknown as DOMRectList;
+    expect(findTargetRow(root, 'r')).toBe(shown);
   });
 });
 

@@ -7,6 +7,7 @@ import { callLimitOf, HELP_CALL_LIMIT_MAX, type HelpSettings, type HelpSettingsC
 import { deleteHelpTool, dropHelpToolSwitch, saveHelpTool } from '@/lib/formaquestion/helpTools';
 import { useHelpWorld } from '@/lib/formaquestion/helpWorld';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { APP_VERSION } from '@/lib/version';
 import { TOOLS_COPY } from './formaquestionSettingsTabs';
 
@@ -68,6 +69,7 @@ export function ToolsTab({ settings, onChange, toolsSupported }: {
         onDeleteTool={(id) => onChange({ tools: deleteHelpTool(settings.tools, id), toolSwitches: dropHelpToolSwitch(settings.toolSwitches, id) })}
         appVersion={APP_VERSION}
         singleRequest
+        newToolTarget={targetAttribute('formaquestionSettings.tools', 'new-tool')}
         enabledTools={{ ...settings.toolSwitches, ...Object.fromEntries(FIXED_ROWS.map((row) => [row.fn.id, settings[row.switchKey]])) }}
         toolsSupported={toolsSupported}
         unsupportedNote={TOOLS_COPY.unsupported}
