@@ -82,20 +82,28 @@ describe('the default rig', () => {
     expect(names(composeMascot(DEFAULT_MASCOT_RIG, 'initial', null))).toEqual(['base', 'arms-wave', 'arms-no-thinking']);
     expect(names(composeMascot(DEFAULT_MASCOT_RIG, 'answering', null))).toEqual(['base', 'arms-no-wave', 'arms-no-thinking']);
     expect(names(composeMascot(DEFAULT_MASCOT_RIG, 'thinking', null)))
-      .toEqual(['base', 'mouth-open', 'arms-no-wave', 'arms-thinking', 'eyes-looking-up']);
+      .toEqual(['base', 'arms-no-wave', 'arms-thinking', 'eyes-looking-up', 'mouth-small-o']);
   });
 
-  it('lists its three states, then twelve whole faces with word names', () => {
+  it('starts on the wave, rests when idle, and ponders while thinking', () => {
+    expect(DEFAULT_MASCOT_RIG.picks).toEqual({
+      initial: { expression: null, state: 'wave' },
+      idle: { expression: null, state: 'rest' },
+      thinking: { expression: 'pondering', state: 'thinking' },
+    });
+  });
+
+  it('lists its three states, then eleven whole faces with word names', () => {
     expect(DEFAULT_MASCOT_RIG.layers.map((layer) => `${layer.kind}:${layer.name}`)).toEqual([
       'state:Wave', 'state:Rest', 'state:Thinking',
-      ...['Happy', 'Excited', 'Surprised', 'Pondering', 'Confused', 'Sad', 'Sleepy', 'Smitten', 'Dizzy', 'Wink', 'Flustered', 'Unimpressed']
+      ...['Happy', 'Blushing', 'Surprised', 'Pondering', 'Confused', 'Crying', 'Smitten', 'Dizzy', 'Wink', 'Slighted', 'Unimpressed']
         .map((name) => `expression:${name}`),
     ]);
   });
 
   it("draws a face's mouth under its eyes, and its eyebrows on top", () => {
-    expect(names(composeMascot(DEFAULT_MASCOT_RIG, 'answering', 'surprised')))
-      .toEqual(['base', 'arms-no-wave', 'arms-no-thinking', 'mouth-open', 'eyes-shocked', 'eyebrows-raised']);
+    expect(names(composeMascot(DEFAULT_MASCOT_RIG, 'answering', 'unimpressed')))
+      .toEqual(['base', 'arms-no-wave', 'arms-no-thinking', 'mouth-frown', 'eyes-lidded', 'eyebrows-raised']);
   });
 
   it('has no pick warnings and reads back as itself', () => {

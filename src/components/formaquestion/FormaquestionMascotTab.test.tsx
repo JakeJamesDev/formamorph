@@ -180,8 +180,8 @@ describe('the layer list', () => {
 
   it('removes a layer', async () => {
     mount();
-    await userEvent.click(within(layerRow('Sad')).getByRole('button', { name: 'Remove layer' }));
-    expect(layerNames()).not.toContain('Sad');
+    await userEvent.click(within(layerRow('Crying')).getByRole('button', { name: 'Remove layer' }));
+    expect(layerNames()).not.toContain('Crying');
     expect(drafted().layers.map((row) => row.id)).not.toContain('sad');
   });
 
@@ -518,7 +518,7 @@ describe('player images', () => {
     await userEvent.click(within(layerRow('Happy')).getByRole('button', { name: 'Remove layer' }));
     await save();
     expect(await getMascotImage(id)).not.toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Expand Sad' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Expand Crying' }));
     await userEvent.click(screen.getByRole('button', { name: 'Remove overlay' }));
     expect(await getMascotImage(id)).not.toBeNull();
     await save();
@@ -1032,7 +1032,7 @@ describe('the mascot card', () => {
 
   it('asks before an import drops a dirty draft, and imports after Exit Without Saving', async () => {
     mount();
-    await userEvent.click(within(layerRow('Sad')).getByRole('button', { name: 'Remove layer' }));
+    await userEvent.click(within(layerRow('Crying')).getByRole('button', { name: 'Remove layer' }));
     await upload(cardFile(cardRig));
     const prompt = await screen.findByRole('alertdialog');
     expect(names()).toEqual(['Mine']);
@@ -1144,7 +1144,7 @@ describe('full screen', () => {
   it('saves from inside the window, and keeps the draft across the trip', async () => {
     mount();
     await enter();
-    await userEvent.click(within(mascotWindow()).getByRole('checkbox', { name: 'Enable Sad' }));
+    await userEvent.click(within(mascotWindow()).getByRole('checkbox', { name: 'Enable Crying' }));
     await userEvent.click(within(mascotWindow()).getByRole('button', { name: 'Exit full screen' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mascot' })).toBeNull());
     expect(control.dirty).toBe(true);
@@ -1195,7 +1195,7 @@ describe('full screen', () => {
     mount();
     await enter();
     const box = within(mascotWindow());
-    await userEvent.click(within(box.getByRole('button', { name: 'Expand Sad' }).closest<HTMLElement>('[data-mascot-layer]')!).getByRole('button', { name: 'Remove layer' }));
+    await userEvent.click(within(box.getByRole('button', { name: 'Expand Crying' }).closest<HTMLElement>('[data-mascot-layer]')!).getByRole('button', { name: 'Remove layer' }));
     expect(drafted().layers.map((layer) => layer.id)).not.toContain('sad');
     fireEvent.keyDown(box.getByRole('textbox', { name: 'Voice' }), { key: 'z', ctrlKey: true });
     expect(drafted().layers.map((layer) => layer.id)).toContain('sad');
@@ -1309,7 +1309,7 @@ describe('the preset row', () => {
 
   it('asks before a switch drops a dirty draft: Cancel stays, Save & Exit saves and switches', async () => {
     mount();
-    await userEvent.click(within(layerRow('Sad')).getByRole('button', { name: 'Remove layer' }));
+    await userEvent.click(within(layerRow('Crying')).getByRole('button', { name: 'Remove layer' }));
     await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
     await selectMascot('Default');
     const prompt = await screen.findByRole('alertdialog');
@@ -1342,7 +1342,7 @@ describe('undo and redo', () => {
     mount();
     expect(undoButton()).toBeDisabled();
     expect(redoButton()).toBeDisabled();
-    await removeLayer('Sad');
+    await removeLayer('Crying');
     expect(undoButton()).toBeEnabled();
     await userEvent.click(undoButton());
     expect(drafted()).toEqual(DEFAULT_MASCOT_RIG);
@@ -1397,7 +1397,7 @@ describe('undo and redo', () => {
     await userEvent.click(redoButton());
     await userEvent.click(undoButton());
     // Cancel is disabled on a clean draft, so edit once more, then cancel everything.
-    await removeLayer('Sad');
+    await removeLayer('Crying');
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(async () => expect(await getMascotImage(id)).toBeNull());
   });
@@ -1483,7 +1483,7 @@ describe('undo and redo', () => {
 
   it('drops the redo steps when a change follows an Undo', async () => {
     mount();
-    await removeLayer('Sad');
+    await removeLayer('Crying');
     await userEvent.click(undoButton());
     expect(redoButton()).toBeEnabled();
     await removeLayer('Happy');
@@ -1492,7 +1492,7 @@ describe('undo and redo', () => {
 
   it('clears the history at Save and at Cancel', async () => {
     mount();
-    await removeLayer('Sad');
+    await removeLayer('Crying');
     await save();
     expect(undoButton()).toBeDisabled();
     expect(redoButton()).toBeDisabled();
@@ -1506,7 +1506,7 @@ describe('undo and redo', () => {
 
   it('clears the history on a switch to another mascot', async () => {
     mount();
-    await removeLayer('Sad');
+    await removeLayer('Crying');
     await userEvent.click(screen.getByRole('button', { name: 'Duplicate' }));
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save & Exit' }));
     expect(undoButton()).toBeDisabled();
@@ -1518,7 +1518,7 @@ describe('undo and redo', () => {
 
     it('undo with Ctrl+Z and redo with Ctrl+Shift+Z or Ctrl+Y from a control in the tab', async () => {
       mount();
-      await removeLayer('Sad');
+      await removeLayer('Crying');
       const voice = screen.getByRole('textbox', { name: 'Voice' });
       voice.focus();
       ctrlZ(voice);
@@ -1532,14 +1532,14 @@ describe('undo and redo', () => {
 
     it('leave a key from outside the tab alone', async () => {
       mount();
-      await removeLayer('Sad');
+      await removeLayer('Crying');
       ctrlZ(document.body);
       expect(layerIds()).not.toContain('sad');
     });
 
     it('leave a key from a dialog the tab opened alone', async () => {
       mount();
-      await removeLayer('Sad');
+      await removeLayer('Crying');
       await userEvent.click(screen.getByRole('button', { name: 'Rename' }));
       ctrlZ(await screen.findByPlaceholderText('Preset name'));
       expect(layerIds()).not.toContain('sad');
