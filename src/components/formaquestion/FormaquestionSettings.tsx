@@ -246,7 +246,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
               {FORMAQUESTION_SETTINGS_TABS.map((entry) => <TabsTrigger key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
             </TabsList>
             <TabsContent value="general" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-              <ScrollArea className="min-h-0 flex-1">
+              <ScrollArea landingRoom className="min-h-0 flex-1">
                 <GeneralTab settings={settings} onChange={onChange} semantic={semantic} answerTarget={answerTarget} landOnMascot={landOnMascot} onLanded={onLanded} />
               </ScrollArea>
             </TabsContent>
