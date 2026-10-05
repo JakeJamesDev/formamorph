@@ -133,6 +133,34 @@ describe('the Prompts tab on the Default preset', () => {
   });
 });
 
+describe('the Code rider in the Prompts tab', () => {
+  const rail = () => screen.getByRole('navigation', { name: 'Prompts' });
+
+  it('sits in the rail after Lookup with no Options row, and shows the Default rider read-only', async () => {
+    renderTab();
+    const rows = within(rail()).getAllByRole('button').map((row) => row.getAttribute('aria-label') ?? row.textContent);
+    expect(rows).toEqual(['Answer', 'Answer Options', 'Search', 'Search Options', 'Lookup', 'Lookup Options', 'Code']);
+    await userEvent.setup().click(within(rail()).getByRole('button', { name: 'Code' }));
+    expect(editor('Code Prompt')).toHaveAttribute('contenteditable', 'false');
+    expect(editor('Code Prompt')).toHaveTextContent('Before the AI');
+    expect(screen.getByText(PROMPTS_COPY.prompts.code.hint)).toBeInTheDocument();
+  });
+
+  it('stores a typed edit on a custom preset, and its own Reset returns the default rider', async () => {
+    renderTab({ presets: editHelpPrompt(withMine(), 'mine', 'answer', 'Be brief.') });
+    const user = userEvent.setup();
+    await user.click(within(rail()).getByRole('button', { name: 'Code' }));
+    expect(resetButton('Code')).toBeDisabled();
+    await user.click(editor('Code Prompt'));
+    await user.keyboard('Use one block. ');
+    await waitFor(() => expect(texts().code).toBe(`Use one block. ${DEFAULT_HELP_PROMPTS.code}`));
+    await user.click(resetButton('Code'));
+    await user.click(await screen.findByRole('button', { name: 'Confirm' }));
+    await waitFor(() => expect(texts().code).toBe(DEFAULT_HELP_PROMPTS.code));
+    expect(texts().answer).toBe('Be brief.');
+  });
+});
+
 describe('the Prompts tab on a custom preset', () => {
   it('stores a typed edit, enables Reset, and Reset returns the default text after a confirm', async () => {
     renderTab({ presets: withMine() });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_CODE_RIDER } from './helpCodeRider';
 import { DEFAULT_HELP_PROMPTS } from './helpPrompt';
 import {
   activeHelpOptions, activeHelpPreset, activeHelpPrompts, DEFAULT_HELP_OPTIONS, DEFAULT_HELP_PRESET_ID, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, EMPTY_HELP_PRESET_STORE,
@@ -70,8 +71,17 @@ describe('the help preset store', () => {
     expect(isHelpPromptEdited(activeHelpPrompts(reset), 'lookup')).toBe(false);
   });
 
-  it('resets all three prompts and their options of a custom preset, and leaves the others', () => {
+  it('edits and resets the Code rider on its own, and the Default rider follows the code of this build', () => {
+    expect(activeHelpPrompts(EMPTY_HELP_PRESET_STORE).code).toBe(DEFAULT_CODE_RIDER);
+    const edited = editHelpPrompt(custom(EMPTY_HELP_PRESET_STORE), 'mine', 'code', 'One block per box.');
+    expect(activeHelpPrompts(edited)).toEqual({ ...DEFAULT_HELP_PROMPTS, code: 'One block per box.' });
+    expect(isHelpPromptEdited(activeHelpPrompts(edited), 'code')).toBe(true);
+    expect(activeHelpPrompts(resetHelpPrompt(edited, 'mine', 'code')).code).toBe(DEFAULT_CODE_RIDER);
+  });
+
+  it('resets every text and the options of a custom preset, and leaves the others', () => {
     let edited = editHelpPrompt(custom(EMPTY_HELP_PRESET_STORE), 'mine', 'answer', 'Answer briefly.');
+    edited = editHelpPrompt(edited, 'mine', 'code', 'One block per box.');
     edited = editHelpPrompt(edited, 'mine', 'pick', 'Pick well.');
     edited = editHelpOptions(edited, 'mine', 'lookup', { temperature: 1.1, maxTokens: 300 });
     const other = editHelpPrompt(duplicateHelpPreset(edited, 'mine', 'other', 'Other'), 'other', 'answer', 'Other text.');
@@ -116,7 +126,7 @@ describe('the stored help preset store', () => {
   });
 
   it('reads each bad or missing option as the value of the Default block and keeps the good ones', () => {
-    const preset = (options: unknown) => ({ id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c' }, options });
+    const preset = (options: unknown) => ({ id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c', code: 'd' }, options });
     const read = (options: unknown) => activeHelpOptions(parseHelpPresetStore({ activeId: 'ok', presets: [preset(options)] }));
     expect(read(undefined)).toEqual(DEFAULT_HELP_OPTIONS);
     expect(read({ pick: { temperature: 3, repetitionPenalty: '1.2', maxTokens: -1 } })).toEqual(DEFAULT_HELP_OPTIONS);
@@ -130,9 +140,16 @@ describe('the stored help preset store', () => {
     expect(parseHelpPresetStore('presets')).toEqual(EMPTY_HELP_PRESET_STORE);
     expect(parseHelpPresetStore(null)).toEqual(EMPTY_HELP_PRESET_STORE);
     expect(parseHelpPresetStore({ activeId: 'x', presets: 'none' })).toEqual(EMPTY_HELP_PRESET_STORE);
-    const good = { id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c' }, options: DEFAULT_HELP_OPTIONS };
+    const good = { id: 'ok', name: 'Ok', prompts: { answer: 'a', pick: 'b', lookup: 'c', code: 'd' }, options: DEFAULT_HELP_OPTIONS };
     const read = parseHelpPresetStore({ activeId: 'gone', presets: [good, { id: 'bad', name: 'Bad', prompts: { answer: 1 } }, { id: 'ok', name: 'Twin', prompts: good.prompts }, 'junk'] });
     expect(read).toEqual({ activeId: DEFAULT_HELP_PRESET_ID, presets: [good] });
     expect(parseHelpPresetStore({ activeId: 'ok', presets: [good] }).activeId).toBe('ok');
+  });
+
+  it('keeps a stored Code rider, and drops a preset whose rider is missing or not text, as for the other texts', () => {
+    const read = (prompts: Record<string, unknown>) => parseHelpPresetStore({ activeId: 'ok', presets: [{ id: 'ok', name: 'Ok', prompts }] }).presets;
+    expect(read({ answer: 'a', pick: 'b', lookup: 'c', code: 'Mine.' })[0]?.prompts.code).toBe('Mine.');
+    expect(read({ answer: 'a', pick: 'b', lookup: 'c' })).toEqual([]);
+    expect(read({ answer: 'a', pick: 'b', lookup: 'c', code: 7 })).toEqual([]);
   });
 });

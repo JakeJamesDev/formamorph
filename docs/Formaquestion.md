@@ -231,7 +231,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
 2. Select the **Prompts** tab.
 3. Select **Duplicate & Edit**, or **Add New Preset…** in the preset list.
-4. Select **Answer**, **Search** or **Lookup**, and edit the text. Keep the chips that the app reads back.
+4. Select **Answer**, **Search**, **Lookup** or **Code**, and edit the text. Keep the chips that the app reads back.
 5. Close the dialog and ask a question. The next request uses your text.
 
 **Default** is read-only, so your copy is the one you edit. Select **Compare** to see what a new release changed, or **Reset** to start again. Select **Preview** above a prompt to read it as your AI gets it. See [Prompts](#prompts).
@@ -245,7 +245,7 @@ If the download fails, the checkbox clears and **Retry** shows. Until the model 
 3. Select **Options** under **Answer**, **Search** or **Lookup**.
 4. Check **Max Output**, **Custom Temperature** or **Custom Repetition Penalty**, then set a value.
 
-Each prompt has its own options for its own request. Clear a box to return that field to the value of **Default**. The preset file carries the options. See [Prompts](#prompts).
+Each prompt has its own options for its own request. **Code** has none: it goes out with the answer request. Clear a box to return that field to the value of **Default**. The preset file carries the options. See [Prompts](#prompts).
 
 ## How to Add a Tool to Formaquestion
 <!-- keywords: custom tool, own tool, new function, chat assistant, world lookup, create a tool, tool for help, function call, my tools, script tool, give the ai a function, extend the assistant -->
@@ -444,7 +444,7 @@ The two settings share one row. Under them is the same preset editor as **Settin
 - A change to a preset applies everywhere that preset is used, the game included.
 
 ### Prompts
-<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, search prompt, lookup prompt, read-only, export preset, import preset, preset file, move preset, another device -->
+<!-- keywords: help prompt, compare to default, edit prompt, custom prompt, prompt preset, duplicate preset, rename preset, delete preset, reset prompt, chips, answer prompt, search prompt, lookup prompt, code prompt, code rider, stat code answers, read-only, export preset, import preset, preset file, move preset, another device -->
 <!-- route: formaquestionSettings.prompts -->
 
 The **Prompts** tab holds the help prompts: the text that tells your AI how to answer. The prompts are in a preset, apart from the prompt presets of your game. A change to the game's preset never changes help.
@@ -454,10 +454,11 @@ The **Prompts** tab holds the help prompts: the text that tells your AI how to a
 | **Answer** | Tells your AI how to answer from the guide sections in the request |
 | **Search** | Tells your AI how to choose guide sections from the list of headings, for the **AI Search** request |
 | **Lookup** | Tells your AI how to answer when it can read more sections through the lookup function |
+| **Code** | Tells your AI how to write stat code. It goes after a question about code, and after any question from a stat's **Code** tab while **Use the Open Screen** is on |
 
 - **Default** is read-only. Its text comes from the app, so each release updates it.
 - **Duplicate & Edit** in the notice above a Default prompt makes a copy of the preset and opens it for edits. The **Duplicate** button beside the preset list does the same. **Add New Preset…** in the list asks for a name first.
-- A custom preset has **Rename**, **Reset** and **Delete** beside the list. On a narrow screen, they are in the **Preset Actions** menu. **Reset** returns all three prompts and their options to the text of this release, after it asks. When you delete the preset in use, help goes back to **Default**.
+- A custom preset has **Rename**, **Reset** and **Delete** beside the list. On a narrow screen, they are in the **Preset Actions** menu. **Reset** returns every prompt and its options to the text of this release, after it asks. When you delete the preset in use, help goes back to **Default**.
 - **Reset** at the bottom right of a custom prompt returns that one prompt to the text of this release, after it asks. A custom preset does not get the updates of a release on its own.
 - **Compare**, beside **Reset**, opens a diff of your text against the text of this release. Text you added is tinted. Text you removed is struck through. **Raw** shows your text as it is. The button is off for a prompt that equals the default.
 - This device keeps the presets, with the other Formaquestion settings.

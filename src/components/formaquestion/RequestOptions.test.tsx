@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   activeHelpOptions, DEFAULT_HELP_OPTIONS, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, EMPTY_HELP_PRESET_STORE, type HelpRequestOptions,
 } from '@/lib/formaquestion/helpPresets';
-import type { HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
+import type { HelpRequestKey } from '@/lib/formaquestion/helpPrompt';
 import { helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { PromptsTab } from './FormaquestionPromptsTab';
 import { PROMPTS_COPY } from './formaquestionSettingsTabs';
@@ -19,20 +19,20 @@ function Harness({ initial }: { initial: HelpSettings }) {
 }
 
 /** A store with one custom preset, "Mine", active, with `options` in the block of `key`. */
-const mine = (key: HelpPromptKey = 'answer', options: Partial<HelpRequestOptions> = {}) =>
+const mine = (key: HelpRequestKey = 'answer', options: Partial<HelpRequestOptions> = {}) =>
   helpSettingsOf({ presets: editHelpOptions(duplicateHelpPreset(EMPTY_HELP_PRESET_STORE, DEFAULT_HELP_PRESET_ID, 'mine', 'Mine'), 'mine', key, options) });
 
-const KEYS: HelpPromptKey[] = ['answer', 'pick', 'lookup'];
-const labelOf = (key: HelpPromptKey) => PROMPTS_COPY.prompts[key].label;
-const optionsName = (key: HelpPromptKey) => `${labelOf(key)} ${PROMPTS_COPY.options.title}`;
+const KEYS: HelpRequestKey[] = ['answer', 'pick', 'lookup'];
+const labelOf = (key: HelpRequestKey) => PROMPTS_COPY.prompts[key].label;
+const optionsName = (key: HelpRequestKey) => `${labelOf(key)} ${PROMPTS_COPY.options.title}`;
 
 const rail = () => within(screen.getByRole('navigation', { name: 'Prompts' }));
-const panel = (key: HelpPromptKey) => screen.getByRole('region', { name: optionsName(key) });
-const box = (key: HelpPromptKey, name: string) => within(panel(key)).getByRole('checkbox', { name });
-const slider = (key: HelpPromptKey, name: string) => within(panel(key)).getByRole('slider', { name });
+const panel = (key: HelpRequestKey) => screen.getByRole('region', { name: optionsName(key) });
+const box = (key: HelpRequestKey, name: string) => within(panel(key)).getByRole('checkbox', { name });
+const slider = (key: HelpRequestKey, name: string) => within(panel(key)).getByRole('slider', { name });
 
 /** Renders the tab and opens the Options row under the prompt `key`. */
-async function renderOptions(initial: HelpSettings, key: HelpPromptKey) {
+async function renderOptions(initial: HelpSettings, key: HelpRequestKey) {
   render(<Harness initial={initial} />);
   const user = userEvent.setup();
   await user.click(rail().getByRole('button', { name: optionsName(key) }));

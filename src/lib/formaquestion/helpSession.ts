@@ -18,6 +18,7 @@ import type { ImageAttachment, RequestMessage } from '@/types';
 import { createDocsLookup, DOCS_LOOKUP } from './docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER, isGeneralKnowledge, readMarker } from './generalKnowledge';
 import { helpChipValues, renderHelpPrompt } from './helpChips';
+import { isCodeTurn, withCodeRider } from './helpCodeRider';
 import { createFaceCall } from './helpFace';
 import { requestPicks } from './helpPicks';
 import { HELP_ROLL } from './helpRoll';
@@ -384,11 +385,14 @@ export async function* askHelp({
   const lookup = lookupMode
     ? createDocsLookup(index, { budget: HELP_LOOKUP_CHAR_BUDGET, searchLimit: HELP_SECTION_LIMIT, held: inPrompt })
     : null;
-  const userMessage = bare
-    ? question
-    : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
   // The active preset's text, with each chip rendered. A prompt with no chip sends none of that chip's text.
   const prompts = activeHelpPrompts(settings.presets);
+  // The Code tab counts only while the open screen does.
+  const codeTurn = isCodeTurn(question, settings.openScreen ? surface : null);
+  const turnMessage = bare
+    ? question
+    : lookup ? helpLookupUserMessage(question, inPrompt, hint?.where) : helpUserMessage(question, inPrompt, hint?.where);
+  const userMessage = codeTurn ? withCodeRider(turnMessage, prompts.code) : turnMessage;
   const options = activeHelpOptions(settings.presets)[lookup ? 'lookup' : 'answer'];
   // The fixed functions first, then the player's Tools. The lookup and the face call keep their own executors;
   // the roll and the Tools run on the one world snapshot of the question, which the roll does not read.
@@ -416,7 +420,7 @@ export async function* askHelp({
   });
   // The trace so far. Each yield builds it anew, so a viewer that keeps an earlier one sees no later change.
   const rounds: AiToolRound[] = [];
-  const customAnswer = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer');
+  const customPrompt = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer') || (codeTurn && isHelpPromptEdited(prompts, 'code'));
   const traceOf = (result?: AiStreamResult): HelpTrace => ({
     surface: surface ? surfaceWords(surface) : null,
     openScreen: settings.openScreen,
@@ -424,7 +428,7 @@ export async function* askHelp({
     preset: activeHelpPreset(settings.presets).name,
     search: record && searchTraceOf(record, inPrompt),
     sent: inPrompt.map(traceSection),
-    requests: [...(record?.pick ? [record.pick] : []), requestTrace('Answer', spec, customAnswer, result, rounds)],
+    requests: [...(record?.pick ? [record.pick] : []), requestTrace('Answer', spec, customPrompt, result, rounds)],
   });
   yield { type: 'trace', trace: traceOf() };
   yield { type: 'stage', stage: 'waiting' };
