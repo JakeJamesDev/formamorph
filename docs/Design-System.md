@@ -1213,9 +1213,9 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 
 ## Pattern: Landing Pulse
 
-**Purpose:** Point the eye at one row after a **Take Me There** landing. The ring runs once and stops.
+**Purpose:** Point the eye at one row after a **Take Me There** landing, or after a link that jumps to a setting, such as the Mascot tab's off-state link to **General**. The ring runs once and stops.
 
-> ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production has no landing that uses it yet.
+> ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production: the Mascot tab's off-state link lands on the Mascot row of Formaquestion Settings → General.
 
 **Density:** None of its own. The ring draws outside the row's box and changes no layout.
 

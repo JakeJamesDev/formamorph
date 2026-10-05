@@ -376,7 +376,7 @@ describe('the controls column', () => {
 });
 
 describe('the Mascot off state', () => {
-  const OFF_LINE = 'The Mascot is off. Select “General” to turn it on.';
+  const OFF_LINE = 'The Mascot is off. Enable it in “General” to customize it.';
   const status = () => screen.getByTestId('mascot-off-status');
   const widget = () => document.querySelector<HTMLElement>('[data-fq-mascot-preview]')!;
   /** Every control the tab draws, the status line's link aside. */

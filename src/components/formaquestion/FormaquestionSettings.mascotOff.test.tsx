@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
+import { LANDING_PULSE_CLASS } from '@/lib/landingPulse';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { mascotStoreOf } from '@/test/helpFixtures';
 import { renderReporting } from '@/test/surfaceReporter';
@@ -14,7 +15,7 @@ import type { FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import type { SemanticSearch } from './useSemanticSearch';
 
 const SEMANTIC: SemanticSearch = { on: false, downloading: false, progress: null, error: null, setOn: () => {} };
-const OFF_LINE = 'The Mascot is off. Select “General” to turn it on.';
+const OFF_LINE = 'The Mascot is off. Enable it in “General” to customize it.';
 
 let current: HelpSettings;
 /** Changes settings from outside the dialog, the way another window or the dev router would. */
@@ -93,6 +94,10 @@ describe('the Mascot tab off state', () => {
 
     await userEvent.click(within(offStatus()).getByRole('button', { name: 'General' }));
     expect(tab('General')).toHaveAttribute('data-state', 'active');
+    // The link lands on the Mascot row: the Landing Pulse ring and focus on the switch, as Take Me There does.
+    const row = within(dialog()).getByTestId('fq-mascot-row');
+    expect(row).toHaveClass(LANDING_PULSE_CLASS);
+    expect(within(row).getByRole('checkbox', { name: 'Mascot' })).toHaveFocus();
     // The switch is the way back: on again, and the tab's controls work.
     await userEvent.click(within(dialog()).getByRole('checkbox', { name: 'Mascot' }));
     await openMascotTab();
