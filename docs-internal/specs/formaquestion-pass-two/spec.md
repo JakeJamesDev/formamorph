@@ -27,11 +27,11 @@ The minimal chrome is tied to the Mascot switch: no way to pin it on or off. Its
 
 **Scroll arrow.** Both chats show a small down-arrow button when the end is more than half a viewport away. A click scrolls to the end and resumes following.
 
-**Endpoint tab.** Answer and Pick share one row. The editor below loses its select: it always edits the preset Answer resolves to, under a heading that names it. Add copies that preset and moves Answer to the copy.
+**Endpoint tab.** Answer and Search share one row. The editor below loses its select: it always edits the preset Answer resolves to, under a heading that names it. Add copies that preset and moves Answer to the copy.
 
-**Prompts tab.** Every prompt gets the Edit | Preview tabs. Pick and Lookup gain their own Options (temperature, penalty, Max Output), with defaults equal to today's pins.
+**Prompts tab.** Every prompt gets the Edit | Preview tabs. Search (formerly Pick, Q49) and Lookup gain their own Options (temperature, penalty, Max Output), with defaults equal to today's pins.
 
-**Lookup Mode.** On by default. The capability gate already skips it where the endpoint refuses functions. The help copy states when it runs and what it costs.
+**Lookup Mode.** Off by default, as before this effort: the flip to on (Q6) was measured in ticket 13 and reversed (Q52). The capability gate skips it where the endpoint refuses functions. The help copy states when it runs and what it costs.
 
 Mascot ticket 14 (extract the tuned defaults) stays held until the tab redesign lands, so the user tunes once on the new tab.
 
@@ -168,13 +168,13 @@ Settled with the user on 2026-10-04 (Q1–Q24 of the grill; Q7, Q18–Q20, Q23, 
 ### Help settings
 
 - The help settings value gains `chatStyle: 'auto' | 'minimal' | 'full'`, default `auto`. The chrome rule is one pure function of the style and the mascot switch: Auto is minimal while the Mascot is on; Minimal and Full pin. Full with the Mascot on renders the mascot piece beside the full frame (Q9). Minimal with the Mascot off renders the column alone.
-- The Lookup switch defaults to on (Q6). The gate (`settings.lookup && takesFunctions`) is unchanged; the cloud endpoint refuses functions, so its requests are byte-equal to today's.
+- The Lookup switch defaults to off (Q52, after the Q6 flip and ticket 13's probe). The gate (`settings.lookup && takesFunctions`) is unchanged; the cloud endpoint refuses functions, so its requests are byte-equal to today's. ADR 0009 carries the dated amendment.
 - The General tab gains a Chat Style row; the ⋮ menu lists the same three choices with the current one marked (Q10). Both write the one field.
-- The readability treatment is the Scrim (Q29): a help settings field `scrimOpacity`, 0–100 in steps of 5, default 60, beside Chat Style. The window draws a rounded panel of the app background at that opacity behind the whole minimal column, inset 0.75rem beyond it, whenever the minimal chrome renders. 0 draws nothing.
+- The readability treatment is the Scrim (Q29), labeled **Backdrop** to the player (Q48): a help settings field `scrimOpacity`, 0–100 in steps of 5, default 60, beside Chat Style. The window draws a rounded panel of the app background at that opacity behind the whole minimal column, inset 0.75rem beyond it, whenever the minimal chrome renders. 0 draws nothing.
 
 ### Help presets and the preset file
 
-- A help preset's options become one block per prompt: Answer, Pick and Lookup each hold temperature, repetition penalty and Max Output. The Default preset's Pick and Lookup options follow the code and equal today's pinned values for those requests. A custom preset stores all three (Q5).
+- A help preset's options become one block per prompt: Answer, Search (Pick in code until renamed, Q49) and Lookup each hold temperature, repetition penalty and Max Output. The Default preset's Search and Lookup options follow the code and equal today's pinned values for those requests. A custom preset stores all three (Q5).
 - The preset file carries the three blocks at version 1; the file has never shipped, so no earlier form is read (Q33). **Export-shape change: remind the user in the response.**
 - The help session reads each request's options from its own block. The per-field Custom checkboxes restore the Default's values; no block-level Compare or Reset (Q34).
 
@@ -240,7 +240,7 @@ A good test calls a module through its public operations and asserts on what a p
 Seams:
 
 - **Window layout module (existing, pure).** The side rule: a column near the right edge puts the mascot left; near the left edge, right; a tie keeps the side; the reader takes the other side. Scale: Auto equals the column height; a percent equals that share of the base's pixel height; both clamp to the screen. The stored box: a size per style, one position, the old shape reads into both. The scroll-arrow rule at the threshold and both sides of it. Prior art: the window box tests.
-- **Help settings codec and preset file (existing).** `chatStyle` and the readability setting round-trip; a missing value reads as the default; Lookup defaults on. The preset file: three option blocks round-trip; an older file imports with the Default's Pick and Lookup values; a bad block is named. Prior art: the help settings tests, the preset file tests.
+- **Help settings codec and preset file (existing).** `chatStyle` and the readability setting round-trip; a missing value reads as the default; Lookup defaults off (Q52). The preset file: three option blocks round-trip; an older file imports with the Default's Pick and Lookup values; a bad block is named. Prior art: the help settings tests, the preset file tests.
 - **Help session (existing, fake fetch).** The pick request carries the preset's Pick options; the lookup request carries the Lookup options; the Default preset sends today's values byte-equal. Lookup on by default offers the function on a function-taking endpoint and nothing on the cloud endpoint, body byte-equal to today's. Prior art: the help session presets and lookup tests.
 - **Component seam (Formaquestion mount, settings tabs).** The chrome for each style and mascot pairing; the ⋮ menu and the General row write one value; the minimal column renders the grip; the scroll arrow renders past the threshold and a click scrolls to the end; the Endpoint editor heading follows Answer and Add moves Answer; Pick and Lookup show Options; every prompt shows Edit and Preview; the Mascot tab preview follows a selected layer and a clicked overlay; the handles render; a handle drag through the pointer hook changes one edge; the warning and pick rows still render. Tests that mount Formaquestion keep the one mocked seam to the settings providers. Prior art: the mascot tab, endpoint tab and prompts tab tests.
 - **Playwright.** The handle fade on hover and its absence on a coarse pointer; the mascot flip while the column is dragged across the middle; the minimal resize grip; the per-style size after a reload; the arrow's painted position above the input. The Browser pane does not composite, so motion claims use per-frame sampling.
@@ -255,7 +255,8 @@ Other checks:
 ## Out of Scope
 
 - Take Me There and any navigation from an answer: the `help-take-me-there` spec.
-- A Cydonia lookup probe. The user flipped the default on the MeroMero numbers (Q6).
+- A Cydonia lookup probe. Ticket 13 re-probed on MeroMero only (Q46, Q52).
+- Replacing the AI Search request with the lookup function on function-calling endpoints. Discussed, not measured; a later probe effort if wanted.
 - A scale or side in the mascot card. Both are device values (Q3).
 - A player-chosen side. The wider gap decides (Q12).
 - Mascot ticket 14's extraction. It runs after this effort on the new tab (Q2).
