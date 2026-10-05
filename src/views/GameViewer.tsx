@@ -402,6 +402,7 @@ const GameViewer = ({
     placeholderOwners,
     worldOverview,
     worldId,
+    worldLoaded,
     isWorldDirty,
     saveWorld,
     loadWorldData,
@@ -4057,9 +4058,9 @@ const GameViewer = ({
   useEffect(() => {
     // Gate on the world being loaded, NOT on `locations.length` — a world with no locations authored yet
     // (every freshly created one) would otherwise never initialize, silently skipping the stat baselines,
-    // traits, dictionaries and the opening-cue pre-fill below. `worldId` is set in the same batch as the
-    // rest of the world data by loadWorldData, so it's non-null exactly when that data has landed.
-    if (!isInitialized.current && worldId !== null) {
+    // traits, dictionaries and the opening-cue pre-fill below. `worldLoaded` turns true in the same batch
+    // as the rest of the world data, and holds for a world file with no id.
+    if (!isInitialized.current && worldLoaded) {
       isInitialized.current = true;
 
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
@@ -4200,7 +4201,7 @@ const GameViewer = ({
     worldPlaceholders,
     traitOrder,
     locations,
-    worldId,
+    worldLoaded,
     worldOverview,
     entities,
     authoredStats,

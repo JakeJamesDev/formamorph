@@ -366,7 +366,7 @@ function useProvideGameData() {
     const nextEntities = syncBlueprintCopies({
       traits: nextTraits, traitGroups: nextTraitGroups, entities: loadedEntities, placeholders: nextPlaceholders, placeholderGroups: nextPlaceholderGroups,
     });
-    setWorldId(worldData.id);
+    setWorldId(worldData.id ?? null);
     setStats(nextStats);
     setLocations(nextLocations);
     setConnections(nextConnections);
@@ -658,6 +658,8 @@ function useProvideGameData() {
     setWorldPlaceholders,
     loadWorldData,
     worldId, setWorldId,
+    // True once loadWorldData has run. A world file may have no id, so worldId can't signal this.
+    worldLoaded: savedSnapshot !== '',
     isWorldDirty,
     saveWorld,
     discardChanges,

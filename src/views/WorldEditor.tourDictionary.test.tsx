@@ -236,7 +236,7 @@ describe('Authoring Tour — Dictionary steps', () => {
     delete (world as Partial<World>).id;
     const { ctx } = renderWorldEditorBench(world, 'simple');
     await waitFor(() => expect(ctx().worldOverview.name).toBe('Sedge Landing'));
-    expect(ctx().worldId).toBeUndefined();
+    expect(ctx().worldId).toBeNull();
     expect(screen.getByRole('tab', { name: /Overview/ })).toBeInTheDocument();
   });
 });
