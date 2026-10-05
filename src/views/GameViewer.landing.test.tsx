@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
+import { stubReachableEndpoint } from '@/test/endpointProbe';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { frames, recordScrolls, rowOf } from '@/test/landing';
 import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
@@ -49,6 +50,7 @@ async function enterGame() {
 
 beforeEach(() => {
   localStorage.clear();
+  stubReachableEndpoint();
   requester = createSurfaceRequester();
 });
 afterEach(() => {

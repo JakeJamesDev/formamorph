@@ -1,7 +1,8 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderGameViewer } from '@/test/gameViewer';
 import { createSurfaceRequester } from '@/test/surfaceRequest';
+import { stubReachableEndpoint } from '@/test/endpointProbe';
 import { createSurfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import type { World } from '@/types';
 
@@ -40,10 +41,12 @@ async function enterGame() {
 
 beforeEach(() => {
   localStorage.clear();
+  stubReachableEndpoint();
   registry = createSurfaceRegistry();
   requester = createSurfaceRequester();
   onExitToMenu = vi.fn();
 });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('a surface request in a running game', () => {
   it('opens Settings on the requested tab', async () => {
