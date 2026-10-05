@@ -587,7 +587,7 @@ The [scrollbar and list inventory](../docs-internal/designs/design-system/rich-l
 
 ### Scroll guard
 
-A test, [`scrollGuard.test.ts`](../src/lib/scrollGuard.test.ts), fails when a source file under `src` holds a native overflow scroller (`overflow-auto`, `overflow-y-auto`, `overflow-x-auto`, `overflow-scroll`, or the inline style). The file passes when it imports `ScrollArea` or carries one allow comment. The check works per file, so one import or one comment covers every scroller in that file. Put the comment on its own line. The end of the file keeps it clear of other edits:
+A test, [`scrollGuard.test.ts`](../src/lib/scrollGuard.test.ts), fails when a source file under `src` holds a native overflow scroller (`overflow-auto`, `overflow-y-auto`, `overflow-x-auto`, `overflow-scroll`, or the inline style). The file passes only when it carries one allow comment. Importing `ScrollArea` exempts nothing, so a file that mixes both needs the comment too. The check works per file, so one comment covers every native scroller in that file. Put the comment on its own line. The end of the file keeps it clear of other edits:
 
 ```ts
 // scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input
@@ -605,7 +605,7 @@ The name after `allow` is one row of the table below. The text after the colon s
 | `responsive-columns` | One pane that becomes two independent columns |
 | `migration-candidate` | A native pane that can move to `ScrollArea` once its behavior is checked |
 
-Remove the comment when the file moves to `ScrollArea`.
+Remove the comment when the file holds no native scroller.
 
 ## Pattern: Paired Footer Actions
 

@@ -173,3 +173,4 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
     </ScrollArea>
   );
 }
+// scroll-guard: allow migration-candidate: the preview block has a max height only; a definite height is not confirmed

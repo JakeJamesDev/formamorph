@@ -645,3 +645,4 @@ export function StatCodeTemplateDialog({
 }
 
 export default StatCodeTemplateDialog;
+// scroll-guard: allow migration-candidate: the form column's height inside the dialog grid is not confirmed definite

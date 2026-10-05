@@ -540,3 +540,4 @@ export function TriggersInstrument({
     </div>
   );
 }
+// scroll-guard: allow migration-candidate: the preview blocks have a max height only; a definite height is not confirmed
