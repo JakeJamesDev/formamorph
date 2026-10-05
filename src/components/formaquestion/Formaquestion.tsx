@@ -560,6 +560,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   });
   // Her body and the pill move her.
   const bubbleMove = usePointerDrag(bubbleDrag(({ input, start }, dx, dy) => ({
+    // She is the dragged piece: her center sets her half of the screen, so only her crossing flips the group.
     bubble: bubbleLayout({ ...input, at: { x: start.at.x + dx, y: start.at.y + dy } }).at,
   })));
   // Her grip sets her scale in the device's Scale store, as the Mascot tab does; the bubble grip sets the chat size (Q19).
@@ -568,7 +569,10 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (resized.scale !== scale) setMascotScale(resized.scale);
     return { bubble: resized.at };
   }));
-  const chatResize = usePointerDrag(bubbleDrag(({ input, start }, dx, dy) => ({ chat: resizeChat(input, start, dx, dy) })));
+  const chatResize = usePointerDrag(bubbleDrag(({ input, start }, dx, dy) => {
+    const resized = resizeChat(input, start, dx, dy);
+    return { chat: resized.chat, bubble: resized.at };
+  }));
   const menuActions: MenuActions = {
     onOpenAiContext: () => openDialog('aiContext'),
     onOpenSettings: () => openDialog('settings'),

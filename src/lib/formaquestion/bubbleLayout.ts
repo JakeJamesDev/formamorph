@@ -111,9 +111,11 @@ const headHeightAt = (scale: MascotScale, mask: MascotMask, viewport: Viewport):
 /** The chat width the player set, else the default, inside the room. */
 const bubbleWidthFor = (width: number | null, room: number): number => Math.min(Math.max(width ?? BUBBLE_DEFAULT_WIDTH, BUBBLE_MIN_WIDTH), room);
 
-/** The side of the column she stands on: the half of the screen her center is in, or the other one under Inside (Q34). */
-const sideOf = (x: number, viewport: Viewport, placement: MascotPlacement = DEFAULT_MASCOT_PLACEMENT): MascotSide => {
-  const half: MascotSide = x > viewport.width / 2 ? 'right' : 'left';
+/** The half of the screen she counts in: the one her place keeps, else the one her center is in. */
+const halfOf = (at: BubblePoint | null, x: number, viewport: Viewport): MascotSide => at?.half ?? (x > viewport.width / 2 ? 'right' : 'left');
+
+/** The side of the column she stands on: her half of the screen, or the other one under Inside (Q34). */
+const sideOf = (half: MascotSide, placement: MascotPlacement = DEFAULT_MASCOT_PLACEMENT): MascotSide => {
   if (placement !== 'inside') return half;
   return half === 'right' ? 'left' : 'right';
 };
@@ -159,7 +161,8 @@ function fullLayout({ at, base, mask, scale, viewport, placement, heights, width
   const minH = Math.max(BUBBLE_MIN_HEIGHT, bubbleBottomOff - mouth + TAIL_INSET);
 
   const wanted = at ?? { x: vw - TAB_CLEARANCE - herW / 2, y: vh - CORNER_CLEARANCE };
-  const side = sideOf(wanted.x, viewport, placement);
+  const half = halfOf(at, wanted.x, viewport);
+  const side = sideOf(half, placement);
   const herX = side === 'right'
     ? clamp(wanted.x - herW / 2, SCREEN_MARGIN + w + TAIL_LENGTH, vw - SCREEN_MARGIN - herW)
     : clamp(wanted.x - herW / 2, SCREEN_MARGIN, vw - SCREEN_MARGIN - herW - TAIL_LENGTH - w);
@@ -178,7 +181,7 @@ function fullLayout({ at, base, mask, scale, viewport, placement, heights, width
     points: side,
   };
   const scrolls = heights.content > bubble.h;
-  return finish({ side, her, chat, bubble, tail, strip, question, input: inputBox, scrolls, at: { x: herX + herW / 2, y: bottom } }, viewport, showReader);
+  return finish({ side, her, chat, bubble, tail, strip, question, input: inputBox, scrolls, at: { x: herX + herW / 2, y: bottom, half } }, viewport, showReader);
 }
 
 function headLayout({ at, mask, scale, viewport, placement, heights, width, height, empty, showReader }: BubbleInput): BubbleLayout {
@@ -197,7 +200,8 @@ function headLayout({ at, mask, scale, viewport, placement, heights, width, heig
   const under = zoneH + BUBBLE_GAP + heights.input;
 
   const wanted = at ?? { x: vw - TAB_CLEARANCE - headW / 2, y: vh - CORNER_CLEARANCE };
-  const side = sideOf(wanted.x, viewport, placement);
+  const half = halfOf(at, wanted.x, viewport);
+  const side = sideOf(half, placement);
   // The head stands at the column's end nearest the screen edge, so the column's outer edge is the head's.
   const columnX = clamp(side === 'right' ? wanted.x + headW / 2 - w : wanted.x - headW / 2, SCREEN_MARGIN, vw - SCREEN_MARGIN - w);
   const bottom = clamp(wanted.y, SCREEN_MARGIN + BUBBLE_MIN_HEIGHT + TAIL_LENGTH + under, vh);
@@ -214,7 +218,7 @@ function headLayout({ at, mask, scale, viewport, placement, heights, width, heig
   const { chat, bubble } = chatAndBubble(columnX, bubbleBottom, w, BUBBLE_MIN_HEIGHT, roomHeight(height, empty, viewport), heights.content);
   const tail: BubbleTail = { x: clamp(her.x + headW / 2, columnX + TAIL_INSET, columnX + w - TAIL_INSET), y: bubbleBottom, points: 'down' };
   const scrolls = heights.content > bubble.h;
-  return finish({ side, her, chat, bubble, tail, strip, question, input: inputBox, scrolls, at: { x: her.x + headW / 2, y: bottom } }, viewport, showReader);
+  return finish({ side, her, chat, bubble, tail, strip, question, input: inputBox, scrolls, at: { x: her.x + headW / 2, y: bottom, half } }, viewport, showReader);
 }
 
 /** The room's set height; with none set and no exchange, the default share of the screen, so the room and its grip show before the first answer (Q33). */
@@ -280,12 +284,29 @@ export function resizeMascot(input: BubbleInput, start: BubbleLayout, dx: number
   const grown = bubbleLayout({ ...input, scale, at: start.at });
   const outer = start.side === 'right' ? start.her.x + start.her.w : start.her.x;
   const x = start.side === 'right' ? outer - grown.her.w / 2 : outer + grown.her.w / 2;
-  return { scale, at: bubbleLayout({ ...input, scale, at: { x, y: start.at.y } }).at };
+  return { scale, at: bubbleLayout({ ...input, scale, at: { x, y: start.at.y, half: start.at.half } }).at };
 }
 
 /** The chat's room after a drag of the bubble grip by (dx, dy) from `start`. The room grows toward the grip's corner; she stays put. */
-export function resizeChat(input: BubbleInput, start: BubbleLayout, dx: number, dy: number): WindowSize {
+export interface ChatResize {
+  readonly chat: WindowSize;
+  /** Her place after the drag: she follows the chat's edge toward her when the grip holds that edge, so the far edge stays put. */
+  readonly at: BubblePoint;
+}
+
+/**
+ * The chat's room and her place after a drag of the chat grip by (dx, dy) from `start`. Only the grip's two
+ * edges move. The layout pins the chat's edge toward her and its bottom to her, so when the grip holds one of
+ * those, her stored place moves with it and the far edge keeps its place (Q35).
+ */
+export function resizeChat(input: BubbleInput, start: BubbleLayout, dx: number, dy: number): ChatResize {
   const { across, down } = outwardOf(start.grip, dx, dy);
-  const { chat } = bubbleLayout({ ...input, width: start.chat.w + across, height: start.chat.h + down, at: start.at });
-  return { w: chat.w, h: chat.h };
+  const grown = bubbleLayout({ ...input, width: start.chat.w + across, height: start.chat.h + down, at: start.at });
+  const holdsInner = start.grip.endsWith(start.side === 'right' ? 'e' : 'w');
+  const holdsBottom = start.grip.startsWith('s');
+  // The chat's far edge is the one the grip does not hold: it stays where it started, and she shifts by what the layout moved it.
+  const shiftX = holdsInner ? (start.side === 'right' ? start.chat.x - grown.chat.x : (start.chat.x + start.chat.w) - (grown.chat.x + grown.chat.w)) : 0;
+  const shiftY = holdsBottom ? start.chat.y - grown.chat.y : 0;
+  const moved = shiftX === 0 && shiftY === 0 ? grown : bubbleLayout({ ...input, width: grown.chat.w, height: grown.chat.h, at: { x: grown.at.x + shiftX, y: grown.at.y + shiftY, half: grown.at.half } });
+  return { chat: { w: moved.chat.w, h: moved.chat.h }, at: moved.at };
 }

@@ -382,6 +382,8 @@ export interface WindowSize {
 export interface BubblePoint {
   readonly x: number;
   readonly y: number;
+  /** The half of the screen she counts in. A drag of her sets it from her center; every other change keeps it, so nothing else flips the group. */
+  readonly half?: MascotSide;
 }
 
 /** What the device keeps: one place and a size for each box chrome (Q11), and her place under Bubble, null for the default (Q15). */
@@ -423,7 +425,7 @@ export function readStoredWindow(): StoredWindow | null {
       y,
       minimal: { w: Math.min(minimal.w, NARROW_WIDTH), h: minimal.h },
       full: { w: full.w, h: full.h },
-      bubble: hasNumbers(bubble, ['x', 'y'] as const) ? { x: bubble.x, y: bubble.y } : null,
+      bubble: hasNumbers(bubble, ['x', 'y'] as const) ? { x: bubble.x, y: bubble.y, ...(bubble.half === 'left' || bubble.half === 'right' ? { half: bubble.half } : {}) } : null,
       chat: hasNumbers(chat, ['w', 'h'] as const) ? { w: chat.w, h: chat.h } : null,
     };
   } catch {
