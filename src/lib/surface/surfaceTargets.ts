@@ -45,6 +45,13 @@ export const SURFACE_TARGETS = {
   'settingsPromptSurfaces.options': ['prompt-endpoint'],
 } as const satisfies Partial<Record<SurfaceId, readonly string[]>>;
 
+/** Targets inside an open item's panel, which only an in-app action such as Insert lands on; never a route. */
+export const PANEL_TARGETS = {
+  'worldEditorStat.code': ['before-code', 'after-code'],
+} as const satisfies Partial<Record<SurfaceId, readonly string[]>>;
+
+type AttributeTargets = typeof SURFACE_TARGETS & typeof PANEL_TARGETS;
+
 export type TargetedSurface = keyof typeof SURFACE_TARGETS;
 export type SurfaceTarget<S extends TargetedSurface> = (typeof SURFACE_TARGETS)[S][number];
 
@@ -75,7 +82,7 @@ export function findTargetRow(root: ParentNode, route: string): HTMLElement | nu
   return rows.find((row) => row.getClientRects().length > 0) ?? rows[0] ?? null;
 }
 
-/** The data attribute for a control that is a registered target of its surface. */
-export function targetAttribute<S extends TargetedSurface>(surface: S, target: SurfaceTarget<S>): TargetAttribute {
+/** The data attribute for a control that is a registered target of its surface, in either map. */
+export function targetAttribute<S extends keyof AttributeTargets>(surface: S, target: AttributeTargets[S][number]): TargetAttribute {
   return { [TARGET_ATTRIBUTE]: routeText(surface, target) };
 }

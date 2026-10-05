@@ -26,11 +26,16 @@ import { answerRoute } from './answerRoute';
 import { SectionRows } from './GuideParts';
 import { ScrollArrow } from './ScrollArrow';
 import { FOCUS_RING, readerComponents } from './readerLinks';
+import { CodeInsert } from './CodeInsert';
+import type { SnippetActions } from './CodeSnippet';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { answerList, useAnswerFolds, type AnswerFolds, type Fold } from './useAnswerFolds';
 import type { HelpStage } from '@/lib/formaquestion/helpSession';
 import type { HelpChat, HelpExchange, HelpStatus } from './useHelpChat';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
+
+/** An answer's code blocks offer Insert beside Copy; guide pages offer Copy alone. */
+const insertAction: SnippetActions = (block) => <CodeInsert block={block} />;
 
 /** The most docs sections shown in place of an answer. */
 const FALLBACK_RESULT_LIMIT = 5;
@@ -191,7 +196,7 @@ export function AnswerBody({ guide, exchange, settings, onOpen, onGo, folds, tog
   const waitLine = status === 'writing' && !answer && stage && !(reasoning && stage === 'waiting') ? STAGE_LINE[stage] : null;
   const { listed, listLabel } = answerList(exchange);
   const fold = folds.sources;
-  const components = useMemo(() => readerComponents(onOpen), [onOpen]);
+  const components = useMemo(() => readerComponents(onOpen, insertAction), [onOpen]);
   const reduceMotion = usePrefersReducedMotion();
   const spec = useMemo(() => helpRevealSpec(settings.reveal, reduceMotion), [settings.reveal, reduceMotion]);
   const timing = useMemo(() => helpRevealTiming(settings.reveal), [settings.reveal]);

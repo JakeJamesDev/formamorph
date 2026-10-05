@@ -18,6 +18,14 @@ export const TIMING_LABEL: Record<StatCodeTiming, string> = {
   after: 'After the AI',
 };
 
+/** Each box's target on the stat's Code tab, for a landing on it. */
+export const CODE_BOX_TARGET = { before: 'before-code', after: 'after-code' } as const satisfies Record<StatCodeTiming, string>;
+
+/** The confirm before an insert replaces a box's code, shared by the templates and the help window. */
+export const REPLACE_CODE_TITLE = 'Replace The Existing Code';
+export const replaceCodeDescription = (inserted: 'template' | 'code') =>
+  `This box already has code. Inserting this ${inserted} overwrites it.`;
+
 /** A stat as far as its two boxes go. Everything that reads code takes this much and no more. */
 export type CodedStat = Pick<PlayerStat, 'beforeCode' | 'code'>;
 

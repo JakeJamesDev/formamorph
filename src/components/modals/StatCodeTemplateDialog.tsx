@@ -37,7 +37,7 @@ import {
   type StatCodeTemplate,
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
-import { STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { REPLACE_CODE_TITLE, replaceCodeDescription, STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import { keyedEntity, type CodeEntityNames, type CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { BreadcrumbPicker, type BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
@@ -635,8 +635,8 @@ export function StatCodeTemplateDialog({
         <ConfirmDialog
           open={confirmReplace}
           onOpenChange={setConfirmReplace}
-          title="Replace The Existing Code"
-          description="This box already has code. Inserting this template overwrites it."
+          title={REPLACE_CODE_TITLE}
+          description={replaceCodeDescription('template')}
           onConfirm={doInsert}
         />
       </DialogContent>
