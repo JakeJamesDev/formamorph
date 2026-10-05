@@ -3,7 +3,8 @@
    and the account site, which each load their own stylesheet. */
 @keyframes supporter-heartbeat {
   0%, 28%, 62%, 100% { transform: scale(1); }
-  12%, 44% { transform: scale(1.4); }
+  12% { transform: scale(1.4); }
+  44% { transform: scale(1.2); }
 }
 .supporter-heart-arrive,
 .supporter-badge:hover .supporter-heart,

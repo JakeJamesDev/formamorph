@@ -45,6 +45,18 @@ const distinct = (frames: Frame[], key: 'icon' | 'pill') => new Set(frames.map((
 const timeWindow = (frames: Frame[], t0: number, from: number, to: number) =>
   frames.filter((f) => f.t >= t0 + from && f.t < t0 + to);
 
+/** The scale of each pulse: the top of every stretch of frames above rest. */
+function pulsePeaks(frames: Frame[]): number[] {
+  const peaks: number[] = [];
+  let peak = 0;
+  for (const { icon } of frames) {
+    const scale = icon && icon !== 'none' ? Number(icon.match(/^matrix\(([^,]+),/)![1]) : 1;
+    if (scale > 1.02) peak = Math.max(peak, scale);
+    else if (peak) { peaks.push(peak); peak = 0; }
+  }
+  return peaks;
+}
+
 async function openReference(page: Page): Promise<void> {
   await page.addInitScript(() => localStorage.setItem('FORMAMORPH_introSeen', '1'));
   await page.goto('/#dev?modal=designSystem');
@@ -80,6 +92,14 @@ test('the heart beats on arrival, rests, and beats again on every hover', async 
 
   expect(distinct(await hoverFrames(page), 'icon').size).toBeGreaterThan(1);
   expect(distinct(await hoverFrames(page), 'icon').size).toBeGreaterThan(1);
+});
+
+test('the second pulse is smaller than the first', async ({ page }) => {
+  await openReference(page);
+  const [first, second, ...more] = pulsePeaks(await hoverFrames(page));
+
+  expect(more).toEqual([]);
+  expect(second).toBeLessThan(first - 0.1);
 });
 
 test('reduced motion skips the arrival beat and keeps the hover beat', async ({ page }) => {
