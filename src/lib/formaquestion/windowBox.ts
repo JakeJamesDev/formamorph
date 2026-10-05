@@ -104,21 +104,25 @@ export type BoxChrome = Exclude<WindowChrome, 'bubble'>;
 /** A side of the column or frame, for the Mascot beside it or the reader. */
 export type MascotSide = 'left' | 'right';
 
-/** Where the Mascot stands: beside the column, under it, or under it while the column is at most the cap. */
-export type MascotPlacement = 'beside' | 'below' | 'auto';
+/** Where the Mascot stands: over the column, under it, or beside it on the side toward the screen's middle (inside) or toward the nearer edge (outside). */
+export type MascotPlacement = 'above' | 'below' | 'inside' | 'outside';
+export const MASCOT_PLACEMENTS: readonly MascotPlacement[] = ['above', 'below', 'inside', 'outside'];
+export const DEFAULT_MASCOT_PLACEMENT: MascotPlacement = 'outside';
+/** The placements that stand her over or under the column. The Bubble chrome offers the other two. */
+export const isVerticalPlacement = (placement: MascotPlacement): placement is 'above' | 'below' => placement === 'above' || placement === 'below';
 
-/** The column's largest share of the screen height while the Mascot stands below it. Auto stands her below at or under it. */
+/** The column's largest share of the screen height while the Mascot stands over or under it. */
 export const MASCOT_BELOW_CAP = 0.75;
 
 /** The pieces drawn around the column or frame. */
 export interface WindowPieces {
   /** The whole Mascot's aspect, or null while it is not drawn. */
   readonly mascotAspect: number | null;
-  /** Where the Mascot stands. Defaults to beside. */
+  /** Where the Mascot stands. Defaults to outside. */
   readonly placement?: MascotPlacement;
   /** The reader piece, which only the minimal chrome draws. */
   readonly showReader?: boolean;
-  /** The side the Mascot stands on now, which the layout keeps: only a drag flips it (Q33). Without one, the wider free gap picks it. */
+  /** The side the Mascot stands on now, which the layout keeps: only a drag flips it (Q33). Without one, the placement and the column's half of the screen pick it. */
   readonly side?: MascotSide;
   /** The Mascot's size. Defaults to Auto. */
   readonly scale?: MascotScale;
@@ -134,9 +138,9 @@ export interface WindowLayout {
   /** The Mascot's top left corner on the screen, or null while she is not drawn. */
   readonly mascotAt: { readonly x: number; readonly y: number } | null;
   readonly reader: { readonly w: number; readonly h: number } | null;
-  /** Where the Mascot stands this frame. Below, she is centered under the column. */
-  readonly placement: Exclude<MascotPlacement, 'auto'>;
-  /** The side with the wider free gap. Beside, the Mascot stands there; the head view stands at the matching end of the pill. */
+  /** Where the Mascot stands this frame. Over or under the column she is centered on it; beside it she stands on `side`. */
+  readonly placement: 'above' | 'below' | 'beside';
+  /** The side she stands on beside the column, from the placement and the dragged piece's half of the screen; the head view stands at the matching end of the pill. */
   readonly side: MascotSide;
   /** The side the reader stands on, at the column's height. */
   readonly readerSide: MascotSide;
@@ -151,6 +155,14 @@ function widerSide(x: number, w: number, viewport: Viewport, current: MascotSide
   return x > right ? 'left' : 'right';
 }
 
+/** The side she stands on for a placement, from a piece's center: outside faces the nearer screen edge, inside the middle. Over or under the column the reader takes the wider gap. */
+export function sideFor(placement: MascotPlacement, centerX: number, viewport: Viewport, current: MascotSide = 'left'): MascotSide {
+  if (isVerticalPlacement(placement)) return widerSide(centerX, 0, viewport, current);
+  const nearer: MascotSide = centerX < viewport.width / 2 ? 'left' : 'right';
+  if (placement === 'outside') return nearer;
+  return nearer === 'left' ? 'right' : 'left';
+}
+
 /**
  * The pieces for a stored box. The column takes the box's height, and under the minimal chrome at most the
  * narrow width. The Mascot stands on the side with the wider free gap. The reader takes the room it needs on
@@ -160,17 +172,19 @@ function widerSide(x: number, w: number, viewport: Viewport, current: MascotSide
  * the cap's height instead.
  */
 export function windowLayout(chrome: BoxChrome, box: WindowBox, viewport: Viewport, pieces: WindowPieces): WindowLayout {
-  const { mascotAspect, showReader = false, side: kept, scale = 'auto', baseHeight, placement = 'beside' } = pieces;
+  const { mascotAspect, showReader = false, side: kept, scale = 'auto', baseHeight, placement = DEFAULT_MASCOT_PLACEMENT } = pieces;
   const w = clamp(chrome === 'minimal' ? Math.min(box.w, NARROW_WIDTH) : box.w, MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
   const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
-  const side = kept ?? widerSide(clamp(box.x, 0, viewport.width - w), w, viewport, 'left');
+  const side = kept ?? sideFor(placement, clamp(box.x, 0, viewport.width - w) + w / 2, viewport);
   const room = Math.max(0, viewport.width - SCREEN_MARGIN * 2 - w);
   const readerSpace = showReader && chrome === 'minimal' ? Math.min(READER_GAP + READER_WIDTH, room) : 0;
   const readerW = Math.max(0, readerSpace - READER_GAP);
   const cap = viewport.height * MASCOT_BELOW_CAP;
-  // Below needs a whole Mascot and a cap the smallest column fits under (Q12, Q13); the snap has no hysteresis (Q3).
-  if (mascotAspect && cap >= MIN_HEIGHT && (placement === 'below' || (placement === 'auto' && h <= cap))) {
-    return belowLayout({ ...box, w, h: Math.min(h, cap) }, viewport, { aspect: mascotAspect, cap, side, readerSpace, readerW, scale, baseHeight });
+  // Over or under the column needs a whole Mascot and a cap the smallest column fits under (Q12, Q13).
+  if (mascotAspect && cap >= MIN_HEIGHT && isVerticalPlacement(placement)) {
+    const stacked = { ...box, w, h: Math.min(h, cap) };
+    const parts = { aspect: mascotAspect, cap, side, readerSpace, readerW, scale, baseHeight };
+    return placement === 'below' ? belowLayout(stacked, viewport, parts) : aboveLayout(stacked, viewport, parts);
   }
   const y = clamp(box.y, 0, viewport.height - h);
   const wantedH = scale === 'auto' || !baseHeight ? h : Math.min((baseHeight * scale) / 100, Math.max(h, y + h - SCREEN_MARGIN));
@@ -240,11 +254,48 @@ function belowLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): W
   };
 }
 
-/** The side after a drag: the side kept, flipped once the dragged piece's center crossed the screen's middle (Q33). */
-function sideAfter(kept: MascotSide, centerBefore: number, centerAfter: number, viewport: Viewport): MascotSide {
+/**
+ * The column under the Mascot, her feet on its top edge. Under Auto scale she fills the room over the column up
+ * to the screen margin, and the column stops where that room would drop under what the cap leaves. A percent
+ * Mascot clamps the column's top so she fits, and takes the room when even that lacks it. She centers over the
+ * column; the reader stands on the wider side.
+ */
+function aboveLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): WindowLayout {
+  const { aspect, cap, side, readerSpace, readerW, scale, baseHeight } = pieces;
+  const { w, h } = box;
+  const top = SCREEN_MARGIN;
+  const bottom = viewport.height - SCREEN_MARGIN;
+  const asked = scale === 'auto' || !baseHeight ? null : (baseHeight * scale) / 100;
+  const keep = asked === null ? bottom - top - cap : Math.min(asked, bottom - top - h);
+  const y = clamp(box.y, top + keep, bottom - h);
+  const roomH = y - top;
+  const overhang = Math.max(0, Math.min((viewport.width - SCREEN_MARGIN * 2 - w) / 2, viewport.width - w - readerSpace));
+  const mascotW = Math.max(0, Math.min((asked === null ? roomH : Math.min(asked, roomH)) * aspect, w + overhang * 2));
+  const mascot = mascotW > 0 ? { w: mascotW, h: mascotW / aspect } : null;
+  const mascotTop = y - (mascot?.h ?? 0);
+  const hang = Math.max(0, (mascotW - w) / 2);
+  const readerLeft = side === 'left' ? readerSpace : 0;
+  const readerRight = side === 'right' ? readerSpace : 0;
+  const x = clamp(box.x, Math.max(hang, readerLeft), viewport.width - w - Math.max(hang, readerRight));
+  const left = Math.min(x - readerLeft, x - hang);
+  const right = Math.max(x + w + readerRight, x + w + hang);
+  return {
+    column: { x, y, w, h },
+    mascot,
+    mascotAt: mascot && { x: x + (w - mascot.w) / 2, y: mascotTop },
+    reader: readerW > 0 ? { w: readerW, h } : null,
+    placement: 'above',
+    side,
+    readerSide: side,
+    group: { x: left, y: mascotTop, w: right - left, h: y + h - mascotTop },
+  };
+}
+
+/** The side after a drag: the placement's side for the dragged piece's center, kept while that center stays in its half of the screen (Q33). */
+function sideAfter(pieces: WindowPieces, from: WindowLayout, centerBefore: number, centerAfter: number, viewport: Viewport): MascotSide {
   const middle = viewport.width / 2;
   const crossed = (centerBefore < middle) !== (centerAfter < middle);
-  return crossed ? (kept === 'left' ? 'right' : 'left') : kept;
+  return crossed ? sideFor(pieces.placement ?? DEFAULT_MASCOT_PLACEMENT, centerAfter, viewport, from.side) : from.side;
 }
 
 /** A drag's result: the pieces as laid out, whose `column` the device stores and whose `side` the next layout keeps. */
@@ -254,7 +305,7 @@ export type Dragged = WindowLayout;
 export function dragColumn(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): Dragged {
   const from = windowLayout(chrome, start, viewport, pieces);
   const moved = moveBox(start, dx, dy, viewport);
-  const side = sideAfter(from.side, start.x + start.w / 2, moved.x + moved.w / 2, viewport);
+  const side = sideAfter(pieces, from, start.x + start.w / 2, moved.x + moved.w / 2, viewport);
   return windowLayout(chrome, moved, viewport, { ...pieces, side });
 }
 
@@ -267,7 +318,7 @@ export function dragMascot(chrome: BoxChrome, start: WindowBox, dx: number, dy: 
   const from = windowLayout(chrome, start, viewport, pieces);
   if (!from.mascot || !from.mascotAt || from.placement !== 'beside') return dragColumn(chrome, start, dx, dy, viewport, pieces);
   const herX = from.mascotAt.x + dx;
-  const side = sideAfter(from.side, from.mascotAt.x + from.mascot.w / 2, herX + from.mascot.w / 2, viewport);
+  const side = sideAfter(pieces, from, from.mascotAt.x + from.mascot.w / 2, herX + from.mascot.w / 2, viewport);
   const x = side === 'left' ? herX + from.mascot.w : herX - from.column.w;
   return windowLayout(chrome, { ...start, x, y: start.y + dy }, viewport, { ...pieces, side });
 }
@@ -421,16 +472,15 @@ export function writeStoredMascotScale(scale: MascotScale): void {
 }
 
 const MASCOT_PLACEMENT_KEY = 'formamorph.formaquestion.mascotPlacement';
-const MASCOT_PLACEMENTS: readonly string[] = ['beside', 'below', 'auto'] satisfies readonly MascotPlacement[];
-export const isMascotPlacement = (value: unknown): value is MascotPlacement => typeof value === 'string' && MASCOT_PLACEMENTS.includes(value);
+export const isMascotPlacement = (value: unknown): value is MascotPlacement => typeof value === 'string' && (MASCOT_PLACEMENTS as readonly string[]).includes(value);
 
-/** The Mascot placement this device stored. Auto when nothing is stored, it is damaged, or storage is blocked. */
+/** The Mascot placement this device stored. Outside when nothing is stored, it is damaged, or storage is blocked. */
 export function readStoredMascotPlacement(): MascotPlacement {
   try {
     const stored = localStorage.getItem(MASCOT_PLACEMENT_KEY);
-    return isMascotPlacement(stored) ? stored : 'auto';
+    return isMascotPlacement(stored) ? stored : DEFAULT_MASCOT_PLACEMENT;
   } catch {
-    return 'auto';
+    return DEFAULT_MASCOT_PLACEMENT;
   }
 }
 

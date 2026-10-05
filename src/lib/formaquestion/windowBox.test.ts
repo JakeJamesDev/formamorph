@@ -8,9 +8,10 @@ import {
   type WindowBox, type WindowPieces,
 } from './windowBox';
 
+// The geometry here stands her toward the middle (Inside); the default, Outside, has its own tests.
 const minimalLayout = (box: WindowBox, viewport: Viewport, mascotAspect: number | null, showReader = false) =>
-  windowLayout('minimal', box, viewport, { mascotAspect, showReader });
-const fullLayout = (box: WindowBox, viewport: Viewport, mascotAspect: number | null) => windowLayout('full', box, viewport, { mascotAspect });
+  windowLayout('minimal', box, viewport, { mascotAspect, showReader, placement: 'inside' });
+const fullLayout = (box: WindowBox, viewport: Viewport, mascotAspect: number | null) => windowLayout('full', box, viewport, { mascotAspect, placement: 'inside' });
 
 const SCREEN = { width: 1600, height: 900 };
 
@@ -122,12 +123,13 @@ describe('moveBox and resizeBox', () => {
   });
 
   it('passes the handle through resizePieces', () => {
-    const pieces = { mascotAspect: null, placement: 'beside' as const };
+    const pieces = { mascotAspect: null, placement: 'inside' as const };
     expect(resizePieces('full', start, -100, 0, SCREEN, pieces, 'w')).toEqual({ ...start, x: 500, w: 500 });
   });
 
   it('keeps her under the pointer when she is dragged, and flips the column to her other side past the middle', () => {
-    const pieces = { mascotAspect: 0.75, placement: 'beside' as const };
+    const pieces = { mascotAspect: 0.75, placement: 'outside' as const };
+    const start = { x: 500, y: 200, w: 400, h: 500 };
     const before = windowLayout('full', start, SCREEN, pieces);
     expect(before.side).toBe('left');
     const herX = before.mascotAt!.x;
@@ -142,11 +144,11 @@ describe('moveBox and resizeBox', () => {
     expect(flipped.column.x + flipped.column.w).toBe(herX + 500);
     // The column drag flips on the column's own crossing, and the kept side holds between drags.
     expect(windowLayout('full', flipped.column, SCREEN, { ...pieces, side: 'right' }).side).toBe('right');
-    expect(dragColumn('full', flipped.column, 600, 0, SCREEN, { ...pieces, side: 'right' }).side).toBe('left');
+    expect(dragColumn('full', { ...flipped.column, x: 900 }, -400, 0, SCREEN, { ...pieces, side: 'right' }).side).toBe('left');
   });
 
   it('stops a left handle drag at her room beside the frame, and never moves the right edge', () => {
-    const pieces = { mascotAspect: 0.75, placement: 'beside' as const };
+    const pieces = { mascotAspect: 0.75, placement: 'inside' as const };
     const grown = resizePieces('full', start, -5000, 0, SCREEN, pieces, 'w');
     expect(grown.x + grown.w).toBe(start.x + start.w);
     expect(grown.w).toBeGreaterThan(start.w);
@@ -257,8 +259,8 @@ describe('the minimal layout', () => {
     expect(minimalLayout({ x: 800, y: 0, w: MIN_WIDTH, h: 560 }, SCREEN, ASPECT).column.w).toBe(MIN_WIDTH);
   });
 
-  it('stands the Mascot right of the column near the left edge, and the shared box spans both', () => {
-    const { column, mascot, mascotAt, group, side } = minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT);
+  it('stands the Mascot right of a column near the left edge under Inside, and the shared box spans both', () => {
+    const { column, mascot, mascotAt, group, side } = windowLayout('minimal', { x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, { mascotAspect: ASPECT, placement: 'inside' });
     expect(side).toBe('right');
     expect(column.x).toBe(100);
     expect(mascot).toEqual({ w: 420, h: 560 });
@@ -266,18 +268,22 @@ describe('the minimal layout', () => {
     expect(group).toEqual({ x: 100, y: 0, w: NARROW_WIDTH + 420, h: 560 });
   });
 
-  it('stands the Mascot left near the right edge', () => {
-    expect(minimalLayout({ x: 1100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, ASPECT).side).toBe('left');
+  it('stands the Mascot toward the nearer edge under Outside, the default, and toward the middle under Inside', () => {
+    expect(windowLayout('minimal', { x: 1100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, { mascotAspect: ASPECT }).side).toBe('right');
+    expect(windowLayout('minimal', { x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, { mascotAspect: ASPECT, placement: 'outside' }).side).toBe('left');
+    expect(windowLayout('minimal', { x: 1100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, { mascotAspect: ASPECT, placement: 'inside' }).side).toBe('left');
   });
 
-  it('keeps the current side on a tie', () => {
+  it("keeps a given side, whatever the column's place", () => {
     const middle = { x: (SCREEN.width - NARROW_WIDTH) / 2, y: 0, w: NARROW_WIDTH, h: 560 };
     expect(windowLayout('minimal', middle, SCREEN, { mascotAspect: ASPECT, side: 'left' }).side).toBe('left');
     expect(windowLayout('minimal', middle, SCREEN, { mascotAspect: ASPECT, side: 'right' }).side).toBe('right');
+    expect(windowLayout('minimal', { x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, { mascotAspect: ASPECT, side: 'right' }).side).toBe('right');
   });
 
-  it('gives the side to the wider gap even while the Mascot is not drawn', () => {
+  it('gives the side by the placement even while the Mascot is not drawn', () => {
     expect(minimalLayout({ x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, null).side).toBe('right');
+    expect(windowLayout('minimal', { x: 100, y: 0, w: NARROW_WIDTH, h: 560 }, SCREEN, { mascotAspect: null }).side).toBe('left');
   });
 
   it('keeps the Mascot whole on the screen on its side', () => {
@@ -310,7 +316,7 @@ describe('the minimal layout', () => {
 
   it('puts the reader on the side opposite the Mascot', () => {
     const box = { x: 100, y: 0, w: NARROW_WIDTH, h: 560 };
-    const { column, mascot, reader, group, side } = minimalLayout(box, SCREEN, ASPECT, true);
+    const { column, mascot, reader, group, side } = windowLayout('minimal', box, SCREEN, { mascotAspect: ASPECT, showReader: true, placement: 'inside' });
     expect(side).toBe('right');
     expect(reader).toEqual({ w: READER_WIDTH, h: 560 });
     expect(column.x).toBe(READER_GAP + READER_WIDTH);
@@ -352,7 +358,7 @@ describe('the minimal layout', () => {
 });
 
 describe('movePieces', () => {
-  const pieces = { mascotAspect: 0.75 };
+  const pieces = { mascotAspect: 0.75, placement: 'inside' as const };
 
   it('stops where the reader would leave the screen', () => {
     const start = { x: 1000, y: 0, w: NARROW_WIDTH, h: 560 };
@@ -389,8 +395,8 @@ describe('the full layout', () => {
     expect(group).toEqual({ x: 350, y: 100, w: 450 + WIDE_WIDTH, h: 600 });
   });
 
-  it('puts the Mascot right of the frame near the left edge', () => {
-    const { column, mascot, group, side } = fullLayout({ x: 100, y: 100, w: WIDE_WIDTH, h: 600 }, SCREEN, ASPECT);
+  it('puts the Mascot right of the frame near the left edge under Inside', () => {
+    const { column, mascot, group, side } = windowLayout('full', { x: 100, y: 100, w: WIDE_WIDTH, h: 600 }, SCREEN, { mascotAspect: ASPECT, placement: 'inside' });
     expect(side).toBe('right');
     expect(column.x).toBe(100);
     expect(group).toEqual({ x: 100, y: 100, w: WIDE_WIDTH + mascot!.w, h: 600 });
@@ -401,7 +407,7 @@ describe('the Mascot scale', () => {
   const ASPECT = 0.75;
   const BASE_HEIGHT = 1200;
   const scaled = (box: WindowBox, scale: MascotScale, viewport: Viewport = SCREEN, chrome: 'minimal' | 'full' = 'minimal') =>
-    windowLayout(chrome, box, viewport, { mascotAspect: ASPECT, baseHeight: BASE_HEIGHT, scale });
+    windowLayout(chrome, box, viewport, { mascotAspect: ASPECT, baseHeight: BASE_HEIGHT, scale, placement: 'inside' });
 
   it('fits the Mascot to the column height under Auto', () => {
     const box = { x: 1100, y: 200, w: NARROW_WIDTH, h: 560 };
@@ -512,14 +518,30 @@ describe('the Mascot below', () => {
     expect(group.y + group.h).toBe(BOTTOM);
   });
 
-  it('stands below at the cap and beside one pixel over under Auto', () => {
-    const at = { x: 1100, y: 0, w: NARROW_WIDTH, h: CAP };
-    expect(windowLayout('minimal', at, SCREEN, { mascotAspect: ASPECT, placement: 'auto' }).placement).toBe('below');
-    expect(windowLayout('minimal', { ...at, h: CAP + 1 }, SCREEN, { mascotAspect: ASPECT, placement: 'auto' }).placement).toBe('beside');
+  it('stands beside under Outside at any height', () => {
+    expect(below({ x: 1100, y: 0, w: NARROW_WIDTH, h: 400 }, { placement: 'outside' }).placement).toBe('beside');
+    expect(below({ x: 1100, y: 0, w: NARROW_WIDTH, h: CAP + 100 }, { placement: 'inside' }).placement).toBe('beside');
   });
 
-  it('stands beside under Beside at any height', () => {
-    expect(below({ x: 1100, y: 0, w: NARROW_WIDTH, h: 400 }, { placement: 'beside' }).placement).toBe('beside');
+  it('stands her over the column under Above, her feet on its top, and the column capped', () => {
+    const above = below({ x: 1100, y: 480, w: NARROW_WIDTH, h: 400 }, { placement: 'above' });
+    expect(above.placement).toBe('above');
+    expect(above.column).toEqual({ x: 1100, y: 480, w: NARROW_WIDTH, h: 400 });
+    // Under Auto she fills the room from the screen margin down to the column.
+    expect(above.mascotAt!.y + above.mascot!.h).toBe(480);
+    expect(above.mascotAt!.y).toBe(16);
+    expect(above.mascot).toEqual({ w: (480 - 16) * ASPECT, h: 480 - 16 });
+    expect(above.group.y).toBe(16);
+    expect(above.group.y + above.group.h).toBe(480 + 400);
+    expect(below({ x: 1100, y: 0, w: NARROW_WIDTH, h: 800 }, { placement: 'above' }).column.h).toBe(CAP);
+  });
+
+  it('stands a percent Mascot over the column under Above, and keeps the column low enough for her', () => {
+    const fits = below({ x: 1100, y: 550, w: NARROW_WIDTH, h: MIN_HEIGHT }, { placement: 'above', scale: 25, baseHeight: BASE_HEIGHT });
+    expect(fits.mascot).toEqual({ w: 225, h: 300 });
+    expect(fits.mascotAt!.y).toBe(250);
+    const pushed = below({ x: 1100, y: 100, w: NARROW_WIDTH, h: MIN_HEIGHT }, { placement: 'above', scale: 25, baseHeight: BASE_HEIGHT });
+    expect(pushed.column.y).toBe(16 + 300);
   });
 
   it('caps the column at the cap', () => {
@@ -617,34 +639,32 @@ describe('the Mascot below', () => {
 });
 
 describe('the stored Mascot placement', () => {
-  it('reads Auto until a placement is stored, and comes back as stored', () => {
-    expect(readStoredMascotPlacement()).toBe('auto');
-    writeStoredMascotPlacement('below');
-    expect(readStoredMascotPlacement()).toBe('below');
-    writeStoredMascotPlacement('beside');
-    expect(readStoredMascotPlacement()).toBe('beside');
-    writeStoredMascotPlacement('auto');
-    expect(readStoredMascotPlacement()).toBe('auto');
+  it('reads Outside until a placement is stored, and comes back as stored', () => {
+    expect(readStoredMascotPlacement()).toBe('outside');
+    for (const placement of ['above', 'below', 'inside', 'outside'] as const) {
+      writeStoredMascotPlacement(placement);
+      expect(readStoredMascotPlacement()).toBe(placement);
+    }
   });
 
-  it('reads damage as Auto', () => {
-    localStorage.setItem('formamorph.formaquestion.mascotPlacement', 'above');
-    expect(readStoredMascotPlacement()).toBe('auto');
-    localStorage.setItem('formamorph.formaquestion.mascotPlacement', '');
-    expect(readStoredMascotPlacement()).toBe('auto');
+  it('reads damage, and the retired values, as Outside', () => {
+    for (const stored of ['beside', 'auto', '']) {
+      localStorage.setItem('formamorph.formaquestion.mascotPlacement', stored);
+      expect(readStoredMascotPlacement()).toBe('outside');
+    }
   });
 
-  it('reads Auto and does not throw when storage is blocked', () => {
+  it('reads Outside and does not throw when storage is blocked', () => {
     writeStoredMascotPlacement('below');
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
-    expect(() => writeStoredMascotPlacement('beside')).not.toThrow();
-    expect(readStoredMascotPlacement()).toBe('auto');
+    expect(() => writeStoredMascotPlacement('inside')).not.toThrow();
+    expect(readStoredMascotPlacement()).toBe('outside');
   });
 });
 
 describe('resizePieces', () => {
-  const pieces = { mascotAspect: 0.75 };
+  const pieces = { mascotAspect: 0.75, placement: 'inside' as const };
 
   it('stops the minimal column at the narrow cap and keeps its top left corner', () => {
     const start = { x: 800, y: 200, w: MIN_WIDTH, h: 500 };

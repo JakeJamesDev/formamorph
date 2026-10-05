@@ -1,4 +1,4 @@
-import { MASCOT_BELOW_CAP } from '@/lib/formaquestion/windowBox';
+import { MASCOT_BELOW_CAP, isVerticalPlacement, type MascotPlacement, type WindowChrome } from '@/lib/formaquestion/windowBox';
 
 /** The tabs of Formaquestion Settings, in order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_SETTINGS_TABS = [
@@ -30,14 +30,16 @@ export const GENERAL_COPY = {
   },
   mascotPosition: {
     label: 'Mascot Position',
-    hint: 'Sets whether the Mascot stands beside or under the chat',
-    info: '- **Beside** stands the Mascot next to the chat.\n'
-      + `- **Below** stands it under the chat and caps the chat at ${Math.round(MASCOT_BELOW_CAP * 100)}% of the screen height.\n`
-      + '- **Auto** stands it under a short chat and beside a tall one.',
+    hint: 'Sets where the Mascot stands around the chat',
+    info: `- **Above** stands the Mascot over the chat, and **Below** under it. Both cap the chat at ${Math.round(MASCOT_BELOW_CAP * 100)}% of the screen height.\n`
+      + '- **Inside** stands it beside the chat, toward the middle of the screen.\n'
+      + '- **Outside** stands it beside the chat, toward the nearer edge of the screen.\n'
+      + '- Under **Bubble**, only **Inside** and **Outside** apply.',
     options: [
-      { value: 'beside', label: 'Beside' },
+      { value: 'above', label: 'Above' },
       { value: 'below', label: 'Below' },
-      { value: 'auto', label: 'Auto' },
+      { value: 'inside', label: 'Inside' },
+      { value: 'outside', label: 'Outside' },
     ],
   },
   scrimOpacity: {
@@ -219,3 +221,8 @@ export const TOOLS_COPY = {
   unsupported: "Your Answer Endpoint won't receive these functions. Its model doesn't support them, or support isn't confirmed yet.",
   worldText: 'Sends text from the world you have open when a Tool is on',
 } as const;
+
+/** The Mascot Position choices a chrome offers: Bubble has no over or under, so it offers Inside and Outside alone. */
+export function placementOptions(chrome: WindowChrome): readonly { value: MascotPlacement; label: string }[] {
+  return GENERAL_COPY.mascotPosition.options.filter(({ value }) => chrome !== 'bubble' || !isVerticalPlacement(value));
+}
