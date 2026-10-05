@@ -40,7 +40,7 @@ const SENT_BEFORE = {
 
 /** The lines the Voice chip sends for the Voice "Be warm.". */
 const FRAMED_WARM = [
-  'Speak in this voice: Be warm.',
+  'You are Morphie. Speak in this voice: Be warm.',
   'Keep that voice. Start with the answer, and write each step and control name as the guide writes it.',
 ];
 
@@ -52,7 +52,7 @@ describe('the default help prompts', () => {
   });
 
   it('send the Voice as the paragraph after the intro line of both answer prompts', () => {
-    const voice = { voice: 'Be warm.' };
+    const voice = { voice: 'Be warm.', name: 'Morphie' };
     expect(renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, voice)).toBe([
       'You are the help writer for Formamorph, a text adventure app. A player asks how to use the app, and you answer from the guide sections in the message.',
       '',
@@ -87,12 +87,12 @@ describe('a help chip', () => {
   });
 
   it('sends the Voice that comes with the question in its frame, in place', () => {
-    expect(renderHelpPrompt(`Intro.\n\n${HELP_CHIP.voice}\n\n- Rule.`, { voice: 'Be warm.' })).toBe(['Intro.', '', ...FRAMED_WARM, '', '- Rule.'].join('\n'));
-    expect(renderHelpPrompt(`Intro. ${HELP_CHIP.voice} Rule.`, { voice: 'Be warm.' })).toBe(`Intro. ${FRAMED_WARM.join('\n')} Rule.`);
+    expect(renderHelpPrompt(`Intro.\n\n${HELP_CHIP.voice}\n\n- Rule.`, { voice: 'Be warm.', name: 'Morphie' })).toBe(['Intro.', '', ...FRAMED_WARM, '', '- Rule.'].join('\n'));
+    expect(renderHelpPrompt(`Intro. ${HELP_CHIP.voice} Rule.`, { voice: 'Be warm.', name: 'Morphie' })).toBe(`Intro. ${FRAMED_WARM.join('\n')} Rule.`);
   });
 
   it('leaves no blank line where an empty Voice stands alone on its line', () => {
-    const empty = { voice: '' };
+    const empty = { voice: '', name: 'Morphie' };
     expect(renderHelpPrompt(`Intro.\n\n${HELP_CHIP.voice}\n\n- Rule.`, empty)).toBe('Intro.\n\n- Rule.');
     expect(renderHelpPrompt(`Intro.\n${HELP_CHIP.voice}\n- Rule.`, empty)).toBe('Intro.\n- Rule.');
     expect(renderHelpPrompt(`  ${HELP_CHIP.voice} \n\nIntro.`, empty)).toBe('Intro.');

@@ -476,7 +476,7 @@ Each prompt editor is a chip editor, as in **Settings** → **Prompts**. The chi
 | **Lookup Function** | Lookup | The name of the function your AI calls to read more guide sections |
 | **Search Limit** | Search | The most sections one search reply names. The app reads that many sections at most, whatever the prompt says. |
 | **Reply Format** | Search | The rule for how the search reply is written, so the app can read it |
-| **Mascot Voice** | Answer, Lookup | Your mascot's Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
+| **Mascot Voice** | Answer, Lookup | Your mascot's name and Voice: "You are Morphie." for the mascot that comes with the app, then the Voice, with a line that keeps the guide's steps and control names as the guide writes them. With the mascot off, or an empty Voice, it sends nothing. |
 
 A chip sends its text, and no chip sends nothing. Remove the **Not in Guide Marker** chip from a custom Answer prompt, and your AI is not told to mark an answer that is not from the guide. The guide sections and your question are not in a prompt: the app builds that part of the request.
 
@@ -548,24 +548,24 @@ A Tool that's on reads the world you have open, so text from that world can go t
 2. The file is the same Tool pack as **Settings** → **Tools**, so a pack from one list opens in the other. An import skips a Tool you already have, and names it. A file with a Script Tool shows a warning, because a script runs code when the AI calls it.
 
 ### Mascot
-<!-- keywords: character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot, mascot full screen -->
+<!-- keywords: morphie, mascot name, who is the mascot, character, mascot, rig, layers, overlays, base image, expression, state, reset mascot, my own character, face, wave, thinking face, initial look, idle look, thinking look, voice, mask, head view, transition, jelly, dissolve, bounce, mascot card, export mascot, import mascot, share my mascot, turn off the mascot, minimal window, mascot preset, duplicate mascot, rename mascot, delete mascot, save mascot, unsaved changes, more than one mascot, mascot full screen -->
 <!-- route: formaquestionSettings.mascot -->
 
-The **Mascot** tab edits the mascot's rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions. The **Mascot** switch is in the **Window** group on the **General** tab. With the mascot off, this tab disables every control and shows "The Mascot is off. Select “General” to turn it on." Select **General** in that line to open the **General** tab.
+The **Mascot** tab edits the mascot's rig: a base image with layers drawn on top. The mascot stands beside the chat and reacts to your questions. The mascot's name is its preset's name. Your AI answers as that name, and a screen reader reads it on the mascot. The **Mascot** switch is in the **Window** group on the **General** tab. With the mascot off, this tab disables every control and shows "The Mascot is off. Select “General” to turn it on." Select **General** in that line to open the **General** tab.
 
-You can keep more than one mascot. The **Preset** list at the top of the tab picks the one Formaquestion shows. **Default** is the mascot that comes with the app. It is read-only, and it updates with each release. To change it, select **Duplicate** and edit the copy.
+You can keep more than one mascot. The **Preset** list at the top of the tab picks the one Formaquestion shows. **Morphie** is the mascot that comes with the app. She is read-only, and she updates with each release. To change her, select **Duplicate** and edit the copy.
 
 | Button | What it does |
 |---|---|
 | **Duplicate** | Copies the mascot you see into one you can edit, and selects it |
 | **Rename** | Renames this mascot |
 | **Delete** | Deletes this mascot and the images no other mascot uses. It asks first. |
-| **Reset** | Puts the Default's rig in place of this mascot's. **Cancel** takes it back. |
+| **Reset** | Puts Morphie's rig in place of this mascot's. **Cancel** takes it back. |
 | **Import** | Adds a mascot from a card file, and selects it. See [The Mascot Card](#the-mascot-card). |
 | **Export** | Saves this mascot as a card |
 | **View full screen** | Opens the whole tab full screen. **Exit full screen** or Escape returns it. |
 
-Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Default** is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
+Only **Duplicate**, **Import**, **Export** and **View full screen** show while **Morphie** is selected. Point at a button to see what it does. On a narrow screen, the buttons are in the **Preset Actions** menu.
 
 Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
 
@@ -601,7 +601,7 @@ A look is one expression and one state. Each look row has two lists, one for the
 
 | Look | When the mascot shows it |
 |---|---|
-| **Initial Look** | The first time the mascot appears after the app starts. It stays until you send your first question. The default mascot waves. |
+| **Initial Look** | The first time the mascot appears after the app starts. It stays until you send your first question. Morphie waves. |
 | **Thinking Look** | From the moment you send a question until the answer starts. It stays while your AI reasons. |
 | **Idle Look** | When the answer starts. Its state shows with every answer. Its expression shows when your AI picked no face. |
 
@@ -621,7 +621,7 @@ The Mask is the box that sets the head view. It has eight handles, one on each c
 - The handles fade while your pointer is away from the box. On a touch screen they stay drawn. With reduced motion, they show and hide with no fade.
 - **Head View** sits in a fixed slot. A wide Mask shows a shorter head, so the slot does not move while you drag.
 
-**Reset** restores the Default's Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
+**Reset** restores Morphie's Mask. This device keeps your choice between **Show Head Only** and **Show Full Mascot**.
 
 #### The Transition
 
@@ -641,7 +641,7 @@ The mascot plays its transition each time its look changes: from the Initial Loo
 
 **Export** saves the mascot you see as a `.webp` card, with your changes not saved yet. The card shows the Initial Look, and it holds the mascot's name and the whole rig: every layer and image, the three looks, the Mask, the transition and the Voice. Send the file to a friend. **Import** reads a `.webp` card and adds it as a new mascot. Your other mascots stay as they are. It does not change the **Mascot** switch.
 
-- The new mascot takes the name in the card. A card with no name takes the file's name. A name already in use gets a number, such as "Captain 2".
+- The new mascot takes the name in the card, and your AI answers as that name. A card with no name takes the file's name. A name already in use gets a number, such as "Captain 2".
 
 - A card with a bad field, or one from a different version, is refused. The error names the field, and your mascot stays as it was.
 - The card is an image file with your art inside it. Share it only with people you want to see that art.

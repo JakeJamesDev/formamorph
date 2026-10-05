@@ -1213,12 +1213,12 @@ describe('the preset row', () => {
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
     const [blob, fileName] = vi.mocked(downloadBlob).mock.calls[0];
     expect(fileName).toBe('mascot.webp');
-    expect((await readMascotCard(blob)).name).toBe('Default');
+    expect((await readMascotCard(blob)).name).toBe('Morphie');
   });
 
   it('shows the Default read-only: no editor control takes input, and the preview still follows a selected layer', async () => {
     mountDefault();
-    expect(screen.getByText('Default is read-only')).toBeInTheDocument();
+    expect(screen.getByText('Morphie is read-only')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Voice' })).toHaveAttribute('readonly');
     expect(screen.queryByRole('button', { name: 'Add Layer' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Remove layer' })).toBeNull();
@@ -1239,8 +1239,8 @@ describe('the preset row', () => {
   it('duplicates the Default from the read-only notice into an editable copy', async () => {
     mountDefault();
     await userEvent.click(screen.getByRole('button', { name: /Duplicate & Edit/ }));
-    expect(current.mascotPresets.mascots.map((mascot) => mascot.name)).toEqual(['Default (copy)']);
-    expect(presetSelect()).toHaveTextContent('Default (copy)');
+    expect(current.mascotPresets.mascots.map((mascot) => mascot.name)).toEqual(['Morphie (copy)']);
+    expect(presetSelect()).toHaveTextContent('Morphie (copy)');
     expect(screen.getByRole('textbox', { name: 'Voice' })).not.toHaveAttribute('readonly');
   });
 
@@ -1280,7 +1280,7 @@ describe('the preset row', () => {
     await userEvent.click(within(row()).getByRole('button', { name: 'Delete' }));
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
     expect(current.mascotPresets.mascots.map((mascot) => mascot.name)).toEqual(['Twin']);
-    expect(presetSelect()).toHaveTextContent('Default');
+    expect(presetSelect()).toHaveTextContent('Morphie');
     await waitFor(async () => expect(await getMascotImage(own)).toBeNull());
     expect(await getMascotImage(shared)).not.toBeNull();
   });
@@ -1289,15 +1289,15 @@ describe('the preset row', () => {
     mount();
     await userEvent.click(within(layerRow('Crying')).getByRole('button', { name: 'Remove layer' }));
     await userEvent.click(screen.getByRole('button', { name: 'Expand Happy' }));
-    await selectMascot('Default');
+    await selectMascot('Morphie');
     const prompt = await screen.findByRole('alertdialog');
     await userEvent.click(within(prompt).getByRole('button', { name: 'Cancel' }));
     expect(presetSelect()).toHaveTextContent('Mine');
     expect(control.dirty).toBe(true);
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Happy');
-    await selectMascot('Default');
+    await selectMascot('Morphie');
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save & Exit' }));
-    expect(presetSelect()).toHaveTextContent('Default');
+    expect(presetSelect()).toHaveTextContent('Morphie');
     expect(current.mascotPresets.mascots[0].rig.layers.map((layer) => layer.id)).not.toContain('sad');
   });
 });

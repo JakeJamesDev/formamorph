@@ -68,6 +68,7 @@ import { askHelp, HELP_DOCS_CHAR_BUDGET, helpSections, type EarlierExchange } fr
 import { DEFAULT_HELP_OPTIONS } from '@/lib/formaquestion/helpPresets';
 import { helpSettingsOf } from '@/lib/formaquestion/helpSettings';
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
+import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 import { surfaceHint } from '@/lib/formaquestion/surfaceHint';
 import type { RequestMessage } from '@/types';
 import { mean, noUsage, probeSnapshot, send, sessionFetch, withoutEarlierAnswer, type ProbeTarget, type Usage } from './help-probe-shared';
@@ -103,7 +104,7 @@ if (mascotArg !== 'on' && mascotArg !== 'off') throw new Error(`--mascot takes o
 const mascotVoice = argVal('--voice', DEFAULT_MASCOT_RIG.voice);
 const mascotSettings = {
   mascot: mascotArg === 'on',
-  mascotPresets: { activeId: 'probe', mascots: [{ id: 'probe', name: 'Probe', rig: { ...DEFAULT_MASCOT_RIG, voice: mascotVoice } }] },
+  mascotPresets: { activeId: 'probe', mascots: [{ id: 'probe', name: DEFAULT_MASCOT_NAME, rig: { ...DEFAULT_MASCOT_RIG, voice: mascotVoice } }] },
 };
 if (frames.length > 0 && !(mascotSettings.mascot && mascotVoice.trim())) throw new Error('--frames needs the Mascot on and a Voice');
 
@@ -183,7 +184,7 @@ async function askSession(target: ProbeTarget, arm: Arm, c: BaselineCase, histor
   const fetchImpl = arm === 'pick-old'
     ? withoutEarlierAnswer(sessionFetch(usage), PICK_LINES, { question: c.question, earlier: previous?.question, earlierAnswer: previous?.answer, where: surfaceHint(c.surface, index)?.where })
     : isVariant(arm) ? answerVariant(sessionFetch(usage), arm)
-    : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotVoice.trim()) : sessionFetch(usage);
+    : isFrame(arm) ? voiceFrame(sessionFetch(usage), arm, mascotVoice.trim(), DEFAULT_MASCOT_NAME) : sessionFetch(usage);
   const session = askHelp({
     question: c.question, history: arm === 'follow-old' ? history.map(({ sources: _, ...exchange }) => exchange) : history, language: c.language, surface: c.surface, index: untiered ? untieredIndex : arm === 'unfiltered' ? unfilteredIndex : arm === 'hub-old' ? hubOldIndex : arm === 'screen-old' ? screenOldIndex : arm === 'floor-old' ? floorOldIndex : arm === 'floor-alt' ? floorAltIndex : index,
     settings: helpSettingsOf({ lookup, ...mascotSettings, ...(arm === 'mascot-off' && { mascot: false }), ...(arm === 'keyword-only' && { sources: { aiPicks: false } }) }),
@@ -214,7 +215,7 @@ ${exchange.answer}` : exchange.answer },
     { role: 'user', content: helpUserMessage(c.question, sections, hint?.where) },
   ];
   const spec = buildAiRequestSpec(probeSnapshot(target, false), {
-    systemPrompt: helpSystemPrompt(c.language ?? '', renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: mascotSettings.mascot ? mascotVoice.trim() : '' })), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens,
+    systemPrompt: helpSystemPrompt(c.language ?? '', renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, mascotSettings.mascot ? { voice: mascotVoice.trim(), name: DEFAULT_MASCOT_NAME } : { voice: '', name: '' })), messages, requestType: 'help', maxTokensOverride: DEFAULT_HELP_OPTIONS.answer.maxTokens,
   });
   const result = await send(spec.url, { method: 'POST', headers: spec.headers, body: JSON.stringify(spec.body) }, usage);
   if (result instanceof Response) throw new Error(`HTTP ${result.status}: ${(await result.text()).slice(0, 200)}`);

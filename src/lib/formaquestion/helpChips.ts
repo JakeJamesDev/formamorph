@@ -11,7 +11,7 @@ import { GENERAL_KNOWLEDGE_MARKER } from './generalKnowledge';
 import { HELP_PICK_LIMIT } from './helpPicks';
 import type { HelpPromptKey } from './helpPrompt';
 import type { HelpSettings } from './helpSettings';
-import { activeMascotRig } from './mascotPresets';
+import { activeMascotPreset } from './mascotPresets';
 
 /** A help chip's token in the stored text. */
 export const HELP_CHIP = {
@@ -28,20 +28,25 @@ export type HelpChipToken = (typeof HELP_CHIP)[keyof typeof HELP_CHIP];
 export interface HelpChipValues {
   /** The Mascot's Voice while the mascot is on, else empty. */
   readonly voice: string;
+  /** The Mascot's name, which the Voice chip sends with the Voice. */
+  readonly name: string;
 }
 
-const NO_VALUES: HelpChipValues = { voice: '' };
+const NO_VALUES: HelpChipValues = { voice: '', name: '' };
 
-/** The chip values a prompt's request sends: the active mascot's Voice, trimmed, while the mascot is on; the pick request sends none. */
-export const helpChipValues = (prompt: HelpPromptKey, { mascot, mascotPresets }: Pick<HelpSettings, 'mascot' | 'mascotPresets'>): HelpChipValues =>
-  (prompt !== 'pick' && mascot ? { voice: activeMascotRig(mascotPresets).voice.trim() } : NO_VALUES);
+/** The chip values a prompt's request sends: the active mascot's name and Voice, trimmed, while the mascot is on; the pick request sends none. */
+export function helpChipValues(prompt: HelpPromptKey, { mascot, mascotPresets }: Pick<HelpSettings, 'mascot' | 'mascotPresets'>): HelpChipValues {
+  if (prompt === 'pick' || !mascot) return NO_VALUES;
+  const { name, rig } = activeMascotPreset(mascotPresets);
+  return { voice: rig.voice.trim(), name: name.trim() };
+}
 
-/** A chip sends a fixed `text`, or the question's `value` of that name in its `frame`. An empty value sends nothing. */
-type HelpChipEntry = { label: string; hint: string } & ({ text: string } | { value: keyof HelpChipValues; frame: (value: string) => string });
+/** A chip sends a fixed `text`, or the question's values in its `frame`, keyed on `value`: an empty one sends nothing. */
+type HelpChipEntry = { label: string; hint: string } & ({ text: string } | { value: keyof HelpChipValues; frame: (values: HelpChipValues) => string });
 
-/** The Voice with the lines that keep the guide's steps and names above its tone. */
-export const frameVoice = (voice: string): string =>
-  `Speak in this voice: ${voice}\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.`;
+/** The Mascot's name and Voice, with the lines that keep the guide's steps and names above its tone. */
+export const frameVoice = (voice: string, name: string): string =>
+  `You are ${name}. Speak in this voice: ${voice}\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.`;
 
 /** Each chip: its label on the chip, its tooltip, and the text it sends. */
 export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
@@ -67,9 +72,9 @@ export const HELP_CHIPS: Record<HelpChipToken, HelpChipEntry> = {
   },
   [HELP_CHIP.voice]: {
     label: 'Mascot Voice',
-    hint: "Sends your mascot's Voice while the mascot is on",
+    hint: "Names your mascot and sends its Voice while the mascot is on",
     value: 'voice',
-    frame: frameVoice,
+    frame: ({ voice, name }) => frameVoice(voice, name),
   },
 };
 
@@ -94,8 +99,7 @@ export function parseHelpPrompt(text: string): PromptSegment[] {
 function chipText(token: HelpChipToken, values: HelpChipValues): string {
   const entry = HELP_CHIPS[token];
   if ('text' in entry) return entry.text;
-  const value = values[entry.value];
-  return value && entry.frame(value);
+  return values[entry.value] && entry.frame(values);
 }
 
 /** A line that holds one chip alone, with the chip's text empty. */

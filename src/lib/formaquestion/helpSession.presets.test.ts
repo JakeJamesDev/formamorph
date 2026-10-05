@@ -11,6 +11,7 @@ import { askHelp, type HelpEvent, type HelpQuestion } from './helpSession';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf } from './helpSettings';
 import { DEFAULT_MASCOT_RIG } from './mascot';
 import { mascotStoreOf, VOICED_HELP_PROMPT, VOICED_LOOKUP_PROMPT } from '@/test/helpFixtures';
+import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 
 const PAGES = {
   Traits: '# 🧬 Traits\n\nA trait changes a stat.\n\n## How to Add a Trait\n\n1. Open the **Traits** tab.\n2. Select **Add Trait**.\n',
@@ -130,13 +131,15 @@ describe('the options of each request', () => {
 
 describe('the Voice of a question', () => {
   const VOICE = 'Speak like a ship captain.';
+  /** The name `mascotStoreOf` gives its one preset. */
+  const NAME = 'Mine';
   const rig = { ...DEFAULT_MASCOT_RIG, voice: VOICE };
-  /** The lines the chip sends for `voice`. */
-  const framed = (voice: string) => `Speak in this voice: ${voice}\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.`;
+  /** The lines the chip sends for `voice`, naming the preset. */
+  const framed = (voice: string, name = NAME) => `You are ${name}. Speak in this voice: ${voice}\nKeep that voice. Start with the answer, and write each step and control name as the guide writes it.`;
   /** The prompt with the framed `voice` as its own paragraph after the intro line. */
-  const voiced = (prompt: string, voice: string) => {
+  const voiced = (prompt: string, voice: string, name = NAME) => {
     const [intro, ...rest] = prompt.split('\n\n');
-    return [intro, framed(voice), ...rest].join('\n\n');
+    return [intro, framed(voice, name), ...rest].join('\n\n');
   };
   const bodyOf = (spy: FetchSpy, call: number) => JSON.parse(spy.mock.calls[call][1].body as string) as SentBody;
 
@@ -188,6 +191,6 @@ describe('the Voice of a question', () => {
   it('comes with the question: the default rig sends its Voice', async () => {
     const fetchImpl = answers();
     await sent('How do I add a trait?', fetchImpl, { settings: DEFAULT_HELP_SETTINGS });
-    expect(systemOf(fetchImpl, 1)).toBe(voiced(HELP_SYSTEM_PROMPT, DEFAULT_MASCOT_RIG.voice));
+    expect(systemOf(fetchImpl, 1)).toBe(voiced(HELP_SYSTEM_PROMPT, DEFAULT_MASCOT_RIG.voice, DEFAULT_MASCOT_NAME));
   });
 });

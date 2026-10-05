@@ -36,7 +36,7 @@ import { FormaquestionAiContext } from './FormaquestionAiContext';
 import { HELP_CHIP, helpChipVocabulary } from '@/lib/formaquestion/helpChips';
 import { composeMascot } from '@/lib/formaquestion/mascot';
 import { cropFrame, fitMask, headSize, type MascotSize } from '@/lib/formaquestion/mascotMask';
-import { activeMascotRig } from '@/lib/formaquestion/mascotPresets';
+import { activeMascotPreset } from '@/lib/formaquestion/mascotPresets';
 import { mascotImageRefs } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
@@ -524,7 +524,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     writeStoredHeadView(!headView);
   };
 
-  const rig = activeMascotRig(settings.mascotPresets);
+  const { name: mascotName, rig } = activeMascotPreset(settings.mascotPresets);
   // Under Bubble her face follows the paged answer (Q8). Minimal and Full ignore the page and keep the newest.
   const spoken = bubble ? page.exchange : chat.exchanges.at(-1);
   const mascotImages = composeMascot(rig, mascotPhase(spoken), mascotFace(spoken));
@@ -586,7 +586,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // She is a drag target beside or under the box, as she is under Bubble, and stays under the pointer while the column flips sides (Q33); the sheet has no moves.
   const mascotMoveHandlers = usePointerDrag(boxDrag(dragMascot));
   const wholeMascot = layout && settings.mascot && !(minimal && showHead) && (
-    <MascotPiece images={mascotImages} hold={mascotImageRefs(rig)} transition={rig.transition} size={layout.mascot} move={sheet ? undefined : mascotMoveHandlers} onBase={setMascotBase} />
+    <MascotPiece images={mascotImages} hold={mascotImageRefs(rig)} transition={rig.transition} size={layout.mascot} move={sheet ? undefined : mascotMoveHandlers} label={mascotName} onBase={setMascotBase} />
   );
   const readerSize = bubbleView?.reader ?? layout?.reader;
   const readerPiece = readerSize && guide && readerId && (
@@ -603,6 +603,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : headHeight(scale, crop.height, layout?.column.h ?? HEAD_HEIGHT))}
       frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
       move={sheet ? undefined : moveHandlers}
+      label={mascotName}
       onBase={setMascotBase}
     />
   );
@@ -616,6 +617,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       transition={rig.transition}
       size={{ w: bubbleView.her.w, h: bubbleView.her.h }}
       frame={headView ? cropFrame(bubbleInput.mask, bubbleInput.base) : undefined}
+      label={mascotName}
       onBase={setMascotBase}
     />
   );

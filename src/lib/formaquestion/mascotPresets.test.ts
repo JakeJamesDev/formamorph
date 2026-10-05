@@ -52,7 +52,7 @@ describe('the mascot preset store', () => {
     const store = addMascotPreset(storeOf({ id: 'one', name: 'Friend', rig: DEFAULT_MASCOT_RIG }), { id: 'two', name: 'Friend 2', rig: DEFAULT_MASCOT_RIG });
     expect(uniqueMascotName(store, 'Captain')).toBe('Captain');
     expect(uniqueMascotName(store, 'Friend')).toBe('Friend 3');
-    expect(uniqueMascotName(store, 'Default')).toBe('Default 2');
+    expect(uniqueMascotName(store, 'Morphie')).toBe('Morphie 2');
   });
 
   it('selects the Default for an id no mascot holds', () => {
@@ -77,7 +77,7 @@ describe('parseMascotPresetStore', () => {
         { id: 'one', name: 'One', rig: DEFAULT_MASCOT_RIG },
         { id: 'broken', name: 5, rig: DEFAULT_MASCOT_RIG },
         { id: 'one', name: 'Again', rig: DEFAULT_MASCOT_RIG },
-        { id: DEFAULT_MASCOT_ID, name: 'Default', rig: DEFAULT_MASCOT_RIG },
+        { id: DEFAULT_MASCOT_ID, name: 'Morphie', rig: DEFAULT_MASCOT_RIG },
       ],
     };
     expect(parseMascotPresetStore(value)).toEqual({ activeId: DEFAULT_MASCOT_ID, mascots: [{ id: 'one', name: 'One', rig: DEFAULT_MASCOT_RIG }] });

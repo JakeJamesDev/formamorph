@@ -71,7 +71,7 @@ describe('the help preset on the device', () => {
     localStorage.setItem('FORMAMORPH_helpSettings', helpSettingsCodec.serialize(helpSettingsOf({ mascotPresets: mascotStoreOf(captain) })));
     const spy = stubRequests();
     await ask(spy, 'How do I add a trait?');
-    expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
+    expect(systemOf(spy, 1)).toContain('\n\nYou are Mine. Speak in this voice: Speak like a ship captain.\n');
   });
 
   it('sends the Voice typed on the Mascot tab', async () => {
@@ -93,7 +93,8 @@ describe('the help preset on the device', () => {
     await userEvent.type(await screen.findByRole('textbox', { name: 'Ask a Question' }), 'How do I add a trait?');
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
     await answered(spy);
-    expect(systemOf(spy, 1)).toContain('\n\nSpeak in this voice: Speak like a ship captain.\n');
+    // The copy keeps the Default's name with its mark, so she goes by it until the player renames her.
+    expect(systemOf(spy, 1)).toContain('\n\nYou are Morphie (copy). Speak in this voice: Speak like a ship captain.\n');
   });
 
   it("sends the prompt with no Voice while the Mascot is off", async () => {
