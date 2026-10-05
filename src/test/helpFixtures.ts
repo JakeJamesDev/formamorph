@@ -17,12 +17,17 @@ export const VOICED_LOOKUP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.lookup
 
 /** Stores the window's place, with one size for both chromes. */
 export function storeWindowBox({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
-  writeStoredWindow({ x, y, minimal: { w, h }, full: { w, h } });
+  writeStoredWindow({ x, y, minimal: { w, h }, full: { w, h }, bubble: null, chat: null });
 }
 
 /** Stores help settings with the Mascot off, so the window has the framed chrome. Fields pass as given, bad ones included. */
 export function storeFramedWindow(fields: Record<string, unknown> = {}) {
   localStorage.setItem('FORMAMORPH_helpSettings', JSON.stringify({ mascot: false, ...fields }));
+}
+
+/** Stores help settings with the Chat Style pinned to Minimal, so the window shows the whole conversation as a column. */
+export function storeMinimalWindow(fields: Record<string, unknown> = {}) {
+  localStorage.setItem('FORMAMORPH_helpSettings', JSON.stringify({ chatStyle: 'minimal', ...fields }));
 }
 
 /** A Formaquestion Tool: an entity lookup by name, offered to no prompt, with `patch` applied. */

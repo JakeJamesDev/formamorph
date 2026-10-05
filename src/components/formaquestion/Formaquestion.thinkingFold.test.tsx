@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { sseFrame, sseReply } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { stubHelpStream } from '@/test/helpFixtures';
+import { storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const SETTINGS_KEY = 'FORMAMORPH_helpSettings';
@@ -41,6 +41,8 @@ const thinkingToggles = () => within(conversation()).getAllByRole('button', { na
 
 beforeEach(() => {
   localStorage.clear();
+  // The conversation column holds each answer's toggles; Bubble moves them to its strip.
+  storeMinimalWindow();
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
 });
 afterEach(() => {

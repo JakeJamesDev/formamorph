@@ -21,11 +21,11 @@ export const WIDE_WIDTH = 720;
 /** The default window's share of the screen height. */
 const DEFAULT_HEIGHT_SHARE = 0.6;
 /** Space the window keeps from the screen edge at its default place and at its largest size. */
-const SCREEN_MARGIN = 16;
+export const SCREEN_MARGIN = 16;
 /** Room the default place leaves for the Help tab, which starts on the right edge. */
-const TAB_CLEARANCE = 44;
+export const TAB_CLEARANCE = 44;
 /** Room the default place leaves for the controls in a screen's bottom corner. */
-const CORNER_CLEARANCE = 72;
+export const CORNER_CLEARANCE = 72;
 
 const STORAGE_KEY = 'formamorph.formaquestion.window';
 
@@ -87,8 +87,11 @@ const clamp = (value: number, min: number, max: number): number => Math.min(Math
 export const READER_WIDTH = 360;
 export const READER_GAP = 8;
 
-/** The window's two chromes: the bare chat column, and the framed window. */
-export type WindowChrome = 'minimal' | 'full';
+/** The window's chromes: the Mascot speaking from a bubble, the bare chat column, and the framed window. */
+export type WindowChrome = 'bubble' | 'minimal' | 'full';
+
+/** The chromes whose window is a box the device keeps. Bubble keeps her place only. */
+export type BoxChrome = Exclude<WindowChrome, 'bubble'>;
 
 /** A side of the column or frame, for the Mascot beside it or the reader. */
 export type MascotSide = 'left' | 'right';
@@ -148,7 +151,7 @@ function widerSide(x: number, w: number, viewport: Viewport, current: MascotSide
  * stay whole on the screen. Below, or Auto at or under the cap, a whole Mascot stands under a column at most
  * the cap's height instead.
  */
-export function windowLayout(chrome: WindowChrome, box: WindowBox, viewport: Viewport, pieces: WindowPieces): WindowLayout {
+export function windowLayout(chrome: BoxChrome, box: WindowBox, viewport: Viewport, pieces: WindowPieces): WindowLayout {
   const { mascotAspect, showReader = false, side: previous = 'left', scale = 'auto', baseHeight, placement = 'beside' } = pieces;
   const w = clamp(chrome === 'minimal' ? Math.min(box.w, NARROW_WIDTH) : box.w, MIN_WIDTH, viewport.width - SCREEN_MARGIN * 2);
   const h = clamp(box.h, MIN_HEIGHT, viewport.height - SCREEN_MARGIN * 2);
@@ -228,12 +231,12 @@ function belowLayout(box: WindowBox, viewport: Viewport, pieces: BelowPieces): W
 }
 
 /** The column or frame a pill or title bar drag of (dx, dy) gives, from where the drag started. The pieces stay whole on the screen. */
-export function movePieces(chrome: WindowChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
+export function movePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
   return windowLayout(chrome, moveBox(start, dx, dy, viewport), viewport, pieces).column;
 }
 
 /** The column or frame a corner grip drag of (dx, dy) gives. The top left corner stays put while the pieces have room. */
-export function resizePieces(chrome: WindowChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
+export function resizePieces(chrome: BoxChrome, start: WindowBox, dx: number, dy: number, viewport: Viewport, pieces: WindowPieces): WindowBox {
   return windowLayout(chrome, resizeBox(start, dx, dy, viewport), viewport, pieces).column;
 }
 
@@ -242,24 +245,33 @@ export interface WindowSize {
   readonly h: number;
 }
 
-/** What the device keeps: one place, and a size for each chrome (Q11). */
+/** Where the Mascot stands under Bubble: the middle of her feet, or of her head in head view. */
+export interface BubblePoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** What the device keeps: one place and a size for each box chrome (Q11), and her place under Bubble, null for the default (Q15). */
 export interface StoredWindow {
   readonly x: number;
   readonly y: number;
   readonly minimal: WindowSize;
   readonly full: WindowSize;
+  readonly bubble: BubblePoint | null;
+  /** The Bubble chrome's chat size from its grip, or null for the default width and a bubble that fits its answer (Q19). */
+  readonly chat: WindowSize | null;
 }
 
 /** The chrome's box: the shared place at that chrome's size. */
-export const boxOf = (stored: StoredWindow, chrome: WindowChrome): WindowBox => ({ x: stored.x, y: stored.y, ...stored[chrome] });
+export const boxOf = (stored: StoredWindow, chrome: BoxChrome): WindowBox => ({ x: stored.x, y: stored.y, ...stored[chrome] });
 
 /** The stored window after the chrome moved or resized to `box`. The other chrome keeps its size. */
-export const withBox = (stored: StoredWindow, chrome: WindowChrome, { x, y, w, h }: WindowBox): StoredWindow => ({ ...stored, x, y, [chrome]: { w, h } });
+export const withBox = (stored: StoredWindow, chrome: BoxChrome, { x, y, w, h }: WindowBox): StoredWindow => ({ ...stored, x, y, [chrome]: { w, h } });
 
-/** Both chromes at the default box. */
+/** Both box chromes at the default box, and the Mascot at her default place. */
 export function defaultWindow(viewport: Viewport): StoredWindow {
   const { x, y, w, h } = defaultBox(viewport);
-  return { x, y, minimal: { w, h }, full: { w, h } };
+  return { x, y, minimal: { w, h }, full: { w, h }, bubble: null, chat: null };
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
@@ -271,9 +283,16 @@ export function readStoredWindow(): StoredWindow | null {
   try {
     const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
     if (!hasNumbers(stored, ['x', 'y'] as const)) return null;
-    const { x, y, minimal, full } = stored;
+    const { x, y, minimal, full, bubble, chat } = stored;
     if (!hasNumbers(minimal, ['w', 'h'] as const) || !hasNumbers(full, ['w', 'h'] as const)) return null;
-    return { x, y, minimal: { w: Math.min(minimal.w, NARROW_WIDTH), h: minimal.h }, full: { w: full.w, h: full.h } };
+    return {
+      x,
+      y,
+      minimal: { w: Math.min(minimal.w, NARROW_WIDTH), h: minimal.h },
+      full: { w: full.w, h: full.h },
+      bubble: hasNumbers(bubble, ['x', 'y'] as const) ? { x: bubble.x, y: bubble.y } : null,
+      chat: hasNumbers(chat, ['w', 'h'] as const) ? { w: chat.w, h: chat.h } : null,
+    };
   } catch {
     return null;
   }

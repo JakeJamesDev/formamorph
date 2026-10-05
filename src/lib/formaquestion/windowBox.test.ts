@@ -106,7 +106,7 @@ describe('moveBox and resizeBox', () => {
 });
 
 describe('the stored window', () => {
-  const stored: StoredWindow = { x: 320, y: 140, minimal: { w: 360, h: 600 }, full: { w: 720, h: 480 } };
+  const stored: StoredWindow = { x: 320, y: 140, minimal: { w: 360, h: 600 }, full: { w: 720, h: 480 }, bubble: { x: 1300, y: 850 }, chat: { w: 500, h: 300 } };
 
   it('comes back as it was stored', () => {
     writeStoredWindow(stored);
@@ -127,8 +127,15 @@ describe('the stored window', () => {
 
   it("keeps the other chrome's size when one chrome moves or resizes", () => {
     const next = withBox(stored, 'minimal', { x: 500, y: 90, w: 380, h: 700 });
-    expect(next).toEqual({ x: 500, y: 90, minimal: { w: 380, h: 700 }, full: { w: 720, h: 480 } });
+    expect(next).toEqual({ x: 500, y: 90, minimal: { w: 380, h: 700 }, full: { w: 720, h: 480 }, bubble: { x: 1300, y: 850 }, chat: { w: 500, h: 300 } });
     expect(boxOf(next, 'full')).toEqual({ x: 500, y: 90, w: 720, h: 480 });
+  });
+
+  it('reads a window stored without a Mascot place as the default place', () => {
+    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 1, y: 2, minimal: { w: 400, h: 500 }, full: { w: 400, h: 500 } }));
+    expect(readStoredWindow()).toMatchObject({ bubble: null, chat: null });
+    localStorage.setItem('formamorph.formaquestion.window', JSON.stringify({ x: 1, y: 2, minimal: { w: 400, h: 500 }, full: { w: 400, h: 500 }, bubble: { x: 'left' }, chat: { w: 'wide', h: 300 } }));
+    expect(readStoredWindow()).toMatchObject({ bubble: null, chat: null });
   });
 
   it('reads the minimal width at the narrow cap', () => {
@@ -137,7 +144,7 @@ describe('the stored window', () => {
   });
 
   it('draws inside a screen that is now smaller', () => {
-    writeStoredWindow({ x: 1100, y: 300, minimal: { w: 400, h: 500 }, full: { w: 400, h: 500 } });
+    writeStoredWindow({ x: 1100, y: 300, minimal: { w: 400, h: 500 }, full: { w: 400, h: 500 }, bubble: null, chat: null });
     const small = { width: 1000, height: 700 };
     const drawn = fullLayout(boxOf(readStoredWindow()!, 'full'), small, null).column;
     expect(drawn.x + drawn.w).toBeLessThanOrEqual(1000);

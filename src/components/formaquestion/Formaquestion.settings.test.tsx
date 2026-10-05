@@ -134,7 +134,8 @@ describe('Formaquestion Settings', () => {
     const { field } = await openAsk();
     await setChecks({ 'AI Search': false });
     await send(field, 'How do I add a trait?');
-    await within(conversation()).findByRole('group', { name: 'Sources' });
+    // Blocked storage reads the defaults, so Bubble draws; its strip shows the sources.
+    await screen.findByRole('button', { name: /^Sources/ });
 
     expect(fetchSpy.picks).not.toHaveBeenCalled();
   });

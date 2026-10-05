@@ -140,7 +140,8 @@ describe('Formaquestion Settings rows', () => {
         onOpenChange={() => {}}
         tab={tab}
         onTabChange={() => {}}
-        settings={DEFAULT_HELP_SETTINGS}
+        // Minimal shows every General row; Bubble hides Mascot Position (Q9), which the bubble suite covers.
+        settings={{ ...DEFAULT_HELP_SETTINGS, chatStyle: 'minimal' }}
         onChange={() => {}}
         semantic={{ on: false, downloading: false, progress: null, error: null, setOn: () => {} }}
         answerTarget={{ reasoning: UNKNOWN_REASONING_CAPABILITY, localEngine: false, maxTokens: undefined }}

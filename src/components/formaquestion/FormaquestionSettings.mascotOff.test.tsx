@@ -55,7 +55,8 @@ afterEach(cleanup);
 
 describe('the Mascot switch on General', () => {
   it('opens the Window section with Mascot, then Chat Style, Mascot Position and Backdrop', () => {
-    mount();
+    // Bubble hides Mascot Position; Minimal shows every row.
+    mount({ chatStyle: 'minimal' });
     const section = within(dialog()).getByRole('heading', { name: 'Window' }).closest('section')!;
     const controls = [...section.querySelectorAll<HTMLElement>('[role="checkbox"], [role="combobox"], [role="slider"]')];
     const ordered = [

@@ -66,11 +66,11 @@ export interface HelpSettings {
   readonly tools: readonly Tool[];
   /** The switch of each Formaquestion Tool, by id. Absent is off. */
   readonly toolSwitches: ToolEnabledMap;
-  /** The Mascot stands beside the chat. Under the Auto chat style the window then takes the minimal chrome. */
+  /** The Mascot stands beside the chat. Under the Auto chat style the window then takes the bubble chrome. */
   readonly mascot: boolean;
   /** The mascot presets and the active one. The window, the face call and AI Context draw the active mascot's rig. */
   readonly mascotPresets: MascotPresetStore;
-  /** The window's chrome: Auto follows the Mascot switch; Minimal and Full pin it. */
+  /** The window's chrome: Auto follows the Mascot switch; Bubble, Minimal and Full pin it. */
   readonly chatStyle: ChatStyle;
   /** The Scrim's opacity in percent: the panel of the app background behind the minimal column. 0 draws nothing. */
   readonly scrimOpacity: number;
@@ -81,13 +81,16 @@ export const SCRIM_OPACITY_MIN = 0;
 export const SCRIM_OPACITY_MAX = 100;
 export const SCRIM_OPACITY_STEP = 5;
 
-export const CHAT_STYLES = ['auto', 'minimal', 'full'] as const;
+export const CHAT_STYLES = ['auto', 'bubble', 'minimal', 'full'] as const;
 export type ChatStyle = (typeof CHAT_STYLES)[number];
 export const isChatStyle = (value: unknown): value is ChatStyle => CHAT_STYLES.some((style) => style === value);
 
-/** The chrome the window draws: Auto is minimal while the Mascot is on (Q9). */
-export const chatChrome = ({ chatStyle, mascot }: Pick<HelpSettings, 'chatStyle' | 'mascot'>): WindowChrome =>
-  (chatStyle === 'auto' ? (mascot ? 'minimal' : 'full') : chatStyle);
+/** The chrome the window draws: Auto is Bubble while the Mascot is on, and Bubble without her has no speaker, so it draws Minimal. */
+export function chatChrome({ chatStyle, mascot }: Pick<HelpSettings, 'chatStyle' | 'mascot'>): WindowChrome {
+  if (chatStyle === 'auto') return mascot ? 'bubble' : 'full';
+  if (chatStyle === 'bubble' && !mascot) return 'minimal';
+  return chatStyle;
+}
 
 /** The settings of a player who has changed nothing. The help bar run measures these. */
 export const DEFAULT_HELP_SETTINGS: HelpSettings = {

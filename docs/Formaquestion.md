@@ -111,15 +111,16 @@ To see the contents and a section side by side, select **Wide View** in the titl
 With the keyboard, press Tab until the **Help** tab has focus. Then press the arrow keys.
 
 ## How to Change the Chat Style
-<!-- keywords: window style, minimal, full, auto, framed window, bare column, no title bar, switch chrome, pill, frame, title bar back, bring back the frame, unframed -->
+<!-- keywords: window style, bubble, speech bubble, minimal, full, auto, framed window, bare column, no title bar, switch chrome, pill, frame, title bar back, bring back the frame, unframed, chat log, old style -->
 <!-- route: formaquestionSettings.general#chat-style -->
 
-1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column.
-2. Under **Chat Style**, select **Auto**, **Minimal** or **Full**.
+1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column or over the mascot.
+2. Under **Chat Style**, select **Auto**, **Bubble**, **Minimal** or **Full**.
 
 You can also set it in the **Window** group of the **General** tab. Both places change the same setting.
 
-- **Auto** is **Minimal** while the mascot is on, and **Full** while it's off.
+- **Auto** is **Bubble** while the mascot is on, and **Full** while it's off.
+- **Bubble** shows the mascot speaking the newest answer from a speech bubble. With the mascot off, **Bubble** shows **Minimal**.
 - **Minimal** is a bare chat column. **Full** is the framed window.
 - **Full** with the mascot on keeps the mascot beside the frame.
 - The window stays where it was, and your conversation stays. Each style keeps its own size. See [The Window](#the-window).
@@ -131,7 +132,7 @@ You can also set it in the **Window** group of the **General** tab. Both places 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**. The **General** tab opens first.
 2. Under **Window**, move **Backdrop**.
 
-The backdrop is a panel behind the bare chat column, in the color of the app. A higher value hides more of the screen behind the text. The setting runs from 0 to 100% in steps of 5, and starts at 60%. Set 0 to draw no panel. The panel shows whenever the **Minimal** style shows, also under **Auto** with the mascot on.
+The backdrop is a panel behind the bare chat column, in the color of the app. A higher value hides more of the screen behind the text. The setting runs from 0 to 100% in steps of 5, and starts at 60%. Set 0 to draw no panel. The panel shows behind the **Bubble** and **Minimal** styles.
 
 ## How to Return to the Newest Answer
 <!-- keywords: scroll down, jump to the end, long conversation, old messages, bottom, latest answer, down arrow, scroll to end, lost my place, newest message -->
@@ -155,6 +156,7 @@ You can also set it in the **Window** group of the **General** tab. Both places 
 - **Below** stands the mascot under the chat. The chat stops growing at a set share of the screen height, so the mascot always has room. If the chat is taller when you select **Below**, it shrinks to that height.
 - **Auto** stands the mascot under the chat while the chat is at most that tall, and beside it when the chat grows taller. The mascot moves the moment the chat crosses the line.
 - The reader stays beside the chat.
+- **Mascot Position** applies to the **Minimal** and **Full** styles. Under **Bubble**, the row and the **⋮** menu choices are hidden.
 - The **⋮** menu of the mobile-size sheet has no **Mascot Position** choices, since the sheet shows no mascot.
 
 ## How to Change the Size of the Mascot
@@ -322,10 +324,10 @@ F1 does one of three things:
 | The cursor is in the window | The window closes |
 
 - The window stays whole on the screen. When the browser window gets smaller, Formaquestion moves back inside it.
-- This device keeps the place of the window, and a size for each chat style. A change of style keeps the place. They are not in a backup or an export.
+- This device keeps the place of the window and a size for **Minimal** and **Full**, and the mascot's own place for **Bubble**. A change between **Minimal** and **Full** keeps the place. They are not in a backup or an export.
 - The narrow layout shows one tab at a time. The wide layout shows the search field and the contents on the left, and the conversation or a section on the right. **Back to Conversation**, above a section, shows the conversation again. The layout changes at a width of 560 pixels, so the corner changes it too.
 - While the welcome animation plays, the **Help** tab does not show and F1 does nothing.
-- The **Chat Style** sets how the window looks. **Full** is this window. **Minimal** is a bare chat column with no title bar, no tabs and no **Wide View**. **Auto** is **Minimal** while the mascot is on and **Full** while it's off. Pick a style in the **⋮** menu or on the **General** tab. See [Mascot](#mascot).
+- The **Chat Style** sets how the window looks. **Full** is this window. **Minimal** is a bare chat column with no title bar, no tabs and no **Wide View**. **Bubble** shows the mascot speaking the newest answer. **Auto** is **Bubble** while the mascot is on and **Full** while it's off. Pick a style in the **⋮** menu or on the **General** tab. See [Mascot](#mascot).
 
 ## Ask
 <!-- keywords: privacy, what is sent, reads my saves, hallucinate, inaccurate, general knowledge note, history lost, send disabled, which model answers, reload -->
@@ -405,9 +407,9 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | Setting | Default | What it does |
 |---|---|---|
 | **Mascot** | On | Shows the mascot with a bare chat column. It takes effect at once, with no **Save**. With it off, the **Mascot** tab disables every control and shows a link back to this row. |
-| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Minimal** with the **Mascot** on. The **⋮** menu has the same three choices. |
-| **Mascot Position** | Auto | Sets whether the mascot stands beside or under the chat: **Beside**, **Below** or **Auto**. **Auto** stands the mascot under a short chat and beside a tall one. The **⋮** menu has the same three choices. |
-| **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Minimal** style. Set 0 for none. |
+| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Bubble**, **Minimal** or **Full**. **Auto** is **Bubble** with the **Mascot** on. The **⋮** menu has the same four choices. |
+| **Mascot Position** | Auto | Sets whether the mascot stands beside or under the chat: **Beside**, **Below** or **Auto**. **Auto** stands the mascot under a short chat and beside a tall one. The **⋮** menu has the same three choices. Hidden under **Bubble**. |
+| **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Bubble** and **Minimal** styles. Set 0 for none. |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
@@ -566,7 +568,9 @@ Only **Duplicate**, **Import**, **Export** and **View full screen** show while *
 
 Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
 
-With the mascot on and the **Chat Style** at **Auto**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot beside it. The mascot stands on the side of the column that has more room on the screen. It moves to the other side when you drag the column past the middle of the screen, and the head on the pill moves to the same end. Select a source name under an answer to open the guide section in a reader on the other side of the column. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
+With the mascot on and the **Chat Style** at **Auto** or **Bubble**, the mascot speaks the newest answer from a speech bubble that points at its head. A long answer grows up to the top of the screen, then scrolls inside the bubble. Under the bubble, a strip holds **Previous Answer** and **Next Answer** at its ends. Between them are the answer's **Thinking** toggle, **Sources** and **Take Me There**. The open **Thinking** text shows inside the bubble. **Sources** opens a list of the guide sections the answer used; select one to open it in the reader. Your question and the ask field stand at the mascot's feet. Before your first question, only the mascot and the ask field show. Drag the mascot, or the pill over its head, to move the window. The bubble stands on the side of the mascot with more room. It moves to the other side when you drag the mascot past the middle of the screen. Drag the corner grip on the bubble to change the chat's width and height. The **Backdrop** fills the size you set, and a short answer's bubble stays small inside it, as in the minimal column. Drag the grip on the mascot's top corner to change its size; it sets the same **Scale** as the **Mascot** tab. In the head view, the bubble, the head with the pill, the strip, your question and the ask field stand in one column.
+
+With the **Chat Style** at **Minimal**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot beside it. The mascot stands on the side of the column that has more room on the screen. It moves to the other side when you drag the column past the middle of the screen, and the head on the pill moves to the same end. Select a source name under an answer to open the guide section in a reader on the other side of the column. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
 
 With the **Chat Style** at **Full**, the whole mascot stands beside the framed window, on the same side rule. Its height follows the frame while **Scale** is **Auto**. A mobile-size screen shows no mascot with the framed sheet.
 

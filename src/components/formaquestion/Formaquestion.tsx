@@ -18,8 +18,9 @@ import { isEdge, type Edge } from '@/lib/formaquestion/tabPlace';
 import {
   boxOf, defaultWindow, type MascotSide, isWide, movePieces, readStoredHeadView, readStoredWindow, resizePieces, swapWidth, viewportOf, windowLayout, withBox,
   headHeight, writeStoredHeadView, writeStoredWindow, HEAD_HEIGHT, NARROW_WIDTH, READER_GAP, SHEET_HEAD_HEIGHT, WIDE_WIDTH,
-  type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
+  type BoxChrome, type StoredWindow, type Viewport, type WindowBox, type WindowChrome,
 } from '@/lib/formaquestion/windowBox';
+import { bubbleLayout, resizeChat, resizeMascot, FALLBACK_BASE, type BubbleHeights, type BubbleInput, type BubbleLayout } from '@/lib/formaquestion/bubbleLayout';
 import { chatChrome } from '@/lib/formaquestion/helpSettings';
 import type { MenuActions } from './FormaquestionMenu';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -39,10 +40,11 @@ import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
 import { appLoadQuestion, mascotFace, mascotPhase } from './mascotPhase';
 import { MinimalChat } from './MinimalChat';
+import { BubbleChat } from './BubbleChat';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS } from '@/lib/formaquestion/helpPrompt';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
-import { setMascotPlacement, useMascotPlacement, useMascotScale } from './useMascotDevice';
+import { setMascotPlacement, setMascotScale, useMascotPlacement, useMascotScale } from './useMascotDevice';
 import { useHelpChat, type HelpExchange } from './useHelpChat';
 import { useHelpSettings } from './useHelpSettings';
 import { useSemanticSearch } from './useSemanticSearch';
@@ -78,11 +80,24 @@ const SHEET_MOTION: Record<Edge, string> = {
 interface BoxPress {
   x: number;
   y: number;
-  chrome: WindowChrome;
+  chrome: BoxChrome;
   stored: StoredWindow;
   start: WindowBox;
   latest: WindowBox;
 }
+
+/** A drag under Bubble, of her or of a grip: where it started, the layout and stored window it started on, and the stored window now. */
+interface BubblePress {
+  x: number;
+  y: number;
+  input: BubbleInput;
+  start: BubbleLayout;
+  stored: StoredWindow;
+  latest: StoredWindow;
+}
+
+/** The pieces' heights before the first measure: a one-line question and input. */
+const FIRST_HEIGHTS: BubbleHeights = { content: 0, question: 36, input: 44 };
 
 /** Opens a docs section in the wiki, in a new browser tab. */
 const openInWiki = (id: string) => window.open(wikiPageUrl(id), '_blank', 'noopener,noreferrer');
@@ -160,9 +175,15 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   }, [sent]);
   const phase = mascotPhase(chat.exchanges.at(-1), beforeFirstQuestion);
   // A change of style or of the Mascot switch swaps the chrome in place; the conversation lives above both.
-  const chrome = chatChrome(settings);
+  // The sheet draws Minimal for Bubble (Q10).
+  const styleChrome = chatChrome(settings);
+  const chrome: WindowChrome = sheet && styleChrome === 'bubble' ? 'minimal' : styleChrome;
   const minimal = chrome === 'minimal';
-  const box = boxOf(stored, chrome);
+  const bubble = chrome === 'bubble';
+  /** Bubble and Minimal open docs links in the reader piece; Full opens them in its Guide tab. */
+  const readsInPiece = chrome !== 'full';
+  const boxChrome: BoxChrome = bubble ? 'minimal' : chrome;
+  const box = boxOf(stored, boxChrome);
   // A swap while open draws in place, with no open animation, until the window closes.
   const [lastChrome, setLastChrome] = useState(chrome);
   const [swapped, setSwapped] = useState(false);
@@ -350,9 +371,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       window.open(wikiPageUrl(docTargetId(target)), '_blank', 'noopener,noreferrer');
       return;
     }
-    if (minimal) setReaderId(sectionId);
+    if (readsInPiece) setReaderId(sectionId);
     else changeViewInWindow(openSectionChange(sectionId, guide.section(sectionId)?.page));
-  }, [target, guide, changeViewInWindow, minimal]);
+  }, [target, guide, changeViewInWindow, readsInPiece]);
 
   // The docs can load after the window opens. Focus then goes from the frame to the window's first field, except on the sheet.
   useEffect(() => {
@@ -425,7 +446,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   // The side flips once as the column crosses the middle; the last side decides a tie.
   const sideRef = useRef<MascotSide>('left');
   const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current, scale, baseHeight: mascotBase?.height, placement };
-  const layout = sheet ? null : windowLayout(chrome, box, viewport, pieces);
+  const layout = sheet || bubble ? null : windowLayout(boxChrome, box, viewport, pieces);
   if (layout) sideRef.current = layout.side;
   const side = layout?.side ?? 'left';
   const below = layout?.placement === 'below';
@@ -439,18 +460,18 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   useEffect(() => {
     if (shownPlacement.current === placement) return;
     shownPlacement.current = placement;
-    const kept = boxOf(stored, chrome);
+    const kept = boxOf(stored, boxChrome);
     if (drawnPlacement !== 'below' || drawnHeight === undefined || drawnHeight === kept.h) return;
-    const next = withBox(stored, chrome, { ...kept, h: drawnHeight });
+    const next = withBox(stored, boxChrome, { ...kept, h: drawnHeight });
     setStored(next);
     writeStoredWindow(next);
-  }, [placement, drawnPlacement, drawnHeight, stored, chrome]);
+  }, [placement, drawnPlacement, drawnHeight, stored, boxChrome]);
   // A drag starts from the box as drawn, which a small screen can shift.
   const drawn = layout?.column ?? box;
   const boxDrag = (step: typeof movePieces): PointerDrag<BoxPress> => ({
     start: (event) => (event.button !== 0 || (event.target as HTMLElement).closest('button')
       ? null
-      : { x: event.clientX, y: event.clientY, chrome, stored, start: drawn, latest: drawn }),
+      : { x: event.clientX, y: event.clientY, chrome: boxChrome, stored, start: drawn, latest: drawn }),
     move: (press, event) => {
       press.latest = step(press.chrome, press.start, event.clientX - press.x, event.clientY - press.y, viewportOf(window), pieces);
       setStored(withBox(press.stored, press.chrome, press.latest));
@@ -463,7 +484,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const wide = !sheet && isWide(drawn);
   const swap = () => {
     const toggled = swapWidth(drawn, viewportOf(window));
-    const next = withBox(stored, chrome, windowLayout(chrome, toggled, viewportOf(window), pieces).column);
+    const next = withBox(stored, boxChrome, windowLayout(boxChrome, toggled, viewportOf(window), pieces).column);
     setStored(next);
     writeStoredWindow(next);
   };
@@ -475,20 +496,61 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const rig = activeMascotRig(settings.mascotPresets);
   const mascotImages = composeMascot(rig, phase, mascotFace(chat.exchanges.at(-1)));
   const crop = mascotBase && fitMask(rig.mask, mascotBase);
+
+  // Under Bubble the layout follows her: her place, her scale, and the measured pieces (Q15).
+  const [bubbleHeights, setBubbleHeights] = useState<BubbleHeights>(FIRST_HEIGHTS);
+  const bubbleBase = mascotBase ?? FALLBACK_BASE;
+  const bubbleInput: BubbleInput | null = bubble ? {
+    at: stored.bubble,
+    base: bubbleBase,
+    mask: fitMask(rig.mask, bubbleBase),
+    scale,
+    viewport,
+    headView,
+    heights: bubbleHeights,
+    width: stored.chat?.w ?? null,
+    height: stored.chat?.h ?? null,
+    empty: guide !== null && !sent,
+    showReader: readerShown,
+  } : null;
+  const bubbleView = bubbleInput && bubbleLayout(bubbleInput);
+  const bubbleDrag = (step: (press: BubblePress, dx: number, dy: number) => Partial<StoredWindow>): PointerDrag<BubblePress> => ({
+    start: (event) => (event.button !== 0 || !bubbleInput || !bubbleView || (event.target as HTMLElement).closest('button')
+      ? null
+      : { x: event.clientX, y: event.clientY, input: { ...bubbleInput, viewport: viewportOf(window) }, start: bubbleView, stored, latest: stored }),
+    move: (press, event) => {
+      press.latest = { ...press.stored, ...step(press, event.clientX - press.x, event.clientY - press.y) };
+      setStored(press.latest);
+    },
+    end: (press) => writeStoredWindow(press.latest),
+  });
+  // Her body and the pill move her.
+  const bubbleMove = usePointerDrag(bubbleDrag(({ input, start }, dx, dy) => ({
+    bubble: bubbleLayout({ ...input, at: { x: start.at.x + dx, y: start.at.y + dy } }).at,
+  })));
+  // Her grip sets her scale in the device's Scale store, as the Mascot tab does; the bubble grip sets the chat size (Q19).
+  const mascotResize = usePointerDrag(bubbleDrag(({ input, start }, dx, dy) => {
+    const resized = resizeMascot(input, start, dx, dy);
+    if (resized.scale !== scale) setMascotScale(resized.scale);
+    return { bubble: resized.at };
+  }));
+  const chatResize = usePointerDrag(bubbleDrag(({ input, start }, dx, dy) => ({ chat: resizeChat(input, start, dx, dy) })));
   const menuActions: MenuActions = {
     onOpenAiContext: () => openDialog('aiContext'),
     onOpenSettings: () => openDialog('settings'),
     onClear: chat.exchanges.length > 0 ? chat.clear : undefined,
     chatStyle: settings.chatStyle,
     onChatStyleChange: (chatStyle) => changeSettings({ chatStyle }),
-    ...(sheet ? {} : { mascotPlacement: placement, onMascotPlacementChange: setMascotPlacement }),
+    // Bubble ignores Mascot Position (Q9).
+    ...(sheet || bubble ? {} : { mascotPlacement: placement, onMascotPlacementChange: setMascotPlacement }),
   };
 
   const wholeMascot = layout && settings.mascot && !(minimal && showHead) && (
     <MascotPiece images={mascotImages} hold={mascotImageRefs(rig)} transition={rig.transition} size={layout.mascot} onBase={setMascotBase} />
   );
-  const readerPiece = layout?.reader && guide && readerId && (
-    <ReaderPiece guide={guide} sectionId={readerId} size={layout.reader} onOpen={setReaderId} onClose={() => setReaderId(null)} />
+  const readerSize = bubbleView?.reader ?? layout?.reader;
+  const readerPiece = readerSize && guide && readerId && (
+    <ReaderPiece guide={guide} sectionId={readerId} size={readerSize} onOpen={setReaderId} onClose={() => setReaderId(null)} />
   );
   // Below, the column's row holds the reader too.
   const readerSpace = layout?.reader ? READER_GAP + layout.reader.w : 0;
@@ -500,6 +562,19 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
       transition={rig.transition}
       size={crop && headSize(crop, sheet ? SHEET_HEAD_HEIGHT : headHeight(scale, crop.height, layout?.column.h ?? HEAD_HEIGHT))}
       frame={crop && mascotBase ? cropFrame(crop, mascotBase) : undefined}
+      onBase={setMascotBase}
+    />
+  );
+
+  // Under Bubble she draws whole or as her head.
+  const bubbleMascot = bubbleView && bubbleInput && (
+    <MascotPiece
+      view={headView ? 'head' : 'full'}
+      images={mascotImages}
+      hold={mascotImageRefs(rig)}
+      transition={rig.transition}
+      size={{ w: bubbleView.her.w, h: bubbleView.her.h }}
+      frame={headView ? cropFrame(bubbleInput.mask, bubbleInput.base) : undefined}
       onBase={setMascotBase}
     />
   );
@@ -588,7 +663,54 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           )}
         </section>
       )}
-      {shown && !minimal && layout && wholeMascot && (
+      {shown && bubbleView && (
+        <section
+          ref={windowRef}
+          id={WINDOW_ID}
+          role="dialog"
+          aria-modal="false"
+          aria-label="Formaquestion"
+          tabIndex={-1}
+          data-state={open ? 'open' : 'closed'}
+          data-fq-chrome="bubble"
+          data-fq-side={bubbleView.side}
+          onAnimationEnd={(event) => { if (!open && event.target === event.currentTarget) setPresent(false); }}
+          // Only the pieces take presses; the gaps between them belong to the app.
+          className={`pointer-events-none fixed text-foreground outline-none ${windowMotion}`}
+          style={{
+            left: bubbleView.group.x,
+            top: bubbleView.group.y,
+            width: bubbleView.group.w,
+            height: bubbleView.group.h,
+            transformOrigin: originFrom(bubbleView.group.x, bubbleView.group.y),
+          }}
+        >
+          <BubbleChat
+            layout={bubbleView}
+            mascot={bubbleMascot}
+            headView={headView}
+            guide={guide}
+            failed={failed}
+            onRetry={load}
+            chat={chat}
+            settings={settings}
+            onSettingsChange={changeSettings}
+            draft={view.draft}
+            onDraftChange={(draft) => changeView({ draft })}
+            onOpen={setReaderId}
+            onGo={go}
+            move={bubbleMove}
+            resize={chatResize}
+            mascotResize={mascotResize}
+            headToggle={{ showingHead: headView, onToggle: toggleHead }}
+            menu={{ ...menuActions, container: layer }}
+            onClose={closeWindow}
+            onHeights={setBubbleHeights}
+            reader={readerPiece}
+          />
+        </section>
+      )}
+      {shown && chrome === 'full' && layout && wholeMascot && (
         <div
           data-state={open ? 'open' : 'closed'}
           className={`pointer-events-none fixed flex items-end ${windowMotion}`}
@@ -609,7 +731,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
           {wholeMascot}
         </div>
       )}
-      {shown && !minimal && (
+      {shown && chrome === 'full' && (
         <FormaquestionFrame
           ref={windowRef}
           id={WINDOW_ID}

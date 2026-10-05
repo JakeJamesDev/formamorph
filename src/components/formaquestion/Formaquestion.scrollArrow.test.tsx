@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
 import { helpAi } from '@/test/helpAiFixture';
 import { stubReducedMotion } from '@/test/reducedMotion';
-import { storeFramedWindow, stubHelpStream } from '@/test/helpFixtures';
+import { storeFramedWindow, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe.each([
   ['framed', () => storeFramedWindow()],
-  ['minimal', () => {}],
+  ['minimal', () => storeMinimalWindow()],
 ])('the scroll arrow in the %s chrome', (chrome, prepare) => {
   beforeEach(prepare);
 
