@@ -11,7 +11,8 @@ export interface EdgeRailTab {
 
 export interface EdgeRailGroup {
   id: string;
-  label: string;
+  /** Names the group in the flyout and the Sections bar. A group without one is a lone slot. */
+  label?: string;
   tabs: readonly EdgeRailTab[];
 }
 
@@ -68,7 +69,7 @@ export function EdgeRail({ groups, value, disabled, label = 'Editor Sections', c
                   data-rail-flyout
                   className="pointer-events-none absolute left-full top-1/2 z-[80] ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border bg-popover px-2.5 py-1.5 text-label text-popover-foreground shadow-md animate-in fade-in-0 slide-in-from-left-1 motion-reduce:animate-none"
                 >
-                  <span className="text-muted-foreground">{group.label} · </span>{name}
+                  {group.label && <span className="text-muted-foreground">{group.label} · </span>}{name}
                 </span>
               )}
             </TabsPrimitive.Trigger>

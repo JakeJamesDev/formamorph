@@ -26,6 +26,9 @@ const WORLD = benchEditorWorld({});
 
 const editorTabs = () => screen.getByRole('tablist', { name: 'Editor Sections' });
 const tabNames = () => within(editorTabs()).getAllByRole('tab').map((tab) => tab.textContent);
+/** The rail's children in order, read as tab names and separators. */
+const railSequence = () => Array.from(editorTabs().children).map((child) =>
+  (child.getAttribute('role') === 'tab' ? child.textContent : child.hasAttribute('data-rail-separator') ? '|' : '?'));
 /** The list panel: the resizable panel that holds the editor's active tab panel. */
 const listCard = () => {
   const active = within(editorTabs()).getByRole('tab', { selected: true });
@@ -45,6 +48,30 @@ describe('World Editor rail (desktop)', () => {
   it('draws six tabs in Simple mode', () => {
     renderWorldEditorBench(WORLD, 'simple');
     expect(tabNames()).toEqual(['Overview', 'Stats', 'Entities', 'Locations', 'Traits', 'Dictionary']);
+  });
+
+  it('stands Overview alone at the top, with a separator under it and between the groups, none after the last', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    expect(railSequence()).toEqual(
+      ['Overview', '|', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary', 'Placeholders'],
+    );
+  });
+
+  it('draws the same rail without Placeholders in Simple mode', () => {
+    renderWorldEditorBench(WORLD, 'simple');
+    expect(railSequence()).toEqual(['Overview', '|', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary']);
+  });
+
+  it('flies out Overview alone, and the others as Group · Tab', async () => {
+    const user = userEvent.setup();
+    renderWorldEditorBench(WORLD, 'advanced');
+    const flyout = () => document.querySelector('[data-rail-flyout]')?.textContent ?? null;
+    await user.hover(within(editorTabs()).getByRole('tab', { name: 'Overview' }));
+    expect(flyout()).toBe('Overview');
+    await user.hover(within(editorTabs()).getByRole('tab', { name: 'Entities' }));
+    expect(flyout()).toBe('Content · Entities');
+    await user.hover(within(editorTabs()).getByRole('tab', { name: 'Dictionary' }));
+    expect(flyout()).toBe('Vocabulary · Dictionary');
   });
 
   it('opens a tab\'s list from the rail, and moves along it with the arrow keys', async () => {
@@ -84,8 +111,11 @@ describe('World Editor Sections bar (mobile)', () => {
     expect(tabNames()).toEqual(['Overview', 'Stats', 'Entities', 'Locations', 'Traits', 'Dictionary', 'Placeholders']);
     const body = document.getElementById('world-editor-sections')!;
     expect(body).not.toHaveAttribute('inert');
-    expect(within(body).getByText('World')).toBeInTheDocument();
-    expect(within(body).getByText('Text')).toBeInTheDocument();
+    expect(within(body).getByText('Content')).toBeInTheDocument();
+    expect(within(body).getByText('Vocabulary')).toBeInTheDocument();
+    // Overview is a lone row above the first caption, under no caption of its own.
+    const rows = Array.from(editorTabs().children).map((child) => child.textContent);
+    expect(rows.slice(0, 3).map((text) => text?.replace(/\s+/g, ''))).toEqual(['Overview', 'Content', 'Stats']);
 
     await user.click(within(editorTabs()).getByRole('tab', { name: 'Entities' }));
     expect(sections()).toHaveAttribute('aria-expanded', 'false');

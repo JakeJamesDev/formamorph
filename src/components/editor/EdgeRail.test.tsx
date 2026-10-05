@@ -28,23 +28,23 @@ const railSequence = () => Array.from(rail().children).map((child) =>
   (child.getAttribute('role') === 'tab' ? child.textContent : child.hasAttribute('data-rail-separator') ? '|' : '?'));
 
 describe('EdgeRail', () => {
-  it('draws one tab per visible tab in registry order, with a separator between groups only', () => {
+  it('draws Overview alone, then each group, with a separator between slots only', () => {
     render(<Host groups={editorTabGroupsFor(true)} />);
     expect(railSequence()).toEqual(
-      ['Overview', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary', 'Placeholders'],
+      ['Overview', '|', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary', 'Placeholders'],
     );
   });
 
-  it('draws Text with Dictionary alone in Simple mode', () => {
+  it('draws Vocabulary with Dictionary alone in Simple mode', () => {
     render(<Host groups={editorTabGroupsFor(false)} />);
-    expect(railSequence()).toEqual(['Overview', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary']);
+    expect(railSequence()).toEqual(['Overview', '|', 'Stats', 'Entities', 'Locations', 'Traits', '|', 'Dictionary']);
   });
 
   it('draws nothing for a group with no tabs, not even its separator', () => {
     const groups = [...editorTabGroupsFor(true), { id: 'logic' as const, label: 'Logic', tabs: [] }];
     render(<Host groups={groups} />);
     expect(railSequence().at(-1)).toBe('Placeholders');
-    expect(railSequence().filter((item) => item === '|')).toHaveLength(1);
+    expect(railSequence().filter((item) => item === '|')).toHaveLength(2);
   });
 
   it('marks the active tab as selected and gives it the accent bar alone', () => {
@@ -61,16 +61,23 @@ describe('EdgeRail', () => {
     const entities = within(rail()).getByRole('tab', { name: 'Entities' });
     expect(flyout()).toBeNull();
     await user.hover(entities);
-    expect(flyout()).toBe('World · Entities');
+    expect(flyout()).toBe('Content · Entities');
     await user.unhover(entities);
     expect(flyout()).toBeNull();
+  });
+
+  it('flies out Overview with no group part', async () => {
+    const user = userEvent.setup();
+    render(<Host groups={editorTabGroupsFor(true)} />);
+    await user.hover(within(rail()).getByRole('tab', { name: 'Overview' }));
+    expect(flyout()).toBe('Overview');
   });
 
   it('flies out the label on keyboard focus, and keeps the accessible name the tab label', () => {
     render(<Host groups={editorTabGroupsFor(true)} />);
     const dictionary = within(rail()).getByRole('tab', { name: 'Dictionary' });
     fireEvent.focus(dictionary);
-    expect(flyout()).toBe('Text · Dictionary');
+    expect(flyout()).toBe('Vocabulary · Dictionary');
     expect(dictionary).toHaveAccessibleName('Dictionary');
     fireEvent.blur(dictionary);
     expect(flyout()).toBeNull();
@@ -93,7 +100,7 @@ describe('EdgeRail', () => {
     fireEvent.pointerDown(stats);
     fireEvent.pointerUp(stats);
     fireEvent.focus(within(rail()).getByRole('tab', { name: 'Entities' }));
-    expect(flyout()).toBe('World · Entities');
+    expect(flyout()).toBe('Content · Entities');
   });
 
   it('calls the change handler on a click and moves along the rail with the arrow keys', async () => {
