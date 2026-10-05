@@ -128,6 +128,22 @@ describe('the bubble chrome', () => {
     expect(await within(helpWindow()).findByRole('heading', { name: 'How to Change the Theme' })).toBeInTheDocument();
   });
 
+  it("lists a flagged answer's nearest sections in the popover, and a link opens the section (Q22)", async () => {
+    const { field } = await openWindow();
+    stubHelpStream([sseFrame({ content: '[NOT IN' }), ...sseReply(' GUIDE]\nA trait is a tag on an entity.')]);
+    await ask(field, 'How do I add a trait to a stat?');
+    const trigger = await within(strip()!).findByRole('button', { name: /^Nearest Sections \(\d+\)$/ });
+    expect(within(strip()!).queryByRole('button', { name: /^Sources/ })).toBeNull();
+    await userEvent.click(trigger);
+    const popover = await screen.findByRole('dialog', { name: 'Nearest Sections' });
+    expect(helpWindow()).toContainElement(popover);
+    expect(within(popover).getByRole('button', { name: /How to Add a Trait/ })).toBeInTheDocument();
+
+    await userEvent.click(within(popover).getByRole('button', { name: /How to Add a Trait/ }));
+    expect(screen.queryByRole('dialog', { name: 'Nearest Sections' })).toBeNull();
+    expect(await within(helpWindow()).findByRole('heading', { name: 'How to Add a Trait' })).toBeInTheDocument();
+  });
+
   it('points the tail from the bubble toward her, on the side she stands', async () => {
     await openWindow();
     stubHelpStream(sseReply('Open the **Traits** tab.'));

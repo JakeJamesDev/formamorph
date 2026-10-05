@@ -39,7 +39,7 @@ import { activeMascotRig } from '@/lib/formaquestion/mascotPresets';
 import { mascotImageRefs } from '@/lib/formaquestion/mascotRigEdits';
 import { MascotPiece } from './MascotPiece';
 import { ReaderPiece } from './ReaderPiece';
-import { appLoadQuestion, mascotFace, mascotPhase } from './mascotPhase';
+import { mascotFace, mascotPhase } from './mascotPhase';
 import { MinimalChat } from './MinimalChat';
 import { BubbleChat } from './BubbleChat';
 import { useBubblePage } from './useBubblePage';
@@ -167,14 +167,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const semantic = useSemanticSearch(settings, changeSettings);
   const ai = useHelpAi(open, settings);
   const chat = useHelpChat(index, ai, settings);
-  // The app load's first question ends the Initial look, across a remount too.
-  const [beforeFirstQuestion, setBeforeFirstQuestion] = useState(() => !appLoadQuestion.asked());
   const sent = chat.exchanges.length > 0;
-  useEffect(() => {
-    if (!sent) return;
-    appLoadQuestion.record();
-    setBeforeFirstQuestion(false);
-  }, [sent]);
   const page = useBubblePage(chat.exchanges);
   // A change of style or of the Mascot switch swaps the chrome in place; the conversation lives above both.
   // The sheet draws Minimal for Bubble (Q10).
@@ -513,7 +506,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const rig = activeMascotRig(settings.mascotPresets);
   // Under Bubble her face follows the paged answer (Q8). Minimal and Full ignore the page and keep the newest.
   const spoken = bubble ? page.exchange : chat.exchanges.at(-1);
-  const mascotImages = composeMascot(rig, mascotPhase(spoken, beforeFirstQuestion), mascotFace(spoken));
+  const mascotImages = composeMascot(rig, mascotPhase(spoken), mascotFace(spoken));
   const crop = mascotBase && fitMask(rig.mask, mascotBase);
 
   // Under Bubble the layout follows her: her place, her scale, and the measured pieces (Q15).
