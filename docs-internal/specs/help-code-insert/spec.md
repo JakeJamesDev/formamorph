@@ -36,6 +36,9 @@ On a code question, or when a stat's Code tab is open, the help request carries 
 | Q17 | After Insert, the box shows the code landing through the Landing Pulse of the Take Me There targets effort: scroll, focus, one ring. The Insert ticket is blocked by that effort's tickets 02 and 07 |
 | Q18 | The Take Me There targets effort (ticket 07) owns the registry entries for the two boxes. This effort consumes the names it declares |
 | Q19 | Overwrite rule: insert into an empty box at once; a box with code raises the stat-code templates' replace confirm, same title and copy |
+| Q20 | Code words match in code form, so an ordinary question never rides the rider: `code`, `script`, `scripts`, `JavaScript`, `before the AI`, `after the AI` as words; a sandbox global only when a `.` or `[` follows it (`stats.Health`, `self.value`); `return` only before a number or identifier; `function` only as `function(` or `=>` |
+| Q21 | The Code tab trigger reads the surface hint, which exists only while Use the Open Screen is on. With it off, an open Code tab does not fire the rider; code words still do |
+| Q22 | The rider is appended verbatim, with no chip rendering, to whatever user message the turn sends, in answer, lookup and bare modes alike |
 
 ## User Stories
 
