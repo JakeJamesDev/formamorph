@@ -174,6 +174,8 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Q30.** (Ticket 08, user ruling 2026-10-05.) On an authored-world run `persona` is the empty entry, so the correct `persona.traits.X.enabled` write is reported as dropped and the function's guidance pushes the model back to the world map. Ticket 09 makes the code test report a persona trait write as pending when a persona-capable entity holds the name; dropped otherwise. The editor's Test Code is unchanged. 08 waits for 09. The user also ruled 08's local model: MeroMero v2 31B, the model the other probe tickets used, not Cydonia. It locks the PC, so the run needs an AFK window.
 
+- **Q31.** (User ruling 2026-10-05, after an agent review of a scratch-world design.) Ticket 09 landed the stand-in persona: on Formaquestion's run the empty persona holds every persona-capable trait name, and those switches return as pending. A full scratch world (assumed traits, placeholders, entities) was rejected: the analysis exposes no name set, the nearest-name split miscalls a new `Rage` beside `Race`, and a blank world hides `Helth` beside `Health`. Ticket 10 does the two parts that hold: unknown names with no near match are tagged *not in this world, create it*, and unknown stats are assumed at 0 in 0–100 so `value / max` is a number. 08 waits for 10 so the GPU window is spent once.
+
 ## Backlog
 
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
