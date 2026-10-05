@@ -271,7 +271,7 @@ describe('the chat grip', () => {
   it('widens the bubble toward the open space and leaves her alone', () => {
     const start = bubbleLayout(input());
     // The chat grip is on the room's top left corner, so a drag left widens it.
-    const { w, h } = resizeChat(input(), start, -100, 0);
+    const { chat: { w, h } } = resizeChat(input(), start, -100, 0);
     expect(w).toBe(start.bubble.w + 100);
     expect(h).toBe(start.chat.h);
     const after = bubbleLayout(input({ width: w, height: h }));
@@ -288,7 +288,7 @@ describe('the chat grip', () => {
   it('makes the chat room taller up from her head, with the grip on its corner, and leaves her alone', () => {
     const start = bubbleLayout(input());
     expect(start.grip).toBe('nw');
-    const { w, h } = resizeChat(input(), start, 0, -120);
+    const { chat: { w, h } } = resizeChat(input(), start, 0, -120);
     expect(w).toBe(start.chat.w);
     expect(h).toBe(start.chat.h + 120);
     const after = bubbleLayout(input({ width: w, height: h }));
@@ -319,9 +319,9 @@ describe('the chat grip', () => {
 
   it('keeps a set room inside the screen margin and over the minimum', () => {
     const start = bubbleLayout(input());
-    const tall = resizeChat(input(), start, 0, -5000);
+    const tall = resizeChat(input(), start, 0, -5000).chat;
     expect(bubbleLayout(input({ height: tall.h })).chat.y).toBe(M);
-    const flat = resizeChat(input(), start, 0, 5000);
+    const flat = resizeChat(input(), start, 0, 5000).chat;
     expect(flat.h).toBe(bubbleLayout(input({ heights: { content: 0, question: 32, input: 44 } })).chat.h);
   });
 
@@ -338,7 +338,42 @@ describe('the chat grip', () => {
 
   it('never narrows the bubble under its minimum', () => {
     const start = bubbleLayout(input());
-    expect(resizeChat(input(), start, 5000, 0).w).toBe(320);
+    expect(resizeChat(input(), start, 5000, 0).chat.w).toBe(320);
+  });
+
+  it('keeps the far edge put when the grip holds the edge toward her: she follows that edge, before and after the screen clamp lets go', () => {
+    // She stands left, the chat on her right against the screen edge, so the grip sits on the chat's top left corner, toward her.
+    const wide = input({ at: { x: 600, y: 850 }, width: 1000 });
+    const start = bubbleLayout(wide);
+    expect(start.side).toBe('left');
+    expect(start.grip).toBe('nw');
+    expect(rightOf(start.chat)).toBe(SCREEN.width - M);
+    const farEdge = rightOf(start.chat);
+    let at = start.at;
+    let layout = start;
+    // Each step shrinks from the grip's edge: the far edge never moves, and she keeps touching the chat.
+    for (const step of [100, 200, 300, 400]) {
+      const resized = resizeChat({ ...wide, at }, layout, step, 0);
+      at = resized.at;
+      layout = bubbleLayout({ ...wide, at, width: resized.chat.w, height: resized.chat.h });
+      expect(layout.side).toBe('left');
+      expect(rightOf(layout.chat)).toBe(farEdge);
+      expect(layout.chat.x).toBe(rightOf(layout.her) + 14);
+    }
+    expect(layout.chat.w).toBe(320);
+    // She followed past the middle of the screen, and the group kept its side: only a drag of her flips it.
+    expect(at.x).toBeGreaterThan(SCREEN.width / 2);
+    expect(bubbleLayout({ ...wide, at: { x: at.x, y: at.y } }).side).toBe('right');
+  });
+
+  it('leaves her put when the grip holds the edge away from her', () => {
+    const start = bubbleLayout(input());
+    expect(start.grip).toBe('nw');
+    const resized = resizeChat(input(), start, 100, 0);
+    expect(resized.at).toEqual(start.at);
+    const after = bubbleLayout(input({ width: resized.chat.w, height: resized.chat.h, at: resized.at }));
+    expect(after.her).toEqual(start.her);
+    expect(rightOf(after.chat)).toBe(rightOf(start.chat));
   });
 });
 
