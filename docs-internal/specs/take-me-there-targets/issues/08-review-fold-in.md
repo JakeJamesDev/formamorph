@@ -1,6 +1,6 @@
 # 08: Review Fold-In
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 03, 04, 05, 06, 07
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -25,3 +25,13 @@ The two-axis review of tickets 01 to 07 found one set of fixes and three docs ru
 - [ ] Choose Who the Player Can Be keeps the bare route; the report entries for it, Save a Game and Make a Custom Persona are named here under Comments (Q11, Q13)
 - [ ] The six World Editor "Add …" sections keep the list toolbar target; the sweep check still passes (Q12)
 - [ ] Docs checks, the five landing test files and the registry tests stay green; the review's commit body names what the reviewer flagged and what was left
+
+## Comments
+
+The report lists these three sections on purpose. Each keeps its bare route.
+
+| Section | Route | Why no fragment |
+|---|---|---|
+| Saves-and-Backup#how-to-save-a-game | `gameViewer` | Its steps end in the Save Game dialog, which opens from the game **Menu**. The request cannot open it (Q11). |
+| Persona-Authoring#how-to-make-a-custom-persona | `worldEditor.entities` | Its steps end on an open entity's tabs, and Advanced mode on the editor root gates them. A gate on another surface keeps the bare route (Q13). |
+| Persona-Authoring#how-to-choose-who-the-player-can-be | `worldEditor.overview` | **Allowed Personas** shows only in Advanced mode, set on the editor root (Q13). |

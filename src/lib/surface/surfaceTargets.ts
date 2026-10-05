@@ -21,7 +21,7 @@ export const SURFACE_TARGETS = {
   menu: ['import-save'],
   backup: ['start-backup', 'start-restore'],
   avatar: ['finalize-character'],
-  'worldEditor':['editor-mode', 'find-button'],
+  worldEditor: ['editor-mode', 'find-button'],
   'worldEditor.overview': ['thumbnail', 'background-music', 'custom-prompts'],
   'worldEditor.stats': ['list-toolbar'],
   'worldEditor.entities': ['list-toolbar'],
@@ -57,11 +57,6 @@ export type SurfaceTarget<S extends TargetedSurface> = (typeof SURFACE_TARGETS)[
 
 /** The attribute a target's row carries. Its value is the route text. */
 export const TARGET_ATTRIBUTE = 'data-surface-target';
-
-/** The row that carries a route, inside `root` or anywhere on the page. */
-export function findTarget(route: string, root: ParentNode | null = document): HTMLElement | null {
-  return root?.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${route}"]`) ?? null;
-}
 
 /** The attribute a target's row spreads. */
 export type TargetAttribute = Readonly<Record<typeof TARGET_ATTRIBUTE, string>>;

@@ -12,7 +12,7 @@ const FOLLOW_ACTIVE = '__follow__';
  * Which text-endpoint preset a request sends to. Use Active Endpoint (`null`) follows the globally-selected
  * preset; any other choice pins this request alone. A pin naming a deleted preset is the caller's to map to `null`.
  */
-export function EndpointRouteField({ label, description, info, value, activeName, extraRows = [], presets, onChange, target, disabled, row }: {
+export function EndpointRouteField({ label, description, info, value, activeName, extraRows = [], presets, onChange, reachability, disabled, target }: {
   label: string;
   description: string;
   /** The `ⓘ` markdown, which names where the current choice sends the request. */
@@ -23,14 +23,14 @@ export function EndpointRouteField({ label, description, info, value, activeName
   extraRows?: readonly { value: string; label: string }[];
   presets: { id: string; name: string }[];
   onChange: (id: string | null) => void;
-  /** The routed target to probe. `enabled` is false while following the active endpoint, which shows no badge. */
-  target: ReachabilityTarget;
+  /** The routed endpoint to probe. `enabled` is false while following the active endpoint, which shows no badge. */
+  reachability: ReachabilityTarget;
   disabled?: boolean;
   /** Marks the field as a Take Me There target. */
-  row?: TargetAttribute;
+  target?: TargetAttribute;
 }) {
   return (
-    <div className="flex flex-col gap-1" {...row}>
+    <div className="flex flex-col gap-1" {...target}>
       <div className="flex items-center gap-1.5">
         <label className="text-label">{label}</label>
         <HintInfo>{info}</HintInfo>
@@ -53,7 +53,7 @@ export function EndpointRouteField({ label, description, info, value, activeName
           ))}
         </SelectContent>
       </Select>
-      <EndpointReachabilityBadge target={target} />
+      <EndpointReachabilityBadge target={reachability} />
     </div>
   );
 }

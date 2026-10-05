@@ -69,6 +69,8 @@ describe('the bundled Docs Index', () => {
     ['Saves-and-Backup#how-to-restore-a-backup', 'backup', 'start-restore'],
     ['Saves-and-Backup#how-to-update-the-desktop-app', 'mainMenu', 'app-version'],
     ['Install-on-Android#how-to-update-the-app', 'mainMenu', 'app-version'],
+    // The Release channel select sits in the update dialog the version row opens.
+    ['Install-on-Android#how-to-get-beta-builds', 'mainMenu', 'app-version'],
     ['Install-on-Android#how-to-use-a-model-on-your-pc', 'settingsEndpoints.text', 'endpoint-url'],
     // The Preset list is the gate row: the engine preset hides the fields the last step names.
     ['Connect-Your-Own-AI#how-to-connect-lm-studio', 'settingsEndpoints.text', 'text-preset'],
@@ -89,7 +91,7 @@ describe('the bundled Docs Index', () => {
       'Avatars#how-to-export-an-avatar', 'Personas#how-to-make-a-persona', 'Personas#how-to-set-a-default-persona',
       'Saves-and-Backup#how-to-load-a-game', 'Saves-and-Backup#how-to-export-a-save',
       'Starting-a-Game#how-to-start-a-game', 'Starting-a-Game#how-to-start-with-the-defaults',
-      'Install-on-Android#how-to-get-beta-builds', 'Connect-Your-Own-AI#how-to-use-the-desktop-engine',
+      'Connect-Your-Own-AI#how-to-use-the-desktop-engine',
     ]) {
       expect(index.get([id])[0].target, id).toBeUndefined();
     }

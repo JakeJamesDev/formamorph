@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider } from '@/contexts/SettingsContext';
@@ -11,6 +11,7 @@ import { helpAi } from '@/test/helpAiFixture';
 import { storeFramedWindow, stubHelpStream } from '@/test/helpFixtures';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { renderReporting } from '@/test/surfaceReporter';
+import { frames, recordScrolls, rowOf } from '@/test/landing';
 import { FormaquestionSettings } from './FormaquestionSettings';
 import type { FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { DEFAULT_HELP_SETTINGS } from '@/lib/formaquestion/helpSettings';
@@ -28,7 +29,6 @@ const GUIDE = (route: string) => ({
 });
 const loader = (route: string) => () => Promise.resolve(createDocsIndex({ pages: GUIDE(route), sidebar: '- [Help](Help)\n' }));
 
-const rowOf = (route: string) => document.querySelector<HTMLElement>(`[data-surface-target="${route}"]`);
 const conversation = () => screen.getByRole('log', { name: 'Conversation' });
 
 /** Asks one question, then presses Take Me There on the answer whose top source carries `route`. */
@@ -42,17 +42,13 @@ async function takeMeThere(route: string) {
   await userEvent.click(within(conversation()).getByRole('button', { name: 'Take Me There' }));
 }
 
-let scrolled: Element[];
-const realScroll = Element.prototype.scrollIntoView;
+const scrolled = recordScrolls();
 beforeEach(() => {
   localStorage.clear();
   storeFramedWindow({ sourcesOpen: true });
   ai.current = helpAi({ requestSurface: vi.fn() });
-  scrolled = [];
-  Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
 });
 afterEach(() => {
-  Element.prototype.scrollIntoView = realScroll;
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -120,7 +116,7 @@ describe('Take Me There in the help window', () => {
     const errors = vi.spyOn(console, 'error');
     // The scroll arrow shows only while the reader is away from the end of the conversation.
     await takeMeThere('formaquestion.ask#scroll-to-end');
-    await act(async () => { for (let i = 0; i < 32; i++) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); });
+    await frames(32);
     expect(rowOf('formaquestion.ask#scroll-to-end')).toBeNull();
     expect(document.querySelector(`.${LANDING_PULSE_CLASS}`)).toBeNull();
     expect(errors).not.toHaveBeenCalled();
@@ -132,9 +128,8 @@ describe('Formaquestion Settings rows', () => {
     .filter(([surface]) => surface.startsWith('formaquestionSettings.'))
     .flatMap(([surface, targets]) => targets.map((target) => [surface.slice('formaquestionSettings.'.length) as FormaquestionSettingsTab, target] as const));
 
-  it.each(settingsTargets)('the %s tab has a row for %s', (tab, target) => {
-    renderReporting(
-      <SettingsProvider>
+  const renderSettings = (tab: FormaquestionSettingsTab) => renderReporting(
+    <SettingsProvider>
       <FormaquestionSettings
         open
         onOpenChange={() => {}}
@@ -146,8 +141,16 @@ describe('Formaquestion Settings rows', () => {
         semantic={{ on: false, downloading: false, progress: null, error: null, setOn: () => {} }}
         answerTarget={{ reasoning: UNKNOWN_REASONING_CAPABILITY, localEngine: false, maxTokens: undefined }}
       />
-      </SettingsProvider>,
-    );
+    </SettingsProvider>,
+  );
+
+  it.each(settingsTargets)('the %s tab has a row for %s', (tab, target) => {
+    renderSettings(tab);
     expect(rowOf(`formaquestionSettings.${tab}#${target}`)).not.toBeNull();
+  });
+
+  it('carries no Settings row on the Tools tab, so a Settings landing never finds it', () => {
+    renderSettings('tools');
+    expect(document.querySelector('[data-surface-target^="settings."]')).toBeNull();
   });
 });

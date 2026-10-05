@@ -32,6 +32,7 @@ export function HintInfo({ children }: { children: string }) {
         <button
           type="button"
           aria-label="More info"
+          data-hint-info
           className="shrink-0 text-muted-foreground hover:text-foreground focus-visible:text-foreground outline-none"
         >
           <Info className="h-4 w-4" />

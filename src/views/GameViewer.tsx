@@ -6,10 +6,9 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMe
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
-import { closesWorldEditor, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from "@/lib/surface/useSurfaceOpenRequest";
+import { landsOnPage, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from "@/lib/surface/useSurfaceOpenRequest";
 import { stepTab, targetRoute, type SurfaceSteps } from "@/lib/surface/surfaceRoute";
 import { targetAttribute } from "@/lib/surface/surfaceTargets";
-import { useTargetLanding } from "@/lib/surface/useLanding";
 import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
@@ -1192,7 +1191,6 @@ const GameViewer = ({
     editorLeave.current = null;
     return pending;
   };
-  useTargetLanding(surfaceNav.pageTarget, surfaceNav.key);
   const openSurfaceHere = (steps: SurfaceSteps) => {
     surfaceNav.land(steps);
     switch (steps.dialog) {
@@ -1224,7 +1222,8 @@ const GameViewer = ({
       return;
     }
     clear();
-    if (closesWorldEditor(steps)) leaveEditorThen(() => openSurfaceHere(steps), () => {});
+    // Settings and the World Editor open over the editor; a surface the page lands closes it.
+    if (landsOnPage(steps)) leaveEditorThen(() => openSurfaceHere(steps), () => {});
     else openSurfaceHere(steps);
   });
   const exportStory = (format: 'txt' | 'md') => {
@@ -5374,7 +5373,7 @@ const GameViewer = ({
         initialPromptTab={surfaceNav.settings?.promptTab ?? settingsPrompt?.tab ?? devRoute?.subtab}
         initialPromptSurface={surfaceNav.settings?.promptSurface ?? settingsPrompt?.surface ?? devRoute?.surface}
         initialPromptField={settingsPrompt?.field}
-        initialTarget={surfaceNav.settings?.target}
+        initialTarget={surfaceNav.target}
         requestKey={surfaceNav.key}
       />
 

@@ -3,22 +3,29 @@ export const LANDING_PULSE_CLASS = 'landing-pulse';
 /** The still ring drawn under reduced motion. Its keyframes in `index.css` share the name. */
 export const LANDING_RING_CLASS = 'landing-ring';
 
-// A field, the selected option of a segmented group, a select, or a checkbox; never the label's info button.
+// A field, the selected option of a segmented group, a select, or a checkbox.
 const CONTROL = 'input, textarea, [role="radio"][data-state="on"], [role="combobox"], [role="checkbox"], [role="switch"], [role="slider"]';
+// The fallback for a row of buttons or link buttons; never the label's info button.
+const BUTTON = 'button:not(:disabled):not([data-hint-info]), a[href]:not([aria-disabled="true"])';
 
 const active = new WeakMap<HTMLElement, () => void>();
 
 const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** The first match on screen, else the first match. A layout can draw a control twice and hide one per width. */
+function shownMatch(row: HTMLElement, selector: string): HTMLElement | null {
+  const matches = Array.from(row.querySelectorAll<HTMLElement>(selector));
+  return matches.find((match) => match.getClientRects().length > 0) ?? matches[0] ?? null;
+}
+
 /**
- * The row's control a landing focuses. A control that draws a select and a segmented group hides one per
- * width, so the one on screen wins. A row that is a button is its own control.
+ * The row's control a landing focuses: its field, select or checkbox, else its first enabled button. A row
+ * that is a button is its own control.
  */
 export function landingControl(row: HTMLElement): HTMLElement | null {
   if (row.matches('button')) return row;
-  const controls = Array.from(row.querySelectorAll<HTMLElement>(CONTROL));
-  return controls.find((control) => control.getClientRects().length > 0) ?? controls[0] ?? null;
+  return shownMatch(row, CONTROL) ?? shownMatch(row, BUTTON);
 }
 
 /**

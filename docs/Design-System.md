@@ -1240,7 +1240,7 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 - ⏱️ **Pulse.** 1500ms in all. The ring holds for the first 40%, then grows to 10px out and fades to clear. It runs once, and the class leaves the row when the animation ends.
 - ♿ **Reduced motion.** The same ring, still, for the same 1500ms. Then it goes away at once.
 - 🛑 **Canceled.** When the row hides mid-pulse, the class comes off with the animation.
-- ⌨️ **Focus.** The landing focuses the row's control, not the label's ⓘ button. Where a control draws a select and a segmented group and hides one per width, focus goes to the one on screen. The control's own inset focus ring then sits inside the landing ring.
+- ⌨️ **Focus.** The landing focuses the row's control, not the label's ⓘ button. A row of buttons focuses its first enabled button, or its first live link button, such as a pager's. Where a control draws a select and a segmented group and hides one per width, focus goes to the one on screen. The control's own inset focus ring then sits inside the landing ring.
 - 🔁 **Repeat.** A second landing on the same row restarts the pulse from the start.
 - 📏 **Room.** The pulse reaches 12px past the row. Give the row at least that much padding inside its scroll area, or the fade clips. `landingRoom` on `ScrollArea` adds it and keeps the rows in place. A target row keeps a 12px scroll margin, so a scroll to an edge leaves the same room.
 
@@ -1249,9 +1249,11 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 | Need | Component |
 | --- | --- |
 | Add the class, restart it, take it off on animation end | `pulseLanding` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
-| The control to focus | `landingControl` in [`landingPulse.ts`](../src/lib/landingPulse.ts) || The ring, the pulse and the still ring | `.landing-pulse` and `.landing-ring` in [`index.css`](../src/index.css) |
+| The control to focus | `landingControl` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
+| The ring, the pulse and the still ring | `.landing-pulse` and `.landing-ring` in [`index.css`](../src/index.css) |
 | Wait for the row, scroll, focus and pulse once per request | `useLanding` in [`useLanding.ts`](../src/lib/surface/useLanding.ts) |
-| Mark a row as a target | The `target` prop of `Row` and `CheckRow`, from `targetAttribute` in [`surfaceTargets.ts`](../src/lib/surface/surfaceTargets.ts) |
+| Mark a row as a target | The `target` prop of `Row`, `CheckRow` and the other shared rows, from `targetAttribute` in [`surfaceTargets.ts`](../src/lib/surface/surfaceTargets.ts) |
+| Find a target's row | `findTargetRow` in [`surfaceTargets.ts`](../src/lib/surface/surfaceTargets.ts) |
 | Room for the ring in a scroll area | `landingRoom` on `ScrollArea` in [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) |
 | Isolated reference | [`LandingPulseReference.tsx`](../src/components/design-system/LandingPulseReference.tsx) |
 

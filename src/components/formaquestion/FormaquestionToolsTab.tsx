@@ -69,7 +69,7 @@ export function ToolsTab({ settings, onChange, toolsSupported }: {
         onDeleteTool={(id) => onChange({ tools: deleteHelpTool(settings.tools, id), toolSwitches: dropHelpToolSwitch(settings.toolSwitches, id) })}
         appVersion={APP_VERSION}
         singleRequest
-        newToolTarget={targetAttribute('formaquestionSettings.tools', 'new-tool')}
+        targets={{ newTool: targetAttribute('formaquestionSettings.tools', 'new-tool') }}
         enabledTools={{ ...settings.toolSwitches, ...Object.fromEntries(FIXED_ROWS.map((row) => [row.fn.id, settings[row.switchKey]])) }}
         toolsSupported={toolsSupported}
         unsupportedNote={TOOLS_COPY.unsupported}

@@ -82,13 +82,13 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
       <div className="grid flex-shrink-0 gap-4 pt-4 sm:grid-cols-2">
         <EndpointRouteField
           {...ENDPOINT_COPY.answer}
-          row={targetAttribute('formaquestionSettings.endpoint', 'answer-endpoint')}
+          target={targetAttribute('formaquestionSettings.endpoint', 'answer-endpoint')}
           info={routeInfo(answerPreset?.name, ENDPOINT_COPY.followsActive)}
           value={answerPreset?.id ?? null}
           activeName={s.activeTextEndpointPresetName}
           presets={presets}
           onChange={(answerEndpoint) => onChange({ answerEndpoint })}
-          target={{ url: answer.url, apiToken: answer.apiToken, model: answer.model, enabled: answer.presetId !== null }}
+          reachability={{ url: answer.url, apiToken: answer.apiToken, model: answer.model, enabled: answer.presetId !== null }}
         />
         <EndpointRouteField
           {...ENDPOINT_COPY.pick}
@@ -98,7 +98,7 @@ export function EndpointTab({ settings, onChange }: { settings: HelpSettings; on
           extraRows={[{ value: SAME_AS_ANSWER, label: `Same as Answer (${answer.presetName})` }]}
           presets={presets}
           onChange={(pickEndpoint) => onChange({ pickEndpoint })}
-          target={{ url: pick.url, apiToken: pick.apiToken, model: pick.model, enabled: pickPreset !== undefined }}
+          reachability={{ url: pick.url, apiToken: pick.apiToken, model: pick.model, enabled: pickPreset !== undefined }}
         />
       </div>
       <TextEndpointEditor heading={heading} model={model} advanced onOpenConnectionGuide={() => setGuideOpen(true)} presetDescription={ENDPOINT_COPY.presetHint} />
