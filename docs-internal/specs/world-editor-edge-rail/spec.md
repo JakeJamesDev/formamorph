@@ -14,7 +14,7 @@ The tab strip leaves the card. A full-height **edge rail** sits on the editor's 
 
 The `?` moves into the header row, right of Find. Overview loses its empty toolbar row. On Locations the List and Canvas switch becomes two icons with tooltips and sits after the search box, at the row's right end.
 
-Mobile keeps its horizontal scrolling strip; only the `?` moves there.
+Mobile drops the horizontal strip for the disclosure bar the Enter World flow uses for its collapsed Categories: a full-width bar under the header that names the current tab and a chevron, and expands the grouped tab list below it. The `?` moves to the header there too. The header's back arrow loses its outline, and the header's icon buttons never shrink, so Find stays square.
 
 ## Rulings
 
@@ -25,12 +25,14 @@ Mobile keeps its horizontal scrolling strip; only the `?` moves there.
 | Q3 | Hovering or keyboard-focusing a rail item flies out a label reading "Group · Tab". No expanded state, no collapse toggle, no stored preference |
 | Q4 | The active item carries a primary accent bar on the rail's edge and foreground color; the rest are muted. Every item has an accessible name equal to its tab label |
 | Q5 | The rail is a real tab list: one tab root wraps the rail and the cards, the rail is its vertical list, each icon a tab trigger, and the tab panels stay in the list card. Arrow keys move along the rail as they do along the strip today |
-| Q6 | Mobile keeps the horizontal scrolling strip. The rail is desktop-only |
+| Q6 | Superseded by Q12. The rail is desktop-only |
 | Q7 | The `?` help button moves to the header row, right of Find, on desktop and mobile. The row above the list no longer carries it. Overview, which has no list, renders no toolbar row at all |
 | Q8 | On Locations, the List and Canvas switch is two icons with tooltips ("List", "Canvas") on desktop as on mobile, and sits after the search box at the row's right end. The `+` stays beside the search box it feeds |
 | Q9 | While the Test Bench is embedded in the list card the rail stays drawn and disabled, as the strip is absent in that state today. The Bench's own tabs are untouched |
 | Q10 | Scripts and Tools are not part of this effort. The prototype's placeholder tabs stay on the branch. The group registry ships the Logic group so their specs add one line each |
 | Q11 | The edge rail is a new Design System pattern, documented with the showcase before adoption. Rejected on the way: a collapsible drawer inside the card, an icon-over-label strip, a five-plus-More overflow strip, a group row over a sub-tab strip, a captioned one-row strip, and a hover menu bar (F), which stays on the branch as the fallback |
+| Q12 | Mobile navigation is the Enter World flow's collapsed Categories widget: a full-width disclosure bar under the header with a tree icon, the label **Sections**, the current tab's name at the right, and a chevron that turns when open. Opening it expands the grouped tab list below the bar with the same grid-rows transition and `inert` while closed; picking a tab closes it. The horizontal scrolling strip goes. Replaces Q6's strip |
+| Q13 | The World Editor's back arrow draws with no outline: a plain ghost icon. Every icon button in the header row keeps its square size and never shrinks, on both layouts, so Find is never squeezed when the row gets tight |
 
 ## User Stories
 
@@ -48,8 +50,10 @@ Mobile keeps its horizontal scrolling strip; only the `?` moves there.
 12. As a world author on Overview, I want no empty row above the form, so that the form starts under the header.
 13. As a world author on Locations, I want List and Canvas as icons with tooltips, so that the search box gets the width the labels took.
 14. As a world author on Locations, I want the view switch at the right end of the row, so that the `+` stays next to the search it feeds.
-15. As a mobile author, I want the strip to stay as it is, so that a touch screen keeps the control that already works there.
+15. As a mobile author, I want the tabs behind one Sections bar that names where I am, so that the tab list takes no room until I ask for it.
 16. As a mobile author, I want the `?` in the header too, so that help is in the same place on both layouts.
+25. As a mobile author, I want the Sections bar to work like the Categories bar in Enter World, so that one disclosure pattern serves both screens.
+26. As a world author, I want the back arrow to be a plain icon, so that the header's square buttons have room and Find is never squeezed.
 17. As an author using the Test Bench embedded, I want the rail to stay in place but inactive, so that the editor's own tab state is not changed behind the Bench.
 18. As an author following the Authoring Tour, I want each step to still open its tab, so that the tour works unchanged on the rail.
 19. As an author using Find, I want a match to still open its tab, so that search navigation works unchanged.
@@ -77,7 +81,8 @@ Mobile keeps its horizontal scrolling strip; only the `?` moves there.
 ### World Editor assembly
 
 - Desktop: the tab root wraps the rail and the panel group. The rail is the tab list; the list card holds the toolbar and the tab panels, with no strip (Q1, Q5). The rail is a sibling before the panel group, so the panel group's own panels and the Bench and In Play panels are unchanged.
-- Mobile: the horizontal scrolling strip stays, rendered from the same registry (Q6).
+- Mobile: a **Sections** disclosure bar under the header, built from the same pieces as Enter World's collapsed Categories bar (the trigger with tree icon, label, current name and turning chevron; the grid-rows reveal with `inert` while closed). Its body is the grouped tab list from the same registry, with group captions; picking a tab closes the bar (Q12). The pieces move to a shared component so both screens render one widget.
+- Header row: the back arrow is a ghost icon with no border; every icon button in the row is `shrink-0` so it keeps its square size (Q13).
 - Header row: the `?` renders right of Find, on both layouts (Q7). The help topic still follows the active tab; the remount-per-topic rule for the nudge stays.
 - The row above the list is the List Editor's toolbar alone; a tab with no List Editor renders no row (Q7).
 - Locations: the List and Canvas switch renders icon-only with tooltips on both layouts and is passed to the toolbar's trailing slot, after the search box (Q8). The mobile-only branch for icons goes.
@@ -96,12 +101,14 @@ A good test calls the public seam with real inputs and asserts what an author wo
 - **Tab registry (existing seam).** Groups for Simple hold World with five tabs and Text with Dictionary; Advanced adds Placeholders; Logic is absent in both; the dev-router guard still matches the registry. Prior art: the dev-router test.
 - **Edge rail (new seam).** Renders a tab per visible tab with the tab's name; a separator between groups and none after the last; the active trigger is selected and carries the accent marker; hovering or focusing a trigger shows "World · Entities"; clicking a trigger calls the change handler; disabled renders every trigger disabled. Prior art: the panel tab strip tests.
 - **World Editor (existing harness).** On desktop the top-level tab is found by role in the rail and the list card has no tab strip; the `?` is in the header row after Find; Overview renders no toolbar row; Locations' toolbar has List and Canvas as icon buttons named by their tooltips after the search box; selecting a rail tab shows that tab's list. The existing tests that select a top-level tab by role keep passing unchanged. Prior art: the list toolbar test and the landing tests.
+- **Sections bar (new shared seam, through both hosts).** Closed: the bar names the current tab and its body is inert; opening lists the grouped tabs; picking one shows that tab and closes the bar; Enter World's Categories bar renders through the same component and its existing tests pass. Prior art: the Enter World workspace tests.
+- **Header row (existing harness).** The back arrow has no border class; Find keeps its square size with the row at 375px.
 - **Guards bite.** Reinstate once: render the Logic group with no tabs and the empty-group test must go red; put the `?` back in the toolbar and the header test must go red.
 
 ## Out of Scope
 
 - Scripts and Tools themselves (Q10).
-- Any change to the mobile strip's behavior beyond the `?` move (Q6).
+- Any change to the Enter World flow's own Categories bar beyond extracting the shared widget (Q12).
 - A collapsible or expanded rail state, or a stored rail preference (Q3).
 - The Test Bench panel, its tabs, and the In Play pane.
 - Changes to help topics, Find, the Authoring Tour steps, or Take Me There routes beyond keeping them green.
