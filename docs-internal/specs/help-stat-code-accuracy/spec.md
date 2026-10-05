@@ -182,6 +182,8 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Q34.** (Ticket 11 trigger probe, 2026-10-05.) With the test-first rider line, present only while the code test is offered, MeroMero v2 31B called the code test on 10 of 10 answers (five known cases × 2 runs, `--parallel 1`, 159 s, 0 failed): 1.0 calls per answer, last call clean 10/10, pass 10/10 with persona 2/2 and brave 2/2. Against 08's 0 in 65, the rider line is the trigger; the function description alone was not. The description is unchanged. 08 re-runs its full arm on 11's landing, and Q19 then decides the default.
 
+- **Q35.** (Ticket 11 intent, 2026-10-05.) The test-first line belongs to the code test function, not to the player's Code prompt. It rides whenever the function is offered, alone after the user message when the rider is cleared. Without the function, the rider is byte-identical to before. A player who wants no line turns the code test off.
+
 ## Backlog
 
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
