@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type UIEvent } from 'react';
 import { showsScrollArrow } from '@/lib/formaquestion/windowBox';
+import { TOP_FADE_DEPTH } from './floatingPieces';
 import type { HelpChat, HelpExchange } from './useHelpChat';
 
 /** How near the end, in pixels, the conversation must be for new text to keep it at the end. */
 const FOLLOW_SLACK = 48;
 
+/** Writes how much of the top fade shows, from the scroll, where the scroller's fade reads it. */
+function syncFade(viewport: HTMLElement) {
+  const share = Math.min(Math.max(viewport.scrollTop / TOP_FADE_DEPTH, 0), 1);
+  viewport.closest<HTMLElement>('[data-fq-fade]')?.style.setProperty('--fq-fade', share.toFixed(3));
+}
+
 /**
  * Keeps the conversation's scroller at the end: a new question goes there, and a growing answer stays
- * there unless the player scrolled up. `away` drives the scroll arrow, and `toEnd` resumes following.
+ * there unless the player scrolled up. `away` drives the scroll arrow, and `toEnd` resumes following. The
+ * scroll also sets the top fade's share on the nearest `data-fq-fade` ancestor.
  */
 export function useFollowEnd(exchanges: readonly HelpExchange[]) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -20,6 +28,7 @@ export function useFollowEnd(exchanges: readonly HelpExchange[]) {
     if (!viewport) return;
     if (following.current) viewport.scrollTop = viewport.scrollHeight;
     setAway(showsScrollArrow(viewport));
+    syncFade(viewport);
   }, [exchanges.length, last?.answer, last?.reasoning, last?.status]);
   // A taller viewport can bring the end into view with no scroll, and the arrow goes with it.
   useEffect(() => {
@@ -28,6 +37,7 @@ export function useFollowEnd(exchanges: readonly HelpExchange[]) {
     const observer = new ResizeObserver(() => {
       if (following.current) viewport.scrollTop = viewport.scrollHeight;
       setAway(showsScrollArrow(viewport));
+      syncFade(viewport);
     });
     observer.observe(viewport);
     return () => observer.disconnect();
@@ -37,6 +47,7 @@ export function useFollowEnd(exchanges: readonly HelpExchange[]) {
     const { scrollHeight, scrollTop, clientHeight } = viewport;
     following.current = scrollHeight - scrollTop - clientHeight <= FOLLOW_SLACK;
     setAway(showsScrollArrow(viewport));
+    syncFade(viewport);
   };
   const toEnd = () => {
     const viewport = viewportRef.current;
@@ -44,6 +55,7 @@ export function useFollowEnd(exchanges: readonly HelpExchange[]) {
     following.current = true;
     viewport.scrollTop = viewport.scrollHeight;
     setAway(false);
+    syncFade(viewport);
   };
   return { viewportRef, onScroll, away, toEnd };
 }

@@ -61,6 +61,20 @@ describe.each([
     expect(arrow()).toBeNull();
   });
 
+  it('fades the top in over the first scrolled pixels and out at the top', async () => {
+    const scrollTo = await openChat();
+    const faded = scroller().closest<HTMLElement>('[data-fq-fade]');
+    // Full keeps a hard top edge, so nothing there reads the share.
+    if (chrome === 'framed') { expect(faded).toBeNull(); return; }
+    const fadeOn = () => faded!.style.getPropertyValue('--fq-fade');
+    scrollTo(0);
+    expect(fadeOn()).toBe('0.000');
+    scrollTo(16);
+    expect(fadeOn()).toBe('0.500');
+    scrollTo(100);
+    expect(fadeOn()).toBe('1.000');
+  });
+
   it('leaves once the window grows enough to show the end, with no scroll', async () => {
     const observers: Array<() => void> = [];
     vi.stubGlobal('ResizeObserver', class {

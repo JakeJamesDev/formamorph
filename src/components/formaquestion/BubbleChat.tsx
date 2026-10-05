@@ -95,7 +95,8 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
   const waitingId = useId();
   const { group, tail } = layout;
   return (
-    <>
+    // A `contents` wrapper carries the fade's share to both layers, since the surface is no ancestor of the scroller.
+    <div data-fq-fade="" className="contents">
       {/* The bubble is two layers with the tail between them: the tail covers the surface's border where it joins, and the text and the scroll bar cover the tail (Q31). */}
       {/* A long answer's bubble fades out at the top, box and all, as Minimal's bubbles do; both layers take the fade, since its mask clips the tail outside the box. */}
       <div aria-hidden data-fq-piece="bubble-surface" className={cn(ANSWER_SURFACE, layout.scrolls && TOP_FADE)} style={place(layout.bubble)} />
@@ -105,14 +106,13 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
         className={cn('pointer-events-none absolute rotate-45 bg-popover', TAIL_EDGES[tail.points])}
         style={{ left: tail.x - group.x - TAIL_SIZE / 2, top: tail.y - group.y - TAIL_SIZE / 2, width: TAIL_SIZE, height: TAIL_SIZE }}
       />
-      {/* The padding keeps the first line clear of the fade. */}
       <div data-fq-piece="bubble" className={cn(ANSWER_CONTENT, layout.scrolls && TOP_FADE)} style={place(layout.bubble)}>
         <ScrollArea
           className="h-full rounded-2xl"
           viewportRef={viewportRef}
           viewportProps={{ 'data-fq-scroll': 'conversation', onScroll }}
         >
-          <div ref={contentRef} role="log" aria-label="Conversation" aria-busy={page.newest && chat.busy} className={cn('px-3 py-2', layout.scrolls && 'pt-8')}>
+          <div ref={contentRef} role="log" aria-label="Conversation" aria-busy={page.newest && chat.busy} className="px-3 py-2">
             {!guide && (failed ? (
               <div role="alert" className="flex flex-col items-start gap-2">
                 <span>The guide did not load</span>
@@ -158,7 +158,7 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
           {page.waiting && <span id={waitingId} className="sr-only">A new answer is writing</span>}
         </div>
       )}
-    </>
+    </div>
   );
 }
 
