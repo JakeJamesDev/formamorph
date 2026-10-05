@@ -27,7 +27,7 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 | Q8 | Each exchange keeps the face the AI set for its answer. Paging to an exchange shows that face. The newest page shows the live phase and face. While an answer streams and the player has paged back, the next chevron carries a mark |
 | Q9 | Mascot Position (Beside, Below, Auto) applies to Minimal and Full only. Bubble ignores it, and its row and ⋮ menu entry are hidden under Bubble |
 | Q10 | The mobile sheet is unchanged. Bubble on the sheet draws what Minimal draws there |
-| Q11 | The Lookup reader keeps today's rule: beside the group on the wider free side, at the bubble's height |
+| Q11 | The Lookup reader keeps today's rule: beside the group on the wider free side, anchored to the chat room's top (the Scrim's top edge), so it stays put while answers change height |
 | Q12 | Chevrons are always present and disabled at the ends, so the strip never shifts |
 | Q13 | With no exchange, no bubble and no strip draw. She shows the Initial look with the input under her head height, in the same place the input holds later |
 | Q14 | The Sources list and the Thinking fold open inside the bubble under the answer text. The strip holds their toggles, with Take Me There beside Sources as today |
@@ -36,7 +36,7 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 | Q17 | Under Bubble with Scale on Auto she draws at a fixed share of the viewport height, one tuning constant starting at 60%, capped so the whole group fits inside the screen margins. The first grip drag writes a percent to the per-device Scale store, as the Mascot tab's slider does; after that the stored percent rules. Head view under Auto keeps today's head height (ticket 01) |
 | Q18 | A grip drag keeps her feet and her outer side fixed, the corner opposite the grip, and she grows toward the open space. The group follows her (ticket 01) |
 | Q19 | Two grips, in both views. The bubble's grip resizes the chat. A grip on the Mascot sets her Scale, with Q18's anchor. The Mascot grip fades with the pill (ticket 03). Replaces the single grip in Q7 |
-| Q20 | The pill's drag handle is the vertical grip icon, to take less room |
+| Q20 | The pill's drag handle is the vertical grip icon, to take less room. One shared pill, so Minimal uses it too |
 | Q21 | Scrolling content uses the shared ScrollArea, never a native overflow scrollbar. A guard flags a native overflow scroller in components unless the file uses ScrollArea or carries a one-line allow comment naming the Design System exception (ticket 04) |
 | Q22 | The Sources list opens as a popover from the strip's Sources button, each section a link, with the flagged answer's nearest sections there too. The bubble holds the answer and the Thinking fold only. Take Me There stays in the strip (ticket 01) |
 | Q23 | The chat grip sets the chat's room, width and height, stored per device beside her place. With nothing set, the room is 400px wide (the Minimal column width) and the bubble fits its answer up to the screen margin. The chat width no longer follows her size (replaces that part of Q7) |
@@ -44,6 +44,7 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 | Q25 | The tail draws under the bubble, so it never covers text or the scroll bar |
 | Q26 | The fade masks the whole bubble piece, box included, as Minimal fades its bubbles. The chat grip sits outside the bubble, so the fade never hides it |
 | Q27 | The Sources trigger uses the Thinking toggle's leading chevron, turned up toward the popover while it is open, with the same transition |
+| Q28 | With no exchange, in every chrome, she shows the Initial look. Clear Conversation returns her to it; today's rule shows Initial only before the app load's first question (ticket 05) |
 
 ## User Stories
 
