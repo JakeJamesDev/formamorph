@@ -1,6 +1,6 @@
 # 09: Patreon Section on the Site Account Page
 
-Status: ready-for-human
+Status: done
 Status note: Built and reviewed. The spec-session review folded in: stale-read guard on every status write, one tenure formatter (`supporterTenure`), narrowed caught errors. Visual check of the not-linked state in light is a DOM read only.
 Base: 9e8df9af
 Blocked by: 03, 04

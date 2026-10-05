@@ -1,6 +1,6 @@
 # 04: Supporter Field in Author Payloads
 
-Status: ready-for-human
+Status: done
 Status note: Built in FormamorphServer 1a82f91 and 16f1202 (server base f69efa0). The toggle route is `PATCH /api/users/me/patreon` with `{ showFlair: boolean }`. It answers 200 with the status, 400 for a non-boolean, or 409 `PATREON_NOT_LINKED`. The staff rule follows the role the payload shows, per the spec session's ruling. Server suite: 2031 tests green in 25 s.
 Base: 19b7b07e
 Blocked by: 02, 03

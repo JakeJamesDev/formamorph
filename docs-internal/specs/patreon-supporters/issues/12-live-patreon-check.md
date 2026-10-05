@@ -1,6 +1,6 @@
 # 12: Live Patreon Check
 
-Status: ready-for-human
+Status: done
 Blocked by: 05, 06, 08, 10, 11
 Recommended model: N/A — the user registers the Patreon client and runs the check with real member accounts
 Reasoning effort: N/A

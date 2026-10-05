@@ -1,8 +1,8 @@
 # Spec: Patreon Supporters
 
-Status: ready-for-agent
+Status: done
 Spec session: patreon-supporters — spec
-Status note: 13 tickets in issues/. 01–11 are ready-for-human. 12 is the user's live check (link and badge confirmed live 2026-10-05; the rest untested). 13 (badge heartbeat, Q18) is ready-for-agent.
+Status note: Closed 2026-10-05. Tickets 01-13 done, last landing b3db8a3b. Gates green on 2026-10-05. Ticket 12 ran the link and badge live; the webhook, trial, gift, declined, token refresh and duplicate-link checks stay untested by the user's call.
 
 A Patreon member links their Patreon account to their Formamorph account and gets **Supporter Flair**: a badge, a name color, a Profile Image ring, and a place on the Supporters wall. Designed in a grilling session on 2026-10-02 against the client code, the server code, and the Patreon API v2 documentation.
 
