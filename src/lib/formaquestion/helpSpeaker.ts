@@ -19,15 +19,16 @@ const STAGE_LINE: Record<HelpStage, string> = {
   lookingUp: 'Looking up…',
 };
 
-/** The wait line of `stage`. The guide search is the app's own work, so it never takes her name. */
+/** The wait line of `stage`, with her as the actor of each. The guide search is the app's own work, so it never takes her name. */
 export function stageLine(stage: HelpStage, who: string | null): string {
   if (who === null) return STAGE_LINE[stage];
   switch (stage) {
-    case 'checking': return `Checking on ${who}…`;
+    case 'checking': return `${who} is getting ready…`;
     case 'searching': return STAGE_LINE.searching;
-    case 'picking': return `${who} is searching the guide…`;
-    case 'waiting': return `Asking ${who}…`;
-    case 'lookingUp': return `${who} is looking it up…`;
+    case 'picking': return `${who} is choosing guide sections…`;
+    // The same words as the Thinking header, so a reasoning model's start moves the line, not the text.
+    case 'waiting': return `${who} is thinking…`;
+    case 'lookingUp': return `${who} is reading the guide…`;
   }
 }
 

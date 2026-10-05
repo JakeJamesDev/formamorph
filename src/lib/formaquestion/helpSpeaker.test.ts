@@ -17,10 +17,10 @@ describe('who answers', () => {
 
 describe('the lines', () => {
   it('name her in each wait, but leave the guide search to the app', () => {
-    expect(stageLine('checking', 'Morphie')).toBe('Checking on Morphie…');
-    expect(stageLine('picking', 'Morphie')).toBe('Morphie is searching the guide…');
-    expect(stageLine('waiting', 'Morphie')).toBe('Asking Morphie…');
-    expect(stageLine('lookingUp', 'Morphie')).toBe('Morphie is looking it up…');
+    expect(stageLine('checking', 'Morphie')).toBe('Morphie is getting ready…');
+    expect(stageLine('picking', 'Morphie')).toBe('Morphie is choosing guide sections…');
+    expect(stageLine('waiting', 'Morphie')).toBe('Morphie is thinking…');
+    expect(stageLine('lookingUp', 'Morphie')).toBe('Morphie is reading the guide…');
     expect(stageLine('searching', 'Morphie')).toBe('Searching the guide…');
     expect(stageLine('waiting', null)).toBe('Waiting for your AI…');
     expect(stageLine('checking', null)).toBe('Checking your AI…');
