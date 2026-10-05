@@ -9,7 +9,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 
 ## How to Connect LM Studio
 <!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, gguf, lmstudio, port 1234, developer tab server, failed to fetch, connection refused, browser blocks request, self hosted llm -->
-<!-- route: settingsEndpoints.text -->
+<!-- route: settingsEndpoints.text#text-preset -->
 
 1. Download LM Studio from [lmstudio.ai](https://lmstudio.ai) and install it.
 2. Open the **Discover** tab and download a model.
@@ -27,7 +27,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 
 ## How to Connect Ollama
 <!-- keywords: local model, own model, set up, hook up, link, use, run locally, offline, localhost, cors, port 11434, pull a model, ollama serve, 403 forbidden -->
-<!-- route: settingsEndpoints.text -->
+<!-- route: settingsEndpoints.text#text-preset -->
 
 1. Download Ollama from [ollama.com/download](https://ollama.com/download) and install it.
 2. Download a model: `ollama pull <model>`. Use a model name from the Ollama library.
@@ -42,7 +42,7 @@ Every route ends in the same place: Settings → **Endpoints** → **Text**. The
 
 ## How to Connect a Hosted API
 <!-- keywords: openrouter, openai, key, cloud, paid service, provider, gpt, deepseek, set up, own key, endpoint, chatgpt, claude, gemini, anthropic, groq, mistral, subscription, remote server, byok, pay per token -->
-<!-- route: settingsEndpoints.text -->
+<!-- route: settingsEndpoints.text#text-preset -->
 
 1. Make an account with a service that offers an **OpenAI-compatible chat-completions** endpoint.
 2. Get an API token from the service. Some services call it an API key.
@@ -69,7 +69,7 @@ With **Auto-Load** on, the default, the model loads when its download finishes. 
 
 ## How to Play Against Your PC from Another Device
 <!-- keywords: phone, tablet, laptop, network, wifi, lan, remote, mobile, home server, connect, ip address, same router, second computer, ipad, steam deck, tailscale, port forwarding, host elsewhere, private network blocked -->
-<!-- route: settingsEndpoints.text -->
+<!-- route: settingsEndpoints.text#endpoint-url -->
 
 1. Make your server accept connections from your network. In LM Studio, turn on **Serve on Local Network**. In Ollama, set `OLLAMA_HOST` to `0.0.0.0:11434`.
 2. On the other device, open Settings → **Endpoints** → **Text**.

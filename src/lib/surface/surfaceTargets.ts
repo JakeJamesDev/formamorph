@@ -10,6 +10,15 @@ export const SURFACE_TARGETS = {
   'settings.display': ['narration-layout', 'narration-font', 'quote-color'],
   'settings.output': ['thinking-mode'],
   'settings.data': ['settings-mode'],
+  'settingsEndpoints.text': ['text-preset', 'endpoint-url'],
+  mainMenu: ['app-version'],
+  'mainMenu.worlds': ['import-world'],
+  'mainMenu.entities': ['import-entity'],
+  'mainMenu.dictionaries': ['import-dictionary'],
+  'mainMenu.models': ['import-avatar'],
+  menu: ['import-save'],
+  backup: ['start-backup', 'start-restore'],
+  avatar: ['finalize-character'],
 } as const satisfies Partial<Record<SurfaceId, readonly string[]>>;
 
 export type TargetedSurface = keyof typeof SURFACE_TARGETS;

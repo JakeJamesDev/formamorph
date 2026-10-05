@@ -57,6 +57,44 @@ describe('the bundled Docs Index', () => {
     expect(index.get(['Settings#how-to-restore-default-worlds'])[0]?.route).toBe('settings.data');
   });
 
+  it.each([
+    ['Library#how-to-import-a-world', 'mainMenu.worlds', 'import-world'],
+    ['Library#how-to-import-an-entity', 'mainMenu.entities', 'import-entity'],
+    ['Library#how-to-import-a-dictionary', 'mainMenu.dictionaries', 'import-dictionary'],
+    ['Avatars#how-to-import-an-avatar', 'mainMenu.models', 'import-avatar'],
+    ['Avatars#how-to-customize-your-avatar', 'avatar', 'finalize-character'],
+    ['Personas#how-to-import-sillytavern-personas', 'mainMenu.entities', 'import-entity'],
+    ['Saves-and-Backup#how-to-import-a-save', 'menu', 'import-save'],
+    ['Saves-and-Backup#how-to-make-a-backup', 'backup', 'start-backup'],
+    ['Saves-and-Backup#how-to-restore-a-backup', 'backup', 'start-restore'],
+    ['Saves-and-Backup#how-to-update-the-desktop-app', 'mainMenu', 'app-version'],
+    ['Install-on-Android#how-to-update-the-app', 'mainMenu', 'app-version'],
+    ['Install-on-Android#how-to-use-a-model-on-your-pc', 'settingsEndpoints.text', 'endpoint-url'],
+    // The Preset list is the gate row: the engine preset hides the fields the last step names.
+    ['Connect-Your-Own-AI#how-to-connect-lm-studio', 'settingsEndpoints.text', 'text-preset'],
+    ['Connect-Your-Own-AI#how-to-connect-ollama', 'settingsEndpoints.text', 'text-preset'],
+    ['Connect-Your-Own-AI#how-to-connect-a-hosted-api', 'settingsEndpoints.text', 'text-preset'],
+    ['Connect-Your-Own-AI#how-to-play-against-your-pc-from-another-device', 'settingsEndpoints.text', 'endpoint-url'],
+  ])('sends %s to the %s target %s', (id, route, target) => {
+    const [section] = index.get([id]);
+    expect(section.route).toBe(route);
+    expect(section.target).toBe(target);
+  });
+
+  it('leaves a how-to that ends in a menu, a dialog or a tile without a target', () => {
+    for (const id of [
+      'Library#how-to-export-a-world', 'Library#how-to-export-an-entity-or-a-dictionary', 'Library#how-to-make-a-group',
+      'Library#how-to-add-a-tile-to-a-group', 'Library#how-to-remove-a-tile-from-a-group', 'Library#how-to-move-a-tile',
+      'Library#how-to-change-a-tiles-size', 'Library#how-to-rename-a-group', 'Library#how-to-delete-a-group',
+      'Avatars#how-to-export-an-avatar', 'Personas#how-to-make-a-persona', 'Personas#how-to-set-a-default-persona',
+      'Saves-and-Backup#how-to-load-a-game', 'Saves-and-Backup#how-to-export-a-save',
+      'Starting-a-Game#how-to-start-a-game', 'Starting-a-Game#how-to-start-with-the-defaults',
+      'Install-on-Android#how-to-get-beta-builds', 'Connect-Your-Own-AI#how-to-use-the-desktop-engine',
+    ]) {
+      expect(index.get([id])[0].target, id).toBeUndefined();
+    }
+  });
+
   it('stays out of the start chunk: only the loader names it, through a dynamic import', () => {
     const src = resolve(__dirname, '../..');
     const files = readdirSync(src, { recursive: true, encoding: 'utf8' })

@@ -19,6 +19,7 @@ import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { toastError } from '@/lib/linkToast';
 import { SurfaceLayer } from '@/components/ui/surface';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 
 const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   onCharacterCustomized: (data: CharacterData) => void;
@@ -111,7 +112,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
             {onBack
               ? <Button onClick={onBack} variant="outline" className="flex-1">Back</Button>
               : <Button onClick={onAbort} variant="destructive" className="flex-1">Abort</Button>}
-            <Button onClick={handleFinalize} className="flex-1">
+            <Button onClick={handleFinalize} className="flex-1" {...targetAttribute('avatar', 'finalize-character')}>
               Finalize Character
             </Button>
           </div>

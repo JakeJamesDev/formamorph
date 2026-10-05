@@ -41,7 +41,7 @@ You get a `.json` file with the save's name. On Android, choose a folder in the 
 
 ## How to Import a Save
 <!-- keywords: upload, open file, transfer, move, bring in, another device, json, load from disk, received, sync, phone to pc, add playthrough, from friend, multiple at once -->
-<!-- route: menu -->
+<!-- route: menu#import-save -->
 
 1. Open **Load Game**.
 2. Select the **Import** button.
@@ -51,7 +51,7 @@ Each save goes into the folder of its world. The dialog opens that folder, and a
 
 ## How to Make a Backup
 <!-- keywords: back up, everything, export all, reinstall, new computer, new device, migrate, transfer, safe copy, archive, snapshot, switch browser, before clearing cache, format pc, full dump, bulk, sync devices, protect data -->
-<!-- route: backup -->
+<!-- route: backup#start-backup -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Backup** button.
@@ -63,7 +63,7 @@ Make a backup before you update the app or move to a new device. See [What a Bac
 
 ## How to Restore a Backup
 <!-- keywords: recover, bring back, get back, import, reinstall, new device, lost data, migrate, load archive, everything gone, wiped, merge, duplicates, disappeared, old computer, put back -->
-<!-- route: backup -->
+<!-- route: backup#start-restore -->
 
 1. On the main menu, select the **Menu** button, then **Backup & Restore**.
 2. Select the **Restore** button, then select a backup `.json` file.
@@ -75,7 +75,7 @@ Restore adds to what you have. It never erases an item that is not in the backup
 
 ## How to Update the Desktop App
 <!-- keywords: new version, upgrade, latest, download, patch, install, mac, windows, out of date, outdated, auto updater, newer release, dmg, pc client, linux -->
-<!-- route: mainMenu -->
+<!-- route: mainMenu#app-version -->
 
 1. On the main menu, look at the version number at the bottom left. It shows **— Update Available!** when a newer release is out.
 2. Select the version number. The update dialog opens.

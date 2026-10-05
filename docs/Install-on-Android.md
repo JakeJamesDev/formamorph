@@ -20,7 +20,7 @@ The Android app is the whole of Formamorph on your device: play, the [World Edit
 
 ## How to Update the App
 <!-- keywords: new version, upgrade, latest, phone, apk, mobile, out of date, outdated, patch, auto update, newer release, get newest build -->
-<!-- route: mainMenu -->
+<!-- route: mainMenu#app-version -->
 
 1. On the main menu, look at the version number at the bottom. It reads **— Update Available!** when a newer release exists.
 2. Tap the version number. The update dialog opens.
@@ -50,7 +50,7 @@ Set it back to **Stable** for finished releases only.
 
 ## How to Use a Model on Your PC
 <!-- keywords: phone, mobile, local, network, wifi, lm studio, ollama, computer, connect, desktop gpu, home rig, 192.168, self hosted, lan address, stream from desktop -->
-<!-- route: settingsEndpoints.text -->
+<!-- route: settingsEndpoints.text#endpoint-url -->
 
 1. On your PC, make LM Studio or Ollama accept connections from your network. See [Connect Your Own AI](Connect-Your-Own-AI#how-to-play-against-your-pc-from-another-device).
 2. In the app, open Settings → **Endpoints** → **Text**.

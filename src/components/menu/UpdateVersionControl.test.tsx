@@ -46,6 +46,11 @@ describe('UpdateVersionControl', () => {
     expect(link).toHaveAttribute('target', '_blank');
   });
 
+  it('marks the version button as the app-version target of the main menu', () => {
+    render(<UpdateVersionControl />);
+    expect(screen.getByRole('button', { name: 'Check for updates' })).toHaveAttribute('data-surface-target', 'mainMenu#app-version');
+  });
+
   it('resumes at "Update & Restart" when the available version is already staged on disk', async () => {
     // Desktop bridge reports a pending download whose version matches the available release.
     (window as unknown as { formamorphDesktop: unknown }).formamorphDesktop = {

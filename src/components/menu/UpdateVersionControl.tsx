@@ -9,6 +9,7 @@ import { useUpdateChecker } from '@/hooks/useUpdateChecker';
 import { UpdateDialog } from '@/components/modals/UpdateDialog';
 import { updateBridge } from '@/lib/updates/updateBridge';
 import { Tip } from '@/components/ui/tooltip';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 
 /** Footer version line for every build that can install an update: the version number opens the update
  *  dialog, gains a " — Update Available!" tag when a newer release exists, and shows download progress →
@@ -29,6 +30,7 @@ export function UpdateVersionControl() {
         <button
           type="button"
           onClick={() => setDialogOpen(true)}
+          {...targetAttribute('mainMenu', 'app-version')}
           className="text-meta text-muted-foreground/60 select-none cursor-pointer hover:text-muted-foreground transition-colors"
         >
           v{APP_VERSION}{BUILD_TAG && ` · ${BUILD_TAG}`}

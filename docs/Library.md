@@ -8,7 +8,7 @@ The library is the main menu's board of everything on this device: your worlds, 
 
 ## How to Import a World
 <!-- keywords: load, open, add, bring in, json file, upload, install, file, downloaded, scenario, adventure file, story pack, from discord, received from friend, sideload content, custom game -->
-<!-- route: mainMenu.worlds -->
+<!-- route: mainMenu.worlds#import-world -->
 
 1. On the **Worlds** tab, select **Import World**.
 2. Select one or more world `.json` files.
@@ -29,7 +29,7 @@ You get a `.json` file with the world's name.
 
 ## How to Import an Entity
 <!-- keywords: character card, png card, chub, load character, add character, upload, tavern card, npc file, bot, janitorai, v2 spec, companion, risu -->
-<!-- route: mainMenu.entities -->
+<!-- route: mainMenu.entities#import-entity -->
 
 1. On the **Entities** tab, select **Import Entity**.
 2. Select one or more files. These work:
@@ -41,7 +41,7 @@ A lorebook inside a SillyTavern card also comes in, as a dictionary. If you impo
 
 ## How to Import a Dictionary
 <!-- keywords: lorebook, sillytavern, load, add, upload, json, world info, worldbook, lore file, codex, knowledge base, encyclopedia -->
-<!-- route: mainMenu.dictionaries -->
+<!-- route: mainMenu.dictionaries#import-dictionary -->
 
 1. On the **Dictionaries** tab, select **Import Dictionary**.
 2. Select one or more `.json` files. A Formamorph dictionary and a SillyTavern World Info lorebook both work.

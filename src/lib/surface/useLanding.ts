@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { landingControl, pulseLanding } from '@/lib/landingPulse';
+import { TARGET_ATTRIBUTE } from './surfaceTargets';
 
 /** How many frames (about half a second) a landing looks for its row before it lands nothing. */
 const LANDING_FRAMES = 30;
@@ -46,4 +47,20 @@ export function useLanding<T>(find: (target: T) => HTMLElement | null, options: 
     };
   }, [request]);
   return useCallback((target: T) => setRequest({ target }), []);
+}
+
+/** The row for a route. A control drawn twice, once hidden by the width, lands on the one on screen. */
+function findTargetRow(route: string): HTMLElement | null {
+  const rows = Array.from(document.querySelectorAll<HTMLElement>(`[${TARGET_ATTRIBUTE}="${route}"]`));
+  return rows.find((row) => row.getClientRects().length > 0) ?? rows[0] ?? null;
+}
+
+/**
+ * Lands on a route's row anywhere on the page, for a host whose dialogs and tabs all mount under it. A route
+ * names its surface, so one lookup serves every dialog the host opens. `requestKey` changes per request, so a
+ * repeat request lands again.
+ */
+export function useTargetLanding(route: string | undefined, requestKey: string | undefined): void {
+  const land = useLanding(findTargetRow, { pulse: true });
+  useEffect(() => { if (route) land(route); }, [route, requestKey, land]);
 }

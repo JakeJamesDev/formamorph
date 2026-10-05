@@ -13,9 +13,10 @@ const prefersReducedMotion = () =>
 
 /**
  * The row's control a landing focuses. A control that draws a select and a segmented group hides one per
- * width, so the one on screen wins.
+ * width, so the one on screen wins. A row that is a button is its own control.
  */
 export function landingControl(row: HTMLElement): HTMLElement | null {
+  if (row.matches('button')) return row;
   const controls = Array.from(row.querySelectorAll<HTMLElement>(CONTROL));
   return controls.find((control) => control.getClientRects().length > 0) ?? controls[0] ?? null;
 }

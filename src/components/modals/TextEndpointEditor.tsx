@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { numInput } from '@/lib/numInput';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { cn } from '@/lib/utils';
 import { Hint, FieldError } from '@/components/ui/typography';
@@ -156,7 +157,11 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
                 label: SETTINGS_COPY.textPreset.label,
                 select: (
                   <Select value={edited.id} onValueChange={handlePresetSelect}>
-                    <SelectTrigger aria-label={SETTINGS_COPY.textPreset.label} className="flex-1 min-w-0">
+                    <SelectTrigger
+                      aria-label={SETTINGS_COPY.textPreset.label}
+                      className="flex-1 min-w-0"
+                      {...targetAttribute('settingsEndpoints.text', 'text-preset')}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -184,9 +189,9 @@ export function TextEndpointEditor({ model, advanced, onOpenConnectionGuide, pre
       <Hint className="flex-shrink-0 pt-1">{presetDescription}</Hint>
       {/* The engine has no URL or token to edit — its runtime panel stands in for the field set. */}
       {edited.engine ? <LocalModelPanel /> : (
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea landingRoom className="flex-1 min-h-0">
           <div className="grid gap-4 py-4">
-            <Row top htmlFor="endpointUrl" {...rowCopy('endpointUrl')}>
+            <Row top htmlFor="endpointUrl" target={targetAttribute('settingsEndpoints.text', 'endpoint-url')} {...rowCopy('endpointUrl')}>
               <div className="grid gap-1" data-row-stacked>
                 <Input
                   id="endpointUrl"

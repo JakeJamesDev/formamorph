@@ -8,7 +8,7 @@ import { LANDING_PULSE_CLASS, LANDING_RING_CLASS } from '@/lib/landingPulse';
 import { routeText, SURFACE_TARGETS } from '@/lib/surface/surfaceTargets';
 import { stubReducedMotion } from '@/test/reducedMotion';
 import { SettingsModal } from './SettingsModal';
-import type { SettingsTabId } from './settingsTabs';
+import { endpointTabForRoute, type SettingsTabId } from './settingsTabs';
 
 /** Take Me There landing in Settings: the row a request names is scrolled to, focused, and pulsed once. */
 
@@ -118,6 +118,14 @@ describe('Settings Take Me There landing', () => {
       expect(rowOf(route)!.contains(document.activeElement)).toBe(true);
     },
   );
+
+  it.each(SURFACE_TARGETS['settingsEndpoints.text'])('lands settingsEndpoints.text#%s on its row and control', async (target) => {
+    const route = routeText('settingsEndpoints.text', target);
+    render(tree({ initialTab: 'endpoints', initialEndpointTab: endpointTabForRoute('text'), initialTarget: route, requestKey: 'a' }));
+    await waitFor(() => expect(scrolled).toContain(rowOf(route)));
+    expect(rowOf(route)!.contains(document.activeElement)).toBe(true);
+    expect(rowOf(route)!.classList.contains(LANDING_PULSE_CLASS)).toBe(true);
+  });
 
   it('waits for a tab panel that mounts after the request', async () => {
     const { rerender } = render(tree({ initialTab: 'output' }));
