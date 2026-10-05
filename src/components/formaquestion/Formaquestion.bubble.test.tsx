@@ -152,9 +152,14 @@ describe('the bubble chrome', () => {
     // She stands at the bottom right by default, so the bubble is on her left and its tail points right.
     expect(helpWindow()).toHaveAttribute('data-fq-side', 'right');
     expect(piece('tail')).toHaveAttribute('data-fq-tail', 'right');
-    // The tail paints under the bubble, so it never covers the text or the scroll bar.
+    // The tail paints over the bubble's surface, so it hides the border where it joins, and under the text and the scroll bar.
+    const surface = helpWindow().querySelector<HTMLElement>('[data-fq-piece="bubble-surface"]')!;
+    expect(surface.compareDocumentPosition(piece('tail')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(piece('tail')!.compareDocumentPosition(bubble()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(piece('tail')!.parentElement).toBe(bubble()!.parentElement);
+    expect(surface.parentElement).toBe(bubble()!.parentElement);
+    expect(surface.style.top).toBe(bubble()!.style.top);
+    expect(bubble()!.className).not.toContain('bg-popover');
   });
 
   it('moves the window by her body, keeps her place across a remount, and mirrors past the center', async () => {
@@ -239,7 +244,7 @@ describe('the bubble chrome', () => {
     offsetHeight.mockRestore();
   });
 
-  it('stacks one column in head view, with the tail pointing down at the head', async () => {
+  it('stacks one column in head view, with the head above the input and the tail pointing down at it', async () => {
     localStorage.setItem('formamorph.formaquestion.mascotView', 'head');
     const { field } = await openWindow();
     stubHelpStream(sseReply('Open the **Traits** tab.'));

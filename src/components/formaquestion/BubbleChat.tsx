@@ -23,7 +23,9 @@ import type { HelpChat, HelpExchange } from './useHelpChat';
 import type { DragHandlers } from './usePointerDrag';
 
 /** The assistant bubble's surface, with no tail corner: the tail is its own piece. */
-const ANSWER_SURFACE = cn(FLOATING, 'rounded-2xl border bg-popover text-label text-popover-foreground');
+const ANSWER_SURFACE = cn(FLOATING, 'rounded-2xl border bg-popover');
+/** The bubble's content layer, over the tail: a clear border keeps the text inset as the surface's border does. */
+const ANSWER_CONTENT = cn(FLOATING, 'rounded-2xl border border-transparent shadow-none text-label text-popover-foreground');
 /** The pill's surface, for the strip's controls. */
 const STRIP_SURFACE = cn(FLOATING, 'flex items-center rounded-full border bg-background');
 /** A paging chevron: a round button that takes no press while disabled. */
@@ -95,15 +97,17 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
   const { group, tail, grip } = layout;
   return (
     <>
-      {/* Drawn before the bubble, so the bubble covers its inner half and it never covers the text or the scroll bar. */}
+      {/* The bubble is two layers with the tail between them: the tail covers the surface's border where it joins, and the text and the scroll bar cover the tail (Q31). */}
+      {/* A long answer's bubble fades out at the top, box and all, as Minimal's bubbles do; both layers take the fade, since its mask clips the tail outside the box. */}
+      <div aria-hidden data-fq-piece="bubble-surface" className={cn(ANSWER_SURFACE, layout.scrolls && TOP_FADE)} style={place(layout.bubble)} />
       <span
         aria-hidden
         data-fq-tail={tail.points}
         className={cn('pointer-events-none absolute rotate-45 bg-popover', TAIL_EDGES[tail.points])}
         style={{ left: tail.x - group.x - TAIL_SIZE / 2, top: tail.y - group.y - TAIL_SIZE / 2, width: TAIL_SIZE, height: TAIL_SIZE }}
       />
-      {/* A long answer's bubble fades out at the top, box and all, as Minimal's bubbles do; the padding keeps its first line clear of the fade. */}
-      <div data-fq-piece="bubble" className={cn(ANSWER_SURFACE, layout.scrolls && TOP_FADE)} style={place(layout.bubble)}>
+      {/* The padding keeps the first line clear of the fade. */}
+      <div data-fq-piece="bubble" className={cn(ANSWER_CONTENT, layout.scrolls && TOP_FADE)} style={place(layout.bubble)}>
         <ScrollArea
           className="h-full rounded-2xl"
           viewportRef={viewportRef}
@@ -239,9 +243,10 @@ export function BubbleChat({
     width: box.w,
     ...(sized ? { height: box.h } : {}),
   });
-  const columnTop = speaking ? layout.chat.y : (layout.pillRow ?? layout.input).y;
-  // The pill and her grip fade when idle over her head; head view keeps its pill (Q4).
-  const fade = usePillFade(!headView);
+  // In head view her head stands inside the column, over the input.
+  const columnTop = speaking ? layout.chat.y : (headView ? layout.her : layout.input).y;
+  // The pill and her grip fade when idle over her head, in both views (Q5, Q31).
+  const fade = usePillFade(true);
   const hover = fade && { onPointerEnter: fade.props.onPointerEnter, onPointerLeave: fade.props.onPointerLeave };
   const pill = <Pill move={move} large={false} headToggle={headToggle} menu={menu} onClose={onClose} fade={fade} />;
 
@@ -288,18 +293,9 @@ export function BubbleChat({
       <div ref={inputRef} style={place(layout.input, false)}>
         <AskPill draft={draft} onDraftChange={onDraftChange} chat={chat} />
       </div>
-      {headView && layout.pillRow ? (
-        <div className={cn('flex items-end gap-2', layout.side === 'right' ? 'flex-row-reverse' : 'flex-row')} style={place(layout.pillRow)}>
-          <div data-fq-body="" {...move} className="pointer-events-auto cursor-move touch-none">{mascot}</div>
-          {pill}
-        </div>
-      ) : (
-        <>
-          <div data-fq-body="" {...move} {...hover} className="pointer-events-auto flex cursor-move touch-none items-end" style={place(layout.her)}>{mascot}</div>
-          {/* The pill stands over her head, inside her bounds. */}
-          <div className="flex justify-center" style={place(layout.her, false)}>{pill}</div>
-        </>
-      )}
+      <div data-fq-body="" {...move} {...hover} className="pointer-events-auto flex cursor-move touch-none items-end" style={place(layout.her)}>{mascot}</div>
+      {/* The pill stands over her head, inside her bounds: centered on her body, and at her head's outer edge in head view, where it may be the wider. */}
+      <div className={cn('flex', !headView ? 'justify-center' : layout.side === 'right' ? 'justify-end' : 'justify-start')} style={place(layout.her, false)}>{pill}</div>
       {/* Her grip, on her top corner on the bubble side (Q19). */}
       <div className="pointer-events-none" style={place(layout.her)}>
         <Grip corner={layout.mascotGrip} handlers={mascotResize} name="mascot-resize" fade={fade?.props} />

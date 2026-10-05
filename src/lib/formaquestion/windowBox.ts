@@ -331,13 +331,15 @@ export const MASCOT_SCALE_MAX = 150;
 
 const MASCOT_SCALE_KEY = 'formamorph.formaquestion.mascotScale';
 
-/** The Mascot scale this device stored. Auto when nothing is stored, it is damaged, or storage is blocked. */
+/** The Mascot scale this device stored. The smallest percent when nothing is stored or storage is blocked; Auto when it is damaged. */
 export function readStoredMascotScale(): MascotScale {
   try {
-    const stored = Number(localStorage.getItem(MASCOT_SCALE_KEY) || 'auto');
-    return Number.isFinite(stored) ? clamp(stored, MASCOT_SCALE_MIN, MASCOT_SCALE_MAX) : 'auto';
+    const stored = localStorage.getItem(MASCOT_SCALE_KEY);
+    if (!stored) return MASCOT_SCALE_MIN;
+    const percent = Number(stored);
+    return Number.isFinite(percent) ? clamp(percent, MASCOT_SCALE_MIN, MASCOT_SCALE_MAX) : 'auto';
   } catch {
-    return 'auto';
+    return MASCOT_SCALE_MIN;
   }
 }
 
