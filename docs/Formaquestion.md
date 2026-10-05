@@ -43,7 +43,7 @@ The AI gets your earlier questions and its answers, so you do not have to say th
 1. Ask a question.
 2. Under the answer, select **Take Me There**.
 
-The button opens the screen, dialog or tab that the top source under **Sources** describes. The top source is the first one that is not the guide section of the screen you have open. The button sits next to **Sources**. On a desktop screen, the window stays open, so you can read the steps while you work. On a mobile-size screen, the sheet closes.
+The button opens the screen, dialog or tab that the top source under **Sources** describes. The top source is the one whose steps the answer copies. When the answer copies none, it's the first one that is not the guide section of the screen you have open. The button sits next to **Sources**. On a desktop screen, the window stays open, so you can read the steps while you work. On a mobile-size screen, the sheet closes.
 
 - When the button needs you to leave a game in progress, the app asks first. Select **Cancel** to stay. The game does not change.
 - When the button needs you to close a World Editor that has unsaved changes, the editor asks first, as it does when you close it. A jump to **Settings** opens over the editor and does not ask.
