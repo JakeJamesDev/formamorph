@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entity, Placeholder, Stat, Trait } from '@/types';
 import type { StatCodeTemplate } from '@/lib/statCodeTemplates';
-import type { CodeEntityNames } from '@/lib/statCodeAnalysis';
+import type { CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import StatManager from './StatManager';
 
@@ -102,7 +102,8 @@ describe('what each box completes and checks against', () => {
       statNames: props.statNames as string[],
       selfName: props.selfName as string,
       placeholders: props.placeholders as { list: Placeholder[] },
-      traits: props.traits as string[],
+      // The editor's session reads the traits' names; their groups are the Variable menu's.
+      traits: (props.traits as CodeTraitPlace[]).map((trait) => trait.name),
       entities: props.entities as CodeEntityNames[],
     };
   };

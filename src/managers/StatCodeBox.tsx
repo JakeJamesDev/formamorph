@@ -125,7 +125,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         statNames={statNames}
         selfName={selfName}
         placeholders={placeholders}
-        traits={traitNames}
+        traits={traitPlaces}
         entities={entities}
         // Its caption is the section heading, which full screen leaves behind — so the field names
         // itself in the toolbar and stays labeled in both states.

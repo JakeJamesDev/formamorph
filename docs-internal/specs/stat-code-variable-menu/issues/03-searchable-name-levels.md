@@ -1,6 +1,6 @@
 # 03: Searchable Name Levels
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02 — Drill Menu in the Stat Box
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

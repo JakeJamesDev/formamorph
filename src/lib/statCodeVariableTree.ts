@@ -4,7 +4,8 @@
  * names, so each name list is one `Name` row to type over.
  */
 
-import type { AnalysisOptions, CodeEntityNames } from '@/lib/statCodeAnalysis';
+import type { AnalysisOptions, CodeEntityNames, CodeTraitPlace } from '@/lib/statCodeAnalysis';
+import { WORLD_BREADCRUMB } from '@/lib/traitGates';
 import type { SurfaceEntry } from '@/lib/codeSurface';
 import { placeholderKindNoun, type PlaceholderKindNoun } from '@/lib/placeholders';
 import {
@@ -15,8 +16,10 @@ import {
   PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 
-/** The names the tree lists, as the editor's session holds them. */
-export type VariableTreeNames = Pick<AnalysisOptions, 'statNames' | 'placeholders' | 'traits' | 'entities'>;
+/** The names the tree lists, as the editor's session holds them, with each world trait in its groups. */
+export type VariableTreeNames = Pick<AnalysisOptions, 'statNames' | 'placeholders' | 'entities'> & {
+  traits?: readonly CodeTraitPlace[];
+};
 
 /** Offsets into an insert text: the part left selected after the insert. */
 export interface VariableSelection {
@@ -243,7 +246,9 @@ export function buildVariableTree(names?: VariableTreeNames): VariableNode[] {
       .map((name) => ({ name, trail: [], children: statFields(keyed(stats, name)) }))
     : templateRows(stats, statFields);
   const traitList = names
-    ? traitRows(traits, (names.traits ?? []).map((name) => ({ name, trail: [] })))
+    ? traitRows(traits, (names.traits ?? []).map((trait) => ({
+      name: trait.name, trail: trait.path.length > 0 ? trait.path : WORLD_BREADCRUMB,
+    })))
     : typeOverTraits(traits);
   const entityRows = names
     ? keyedLastWins(names.entities ?? []).map((entity) => ({

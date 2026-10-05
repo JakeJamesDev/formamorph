@@ -9,7 +9,7 @@ import {
   CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS,
   PREVIOUS_FIELDS, SANDBOX_GLOBALS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, placeholderEntryFields,
 } from './statCodeSurface';
-import { entityTraitNames, sandboxTraits, unplayedEntities } from './statCodeTraits';
+import { entityTraitNames, sandboxTraits, unplayedEntities, worldTraitPlaces } from './statCodeTraits';
 import {
   TEMPLATE_NAME, buildVariableTree, variableTreeLeaves, type VariableField, type VariableNode, type VariableTreeNames,
 } from './statCodeVariableTree';
@@ -57,7 +57,7 @@ function editorNames(): VariableTreeNames {
   const list = allPlaceholders(world);
   return {
     statNames: statCodeNamed(world.stats, list).map((s) => s.name),
-    traits: statCodeNamed(world.traits, list).map((t) => t.name),
+    traits: worldTraitPlaces({ traits: world.traits, traitGroups: [] }, list),
     entities: entityTraitNames({ traits: world.traits, traitGroups: [], entities: world.entities }, list),
     placeholders: { list, owners: placeholderOwners(world), dictionaries: codeDictionaries(world.dictionaries, list) },
   };
@@ -178,6 +178,17 @@ describe('entities, the persona and dictionaries', () => {
     expect(inserts(tree, 'Entities', 'Mira', 'Traits', 'Keen', 'enabled')).toBe('entities.Mira.traits.Keen.enabled');
     expect(inserts(tree, 'Entities', 'Mira', 'Placeholders', 'Eye Color', 'value')).toBe('entities.Mira.placeholders["Eye Color"].value');
     expect(inserts(tree, 'Entities', 'Old Tom', 'inScene')).toBe('entities["Old Tom"].inScene');
+  });
+
+  it('lists a world trait under its groups, and an ungrouped one under World', () => {
+    const traits = worldTraitPlaces({
+      traits: [{ ...trait('t-brave', 'Brave'), groupId: 'g-virtues' }, trait('t-iron', 'Iron Will')],
+      traitGroups: [{ id: 'g-virtues', name: 'Virtues', parentId: null }],
+    }, []);
+    const level = pick(buildVariableTree({ ...editorNames(), traits }), 'Traits');
+    expect(level.kind === 'names' && level.rows.map(({ name, trail }) => ({ name, trail }))).toEqual([
+      { name: 'Brave', trail: ['Virtues'] }, { name: 'Iron Will', trail: ['World'] },
+    ]);
   });
 
   it('unions the persona entities’ traits and placeholders, once per code name, with the owner as the trail', () => {
