@@ -109,11 +109,6 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     () => ({ list: placeholders, owners: placeholderOwners, dictionaries: codeDictionaries(dictionaries, placeholders) }),
     [placeholders, placeholderOwners, dictionaries],
   );
-  // Code reaches a trait by its code name too, so the completions and Test Code both offer that spelling.
-  const traitNames = useMemo(
-    () => statCodeNamed(traits, placeholders).map((trait) => trait.name),
-    [traits, placeholders],
-  );
   const entityNames = useMemo(
     () => entityTraitNames({ traits, traitGroups, entities, entityGroups }, placeholders),
     [traits, traitGroups, entities, entityGroups, placeholders],
@@ -122,6 +117,8 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     () => worldTraitPlaces({ traits, traitGroups }, placeholders),
     [traits, traitGroups, placeholders],
   );
+  // Code reaches a trait by its code name, so completions, Test Code and the Variable menu share one list.
+  const traitNames = useMemo(() => traitPlaces.map((trait) => trait.name), [traitPlaces]);
   const placeholderPlaces = useMemo(
     () => worldPlaceholderPlaces({ list: placeholders, owners: placeholderOwners, groups: placeholderGroups }),
     [placeholders, placeholderOwners, placeholderGroups],

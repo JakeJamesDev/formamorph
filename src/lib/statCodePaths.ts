@@ -210,8 +210,11 @@ export function placeholderKeyWinner(
 
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
+/** Whether a `.` can reach the name. The one rule the tree, completions and diagnostics share. */
+export const isIdentifier = (name: string): boolean => IDENTIFIER.test(name);
+
 /** One member step: `.Name` for an identifier, `["Name"]` for anything else. */
-export const memberStep = (name: string): string => (IDENTIFIER.test(name) ? `.${name}` : `[${JSON.stringify(name)}]`);
+export const memberStep = (name: string): string => (isIdentifier(name) ? `.${name}` : `[${JSON.stringify(name)}]`);
 
 /** Where a path starts: the world's `placeholders`, an owner entry's, or the persona's. */
 export type PlaceholderPathRoot = PlaceholderOwnerRef['kind'] | 'persona';
