@@ -52,9 +52,14 @@ const CODE_WORDS: readonly RegExp[] = [
 /** True when the question uses a code word. */
 export const hasCodeWords = (question: string): boolean => CODE_WORDS.some((word) => word.test(question));
 
+/** The Stat Code Guide section that lists the whole sandbox API. Every code turn sends it. */
+export const QUICK_REFERENCE_SECTION = 'StatCodeGuide#quick-reference';
+
+/** True when a stat's Code tab is open. */
+export const isOnCodeTab = (surface?: Surface | null): boolean => surface?.tabs.includes(STAT_CODE_TAB) === true;
+
 /** True when the turn rides the rider: a stat's Code tab is open, or the question uses a code word. */
-export const isCodeTurn = (question: string, surface?: Surface | null): boolean =>
-  surface?.tabs.includes(STAT_CODE_TAB) === true || hasCodeWords(question);
+export const isCodeTurn = (question: string, surface?: Surface | null): boolean => isOnCodeTab(surface) || hasCodeWords(question);
 
 /** The user message with the rider after it. An empty rider leaves the message as it is. */
 export const withCodeRider = (message: string, rider: string): string => (rider.trim() ? `${message}\n\n${rider}` : message);
