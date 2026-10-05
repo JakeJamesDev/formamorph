@@ -45,6 +45,8 @@ The mock that settled the layout: `.scratch/bubble-chrome-mock.html` (frames in 
 | Q26 | The fade masks the whole bubble piece, box included, as Minimal fades its bubbles. The chat grip sits outside the bubble, so the fade never hides it |
 | Q27 | The Sources trigger uses the Thinking toggle's leading chevron, turned up toward the popover while it is open, with the same transition |
 | Q28 | With no exchange, in every chrome, she shows the Initial look. Clear Conversation returns her to it; today's rule shows Initial only before the app load's first question (ticket 05) |
+| Q29 | Tightens Q21: every native overflow scroller needs the allow comment. Importing ScrollArea exempts nothing, so a file that mixes both is checked too (ticket 06) |
+| Q30 | Every file tagged migration-candidate moves to ScrollArea, each with a browser check of the pane it scrolls, and loses its tag. The tag then names only new work, never a backlog (ticket 07) |
 
 ## User Stories
 
