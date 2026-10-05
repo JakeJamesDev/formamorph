@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, Save, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -946,7 +946,7 @@ const WorldEditorInner = ({
   const helpTopicId = worldEditorTopicId(activeTab);
   // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
   const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
-  // The Locations toolbar's List/Canvas switch, after the +.
+  // The Locations toolbar's List/Canvas switch, icon buttons past the search box.
   const locationViewToggle = activeTab === "locations" && (
     <ToggleGroup
       type="single"
@@ -956,21 +956,17 @@ const WorldEditorInner = ({
       className="flex-shrink-0"
     >
       {LOCATION_VIEWS.map((v) => (
-        isMobile
-          ? (
-            <Tip key={v.value} tip={v.label}>
-              <ToggleGroupItem value={v.value} className="px-2">
-                {v.value === 'canvas' ? <Map className="h-4 w-4" /> : <List className="h-4 w-4" />}
-              </ToggleGroupItem>
-            </Tip>
-          )
-          : <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
+        <Tip key={v.value} tip={v.label}>
+          <ToggleGroupItem value={v.value} className="px-2">
+            <v.icon className="h-4 w-4" />
+          </ToggleGroupItem>
+        </Tip>
       ))}
     </ToggleGroup>
   );
   // A tab with no list (Overview) gets the row anyway, holding only its `?` at the same right end.
   const addSearchBar = listEditorParts
-    ? listEditorParts.toolbar('mt-4', { children: locationViewToggle, after: helpButton, target: listToolbarTarget(activeTab) })
+    ? listEditorParts.toolbar('mt-4', { after: <>{locationViewToggle}{helpButton}</>, target: listToolbarTarget(activeTab) })
     : helpButton && <ListToolbar className="mt-4 self-end">{helpButton}</ListToolbar>;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;

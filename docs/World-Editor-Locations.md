@@ -101,7 +101,7 @@ When the AI's answer doesn't match a connected place, the game discards it and o
 <!-- keywords: graph view, node editor, visual diagram, fullscreen, tidy layout, boxes overlap, unreachable marker, right-click menu, flowchart -->
 <!-- route: worldEditorLocations.list -->
 
-The **Locations** tab has two views. Switch between them with **List** and **Canvas**.
+The **Locations** tab has two views. Switch between them with the **List** and **Canvas** icon buttons to the right of the search box.
 
 | View | Use it to |
 |---|---|
