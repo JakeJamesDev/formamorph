@@ -23,6 +23,7 @@ Every how-to section whose last step names a control gets its target in one swee
 | Q4 | A registered target absent from the DOM when the tab opens lands on the tab silently, as today. No toast |
 | Q5 | One sweep across every how-to section in the guide whose last step names a control. A section that ends at a tab keeps the bare route |
 | Q6 | The fragment is chosen over a second comment line because the route line is already required and checked per section; a fragment rides inside an existing check and sits where anyone editing the route looks |
+| Q7 | The Landing Pulse pattern is approved (ticket 02, landed). Hosts adopt it through the shared landing-pulse helpers: one runs the pulse on a row and returns a cancel, honoring reduced motion; one picks the visible control to focus and skips the label's ⓘ button. The pulse reaches 12 px past the row, so a host's scroll viewport keeps at least that much inner padding or the fade clips (spec session, 2026-10-04) |
 
 ## User Stories
 
@@ -108,3 +109,4 @@ A good test calls the public seam with real inputs and asserts the observable re
 
 - Known traps, both recorded in memory: a tab panel mounts one commit after the tab change, and the ScrollArea viewport is the scroller. The landing hook waits a frame after the mount and scrolls the nearest viewport.
 - The help window opens some surfaces itself (its own settings and AI Context). Those land through the same hook inside the window.
+- The pulse overshoots its row by 12 px (Q7). A host whose rows sit flush against the scroll viewport edge pads the viewport, not the row.

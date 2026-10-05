@@ -5,7 +5,7 @@ Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
-Spec: [spec.md](../spec.md), rulings Q3, Q4, Q5.
+Spec: [spec.md](../spec.md), rulings Q3, Q4, Q5, Q7.
 
 ## What to build
 
