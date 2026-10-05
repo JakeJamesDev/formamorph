@@ -39,7 +39,13 @@ export function useSurfaceNav() {
     key: nav?.key,
     tab: <L extends TabKey>(ledger: L) => (nav ? stepTab(nav.steps, ledger) : undefined),
     settings: nav ? settingsLanding(nav.steps) : undefined,
+    /** The route text of the row the request lands on, for the surfaces the page lands itself. Settings and the World Editor land their own. */
+    pageTarget: nav && landsOnPage(nav.steps) ? targetRoute(nav.steps) : undefined,
   };
+}
+
+function landsOnPage(steps: SurfaceSteps): boolean {
+  return steps.dialog !== 'settings' && steps.dialog !== 'worldEditor';
 }
 
 /** Where a set of steps lands in Settings, in the shape the Settings modal's props take. */

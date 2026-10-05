@@ -34,6 +34,7 @@ import {
 import type { OptimizeMode } from '@/lib/imageOptim';
 import { supportsWebp } from '@/lib/imageOptimWorkerClient';
 import { withOptimizeProgress } from '@/lib/optimizeProgress';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 
 const OPTIMIZE_MODES: { value: OptimizeMode; label: string }[] = [
   { value: 'off', label: 'Keep as-is' },
@@ -321,8 +322,8 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
         <div className="py-2">
           {step === 'home' && (
             <div className="flex flex-col gap-3">
-              <Button onClick={() => setStep('backup-what')}>Backup</Button>
-              <Button variant="outline" onClick={pickFile} disabled={busy}>
+              <Button onClick={() => setStep('backup-what')} {...targetAttribute('backup', 'start-backup')}>Backup</Button>
+              <Button variant="outline" onClick={pickFile} disabled={busy} {...targetAttribute('backup', 'start-restore')}>
                 Restore
               </Button>
             </div>

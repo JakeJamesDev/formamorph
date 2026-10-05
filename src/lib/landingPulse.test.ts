@@ -159,6 +159,12 @@ describe('landingControl', () => {
     expect(landingControl(node)).toBe(segment);
   });
 
+  it('takes a row that is a button as its own control', () => {
+    const button = document.createElement('button');
+    row().append(button);
+    expect(landingControl(button)).toBe(button);
+  });
+
   it('finds nothing in a row with no control', () => {
     expect(landingControl(rowWith('<button aria-label="More info"></button>'))).toBeNull();
   });

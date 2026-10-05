@@ -7,7 +7,7 @@ An Avatar is a 3D model of you, the player. It is a VRM file. You keep your Avat
 
 ## How to Import an Avatar
 <!-- keywords: add, load, upload, vrm, glb, 3d model, character model, vroid, file, bring in my model, custom body, booth, vrchat model, blender export, use own mesh, duplicate warning -->
-<!-- route: mainMenu.models -->
+<!-- route: mainMenu.models#import-avatar -->
 
 1. On the main menu, select the **Avatars** tab.
 2. Select **Import Avatar**. On a narrow screen, the button is in the **Menu** button at the top center.
@@ -19,7 +19,7 @@ You can also add a file during **Character Customization**: select **Add .vrm**.
 
 ## How to Customize Your Avatar
 <!-- keywords: change, edit, hair, body, colors, appearance, look, character creator, 3d model, skin tone, eye shade, hairstyle, outfit recolor, body sliders, proportions, dress up, makeover -->
-<!-- route: avatar -->
+<!-- route: avatar#finalize-character -->
 
 You customize an Avatar when you start a game in a world with a 3D model.
 

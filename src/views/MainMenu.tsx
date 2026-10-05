@@ -43,6 +43,8 @@ import { asSettingsTab, type SettingsTabId } from '../components/modals/settings
 import { useSettingsOpenRequest } from '@/lib/useSettingsOpenRequest';
 import { closesWorldEditor, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from '@/lib/surface/useSurfaceOpenRequest';
 import { stepTab, type SurfaceSteps } from '@/lib/surface/surfaceRoute';
+import { targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
+import { useTargetLanding } from '@/lib/surface/useLanding';
 import { useSettings } from "@/contexts/SettingsContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AiSetupGate, type GateReason } from '../components/AiSetupGate';
@@ -181,6 +183,14 @@ const CARD_TABS: { value: MainMenuCardTab; label: string; Icon: LucideIcon }[] =
   { value: 'dictionaries', label: 'Dictionaries', Icon: BookOpen },
   { value: 'models', label: 'Avatars', Icon: PersonStanding },
 ];
+
+/** The Import button's Take Me There target on each tab. */
+const IMPORT_TARGET: Record<MainMenuCardTab, TargetAttribute> = {
+  worlds: targetAttribute('mainMenu.worlds', 'import-world'),
+  entities: targetAttribute('mainMenu.entities', 'import-entity'),
+  dictionaries: targetAttribute('mainMenu.dictionaries', 'import-dictionary'),
+  models: targetAttribute('mainMenu.models', 'import-avatar'),
+};
 
 /** Name the affected saves in a prompt, capping the list so a big library doesn't produce a wall of text. */
 const listSaves = (names: string[]): string => {
@@ -1312,6 +1322,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // --- Surface requests ------------------------------------------------------------------------------
   const surfaceNav = useSurfaceNav();
+  useTargetLanding(surfaceNav.pageTarget, surfaceNav.key);
   // The World Editor's leave step, which asks about unsaved edits before it lets go.
   const editorLeaveRef = useRef<((then: () => void) => void) | null>(null);
   const openSurfaceHere = (steps: SurfaceSteps) => {
@@ -1704,6 +1715,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       <GradientButton
         tone="green"
+        {...IMPORT_TARGET[cardType]}
         onClick={() => {
           if (cardType === 'worlds') fileInputRef.current?.click();
           else if (cardType === 'dictionaries') dictionaryImportRef.current?.click();

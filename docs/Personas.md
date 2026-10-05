@@ -49,7 +49,7 @@ A **Default** badge marks it. To remove it, right-click the tile and select **Cl
 
 ## How to Import SillyTavern Personas
 <!-- keywords: tavern, st, user avatars, backup, migrate, bring over, convert from other app, transfer profiles, old frontend, portraits folder, carry across, switching apps, existing profiles -->
-<!-- route: mainMenu.entities -->
+<!-- route: mainMenu.entities#import-entity -->
 
 1. In SillyTavern, open **Persona Management** and select **Backup**. Your browser downloads `personas_<date>.json`.
 2. Find your avatar images in the `User Avatars` folder inside your SillyTavern user folder. On a default install it is `data/default-user/User Avatars`.
