@@ -4,7 +4,7 @@
 
 A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
 
-> 💡 Every tab has a **?** button with a short version of its page. It sits at the right end of the row above the list. On every tab except **Overview**, that row also has the search box. These pages are the long version.
+> 💡 Every tab has a **?** button with a short version of its page. It sits in the header row, right of the **Find and replace** button. These pages are the long version.
 
 Each tab has its own page.
 
@@ -125,7 +125,7 @@ When you leave with unsaved changes, the **Unsaved changes** dialog asks what to
 ## Help Buttons
 <!-- keywords: question mark, info icon, explain this tab, colored icon, short reference -->
 
-Every tab has a **?** button at the right end of its toolbar. It opens a short help window for that tab. **Learn more** opens the tab's page in this guide.
+Every tab has a **?** button in the header row, right of the **Find and replace** button. It opens a short help window for that tab. **Learn more** opens the tab's page in this guide.
 
 A **?** you haven't opened yet shows in the accent color.
 

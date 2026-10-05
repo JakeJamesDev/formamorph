@@ -29,7 +29,6 @@ import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HelpButton } from '@/components/HelpButton';
 import { useListSearch } from '@/components/listToolbarHooks';
-import { ListToolbar } from '@/components/ListToolbar';
 import { useListEditor, type ListEditorParts } from '@/components/listEditorHooks';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
@@ -843,10 +842,15 @@ const WorldEditorInner = ({
   const hasHiddenData = !advanced && worldUsesAdvancedFeatures({
     worldOverview: getWorldData().worldOverview, stats, entities, locations, traits, dictionaries, placeholders,
   });
+  // The active tab's help topic, when it has copy yet — drives the `?` right of Find.
+  const helpTopicId = worldEditorTopicId(activeTab);
+  // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
+  const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
+  // No control here shrinks, so a tight row never squeezes a square button; the mobile gap fits it in 375px.
   const headerBar = (
-    <div className="flex items-center gap-4">
+    <div className={cn('flex items-center [&>*]:shrink-0', isMobile ? 'gap-2' : 'gap-4')}>
       {showBackButton && (
-        <Button variant="ghost" size="icon" onClick={requestClose}>
+        <Button variant="ghost" size="icon" className="border-transparent" onClick={requestClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
       )}
@@ -865,6 +869,7 @@ const WorldEditorInner = ({
           <Search className="h-4 w-4" />
         </Button>
       </Tip>
+      {helpButton}
       {/* The flask's first stop is quick triage; the full panel is one button inside it. */}
       <span data-tour-anchor="test-bench" className="inline-flex">
         <BenchPopover {...bench.popoverProps}>
@@ -942,10 +947,6 @@ const WorldEditorInner = ({
       {t.value === activeTab ? body : null}
     </TabsContent>
   ));
-  // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
-  const helpTopicId = worldEditorTopicId(activeTab);
-  // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
-  const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
   // The Locations toolbar's List/Canvas switch, icon buttons past the search box.
   const locationViewToggle = activeTab === "locations" && (
     <ToggleGroup
@@ -964,10 +965,9 @@ const WorldEditorInner = ({
       ))}
     </ToggleGroup>
   );
-  // A tab with no list (Overview) gets the row anyway, holding only its `?` at the same right end.
+  // A tab with no list (Overview) renders no row.
   const addSearchBar = listEditorParts
-    ? listEditorParts.toolbar('mt-4', { after: <>{locationViewToggle}{helpButton}</>, target: listToolbarTarget(activeTab) })
-    : helpButton && <ListToolbar className="mt-4 self-end">{helpButton}</ListToolbar>;
+    && listEditorParts.toolbar('mt-4', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   const footerBar = (
