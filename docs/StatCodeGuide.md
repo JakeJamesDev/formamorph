@@ -23,6 +23,12 @@ This guide explains Formamorph's **stat code**: a small JavaScript script attach
 4. Fill in the inputs the template asks for.
 5. Edit the inserted code as you like.
 
+## How to Insert a Name from Your World
+<!-- keywords: reference an entity's trait, trait of an entity, find a name, pick a name, insert a path, menu, variable button, drill down, dictionary placeholder, persona trait, stat value, don't type names, copy the right spelling -->
+<!-- route: worldEditorStat.code -->
+
+Select the **Variable** button in the toolbar of a code box on a stat's **Code** tab. The menu opens on **This Stat**, **Stats**, **Traits**, **Entities**, **Persona**, **Placeholders**, **Dictionaries** and **Clock**. Each group opens level by level: a list of your world's own names, then a name's fields, and for an entity, its **Traits** and **Placeholders**. Pick a field to insert its whole path at the caret. To reach `entities.Mira.traits.Wounded.enabled`, open **Entities**, **Mira**, **Traits**, **Wounded**, and then pick **enabled**. The path runs as inserted, with no name to type.
+
 ## How to Limit the AI's Change to a Stat
 <!-- keywords: clamp, cap, max, restrict, prevent, too fast, delta, script, throttle, big swings, jumps too much, slow down gains, never go up, dampen, narrator overreacts, at most per turn -->
 <!-- route: worldEditorStat.code -->
