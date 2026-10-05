@@ -102,6 +102,10 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    // The scanner can't follow `new Worker(new URL(...))`; scanning workers keeps their deps out of mid-session rebuilds.
+    entries: ['index.html', 'src/lib/*Worker.ts'],
+    // Listed too because `entries` isn't in the cache hash; this makes existing caches rebuild once.
+    include: ['@huggingface/transformers'],
     // Dev-mode pre-bundling rewrites these into .vite/deps, breaking their import.meta.url-relative
     // .wasm lookup (the QuickJS engine file). Serving them unbundled keeps the wasm path resolvable.
     // Pre-bundling also breaks the ONNX runtime's `?url` imports.
