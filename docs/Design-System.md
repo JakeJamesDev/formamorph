@@ -766,8 +766,8 @@ The live reference renders four of the five production strips against their own 
 **Rule:**
 
 - The rail is a full-height column on the view's outer left edge, outside every card. It shows one icon per tab and no captions.
-- Tabs are grouped. A separator draws between two groups. A group with no visible tab draws nothing, not even its separator.
-- Pointing at an icon, or focusing it with the keyboard, flies out a label that reads "Group · Tab". Focus that a click brings shows no label. The label never takes pointer events.
+- The landing tab stands alone at the top, ahead of every group. A separator draws under it and between two groups. A group with no visible tab draws nothing, not even its separator.
+- Pointing at an icon, or focusing it with the keyboard, flies out a label that reads "Group · Tab", or the tab's name alone for the landing tab. Focus that a click brings shows no label. The label never takes pointer events.
 - The active tab carries a primary accent bar on the rail's edge and the foreground color. The others are muted.
 - The rail has no expanded state, no toggle and no stored preference.
 - The rail is a real tab list. One tab root wraps the rail and the cards, with vertical orientation, so the arrow keys move along it.
@@ -777,16 +777,17 @@ The live reference renders four of the five production strips against their own 
 
 ### Composition
 
-- One registry holds the tabs in order, each with its value, name, group and icon, and the groups in order. A helper returns the groups one mode shows and drops the empty ones.
+- One registry holds the tabs in order, each with its value, name, icon and group, and the groups in order. The landing tab has no group. A helper returns the landing slot first, then the groups one mode shows, and drops the empty ones.
 - Each tab's accessible name is its tab name, held in visually hidden text. The icon and the flyout are hidden from assistive technology.
-- On mobile the rail becomes a **Sections** bar under the header. The bar names the current tab and folds the grouped tab list below it, with a caption per group. It shares its disclosure with the Enter World **Categories** bar. The body is `inert` while closed, and a pick closes it and returns focus to the bar.
+- On mobile the rail becomes a **Sections** bar under the header. The bar names the current tab and folds the tab list below it. The landing tab is a lone row above the first caption, and each group has a caption. It shares its disclosure with the Enter World **Categories** bar. The body is `inert` while closed, and a pick closes it and returns focus to the bar.
 
 The World Editor groups its tabs this way:
 
 | Group | Tabs |
 | --- | --- |
-| World | Overview · Stats · Entities · Locations · Traits |
-| Text | Dictionary · Placeholders (Advanced only) |
+| None (landing tab) | Overview |
+| Content | Stats · Entities · Locations · Traits |
+| Vocabulary | Dictionary · Placeholders (Advanced only) |
 | Logic | None yet, so it draws nothing |
 
 ### Production mapping

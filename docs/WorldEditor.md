@@ -6,7 +6,7 @@ A guide to each tab in the World Editor: what it does, why it exists, and the se
 
 > 💡 Every tab has a **?** button with a short version of its page. It sits in the header row, right of the **Find and replace** button. These pages are the long version.
 
-The tabs are icons on the rail at the editor's left edge. Point at an icon to see its name. On mobile, select **Sections** under the header to pick a tab.
+The tabs are icons on the rail at the editor's left edge. **Overview** stands alone at the top. Below it, **Content** holds Stats, Entities, Locations and Traits, and **Vocabulary** holds Dictionary and Placeholders. Point at an icon to see its group and name. On mobile, select **Sections** under the header to pick a tab.
 
 Each tab has its own page.
 

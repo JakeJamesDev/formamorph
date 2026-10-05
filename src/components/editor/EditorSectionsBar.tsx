@@ -35,9 +35,11 @@ export function EditorSectionsBar({ groups, value, open, onOpenChange }: EditorS
       <TabsPrimitive.List aria-label="Editor Sections" className="flex flex-col gap-1 border-t border-border/60 p-3">
         {drawn.map((group) => (
           <Fragment key={group.id}>
-            <p aria-hidden className="mb-1 mt-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground first:mt-0">
-              <span>{group.label}</span><span className="h-px flex-1 bg-border" />
-            </p>
+            {group.label && (
+              <p aria-hidden className="mb-1 mt-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground first:mt-0">
+                <span>{group.label}</span><span className="h-px flex-1 bg-border" />
+              </p>
+            )}
             {group.tabs.map(({ value: tab, label, icon: Icon }) => (
               <TabsPrimitive.Trigger
                 key={tab}

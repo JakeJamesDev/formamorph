@@ -351,7 +351,11 @@ describe('edge rail reference', () => {
     expect(within(region).getByText('The trait tree beside the selected trait\'s details.')).toBeInTheDocument();
 
     await user.click(within(region).getByRole('button', { name: /^Sections/ }));
-    await user.click(within(within(region).getByRole('tablist', { name: 'Editor Sections' })).getByRole('tab', { name: 'Dictionary' }));
+    const bar = within(region).getByRole('tablist', { name: 'Editor Sections' });
+    expect(within(bar).getByText('Content')).toBeInTheDocument();
+    expect(within(bar).getByText('Vocabulary')).toBeInTheDocument();
+    expect(within(bar).queryByText('World')).toBeNull();
+    await user.click(within(bar).getByRole('tab', { name: 'Dictionary' }));
     expect(within(region).getByRole('button', { name: /^Sections/ })).toHaveTextContent('Dictionary');
 
     await user.click(within(region).getByRole('radio', { name: 'Simple' }));
