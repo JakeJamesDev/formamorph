@@ -39,6 +39,8 @@ export interface TurnCommitContext {
   /** The live scratchpad, frozen into this turn. */
   notes: string;
   reasoning: { text: string; ms: number };
+  /** The planner's call on whether the player is in the picture. Undefined when no planner ran. */
+  playerInFrame?: boolean;
   /** Story hours elapsed before this turn. */
   gameTime: number;
   /** The world's time frame as it stands; the opening turn replaces it with the hour it just measured. */
@@ -154,6 +156,7 @@ export function computeTurnCommit({ result, plan, context }: TurnCommitInput): T
     ...(context.locationId !== undefined ? { locationId: context.locationId } : {}),
     ...(context.notes ? { notes: context.notes } : {}),
     ...(context.reasoning.text ? { reasoning: context.reasoning } : {}),
+    ...(context.playerInFrame !== undefined ? { playerInFrame: context.playerInFrame } : {}),
     ...(summary ? { summary } : {}),
     ...(measuredHours !== null ? { timeDelta: turnHours } : {}),
     ...(Object.keys(diaries).length ? { diaries } : {}),

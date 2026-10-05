@@ -3,6 +3,8 @@
 // the action tags the text model writes from this turn's narration. The authored tags go in verbatim — the
 // model only ever contributes action/pose/composition — so a world keeps a consistent look across turns.
 
+import type { Entity } from '@/types';
+import { sameCharacterName } from './entityMatch';
 import { normalizeBooruTags } from './imagePrompt';
 import { escapeRegExp } from './utils';
 
@@ -16,6 +18,28 @@ export interface SceneCharacter {
 
 /** Booru models lose track of who is who past two subjects, so a crowd is rendered as its two leads. */
 export const MAX_SCENE_CHARACTERS = 2;
+
+/**
+ * Who the picture holds, in drawing order: the played persona when the turn put the player in it, then the
+ * turn's participants in narration order, capped at what a booru model keeps apart. The persona leads because
+ * the passage is told through them.
+ *
+ * `playerInFrame` is the planner's call. Undefined means no planner judged it (planning off, or a turn saved
+ * before the flag), and the player is in most scenes, so undefined reads as in frame.
+ */
+export function pickSceneCast(input: {
+  participants: string[];
+  /** The cast the participants resolve against, without the persona. */
+  entities: Entity[];
+  persona: Entity | null;
+  playerInFrame: boolean | undefined;
+}): Entity[] {
+  const npcs = input.participants
+    .map((name) => input.entities.find((e) => sameCharacterName(e.name, name)))
+    .filter((e): e is Entity => !!e);
+  const lead = input.persona && input.playerInFrame !== false ? [input.persona] : [];
+  return [...lead, ...npcs].slice(0, MAX_SCENE_CHARACTERS);
+}
 
 /** Split a tag line into trimmed, non-empty tags. */
 export function splitTags(line: string): string[] {
@@ -89,8 +113,8 @@ const countTag = (n: number, singular: string, plural: string) => `${n}${n === 1
  * become `2girls`, a girl and a boy stay `1girl, 1boy`. A character whose tags name no count is assumed to
  * be a person of unstated kind (`1other`), since they were put in the scene deliberately.
  *
- * `solo` is never emitted: the player character is in most scenes and has no tags of their own, so claiming
- * a single-subject frame would fight the narration rather than describe it.
+ * `solo` is never emitted: a world with no persona still has the player in most scenes with no tags of their
+ * own, so claiming a single-subject frame would fight the narration rather than describe it.
  */
 export function deriveCountTags(characters: SceneCharacter[]): string[] {
   let girls = 0;

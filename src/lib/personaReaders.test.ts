@@ -50,7 +50,8 @@ describe('entity readers in play', () => {
     { reader: 'diaries, text resolved with its owner', source: viewer, pattern: /const entity = found && resolveEntityTexts\(\[found\], resolveEntityText\)\[0\];/ },
     { reader: 'discovery matching', source: viewer, pattern: /const knownNames = \[\.\.\.allEntities\.map/ },
     { reader: 'discovery exclusions', source: viewer, pattern: /characters: clean\(\[\.\.\.allEntities\.map\(\(e\) => e\.name\), \.\.\.playerNames\]\)/ },
-    { reader: 'scene tags', source: viewer, pattern: /\.map\(\(name\) => allEntities\.find\(\(e\) => sameCharacterName\(e\.name, name\)\)\)/ },
+    // The persona joins the picture by its own slot, never through the cast.
+    { reader: 'scene tags', source: viewer, pattern: /pickSceneCast\(\{ participants, entities: allEntities, persona: persona\?\.entity \?\? null,/ },
     { reader: "planner's cast", source: viewer, pattern: /classifyCast\(cast, allEntities, playerNames\)/ },
     { reader: 'in-game entity panel', source: viewer, pattern: /entities=\{allEntities\}/ },
     // The seed resolves the pick itself, so it reads every world entity: a picked persona-only one is in no cast yet.

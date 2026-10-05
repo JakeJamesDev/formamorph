@@ -156,7 +156,7 @@ import { toDebugEndpoint } from "../lib/promptEndpoints";
 import { AiContextRequestCard, type AiContextCardSection, type AiContextTextSlot } from "@/components/aiContext/AiContextRequestCard";
 import { AiContextExportButton } from "@/components/aiContext/AiContextExportButton";
 import type { AiRequestRecord } from "@/lib/aiContext/requestRecord";
-import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
+import { composeSceneTags, pickSceneCast, stripPlaces, splitTags, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
 import { addToPending, setTurnAttachments, latestTurnAttachments, pruneAttachments } from "../lib/actionAttachments";
@@ -2151,6 +2151,7 @@ const GameViewer = ({
           narration: commit.turn.narration,
           participants: turn.participants,
           locationId: turn.location?.id,
+          playerInFrame: commit.turn.playerInFrame,
           signal: imageController.signal,
         });
       } finally {
@@ -2227,6 +2228,8 @@ const GameViewer = ({
     let sceneCast: DirectorCastMember[] | null = null;
     // The same cast with the player flagged: the staged plan's grounding block lists everyone, not just NPCs.
     let flaggedCast: DirectorCastMember[] = [];
+    // The planner's call on whether the player is in the picture; undefined until a planner has cast the turn.
+    let playerInFrame: boolean | undefined;
     let turnParticipants: string[] = [];
 
     const reportFailure = (error: unknown) =>
@@ -2378,6 +2381,7 @@ const GameViewer = ({
       const classifyPlannerCast = (cast: DirectorCastMember[]) => {
         const classified = classifyCast(cast, allEntities, playerNames);
         flaggedCast = classified.flaggedCast;
+        playerInFrame = classified.flaggedCast.some((c) => c.isPlayer);
         directorCandidates = classified.directorCandidates;
         adHocCandidates = classified.adHocCandidates;
         sceneCast = classified.npcCast;
@@ -2602,6 +2606,7 @@ const GameViewer = ({
           // Freeze this turn's player notes and reasoning (both additive save-shape fields).
           notes: playerNotes,
           reasoning: turnReasoningRef.current,
+          playerInFrame,
           gameTime,
           calendar,
         },
@@ -3351,13 +3356,12 @@ const GameViewer = ({
     }
   };
 
-  /** The cast in frame: this turn's participants, resolved to entities, capped at what a booru model can
-   *  hold apart. Order is the narration's, so the two the turn actually turned on are the two drawn. */
-  const resolveSceneCast = async (participants: string[], signal: AbortSignal, scrub?: (line: string) => string, fresh = false): Promise<SceneCharacter[]> => {
-    const found = participants
-      .map((name) => allEntities.find((e) => sameCharacterName(e.name, name)))
-      .filter((e): e is NonNullable<typeof e> => !!e)
-      .slice(0, MAX_SCENE_CHARACTERS);
+  /** The cast in frame: the persona when the player is in the picture, then this turn's participants resolved
+   *  to entities, capped at what a booru model can hold apart (see pickSceneCast). */
+  const resolveSceneCast = async (
+    participants: string[], playerInFrame: boolean | undefined, signal: AbortSignal, scrub?: (line: string) => string, fresh = false,
+  ): Promise<SceneCharacter[]> => {
+    const found = pickSceneCast({ participants, entities: allEntities, persona: persona?.entity ?? null, playerInFrame });
     const named = resolveEntityTexts(found, resolveEntityText);
     const cast: SceneCharacter[] = [];
     for (const entity of named) {
@@ -3376,11 +3380,12 @@ const GameViewer = ({
     narration: string;
     participants: string[];
     locationId?: string;
+    playerInFrame?: boolean;
     /** Re-derive the untagged subjects rather than reusing this session's guesses. */
     fresh?: boolean;
     signal: AbortSignal;
   }): Promise<string> => {
-    const { turnId, narration, participants, locationId, fresh, signal } = args;
+    const { turnId, narration, participants, locationId, playerInFrame, fresh, signal } = args;
     setSceneImageJob("tags");
     // Every place the world knows, not just this one: the narration routinely names somewhere the player
     // is not, and an invented place name is no more useful as a tag for being off-screen.
@@ -3388,7 +3393,7 @@ const GameViewer = ({
     const places = locations.map((l) => l.name);
     const scrubPlaces = (line: string) =>
       splitTags(line).map((t) => stripPlaces(t, places, knownTags)).filter(Boolean).join(", ");
-    const cast = await resolveSceneCast(participants, signal, scrubPlaces, fresh);
+    const cast = await resolveSceneCast(participants, playerInFrame, signal, scrubPlaces, fresh);
     const location = locations.find((l) => l.id === locationId) ?? currentLocation;
     const locationTags = location ? await resolveSubjectTags(location, "location", signal, scrubPlaces, fresh) : "";
     if (signal.aborted) return "";
@@ -3418,6 +3423,7 @@ const GameViewer = ({
     narration: string;
     participants: string[];
     locationId?: string;
+    playerInFrame?: boolean;
     tags?: string;
     /** Re-write the tag line and stop there — no image. The cheap loop for judging the tags themselves.
      *  Always re-derives: a re-roll that reused the cached guesses could only ever change the action layer,
@@ -3492,6 +3498,7 @@ const GameViewer = ({
       narration: turn.narration ?? "",
       participants: turn.entities ?? [],
       locationId: turn.locationId,
+      playerInFrame: turn.playerInFrame,
       ...opts,
       tags: sceneDrawTags(opts, turn.sceneTags),
       signal: controller.signal,
@@ -3528,6 +3535,7 @@ const GameViewer = ({
       narration: parsed.narration ?? "",
       participants: parsed.entities ?? [],
       locationId: parsed.locationId,
+      playerInFrame: parsed.playerInFrame,
       tags: sceneDrawTags(queued, parsed.sceneTags),
       tagsOnly: queued.tagsOnly,
       signal: controller.signal,
