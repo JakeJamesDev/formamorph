@@ -39,6 +39,10 @@ describe('a surface other than stat code', () => {
     expect(messages('return arg.name;', SCRIPT)).toEqual(['“arg” isn’t available in this script. Did you mean “args”?']);
   });
 
+  it('does not check clock fields, since clock is not one of its names', () => {
+    expect(messages('return clock.time;', SCRIPT)).toEqual(['“clock” isn’t available in this script.']);
+  });
+
   it('accepts its own names, built-ins and language names', () => {
     expect(messages('return JSON.stringify({ n: Math.max(1, 2), who: args.name, w: world });', SCRIPT)).toEqual([]);
   });

@@ -698,4 +698,49 @@ describe('the stats map in stat code', () => {
     }
     expect(labels('return cur|')).not.toContain('currentStatId');
   });
+
+  describe('clock fields', () => {
+    it('accepts every real clock field', () => {
+      for (const field of ['day', 'daypart', 'deltaHours', 'elapsedHours', 'previous', 'previous.day', 'previous.daypart']) {
+        expect(statCodeDiagnostics(`return clock.${field};`), field).toEqual([]);
+      }
+    });
+
+    it('flags an unknown field on clock as an error and suggests the closest one', () => {
+      const [problem] = statCodeDiagnostics('return clock.deltaHour;');
+      expect(problem.severity).toBe('error');
+      expect(problem.message).toBe('clock has no field “deltaHour”. Did you mean “deltaHours”?');
+    });
+
+    it('flags an unknown field on clock.previous as an error and suggests the closest one', () => {
+      const [problem] = statCodeDiagnostics('return clock.previous.dayparts;');
+      expect(problem.severity).toBe('error');
+      expect(problem.message).toBe('clock.previous has no field “dayparts”. Did you mean “daypart”?');
+    });
+
+    it('flags time and previous.hour, which the clock does not carry', () => {
+      expect(messages('return clock.time;')).toEqual(['clock has no field “time”.']);
+      expect(messages('return clock.previous.hour;')).toEqual(['clock.previous has no field “hour”.']);
+    });
+
+    it('reads the same clock through optional chaining and spacing', () => {
+      expect(messages('return clock?.previous?.hour;')).toEqual(['clock.previous has no field “hour”.']);
+      expect(messages('return clock . previous . hour;')).toEqual(['clock.previous has no field “hour”.']);
+      expect(statCodeDiagnostics('return clock?.previous?.day;')).toEqual([]);
+    });
+
+    it('underlines the field name', () => {
+      const code = 'return clock.time;';
+      const [problem] = statCodeDiagnostics(code);
+      expect(code.slice(problem.from, problem.to)).toBe('time');
+    });
+
+    it('leaves a clock the code declared itself alone', () => {
+      expect(statCodeDiagnostics('const clock = { time: 1 }; return clock.time;')).toEqual([]);
+    });
+
+    it('does not read a field off another object that ends in clock', () => {
+      expect(messages('const o = { clock: { time: 1 } }; return o.clock.time;')).toEqual([]);
+    });
+  });
 });

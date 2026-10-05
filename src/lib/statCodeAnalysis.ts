@@ -17,7 +17,7 @@ import {
   nearestName, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
 } from '@/lib/codeSurface';
 import {
-  CLOCK_MEMBERS, CLOCK_PREVIOUS_FIELDS, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
+  clockFieldsAt, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
   DICTIONARY_FIELDS, ENTITY_FIELDS, PERSONA_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
@@ -471,8 +471,8 @@ function membersAfterDot(
     return options.placeholders?.dictionaries ? mapNameEntries(options.placeholders.dictionaries.map((book) => book.name), 'dictionary', true) : null;
   }
   if (rules.dictionaries && DICTIONARY_ENTRY_EXPRESSION.test(expression)) return DICTIONARY_FIELDS;
-  if (rules.stats && expression === 'clock') return CLOCK_MEMBERS;
-  if (rules.stats && expression === 'clock.previous') return CLOCK_PREVIOUS_FIELDS;
+  const clockFields = rules.stats ? clockFieldsAt(expression) : null;
+  if (clockFields) return clockFields;
   if (rules.traits && expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
   if (rules.traits && TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
   if (rules.persona && expression === 'persona') return PERSONA_FIELDS;
@@ -856,6 +856,21 @@ function checkEntityWrite(target: SyntaxNode, code: string, assignment: boolean)
   return checkTraitWrite(target, code, assignment, entityTraitRef);
 }
 
+/** What is wrong with a read of `clock.<field>` or `clock.previous.<field>`: the clock carries no such field. */
+function checkClockField(member: SyntaxNode, code: string): CodeDiagnostic | null {
+  const object = member.firstChild;
+  const field = member.getChild('PropertyName');
+  if (!object || !field) return null;
+  // `clock?.previous` and `clock . previous` name the same object as `clock.previous`.
+  const path = code.slice(object.from, object.to).replace(/\s+/g, '').replace(/\?\./g, '.');
+  const fields = clockFieldsAt(path);
+  const name = code.slice(field.from, field.to);
+  if (!fields || fields.some((entry) => entry.name === name)) return null;
+  const suggestion = nearestName(name, fields.map((entry) => entry.name));
+  const lead = `${path} has no field “${name}”.`;
+  return { from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
+}
+
 /** What is wrong with an entity or dictionary name: several share it, or nothing authored has it. A library
  *  item can still have it, so the miss is only a warning. */
 function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' | 'dictionary'): CodeDiagnostic | null {
@@ -1053,6 +1068,7 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const entitiesInScope = rules.entities && !declared.has('entities');
   const dictionariesInScope = rules.dictionaries && !declared.has('dictionaries');
   const statsInScope = rules.stats && !declared.has('stats');
+  const clockInScope = rules.stats && !declared.has('clock');
   /** Whether a chain's root is an owner global the code has not shadowed. */
   const ownerRootInScope = (root: string | null) =>
     (root === 'entities' && entitiesInScope) || (root === 'persona' && personaInScope) || (root === 'dictionaries' && dictionariesInScope);
@@ -1154,6 +1170,10 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
       // The empty key reaches an unnamed stat, which no name list carries.
       const problem = ref?.name && !overlapsAny(ref.from, ref.to, ranges) ? checkEntryName(ref, options.statNames, 'stat') : null;
       if (problem) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'MemberExpression' && clockInScope) {
+      const problem = checkClockField(cursor.node, code);
+      if (problem && !overlapsAny(problem.from, problem.to, ranges)) diagnostics.push(problem);
     }
     if (cursor.type.name !== 'VariableName') continue;
 
