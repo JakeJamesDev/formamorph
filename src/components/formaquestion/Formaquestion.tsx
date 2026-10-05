@@ -41,6 +41,7 @@ import { ReaderPiece } from './ReaderPiece';
 import { appLoadQuestion, mascotFace, mascotPhase } from './mascotPhase';
 import { MinimalChat } from './MinimalChat';
 import { BubbleChat } from './BubbleChat';
+import { useBubblePage } from './useBubblePage';
 import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS } from '@/lib/formaquestion/helpPrompt';
 import { GuideBody } from './GuideBody';
 import { useHelpAi } from './useHelpAi';
@@ -173,7 +174,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     appLoadQuestion.record();
     setBeforeFirstQuestion(false);
   }, [sent]);
-  const phase = mascotPhase(chat.exchanges.at(-1), beforeFirstQuestion);
+  const page = useBubblePage(chat.exchanges);
   // A change of style or of the Mascot switch swaps the chrome in place; the conversation lives above both.
   // The sheet draws Minimal for Bubble (Q10).
   const styleChrome = chatChrome(settings);
@@ -494,7 +495,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   };
 
   const rig = activeMascotRig(settings.mascotPresets);
-  const mascotImages = composeMascot(rig, phase, mascotFace(chat.exchanges.at(-1)));
+  // Under Bubble her face follows the paged answer (Q8). Minimal and Full ignore the page and keep the newest.
+  const spoken = bubble ? page.exchange : chat.exchanges.at(-1);
+  const mascotImages = composeMascot(rig, mascotPhase(spoken, beforeFirstQuestion), mascotFace(spoken));
   const crop = mascotBase && fitMask(rig.mask, mascotBase);
 
   // Under Bubble the layout follows her: her place, her scale, and the measured pieces (Q15).
@@ -687,6 +690,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         >
           <BubbleChat
             layout={bubbleView}
+            page={page}
             mascot={bubbleMascot}
             headView={headView}
             guide={guide}

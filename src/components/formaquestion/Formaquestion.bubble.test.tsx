@@ -1,8 +1,12 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDocsIndex } from '@/lib/docs/docsIndex';
-import { sseReply } from '@/test/aiTextFixtures';
+import { HELP_FACE } from '@/lib/formaquestion/helpFace';
+import { composeMascot, DEFAULT_MASCOT_RIG, type MascotPhase } from '@/lib/formaquestion/mascot';
+import { mascotImageUrl } from '@/lib/formaquestion/mascotAssets';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
+import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
 import { openHelpSettings, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
@@ -39,6 +43,22 @@ async function ask(field: HTMLElement, question: string) {
   await userEvent.type(field, question);
   await userEvent.click(screen.getByRole('button', { name: 'Send' }));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled());
+}
+
+/** An answer stream that stays open until the test ends it. */
+function heldReply() {
+  let stream!: ReadableStreamDefaultController<Uint8Array>;
+  const body = new ReadableStream<Uint8Array>({ start(controller) { stream = controller; } });
+  const encoder = new TextEncoder();
+  return {
+    respond: () => new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }),
+    end: () => act(() => {
+      stream.enqueue(encoder.encode(sseFrame({ content: 'Late answer.' })));
+      stream.enqueue(encoder.encode(sseFrame({}, 'stop')));
+      stream.enqueue(encoder.encode('data: [DONE]\n\n'));
+      stream.close();
+    }),
+  };
 }
 
 function drag(handle: HTMLElement, dx: number, dy: number) {
@@ -85,8 +105,6 @@ describe('the bubble chrome', () => {
     expect(within(strip()!).getByRole('button', { name: /^Sources \(\d+\)$/ })).toHaveAttribute('aria-expanded', 'false');
     expect(within(bubble()!).queryByRole('group', { name: 'Sources' })).toBeNull();
     expect(bubble()!.querySelector('[data-radix-scroll-area-viewport]')).not.toBeNull();
-    expect(within(strip()!).getByRole('button', { name: 'Previous Answer' })).toBeDisabled();
-    expect(within(strip()!).getByRole('button', { name: 'Next Answer' })).toBeDisabled();
     expect(field).toHaveValue('');
 
     await userEvent.click(within(strip()!).getByRole('button', { name: 'Take Me There' }));
@@ -243,6 +261,153 @@ describe('the bubble chrome', () => {
     await openWindow();
     expect(helpWindow()).toHaveAttribute('data-fq-chrome', 'minimal');
     expect(helpWindow()).toHaveAttribute('data-fq-sheet');
+  });
+});
+
+/** Answers the nth request with the nth text, one request per question. */
+const answersInOrder = (...texts: string[]) => {
+  let next = 0;
+  stubHelpStream(() => sseResponse(sseReply(texts[next++])));
+};
+
+/** Asks each question in turn and waits for its answer to finish. */
+async function askAll(field: HTMLElement, questions: readonly string[]) {
+  for (const question of questions) {
+    await ask(field, question);
+    await waitFor(() => expect(screen.getByRole('log', { name: 'Conversation' })).toHaveAttribute('aria-busy', 'false'));
+  }
+}
+
+/** The newest look on screen. */
+const drawn = () => [...mascot()!.querySelectorAll('[data-fq-look="new"] img')].map((image) => image.getAttribute('src'));
+const look = (phase: MascotPhase, face: string | null = null) => composeMascot(DEFAULT_MASCOT_RIG, phase, face).map(mascotImageUrl);
+
+const chevron = (name: 'Previous Answer' | 'Next Answer') => within(strip()!).getByRole('button', { name });
+const questionPill = () => screen.getByRole('note', { name: 'Your Question' });
+
+describe('paging through the conversation', () => {
+  const QUESTIONS = ['How do I add a trait?', 'How do I change the theme?', 'How do I reset the world?'] as const;
+
+  async function threeExchanges() {
+    answersInOrder('First answer.', 'Second answer.', 'Third answer.');
+    const opened = await openWindow();
+    await askAll(opened.field, QUESTIONS);
+    return opened;
+  }
+
+  it('shows the newest exchange, steps back and forward with the chevrons, and disables each at its end', async () => {
+    const { field } = await threeExchanges();
+    expect(bubble()).toHaveTextContent('Third answer.');
+    expect(questionPill()).toHaveTextContent(QUESTIONS[2]);
+    expect(chevron('Next Answer')).toBeDisabled();
+
+    await userEvent.click(chevron('Previous Answer'));
+    expect(bubble()).toHaveTextContent('Second answer.');
+    expect(questionPill()).toHaveTextContent(QUESTIONS[1]);
+    expect(chevron('Next Answer')).toBeEnabled();
+
+    await userEvent.click(chevron('Previous Answer'));
+    expect(bubble()).toHaveTextContent('First answer.');
+    expect(questionPill()).toHaveTextContent(QUESTIONS[0]);
+    expect(chevron('Previous Answer')).toBeDisabled();
+    expect(field).toHaveValue('');
+
+    await userEvent.click(chevron('Next Answer'));
+    await userEvent.click(chevron('Next Answer'));
+    expect(bubble()).toHaveTextContent('Third answer.');
+    expect(chevron('Next Answer')).toBeDisabled();
+    expect(field).toHaveValue('');
+  });
+
+  it('keeps the input as the player left it while paging, and never fills it with an old question', async () => {
+    const { field } = await threeExchanges();
+    await userEvent.type(field, 'half a thought');
+    await userEvent.click(chevron('Previous Answer'));
+    expect(field).toHaveValue('half a thought');
+  });
+
+  it('jumps to the newest page on a new question', async () => {
+    const { field } = await threeExchanges();
+    await userEvent.click(chevron('Previous Answer'));
+    await userEvent.click(chevron('Previous Answer'));
+    expect(bubble()).toHaveTextContent('First answer.');
+
+    answersInOrder('Fourth answer.');
+    await ask(field, 'How do I save?');
+    await waitFor(() => expect(bubble()).toHaveTextContent('Fourth answer.'));
+    expect(questionPill()).toHaveTextContent('How do I save?');
+    expect(chevron('Next Answer')).toBeDisabled();
+    expect(chevron('Previous Answer')).toBeEnabled();
+  });
+
+  it('empties the bubble on Clear Conversation and starts the next page at the newest', async () => {
+    const { field } = await threeExchanges();
+    await userEvent.click(chevron('Previous Answer'));
+    await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Clear Conversation' }));
+    expect(bubble()).toBeNull();
+    expect(strip()).toBeNull();
+
+    answersInOrder('Only answer.');
+    await ask(field, 'How do I add a trait?');
+    await waitFor(() => expect(bubble()).toHaveTextContent('Only answer.'));
+    expect(chevron('Previous Answer')).toBeDisabled();
+    expect(chevron('Next Answer')).toBeDisabled();
+  });
+
+  it('marks the next chevron while an answer streams and the player reads an earlier page, and clears the mark on the newest page', async () => {
+    const { field } = await openWindow();
+    answersInOrder('First answer.');
+    await askAll(field, [QUESTIONS[0]]);
+    const held = heldReply();
+    stubHelpStream(held.respond);
+    await userEvent.type(field, QUESTIONS[1]);
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByRole('button', { name: 'Stop' });
+    expect(chevron('Next Answer')).not.toHaveAttribute('aria-describedby');
+
+    await userEvent.click(chevron('Previous Answer'));
+    expect(bubble()).toHaveTextContent('First answer.');
+    expect(drawn()).toEqual(look('answering'));
+    expect(chevron('Next Answer')).toHaveAccessibleDescription('A new answer is writing');
+    expect(chevron('Next Answer').querySelector('[data-fq-mark]')).not.toBeNull();
+
+    await userEvent.click(chevron('Next Answer'));
+    // The newest page shows the live phase: the question still waits on its answer.
+    expect(drawn()).toEqual(look('thinking'));
+    expect(chevron('Next Answer').querySelector('[data-fq-mark]')).toBeNull();
+    expect(chevron('Next Answer')).not.toHaveAccessibleDescription();
+    await held.end();
+  });
+
+  describe('her face', () => {
+    const reasoning = { ...UNKNOWN_REASONING_CAPABILITY, tools: true, sources: { tools: 'native' as const } };
+    const faceCall = (face: string) => sseFrame({ tool_calls: [{ index: 0, id: 'call-0', type: 'function', function: { name: HELP_FACE.name, arguments: JSON.stringify({ face }) } }] });
+    const faceLook = (id: string | null) => look('answering', id);
+
+    it('follows the paged exchange, and the newest page shows the live face', async () => {
+      ai.current = helpAi({ snapshot: textSnapshot(textTarget({ reasoning })), answerTarget: { reasoning, localEngine: false, maxTokens: undefined }, revalidate: vi.fn(async () => true) });
+      // Each question takes two requests: the face call, then the answer.
+      const replies = [
+        () => sseResponse([faceCall('Happy'), sseFrame({}, 'tool_calls'), 'data: [DONE]\n\n']),
+        () => sseResponse(sseReply('First answer.')),
+        () => sseResponse([faceCall('Wink'), sseFrame({}, 'tool_calls'), 'data: [DONE]\n\n']),
+        () => sseResponse(sseReply('Second answer.')),
+      ];
+      let request = 0;
+      stubHelpStream(() => replies[request++]());
+      const { field } = await openWindow();
+      await askAll(field, QUESTIONS.slice(0, 2));
+      expect(bubble()).toHaveTextContent('Second answer.');
+      expect(drawn()).toEqual(faceLook('wink'));
+
+      await userEvent.click(chevron('Previous Answer'));
+      expect(bubble()).toHaveTextContent('First answer.');
+      expect(drawn()).toEqual(faceLook('happy'));
+
+      await userEvent.click(chevron('Next Answer'));
+      expect(drawn()).toEqual(faceLook('wink'));
+    });
   });
 });
 
