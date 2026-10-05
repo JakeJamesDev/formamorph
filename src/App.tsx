@@ -35,6 +35,9 @@ import type { PersonaPick } from '@/lib/persona';
 const DesignSystemShowcase = import.meta.env.DEV
   ? lazy(() => import('./views/DesignSystemShowcase'))
   : null;
+const DevPaneRoutes = import.meta.env.DEV
+  ? lazy(() => import('./components/dev/DevPaneRoutes'))
+  : null;
 
 /** Set once the first-run welcome intro has played, so it never auto-plays again on this device. */
 const INTRO_SEEN_KEY = 'FORMAMORPH_introSeen';
@@ -174,6 +177,7 @@ function AppViews() {
         />
       )}
       {import.meta.env.DEV && devRoute?.probe === 'viewport' && <ViewportReadout />}
+      {DevPaneRoutes && devRoute?.modal && <Suspense fallback={null}><DevPaneRoutes /></Suspense>}
       {/* One help window for every view, so it stays open with its state across a view swap. The welcome
           animation covers the screen and takes no input, so help stands down while it plays. */}
       <Formaquestion suspended={currentView === 'mainMenu' && introPace !== null} />

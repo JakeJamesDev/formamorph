@@ -55,3 +55,39 @@ describe('ScrollArea marks', () => {
     expect(container.querySelectorAll('[data-scroll-mark]')).toHaveLength(0);
   });
 });
+
+/** A text-only pane joins the tab order, so the keyboard can reach the element that scrolls. */
+describe('ScrollArea focusable', () => {
+  const viewport = (container: HTMLElement) => container.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]')!;
+
+  it('puts the viewport in the tab order, after the control before it', async () => {
+    const { container } = render(
+      <>
+        <button type="button">Before</button>
+        <ScrollArea focusable><p>policy text</p></ScrollArea>
+      </>,
+    );
+    screen.getByRole('button', { name: 'Before' }).focus();
+    await userEvent.tab();
+    expect(viewport(container)).toHaveFocus();
+  });
+
+  it('leaves the viewport out of the tab order by default', async () => {
+    const { container } = render(
+      <>
+        <button type="button">Before</button>
+        <ScrollArea><p>policy text</p></ScrollArea>
+      </>,
+    );
+    screen.getByRole('button', { name: 'Before' }).focus();
+    await userEvent.tab();
+    expect(viewport(container)).not.toHaveFocus();
+  });
+
+  it('keeps a test id passed to the viewport', () => {
+    const { container } = render(
+      <ScrollArea focusable viewportProps={{ 'data-testid': 'body' }}><p>policy text</p></ScrollArea>,
+    );
+    expect(screen.getByTestId('body')).toBe(viewport(container));
+  });
+});

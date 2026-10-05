@@ -577,11 +577,13 @@ The reference descriptions, control labels, dynamic status, and accessible actio
 Use [`ScrollArea`](../src/components/ui/scroll-area.tsx) for bounded vertical content when it preserves the surface's behavior. It is the shared World Editor appearance: a 10px vertical track, rounded theme-derived thumb, no up/down chevrons, and an 11px viewport gutter so the overlay thumb does not obscure content.
 
 - Keep one vertical scrolling owner per pane. Preserve wheel, touch, keyboard, and focus-reveal behavior.
-- Give the pane a definite height or a flex-resolved height. A maximum height alone does not give the Radix viewport a scroll boundary.
+- Give the pane a definite height, a flex-resolved height, or a maximum height on the `ScrollArea` itself. The root is a flex column, so its viewport stops at that height. A maximum height on an ancestor works only through a flex column down to the `ScrollArea`, such as `flex-1 min-h-0` on it.
 - Keep search, primary inputs, and footer actions outside the list viewport when they must remain reachable while the collection scrolls.
 - Preserve horizontal scrolling where content requires it. The shared viewport assumes vertical content and forces its content wrapper to block layout; do not apply it blindly to code, tables, or other horizontal scrollers.
 - Native text editors, editable regions, canvases, virtualizers, drag lists, and popover-hosted scrollers can have selection, autoscroll, wheel-lock, or focus contracts. Match the appearance only where supported, and do not wrap them in a nested ScrollArea to hide native chrome.
 - Use `type="always"` when the scrollbar itself communicates that a bounded reference can scroll. Other production surfaces can retain the component's normal visibility behavior.
+- Set `focusable` when the pane holds only text, such as a policy or a code view. Keyboard users can then tab to the pane and scroll it with the arrow keys.
+- Put a fixed or absolute frame on a wrapper element. Radix sets the root's `position` inline, so a position class on `ScrollArea` has no effect.
 
 The [scrollbar and list inventory](../docs-internal/designs/design-system/rich-lists-scrollbars-review.md) groups remaining native and specialized surfaces by limitation. It is follow-up scope, not authorization for an app-wide migration.
 
@@ -603,7 +605,7 @@ The name after `allow` is one row of the table below. The text after the colon s
 | `canvas` | Canvases that own wheel input |
 | `drag-list` | Drag lists and virtualizers that need the native scrolling ancestor |
 | `responsive-columns` | One pane that becomes two independent columns |
-| `migration-candidate` | A native pane that can move to `ScrollArea` once its behavior is checked |
+| `migration-candidate` | New work only, never a backlog: a native pane that moves to `ScrollArea` once its behavior is checked |
 
 Remove the comment when the file holds no native scroller.
 

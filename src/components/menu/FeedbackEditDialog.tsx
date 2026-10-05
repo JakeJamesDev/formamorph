@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -83,7 +84,7 @@ export function FeedbackEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[640px] max-h-[90dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Pencil className="h-4 w-4" /> Edit This Report</DialogTitle>
           <DialogDescription>
@@ -95,77 +96,79 @@ export function FeedbackEditDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 min-w-0">
-          {mayEditProse && (
-            <>
-              <div className="space-y-2">
-                <label htmlFor="feedback-edit-title" className="text-label font-medium">Title</label>
-                <Input
-                  id="feedback-edit-title"
-                  value={draft.title}
-                  maxLength={TITLE_MAX}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-label font-medium">Description</span>
-                  <span className="text-meta text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4">
+            {mayEditProse && (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="feedback-edit-title" className="text-label font-medium">Title</label>
+                  <Input
+                    id="feedback-edit-title"
+                    value={draft.title}
+                    maxLength={TITLE_MAX}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
+                  />
                 </div>
-                <PromptField
-                  value={draft.body}
-                  onChange={(body) => setDraft((prev) => ({ ...prev, body: body.slice(0, BODY_MAX) }))}
-                  vocabulary={plainVocab}
-                  markdown
-                  ariaLabel="Description"
-                  className="h-[240px]"
-                />
-              </div>
-            </>
-          )}
 
-          {mayRefile && (
-            <div className="flex flex-wrap gap-4">
-              <div className="space-y-2 min-w-[160px] flex-1">
-                <span className="text-label font-medium">Kind</span>
-                <Select value={draft.type} onValueChange={pickType}>
-                  <SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(['bug', 'suggestion'] as const).map((value) => (
-                      <SelectItem key={value} value={value}>{FEEDBACK_TYPE_LABELS[value].one}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-label font-medium">Description</span>
+                    <span className="text-meta text-muted-foreground">{draft.body.length} / {BODY_MAX}</span>
+                  </div>
+                  <PromptField
+                    value={draft.body}
+                    onChange={(body) => setDraft((prev) => ({ ...prev, body: body.slice(0, BODY_MAX) }))}
+                    vocabulary={plainVocab}
+                    markdown
+                    ariaLabel="Description"
+                    className="h-[240px]"
+                  />
+                </div>
+              </>
+            )}
 
-              <div className="space-y-2 min-w-[160px] flex-1">
-                <span className="text-label font-medium">Category</span>
-                <Select
-                  value={draft.category}
-                  onValueChange={(category) => setDraft((prev) => ({ ...prev, category }))}
-                >
-                  <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
+            {mayRefile && (
+              <div className="flex flex-wrap gap-4">
+                <div className="space-y-2 min-w-[160px] flex-1">
+                  <span className="text-label font-medium">Kind</span>
+                  <Select value={draft.type} onValueChange={pickType}>
+                    <SelectTrigger aria-label="Kind"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(['bug', 'suggestion'] as const).map((value) => (
+                        <SelectItem key={value} value={value}>{FEEDBACK_TYPE_LABELS[value].one}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          {/* Said before it happens, not discovered after: a move costs the reporter's machine details
-              and puts the thread back at the start of triage. */}
-          {draft.type !== thread.type && (
-            <p className="rounded-md border border-warning/40 bg-warning/5 p-3 text-meta text-muted-foreground">
-              Moving this to a {FEEDBACK_TYPE_LABELS[draft.type as FeedbackType].one.toLowerCase()} sets its status
-              back to Open{thread.type === 'bug' ? ', and deletes the version and platform it was filed with' : ''}.
-              Its replies and votes stay.
-            </p>
-          )}
-        </div>
+                <div className="space-y-2 min-w-[160px] flex-1">
+                  <span className="text-label font-medium">Category</span>
+                  <Select
+                    value={draft.category}
+                    onValueChange={(category) => setDraft((prev) => ({ ...prev, category }))}
+                  >
+                    <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {categories.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Said before it happens, not discovered after: a move costs the reporter's machine details
+                and puts the thread back at the start of triage. */}
+            {draft.type !== thread.type && (
+              <p className="rounded-md border border-warning/40 bg-warning/5 p-3 text-meta text-muted-foreground">
+                Moving this to a {FEEDBACK_TYPE_LABELS[draft.type as FeedbackType].one.toLowerCase()} sets its status
+                back to Open{thread.type === 'bug' ? ', and deletes the version and platform it was filed with' : ''}.
+                Its replies and votes stay.
+              </p>
+            )}
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
@@ -177,4 +180,3 @@ export function FeedbackEditDialog({
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

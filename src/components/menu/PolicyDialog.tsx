@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SurfaceIdName } from "@/components/ui/surface";
 
 interface PolicyDialogProps {
@@ -41,7 +42,7 @@ export function PolicyDialog({
     <Dialog open={open}>
       <DialogContent aria-describedby={undefined}
         surface={surface}
-        className="sm:max-w-[560px] max-h-[85dvh] overflow-y-auto"
+        className="sm:max-w-[560px] max-h-[85dvh] flex flex-col"
         hideClose
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
@@ -50,11 +51,11 @@ export function PolicyDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets long authored
-            text widen the dialog past its max width. */}
-        <div className="py-2 text-label min-w-0">
-          <MarkdownRenderer text={body} />
-        </div>
+        <ScrollArea className="flex-1 min-h-0" focusable>
+          <div className="py-2 text-label">
+            <MarkdownRenderer text={body} />
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           {/* Pushed away from the other two: it is the one answer that cannot be taken back by
@@ -75,4 +76,3 @@ export function PolicyDialog({
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

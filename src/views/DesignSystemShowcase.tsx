@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FieldError, Hint, Meta } from '@/components/ui/typography';
@@ -387,47 +388,49 @@ export function DesignSystemShowcase() {
   }, [route]);
 
   return (
-    <main data-design-system-showcase className="fixed inset-0 overflow-y-auto bg-background text-foreground">
-      <div className="mx-auto grid max-w-7xl gap-6 p-4 sm:p-8">
-        <header className="grid gap-3 border-b border-border pb-6 sm:grid-cols-[1fr_auto] sm:items-end">
-          <div className="space-y-2">
-            <Meta className="inline-flex items-center gap-1.5 uppercase tracking-wider">
-              <MonitorCog className="h-3.5 w-3.5" /> Development Reference
-            </Meta>
-            <h1 className="text-display font-semibold">Formamorph Design System</h1>
-            <Hint className="max-w-3xl">
-              Select a reference.
-            </Hint>
-          </div>
-          <div className="flex items-center gap-2 text-meta text-muted-foreground">
-            <BookOpen className="h-4 w-4" /> Guide: docs/Design-System.md
-          </div>
-        </header>
+    // Radix pins the root's position inline, so the fixed frame is a wrapper.
+    <div className="fixed inset-0 bg-background text-foreground">
+      <ScrollArea className="h-full" viewportProps={{ 'data-design-system-showcase': '' }}>
+        <main className="mx-auto grid max-w-7xl gap-6 p-4 sm:p-8">
+          <header className="grid gap-3 border-b border-border pb-6 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="space-y-2">
+              <Meta className="inline-flex items-center gap-1.5 uppercase tracking-wider">
+                <MonitorCog className="h-3.5 w-3.5" /> Development Reference
+              </Meta>
+              <h1 className="text-display font-semibold">Formamorph Design System</h1>
+              <Hint className="max-w-3xl">
+                Select a reference.
+              </Hint>
+            </div>
+            <div className="flex items-center gap-2 text-meta text-muted-foreground">
+              <BookOpen className="h-4 w-4" /> Guide: docs/Design-System.md
+            </div>
+          </header>
 
-        <Tabs value={activeReference} onValueChange={setActiveReference}>
-          <TabsList
-            aria-label="Design References"
-            className="grid h-auto w-full"
-            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))' }}
-          >
-            {DESIGN_SYSTEM_REFERENCES.map((reference) => (
-              <TabsTrigger key={reference.id} value={reference.id} className="min-h-10 min-w-0 whitespace-normal px-2 text-center">{reference.label}</TabsTrigger>
+          <Tabs value={activeReference} onValueChange={setActiveReference}>
+            <TabsList
+              aria-label="Design References"
+              className="grid h-auto w-full"
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))' }}
+            >
+              {DESIGN_SYSTEM_REFERENCES.map((reference) => (
+                <TabsTrigger key={reference.id} value={reference.id} className="min-h-10 min-w-0 whitespace-normal px-2 text-center">{reference.label}</TabsTrigger>
+              ))}
+            </TabsList>
+            {DESIGN_SYSTEM_REFERENCES.map(({ id, label, description, Component }) => (
+              <TabsContent key={id} value={id} className="grid gap-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="text-title font-semibold">{label} pattern</h2>
+                  <Meta>{description}</Meta>
+                </div>
+                <Component />
+              </TabsContent>
             ))}
-          </TabsList>
-          {DESIGN_SYSTEM_REFERENCES.map(({ id, label, description, Component }) => (
-            <TabsContent key={id} value={id} className="grid gap-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-title font-semibold">{label} pattern</h2>
-                <Meta>{description}</Meta>
-              </div>
-              <Component />
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-    </main>
+          </Tabs>
+        </main>
+      </ScrollArea>
+    </div>
   );
 }
 
 export default DesignSystemShowcase;
-// scroll-guard: allow migration-candidate: whole-page scroller for the showcase

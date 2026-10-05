@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'react-toastify';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
@@ -60,12 +61,14 @@ function OverviewPreview({ overview }: { overview: PresetOverview }) {
   if (!hasOverviewContent(overview)) return null;
   const { author, description, tags, models } = overview;
   return (
-    <dl aria-label="Overview" className="flex flex-col gap-2 rounded-md border p-3 max-h-60 overflow-y-auto">
-      {author && <OverviewRow label="Author"><span className="text-label">{author}</span></OverviewRow>}
-      {description && <OverviewRow label="Description"><div className="text-muted-foreground"><MarkdownRenderer text={description} /></div></OverviewRow>}
-      {tags.length > 0 && <OverviewRow label="Tags">{chips(tags)}</OverviewRow>}
-      {models.length > 0 && <OverviewRow label="Models">{chips(models)}</OverviewRow>}
-    </dl>
+    <ScrollArea className="max-h-60 rounded-md border" focusable>
+      <dl aria-label="Overview" className="flex flex-col gap-2 p-3">
+        {author && <OverviewRow label="Author"><span className="text-label">{author}</span></OverviewRow>}
+        {description && <OverviewRow label="Description"><div className="text-muted-foreground"><MarkdownRenderer text={description} /></div></OverviewRow>}
+        {tags.length > 0 && <OverviewRow label="Tags">{chips(tags)}</OverviewRow>}
+        {models.length > 0 && <OverviewRow label="Models">{chips(models)}</OverviewRow>}
+      </dl>
+    </ScrollArea>
   );
 }
 
@@ -173,4 +176,3 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: overview list capped by max height only

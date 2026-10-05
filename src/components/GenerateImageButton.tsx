@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import AiGenerateButton from '@/components/AiGenerateButton';
@@ -244,40 +245,42 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
               both the row and the column is what lets the left half scroll instead of forcing the dialog
               past its cap and squashing the pane. */}
           <div className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2">
-          <div className="grid min-h-0 content-start gap-3 overflow-y-auto">
-            <div className="grid gap-1.5">
-              <Label htmlFor="gen-preset">Preset</Label>
-              <Select value={activeImageEndpointPresetId} onValueChange={selectImageEndpointPreset}>
-                <SelectTrigger id="gen-preset">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {imageEndpointPresets.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <EndpointReachabilityBadge target={imageReachabilityTarget(settings)} />
-            </div>
-            {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you
-                already get" rather than "nothing is being sent". */}
-            <TagField
-              label="Prompt"
-              value={prompt}
-              onChange={handlePrompt}
-              placeholder={alwaysSent(imagePositivePrompt) ?? 'comma-separated visual tags…'}
-              aside={<AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />}
-            />
-            {/* No generate button: the model writes what a picture should contain, never what it
-                shouldn't — that list is the author's taste and the preset's shared negatives. */}
-            <TagField
-              label="Negative prompt"
-              value={negative}
-              onChange={setNegative}
-              placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid…'}
-            />
+          <ScrollArea className="min-h-0">
+            <div className="grid content-start gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="gen-preset">Preset</Label>
+                <Select value={activeImageEndpointPresetId} onValueChange={selectImageEndpointPreset}>
+                  <SelectTrigger id="gen-preset">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {imageEndpointPresets.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <EndpointReachabilityBadge target={imageReachabilityTarget(settings)} />
+              </div>
+              {/* The placeholder is the preset's own prefix, so an empty field reads as "this is what you
+                  already get" rather than "nothing is being sent". */}
+              <TagField
+                label="Prompt"
+                value={prompt}
+                onChange={handlePrompt}
+                placeholder={alwaysSent(imagePositivePrompt) ?? 'comma-separated visual tags…'}
+                aside={<AiGenerateButton mode="tags" kind={subject.kind} source={subject.description} onChange={handlePrompt} />}
+              />
+              {/* No generate button: the model writes what a picture should contain, never what it
+                  shouldn't — that list is the author's taste and the preset's shared negatives. */}
+              <TagField
+                label="Negative prompt"
+                value={negative}
+                onChange={setNegative}
+                placeholder={alwaysSent(imageNegativePrompt) ?? 'tags to avoid…'}
+              />
 
-          </div>
+            </div>
+          </ScrollArea>
 
           <PreviewPane
             shape={subject.kind === 'character' ? 'portrait' : 'landscape'}
@@ -310,4 +313,3 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
     </>
   );
 }
-// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

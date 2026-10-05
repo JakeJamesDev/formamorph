@@ -33,8 +33,11 @@ const ScrollArea = React.forwardRef<
     /** Pads the viewport 12px a side for the Landing Pulse, and pulls the root out by the same, so the
      *  content and the bar keep their place. */
     landingRoom?: boolean
+    /** Puts the viewport in the tab order with the shared focus ring, so arrow keys scroll a pane that
+     *  holds no control of its own. */
+    focusable?: boolean
   }
->(({ className, children, viewportRef, viewportProps, marks, onMarkSelect, landingRoom, ...props }, ref) => (
+>(({ className, children, viewportRef, viewportProps, marks, onMarkSelect, landingRoom, focusable, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
     className={cn("relative flex flex-col overflow-hidden", landingRoom && "-ml-3 -mr-px", className)}
@@ -50,9 +53,15 @@ const ScrollArea = React.forwardRef<
         table shrink-wraps to content width, letting long rows overflow horizontally (breaking `truncate`);
         block keeps it viewport-width so children clip. We have no horizontal ScrollArea, so this is safe. */}
     <ScrollAreaPrimitive.Viewport
+      tabIndex={focusable ? 0 : undefined}
       {...viewportProps}
       ref={viewportRef}
-      className={cn("w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block", landingRoom && "px-3", viewportProps?.className)}>
+      className={cn(
+        "w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block",
+        landingRoom && "px-3",
+        focusable && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        viewportProps?.className
+      )}>
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar marks={marks} onMarkSelect={onMarkSelect} />

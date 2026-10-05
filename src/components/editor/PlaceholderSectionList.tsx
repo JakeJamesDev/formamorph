@@ -3,6 +3,7 @@ import { Check, ChevronDown } from 'lucide-react';
 import ChipRowHeading from '@/components/prompt/ChipRowHeading';
 import { OwnerIcon } from '@/components/prompt/OwnerHeading';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { chipRowPath, chipSectionOpens, type ChipRow } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken } from '@/lib/placeholders';
@@ -39,7 +40,7 @@ export const PlaceholderRowPath = ({ row }: { row: ChipRow }) => (
  * Not a Radix Select: a Select renders its listbox in a portal of its own, which the editor dialog's scroll
  * lock puts out of the wheel's reach, and it takes plain strings where a heading needs an owner's name with
  * its chips drawn. `portal={false}` keeps the list inside the dialog's own subtree, where the wheel reaches
- * it and a native `max-h` is all the scrolling it needs.
+ * it.
  */
 export function PlaceholderSectionList({
   rows, selectedId, onSelect, placeholders, empty = 'Select placeholder', footer, trigger, className,
@@ -81,7 +82,7 @@ export function PlaceholderSectionList({
         )}
       </PopoverTrigger>
       <PopoverContent portal={false} align="start" className="w-64 p-1">
-        <div className="max-h-56 overflow-y-auto">
+        <ScrollArea className="max-h-56">
           {/* A heading is drawn off the first row under it, so a section nothing offers shows none. */}
           {rows.map((row, i) => (
             <Fragment key={row.token}>
@@ -100,7 +101,7 @@ export function PlaceholderSectionList({
             </Fragment>
           ))}
           {!rows.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders</p>}
-        </div>
+        </ScrollArea>
         {footer?.(() => setOpen(false))}
       </PopoverContent>
     </Popover>
@@ -108,4 +109,3 @@ export function PlaceholderSectionList({
 }
 
 export default PlaceholderSectionList;
-// scroll-guard: allow migration-candidate: small editor utility; keyboard reveal and drop targets not checked

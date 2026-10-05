@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AgeGateDialogProps {
   open: boolean;
@@ -39,7 +40,7 @@ export function AgeGateDialog({
     <Dialog open={open}>
       <DialogContent
         surface="ageGate"
-        className="sm:max-w-[480px] max-h-[85dvh] overflow-y-auto"
+        className="sm:max-w-[480px] max-h-[85dvh] flex flex-col"
         hideClose
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
@@ -55,17 +56,21 @@ export function AgeGateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <p className="text-label font-medium text-balance py-2">
-          By choosing Accept, you confirm that you are at least 18 years old and of legal age to view
-          adult content where you live.
-        </p>
+        <ScrollArea className="flex-1 min-h-0" focusable>
+          <div className="space-y-4">
+            <p className="text-label font-medium text-balance py-2">
+              By choosing Accept, you confirm that you are at least 18 years old and of legal age to view
+              adult content where you live.
+            </p>
 
-        <p className="text-helper text-muted-foreground">
-          If you decline, nothing else changes. Your library, your worlds, and everything you have made
-          stay yours.
-        </p>
+            <p className="text-helper text-muted-foreground">
+              If you decline, nothing else changes. Your library, your worlds, and everything you have made
+              stay yours.
+            </p>
 
-        {error && <p role="alert" className="text-helper text-destructive">{error}</p>}
+            {error && <p role="alert" className="text-helper text-destructive">{error}</p>}
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
           <Button variant="outline" onClick={onDecline} disabled={busy}>Decline</Button>
@@ -75,4 +80,3 @@ export function AgeGateDialog({
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed
