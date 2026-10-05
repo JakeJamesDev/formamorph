@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: patreon-supporters — spec
-Status note: 12 tickets in issues/. 01 and 02 are prefactors. 01, 02, 03, and 07 can start now. 07 ends at the user's design approval, and 12 is the user's live check. The work spans both repos, and the server part lands first.
+Status note: 13 tickets in issues/. 01–11 are ready-for-human. 12 is the user's live check (link and badge confirmed live 2026-10-05; the rest untested). 13 (badge heartbeat, Q18) is ready-for-agent.
 
 A Patreon member links their Patreon account to their Formamorph account and gets **Supporter Flair**: a badge, a name color, a Profile Image ring, and a place on the Supporters wall. Designed in a grilling session on 2026-10-02 against the client code, the server code, and the Patreon API v2 documentation.
 
@@ -200,6 +200,7 @@ Rulings from ticket 03 (2026-10-02):
 - A staff badge wins. The server already sends a null `supporter` for staff, and the client does not add a second rule.
 - The badge tooltip states the tenure in whole months, then in years and months. It shows no tenure when `since` is null.
 - Two new color tokens, one per tier, serve the badge tint, the name color, and the ring. Both themes define them.
+- **Q18 (2026-10-05): the badge heart beats.** The heart icon beats once when the badge first appears, once per page load per account, and beats again while the pointer or focus is on the badge. Nothing moves at rest, so a list of twenty supporters is still. The arrival beat is skipped under `prefers-reduced-motion`; the hover beat stays, because the player asked for it. The Supporter+ badge uses a heart with a plus (ruled the same day), and the whole icon beats.
 - Surfaces that print a stored name snapshot (contest podiums, the reports queue) show no flair (A5).
 
 ### Account settings (client)
