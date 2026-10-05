@@ -70,6 +70,7 @@ export const GRAPH_COVERED = {
 export const PATH_TRIGGERS = {
   'docs/*.md': ['src/lib/docs/bundledDocsIndex.ts', 'src/lib/docs/docsCoverage.test.ts', 'src/lib/docs/bundledDocsIndex.test.ts'],
   'src/index.css': ['src/lib/landingPulse.test.ts'],
+  'index.html': ['src/components/themeBootstrap.test.ts'],
   'src/defaultworlds/*.json': ['src/services/WorldStorageService.ts'],
   'src/defaultworlds/emberwatch.json': ['src/lib/emberwatchWorld.test.ts'],
   'src/defaultworlds/open-chat.json': ['src/lib/openChatWorld.test.ts'],
