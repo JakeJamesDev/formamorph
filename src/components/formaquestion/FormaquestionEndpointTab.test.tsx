@@ -202,13 +202,13 @@ describe('the Endpoint tab', () => {
     }
   });
 
-  it('offers only Duplicate on the Built-In Engine', () => {
+  it('offers no preset actions on the Built-In Engine', () => {
     (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop = {};
     try {
       renderTab({ answerEndpoint: BUILTIN_ENGINE_PRESET_ID });
       const header = screen.getByRole('heading', { name: 'Edit Built-In Engine' }).parentElement!;
       const names = Array.from(header.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
-      expect(names).toEqual(['Duplicate', 'Preset Actions']);
+      expect(names).toEqual([]);
     } finally {
       delete (window as unknown as { formamorphDesktop?: unknown }).formamorphDesktop;
     }

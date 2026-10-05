@@ -34,7 +34,7 @@ export function PresetHeader({ actions, testId, layout = 'auto', disabled, targe
   // `auto` draws both forms and lets the breakpoint hide one; a pinned layout draws only its own.
   const auto = layout === 'auto';
   const showIcons = layout !== 'narrow';
-  const showMenu = layout !== 'wide';
+  const showMenu = layout !== 'wide' && actions.length > 0;
   const iconButton = (action: PresetHeaderAction) => (
     <Tip key={action.key} tip={action.tip ?? action.label}>
       <Button variant="ghost" size="icon" aria-label={action.label} className={cn('h-9 w-9 shrink-0', auto && 'hidden md:inline-flex')} disabled={disabled} onClick={action.run}>

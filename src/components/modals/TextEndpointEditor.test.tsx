@@ -84,6 +84,19 @@ describe('TextEndpointEditor', () => {
     expect(useEndpointReachable).not.toHaveBeenCalled();
   });
 
+  it('offers no Duplicate on the bundled engine preset, but keeps it on the shared default', () => {
+    const engine = modelOn('engine');
+    engine.edited = { ...engine.edited, builtIn: true, engine: true };
+    const { unmount } = render(<TextEndpointEditor model={engine} advanced onOpenConnectionGuide={() => {}} />);
+    expect(screen.queryByRole('button', { name: 'Duplicate' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preset Actions' })).toBeNull();
+    unmount();
+    const shared = modelOn('default');
+    shared.edited = { ...shared.edited, builtIn: true };
+    render(<TextEndpointEditor model={shared} advanced onOpenConnectionGuide={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeInTheDocument();
+  });
+
   it('probes a URL once typing stops, never a half-typed one', () => {
     vi.useFakeTimers();
     try {
