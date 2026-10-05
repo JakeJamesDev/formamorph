@@ -32,7 +32,7 @@ const replies = (...scripted: string[][]) => {
 
 const ask = async (fetchImpl: ReturnType<typeof replies>) => {
   const question = 'Write stat code that sets my Courage to 5.';
-  for await (const _event of askHelp({ question, settings: helpSettingsOf({ mascot: false }), snapshot, index, fetchImpl: pastPicks(fetchImpl) })) { /* drain */ }
+  for await (const _event of askHelp({ question, settings: helpSettingsOf({ mascot: false, codeTest: true }), snapshot, index, fetchImpl: pastPicks(fetchImpl) })) { /* drain */ }
 };
 
 describe('the code test bundle boundary', () => {
