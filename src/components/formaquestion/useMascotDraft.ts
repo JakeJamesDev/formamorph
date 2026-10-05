@@ -198,7 +198,7 @@ export function useMascotDraft(settings: HelpSettings, onChange: (change: HelpSe
     select: (id) => guard(() => switchTo(selectMascotPreset(storeRef.current, id))),
     duplicate: () => guard(() => {
       const source = activeMascotPreset(storeRef.current);
-      switchTo(duplicateMascotPreset(storeRef.current, source.id, randomUUID(), uniqueMascotName(storeRef.current, `${source.name} (copy)`)));
+      switchTo(duplicateMascotPreset(storeRef.current, source.id, randomUUID(), uniqueMascotName(storeRef.current, source.name)));
     }),
     rename: (name) => writeStore(renameMascotPreset(storeRef.current, heldRef.current.mascotId, name)),
     remove: () => switchTo(deleteMascotPreset(storeRef.current, heldRef.current.mascotId)),

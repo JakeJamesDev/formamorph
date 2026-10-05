@@ -1239,8 +1239,8 @@ describe('the preset row', () => {
   it('duplicates the Default from the read-only notice into an editable copy', async () => {
     mountDefault();
     await userEvent.click(screen.getByRole('button', { name: /Duplicate & Edit/ }));
-    expect(current.mascotPresets.mascots.map((mascot) => mascot.name)).toEqual(['Morphie (copy)']);
-    expect(presetSelect()).toHaveTextContent('Morphie (copy)');
+    expect(current.mascotPresets.mascots.map((mascot) => mascot.name)).toEqual(['Morphie 2']);
+    expect(presetSelect()).toHaveTextContent('Morphie 2');
     expect(screen.getByRole('textbox', { name: 'Voice' })).not.toHaveAttribute('readonly');
   });
 
@@ -1249,7 +1249,8 @@ describe('the preset row', () => {
     mount({ ...DEFAULT_MASCOT_RIG, base: stored(id) });
     await userEvent.click(within(row()).getByRole('button', { name: 'Duplicate' }));
     const [mine, copy] = current.mascotPresets.mascots;
-    expect(copy.name).toBe('Mine (copy)');
+    // The copy keeps the name, numbered past the one in use.
+    expect(copy.name).toBe('Mine 2');
     expect(copy.rig.base).toEqual(stored(id));
     expect(mine.rig.base).toEqual(stored(id));
   });
