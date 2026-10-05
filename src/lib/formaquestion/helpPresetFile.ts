@@ -11,6 +11,7 @@ import { HELP_PROMPT_KEYS, type HelpPromptTexts, type HelpRequestKey } from './h
 import {
   DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, defaultHelpPreset, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, mapHelpOptions, type HelpPreset, type HelpPresetOptions, type HelpRequestOptions,
 } from './helpPresets';
+import { HELP_CODE_TEST } from './helpCodeTest';
 import { HELP_ROLL } from './helpRoll';
 import { HELP_CALL_LIMIT_MAX, type HelpSettings, type HelpSettingsChange } from './helpSettings';
 import { HELP_RESERVED_TOOL_NAMES } from './helpTools';
@@ -51,6 +52,7 @@ type LimitKey = { [K in keyof HelpSettings]: HelpSettings[K] extends number ? K 
 const FUNCTION_FIELDS: readonly { name: string; enabled: SwitchKey; maxCalls: LimitKey; max: number }[] = [
   { name: DOCS_LOOKUP.name, enabled: 'lookup', maxCalls: 'lookupCallLimit', max: HELP_CALL_LIMIT_MAX },
   { name: HELP_ROLL.name, enabled: 'roll', maxCalls: 'rollCallLimit', max: HELP_CALL_LIMIT_MAX },
+  { name: HELP_CODE_TEST.name, enabled: 'codeTest', maxCalls: 'codeTestCallLimit', max: HELP_CALL_LIMIT_MAX },
 ];
 
 /** One option block with its fields only. */

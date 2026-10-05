@@ -406,6 +406,7 @@ const GameViewer = ({
     isWorldDirty,
     saveWorld,
     loadWorldData,
+    getWorldData,
   } = useGameData();
 
   // World README popup — shown once on entry (new game or save load) when the world has README text and
@@ -1901,8 +1902,8 @@ const GameViewer = ({
     () => buildToolSnapshot(liveScene(), dictionaries, toolMemorySource()),
     [liveScene, dictionaries, toolMemorySource],
   );
-  // A Formaquestion Tool reads the same playthrough while the game shows.
-  useHelpWorldSource(toolWorld);
+  // A Formaquestion Tool reads the same playthrough while the game shows; the code test reads the authored world.
+  useHelpWorldSource(toolWorld, getWorldData);
   // Requests between a round's Tool calls and the next round's first token: the count behind "Looking up…".
   const [toolLookups, setToolLookups] = useState(0);
 

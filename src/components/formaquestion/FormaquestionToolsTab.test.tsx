@@ -3,12 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
+import { HELP_CODE_TEST } from '@/lib/formaquestion/helpCodeTest';
 import { HELP_ROLL } from '@/lib/formaquestion/helpRoll';
 import { DEFAULT_HELP_SETTINGS, HELP_CALL_LIMIT_MAX, helpSettingsOf, type HelpSettings, type HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { helpWorld } from '@/lib/formaquestion/helpWorld';
 import { sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { sentenceShapeViolation } from '@/test/copyShape';
-import { helpTool } from '@/test/helpFixtures';
+import { helpTool, openWorld } from '@/test/helpFixtures';
 import { TOOLS_COPY } from './formaquestionSettingsTabs';
 import { ToolsTab } from './FormaquestionToolsTab';
 
@@ -38,9 +39,9 @@ const enabledBox = () => screen.getByRole('checkbox', { name: 'Enabled' });
 afterEach(() => vi.clearAllMocks());
 
 describe('the Formaquestion Tools tab', () => {
-  it('lists the guide lookup and the dice roll under Built-In and My Tools with New Tool, and no preset select', () => {
+  it('lists the guide lookup, the dice roll and the code test under Built-In and My Tools with New Tool, and no preset select', () => {
     renderTab();
-    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, HELP_CODE_TEST.name, 'New Tool']);
     expect(screen.getByText('My Tools')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import Tools' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Export Tools' })).toBeDisabled();
@@ -86,10 +87,10 @@ describe('the Formaquestion Tools tab', () => {
     expect(help.lookupCallLimit).toBe(HELP_CALL_LIMIT_MAX);
   });
 
-  it('offers no edit, copy or delete action on the guide lookup or the dice roll', async () => {
+  it('offers no edit, copy or delete action on the guide lookup, the dice roll or the code test', async () => {
     const user = userEvent.setup();
     renderTab({ lookup: true, roll: true });
-    for (const row of [DOCS_LOOKUP.name, HELP_ROLL.name]) {
+    for (const row of [DOCS_LOOKUP.name, HELP_ROLL.name, HELP_CODE_TEST.name]) {
       await user.click(list().getByRole('button', { name: row }));
       for (const name of ['Edit', 'Duplicate', 'Delete']) expect(screen.queryByRole('button', { name }), `${row}: ${name}`).toBeNull();
     }
@@ -135,6 +136,46 @@ describe('the Formaquestion Tools tab', () => {
     });
   });
 
+  describe('the code test', () => {
+    const selectCodeTest = async (user: ReturnType<typeof userEvent.setup>) => user.click(list().getByRole('button', { name: HELP_CODE_TEST.name }));
+
+    it('shows its description, its parameters and a brief line in help-copy shape', async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await selectCodeTest(user);
+      expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(HELP_CODE_TEST.name);
+      expect(screen.getByText(HELP_CODE_TEST.description, { normalizer: getDefaultNormalizer({ collapseWhitespace: false }) })).toBeInTheDocument();
+      for (const param of HELP_CODE_TEST.params) expect(screen.getByText(param.description)).toBeInTheDocument();
+      expect(screen.getByText(TOOLS_COPY.codeTestSummary)).toBeInTheDocument();
+      expect(TOOLS_COPY.codeTestSummary.split(/\s+/).length).toBeLessThanOrEqual(12);
+      expect(sentenceShapeViolation(TOOLS_COPY.codeTestSummary)).toBeNull();
+    });
+
+    it('turns on and off with its own switch, on by default, and leaves the other rows as they were', async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await selectCodeTest(user);
+      const enabled = screen.getByRole('checkbox', { name: 'Enabled' });
+      expect(enabled).toBeChecked();
+      await user.click(enabled);
+      expect(help).toMatchObject({ codeTest: false, lookup: false, roll: false });
+      await user.click(enabled);
+      expect(help.codeTest).toBe(true);
+    });
+
+    it('sets its own Max Calls per Request, and a blank field is the default of 3', async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await selectCodeTest(user);
+      expect(limitBox()).toHaveValue('');
+      expect(limitBox()).toHaveAttribute('placeholder', '3');
+      await user.type(limitBox(), '5');
+      expect(help).toMatchObject({ codeTestCallLimit: 5, rollCallLimit: DEFAULT_HELP_SETTINGS.rollCallLimit });
+      await user.clear(limitBox());
+      expect(help.codeTestCallLimit).toBe(3);
+    });
+  });
+
   it('says so when the answer endpoint does not take function calls, and never names the Output switch', () => {
     const { unmount } = renderTab({ lookup: true }, false);
     expect(screen.getByRole('note')).toHaveTextContent("Answer Endpoint won't receive");
@@ -155,7 +196,7 @@ describe('the player’s Formaquestion Tools', () => {
   it('list under My Tools, off by default, with Max Calls per Request and no Offered To', async () => {
     const user = userEvent.setup();
     renderTab({ tools: [FIND_PERSON] });
-    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, FIND_PERSON.name, 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, HELP_CODE_TEST.name, FIND_PERSON.name, 'New Tool']);
     await user.click(list().getByRole('button', { name: FIND_PERSON.name }));
     expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(FIND_PERSON.name);
     expect(enabledBox()).not.toBeChecked();
@@ -210,7 +251,7 @@ describe('the player’s Formaquestion Tools', () => {
     const [made] = help.tools;
     expect(made).toMatchObject({ name: 'find_person', offeredTo: [] });
     expect(help.toolSwitches).toEqual({ [made.id]: true });
-    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, 'find_person', 'New Tool']);
+    expect(listed()).toEqual([DOCS_LOOKUP.name, HELP_ROLL.name, HELP_CODE_TEST.name, 'find_person', 'New Tool']);
   });
 
   it('open in the editor from Edit, with the Tool’s own name', async () => {
@@ -259,7 +300,7 @@ describe('the player’s Formaquestion Tools', () => {
     await user.click(list().getByRole('button', { name: FIND_PERSON.name }));
     expect(screen.getByText('Runs on a sample world')).toBeInTheDocument();
     unmount();
-    const leave = helpWorld.register(sampleToolSnapshot);
+    const leave = helpWorld.register(openWorld(sampleToolSnapshot));
     try {
       renderTab({ tools: [FIND_PERSON] });
       await user.click(list().getByRole('button', { name: FIND_PERSON.name }));

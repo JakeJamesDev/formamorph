@@ -2,14 +2,15 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { emptyToolSnapshot, sampleToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { emptyCodeWorld, openWorld } from '@/test/helpFixtures';
 import { createHelpWorldRegistry, helpWorld, useHelpWorld, useHelpWorldSource } from './helpWorld';
 
 describe('the open-world registry', () => {
   it('holds no world until a source registers, and the newest source wins', () => {
     const registry = createHelpWorldRegistry();
     expect(registry.get()).toBeUndefined();
-    const game = () => emptyToolSnapshot();
-    const editor = () => emptyToolSnapshot();
+    const game = openWorld();
+    const editor = openWorld();
     const leaveGame = registry.register(game);
     expect(registry.get()).toBe(game);
     const leaveEditor = registry.register(editor);
@@ -22,8 +23,8 @@ describe('the open-world registry', () => {
 
   it('removes the right source when an older one leaves first', () => {
     const registry = createHelpWorldRegistry();
-    const first = () => emptyToolSnapshot();
-    const second = () => emptyToolSnapshot();
+    const first = openWorld();
+    const second = openWorld();
     const leaveFirst = registry.register(first);
     registry.register(second);
     leaveFirst();
@@ -36,11 +37,11 @@ describe('the open-world registry', () => {
     const registry = createHelpWorldRegistry();
     const listener = vi.fn();
     const stop = registry.subscribe(listener);
-    const leave = registry.register(() => emptyToolSnapshot());
+    const leave = registry.register(openWorld());
     leave();
     expect(listener).toHaveBeenCalledTimes(2);
     stop();
-    registry.register(() => emptyToolSnapshot());
+    registry.register(openWorld());
     expect(listener).toHaveBeenCalledTimes(2);
   });
 });
@@ -50,8 +51,9 @@ describe('the registry hooks', () => {
     const build = () => emptyToolSnapshot();
     const reader = renderHook(() => useHelpWorld());
     expect(reader.result.current).toBeUndefined();
-    const source = renderHook(() => useHelpWorldSource(build));
-    expect(helpWorld.get()?.()).toEqual(build());
+    const source = renderHook(() => useHelpWorldSource(build, emptyCodeWorld));
+    expect(helpWorld.get()?.snapshot()).toEqual(build());
+    expect(helpWorld.get()?.authored()).toEqual(emptyCodeWorld());
     expect(reader.result.current).toBe(helpWorld.get());
     source.unmount();
     expect(helpWorld.get()).toBeUndefined();
@@ -59,19 +61,26 @@ describe('the registry hooks', () => {
   });
 
   it('keep the editor over the game while it is open, and the game’s live source after it closes (Q63)', () => {
-    const ids = () => helpWorld.get()?.().world.entities.map((entity) => entity.id);
-    const game = renderHook(({ build }) => useHelpWorldSource(build), { initialProps: { build: sampleToolSnapshot } });
-    const editor = renderHook(() => useHelpWorldSource(emptyToolSnapshot));
-    // The game's builder changes every turn; the editor stays on top regardless.
-    game.rerender({ build: emptyToolSnapshot });
-    game.rerender({ build: sampleToolSnapshot });
+    const ids = () => helpWorld.get()?.snapshot().world.entities.map((entity) => entity.id);
+    const statNames = () => helpWorld.get()?.authored().stats.map((stat) => stat.name);
+    const gameWorld = (name: string) => () => ({ ...emptyCodeWorld(), stats: [{ id: name, name, type: 'number' as const, description: '', value: 0, min: 0, max: 100, regen: 0, descriptors: [] }] });
+    const game = renderHook(({ build, authored }) => useHelpWorldSource(build, authored), {
+      initialProps: { build: sampleToolSnapshot, authored: gameWorld('Courage') },
+    });
+    const editor = renderHook(() => useHelpWorldSource(emptyToolSnapshot, emptyCodeWorld));
+    // The game's builders change every turn; the editor stays on top regardless.
+    game.rerender({ build: emptyToolSnapshot, authored: gameWorld('Wit') });
+    game.rerender({ build: sampleToolSnapshot, authored: gameWorld('Grit') });
     expect(ids()).toEqual([]);
+    expect(statNames()).toEqual([]);
 
     editor.unmount();
-    // The builder the game holds now, not the one it mounted with.
+    // The builders the game holds now, not the ones it mounted with.
     expect(ids()).toContain('wren');
-    game.rerender({ build: emptyToolSnapshot });
+    expect(statNames()).toEqual(['Grit']);
+    game.rerender({ build: emptyToolSnapshot, authored: gameWorld('Wit') });
     expect(ids()).toEqual([]);
+    expect(statNames()).toEqual(['Wit']);
     game.unmount();
     expect(helpWorld.get()).toBeUndefined();
   });

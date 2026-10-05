@@ -152,11 +152,11 @@ const WorldEditorInner = ({
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
-  // A Formaquestion Tool reads the world as the editor holds it, unsaved edits included, at its opening.
+  // A Formaquestion Tool and the code test read the world as the editor holds it, unsaved edits included.
   useHelpWorldSource(useCallback(() => {
     const world = getWorldData();
     return buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? []);
-  }, [getWorldData]));
+  }, [getWorldData]), getWorldData);
 
   // Assemble the editor's live world for an image scan/downscale (id/version unused by the scan).
   const buildCurrentWorld = (): World => ({
