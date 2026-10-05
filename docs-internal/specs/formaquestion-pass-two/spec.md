@@ -1,6 +1,7 @@
 # Spec: Formaquestion Pass Two
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-04. Tickets 01–24 done; last landing 9b4df326. Closed without gates.
 Spec session: formaquestion-pass-two — spec
 
 ## Problem Statement

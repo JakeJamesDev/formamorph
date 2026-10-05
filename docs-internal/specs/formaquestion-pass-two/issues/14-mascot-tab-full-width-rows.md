@@ -1,6 +1,6 @@
 # 14: Mascot tab full-width rows
 
-Status: ready-for-human
+Status: done
 Blocked by: 07
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

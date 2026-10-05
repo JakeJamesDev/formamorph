@@ -1,6 +1,6 @@
 # 16: Lookup Mode off again
 
-Status: ready-for-human
+Status: done
 Blocked by: 13
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low
