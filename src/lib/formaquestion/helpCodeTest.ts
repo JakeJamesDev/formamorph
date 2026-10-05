@@ -29,6 +29,8 @@ export const HELP_CODE_TEST: OfferedFunction = {
   ],
 };
 
+/** The line the Code rider ends with while the code test is offered. It asks for the call before the answer. */
+export const CODE_TEST_RIDER_LINE = `- Before you answer, test the block with the \`${HELP_CODE_TEST.name}\` function. Fix each error and dropped write it reports.`;
 /** The code test's executor for one help question. The world is read once, at the first call; none means no world is open. */
 export function createCodeTest(world: StatCodeWorldSource | undefined): ToolExecutor<OfferedFunction> {
   let read: StatCodeWorld | undefined;

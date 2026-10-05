@@ -61,5 +61,8 @@ export const isOnCodeTab = (surface?: Surface | null): boolean => surface?.tabs.
 /** True when the turn rides the rider: a stat's Code tab is open, or the question uses a code word. */
 export const isCodeTurn = (question: string, surface?: Surface | null): boolean => isOnCodeTab(surface) || hasCodeWords(question);
 
+/** The rider with a line after it. An empty rider gives the line alone. */
+export const withRiderLine = (rider: string, line: string): string => (rider.trim() ? `${rider.trimEnd()}\n${line}` : line);
+
 /** The user message with the rider after it. An empty rider leaves the message as it is. */
 export const withCodeRider = (message: string, rider: string): string => (rider.trim() ? `${message}\n\n${rider}` : message);
