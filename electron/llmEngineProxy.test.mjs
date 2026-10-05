@@ -14,7 +14,7 @@ const STATE_KEYS = [
   'status', 'modelPath', 'modelId', 'port', 'error', 'loadProgress',
   'contextSize', 'gpuLayers', 'flashAttention', 'parallelRequests', 'maxContextSize', 'engineVramMB',
   'gpuBackend', 'gpuDeviceNames', 'deviceVramTotalMB', 'deviceVramFreeMB',
-  'gpuDeviceIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
+  'gpuDeviceIndex', 'gpuDeviceRawIndex', 'gpuDeviceOrigin', 'gpuDeviceOptions',
 ];
 const keysOf = (s) => Object.keys(s).sort();
 const expectedKeys = [...STATE_KEYS].sort();
@@ -46,7 +46,7 @@ describe('engine proxy over a real child process', () => {
 
   it('carries the device pin across to the child and back in its state', async () => {
     proxy = makeProxy();
-    const s = await proxy.start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceOrigin: 'manual' });
+    const s = await proxy.start({ port: 1234, gpuDeviceIndex: 1, gpuDeviceRawIndex: 1, gpuDeviceOrigin: 'manual' });
     expect(s.gpuDeviceIndex).toBe(1);
     expect(s.gpuDeviceOrigin).toBe('manual');
     expect(proxy.getState().gpuDeviceIndex).toBe(1);

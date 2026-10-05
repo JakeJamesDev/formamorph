@@ -33,6 +33,7 @@ const NO_ENGINE = {
   deviceVramTotalMB: null,
   deviceVramFreeMB: null,
   gpuDeviceIndex: null,
+  gpuDeviceRawIndex: null,
   gpuDeviceOrigin: null,
   gpuDeviceOptions: null,
 };
@@ -298,11 +299,13 @@ async function router(req, res) {
  * `contextSize` bounds the KV cache (VRAM); omit/0 for node-llama-cpp's auto sizing. `gpuLayers` is a
  * layer count (0 = CPU-only); omit/null to auto-offload as many layers as fit. `parallelRequests` is the
  * number of requests that can decode at once (context sequences); they share the KV, so each slot's window
- * is ~contextSize / parallelRequests. `gpuDeviceIndex` restricts the backend to one GPU (omit/null to leave
- * every visible one in play), `gpuDeviceOrigin` records where that choice came from, and `gpuDeviceOptions`
- * is the unfiltered device list it was chosen from — both for the readout.
+ * is ~contextSize / parallelRequests. `gpuDeviceIndex` names the pinned GPU as a position in
+ * `gpuDeviceOptions`, the unfiltered device list it was chosen from (omit/null to leave every visible one in
+ * play); `gpuDeviceRawIndex` is the raw Vulkan index that binds that device, which is what the backend is
+ * restricted to; `gpuDeviceOrigin` records where the choice came from. A pin without a raw index is an error,
+ * never a guess.
  */
-async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, gpuDeviceIndex, gpuDeviceOrigin, gpuDeviceOptions } = {}) {
+async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, flashAttention, parallelRequests, gpuDeviceIndex, gpuDeviceRawIndex, gpuDeviceOrigin, gpuDeviceOptions } = {}) {
   if (state.status === 'loading' || state.status === 'ready') return getState();
   const slots = Math.max(1, typeof parallelRequests === 'number' ? parallelRequests : 1);
   // The options this model is (being) loaded with — surfaced in state so the renderer can compare against
@@ -322,16 +325,24 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
   const device = {
     gpuBackend: null, gpuDeviceNames: null, deviceVramTotalMB: null, deviceVramFreeMB: null,
     gpuDeviceIndex: typeof gpuDeviceIndex === 'number' ? gpuDeviceIndex : null,
+    gpuDeviceRawIndex: typeof gpuDeviceRawIndex === 'number' ? gpuDeviceRawIndex : null,
     gpuDeviceOrigin: typeof gpuDeviceOrigin === 'string' ? gpuDeviceOrigin : null,
     // The unfiltered enumeration the pin was resolved against — the engine itself can't report it once
     // pinned, and "which device, out of which" is the whole answer to a wrong-device report.
     gpuDeviceOptions: Array.isArray(gpuDeviceOptions) ? [...gpuDeviceOptions] : null,
   };
+  // The device the pin names, for the bound-device check after backend init.
+  const pinnedName = device.gpuDeviceIndex != null ? device.gpuDeviceOptions?.[device.gpuDeviceIndex] ?? null : null;
   // Restrict the Vulkan backend to one adapter before anything can initialize it. With several visible,
   // llama.cpp's memory accounting aggregates them and sizes the load against a figure belonging to no real
-  // card. The variable is read once at backend init, so a changed pin needs a fresh process — which is why
-  // the proxy ends the child on stop (see llmEngineProxy.cjs) rather than reusing it.
-  if (device.gpuDeviceIndex != null) process.env.GGML_VK_VISIBLE_DEVICES = String(device.gpuDeviceIndex);
+  // card. The variable takes a raw Vulkan index, not a position in the enumeration (see engineDevice.cjs),
+  // and is read once at backend init, so a changed pin needs a fresh process — which is why the proxy ends
+  // the child on stop (see llmEngineProxy.cjs) rather than reusing it.
+  if (device.gpuDeviceIndex != null && device.gpuDeviceRawIndex == null) {
+    setState({ status: 'error', modelPath: modelPath ?? null, modelId: null, port, error: `No Vulkan device index found for ${pinnedName ?? 'the chosen GPU'}. Pick another device or All GPUs.`, loadProgress: null, ...NO_ENGINE, ...device });
+    return getState();
+  }
+  if (device.gpuDeviceRawIndex != null) process.env.GGML_VK_VISIBLE_DEVICES = String(device.gpuDeviceRawIndex);
   else delete process.env.GGML_VK_VISIBLE_DEVICES;
   if (!modelPath) { setState({ status: 'error', modelPath: null, modelId: null, port, error: 'No modelPath provided.', loadProgress: null, ...NO_ENGINE, ...device }); return getState(); }
   setState({ status: 'loading', modelPath, modelId: path.basename(modelPath), port, error: null, loadProgress: 0, ...applied, ...device });
@@ -342,6 +353,11 @@ async function start({ modelPath, port = DEFAULT_PORT, contextSize, gpuLayers, f
     // llama.gpu is false when no GPU backend was selected; report that as 'cpu' so the field is always a name.
     device.gpuBackend = llama.gpu === false ? 'cpu' : llama.gpu;
     try { device.gpuDeviceNames = await llama.getGpuDeviceNames(); } catch { /* not every backend enumerates devices */ }
+    // A pinned backend sees exactly one device. If it is not the one the pin named, the raw index mapped to
+    // another adapter; loading would size against the wrong card, so stop here and say which one it got.
+    if (pinnedName != null && device.gpuDeviceNames && device.gpuDeviceNames[0] !== pinnedName) {
+      throw new Error(`The engine bound ${device.gpuDeviceNames.join(', ') || 'no device'} instead of ${pinnedName}. Pick the device again or choose All GPUs.`);
+    }
     // Device VRAM before we allocate anything — the delta after load+context is our footprint (weights +
     // KV cache), from llama.cpp's own accounting. Robust across GPUs where per-process nvidia-smi is null.
     let vramUsedBefore = null;
@@ -442,13 +458,22 @@ async function stop() {
 
 /**
  * Enumerate every GPU the backend can see, without loading a model — the unfiltered list a pinned engine
- * can no longer report, and what the device picker offers. Meant for a short-lived process of its own:
- * initializing the backend here settles this process's device visibility for the rest of its life.
+ * can no longer report, and what the device picker offers. With `rawIndex`, enumerate the Vulkan backend
+ * pinned to that raw device index instead: the one name it answers is the adapter that index binds, and an
+ * index past the end of the raw list rejects (the backend refuses to initialize, and no other backend or
+ * build is tried). Meant for a short-lived process of its own: initializing the backend here settles this
+ * process's device visibility for the rest of its life.
  */
-async function listDevices() {
-  delete process.env.GGML_VK_VISIBLE_DEVICES;
+async function listDevices({ rawIndex } = {}) {
   const nlc = await import('node-llama-cpp');
-  const backend = await nlc.getLlama();
+  let backend;
+  if (typeof rawIndex === 'number') {
+    process.env.GGML_VK_VISIBLE_DEVICES = String(rawIndex);
+    backend = await nlc.getLlama({ gpu: 'vulkan', build: 'never' });
+  } else {
+    delete process.env.GGML_VK_VISIBLE_DEVICES;
+    backend = await nlc.getLlama();
+  }
   let gpuDeviceNames = null;
   try { gpuDeviceNames = await backend.getGpuDeviceNames(); } catch { /* not every backend enumerates devices */ }
   return { gpuBackend: backend.gpu === false ? 'cpu' : backend.gpu, gpuDeviceNames };

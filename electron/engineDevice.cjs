@@ -100,4 +100,28 @@ function selectEngineDevice({ deviceNames, nvidiaGpus, setting } = {}) {
   return { index, origin: index == null ? null : 'auto' };
 }
 
-module.exports = { selectEngineDevice, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };
+/** Cap on raw Vulkan indexes to probe. The driver list is a handful of adapters plus their D3D12 wrappers. */
+const MAX_RAW_DEVICES = 16;
+
+/**
+ * Map each enumerated device name to the raw Vulkan device index that binds it.
+ *
+ * ggml's enumeration is a filtered view of Vulkan's physical-device list: CPU devices and unsupported
+ * adapters are dropped, and a GPU two drivers expose is kept once and moved to the end. GGML_VK_VISIBLE_DEVICES
+ * takes the raw index, so a position in the enumeration pins the wrong adapter whenever anything was dropped
+ * or reordered. `probe(rawIndex)` answers with the name a backend pinned to that raw index binds, and
+ * rejects once the index is past the end of the raw list. Probes run one at a time, in raw order, and stop
+ * at the first rejection or once every name has a raw index. The first raw index to carry a name wins.
+ */
+async function resolveRawIndices(deviceNames, probe) {
+  const wanted = new Set(Array.isArray(deviceNames) ? deviceNames : []);
+  const map = new Map();
+  for (let raw = 0; raw < MAX_RAW_DEVICES && map.size < wanted.size; raw++) {
+    let name;
+    try { name = await probe(raw); } catch { break; }
+    if (typeof name === 'string' && wanted.has(name) && !map.has(name)) map.set(name, raw);
+  }
+  return map;
+}
+
+module.exports = { selectEngineDevice, resolveRawIndices, ENGINE_DEVICE_AUTO, ENGINE_DEVICE_ALL };

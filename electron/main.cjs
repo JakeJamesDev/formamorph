@@ -10,7 +10,7 @@ const { collect: collectVram } = require('./vramCollect.cjs');
 // The engine runs in a utility process; this is its main-process face, with the same API the engine module
 // exports. See llmEngineProxy.cjs.
 const llmEngine = require('./llmEngineProxy.cjs');
-const { selectEngineDevice, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
+const { selectEngineDevice, resolveRawIndices, ENGINE_DEVICE_AUTO } = require('./engineDevice.cjs');
 const modelDownload = require('./modelDownload.cjs');
 const { scanModels, resolveModelRef, isRootRef } = require('./modelScan.cjs');
 const modelMove = require('./modelMove.cjs');
@@ -77,16 +77,46 @@ async function currentEnumeration() {
   return deviceEnumeration;
 }
 
-/** The device pin for one start: which index to restrict the backend to, where the pick came from, and the
- *  list it was picked from — the engine can't report that last one once it is pinned to a single device. */
+// Device name → raw Vulkan index, which is what GGML_VK_VISIBLE_DEVICES takes (engineDevice.cjs explains the
+// mismatch with the enumeration's own order). Resolved on the first pin, one short-lived probe per raw index,
+// and cached with the enumeration it belongs to.
+let rawIndices = null;
+let rawIndicesInFlight = null;
+
+/** The one device a backend pinned to `rawIndex` binds. Rejects past the end of the raw device list. */
+async function probeRawDevice(rawIndex) {
+  const probe = llmEngine.createEngineProxy();
+  try {
+    const info = await probe.listDevices({ rawIndex });
+    return info?.gpuDeviceNames?.[0] ?? null;
+  } finally { probe.dispose(); }
+}
+
+async function currentRawIndices(deviceNames) {
+  if (rawIndices) return rawIndices;
+  rawIndicesInFlight ??= resolveRawIndices(deviceNames, probeRawDevice).finally(() => { rawIndicesInFlight = null; });
+  rawIndices = await rawIndicesInFlight;
+  return rawIndices;
+}
+
+const NO_PIN = { gpuDeviceIndex: null, gpuDeviceRawIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null };
+
+/** The device pin for one start: which device to restrict the backend to (as a position in the list it was
+ *  picked from, plus the raw index that binds it), and where the pick came from. The engine can't report the
+ *  list once it is pinned to a single device. A chosen device whose raw index can't be found keeps the pin
+ *  so the engine refuses the load by name; an automatic pick in that state is dropped, since the unpinned
+ *  load is what that machine had before. */
 async function resolveEngineDevice() {
   const enumeration = await currentEnumeration();
   // The pin is a Vulkan mechanism (GGML_VK_VISIBLE_DEVICES); no other backend has anything to filter.
-  if (enumeration.gpuBackend !== 'vulkan') return { gpuDeviceIndex: null, gpuDeviceOrigin: null, gpuDeviceOptions: null };
+  if (enumeration.gpuBackend !== 'vulkan') return { ...NO_PIN };
   let nvidiaGpus = [];
   try { nvidiaGpus = (await collectVram()).gpus; } catch { /* no nvidia-smi: the name-pattern fallback stands */ }
   const pick = selectEngineDevice({ deviceNames: enumeration.gpuDeviceNames, nvidiaGpus, setting: engineOptions.gpuDevice });
-  return { gpuDeviceIndex: pick.index, gpuDeviceOrigin: pick.origin, gpuDeviceOptions: enumeration.gpuDeviceNames };
+  if (pick.index == null) return { ...NO_PIN, gpuDeviceOrigin: pick.origin, gpuDeviceOptions: enumeration.gpuDeviceNames };
+  const raw = (await currentRawIndices(enumeration.gpuDeviceNames)).get(enumeration.gpuDeviceNames[pick.index]) ?? null;
+  if (raw == null && pick.origin !== 'manual') return { ...NO_PIN, gpuDeviceOptions: enumeration.gpuDeviceNames };
+  return { gpuDeviceIndex: pick.index, gpuDeviceRawIndex: raw, gpuDeviceOrigin: pick.origin, gpuDeviceOptions: enumeration.gpuDeviceNames };
 }
 
 /** The engine's load options for a model: the renderer's settings plus the resolved device pin. */
