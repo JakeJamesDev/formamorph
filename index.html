@@ -10,6 +10,33 @@
     <meta name="theme-color" content="#F6F7F8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#16181D" media="(prefers-color-scheme: dark)" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Applies the stored mode and color preset before first paint; theme-provider.tsx and SettingsContext.tsx keep them in sync after. -->
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const matches = (query) => matchMedia(query).matches;
+        let mode = null;
+        let color = null;
+        try {
+          mode = localStorage.getItem('vite-ui-theme');
+          color = localStorage.getItem('FORMAMORPH_themeColor');
+        } catch { /* Storage blocked: fall back to the defaults. */ }
+        const followingSystem = mode !== 'light' && mode !== 'dark';
+        root.classList.add(followingSystem ? (matches('(prefers-color-scheme: dark)') ? 'dark' : 'light') : mode);
+        const colors = ['graphite', 'purple', 'blue', 'rose', 'bubblegum', 'forest', 'monochrome', 'highcontrast'];
+        if (!colors.includes(color)) {
+          const systemContrast = color === null && (mode === null || mode === 'system') && matches('(prefers-contrast: more)');
+          color = systemContrast ? 'highcontrast' : 'graphite';
+        }
+        if (color !== 'blue') root.setAttribute('data-theme', color);
+      })();
+    </script>
+    <!-- Default preset's background until index.css loads; zero specificity so index.css wins. -->
+    <style>
+      :where(html.light) { background: hsl(220 12% 97%); }
+      :where(html.dark) { background: hsl(220 12% 10%); }
+    </style>
     <title>Formamorph</title>
   </head>
   <body>
