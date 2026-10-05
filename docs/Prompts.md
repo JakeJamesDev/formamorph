@@ -35,7 +35,7 @@ The app saves each change at once. Under the editor, select **Compare** to see y
 
 ## How to Route a Prompt to Another Endpoint
 <!-- keywords: different model, second model, small model, faster, separate api, two models, per task, cheaper, multiple backends, mix providers, assign, split work, reachable, dual setup -->
-<!-- route: settingsPromptSurfaces.options -->
+<!-- route: settingsPromptSurfaces.options#prompt-endpoint -->
 
 You can send one prompt to a different text endpoint, such as a small fast model for **Choices**. First add the endpoint as a preset on the **Endpoints** tab. See [Text](Settings#text).
 

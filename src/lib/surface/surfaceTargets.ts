@@ -7,8 +7,10 @@ import type { SurfaceTargets } from '@/lib/docs/docsChecks';
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 
 export const SURFACE_TARGETS = {
-  'settings.display': ['narration-layout', 'narration-font', 'quote-color'],
-  'settings.output': ['thinking-mode'],
+  gameViewer: ['action-box', 'pager'],
+  export: ['story-format'],
+  'settings.display': ['narration-layout', 'narration-font', 'quote-color', 'scene-images'],
+  'settings.output': ['thinking-mode', 'choices', 'settings-mode'],
   'settings.data': ['settings-mode', 'start-authoring-tour'],
   'settingsEndpoints.text': ['text-preset', 'endpoint-url'],
   mainMenu: ['app-version'],
@@ -38,6 +40,9 @@ export const SURFACE_TARGETS = {
   'formaquestionSettings.prompts': ['preset'],
   'formaquestionSettings.tools': ['new-tool'],
   'formaquestionSettings.mascot': ['scale', 'mask'],
+  'settings.tools': ['share-tools'],
+  'settingsEndpoints.image': ['enable-image-generation'],
+  'settingsPromptSurfaces.options': ['prompt-endpoint'],
 } as const satisfies Partial<Record<SurfaceId, readonly string[]>>;
 
 export type TargetedSurface = keyof typeof SURFACE_TARGETS;
@@ -45,6 +50,11 @@ export type SurfaceTarget<S extends TargetedSurface> = (typeof SURFACE_TARGETS)[
 
 /** The attribute a target's row carries. Its value is the route text. */
 export const TARGET_ATTRIBUTE = 'data-surface-target';
+
+/** The row that carries a route, inside `root` or anywhere on the page. */
+export function findTarget(route: string, root: ParentNode | null = document): HTMLElement | null {
+  return root?.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${route}"]`) ?? null;
+}
 
 /** The attribute a target's row spreads. */
 export type TargetAttribute = Readonly<Record<typeof TARGET_ATTRIBUTE, string>>;

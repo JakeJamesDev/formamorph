@@ -55,7 +55,7 @@ Open **What the AI Receives** under **Try It** to read the Tool's definition as 
 
 ## How to Share Your Tools
 <!-- keywords: export, import, file, json, send, copy, back up, give to a friend, move to other device, load someone elses, security warning, is it malicious, bundle with preset -->
-<!-- route: settings.tools -->
+<!-- route: settings.tools#share-tools -->
 
 1. Open the **Tools** tab.
 2. Next to **My Tools**, select **Export Tools** to save `tools.json`, or **Import Tools** to add Tools from a file.

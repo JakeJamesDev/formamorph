@@ -37,7 +37,7 @@ Only story-invented entities and Library Additions have the button. See [Removin
 
 ## How to Get Descriptions for New Entities
 <!-- keywords: characters, npcs, invented, auto describe, profile, details, generate, blank bio, empty entry, who is this person, made up people, auto backstory, write up strangers, nothing to read -->
-<!-- route: settings.output -->
+<!-- route: settings.output#settings-mode -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.

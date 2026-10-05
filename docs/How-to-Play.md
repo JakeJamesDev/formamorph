@@ -7,7 +7,7 @@ You play by writing what you do. The AI narrator writes what happens next. The s
 
 ## How to Take an Action
 <!-- keywords: play, type, write, do something, move, respond, reply, input, send, enter, talk, say, message box, text field, submit, stop generating, cancel response, interrupt, new line, chat with npc, command -->
-<!-- route: gameViewer -->
+<!-- route: gameViewer#action-box -->
 
 1. Select the action box under the story. Its placeholder reads *Type your action... [square brackets] direct the story as the author*.
 2. Write what you do, in the first person: *I ask her where the road leads.*
@@ -19,7 +19,7 @@ While the AI writes, the **Send** button turns red and becomes **Stop generating
 
 ## How to Use a Choice
 <!-- keywords: options, suggestions, pick, select, buttons, ready-made, click, combine, suggested actions, multiple choice, quick replies, prewritten, ctrl click, append, long press, tap answer -->
-<!-- route: gameViewer -->
+<!-- route: gameViewer#action-box -->
 
 1. Read the choices under the story. Each one is a ready-made action.
 2. Select a choice. Its text replaces what is in the action box.
@@ -29,7 +29,7 @@ To add a choice to what you already typed, **Ctrl+click** it (**Cmd+click** on M
 
 ## How to Continue the Story
 <!-- keywords: keep going, go on, next, more, proceed, advance, wait, skip turn, do nothing, pass, idle, empty message, nudge, let it play out, auto advance, without acting -->
-<!-- route: gameViewer -->
+<!-- route: gameViewer#action-box -->
 
 1. Select **[Continue the Story]** under the choices. It shows once page one is on screen and the AI is done.
 2. Send the action.
@@ -38,7 +38,7 @@ The text is in brackets, so the narrator reads it as a push to keep going, not a
 
 ## How to Turn Choices Off
 <!-- keywords: disable, hide, remove, options, suggestions, buttons, stop suggesting, free text only, no multiple choice, get rid of, write everything myself, re-enable, fewer requests -->
-<!-- route: settings.output -->
+<!-- route: settings.output#choices -->
 
 1. Select the **?** button beside the action box. The **How to Play** dialog opens.
 2. Open the **Choices** tab.
@@ -48,7 +48,7 @@ The same checkbox is in **Settings** → **Output** → **Turn Extras**. With ch
 
 ## How to Direct the Story
 <!-- keywords: brackets, ooc, out of character, author, control, steer, force, outcome, tell the ai, square brackets, god mode, meta command, guarantee success, time skip, set tone, override, system note, make npc do, instruct narrator, plot -->
-<!-- route: gameViewer -->
+<!-- route: gameViewer#action-box -->
 
 1. In the action box, write your action as usual.
 2. Add what should happen in square brackets: *I climb on behind her. [She agrees, and they ride off.]*
@@ -116,7 +116,7 @@ Only the action text and its images change. The narration stays as it is.
 
 ## How to Read Earlier Turns
 <!-- keywords: history, scroll back, previous pages, past, log, look back, page number, reread, old messages, what happened before, review, backlog, first turn, browse story -->
-<!-- route: gameViewer -->
+<!-- route: gameViewer#pager -->
 
 1. In Pages, select **Previous**, or a page number under the story.
 2. To jump far back, select the current page number, type a page in the box, and select **Go**.
@@ -136,7 +136,7 @@ You move at once. Travel costs no turn and writes no narration. The narrator can
 
 ## How to Export the Story
 <!-- keywords: save as text, download, txt, markdown, copy, transcript, share, print, log, novel, archive, read later, ebook, document, pdf, keep the text, post online -->
-<!-- route: export -->
+<!-- route: export#story-format -->
 
 1. Select the **More narration options** button at the top right of the story.
 2. Select **Export Story**.

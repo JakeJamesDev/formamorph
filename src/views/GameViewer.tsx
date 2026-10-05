@@ -7,7 +7,9 @@ import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
 import { closesWorldEditor, settingsLanding, useSurfaceNav, useSurfaceOpenRequest } from "@/lib/surface/useSurfaceOpenRequest";
-import { stepTab, type SurfaceSteps } from "@/lib/surface/surfaceRoute";
+import { stepTab, targetRoute, type SurfaceSteps } from "@/lib/surface/surfaceRoute";
+import { targetAttribute } from "@/lib/surface/surfaceTargets";
+import { useTargetLanding } from "@/lib/surface/useLanding";
 import { EXIT_TO_MENU_PROMPT } from "@/lib/leavePrompts";
 import { useGameplay } from "@/contexts/GameplayContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
@@ -1190,11 +1192,14 @@ const GameViewer = ({
     editorLeave.current = null;
     return pending;
   };
+  useTargetLanding(surfaceNav.pageTarget, surfaceNav.key);
   const openSurfaceHere = (steps: SurfaceSteps) => {
     surfaceNav.land(steps);
     switch (steps.dialog) {
       case null:
         if (isMobile && stepTab(steps, 'gameViewer')) setMobilePanel('character');
+        // Every game screen target sits in the story panel.
+        else if (isMobile && targetRoute(steps)) setMobilePanel('game');
         break;
       case 'settings': {
         const landing = settingsLanding(steps);
@@ -5402,7 +5407,7 @@ const GameViewer = ({
               (<strong>bold</strong>, headings, lists); plain text is unformatted.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter {...targetAttribute('export', 'story-format')}>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => exportStory('txt')}>Plain text (.txt)</AlertDialogAction>
             <AlertDialogAction onClick={() => exportStory('md')}>Markdown (.md)</AlertDialogAction>
