@@ -43,6 +43,9 @@ On a code question, or when a stat's Code tab is open, the help request carries 
 | Q24 | The rider may let the model write code the guide does not hold, asks for the whole contents of the box, and names the sandbox objects. Ticket 03's "carries no example code" test narrows to: no code syntax, and a sandbox name may appear only alone, never with a member. Ruled on probe evidence (ticket 04: the ticket-03 rider scored 64% fence, 38% runs) |
 | Q25 | Copy confirms with a small tip above the button that fades after about a second, never a toast. A failed copy shows "Couldn't copy" in the same tip. The tip is a shared primitive that Insert may reuse for its confirm |
 | Q26 | Q18 reopened on evidence: targets ticket 07 scoped the two boxes out, so no registry entries exist. Ticket 05 adds them under the stat Code tab surface, named `before-code` and `after-code`, puts the attribute on the two box rows, and lands through the shared route landing. No guide route line changes |
+| Q27 | In Simple editor mode the stat panel has no Code tab, so it does not register for Insert. Insert is disabled and its tooltip says to switch the editor to Advanced and open a stat's Code tab. Insert never changes the editor mode itself |
+| Q28 | The replace confirm keeps the templates' title "Replace The Existing Code" with the description "This box already has code. Inserting this code overwrites it." |
+| Q29 | On the mobile sheet, the sheet closes as soon as the panel takes the insert: on the write, or when it raises the replace confirm, so the confirm is never hidden behind the sheet |
 
 ## User Stories
 
