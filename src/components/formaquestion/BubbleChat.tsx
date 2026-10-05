@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { AnswerBody, AnswerToggles } from './AskParts';
 import { BUBBLE, FLOATING, TOP_FADE } from './floatingPieces';
 import { AskPill, Pill, type HeadToggle, type MenuProps } from './MinimalChat';
 import { useAnswerFolds } from './useAnswerFolds';
+import type { BubblePage } from './useBubblePage';
 import { ScrollArrow } from './ScrollArrow';
 import { useFollowEnd } from './useAskParts';
 import type { HelpChat, HelpExchange } from './useHelpChat';
@@ -24,6 +25,8 @@ import type { DragHandlers } from './usePointerDrag';
 const ANSWER_SURFACE = cn(FLOATING, 'rounded-2xl border bg-popover text-label text-popover-foreground');
 /** The pill's surface, for the strip's controls. */
 const STRIP_SURFACE = cn(FLOATING, 'flex items-center rounded-full border bg-background');
+/** A paging chevron: a round button that takes no press while disabled. */
+const CHEVRON = cn(STRIP_SURFACE, 'h-8 w-8 shrink-0 justify-center text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50');
 const TAIL_SIZE = 14;
 
 /** Each tail is a square turned 45°: the two edges that meet at the point carry the border. */
@@ -62,9 +65,10 @@ type Place = (box: WindowBox, sized?: boolean) => CSSProperties;
  * answer's Thinking toggle, its Sources popover and Take Me There (Q14, Q22). The bubble and the strip share the folds. Without
  * an exchange the bubble shows only the guide's load state, and no strip draws.
  */
-function Speech({ layout, place, exchange, guide, failed, onRetry, chat, settings, onSettingsChange, onOpen, onGo, resize, contentRef }: {
+function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, settings, onSettingsChange, onOpen, onGo, resize, contentRef }: {
   layout: BubbleLayout;
   place: Place;
+  page: BubblePage;
   exchange: HelpExchange | undefined;
   guide: Guide | null;
   failed: boolean;
@@ -78,7 +82,14 @@ function Speech({ layout, place, exchange, guide, failed, onRetry, chat, setting
   contentRef: RefObject<HTMLDivElement>;
 }) {
   const folds = useAnswerFolds(exchange, settings, onSettingsChange);
-  const { viewportRef, onScroll, away, toEnd } = useFollowEnd(chat.exchanges);
+  // The bubble follows an answer as it streams, and opens a finished answer at its top.
+  const { viewportRef, onScroll, away, toEnd } = useFollowEnd(exchange ? [exchange] : []);
+  const writing = useRef(exchange?.status === 'writing');
+  // Keyed per exchange, so this runs once per page, after the follow effect's scroll to the end.
+  useEffect(() => {
+    if (!writing.current && viewportRef.current) viewportRef.current.scrollTop = 0;
+  }, [viewportRef]);
+  const waitingId = useId();
   const { group, tail, grip } = layout;
   return (
     <>
@@ -96,7 +107,7 @@ function Speech({ layout, place, exchange, guide, failed, onRetry, chat, setting
           viewportRef={viewportRef}
           viewportProps={{ 'data-fq-scroll': 'conversation', onScroll }}
         >
-          <div ref={contentRef} role="log" aria-label="Conversation" aria-busy={chat.busy} className={cn('px-3 py-2', layout.scrolls && 'pt-8')}>
+          <div ref={contentRef} role="log" aria-label="Conversation" aria-busy={page.newest && chat.busy} className={cn('px-3 py-2', layout.scrolls && 'pt-8')}>
             {!guide && (failed ? (
               <div role="alert" className="flex flex-col items-start gap-2">
                 <span>The guide did not load</span>
@@ -120,9 +131,9 @@ function Speech({ layout, place, exchange, guide, failed, onRetry, chat, setting
       </div>
       {guide && exchange && (
         <div data-fq-strip="" className="flex items-center gap-2" style={place(layout.strip)}>
-          {/* One page shows, so both chevrons sit at an end. */}
+          {/* Always drawn, disabled at the ends, so the strip never shifts (Q12). */}
           <Tip tip="Previous Answer">
-            <button type="button" aria-label="Previous Answer" disabled className={cn(STRIP_SURFACE, 'h-8 w-8 shrink-0 justify-center text-muted-foreground disabled:opacity-50')}>
+            <button type="button" aria-label="Previous Answer" disabled={!page.previous} onClick={page.previous} className={CHEVRON}>
               <ChevronLeft aria-hidden className="h-4 w-4" />
             </button>
           </Tip>
@@ -130,10 +141,20 @@ function Speech({ layout, place, exchange, guide, failed, onRetry, chat, setting
             <AnswerToggles guide={guide} exchange={exchange} folds={folds} onOpen={onOpen} onGo={onGo} />
           </div>
           <Tip tip="Next Answer">
-            <button type="button" aria-label="Next Answer" disabled className={cn(STRIP_SURFACE, 'ml-auto h-8 w-8 shrink-0 justify-center text-muted-foreground disabled:opacity-50')}>
+            <button
+              type="button"
+              aria-label="Next Answer"
+              aria-describedby={page.waiting ? waitingId : undefined}
+              disabled={!page.next}
+              onClick={page.next}
+              className={cn(CHEVRON, 'relative ml-auto')}
+            >
               <ChevronRight aria-hidden className="h-4 w-4" />
+              {/* A new answer writes on a later page. */}
+              {page.waiting && <span aria-hidden data-fq-mark="" className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary" />}
             </button>
           </Tip>
+          {page.waiting && <span id={waitingId} className="sr-only">A new answer is writing</span>}
         </div>
       )}
     </>
@@ -146,10 +167,12 @@ function Speech({ layout, place, exchange, guide, failed, onRetry, chat, setting
  * her feet. The layout places every piece; this draws them and reports the heights the layout stacks.
  */
 export function BubbleChat({
-  layout, mascot, headView, guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo,
+  layout, page, mascot, headView, guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo,
   move, resize, mascotResize, headToggle, menu, onClose, onHeights, reader,
 }: {
   layout: BubbleLayout;
+  /** The page of the conversation on show (Q2). */
+  page: BubblePage;
   /** The Mascot: her whole body, or her head in head view. */
   mascot: ReactNode;
   headView: boolean;
@@ -176,7 +199,7 @@ export function BubbleChat({
   onHeights: (heights: BubbleHeights) => void;
   reader?: ReactNode;
 }) {
-  const exchange = chat.exchanges.at(-1);
+  const { exchange } = page;
   const contentRef = useRef<HTMLDivElement>(null);
   const questionRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
@@ -236,6 +259,7 @@ export function BubbleChat({
           key={exchange?.id}
           layout={layout}
           place={place}
+          page={page}
           exchange={exchange}
           guide={guide}
           failed={failed}
