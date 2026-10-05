@@ -14,7 +14,7 @@ export function useSurfaceOpenRequest(open: (steps: SurfaceSteps, clear: () => v
   const handled = useRef<string | null>(null);
   useEffect(() => {
     if (!surfaceRequest || handled.current === surfaceRequest.nonce) return;
-    const steps = resolveSurface(surfaceRequest.id);
+    const steps = resolveSurface(surfaceRequest.id, surfaceRequest.target);
     if (steps && opensInHelpWindow(steps)) return;
     handled.current = surfaceRequest.nonce;
     const clear = () => clearSurfaceRequest(surfaceRequest.nonce);

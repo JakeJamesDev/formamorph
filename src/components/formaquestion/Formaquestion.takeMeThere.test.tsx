@@ -70,8 +70,15 @@ describe('Take Me There', () => {
     await ask('How do I change the theme?');
     expect(sourceNames()[0]).toContain('How to Change the Theme');
     await userEvent.click(takeMeThere()!);
-    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith('settings.display');
+    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith({ id: 'settings.display' });
     expect(helpWindow()).toHaveAttribute('data-state', 'open');
+  });
+
+  it('sends the target a targeted route names', async () => {
+    const pages = { ...PAGES, Settings: PAGES.Settings.replace('route: settings.display', 'route: settings.display#narration-layout') };
+    await ask('How do I change the theme?', undefined, () => Promise.resolve(createDocsIndex({ pages, sidebar: '- [Settings](Settings)\n' })));
+    await userEvent.click(takeMeThere()!);
+    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith({ id: 'settings.display', target: 'narration-layout' });
   });
 
   it('is absent when the top source has no route, though a later source has one', async () => {
@@ -94,7 +101,7 @@ describe('Take Me There', () => {
     expect(names[0]).not.toContain('How to Change the Theme');
     expect(names.some((name) => name?.includes('How to Change the Theme'))).toBe(true);
     await userEvent.click(takeMeThere()!);
-    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith('settings.display');
+    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith({ id: 'settings.display' });
   });
 
   it('closes the sheet on a mobile-size screen', async () => {
@@ -102,7 +109,7 @@ describe('Take Me There', () => {
     storeFramedWindow({ sourcesOpen: true, chatStyle: 'minimal' });
     await ask('How do I change the theme?');
     await userEvent.click(takeMeThere()!);
-    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith('settings.display');
+    expect(ai.current.requestSurface).toHaveBeenCalledExactlyOnceWith({ id: 'settings.display' });
     await waitFor(() => expect(helpWindow()?.dataset.state ?? 'closed').toBe('closed'));
   });
 

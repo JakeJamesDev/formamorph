@@ -3,7 +3,7 @@
  * needs no network and no model. Section ids are `<page>#<anchor>`, with the wiki's anchor rule.
  */
 import { stemmer } from 'stemmer';
-import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, ROUTE_LINE, type DocHeading } from './headingAnchors';
+import { docHeadings, forEachProseLine, KEYWORD_LINE, MARKDOWN_LINK, plainText, ROUTE_LINE, routeParts, type DocHeading } from './headingAnchors';
 import type { DocsPages } from './docsChecks';
 import { docsHrefs, docTargetId, hrefParts } from './docsLinks';
 import { sectionParts } from './sectionParts';
@@ -28,6 +28,8 @@ export interface DocSection {
   markdown: string;
   /** The surface id its route line names: where a player does what the section explains. Absent without a line. */
   route?: string;
+  /** The target its route line names after `#`: the control the section's steps end at. */
+  target?: string;
 }
 
 export interface DocsContentsPage {
@@ -73,29 +75,32 @@ interface SplitSection extends DocSection {
   keywords: string[];
   /** The first route line's surface id; the markdown leaves the line out. */
   route?: string;
+  /** The first route line's target, when it names one. */
+  target?: string;
 }
 
 /**
  * A section's text without its keyword and route lines, and what they held. A blank line the removal doubles
  * goes too. A route line under a sub-heading the section holds is not the section's: it stays in the text.
  */
-function takeTagLines(text: string): { text: string; keywords: string[]; route?: string } {
+function takeTagLines(text: string): { text: string; keywords: string[]; route?: string; target?: string } {
   const lines = text.split('\n');
   const drop = new Set<number>();
   const keywords: string[] = [];
-  let route: string | undefined;
+  let routeValue: string | undefined;
   const subHeading = docHeadings(text).find((heading) => heading.line > 0)?.line ?? Infinity;
   forEachProseLine(text, (source, line) => {
     const keyword = KEYWORD_LINE.exec(source);
     const routeLine = line < subHeading ? ROUTE_LINE.exec(source) : null;
     if (keyword) keywords.push(keyword[1]);
-    else if (routeLine) route ||= routeLine[1] || undefined;
+    else if (routeLine) routeValue ||= routeLine[1] || undefined;
     else return;
     drop.add(line);
     if (lines[line - 1]?.trim() === '' && lines[line + 1]?.trim() === '') drop.add(line + 1);
   });
   if (drop.size === 0) return { text, keywords };
-  return { text: lines.filter((_, i) => !drop.has(i)).join('\n').trimEnd(), keywords, route };
+  const { surface, target } = routeParts(routeValue ?? '');
+  return { text: lines.filter((_, i) => !drop.has(i)).join('\n').trimEnd(), keywords, route: surface || undefined, target: target || undefined };
 }
 
 /**
@@ -122,7 +127,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
     if (heading === null && source.trim() === '') return;
     const baseId = docTargetId({ page, anchor: heading?.anchor });
     const name = heading ? plainText(heading.text) : page;
-    const { text, keywords, route } = takeTagLines(source);
+    const { text, keywords, route, target } = takeTagLines(source);
     const parts = sectionParts(text, heading !== null, SECTION_CHAR_LIMIT);
     parts.forEach((part, k) => {
       sections.push({
@@ -136,6 +141,7 @@ function splitPage(page: string, markdown: string): SplitSection[] {
         level: heading?.level ?? 0,
         keywords,
         route,
+        target,
       });
     });
   };
@@ -408,6 +414,10 @@ export function createDocsIndex({ pages, sidebar = '', fillerWords = true, hubDe
   };
 }
 
-function publicSection({ id, page, heading, label, trail, markdown, route }: SplitSection): DocSection {
-  return { id, page, heading, label, trail, markdown, ...(route === undefined ? {} : { route }) };
+function publicSection({ id, page, heading, label, trail, markdown, route, target }: SplitSection): DocSection {
+  return {
+    id, page, heading, label, trail, markdown,
+    ...(route === undefined ? {} : { route }),
+    ...(target === undefined ? {} : { target }),
+  };
 }

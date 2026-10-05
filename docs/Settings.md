@@ -10,7 +10,7 @@ To open it, select **Menu** on the main menu, then **Settings**. During a game, 
 
 ## How to Change the Narration Layout
 <!-- keywords: chat mode, pages mode, view, display, look, style, chat bubbles, book, messenger, conversation format, switch format, sillytavern like, toggle, single page -->
-<!-- route: settings.display -->
+<!-- route: settings.display#narration-layout -->
 
 1. Open **Settings**.
 2. Open the **Display** tab.

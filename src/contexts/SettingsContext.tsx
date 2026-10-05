@@ -81,7 +81,7 @@ import {
   observeReply, observationAnswer, observationMayCorrect, type ReasoningObservation,
 } from '../lib/reasoningObservation';
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
-import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { useMountedRef } from '@/lib/useMountedRef';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
@@ -92,9 +92,8 @@ export interface SettingsOpenRequest {
   nonce: string;
 }
 
-/** A request to open a surface by id, from the help window. The nonce tells two requests for one id apart. */
-export interface SurfaceOpenRequest {
-  id: SurfaceId;
+/** A request to open a surface by route, from the help window. The nonce tells two requests for one route apart. */
+export interface SurfaceOpenRequest extends SurfaceRoute {
   nonce: string;
 }
 
@@ -1532,7 +1531,7 @@ function useProvideSettings() {
   const clearSettingsRequest = useCallback(() => setSettingsRequest(null), []);
   // A pending "open this surface" request. The view that can host it acts on it and clears it.
   const [surfaceRequest, setSurfaceRequest] = useState<SurfaceOpenRequest | null>(null);
-  const requestSurface = useCallback((id: SurfaceId) => setSurfaceRequest({ id, nonce: randomUUID() }), []);
+  const requestSurface = useCallback((route: SurfaceRoute) => setSurfaceRequest({ ...route, nonce: randomUUID() }), []);
   // Clears only the request it names, so a newer one sent during a prompt survives the old one's answer.
   const clearSurfaceRequest = useCallback((nonce: string) => {
     setSurfaceRequest((current) => (current?.nonce === nonce ? null : current));

@@ -29,8 +29,14 @@ export function headingAnchor(text: string): string {
 /** A section's hidden keyword line, `<!-- keywords: … -->`; group 1 is the list. */
 export const KEYWORD_LINE = /^\s{0,3}<!--\s*keywords:(.*?)-->\s*$/i;
 
-/** A section's hidden route line, `<!-- route: <surface id> -->`; group 1 is the text after the colon, trimmed. */
+/** A section's hidden route line, `<!-- route: <surface id>[#<target>] -->`; group 1 is the text after the colon, trimmed. */
 export const ROUTE_LINE = /^\s{0,3}<!--\s*route:\s*(.*?)\s*-->\s*$/i;
+
+/** A route line's text split at its first `#`: the surface id, and the target when a `#` is there. */
+export function routeParts(route: string): { surface: string; target?: string } {
+  const hash = route.indexOf('#');
+  return hash < 0 ? { surface: route } : { surface: route.slice(0, hash), target: route.slice(hash + 1) };
+}
 
 /** A heading's source text as a reader sees it. */
 export function plainText(text: string): string {

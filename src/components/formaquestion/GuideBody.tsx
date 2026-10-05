@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Hint } from '@/components/ui/typography';
-import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import type { Guide } from '@/lib/formaquestion/guide';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { AskPanel } from './AskParts';
@@ -35,7 +35,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   /** Opens the surface an answer's Take Me There names. */
-  onGo: (id: SurfaceId) => void;
+  onGo: (route: SurfaceRoute) => void;
 }) {
   const openSection = useCallback(
     (sectionId: string) => onViewChange(openSectionChange(sectionId, guide?.section(sectionId)?.page)),

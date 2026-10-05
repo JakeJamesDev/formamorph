@@ -57,6 +57,23 @@ describe('resolveSurface', () => {
   });
 });
 
+describe('resolveSurface with a target', () => {
+  it('carries a registered target on the steps', () => {
+    expect(resolveSurface('settings.display', 'narration-layout')).toEqual({
+      view: null, dialog: 'settings', tabs: ['settings.display'], target: 'narration-layout',
+    });
+  });
+
+  it('opens the bare surface for a target the surface does not register', () => {
+    expect(resolveSurface('settings.display', 'nowhere')).toEqual({ view: null, dialog: 'settings', tabs: ['settings.display'] });
+    expect(resolveSurface('settings.output', 'narration-layout')).toEqual({ view: null, dialog: 'settings', tabs: ['settings.output'] });
+  });
+
+  it('gives a bare route no target', () => {
+    expect(resolveSurface('settings.display')).not.toHaveProperty('target');
+  });
+});
+
 describe('stepTab', () => {
   it('reads one ledger tab out of the steps', () => {
     const steps = resolveSurface('settingsEndpoints.image')!;

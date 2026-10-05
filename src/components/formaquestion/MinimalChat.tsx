@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { withoutAttachment } from '@/lib/actionAttachments';
-import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import type { Guide } from '@/lib/formaquestion/guide';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import type { MascotSide } from '@/lib/formaquestion/windowBox';
@@ -120,7 +120,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
   /** Opens a docs section that an answer links to. */
   onOpen: (id: string) => void;
   /** Opens the surface an answer's Take Me There names. */
-  onGo: (id: SurfaceId) => void;
+  onGo: (route: SurfaceRoute) => void;
   /** Pointer handlers for the pill, where the window moves. */
   move?: DragHandlers;
   /** Pointer handlers for the corner grip under the ask field. */

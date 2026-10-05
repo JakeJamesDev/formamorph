@@ -268,6 +268,22 @@ describe('Docs Index route line', () => {
     expect(index.get(['Library#how-to-go'])[0].route).toBeUndefined();
   });
 
+  it('reads a fragment as the target, apart from the surface id', () => {
+    const index = createDocsIndex({ pages: { Library: page('<!-- route: settings.display#narration-layout -->') } });
+    const [section] = index.get(['Library#how-to-go']);
+    expect(section.route).toBe('settings.display');
+    expect(section.target).toBe('narration-layout');
+    expect(section.markdown).toBe('## How to Go\nPress **Go** to start.');
+  });
+
+  it('gives a bare route, and an empty fragment, no target', () => {
+    const bare = createDocsIndex({ pages: { Library: page(ROUTE) } }).get(['Library#how-to-go'])[0];
+    expect(bare).not.toHaveProperty('target');
+    const empty = createDocsIndex({ pages: { Library: page('<!-- route: settings.display# -->') } }).get(['Library#how-to-go'])[0];
+    expect(empty.route).toBe('settings.display');
+    expect(empty).not.toHaveProperty('target');
+  });
+
   it('gives each part of a split section the route', () => {
     const item = (n: number) => `- Item ${n}: ${Array.from({ length: 80 }, (_, i) => `word${i}`).join(' ')}`;
     const long = ['# Big', '', '## List', ROUTE, '', ...Array.from({ length: 12 }, (_, n) => item(n))].join('\n');
