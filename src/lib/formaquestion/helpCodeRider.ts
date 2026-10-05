@@ -22,8 +22,8 @@ const boxName = (slot: StatCodeTiming) => TIMING_LABEL[slot];
 export const DEFAULT_CODE_RIDER = [
   'The player wants stat code. Answer with a fenced block of working JavaScript that does the whole task:',
   '- Write the code yourself from the rules in the guide sections. The guide has no script for most tasks.',
-  `- Write the whole contents of the box the task needs. Name the box in one sentence:${STAT_CODE_TIMINGS.map((slot) => `**${boxName(slot)}**`).join(' or ')}. Then give the block.`,
-  '- Read the stat whose code it is as `self`, other stats through `stats`, traits through `traits`, placeholders through `placeholders`, and the time through `clock`.',
+  `- Write the whole contents of the box the task needs. Name the box in one sentence: ${STAT_CODE_TIMINGS.map((slot) => `**${boxName(slot)}**`).join(' or ')}. Then give the block.`,
+  '- Read the stat whose code it is as `self`, other stats through `stats`, traits through `traits`, entities through `entities`, the played persona through `persona`, placeholders through `placeholders`, and the time through `clock`.',
   ...STAT_CODE_TIMINGS.map((slot) => `- Start the block of the **${boxName(slot)}** box with this line: \`\`\`${CODE_RIDER_LANGUAGE} ${slot}`),
   '- After the block, write at most three short steps.',
 ].join('\n');
