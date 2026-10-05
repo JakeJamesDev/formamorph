@@ -173,7 +173,7 @@ describe('Community Creations tour', () => {
     browser.unmount();
     settle();
 
-    expect(screen.getByText('menu:Sign In')).toBeInTheDocument();
+    expect(screen.getByText('menu:Ask Morphie!')).toBeInTheDocument();
   });
 
   it('chains straight to the filters once the tabs are acknowledged', () => {

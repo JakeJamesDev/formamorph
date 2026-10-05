@@ -102,7 +102,8 @@ import { type ProfileTab } from "@/components/menu/profileTabs";
 import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS } from "@/views/entityPanelTabs";
 import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { TutorialPopover } from "@/components/TutorialPopover";
-import { useTutorial } from "@/lib/tutorials";
+import { HELP_TAB_TUTORIAL_ID, useTutorial } from "@/lib/tutorials";
+import { useHelpLauncher } from "@/lib/formaquestion/helpLauncher";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserName } from "@/components/UserName";
 import { badgeKind, UNREAD_MARK_STYLES } from "@/lib/unreadSeverity";
@@ -254,6 +255,9 @@ const WorldNotice = ({ tone, icon: Icon, children, actionLabel, actionIcon: Acti
     </Button>
   </div>
 );
+
+/** The Help tab's note sits on the screen side of the tab, whichever edge the tab is on. */
+const HELP_NOTE_SIDE = { right: 'left', left: 'right', top: 'bottom', bottom: 'top' } as const;
 
 const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = false }: MainMenuProps) => {
   const isMountedRef = useRef(true);
@@ -573,13 +577,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // The two footer circles explain themselves, and only ever one of them is on screen: the profile circle
   // offers an account while signed out, the feedback circle appears once there is one.
+  const helpLauncher = useHelpLauncher();
   const heldMenuTutorials = [
+    ...(helpLauncher ? [] : [HELP_TAB_TUTORIAL_ID]),
     ...(!COMMUNITY_ENABLED || isAuthenticated ? ['main-menu-sign-in'] : []),
     ...(!COMMUNITY_ENABLED || !isAuthenticated ? ['main-menu-feedback'] : []),
   ];
   const { active: menuTutorial, nav: menuTutorialNav, dismiss: dismissMenuTutorial } = useTutorial('mainMenu', {
+    active: !introActive,
     held: heldMenuTutorials,
   });
+  // Opening the window, by the tab or by F1, reads the Help tab's note.
+  useEffect(() => {
+    if (helpLauncher?.open) dismissMenuTutorial(HELP_TAB_TUTORIAL_ID);
+  }, [helpLauncher?.open, dismissMenuTutorial]);
 
   // Publish modal open state; the publish form/handlers live in the PublishModal component.
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -2197,6 +2208,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       <footer className="shrink-0 flex items-center gap-2 py-3 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))] pr-[calc(1rem+env(safe-area-inset-right))]">
         {/* Left: user profile circle + app version (the version moves into the ⋯ menu on mobile). */}
         <div className="flex-1 flex items-center justify-start gap-2">
+          <TutorialPopover
+            entry={menuTutorial?.id === HELP_TAB_TUTORIAL_ID ? menuTutorial : null}
+            nav={menuTutorialNav}
+            anchor={helpLauncher?.element ?? null}
+            side={HELP_NOTE_SIDE[helpLauncher?.edge ?? 'right']}
+            align="center"
+          />
           {COMMUNITY_ENABLED && (
             <TutorialPopover
               entry={menuTutorial?.id === 'main-menu-sign-in' ? menuTutorial : null}

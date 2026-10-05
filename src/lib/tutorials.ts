@@ -35,8 +35,17 @@ export const AUTHORING_TOUR_SAVE_NOTE_ID = 'authoring-tour-save';
 /** The World Editor's Simple vs. Advanced note. The Authoring Tour's mode step retires it. */
 export const EDITOR_MODE_TUTORIAL_ID = 'world-editor-mode-toggle';
 
+/** The Help tab's note. It leads the main menu's tour, so a reader who clicks through fast still sees it. */
+export const HELP_TAB_TUTORIAL_ID = 'help-tab';
+
 /** Registry order is display order: the first unseen entry for a screen is the one that shows. */
 export const TUTORIALS: readonly TutorialEntry[] = [
+  {
+    id: HELP_TAB_TUTORIAL_ID,
+    screen: 'mainMenu',
+    title: 'Ask Morphie!',
+    body: 'Morphie knows how everything works, and she can take you to the right screen! Click this tab or press F1 to chat with her. Drag the tab to move it along the edge.',
+  },
   {
     id: AUTHORING_TOUR_OFFER_ID,
     screen: 'worldEditor',

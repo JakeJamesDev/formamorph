@@ -8,6 +8,7 @@ import { Tip } from '@/components/ui/tooltip';
 import {
   isArrowKey, isSideEdge, moveByKey, placeAt, readTabPlace, wholeOnScreen, writeTabPlace, type Edge, type TabPlace,
 } from '@/lib/formaquestion/tabPlace';
+import { publishHelpLauncher } from '@/lib/formaquestion/helpLauncher';
 import { viewportOf } from '@/lib/formaquestion/windowBox';
 import { cn } from '@/lib/utils';
 import { usePointerDrag } from './usePointerDrag';
@@ -92,6 +93,11 @@ export function EdgeTab({ open, concealed = false, controls, onToggle }: {
       cancelAnimationFrame(frame);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    publishHelpLauncher(ref.current && !concealed ? { element: ref.current, edge: place.edge, open } : null);
+  }, [place.edge, open, concealed]);
+  useLayoutEffect(() => () => publishHelpLauncher(null), []);
 
   const pressHandlers = usePointerDrag<{ x: number; y: number; moved: boolean; length: number; latest?: TabPlace }>({
     start: (event) => {
