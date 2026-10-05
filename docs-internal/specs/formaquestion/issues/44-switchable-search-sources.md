@@ -1,7 +1,7 @@
 # 44: Switchable search sources
 
 Status: done
-Status note: Built and measured. Answers rise from 61% to 73% grounded-correct, and "here" questions fall from 98% to 82%. Four points in the Handover need a ruling.
+Status note: Built and measured. Answers rise from 61% to 73% grounded-correct, and "here" questions fall from 98% to 82%. Three points in the Handover need a ruling; point 4 is resolved.
 Base: 199c2b26
 Blocked by: 39
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -121,7 +121,10 @@ This needs a ruling, not a fix inside this ticket. One option: send no pick requ
 1. **The "here" regression** above: ship as measured, or add a rule for questions asked over an open screen.
 2. **The floor after a pick that gives nothing.** Q73 says the floor applies "only when keyword is the one source on". With AI picks on and a failed or empty pick, the build uses the keyword search with its floor, as if the source were off. Ticket 39 measured that case with no floor (12 of 955 replies). Confirm or reverse.
 3. **A runtime download the cache check does not cover.** The embedding worker gets the ONNX runtime binary from `cdn.jsdelivr.net` (transformers.js 3.8.1 sets `wasmPaths` there, and nothing in `src` overrides it). It is in the browser's HTTP cache, not in the model cache, so a help question with Semantic on can fetch it again. Semantic Memory has the same fetch today. The model files themselves never download. UNVERIFIED at run time: traced in the library source, not observed in a browser. The fix is to bundle the runtime binary with the app.
-4. **Run `npm run build:help-vectors` before each release.** A docs edit leaves the edited section out of the semantic ranking until the script runs. The release skill is the user's file, so this ticket did not edit it.
+4. ✅ **Resolved 2026-10-05: run `npm run build:help-vectors` before each release.** The release skill now has this as step 4c.
+   - **Why it must run.** The app embeds only the question on the device. Each guide section's vector is built ahead of time and ships in `sectionVectors.json`, with a hash of the section text it came from. A section whose text changed no longer matches its hash, so the Semantic source leaves it out of the ranking. A new section has no vector at all. Without a run, every section edited in a batch ships out of reach of Semantic search.
+   - **Why at release.** A release is the point where the guide text reaches players. Running the script on every docs edit would add a model download and an embedding run to each docs ticket. Running it in `npm run build` would add both to every gate run.
+   - **When to drop the step.** Drop it if the build or CI writes the vectors, if the app embeds the guide sections on the device, if the Semantic source is removed, or if the guide no longer ships inside the app.
 
 **Seen, not fixed.**
 
