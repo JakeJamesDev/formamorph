@@ -9,7 +9,7 @@ import type { SurfaceId } from '@/lib/docs/surfaceMap';
 export const SURFACE_TARGETS = {
   'settings.display': ['narration-layout', 'narration-font', 'quote-color'],
   'settings.output': ['thinking-mode'],
-  'settings.data': ['settings-mode'],
+  'settings.data': ['settings-mode', 'start-authoring-tour'],
   'settingsEndpoints.text': ['text-preset', 'endpoint-url'],
   mainMenu: ['app-version'],
   'mainMenu.worlds': ['import-world'],
@@ -19,6 +19,16 @@ export const SURFACE_TARGETS = {
   menu: ['import-save'],
   backup: ['start-backup', 'start-restore'],
   avatar: ['finalize-character'],
+  'worldEditor': ['editor-mode', 'find-button'],
+  'worldEditor.overview': ['thumbnail', 'background-music', 'custom-prompts'],
+  'worldEditor.stats': ['list-toolbar'],
+  'worldEditor.entities': ['list-toolbar'],
+  'worldEditor.locations': ['list-toolbar'],
+  'worldEditor.traits': ['list-toolbar'],
+  'worldEditor.dictionary': ['list-toolbar'],
+  'worldEditor.placeholders': ['list-toolbar'],
+  'worldEditorBench.triggers': ['scene-text'],
+  'worldEditorBench.opening': ['placeholder-rolls'],
 } as const satisfies Partial<Record<SurfaceId, readonly string[]>>;
 
 export type TargetedSurface = keyof typeof SURFACE_TARGETS;

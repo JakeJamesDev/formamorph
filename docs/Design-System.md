@@ -1217,7 +1217,7 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 
 **Purpose:** Point the eye at one row after a **Take Me There** landing, or after a link that jumps to a setting, such as the Mascot tab's off-state link to **General**. The ring runs once and stops.
 
-> ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production: Take Me There landings in the Settings dialog, the jump from a prompt's anatomy to a Messages field, and the Mascot tab's off-state link to the Mascot row of Formaquestion Settings → General.
+> ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production: Take Me There landings in the Settings dialog and the World Editor, the jump from a prompt's anatomy to a Messages field, and the Mascot tab's off-state link to the Mascot row of Formaquestion Settings → General.
 
 **Density:** None of its own. The ring draws outside the row's box and changes no layout.
 
@@ -1237,8 +1237,7 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 | Need | Component |
 | --- | --- |
 | Add the class, restart it, take it off on animation end | `pulseLanding` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
-| The control to focus | `landingControl` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
-| The ring, the pulse and the still ring | `.landing-pulse` and `.landing-ring` in [`index.css`](../src/index.css) |
+| The control to focus | `landingControl` in [`landingPulse.ts`](../src/lib/landingPulse.ts) || The ring, the pulse and the still ring | `.landing-pulse` and `.landing-ring` in [`index.css`](../src/index.css) |
 | Wait for the row, scroll, focus and pulse once per request | `useLanding` in [`useLanding.ts`](../src/lib/surface/useLanding.ts) |
 | Mark a row as a target | The `target` prop of `Row` and `CheckRow`, from `targetAttribute` in [`surfaceTargets.ts`](../src/lib/surface/surfaceTargets.ts) |
 | Room for the ring in a scroll area | `landingRoom` on `ScrollArea` in [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) |

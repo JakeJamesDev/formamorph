@@ -15,7 +15,7 @@ A trait is a fact about the player that doesn't change. Stats change all the tim
 
 ## How to Make a Trait
 <!-- keywords: perk, feature, quirk, attribute, ability, background, create, new, characteristic, feat, flaw, talent, skill, class, race, species, boon, disadvantage, starting option -->
-<!-- route: worldEditor.traits -->
+<!-- route: worldEditor.traits#list-toolbar -->
 
 1. Open the **Traits** tab.
 2. To name the trait as you add it, type the name in the search box.

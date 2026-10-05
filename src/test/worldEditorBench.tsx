@@ -96,18 +96,25 @@ export const renderWorldEditorBench = (
 ) => {
   let ctx!: GameDataHandle;
   writeEditorMode(mode);
-  const view = render(
+  const onClose = vi.fn();
+  const tree = (editorProps: typeof props) => (
     <SettingsProvider>
       <TooltipProvider>
         <GameDataProvider>
           <Harness world={world} onReady={(c) => { ctx = c; }}>
-            <WorldEditor onClose={vi.fn()} embedded backButton {...props} />
+            <WorldEditor onClose={onClose} embedded backButton {...editorProps} />
           </Harness>
         </GameDataProvider>
       </TooltipProvider>
-    </SettingsProvider>,
+    </SettingsProvider>
   );
-  return { ctx: () => ctx, unmount: view.unmount };
+  const view = render(tree(props));
+  return {
+    ctx: () => ctx,
+    unmount: view.unmount,
+    /** Renders the editor again with new props, as a host does for a later request. */
+    rerender: (next: typeof props) => view.rerender(tree(next)),
+  };
 };
 
 /** Open one of the editor's own tabs. The entity panel's Traits tab shares a name with the editor's, so the

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -166,6 +167,8 @@ const CustomPromptsSection = ({ focusField, onOpenEntity, onOpenLocation }: {
         type="single"
         value={tab ?? ''}
         onValueChange={(v) => setTab((v || null) as PanelKind | null)}
+        // The gate for the Openings panel: the panel shows only once its kind is open.
+        {...targetAttribute('worldEditor.overview', 'custom-prompts')}
         // Four across only once the row clears the column with room to spare; two-up below that. Sized to
         // its own labels rather than the column, so it stays a control instead of stretching into a banner.
         className="inline-grid h-auto grid-cols-2 [@container(min-width:32rem)]:grid-cols-4"

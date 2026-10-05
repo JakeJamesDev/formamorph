@@ -15,7 +15,7 @@ Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} str
 
 ## How to Make a Placeholder
 <!-- keywords: wildcard, variable, random, macro, template, curly braces, random value, brace menu, list of options, randomizer, snippet, pick from list, constant -->
-<!-- route: worldEditor.placeholders -->
+<!-- route: worldEditor.placeholders#list-toolbar -->
 
 1. Switch the World Editor to Advanced mode, and open the **Placeholders** tab.
 2. Type the name in the search box, such as *Eye Color*.

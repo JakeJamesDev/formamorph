@@ -2934,6 +2934,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onClose={exitWorldEditor}
             initialTab={surfaceNav.tab('worldEditor')}
             initialBenchTab={surfaceNav.tab('worldEditorBench')}
+            initialTarget={surfaceNav.target}
             requestKey={surfaceNav.key}
             leaveRef={editorLeaveRef}
           />

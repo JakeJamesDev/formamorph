@@ -23,7 +23,7 @@ To check a world before you play it, see [🧪 Test Bench](Test-Bench).
 
 ## How to Switch Editor Mode
 <!-- keywords: simple, advanced, more options, hidden settings, show all, expert, tab is missing, fields not showing, beginner view, basic layout, unlock extra tabs, power user, fewer options -->
-<!-- route: worldEditor -->
+<!-- route: worldEditor#editor-mode -->
 
 1. Open a world in the World Editor.
 2. In the header, select **Simple** or **Advanced**.
@@ -32,7 +32,7 @@ The app remembers your pick for every world. You can't switch while the Authorin
 
 ## How to Find and Replace Text
 <!-- keywords: search, ctrl+f, rename everywhere, change all, swap a word, bulk rename, substitute, ctrl+h, mass edit, fix typo everywhere, global rename -->
-<!-- route: worldEditor -->
+<!-- route: worldEditor#find-button -->
 
 1. Select the magnifier button in the header, or press **Ctrl+F**. Press **Ctrl+H** to open it with the replace row.
 2. Type in the **Find** box. Select **Match case** or **Match whole word** to narrow the search.
@@ -42,7 +42,7 @@ The app remembers your pick for every world. You can't switch while the Authorin
 
 ## How to Restart the Authoring Tour
 <!-- keywords: tutorial, guide, walkthrough, help, intro, learn, onboarding, show me around, beginner lesson -->
-<!-- route: settings.data -->
+<!-- route: settings.data#start-authoring-tour -->
 
 1. Open **Settings**, then select the **Data** tab.
 2. Under **Authoring**, select **Start Authoring Tour**.

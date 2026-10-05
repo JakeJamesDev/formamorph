@@ -13,7 +13,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 ## How to Add a Location
 <!-- keywords: place, area, room, map, create, new place, zone, region, town, city, building, dungeon, scene, environment, spot, venue -->
-<!-- route: worldEditor.locations -->
+<!-- route: worldEditor.locations#list-toolbar -->
 
 1. Open the **Locations** tab.
 2. Type the location's name in the **Search or add new locations** box.
@@ -25,7 +25,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 ## How to Nest a Location
 <!-- keywords: sublocation, child, inside, parent, hierarchy, room in building, indent, subfolder, tree, contain, put within, floors, district, drag under, un-nest, group places -->
-<!-- route: worldEditor.locations -->
+<!-- route: worldEditor.locations#list-toolbar -->
 
 **In the list:**
 

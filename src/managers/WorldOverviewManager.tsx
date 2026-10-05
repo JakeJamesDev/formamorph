@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/typography";
 import { toastError } from '@/lib/linkToast';
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import { ModelDetailsPanel } from '../components/modals/ModelDetailsPanel';
@@ -222,7 +223,7 @@ const WorldOverviewManager = () => {
           placeholder="Add tags"
         />
       </div>
-      <div className="space-y-2" data-tour-anchor="world-thumbnail">
+      <div className="space-y-2" data-tour-anchor="world-thumbnail" {...targetAttribute('worldEditor.overview', 'thumbnail')}>
         <Label htmlFor="image-upload-thumbnail">Thumbnail</Label>
         {/* The frame and its Generate button share one box, so the button is as wide as the picture it
             makes rather than centered under it. */}
@@ -300,7 +301,7 @@ const WorldOverviewManager = () => {
         </div>
       )}
       {advanced && <PersonaRulesFields />}
-      <div className="space-y-2">
+      <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
         <Label htmlFor="sound-upload-world-bgm">Background Music</Label>
         {/* The world stores a bare data URL where a location stores a media record, so the shared widget
             is fed one and read back for its bytes alone. */}

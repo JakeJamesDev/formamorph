@@ -15,7 +15,7 @@ The default prompt introduces entities as "Characters and things that **may** ap
 
 ## How to Add an Entity
 <!-- keywords: character, npc, create, new character, make, person, monster, companion, creature, bot, villain, love interest, pet, party member, enemy, add someone -->
-<!-- route: worldEditor.entities -->
+<!-- route: worldEditor.entities#list-toolbar -->
 
 1. Open the **Entities** tab.
 2. Type the entity's name in the **Search or add new entities** box.

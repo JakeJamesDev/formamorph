@@ -1974,7 +1974,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               {onStartAuthoringTour && (
               <Section title="Authoring">
               <Row {...rowCopy('authoringTour')}>
-                <Button variant="outline" size="sm" onClick={onStartAuthoringTour}>
+                <Button variant="outline" size="sm" onClick={onStartAuthoringTour} {...targetAttribute('settings.data', 'start-authoring-tour')}>
                   {SETTINGS_BUTTONS.startAuthoringTour}
                 </Button>
               </Row>

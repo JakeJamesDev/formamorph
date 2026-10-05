@@ -15,7 +15,7 @@ A dictionary entry uses no context until a keyword matches. Mention the Gloamwat
 
 ## How to Add a Dictionary Entry
 <!-- keywords: lorebook, keywords, trigger, lore, new, create, world info, codex, encyclopedia, fact, define a term -->
-<!-- route: worldEditor.dictionary -->
+<!-- route: worldEditor.dictionary#list-toolbar -->
 
 1. Open the **Dictionary** tab.
 2. If the world has no book yet, type a name in the **Search or add new dictionaries** box and select the **+** button (**Add to Dictionary**).

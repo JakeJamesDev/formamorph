@@ -18,7 +18,7 @@ The list updates as you edit. To see the full bench, select **Open Test Bench** 
 
 ## How to Test Which Dictionary Entries Trigger
 <!-- keywords: keywords, lorebook, activate, fire, debug, scan depth, matched, lore not showing up, world info, why was it skipped, entry ignored, simulate a message, paste sample story, codex -->
-<!-- route: worldEditorBench.triggers -->
+<!-- route: worldEditorBench.triggers#scene-text -->
 
 1. Open the Test Bench, then select the **Triggers** tab.
 2. Paste story text into the **Scene text** box. If you've played this world, select **Paste Last Turn** to fill it from your latest save.
@@ -29,7 +29,7 @@ To test scan depth, open **History** and paste earlier messages, oldest first.
 
 ## How to Preview the Opening
 <!-- keywords: first message, intro, start, greeting, test, see, first turn, simulate new game, beginning scene, what newcomers see, reroll randoms, initial values, as a different class, sample run -->
-<!-- route: worldEditorBench.opening -->
+<!-- route: worldEditorBench.opening#placeholder-rolls -->
 
 1. Open the Test Bench, then select the **Opening** tab.
 2. In **Testing as**, pick who you play.
