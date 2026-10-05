@@ -6,6 +6,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { SentMessageList } from "@/components/menu/SentMessageList";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SentMessage } from "@/types";
 
 interface SentMessagesDialogProps {
@@ -25,7 +26,7 @@ interface SentMessagesDialogProps {
 export function SentMessagesDialog({ open, onOpenChange, userId, username, refreshNonce = 0, onEdit }: SentMessagesDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] max-h-[85dvh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[720px] max-h-[85dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{username ? `Messages to ${username}` : 'All Messages'}</DialogTitle>
           <DialogDescription>
@@ -33,13 +34,12 @@ export function SentMessagesDialog({ open, onOpenChange, userId, username, refre
           </DialogDescription>
         </DialogHeader>
 
-        {/* `min-w-0`: DialogContent is a grid, and a grid item's `min-width: auto` lets a long subject
-            widen the dialog past its max width instead of ellipsing. */}
-        <div className="py-2 min-w-0">
-          <SentMessageList audience="direct" userId={userId} refreshNonce={refreshNonce} onEdit={onEdit} />
-        </div>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="py-2">
+            <SentMessageList audience="direct" userId={userId} refreshNonce={refreshNonce} onEdit={onEdit} />
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

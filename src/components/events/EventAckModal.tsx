@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Megaphone, Trophy } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { EventPosterBand } from '@/components/events/EventPosterBand';
 import MessageService from '@/services/MessageService';
@@ -114,9 +115,11 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
         <div className="flex min-h-0 flex-1 flex-col gap-4 px-6 py-5">
           {/* The organizer writes this in the same markdown editor world prose is written in, so it is
               read the same way rather than as the symbols they typed. */}
-          <div className="min-h-0 flex-1 overflow-y-auto text-label text-muted-foreground" data-testid="event-ack-body">
-            <MarkdownRenderer text={event.body ?? ''} />
-          </div>
+          <ScrollArea className="min-h-0 flex-1" focusable viewportProps={{ 'data-testid': 'event-ack-body' }}>
+            <div className="text-label text-muted-foreground">
+              <MarkdownRenderer text={event.body ?? ''} />
+            </div>
+          </ScrollArea>
           <div className="flex shrink-0 justify-end gap-2">
             {contest && onOpenEvent && (
               <Button
@@ -133,4 +136,3 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

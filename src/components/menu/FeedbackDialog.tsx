@@ -6,6 +6,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -181,9 +182,7 @@ export function FeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* `min-w-0` on the children: DialogContent is a grid, and a grid item's `min-width: auto` lets
-          wide content widen the dialog past its max width instead of being contained. */}
-      <DialogContent className="sm:max-w-[800px] max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquarePlus className="h-4 w-4" /> Send Feedback
@@ -191,64 +190,66 @@ export function FeedbackDialog({
           <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 min-w-0">
-          {restored && (
-            <p className="rounded-md border bg-muted/40 px-3 py-2 text-meta text-muted-foreground">
-              Picked up where you left off — this was still unsent. Discard it below to start fresh.
-            </p>
-          )}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4">
+            {restored && (
+              <p className="rounded-md border bg-muted/40 px-3 py-2 text-meta text-muted-foreground">
+                Picked up where you left off — this was still unsent. Discard it below to start fresh.
+              </p>
+            )}
 
-          <Tabs value={type} onValueChange={(value) => switchType(value as FeedbackType)}>
-            <TabsList className="grid w-full grid-cols-2">
-              {FEEDBACK_TYPES.map((value) => (
-                <TabsTrigger key={value} value={value}>{FEEDBACK_TYPE_LABELS[value].tab}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-
-          <div className="space-y-2">
-            <label htmlFor="feedbackTitle" className="text-label font-medium">Title</label>
-            <Input
-              id="feedbackTitle"
-              value={title}
-              maxLength={FEEDBACK_TITLE_MAX}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={copy.titlePlaceholder}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-label font-medium">Category</label>
-            <Select value={category} onValueChange={(value) => setCategory(value as FeedbackCategory)}>
-              <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CATEGORY_OPTIONS[type].map((option) => (
-                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+            <Tabs value={type} onValueChange={(value) => switchType(value as FeedbackType)}>
+              <TabsList className="grid w-full grid-cols-2">
+                {FEEDBACK_TYPES.map((value) => (
+                  <TabsTrigger key={value} value={value}>{FEEDBACK_TYPE_LABELS[value].tab}</TabsTrigger>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </TabsList>
+            </Tabs>
 
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between">
-              <span className="text-label font-medium">{copy.bodyLabel}</span>
-              <span className="text-meta text-muted-foreground">{body.length} / {FEEDBACK_BODY_MAX}</span>
+            <div className="space-y-2">
+              <label htmlFor="feedbackTitle" className="text-label font-medium">Title</label>
+              <Input
+                id="feedbackTitle"
+                value={title}
+                maxLength={FEEDBACK_TITLE_MAX}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={copy.titlePlaceholder}
+              />
             </div>
-            <PromptField
-              value={body}
-              onChange={(next) => setBody(next.slice(0, FEEDBACK_BODY_MAX))}
-              vocabulary={plainVocab}
-              markdown
-              ariaLabel={copy.bodyLabel}
-              placeholder={copy.bodyPlaceholder}
-              className="h-[260px]"
-            />
-          </div>
 
-          {/* Bugs only. A suggestion is about the game, not about the machine it was written on, so there
-              is nothing to disclose because nothing is collected. */}
-          {type === 'bug' && <DiagnosticsPanel diagnostics={diagnostics} />}
-        </div>
+            <div className="space-y-2">
+              <label className="text-label font-medium">Category</label>
+              <Select value={category} onValueChange={(value) => setCategory(value as FeedbackCategory)}>
+                <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_OPTIONS[type].map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-label font-medium">{copy.bodyLabel}</span>
+                <span className="text-meta text-muted-foreground">{body.length} / {FEEDBACK_BODY_MAX}</span>
+              </div>
+              <PromptField
+                value={body}
+                onChange={(next) => setBody(next.slice(0, FEEDBACK_BODY_MAX))}
+                vocabulary={plainVocab}
+                markdown
+                ariaLabel={copy.bodyLabel}
+                placeholder={copy.bodyPlaceholder}
+                className="h-[260px]"
+              />
+            </div>
+
+            {/* Bugs only. A suggestion is about the game, not about the machine it was written on, so there
+                is nothing to disclose because nothing is collected. */}
+            {type === 'bug' && <DiagnosticsPanel diagnostics={diagnostics} />}
+          </div>
+        </ScrollArea>
 
         {/* Closing keeps the writing, so the footer says "Close" and discarding is its own deliberate
             button — offered only when there is something to lose. */}
@@ -270,4 +271,3 @@ export function FeedbackDialog({
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

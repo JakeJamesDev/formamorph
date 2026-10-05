@@ -12,6 +12,13 @@
 export const DEV_VIEWS = ['mainMenu', 'gameViewer'] as const;
 export type DevView = (typeof DEV_VIEWS)[number];
 
+/** Dev-only routes for panes whose real host needs a server, an admin session, or a deep click path.
+ *  `customCode` opens MainMenu's Custom Code Execution dialog on canned stat code when the selected world has none; the
+ *  rest mount one pane on canned props (`DevPaneRoutes`). The podium and the sent list still load from the
+ *  server, so they show their empty state without one. Players never navigate to these. */
+export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'feedbackForm', 'feedbackEdit', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker'] as const;
+export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
+
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,
  *  `worldEditor` and `community` open from MainMenu; `entity`/`export` are in-game (GameViewer).
  *  `worldEditor` is an in-place modal on MainMenu (not a top-level view). `intro` replays the first-run
@@ -87,8 +94,8 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  and Formaquestion Settings under it. `formaquestionCompare` adds the compare view over them, on a canned
  *  edit of the answer prompt. `formaquestionAiContext` opens the window and its AI Context under it, on two
  *  canned questions with traces, so the popup has pages to show without an AI. `settingsCompare` opens Settings
- *  and the compare view over it, on a canned edit of the Narration prompt. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'settingsCompare'] as const;
+ *  and the compare view over it, on a canned edit of the Narration prompt. `DEV_PANE_MODALS` follow. */
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'settingsCompare', ...DEV_PANE_MODALS] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** The `attach=…` value that stages sample attachments on the game view. */

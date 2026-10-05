@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { X } from 'lucide-react';
 import VRMViewer from '@/views/VRMViewer';
 import { MobileControlsDrawer } from '@/components/MobileControlsDrawer';
@@ -132,7 +133,9 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
           <div className="w-72 shrink-0 border-l flex flex-col min-h-0">
             <div className="shrink-0 p-4">{info}</div>
             {/* Only region that scrolls. The controls gate themselves to the model's detected capabilities. */}
-            <div className="flex-1 min-h-0 overflow-y-auto border-t px-4 py-3 space-y-6">{controls}</div>
+            <ScrollArea className="flex-1 min-h-0 border-t">
+              <div className="px-4 py-3 space-y-6">{controls}</div>
+            </ScrollArea>
             {footer && <div className="shrink-0 border-t p-4">{footer}</div>}
           </div>
         </div>
@@ -140,4 +143,3 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

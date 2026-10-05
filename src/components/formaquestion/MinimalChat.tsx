@@ -3,6 +3,7 @@ import { GripVertical, PersonStanding, ScanFace, SendHorizontal, Square, X } fro
 import { AttachImagesButton } from '@/components/AttachImagesButton';
 import { AttachmentThumbs } from '@/components/game/AttachmentThumbs';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { withoutAttachment } from '@/lib/actionAttachments';
@@ -166,11 +167,11 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
         {headSide === 'right' && head}
       </div>
       <div className="relative min-h-0 flex-1">
-      <div
-        ref={viewportRef}
-        onScroll={onScroll}
-        data-fq-scroll="conversation"
-        className={cn('h-full overflow-y-auto [scrollbar-width:none]', TOP_FADE)}
+      {/* A grid content wrapper lets the log fill a short column, so the bubbles sit at its foot. */}
+      <ScrollArea
+        className={cn('h-full', TOP_FADE)}
+        viewportRef={viewportRef}
+        viewportProps={{ 'data-fq-scroll': 'conversation', onScroll, className: '[&>div]:!grid [&>div]:min-h-full' }}
       >
         <div role="log" aria-label="Conversation" aria-busy={chat.busy} className="flex min-h-full flex-col justify-end gap-2 px-1 pb-1 pt-8">
           {!guide && (failed ? (
@@ -194,7 +195,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
             </div>
           ))}
         </div>
-      </div>
+      </ScrollArea>
       <ScrollArrow shown={away} onClick={toEnd} />
       </div>
       <AskPill draft={draft} onDraftChange={onDraftChange} chat={chat} />
@@ -202,4 +203,3 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
     </div>
   );
 }
-// scroll-guard: allow migration-candidate: answer bubble scrolls natively with a hidden bar

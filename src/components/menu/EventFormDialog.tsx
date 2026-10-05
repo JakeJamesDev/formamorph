@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { DateTimeField } from "@/components/ui/date-time-field";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { EventPosterBand } from "@/components/events/EventPosterBand";
@@ -189,7 +190,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[720px] max-h-[90dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{editing ? 'Edit Event' : 'New Event'}</DialogTitle>
           <DialogDescription>
@@ -198,166 +199,168 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {/* The same full-width strip the Feedback tab's branches use: two things of equal weight, not
-              a setting with a default. An edit says which one this is instead of offering the choice —
-              the type decides what a client unlocks, and it is already out in a broadcast by the time
-              anyone could want it changed. */}
-          {editing ? (
-            <div className="flex items-center gap-2 text-label font-medium">
-              {isContest
-                ? <><Trophy className="h-4 w-4 text-warning" aria-hidden /> Contest</>
-                : <><Megaphone className="h-4 w-4 text-info" aria-hidden /> Announcement</>}
-            </div>
-          ) : (
-            <Tabs value={type} onValueChange={(value) => setType(value as ServerEventType)}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="contest">
-                  <Trophy className="mr-2 h-4 w-4" aria-hidden /> Contest
-                </TabsTrigger>
-                <TabsTrigger value="announcement">
-                  <Megaphone className="mr-2 h-4 w-4" aria-hidden /> Announcement
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4 py-2">
+            {/* The same full-width strip the Feedback tab's branches use: two things of equal weight, not
+                a setting with a default. An edit says which one this is instead of offering the choice —
+                the type decides what a client unlocks, and it is already out in a broadcast by the time
+                anyone could want it changed. */}
+            {editing ? (
+              <div className="flex items-center gap-2 text-label font-medium">
+                {isContest
+                  ? <><Trophy className="h-4 w-4 text-warning" aria-hidden /> Contest</>
+                  : <><Megaphone className="h-4 w-4 text-info" aria-hidden /> Announcement</>}
+              </div>
+            ) : (
+              <Tabs value={type} onValueChange={(value) => setType(value as ServerEventType)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="contest">
+                    <Trophy className="mr-2 h-4 w-4" aria-hidden /> Contest
+                  </TabsTrigger>
+                  <TabsTrigger value="announcement">
+                    <Megaphone className="mr-2 h-4 w-4" aria-hidden /> Announcement
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="eventTitle">Title</Label>
-            <Input
-              id="eventTitle"
-              value={title}
-              maxLength={TITLE_MAX}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={isContest ? 'Autumn Hauntings Contest' : 'Update Preview'}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="eventBanner">Banner Text</Label>
-            <Input
-              id="eventBanner"
-              value={bannerText}
-              maxLength={BANNER_MAX}
-              onChange={(e) => setBannerText(e.target.value)}
-              placeholder="One line, shown on the main menu while the event runs"
-            />
-            <p className="text-meta text-muted-foreground">
-              One line, on the main menu and in Community Creations while the event runs.
-            </p>
-          </div>
-
-          {/* Players read these rendered, so they are authored the way the world editor's prose is —
-              the same toolbar, the same Preview tab. Lexical renders a div, so the caption names the
-              field through `ariaLabel` rather than `htmlFor`. */}
-          <div className="space-y-2">
-            <PromptField
-              value={body}
-              onChange={(next) => setBody(next.slice(0, BODY_MAX))}
-              vocabulary={plainVocab}
-              markdown
-              ariaLabel="Details"
-              label="Details"
-              labelAside={<span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>}
-              placeholder="What players read in the announcement they acknowledge"
-              className="h-[300px]"
-            />
-          </div>
-
-          {isContest && (
             <div className="space-y-2">
-              <PromptField
-                value={rulesText}
-                onChange={(next) => setRulesText(next.slice(0, BODY_MAX))}
-                vocabulary={plainVocab}
-                markdown
-                ariaLabel="Rules"
-                label="Rules"
-                placeholder="What entrants are agreeing to"
-                className="h-[260px]"
+              <Label htmlFor="eventTitle">Title</Label>
+              <Input
+                id="eventTitle"
+                value={title}
+                maxLength={TITLE_MAX}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={isContest ? 'Autumn Hauntings Contest' : 'Update Preview'}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="eventBanner">Banner Text</Label>
+              <Input
+                id="eventBanner"
+                value={bannerText}
+                maxLength={BANNER_MAX}
+                onChange={(e) => setBannerText(e.target.value)}
+                placeholder="One line, shown on the main menu while the event runs"
               />
               <p className="text-meta text-muted-foreground">
-                Shown where authors enter and where entries are browsed. Only contests have rules.
+                One line, on the main menu and in Community Creations while the event runs.
               </p>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label>Poster</Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="color"
-                aria-label="Poster color"
-                className="h-9 w-14 cursor-pointer rounded-md border border-input bg-background p-1"
-                value={posterColor ?? COLOR_PICKER_START}
-                onChange={(e) => setPosterColor(parsePosterColor(e.target.value))}
-              />
-              <Button variant="outline" size="sm" disabled={!posterColor} onClick={() => setPosterColor(null)}>
-                Default Color
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => filePicker.current?.click()}>
-                <ImagePlus className="mr-2 h-4 w-4" aria-hidden /> Upload Image
-              </Button>
-              <Button variant="outline" size="sm" disabled={!previewImage} onClick={clearImage}>
-                Remove Image
-              </Button>
-              {/* Only alongside artwork. Reopens the positioning dialog a fresh pick opens by itself,
-                  so a bad crop on an event edited later is a ten-second fix without re-uploading. */}
-              {previewImage && (
-                <Button variant="outline" size="sm" onClick={() => setPositioning(true)}>
-                  <Move className="mr-2 h-4 w-4" aria-hidden /> Reposition
-                </Button>
-              )}
-              <input
-                ref={filePicker}
-                type="file"
-                accept={IMAGE_UPLOAD_ACCEPT}
-                aria-label="Poster image"
-                className="hidden"
-                onChange={(e) => { takeImage(e.target.files?.[0]); e.target.value = ''; }}
-              />
-            </div>
-            <p className="text-meta text-muted-foreground">
-              Both are optional — an event with neither keeps the default band. Images up to 2MB.
-              {previewImage && ' Reposition chooses which part of the picture the band shows.'}
-            </p>
-
-            {/* The same band players are shown, composed from what is in the form right now. Inert by
-                design: the framing is edited in its own dialog, so scrolling past this preview can
-                never nudge the picture or highlight its text. */}
-            <div className="overflow-hidden rounded-lg border" data-testid="poster-preview">
-              <EventPosterBand
-                event={{
-                  posterColor,
-                  posterImageUrl: previewImage,
-                  posterPlacement,
-                  startsAt,
-                  endsAt,
-                }}
-                icon={isContest ? Trophy : Megaphone}
-                eyebrow={isContest ? 'A Contest Has Started' : 'An Announcement'}
-                title={<div className="text-display font-semibold text-balance">{title || 'Your event title'}</div>}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Players read these rendered, so they are authored the way the world editor's prose is —
+                the same toolbar, the same Preview tab. Lexical renders a div, so the caption names the
+                field through `ariaLabel` rather than `htmlFor`. */}
             <div className="space-y-2">
-              <Label htmlFor="eventStarts">Starts</Label>
-              <DateTimeField id="eventStarts" label="Starts" value={startsAt} onChange={setStartsAt} readOnly={started} />
-              {started && (
+              <PromptField
+                value={body}
+                onChange={(next) => setBody(next.slice(0, BODY_MAX))}
+                vocabulary={plainVocab}
+                markdown
+                ariaLabel="Details"
+                label="Details"
+                labelAside={<span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>}
+                placeholder="What players read in the announcement they acknowledge"
+                className="h-[300px]"
+              />
+            </div>
+
+            {isContest && (
+              <div className="space-y-2">
+                <PromptField
+                  value={rulesText}
+                  onChange={(next) => setRulesText(next.slice(0, BODY_MAX))}
+                  vocabulary={plainVocab}
+                  markdown
+                  ariaLabel="Rules"
+                  label="Rules"
+                  placeholder="What entrants are agreeing to"
+                  className="h-[260px]"
+                />
                 <p className="text-meta text-muted-foreground">
-                  Already open — people have been told when this began.
+                  Shown where authors enter and where entries are browsed. Only contests have rules.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="space-y-2">
-              <Label htmlFor="eventEnds">Ends</Label>
-              <DateTimeField id="eventEnds" label="Ends" value={endsAt} onChange={setEndsAt} />
+              <Label>Poster</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="color"
+                  aria-label="Poster color"
+                  className="h-9 w-14 cursor-pointer rounded-md border border-input bg-background p-1"
+                  value={posterColor ?? COLOR_PICKER_START}
+                  onChange={(e) => setPosterColor(parsePosterColor(e.target.value))}
+                />
+                <Button variant="outline" size="sm" disabled={!posterColor} onClick={() => setPosterColor(null)}>
+                  Default Color
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => filePicker.current?.click()}>
+                  <ImagePlus className="mr-2 h-4 w-4" aria-hidden /> Upload Image
+                </Button>
+                <Button variant="outline" size="sm" disabled={!previewImage} onClick={clearImage}>
+                  Remove Image
+                </Button>
+                {/* Only alongside artwork. Reopens the positioning dialog a fresh pick opens by itself,
+                    so a bad crop on an event edited later is a ten-second fix without re-uploading. */}
+                {previewImage && (
+                  <Button variant="outline" size="sm" onClick={() => setPositioning(true)}>
+                    <Move className="mr-2 h-4 w-4" aria-hidden /> Reposition
+                  </Button>
+                )}
+                <input
+                  ref={filePicker}
+                  type="file"
+                  accept={IMAGE_UPLOAD_ACCEPT}
+                  aria-label="Poster image"
+                  className="hidden"
+                  onChange={(e) => { takeImage(e.target.files?.[0]); e.target.value = ''; }}
+                />
+              </div>
+              <p className="text-meta text-muted-foreground">
+                Both are optional — an event with neither keeps the default band. Images up to 2MB.
+                {previewImage && ' Reposition chooses which part of the picture the band shows.'}
+              </p>
+
+              {/* The same band players are shown, composed from what is in the form right now. Inert by
+                  design: the framing is edited in its own dialog, so scrolling past this preview can
+                  never nudge the picture or highlight its text. */}
+              <div className="overflow-hidden rounded-lg border" data-testid="poster-preview">
+                <EventPosterBand
+                  event={{
+                    posterColor,
+                    posterImageUrl: previewImage,
+                    posterPlacement,
+                    startsAt,
+                    endsAt,
+                  }}
+                  icon={isContest ? Trophy : Megaphone}
+                  eyebrow={isContest ? 'A Contest Has Started' : 'An Announcement'}
+                  title={<div className="text-display font-semibold text-balance">{title || 'Your event title'}</div>}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="eventStarts">Starts</Label>
+                <DateTimeField id="eventStarts" label="Starts" value={startsAt} onChange={setStartsAt} readOnly={started} />
+                {started && (
+                  <p className="text-meta text-muted-foreground">
+                    Already open — people have been told when this began.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="eventEnds">Ends</Label>
+                <DateTimeField id="eventEnds" label="Ends" value={endsAt} onChange={setEndsAt} />
+              </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
@@ -396,4 +399,3 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

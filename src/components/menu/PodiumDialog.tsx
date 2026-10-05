@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Meta } from "@/components/ui/typography";
 import { cn, listNames } from "@/lib/utils";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
@@ -245,195 +246,197 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 py-2">
-          {/* The podium as it stands, above the grid it is assembled from. One row per placed world
-              rather than three fixed slots: a place is derived from the row's position and its tie
-              flag, so any number of worlds can share one. */}
-          <ol className="space-y-2" aria-label="Podium">
-            {podium.length === 0 ? (
-              <li className="rounded-lg border border-dashed bg-muted/30 px-3 py-4 text-center text-label text-muted-foreground">
-                Click an entry to start the podium
-              </li>
-            ) : podium.map(({ row, place, entry }, index) => {
-              const name = entry?.name ?? `row ${index + 1}`;
-              // Breaking a tie can push this row, or one below it, past the last step, and there is no
-              // podium to stage it on, so the checkbox is unavailable there and says why.
-              const tieRefused = index > 0 && !canToggleTie(draft, index);
-
-              return (
-                <li
-                  key={row.worldId}
-                  className={cn('rounded-lg border px-3 py-2 min-w-0', PLACE_PLATES[place])}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Trophy className={cn('h-4 w-4 shrink-0', PLACE_COLORS[place])} aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <div className={cn('text-meta font-semibold', PLACE_COLORS[place])}>
-                        {PLACE_LABELS[place]}
-                      </div>
-                      <div className="text-label truncate">
-                        {entry ? entry.name : <span className="text-muted-foreground">{UNKNOWN_WORLD}</span>}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 shrink-0"
-                      aria-label={`Clear ${name}`}
-                      onClick={() => clear(index)}
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden />
-                    </Button>
-                  </div>
-
-                  {index > 0 && (
-                    <div className="mt-1.5 flex items-center gap-2 pl-6">
-                      <Checkbox
-                        id={`tie-${row.worldId}`}
-                        checked={row.tiedWithAbove}
-                        disabled={tieRefused}
-                        aria-label={`Tie With Above: ${name}`}
-                        onCheckedChange={() => tie(index)}
-                      />
-                      <label
-                        htmlFor={`tie-${row.worldId}`}
-                        className={cn('text-meta', tieRefused ? 'text-muted-foreground' : 'cursor-pointer')}
-                      >
-                        Tie With Above
-                      </label>
-                      {tieRefused && <Meta>The podium ends at 3rd place</Meta>}
-                    </div>
-                  )}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4 py-2">
+            {/* The podium as it stands, above the grid it is assembled from. One row per placed world
+                rather than three fixed slots: a place is derived from the row's position and its tie
+                flag, so any number of worlds can share one. */}
+            <ol className="space-y-2" aria-label="Podium">
+              {podium.length === 0 ? (
+                <li className="rounded-lg border border-dashed bg-muted/30 px-3 py-4 text-center text-label text-muted-foreground">
+                  Click an entry to start the podium
                 </li>
-              );
-            })}
-          </ol>
-
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-label text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading entries…
-            </div>
-          ) : entries.length === 0 ? (
-            <p className="py-12 text-center text-label text-muted-foreground">
-              Nothing was entered into this contest.
-            </p>
-          ) : (
-            <div
-              role="group"
-              aria-label="Entries"
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
-            >
-              {standings.map((entry) => {
-                const staged = draft.findIndex((row) => row.worldId === entry.id);
-                const place = staged === -1 ? null : places[staged];
-                const tied = tiedCounts.has(entry.likes);
+              ) : podium.map(({ row, place, entry }, index) => {
+                const name = entry?.name ?? `row ${index + 1}`;
+                // Breaking a tie can push this row, or one below it, past the last step, and there is no
+                // podium to stage it on, so the checkbox is unavailable there and says why.
+                const tieRefused = index > 0 && !canToggleTie(draft, index);
 
                 return (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    aria-pressed={place !== null}
-                    disabled={Boolean(entry.blocked)}
-                    onClick={() => assign(entry.id)}
-                    className={cn(
-                      'group text-left rounded-lg border overflow-hidden transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ring-inset',
-                      entry.blocked
-                        ? 'opacity-60 cursor-not-allowed'
-                        : 'hover:border-primary/60',
-                      place !== null && PLACE_PLATES[place],
-                    )}
+                  <li
+                    key={row.worldId}
+                    className={cn('rounded-lg border px-3 py-2 min-w-0', PLACE_PLATES[place])}
                   >
-                    <div className={cn('relative bg-muted', THUMB_FRAME.landscape)}>
-                      {entry.thumbnailFile ? (
-                        <CachedThumbnail
-                          file={entry.thumbnailFile}
-                          url={`${WorldStorageService.API_URL}/thumbnails/${entry.thumbnailFile}`}
-                          updatedAt={entry.updatedAt}
-                          alt=""
-                          className={cn('h-full w-full', thumbFit('landscape'))}
-                          aspect="landscape"
-                        />
-                      ) : entry.thumbnail ? (
-                        <img src={entry.thumbnail} alt="" className={cn('h-full w-full', thumbFit('landscape'))} />
-                      ) : null}
-                      {entry.blocked && (
-                        <span className="absolute left-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-meta font-semibold">
-                          {entry.blocked}
-                        </span>
-                      )}
-                      {place !== null && (
-                        <span className={cn(
-                          'absolute right-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-meta font-semibold',
-                          PLACE_COLORS[place],
-                        )}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Trophy className={cn('h-4 w-4 shrink-0', PLACE_COLORS[place])} aria-hidden />
+                      <div className="min-w-0 flex-1">
+                        <div className={cn('text-meta font-semibold', PLACE_COLORS[place])}>
                           {PLACE_LABELS[place]}
-                        </span>
-                      )}
+                        </div>
+                        <div className="text-label truncate">
+                          {entry ? entry.name : <span className="text-muted-foreground">{UNKNOWN_WORLD}</span>}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0"
+                        aria-label={`Clear ${name}`}
+                        onClick={() => clear(index)}
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                      </Button>
                     </div>
 
-                    <div className="p-2 min-w-0">
-                      <div className="text-label font-semibold truncate">{entry.name}</div>
-                      <div className="flex items-center gap-2 text-meta text-muted-foreground">
-                        <span className="truncate">by {entry.authorName}</span>
-                        <span className="ml-auto inline-flex items-center gap-1.5 shrink-0">
-                          <span className="inline-flex items-center gap-1">
-                            <Heart className="h-3 w-3" aria-hidden /> {entry.likes}
-                          </span>
-                          {/* A word rather than a tint: the mark is what a judge counts on to see a
-                              tie, so it has to read the same to everyone. */}
-                          {tied && (
-                            <span className="rounded border px-1 font-semibold text-foreground">
-                              Tied<span className="sr-only"> on {entry.likes} likes</span>
-                            </span>
-                          )}
-                        </span>
+                    {index > 0 && (
+                      <div className="mt-1.5 flex items-center gap-2 pl-6">
+                        <Checkbox
+                          id={`tie-${row.worldId}`}
+                          checked={row.tiedWithAbove}
+                          disabled={tieRefused}
+                          aria-label={`Tie With Above: ${name}`}
+                          onCheckedChange={() => tie(index)}
+                        />
+                        <label
+                          htmlFor={`tie-${row.worldId}`}
+                          className={cn('text-meta', tieRefused ? 'text-muted-foreground' : 'cursor-pointer')}
+                        >
+                          Tie With Above
+                        </label>
+                        {tieRefused && <Meta>The podium ends at 3rd place</Meta>}
                       </div>
-                    </div>
-                  </button>
+                    )}
+                  </li>
                 );
               })}
-            </div>
-          )}
+            </ol>
 
-          {/* The announcement, before it is one. Wording is the server's template; an admin polishes it
-              afterward under Broadcasts, the same as any other auto-posted notice. An edit posts nothing,
-              so there is no preview to show for one. */}
-          {!editing && podium.length > 0 && (
-            <div className="rounded-lg border bg-muted/40 p-3 space-y-1">
-              <div className="text-meta text-muted-foreground">
-                Goes to everyone, from the Formamorph Team.
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-label text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading entries…
               </div>
-              <div className="text-label font-semibold">{contest.title} — the results</div>
-              <div className="text-meta">{contest.title} has been judged.</div>
-              {podiumLines(draft).map(({ place, worldIds }) => (
-                <div key={place} className="text-meta">
-                  {BROADCAST_PLACE_LABELS[place]}: {listNames(worldIds.map(credit))}
+            ) : entries.length === 0 ? (
+              <p className="py-12 text-center text-label text-muted-foreground">
+                Nothing was entered into this contest.
+              </p>
+            ) : (
+              <div
+                role="group"
+                aria-label="Entries"
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+              >
+                {standings.map((entry) => {
+                  const staged = draft.findIndex((row) => row.worldId === entry.id);
+                  const place = staged === -1 ? null : places[staged];
+                  const tied = tiedCounts.has(entry.likes);
+
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      aria-pressed={place !== null}
+                      disabled={Boolean(entry.blocked)}
+                      onClick={() => assign(entry.id)}
+                      className={cn(
+                        'group text-left rounded-lg border overflow-hidden transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ring-inset',
+                        entry.blocked
+                          ? 'opacity-60 cursor-not-allowed'
+                          : 'hover:border-primary/60',
+                        place !== null && PLACE_PLATES[place],
+                      )}
+                    >
+                      <div className={cn('relative bg-muted', THUMB_FRAME.landscape)}>
+                        {entry.thumbnailFile ? (
+                          <CachedThumbnail
+                            file={entry.thumbnailFile}
+                            url={`${WorldStorageService.API_URL}/thumbnails/${entry.thumbnailFile}`}
+                            updatedAt={entry.updatedAt}
+                            alt=""
+                            className={cn('h-full w-full', thumbFit('landscape'))}
+                            aspect="landscape"
+                          />
+                        ) : entry.thumbnail ? (
+                          <img src={entry.thumbnail} alt="" className={cn('h-full w-full', thumbFit('landscape'))} />
+                        ) : null}
+                        {entry.blocked && (
+                          <span className="absolute left-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-meta font-semibold">
+                            {entry.blocked}
+                          </span>
+                        )}
+                        {place !== null && (
+                          <span className={cn(
+                            'absolute right-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-meta font-semibold',
+                            PLACE_COLORS[place],
+                          )}>
+                            {PLACE_LABELS[place]}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="p-2 min-w-0">
+                        <div className="text-label font-semibold truncate">{entry.name}</div>
+                        <div className="flex items-center gap-2 text-meta text-muted-foreground">
+                          <span className="truncate">by {entry.authorName}</span>
+                          <span className="ml-auto inline-flex items-center gap-1.5 shrink-0">
+                            <span className="inline-flex items-center gap-1">
+                              <Heart className="h-3 w-3" aria-hidden /> {entry.likes}
+                            </span>
+                            {/* A word rather than a tint: the mark is what a judge counts on to see a
+                                tie, so it has to read the same to everyone. */}
+                            {tied && (
+                              <span className="rounded border px-1 font-semibold text-foreground">
+                                Tied<span className="sr-only"> on {entry.likes} likes</span>
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* The announcement, before it is one. Wording is the server's template; an admin polishes it
+                afterward under Broadcasts, the same as any other auto-posted notice. An edit posts nothing,
+                so there is no preview to show for one. */}
+            {!editing && podium.length > 0 && (
+              <div className="rounded-lg border bg-muted/40 p-3 space-y-1">
+                <div className="text-meta text-muted-foreground">
+                  Goes to everyone, from the Formamorph Team.
                 </div>
-              ))}
-              <div className="text-meta">
-                Congratulations, and thank you to everyone who entered.
+                <div className="text-label font-semibold">{contest.title} — the results</div>
+                <div className="text-meta">{contest.title} has been judged.</div>
+                {podiumLines(draft).map(({ place, worldIds }) => (
+                  <div key={place} className="text-meta">
+                    {BROADCAST_PLACE_LABELS[place]}: {listNames(worldIds.map(credit))}
+                  </div>
+                ))}
+                <div className="text-meta">
+                  Congratulations, and thank you to everyone who entered.
+                </div>
+                <div className="text-meta text-muted-foreground">
+                  You can edit the wording afterward under Broadcasts.
+                </div>
               </div>
-              <div className="text-meta text-muted-foreground">
-                You can edit the wording afterward under Broadcasts.
-              </div>
-            </div>
-          )}
+            )}
 
-          {editing && lost.length > 0 && (
-            <p className="text-meta text-destructive" role="status">
-              {lost.map((placement) => `${PLACE_LABELS[placement.place]} (${placement.worldName})`).join(', ')}
-              {lost.length === 1 ? ' is' : ' are'} no longer a listing on this server, so this podium
-              can&apos;t be re-saved without losing that record.
-            </p>
-          )}
+            {editing && lost.length > 0 && (
+              <p className="text-meta text-destructive" role="status">
+                {lost.map((placement) => `${PLACE_LABELS[placement.place]} (${placement.worldName})`).join(', ')}
+                {lost.length === 1 ? ' is' : ' are'} no longer a listing on this server, so this podium
+                can&apos;t be re-saved without losing that record.
+              </p>
+            )}
 
-          {editing && (
-            <p className="text-meta text-muted-foreground">
-              Saving a correction posts nothing. The change is recorded in the audit log.
-            </p>
-          )}
-        </div>
+            {editing && (
+              <p className="text-meta text-muted-foreground">
+                Saving a correction posts nothing. The change is recorded in the audit log.
+              </p>
+            )}
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
@@ -446,4 +449,3 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

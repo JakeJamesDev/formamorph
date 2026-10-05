@@ -2,7 +2,7 @@
  * Turns a surface id into the steps that open it: the screen, the dialog, and the tabs. It reads the
  * ledger the surface map reads, so a new surface needs one entry here and none elsewhere.
  */
-import { DEV_MODAL_TABS, DEV_VIEWS, type DevModal, type DevView } from '@/lib/devRoutes';
+import { DEV_MODAL_TABS, DEV_PANE_MODALS, DEV_VIEWS, type DevModal, type DevPaneModal, type DevView } from '@/lib/devRoutes';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, type SurfaceId } from '@/lib/docs/surfaceMap';
 import { isSurfaceTarget, routeText } from './surfaceTargets';
 
@@ -88,6 +88,9 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   errorDetails: { ancestor: null },
   exitApp: { ancestor: null },
   designSystem: { ancestor: null },
+
+  // Dev-only mounts of one pane on canned props; players reach these panes through their real hosts.
+  ...(Object.fromEntries(DEV_PANE_MODALS.map((id) => [id, { ancestor: null }])) as Record<DevPaneModal, DialogRoute>),
 };
 
 const LEDGERS: Record<TabKey, LedgerRoute> = {

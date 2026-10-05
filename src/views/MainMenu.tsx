@@ -154,6 +154,7 @@ import {
 import { PromptDiff, PromptDiffModeToggle, type PromptDiffMode } from "@/components/game/PromptDiff";
 import { allPlaceholders, placeholderOwners } from "@/lib/placeholderHomes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import { promptLibraryTarget } from "@/lib/promptDownload";
 import PatreonIcon from "@/components/PatreonIcon";
@@ -285,6 +286,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // library holding no world that rewrites a prompt. Never set in prod.
   const [devPromptSample, setDevPromptSample] = useState<WorldOverview | null>(null);
   const promptOverview = selectedWorld?.data?.worldOverview ?? devPromptSample ?? undefined;
+  // DEV only: canned stat code the Custom Code Execution dialog falls back to on a world with none. Never set in prod.
+  const [devCodeSample, setDevCodeSample] = useState<string | null>(null);
   // DEV only: canned rows for the Connect World References step, which in the app only opens mid-add inside
   // the World Editor. Never set in prod.
   const [devReferences, setDevReferences] = useState<ReferenceRow[] | null>(null);
@@ -432,6 +435,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setShowWorldPrompts(true);
       void import('@/lib/devWorldPromptSample')
         .then(({ devWorldPromptOverview }) => setDevPromptSample(devWorldPromptOverview()));
+    }
+    if (devRoute?.modal === 'customCode') {
+      setShowCodeModal(true);
+      void import('@/lib/devPaneSamples').then(({ devCustomCodeSample }) => setDevCodeSample(devCustomCodeSample()));
     }
     // Library editors open on a blank draft — nothing is stored, so these are reachable on a fresh profile.
     if (devRoute?.modal === 'entityEditor') setDraftEntity({ id: randomUUID(), name: 'New Character' });
@@ -2738,27 +2745,25 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>
-        <DialogContent className="sm:max-w-[500px] h-[85dvh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px] h-[85dvh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Custom Code Execution</DialogTitle>
           </DialogHeader>
 
-          <div className="mt-4">
-            <DialogDescription className="mb-4">
-              This world contains the following custom code in its stats:
-            </DialogDescription>
+          <DialogDescription>
+            This world contains the following custom code in its stats:
+          </DialogDescription>
 
-            <div className="bg-muted p-4 rounded-md overflow-auto">
-              <pre className="text-label font-mono whitespace-pre-wrap">
-                {generateConcatenatedCode(stats)}
-              </pre>
-            </div>
+          <ScrollArea className="flex-1 min-h-0 bg-muted rounded-md" focusable>
+            <pre className="p-4 text-label font-mono whitespace-pre-wrap">
+              {devCodeSample && !hasStatWithCode(stats) ? devCodeSample : generateConcatenatedCode(stats)}
+            </pre>
+          </ScrollArea>
 
-            <div className="mt-4 flex justify-end">
-              <Button onClick={() => setShowCodeModal(false)}>
-                Close
-              </Button>
-            </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowCodeModal(false)}>
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -2831,21 +2836,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 ))}
               </TabsList>
             )}
-            {customPromptKinds.map((kind) => (
-              <TabsContent
-                key={kind}
-                value={kind}
-                className="flex-1 min-h-0 mt-0 overflow-auto rounded-md bg-muted p-4"
-              >
-                <PromptDiff
-                  kind={kind}
-                  text={worldPrompt(promptOverview, kind) ?? ''}
-                  mode={promptView}
-                  placeholders={promptPlaceholders}
-                  owners={promptPlaceholderOwners}
-                />
-              </TabsContent>
-            ))}
+            {/* Keyed by tab, so each prompt tab opens at its top; the panel sits in the viewport, so arrow keys scroll it. */}
+            <ScrollArea key={shownPromptTab} className="flex-1 min-h-0 rounded-md bg-muted">
+              {customPromptKinds.map((kind) => (
+                <TabsContent key={kind} value={kind} className="mt-0 p-4">
+                  <PromptDiff
+                    kind={kind}
+                    text={worldPrompt(promptOverview, kind) ?? ''}
+                    mode={promptView}
+                    placeholders={promptPlaceholders}
+                    owners={promptPlaceholderOwners}
+                  />
+                </TabsContent>
+              ))}
+            </ScrollArea>
           </Tabs>
 
           <div className="shrink-0 flex justify-end">
@@ -2982,4 +2986,3 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 };
 
 export default MainMenu;
-// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

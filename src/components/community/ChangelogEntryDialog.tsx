@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { DateTimeField } from "@/components/ui/date-time-field";
 import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
@@ -95,51 +96,53 @@ export function ChangelogEntryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-1">
-          <div className="space-y-2">
-            <Label htmlFor="changelogTitle">Title</Label>
-            <Input
-              id="changelogTitle"
-              value={title}
-              maxLength={CHANGELOG_TITLE_MAX}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Update 1"
-            />
-          </div>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="changelogTitle">Title</Label>
+              <Input
+                id="changelogTitle"
+                value={title}
+                maxLength={CHANGELOG_TITLE_MAX}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Update 1"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="changelogDate">Date</Label>
-            {/* The app's own calendar, not the browser's — which follows the operating system's theme and
-                cannot be styled. Day-only: an entry is dated to the day, and an hour on it would be a
-                control that changes nothing. */}
-            <DateTimeField id="changelogDate" label="Date" value={date} onChange={setDate} dateOnly />
-            {/* The reason the field is here at all: a history written after the fact should carry the days
-                it happened on, not the day it was typed up. */}
-            <p className="text-meta text-muted-foreground">
-              Set this back to log an update you made earlier.
-            </p>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="changelogDate">Date</Label>
+              {/* The app's own calendar, not the browser's — which follows the operating system's theme and
+                  cannot be styled. Day-only: an entry is dated to the day, and an hour on it would be a
+                  control that changes nothing. */}
+              <DateTimeField id="changelogDate" label="Date" value={date} onChange={setDate} dateOnly />
+              {/* The reason the field is here at all: a history written after the fact should carry the days
+                  it happened on, not the day it was typed up. */}
+              <p className="text-meta text-muted-foreground">
+                Set this back to log an update you made earlier.
+              </p>
+            </div>
 
-          {/* Lexical renders a div, so the caption names the field through `ariaLabel` rather than `htmlFor`. */}
-          <div className="space-y-2 min-w-0">
-            <Label>What Changed</Label>
-            <PromptField
-              value={body}
-              onChange={(next) => setBody(next.slice(0, CHANGELOG_BODY_MAX))}
-              vocabulary={plainVocabulary()}
-              markdown
-              ariaLabel="What changed"
-              placeholder="Added the drowned quarter, and fixed the ferry never arriving..."
-            />
-            <p className="text-meta text-muted-foreground text-right">
-              {body.length} / {CHANGELOG_BODY_MAX}
-            </p>
-          </div>
+            {/* Lexical renders a div, so the caption names the field through `ariaLabel` rather than `htmlFor`. */}
+            <div className="space-y-2 min-w-0">
+              <Label>What Changed</Label>
+              <PromptField
+                value={body}
+                onChange={(next) => setBody(next.slice(0, CHANGELOG_BODY_MAX))}
+                vocabulary={plainVocabulary()}
+                markdown
+                ariaLabel="What changed"
+                placeholder="Added the drowned quarter, and fixed the ferry never arriving..."
+              />
+              <p className="text-meta text-muted-foreground text-right">
+                {body.length} / {CHANGELOG_BODY_MAX}
+              </p>
+            </div>
 
-          {error && (
-            <p className="text-label text-destructive" role="alert">{error}</p>
-          )}
-        </div>
+            {error && (
+              <p className="text-label text-destructive" role="alert">{error}</p>
+            )}
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
@@ -153,4 +156,3 @@ export function ChangelogEntryDialog({
     </Dialog>
   );
 }
-// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

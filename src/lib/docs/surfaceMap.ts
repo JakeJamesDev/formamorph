@@ -2,7 +2,7 @@
  * Every player-facing screen, dialog and tab, tied to the docs heading that explains it. Ids come from the
  * dev-router registry: a screen or dialog is its bare name (`settings`), a tab is `<ledger key>.<tab>`.
  */
-import { DEV_MODAL_TABS, DEV_MODALS, DEV_VIEWS, type DevModal, type DevView } from '@/lib/devRoutes';
+import { DEV_MODAL_TABS, DEV_MODALS, DEV_PANE_MODALS, DEV_VIEWS, type DevModal, type DevView } from '@/lib/devRoutes';
 import type { DocTarget } from './docsLinks';
 
 type TabLedger = typeof DEV_MODAL_TABS;
@@ -38,6 +38,7 @@ export const SURFACE_EXCLUSIONS: Partial<Record<SurfaceId, SurfaceExclusionReaso
     'staff',
   ),
   ...excludeAll(['designSystem', ...tabsOf('gameViewerAttach')], 'dev'),
+  ...excludeAll(DEV_PANE_MODALS, 'dev'),
 };
 
 const ENTITY_OWNED_PLACEHOLDERS: Required<DocTarget> = {

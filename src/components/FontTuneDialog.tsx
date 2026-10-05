@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
 import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext';
 import { FONT_OPTIONS, fontStack, fontSizeAdjust, SYSTEM_FONT_STACK, type FontChoice } from '@/contexts/settingsDefaults';
@@ -48,7 +49,7 @@ function TuneSlider({
  * Per-font tuning for whichever font `font` names. The draft lives here and reaches nothing but the
  * sample text until Save — a game in progress must not reflow while the sliders move.
  */
-function FontTuneDialog({ font, open, onOpenChange, source }: { font: FontChoice; open: boolean; onOpenChange: (v: boolean) => void; source?: FontTuneSource }) {
+export function FontTuneDialog({ font, open, onOpenChange, source }: { font: FontChoice; open: boolean; onOpenChange: (v: boolean) => void; source?: FontTuneSource }) {
   const { fontTunings, setFontTuning } = useSettingsSource(source);
   const [draft, setDraft] = useState<FontTuning>(() => resolveFontTuning(font, fontTunings));
 
@@ -100,47 +101,49 @@ function FontTuneDialog({ font, open, onOpenChange, source }: { font: FontChoice
           <p style={{ fontStyle: 'italic' }}><span style={skew}>{SAMPLE}</span></p>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 pt-1">
-          <TuneSlider
-            label="Font Size"
-            value={draft.scale}
-            {...FONT_TUNING_RANGES.scale}
-            format={(v) => `${Math.round(v * 100)}%`}
-            onChange={set('scale')}
-          />
-          <TuneSlider
-            label="Bold Weight"
-            value={draft.boldWeight}
-            {...boldRange}
-            format={(v) => `${v} / ${bold}`}
-            onChange={set('boldWeight')}
-          />
-          <TuneSlider
-            label="Italic Slant"
-            value={draft.italicSkew}
-            {...FONT_TUNING_RANGES.italicSkew}
-            format={(v) => (v === 0 ? 'None' : `${v}°`)}
-            onChange={set('italicSkew')}
-          />
-          <TuneSlider
-            label="Line Height"
-            value={draft.lineHeight}
-            {...FONT_TUNING_RANGES.lineHeight}
-            format={(v) => `${Math.round(v * 100)}%`}
-            onChange={set('lineHeight')}
-          />
-          <TuneSlider
-            label="Letter Spacing"
-            value={draft.letterSpacing}
-            {...FONT_TUNING_RANGES.letterSpacing}
-            format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(3)}em`}
-            onChange={set('letterSpacing')}
-          />
-          <p className="text-helper text-muted-foreground">
-            Bold Weight sets how heavy semibold text renders; bold sits a step above it, as far as this
-            font goes. Both numbers appear beside the slider.
-          </p>
-        </div>
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4 pt-1">
+            <TuneSlider
+              label="Font Size"
+              value={draft.scale}
+              {...FONT_TUNING_RANGES.scale}
+              format={(v) => `${Math.round(v * 100)}%`}
+              onChange={set('scale')}
+            />
+            <TuneSlider
+              label="Bold Weight"
+              value={draft.boldWeight}
+              {...boldRange}
+              format={(v) => `${v} / ${bold}`}
+              onChange={set('boldWeight')}
+            />
+            <TuneSlider
+              label="Italic Slant"
+              value={draft.italicSkew}
+              {...FONT_TUNING_RANGES.italicSkew}
+              format={(v) => (v === 0 ? 'None' : `${v}°`)}
+              onChange={set('italicSkew')}
+            />
+            <TuneSlider
+              label="Line Height"
+              value={draft.lineHeight}
+              {...FONT_TUNING_RANGES.lineHeight}
+              format={(v) => `${Math.round(v * 100)}%`}
+              onChange={set('lineHeight')}
+            />
+            <TuneSlider
+              label="Letter Spacing"
+              value={draft.letterSpacing}
+              {...FONT_TUNING_RANGES.letterSpacing}
+              format={(v) => `${v > 0 ? '+' : ''}${v.toFixed(3)}em`}
+              onChange={set('letterSpacing')}
+            />
+            <p className="text-helper text-muted-foreground">
+              Bold Weight sets how heavy semibold text renders; bold sits a step above it, as far as this
+              font goes. Both numbers appear beside the slider.
+            </p>
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="shrink-0 flex-row items-center justify-between sm:justify-between">
           <Button
@@ -172,4 +175,3 @@ export function FontTuneButton({ font, source }: { font: FontChoice; source?: Fo
     </>
   );
 }
-// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite
