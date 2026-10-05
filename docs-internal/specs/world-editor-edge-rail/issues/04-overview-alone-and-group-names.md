@@ -1,6 +1,6 @@
 # 04: Overview Alone And Group Names
 
-Status: ready-for-human
+Status: done
 Blocked by: 01 — Edge Rail On The Desktop Editor
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
