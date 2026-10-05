@@ -15,5 +15,6 @@ The code test function is measured: Quick Reference plus the function against Qu
 
 - [ ] Before any run, check what LM Studio has loaded and ask the user for a window
 - [ ] Both arms run on the same model with an in-batch control, 5+ runs per case
+- [ ] The five cases from 07 are re-measured against the Q9 bar, with the persona case called out (Q29)
 - [ ] Numbers recorded in the spec with the default decision
 - [ ] Setting default matches the decision; changelog fragment written if it flips
