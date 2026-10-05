@@ -158,3 +158,20 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 - **Q19.** It has its own probe arm on a local tool-calling model. It defaults on only on a gain.
 - **Q20.** The call guidance lives in the function's description.
 - **Q21.** The code test may read the open world. The glossary is amended and a new ADR records it.
+- **Q22.** (Ticket 03 intent, 2026-10-05.) The new editor errors (Q4, Q8) surface in the editor underline and in Test Code, which share the analysis. The Test Bench runs each box in QuickJS and never runs the analysis, so it does not report them. Tickets 03 and 04 land without a Test Bench change.
+
+- **Q23.** (Ticket 05 intent, 2026-10-05.) The first ticket of this spec to land writes an ungrouped changelog entry. The changelog lint refuses a one-child group, and no second Formaquestion entry exists yet. Later tickets may regroup on their own fold.
+
+- **Q24.** (Ticket 02 intent, 2026-10-05.) The pin is not a search source. A bare code turn, with every section source off, still sends the Quick Reference, so the turn is no longer bare. On a code turn from another screen, the Quick Reference is that turn's lead in the request, in AI Context and for follow-ups.
+
+- **Q25.** (Ticket 04 intent, 2026-10-05.) The whole-stat error flags a stat entry as an operand of `<` `>` `<=` `>=` `+` `-` `*` `/` `%` `**`, of unary `-` and `+`, and of `==` `===` `!=` `!==` when the other operand is a number literal. Parentheses are unwrapped. Equality between two entries or against `null`, compound assignment, `&&` `||` `??` and `!` stay silent. Entry forms: `self` unless the code declares its own, `stats.Name`, `stats["Name"]`, `stats[expr]`.
+
+- **Q26.** (Ticket 06, user ruling 2026-10-05.) The code test joins the help preset file's `functions` block with its switch and call limit, like lookup and roll. A file without it is refused. The file is unreleased, so no compat. This is an export-shape change of the help preset file; the spec's earlier "no export changes shape" line was wrong.
+- **Q27.** (Ticket 06 intent, 2026-10-05.) The code test runs on the authored world, as the editor's Test Code does, with no playthrough state. Each world registration hands over its authored data beside the Tool Snapshot builder. With no world open, the analysis runs with name checks off and the Test Code run is skipped; the result carries `run: null` and `world: false`. `stat` is a required string; empty or unknown gives a blank `self`.
+- **Q28.** (Ticket 07 intent, 2026-10-05.) First bar run on the cloud default, 8 runs per case: five known cases 65% with the rider names, 70% without, 0% without the Quick Reference. The names ship removed (Q10). The persona case missed at 0/8 because nothing maps the player's word "character" to `persona`; 07 adds that mapping line to the Quick Reference, with "character" used only as the player's word, and proves it with a docs arm. Ticket 05's changelog entry was dropped on main, since the space fix alone is invisible to players.
+
+## Backlog
+
+- A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
+- Whole-stat error follow-ups from ticket 04's review: a number slot counts as a number literal for equality; bitwise operators join the flagged set; a non-name member such as `stats.length` gets a message that says `stats` holds entries by name. User's call on a ticket.
+- Fence tag-line drift: on the quotes-pin case, 5 of 8 runs put the slot tag on its own line, so the fence failed. A rider wording fix with its own probe. Raised by ticket 07.
