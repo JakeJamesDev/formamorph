@@ -33,6 +33,7 @@ Mobile drops the horizontal strip for the disclosure bar the Enter World flow us
 | Q11 | The edge rail is a new Design System pattern, documented with the showcase before adoption. Rejected on the way: a collapsible drawer inside the card, an icon-over-label strip, a five-plus-More overflow strip, a group row over a sub-tab strip, a captioned one-row strip, and a hover menu bar (F), which stays on the branch as the fallback |
 | Q12 | Mobile navigation is the Enter World flow's collapsed Categories widget: a full-width disclosure bar under the header with a tree icon, the label **Sections**, the current tab's name at the right, and a chevron that turns when open. Opening it expands the grouped tab list below the bar with the same grid-rows transition and `inert` while closed; picking a tab closes it. The horizontal scrolling strip goes. Replaces Q6's strip |
 | Q13 | The World Editor's back arrow draws with no outline: a plain ghost icon. Every icon button in the header row keeps its square size and never shrinks, on both layouts, so Find is never squeezed when the row gets tight |
+| Q14 | One changelog line for the effort. Every ticket's fragment carries the exact lead **The World Editor's tabs move to an icon rail on the window's edge.** and its own sentence after it; the first to land creates the line and the rest fold in. Ticket 03's sentence: "On Locations, List and Canvas are icons with tooltips at the right end of the search row." |
 
 ## User Stories
 
@@ -92,7 +93,7 @@ Mobile drops the horizontal strip for the disclosure bar the Enter World flow us
 
 - The World Editor guide's note that the `?` sits at the right end of the row above the list changes to the header row, right of Find. The guide's tab wording changes from a strip to the rail where it names the strip.
 - The Design System guide gains "Pattern: Edge Rail" with the showcase entry, documented before adoption (Q11).
-- Changelog fragment: one Minor Added entry under 👤 for the rail, the `?` move and the Locations switch.
+- Changelog fragment: one Minor Added entry under 👤 for the rail, the `?` move and the Locations switch. Every ticket writes the same bold lead, **The World Editor's tabs move to an icon rail on the window's edge.**, plus its own sentence; prepare folds them onto one line in landing order (Q14).
 
 ## Testing Decisions
 
