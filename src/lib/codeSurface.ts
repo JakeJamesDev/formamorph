@@ -35,7 +35,7 @@ export interface CodeSurface {
   members: ReadonlyMap<string, readonly SurfaceEntry[]>;
   /** Language-level names a reference may use without being a typo. Never offered. */
   languageNames: readonly string[];
-  /** The Variable menu. */
+  /** The Variable menu, as a flat list. Empty where `statMaps` is set: stat code's menu is a drill tree. */
   snippets: readonly InsertSnippet[];
   /** The warning for code that neither returns nor writes anything, or null when that is fine. */
   missingReturn: string | null;

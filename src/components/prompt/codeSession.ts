@@ -32,7 +32,7 @@ import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
 import { codeCompletions, codeDiagnostics, type CodeEntityNames, type CodePlaceholders } from '@/lib/statCodeAnalysis';
 import type { CodeSurface } from '@/lib/codeSurface';
-import type { InsertSnippet } from '@/lib/codeSnippets';
+import type { InsertSelection } from '@/lib/codeSnippets';
 
 /** Marks `{{slot}}` spans in the editor with the same class the read-only previews use. */
 const slotDecorations = ViewPlugin.fromClass(
@@ -208,7 +208,8 @@ export interface CodeSession {
   dom: HTMLElement;
   /** Write a value that came from outside the editor (the parent owns the text). */
   setValue: (value: string) => void;
-  insert: (snippet: InsertSnippet) => void;
+  /** Insert `text` at the caret as its own undo step, leaving `selection` selected or the caret after it. */
+  insert: (text: string, selection?: InsertSelection) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -380,13 +381,12 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         applyingExternal = false;
       }
     },
-    insert(snippet) {
+    insert(text, selection) {
       const { from, to } = view.state.selection.main;
-      const offset = snippet.select ? snippet.text.indexOf(snippet.select) : -1;
-      const anchor = offset >= 0 ? from + offset : from + snippet.text.length;
-      const head = offset >= 0 ? anchor + snippet.select!.length : anchor;
+      const anchor = from + (selection?.from ?? text.length);
+      const head = from + (selection?.to ?? text.length);
       view.dispatch({
-        changes: { from, to, insert: snippet.text },
+        changes: { from, to, insert: text },
         selection: { anchor, head },
         // Its own undo step, whatever was typed either side of it.
         annotations: isolateHistory.of('full'),

@@ -1,36 +1,31 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable } from 'lucide-react';
+import { Columns2, Maximize2, Minimize2, Redo2, Square, Undo2, Braces, Variable, type LucideIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
+import { InsertMenuButton } from '@/components/prompt/InsertMenuButton';
+import { VariableMenu } from '@/components/prompt/VariableMenu';
 import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } from '@/lib/promptLayout';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
-import { SLOT_SNIPPETS, type InsertSnippet } from '@/lib/codeSnippets';
+import { SLOT_SNIPPETS, snippetSelection, type InsertSelection, type InsertSnippet } from '@/lib/codeSnippets';
+import { buildVariableTree, type VariableNode } from '@/lib/statCodeVariableTree';
 import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeSession } from '@/components/prompt/codeSession';
 import type { CodeEntityNames, CodePlaceholders } from '@/lib/statCodeAnalysis';
 
 function InsertMenu({ items, label, Icon, onPick }: {
-  items: readonly InsertSnippet[]; label: string; Icon: typeof Braces; onPick: (snippet: InsertSnippet) => void;
+  items: readonly InsertSnippet[]; label: string; Icon: LucideIcon; onPick: (snippet: InsertSnippet) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        {/* No tip: the button wears the label beside its icon, so a tip would repeat it word for word. */}
-        <button
-          type="button" aria-label={label}
-          onMouseDown={(event) => event.preventDefault()}
-          className={cn(TOOLBAR_BTN, 'flex items-center gap-1 data-[state=open]:bg-accent data-[state=open]:text-foreground')}
-        >
-          <Icon className="h-4 w-4" />
-          <span className="text-meta">{label}</span>
-        </button>
+        <InsertMenuButton label={label} Icon={Icon} />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-1" onOpenAutoFocus={(event) => event.preventDefault()}>
         <div className="flex flex-col">
@@ -84,7 +79,7 @@ interface CodeAreaProps {
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
   value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
-  onToggleFullscreen, session, active, expose,
+  onToggleFullscreen, session, active, expose, variableTree,
 }: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits' | 'entities'> & {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
@@ -94,6 +89,8 @@ function CodeAreaBody({
   active: boolean;
   /** The inline copy reports its own field up, so full screen knows which box to grow out of. */
   expose?: (element: HTMLElement | null) => void;
+  /** The stat code Variable menu's tree, built from the names as they are now. */
+  variableTree: () => readonly VariableNode[];
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [measureRef, containerWidth] = useContainerWidth();
@@ -119,14 +116,15 @@ function CodeAreaBody({
     if (fullscreen) session.focus();
   }, [session, active, fullscreen]);
 
-  const insert = (snippet: InsertSnippet) => {
-    if (session) { session.insert(snippet); return; }
+  const insert = (text: string, selection?: InsertSelection) => {
+    if (session) { session.insert(text, selection); return; }
     // Fallback path: the chunk is still loading, so the plain textarea takes the insert itself.
     const area = hostRef.current?.querySelector('textarea');
     const start = area?.selectionStart ?? value.length;
     const end = area?.selectionEnd ?? value.length;
-    onChange(value.slice(0, start) + snippet.text + value.slice(end));
+    onChange(value.slice(0, start) + text + value.slice(end));
   };
+  const insertSnippet = (snippet: InsertSnippet) => insert(snippet.text, snippetSelection(snippet));
 
   const editSurface = (
     <div
@@ -167,8 +165,10 @@ function CodeAreaBody({
         <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           {label && <Label className="leading-none">{label}</Label>}
           {info}
-          {slots && <InsertMenu items={SLOT_SNIPPETS} label="Slot" Icon={Braces} onPick={insert} />}
-          <InsertMenu items={surface.snippets} label="Variable" Icon={Variable} onPick={insert} />
+          {slots && <InsertMenu items={SLOT_SNIPPETS} label="Slot" Icon={Braces} onPick={insertSnippet} />}
+          {surface.statMaps
+            ? <VariableMenu build={variableTree} onPick={(field) => insert(field.insert, field.selection)} />
+            : <InsertMenu items={surface.snippets} label="Variable" Icon={Variable} onPick={insertSnippet} />}
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
           <Tip tip="Undo">
@@ -266,6 +266,12 @@ export function CodeArea(props: CodeAreaProps) {
     if (element) sourceRef.current = element;
   }, []);
 
+  // A template has no world, so its tree types over each name.
+  const variableTree = useCallback(() => {
+    const { slots: template, statNames, placeholders, traits, entities } = latest.current;
+    return buildVariableTree(template ? undefined : { statNames, placeholders, traits, entities });
+  }, []);
+
   const { ariaLabel, placeholder, slots } = props;
   useEffect(() => {
     let live = true;
@@ -313,6 +319,7 @@ export function CodeArea(props: CodeAreaProps) {
         session={session}
         active={!morph.contentInOverlay}
         expose={holdSource}
+        variableTree={variableTree}
       />
       {/* No heading: the field's own caption rides in the toolbar and comes with it, so a header row
           would name the box twice and spend a row doing it. */}
@@ -324,6 +331,7 @@ export function CodeArea(props: CodeAreaProps) {
           onToggleFullscreen={morph.close}
           session={session}
           active={morph.contentInOverlay}
+          variableTree={variableTree}
         />
       </FullscreenShell>
     </>

@@ -1,6 +1,6 @@
 # 02: Drill Menu in the Stat Box
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 01 — Tree Builder and Sandbox Guard
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
