@@ -239,7 +239,7 @@ export const RemoteWorldCard = memo(function RemoteWorldCard({
               By {world.author?.username || "Unknown"}
             </span>
           </Tip>
-          {authorTier && <SupporterBadge tier={authorTier} since={world.author?.supporter?.since} />}
+          {authorTier && <SupporterBadge tier={authorTier} since={world.author?.supporter?.since} beatKey={world.author?.id ?? world.author?.username} />}
           <RoleBadge role={world.author?.role} />
         </span>
       )}

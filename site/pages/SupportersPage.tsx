@@ -31,7 +31,7 @@ function SupporterRow({ supporter }: { supporter: Supporter }) {
       >
         {supporter.username}
       </a>
-      <SupporterBadge tier={supporter.tier} since={supporter.since} />
+      <SupporterBadge tier={supporter.tier} since={supporter.since} beatKey={supporter.id} />
     </li>
   );
 }

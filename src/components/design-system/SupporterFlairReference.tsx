@@ -35,7 +35,7 @@ function ThreadRow({ name, tier, role }: Sample) {
     <div className="flex min-w-0 items-center gap-2">
       <UserAvatar username={name} size="md" supporter={tier ? { tier, since: null } : null} />
       <span className={cn('truncate text-label font-medium', tier && SUPPORTER_NAME_STYLES[tier])}>{name}</span>
-      {tier && <SupporterBadge tier={tier} />}
+      {tier && <SupporterBadge tier={tier} beatKey={`sample-${name}`} />}
       <RoleBadge role={role} />
     </div>
   );
@@ -65,7 +65,7 @@ function Sample() {
       <div className="space-y-2">
         <Meta>Badges Beside the Staff Badges</Meta>
         <div className="flex flex-wrap items-center gap-2">
-          {TIERS.map((tier) => <SupporterBadge key={tier} tier={tier} />)}
+          {TIERS.map((tier) => <SupporterBadge key={tier} tier={tier} beatKey={`sample-badge-${tier}`} />)}
           <RoleBadge role="mod" />
           <RoleBadge role="dev" />
           <RoleBadge role="admin" />

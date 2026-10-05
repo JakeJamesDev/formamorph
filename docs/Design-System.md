@@ -1151,7 +1151,9 @@ Supporter Flair marks an account that supports the project on Patreon. It is a p
 
 ### States
 
-The badge, the name color, and the ring are static. They have no hover, focus, or disabled state. A name that opens a profile keeps the focus ring of `UserName`.
+The name color and the ring are static. They have no hover, focus, or disabled state.
+
+The heart on the badge beats: two pulses in 600 ms, on the icon only. It beats once when the badge first shows for an account in a page load, and again each time the pointer or focus enters the badge. At rest nothing moves. Reduced motion skips the first beat and keeps the hover beat. A name that opens a profile keeps the focus ring of `UserName`.
 
 ### Contrast
 

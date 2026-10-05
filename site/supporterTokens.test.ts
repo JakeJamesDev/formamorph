@@ -25,3 +25,9 @@ describe('the site stylesheet defines the Supporter Flair colors', () => {
     expect(tokens(site, selector)).toEqual(expected);
   });
 });
+
+describe('both stylesheets load the badge heartbeat', () => {
+  it.each(['../src/index.css', './site.css'])('in %s', (file) => {
+    expect(strip(file)).toMatch(/@import\s+['"][^'"]*supporter-heart\.css['"]/);
+  });
+});

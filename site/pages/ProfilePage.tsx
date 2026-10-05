@@ -95,7 +95,7 @@ function ProfileBody({ username }: { username: string }) {
             {/* The name off the address bar while the fetch is in flight, so the page opens with the
                 thing the reader clicked rather than with a blank. */}
             <h1 className={cn('text-title font-semibold truncate', tier && SUPPORTER_NAME_STYLES[tier])}>{profile?.username ?? username}</h1>
-            {tier && <SupporterBadge tier={tier} since={profile?.supporter?.since} />}
+            {tier && <SupporterBadge tier={tier} since={profile?.supporter?.since} beatKey={profile?.id} />}
             <RoleBadge role={profile?.role} />
           </div>
 

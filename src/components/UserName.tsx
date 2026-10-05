@@ -35,7 +35,7 @@ export function UserName({ userId, username, fallback = 'Unknown', role, support
   const nameStyle = tier ? SUPPORTER_NAME_STYLES[tier] : undefined;
   const badge = (
     <>
-      {tier && <SupporterBadge tier={tier} since={supporter?.since} />}
+      {tier && <SupporterBadge tier={tier} since={supporter?.since} beatKey={userId ?? username} />}
       <RoleBadge role={role} />
     </>
   );

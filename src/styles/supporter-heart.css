@@ -1,0 +1,20 @@
+/* Supporter badge heart: two pulses on the icon only. The arrival class (set once per account per page
+   load) and hover or focus on the badge run the same keyframe; at rest nothing moves. Shared by the app
+   and the account site, which each load their own stylesheet. */
+@keyframes supporter-heartbeat {
+  0%, 28%, 62%, 100% { transform: scale(1); }
+  12%, 44% { transform: scale(1.4); }
+}
+.supporter-heart-arrive,
+.supporter-badge:hover .supporter-heart,
+.supporter-badge:focus-visible .supporter-heart {
+  animation: supporter-heartbeat 600ms ease-in-out;
+}
+
+/* The site zeroes every animation under reduced motion. The hover beat answers the player, so it stays. */
+@media (prefers-reduced-motion: reduce) {
+  .supporter-badge:hover .supporter-heart,
+  .supporter-badge:focus-visible .supporter-heart {
+    animation-duration: 600ms !important;
+  }
+}
