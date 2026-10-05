@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import type { ReasoningFieldTarget } from '@/components/modals/promptReasoningField';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { AiSettingsSnapshot } from '@/lib/aiRequest/aiRequestSpec';
-import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { useAiSettingsSnapshot } from '@/lib/aiRequest/useAiSettingsSnapshot';
 import { helpRoutes } from '@/lib/formaquestion/helpRoutes';
 import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
@@ -27,7 +27,7 @@ export interface HelpAi {
   /** What the Reasoning row reads off the endpoint answers resolve to. */
   answerTarget: ReasoningFieldTarget;
   /** Asks the app to open a surface. */
-  requestSurface: (id: SurfaceId) => void;
+  requestSurface: (route: SurfaceRoute) => void;
 }
 
 /**

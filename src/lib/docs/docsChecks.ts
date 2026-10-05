@@ -1,5 +1,5 @@
 /** The docs coverage checks: one readable line per problem, over docs passed in as data. */
-import { docHeadings, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText, ROUTE_LINE } from './headingAnchors';
+import { docHeadings, forEachProseLine, isHowToHeading, KEYWORD_LINE, plainText, ROUTE_LINE, routeParts, type DocHeading } from './headingAnchors';
 import { docsHrefs, docTargetId, hrefParts, type DocTarget } from './docsLinks';
 
 /** Docs pages by wiki page name (the file name without `.md`). */
@@ -159,34 +159,74 @@ export function keywordLineProblems(pages: DocsPages): string[] {
   return problems;
 }
 
+/** The targets each surface registers; most surfaces register none. */
+export type SurfaceTargets = Partial<Record<string, readonly string[]>>;
+
 export interface RouteTargets {
   /** Every surface id the app has. */
   surfaceIds: readonly string[];
   /** Surfaces players never see, with the reason. */
   exclusions: Partial<Record<string, string>>;
+  /** The targets each surface registers. */
+  targets: SurfaceTargets;
 }
 
-/** Route lines that name no surface, an unknown or excluded one, or that repeat in one section. */
-export function routeLineProblems(pages: DocsPages, { surfaceIds, exclusions }: RouteTargets): string[] {
-  const problems: string[] = [];
-  const known = new Set(surfaceIds);
+/** Each guide-page route line outside code, with the heading it sits under. */
+function forEachRouteLine(
+  pages: DocsPages,
+  visit: (route: { page: string; line: number; heading: DocHeading | undefined; value: string }) => void,
+): void {
   for (const [page, markdown] of Object.entries(pages)) {
     if (NON_GUIDE_PAGES.includes(page)) continue;
-    const headingLines = new Set(docHeadings(markdown).map((heading) => heading.line));
-    let routed = false;
+    const headings = new Map(docHeadings(markdown).map((heading) => [heading.line, heading]));
+    let heading: DocHeading | undefined;
     forEachProseLine(markdown, (source, line) => {
-      if (headingLines.has(line)) routed = false;
-      const id = ROUTE_LINE.exec(source)?.[1];
-      if (id === undefined) return;
-      const where = `${page}:${line + 1}`;
-      if (routed) problems.push(`${where} section has a second route line`);
-      routed = true;
-      if (id === '') problems.push(`${where} route line names no surface`);
-      else if (!known.has(id)) problems.push(`${where} route ${id} is not a surface id`);
-      else if (exclusions[id] !== undefined) problems.push(`${where} route ${id} is on a ${exclusions[id]} surface that players never see`);
+      heading = headings.get(line) ?? heading;
+      const value = ROUTE_LINE.exec(source)?.[1];
+      if (value !== undefined) visit({ page, line, heading, value });
     });
   }
+}
+
+/**
+ * Route lines that name no surface, an unknown or excluded one, or a target the surface does not register, and
+ * route lines that repeat in one section.
+ */
+export function routeLineProblems(pages: DocsPages, { surfaceIds, exclusions, targets }: RouteTargets): string[] {
+  const problems: string[] = [];
+  const known = new Set(surfaceIds);
+  // A section is its page and heading line; -1 is the text above the page's first heading.
+  const routed = new Set<string>();
+  forEachRouteLine(pages, ({ page, line, heading, value }) => {
+    const where = `${page}:${line + 1}`;
+    const section = `${page}:${heading?.line ?? -1}`;
+    if (routed.has(section)) problems.push(`${where} section has a second route line`);
+    routed.add(section);
+    const { surface: id, target } = routeParts(value);
+    if (id === '') problems.push(`${where} route line names no surface`);
+    else if (!known.has(id)) problems.push(`${where} route ${id} is not a surface id`);
+    else if (exclusions[id] !== undefined) problems.push(`${where} route ${id} is on a ${exclusions[id]} surface that players never see`);
+    else if (target !== undefined && !targets[id]?.includes(target)) {
+      const name = heading ? plainText(heading.text) : page;
+      const problem = target === '' ? 'the target is empty' : `${id} has no target ${target}`;
+      problems.push(`${where} section ${name} routes to ${value}, but ${problem}`);
+    }
+  });
   return problems;
+}
+
+/**
+ * Guide how-to sections whose route names a surface with registered targets but no target of its own: the
+ * sections a target could sharpen. A report, never a failure.
+ */
+export function untargetedSections(pages: DocsPages, targets: SurfaceTargets): string[] {
+  const sections: string[] = [];
+  forEachRouteLine(pages, ({ page, heading, value }) => {
+    const { surface, target } = routeParts(value);
+    if (!heading || !isHowToHeading(plainText(heading.text)) || target !== undefined) return;
+    if (targets[surface]?.length) sections.push(docTargetId({ page, anchor: heading.anchor }));
+  });
+  return sections;
 }
 
 export interface SurfaceRouteInput {

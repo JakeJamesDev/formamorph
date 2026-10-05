@@ -8,8 +8,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import type { DocsIndex } from '@/lib/docs/docsIndex';
 import { loadDocsIndex } from '@/lib/docs/loadDocsIndex';
 import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
-import type { SurfaceId } from '@/lib/docs/surfaceMap';
-import { opensInHelpWindow, resolveSurface, stepTab } from '@/lib/surface/surfaceRoute';
+import { opensInHelpWindow, resolveSurface, stepTab, type SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
@@ -314,11 +313,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
 
   // Take Me There. The window opens its own surfaces; any other goes to the app, and the sheet steps aside (Q24, Q30).
   const { requestSurface } = ai;
-  const go = useCallback((id: SurfaceId) => {
-    const steps = resolveSurface(id);
+  const go = useCallback((route: SurfaceRoute) => {
+    const steps = resolveSurface(route.id);
     if (!steps) return;
     if (!opensInHelpWindow(steps)) {
-      requestSurface(id);
+      requestSurface(route);
       if (sheet) closeWindow();
     } else if (steps.dialog === 'formaquestionSettings') {
       setSettingsTab(asFormaquestionSettingsTab(stepTab(steps, 'formaquestionSettings')) ?? 'general');

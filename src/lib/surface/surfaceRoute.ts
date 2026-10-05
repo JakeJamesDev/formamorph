@@ -4,6 +4,7 @@
  */
 import { DEV_MODAL_TABS, DEV_VIEWS, type DevModal, type DevView } from '@/lib/devRoutes';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS, type SurfaceId } from '@/lib/docs/surfaceMap';
+import { isSurfaceTarget } from './surfaceTargets';
 
 export type TabKey = keyof typeof DEV_MODAL_TABS;
 type LedgerTab<L extends TabKey> = (typeof DEV_MODAL_TABS)[L][number];
@@ -15,6 +16,14 @@ export interface SurfaceSteps {
   dialog: DevModal | null;
   /** The tabs to select, outermost first. */
   tabs: readonly SurfaceId[];
+  /** The registered target to land on inside the last step. */
+  target?: string;
+}
+
+/** A guide route: the surface to open and, optionally, the target inside it. */
+export interface SurfaceRoute {
+  id: SurfaceId;
+  target?: string;
 }
 
 /**
@@ -126,19 +135,27 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
 const KNOWN: ReadonlySet<string> = new Set(SURFACE_IDS);
 const VIEWS: ReadonlySet<string> = new Set(DEV_VIEWS);
 
-/** The steps that open a surface, or null for an id players cannot open. */
-export function resolveSurface(id: string): SurfaceSteps | null {
+/**
+ * The steps that open a surface, or null for an id players cannot open. A target the surface registers rides
+ * on the steps; any other target opens the bare surface.
+ */
+export function resolveSurface(id: string, target?: string): SurfaceSteps | null {
+  const steps = surfaceSteps(id);
+  return steps && target !== undefined && isSurfaceTarget(id, target) ? { ...steps, target } : steps;
+}
+
+function surfaceSteps(id: string): SurfaceSteps | null {
   if (!KNOWN.has(id) || SURFACE_EXCLUSIONS[id as SurfaceId]) return null;
   if (VIEWS.has(id)) return { view: id as DevView, dialog: null, tabs: [] };
   const dot = id.indexOf('.');
   if (dot < 0) {
     const route = DIALOGS[id as DevModal];
-    if ('ancestor' in route) return route.ancestor === null ? null : resolveSurface(route.ancestor);
+    if ('ancestor' in route) return route.ancestor === null ? null : surfaceSteps(route.ancestor);
     return { view: route.host === 'any' ? null : route.host, dialog: id as DevModal, tabs: [] };
   }
   const route = LEDGERS[id.slice(0, dot) as TabKey];
-  if ('ancestor' in route) return resolveSurface(route.ancestor);
-  const parent = resolveSurface(route.parent);
+  if ('ancestor' in route) return surfaceSteps(route.ancestor);
+  const parent = surfaceSteps(route.parent);
   return parent && { ...parent, tabs: [...parent.tabs, id as SurfaceId] };
 }
 

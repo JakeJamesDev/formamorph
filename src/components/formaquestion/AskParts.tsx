@@ -11,7 +11,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { withoutAttachment } from '@/lib/actionAttachments';
 import type { DocSection } from '@/lib/docs/docsIndex';
-import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { withReaderLinks } from '@/lib/docs/docsReader';
 import type { Guide } from '@/lib/formaquestion/guide';
 import { helpRevealSpec, helpRevealTiming } from '@/lib/formaquestion/helpReveal';
@@ -127,7 +127,7 @@ export function Answer({ guide, exchange, settings, onSettingsChange, onOpen, on
   settings: HelpSettings;
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
-  onGo: (id: SurfaceId) => void;
+  onGo: (route: SurfaceRoute) => void;
 }) {
   const { answer, reasoning, reasoningMs, status, stage, sources, question, flagged, nearest } = exchange;
   // The wait line hides while the model's reasoning streams: the Thinking header shows that wait.
@@ -199,7 +199,7 @@ function Conversation({ guide, exchanges, busy, settings, onSettingsChange, onOp
   exchanges: readonly HelpExchange[];
   busy: boolean;
   onOpen: (id: string) => void;
-  onGo: (id: SurfaceId) => void;
+  onGo: (route: SurfaceRoute) => void;
 }) {
   const { viewportRef, onScroll, away, toEnd } = useFollowEnd(exchanges);
   return (
@@ -284,7 +284,7 @@ export function AskPanel({ guide, chat, settings, onSettingsChange, draft, onDra
   draft: string;
   onDraftChange: (text: string) => void;
   onOpen: (id: string) => void;
-  onGo: (id: SurfaceId) => void;
+  onGo: (route: SurfaceRoute) => void;
 }) {
   return (
     <>

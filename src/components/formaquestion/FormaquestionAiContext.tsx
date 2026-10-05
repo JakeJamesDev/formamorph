@@ -10,7 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { HELP_SAMPLER_FIELDS, type HelpQueryTrace, type HelpRequestTrace, type HelpSamplers, type HelpTrace, type HelpTraceSection } from '@/lib/formaquestion/helpTrace';
 import { cn } from '@/lib/utils';
-import type { SurfaceId } from '@/lib/docs/surfaceMap';
+import type { SurfaceRoute } from '@/lib/surface/surfaceRoute';
+import { routeText } from '@/lib/surface/surfaceTargets';
 import { answerRoute } from './answerRoute';
 import { AI_CONTEXT_COPY, GENERAL_COPY } from './formaquestionSettingsTabs';
 import type { HelpExchange } from './useHelpChat';
@@ -82,7 +83,7 @@ function QueryBlock({ query, sent }: { query: HelpQueryTrace; sent: ReadonlySet<
 }
 
 /** The Search block of one question: the screen, the preset, each query, the sections sent, and the route. */
-function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceId | null }) {
+function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceRoute | null }) {
   const sent = useMemo(() => new Set(trace.sent.map((section) => section.id)), [trace.sent]);
   const off = trace.search?.on.length === 0;
   return (
@@ -101,7 +102,7 @@ function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceId | nu
         </>
       )}
       <SectionList label={AI_CONTEXT_COPY.sentList} sections={trace.sent} sent={sent} />
-      <p>{AI_CONTEXT_COPY.route}: {route ?? AI_CONTEXT_COPY.none}</p>
+      <p>{AI_CONTEXT_COPY.route}: {route ? routeText(route.id, route.target) : AI_CONTEXT_COPY.none}</p>
     </div>
   );
 }

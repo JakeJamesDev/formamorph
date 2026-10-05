@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { HELP_TOPICS } from '@/lib/helpTopics';
+import { SURFACE_TARGETS } from '@/lib/surface/surfaceTargets';
 import {
   docsLinkProblems, glossaryProblems, helpTopicProblems, indexProblems, keywordLineProblems, routeLineProblems,
-  surfaceCoverageProblems, surfaceRouteProblems, HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
+  surfaceCoverageProblems, surfaceRouteProblems, untargetedSections, HOME_PAGE, SIDEBAR_PAGE, pageNameOf, type DocsPages,
   type SurfaceRouteInput,
 } from './docsChecks';
 import { createDocsIndex } from './docsIndex';
@@ -54,8 +55,13 @@ describe('docs coverage of the app', () => {
     expect(keywordLineProblems(DOCS)).toEqual([]);
   });
 
-  it('points every route line at a surface players see', () => {
-    expect(routeLineProblems(DOCS, { surfaceIds: SURFACE_IDS, exclusions: SURFACE_EXCLUSIONS })).toEqual([]);
+  it('points every route line at a surface players see, and a target it registers', () => {
+    expect(routeLineProblems(DOCS, { surfaceIds: SURFACE_IDS, exclusions: SURFACE_EXCLUSIONS, targets: SURFACE_TARGETS })).toEqual([]);
+  });
+
+  it('reports how-to sections that could name a target (report only)', () => {
+    const untargeted = untargetedSections(DOCS, SURFACE_TARGETS);
+    if (untargeted.length > 0) console.info(`How-to sections whose surface has targets but whose route names none:\n${untargeted.join('\n')}`);
   });
 
   it('gives every surface-map section the route of its surface', () => {
@@ -288,7 +294,7 @@ describe('keywordLineProblems', () => {
 });
 
 describe('routeLineProblems', () => {
-  const surfaces = { surfaceIds: ['stats', 'stats.panel', 'admin'], exclusions: { admin: 'staff' } };
+  const surfaces = { surfaceIds: ['stats', 'stats.panel', 'admin'], exclusions: { admin: 'staff' }, targets: { 'stats.panel': ['bar-color'] } };
   const route = (line: string) => ({ P: `# P\n\n## How to Go\n<!-- keywords: leave -->\n${line}\n\nText.\n` });
 
   it('passes a route that names a surface, and a section with no route', () => {
@@ -300,6 +306,26 @@ describe('routeLineProblems', () => {
     expect(routeLineProblems(route('<!-- route: stats.pane -->'), surfaces)).toEqual(['P:5 route stats.pane is not a surface id']);
     expect(routeLineProblems(route('<!-- route: -->'), surfaces)).toEqual(['P:5 route line names no surface']);
     expect(routeLineProblems(route('<!--route: stats panel-->'), surfaces)).toEqual(['P:5 route stats panel is not a surface id']);
+  });
+
+  it('passes a fragment the surface registers', () => {
+    expect(routeLineProblems(route('<!-- route: stats.panel#bar-color -->'), surfaces)).toEqual([]);
+  });
+
+  it('fails a fragment the surface does not register, naming the page and the section', () => {
+    expect(routeLineProblems(route('<!-- route: stats.panel#bar-colour -->'), surfaces)).toEqual([
+      'P:5 section How to Go routes to stats.panel#bar-colour, but stats.panel has no target bar-colour',
+    ]);
+    expect(routeLineProblems(route('<!-- route: stats#bar-color -->'), surfaces)).toEqual([
+      'P:5 section How to Go routes to stats#bar-color, but stats has no target bar-color',
+    ]);
+    expect(routeLineProblems(route('<!-- route: stats.panel# -->'), surfaces)).toEqual([
+      'P:5 section How to Go routes to stats.panel#, but the target is empty',
+    ]);
+  });
+
+  it('checks the surface before the fragment', () => {
+    expect(routeLineProblems(route('<!-- route: stats.pane#bar-color -->'), surfaces)).toEqual(['P:5 route stats.pane is not a surface id']);
   });
 
   it('fails a route on an excluded surface', () => {
@@ -314,6 +340,30 @@ describe('routeLineProblems', () => {
   it('checks no route line inside code or outside the guide', () => {
     const pages = { P: '# P\n\n```md\n<!-- route: nope -->\n```\n', 'Writing-Guide': '# W\n\n<!-- route: nope -->\n' };
     expect(routeLineProblems(pages, surfaces)).toEqual([]);
+  });
+});
+
+describe('untargetedSections', () => {
+  const targets = { 'stats.panel': ['bar-color'] };
+  const section = (heading: string, route: string) => `## ${heading}\n<!-- keywords: k -->\n<!-- route: ${route} -->\n\nText.\n`;
+
+  it('lists how-to sections on a targeted surface whose route names no target', () => {
+    const pages = {
+      P: [
+        '# P\n',
+        section('How to Paint the Bar', 'stats.panel'),
+        section('How to Size the Bar', 'stats.panel#bar-color'),
+        section('How to Open Stats', 'stats'),
+        section('The Panel', 'stats.panel'),
+        '## How to Read\n\nNo route.\n',
+      ].join('\n'),
+      'Writing-Guide': `# W\n\n${section('How to Write', 'stats.panel')}`,
+    };
+    expect(untargetedSections(pages, targets)).toEqual(['P#how-to-paint-the-bar']);
+  });
+
+  it('lists nothing when no surface registers a target', () => {
+    expect(untargetedSections({ P: `# P\n\n${section('How to Paint the Bar', 'stats.panel')}` }, {})).toEqual([]);
   });
 });
 
