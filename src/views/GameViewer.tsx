@@ -4761,6 +4761,7 @@ const GameViewer = ({
             onClose={() => setIsEditingWorld(false)}
             initialTab={surfaceNav.tab('worldEditor')}
             initialBenchTab={surfaceNav.tab('worldEditorBench')}
+            initialTarget={surfaceNav.target}
             requestKey={surfaceNav.key}
           />
         </DialogContent>

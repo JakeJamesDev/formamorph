@@ -8,6 +8,7 @@ import { ListSearchToolbar, type ListAddSlot } from '@/components/ListToolbar';
 import { useListSearch, type ListSearch } from '@/components/listToolbarHooks';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
+import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { labelPlaceholders } from '@/lib/placementLetters';
 
 /** One row of the flat search list. `name` is the label its row shows, and what the search matches. */
@@ -57,7 +58,7 @@ export type ListEditorAdapter = {
 export type ListEditorParts = {
   search: ListSearch;
   /** The search box and + control, with the host's classes on its row, its extras after the +, and `after` last. */
-  toolbar: (className?: string, extras?: { children?: ReactNode; after?: ReactNode }) => ReactNode;
+  toolbar: (className?: string, extras?: { children?: ReactNode; after?: ReactNode; target?: TargetAttribute }) => ReactNode;
   list: ReactNode;
   detail: ReactNode;
   footer: ReactNode;
@@ -130,7 +131,7 @@ export function useListEditor(
   return {
     search,
     toolbar: (className, extras) => (
-      <ListSearchToolbar className={className} search={search} placeholder={adapter.placeholder} add={adapter.add} after={extras?.after}>
+      <ListSearchToolbar className={className} search={search} placeholder={adapter.placeholder} add={adapter.add} after={extras?.after} target={extras?.target}>
         {extras?.children}
       </ListSearchToolbar>
     ),

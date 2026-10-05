@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, ty
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
+import { landingControl } from '@/lib/landingPulse';
+import { TARGET_ATTRIBUTE, targetAttribute } from '@/lib/surface/surfaceTargets';
+import { useLanding } from '@/lib/surface/useLanding';
 import { editorTabsFor } from './worldEditorTabs';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
@@ -100,15 +103,31 @@ import { Tip } from '@/components/ui/tooltip';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { useHelpWorldSource } from '@/lib/formaquestion/helpWorld';
+
+/** The Take Me There mark for a tab's search and add row; Overview has no list. */
+function listToolbarTarget(tab: string) {
+  switch (tab) {
+    case 'stats': return targetAttribute('worldEditor.stats', 'list-toolbar');
+    case 'entities': return targetAttribute('worldEditor.entities', 'list-toolbar');
+    case 'locations': return targetAttribute('worldEditor.locations', 'list-toolbar');
+    case 'traits': return targetAttribute('worldEditor.traits', 'list-toolbar');
+    case 'dictionary': return targetAttribute('worldEditor.dictionary', 'list-toolbar');
+    case 'placeholders': return targetAttribute('worldEditor.placeholders', 'list-toolbar');
+    default: return undefined;
+  }
+}
+
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
-  initialTab, initialBenchTab, requestKey, leaveRef,
+  initialTab, initialBenchTab, initialTarget, requestKey, leaveRef,
 }: {
   onClose: () => void;
   /** A tab an outside request selects. */
   initialTab?: string;
   /** A Test Bench instrument an outside request opens. */
   initialBenchTab?: string;
+  /** The route text of the control a Take Me There request lands on. */
+  initialTarget?: string;
   /** Changes with each outside request, so a repeat request selects its tab again. */
   requestKey?: string;
   /** Filled with the editor's leave step: it runs `then` now, or after the unsaved-changes prompt. */
@@ -212,6 +231,13 @@ const WorldEditorInner = ({
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState(initialTab ?? "overview");
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab, requestKey]);
+  // The Bench's drawer on mobile and its popover sit outside the editor's own tree, so the lookup is document-wide.
+  const landTarget = useLanding(
+    (route: string) => document.querySelector<HTMLElement>(`[${TARGET_ATTRIBUTE}="${route}"]`),
+    // A row with only a button, the Bench's Placeholder Rolls, focuses that button.
+    { pulse: true, focus: (row) => landingControl(row) ?? row.querySelector<HTMLElement>('button') },
+  );
+  useEffect(() => { if (initialTarget) landTarget(initialTarget); }, [initialTarget, requestKey, landTarget]);
   // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
   useEffect(() => {
     if (!visibleTabs.some((t) => t.value === activeTab)) setActiveTab('overview');
@@ -846,6 +872,7 @@ const WorldEditorInner = ({
           className="ml-auto"
           onClick={() => openFind(false)}
           aria-label="Find and replace"
+          {...targetAttribute('worldEditor', 'find-button')}
         >
           <Search className="h-4 w-4" />
         </Button>
@@ -863,7 +890,12 @@ const WorldEditorInner = ({
       </span>
       {/* The span takes the tip: a disabled switch gets no pointer events of its own. */}
       <Tip tip={touring ? 'End the Authoring Tour to switch modes' : undefined} labelsChild={false}>
-        <span data-tour-anchor="editor-mode" className="inline-flex" tabIndex={touring ? 0 : undefined}>
+        <span
+          data-tour-anchor="editor-mode"
+          className="inline-flex"
+          tabIndex={touring ? 0 : undefined}
+          {...targetAttribute('worldEditor', 'editor-mode')}
+        >
           <TutorialPopover entry={tutorial?.id === EDITOR_MODE_TUTORIAL_ID ? tutorial : null} nav={tutorialNav}>
             <ToggleGroup
               type="single"
@@ -950,7 +982,7 @@ const WorldEditorInner = ({
   );
   // A tab with no list (Overview) gets the row anyway, holding only its `?` at the same right end.
   const addSearchBar = listEditorParts
-    ? listEditorParts.toolbar('mt-4', { children: locationViewToggle, after: helpButton })
+    ? listEditorParts.toolbar('mt-4', { children: locationViewToggle, after: helpButton, target: listToolbarTarget(activeTab) })
     : helpButton && <ListToolbar className="mt-4 self-end">{helpButton}</ListToolbar>;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
@@ -1068,7 +1100,7 @@ const WorldEditorInner = ({
                   {addSearchBar}
                   {tabPanels(!listEditorParts ? (
                     // Overview isn't master-detail — stack its two forms.
-                    <ScrollArea className="flex-grow min-h-0 mt-4">
+                    <ScrollArea landingRoom className="flex-grow min-h-0 mt-4">
                       {listContent}
                       {detailContent}
                     </ScrollArea>
@@ -1111,7 +1143,7 @@ const WorldEditorInner = ({
                             panel outside the tab root — the tab's own content is this list. */}
                         {tabPanels(
                           <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
-                            {listOwnsSlot ? listContent : <ScrollArea className="h-full">{listContent}</ScrollArea>}
+                            {listOwnsSlot ? listContent : <ScrollArea landingRoom className="h-full">{listContent}</ScrollArea>}
                           </div>
                         )}
                       </Tabs>
@@ -1128,7 +1160,7 @@ const WorldEditorInner = ({
                   <CardContent className="flex-1 min-h-0 p-0">
                     {detailFills
                       ? <div data-detail-fill className="h-full flex flex-col">{detailContent}</div>
-                      : <ScrollArea className="h-full">{detailContent}</ScrollArea>}
+                      : <ScrollArea landingRoom className="h-full">{detailContent}</ScrollArea>}
                   </CardContent>
                   {detailFooter}
                 </Card>

@@ -18,6 +18,7 @@ import { estimateTokens } from '@/lib/memoryUtils';
 import { activeDescriptor, statValueLabel } from '@/lib/statContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { OpeningProps } from '@/lib/testBench/benchProps';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import type {
   OpeningData, OpeningPoolRow, OpeningRollGroup, OpeningStat, OpeningTrait,
 } from '@/lib/testBench/opening';
@@ -315,7 +316,8 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
           </div>
         )}
 
-        <div className="flex items-baseline gap-2 pt-1">
+        {/* The row stays when no roll is open to a reroll, so it is the landing for the Reroll button. */}
+        <div className="flex items-baseline gap-2 pt-1" {...targetAttribute('worldEditorBench.opening', 'placeholder-rolls')}>
           <p className="text-meta font-medium">Placeholder Rolls</p>
           <p className="min-w-0 flex-grow truncate text-meta text-muted-foreground">
             what this fresh game drew

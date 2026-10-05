@@ -41,6 +41,8 @@ export function useSurfaceNav() {
     settings: nav ? settingsLanding(nav.steps) : undefined,
     /** The route text of the row the request lands on, for the surfaces the page lands itself. Settings and the World Editor land their own. */
     pageTarget: nav && landsOnPage(nav.steps) ? targetRoute(nav.steps) : undefined,
+    /** The route text of the row the request names, for a host to hand to the surface it opens. */
+    target: nav ? targetRoute(nav.steps) : undefined,
   };
 }
 

@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MENU_ROW } from '@/components/menuRow';
 import { ListAddContext, useListAdd, type ListAddApi, type ListSearch } from '@/components/listToolbarHooks';
+import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { cn } from '@/lib/utils';
 
 /** The row above an editor list: the + button first, then whatever the list offers beside it. */
-export function ListToolbar({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('flex flex-shrink-0 items-center gap-2', className)}>{children}</div>;
+export function ListToolbar({ className, children, target }: { className?: string; children: ReactNode; target?: TargetAttribute }) {
+  return <div className={cn('flex flex-shrink-0 items-center gap-2', className)} {...target}>{children}</div>;
 }
 
 /** The + icon button that adds to an editor list. Forwards its ref so a popover can use it as a trigger. */
@@ -43,18 +44,20 @@ export type ListAddSlot =
  * Rows compose the menu with `ListMenuRow`, or reach the add through `useListAdd`. The + carries the
  * authoring tour's `list-add` anchor and the box opts out of the find bar's field walk.
  */
-export function ListSearchToolbar({ search, add, placeholder, className, children, after }: {
+export function ListSearchToolbar({ search, add, placeholder, className, children, after, target }: {
   search: ListSearch;
   add: ListAddSlot;
   placeholder: string;
   className?: string;
   children?: ReactNode;
   after?: ReactNode;
+  /** Marks the row as a Take Me There target. */
+  target?: TargetAttribute;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const api: ListAddApi = { add: (action) => { action(search.typed); search.clear(); setMenuOpen(false); } };
   return (
-    <ListToolbar className={className}>
+    <ListToolbar className={className} target={target}>
       {'menu' in add ? (
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger asChild>

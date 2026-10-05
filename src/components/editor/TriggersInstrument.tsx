@@ -18,6 +18,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { isRuleFixable, type Finding } from '@/lib/testBench/rules';
 import { describeSemantic } from '@/lib/testBench/semantic';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import {
   describeHitOrigin, describeNearMiss, messageCount, otherHistoryHits, HISTORY_SEPARATOR, REASON_LABEL,
   type RenderedBlock, type SemanticSummary, type TriggerEntry, type TriggerMark, type TriggerReport,
@@ -392,15 +393,18 @@ export function TriggersInstrument({
           Paste Last Turn
         </Button>
       )}
-      <Textarea
-        size="sm"
-        value={text}
-        onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Paste scene text to see what it makes fire…"
-        aria-label="Scene text"
-        className="min-h-[64px] shrink-0 resize-none"
-        rows={3}
-      />
+      {/* The wrapper takes the Landing Pulse: a text area draws no ring of its own. */}
+      <div className="shrink-0" {...targetAttribute('worldEditorBench.triggers', 'scene-text')}>
+        <Textarea
+          size="sm"
+          value={text}
+          onChange={(e) => onTextChange(e.target.value)}
+          placeholder="Paste scene text to see what it makes fire…"
+          aria-label="Scene text"
+          className="min-h-[64px] resize-none"
+          rows={3}
+        />
+      </div>
       <div className="shrink-0 space-y-1.5">
         <Foldaway
           label="History"
