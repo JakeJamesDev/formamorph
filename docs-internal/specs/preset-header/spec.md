@@ -1,6 +1,7 @@
 # Spec: Preset Header
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-04. Tickets 01-10 done, last landing 42386bf5. Closed without gates.
 Spec session: preset-header — spec
 
 ## Problem Statement
