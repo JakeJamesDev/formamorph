@@ -871,6 +871,63 @@ function checkClockField(member: SyntaxNode, code: string): CodeDiagnostic | nul
   return { from: field.from, to: field.to, severity: 'error', message: suggestion ? `${lead} Did you mean “${suggestion}”?` : lead };
 }
 
+/** Operators that read their operands as numbers. */
+const NUMERIC_OPS = new Set(['<', '>', '<=', '>=', '+', '-', '*', '/', '%', '**']);
+/** Operators that compare by identity, so an entry is only wrong against a number. */
+const EQUALITY_OPS = new Set(['==', '===', '!=', '!==']);
+/** Unary operators that read their operand as a number. */
+const SIGN_OPS = new Set(['-', '+']);
+
+/** A node's children without comments. */
+function codeChildren(node: SyntaxNode): SyntaxNode[] {
+  const children: SyntaxNode[] = [];
+  for (let child = node.firstChild; child; child = child.nextSibling) if (!child.type.isSkipped) children.push(child);
+  return children;
+}
+
+/** The expression inside any parentheses around `node`. */
+function unwrapParens(node: SyntaxNode): SyntaxNode {
+  let at = node;
+  while (at.name === 'ParenthesizedExpression') {
+    const inner = codeChildren(at).find((child) => child.name !== '(' && child.name !== ')');
+    if (!inner) break;
+    at = inner;
+  }
+  return at;
+}
+
+/** Whether `node` is a number literal, signed or not. */
+function isNumberLiteral(node: SyntaxNode, code: string): boolean {
+  const at = unwrapParens(node);
+  if (at.name !== 'UnaryExpression') return at.name === 'Number';
+  const [op, operand] = codeChildren(at);
+  return !!op && !!operand && SIGN_OPS.has(code.slice(op.from, op.to)) && unwrapParens(operand).name === 'Number';
+}
+
+/** The operands an operator reads as numbers. Equality reads an entry as a number only against a number. */
+function numericOperands(node: SyntaxNode, code: string, inSlot: (from: number, to: number) => boolean): SyntaxNode[] {
+  const children = codeChildren(node);
+  const [op, ...operands] = node.name === 'UnaryExpression' ? children : [children[1], children[0], children[2]];
+  if (!op || operands.some((operand) => !operand) || inSlot(op.from, op.to)) return [];
+  const text = code.slice(op.from, op.to);
+  if (node.name === 'UnaryExpression') return SIGN_OPS.has(text) ? operands : [];
+  if (NUMERIC_OPS.has(text)) return operands;
+  if (!EQUALITY_OPS.has(text)) return [];
+  const [left, right] = operands;
+  return [isNumberLiteral(right, code) ? left : null, isNumberLiteral(left, code) ? right : null]
+    .filter((operand): operand is SyntaxNode => operand !== null);
+}
+
+/** What is wrong with an operator that reads a whole stat entry as a number: a comparison is false, and arithmetic gives NaN. */
+function checkWholeStatOperands(
+  node: SyntaxNode, code: string, isEntry: (operand: SyntaxNode) => boolean, inSlot: (from: number, to: number) => boolean,
+): CodeDiagnostic[] {
+  return numericOperands(node, code, inSlot).map(unwrapParens).filter(isEntry).map(({ from, to }) => {
+    const entry = code.slice(from, to);
+    return { from, to, severity: 'error', message: `${entry} is a whole stat, not a number. Use ${entry}.value.` };
+  });
+}
+
 /** What is wrong with an entity or dictionary name: several share it, or nothing authored has it. A library
  *  item can still have it, so the miss is only a warning. */
 function checkOwnerName(ref: EntryRef, names: readonly string[], noun: 'entity' | 'dictionary'): CodeDiagnostic | null {
@@ -1069,6 +1126,14 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
   const dictionariesInScope = rules.dictionaries && !declared.has('dictionaries');
   const statsInScope = rules.stats && !declared.has('stats');
   const clockInScope = rules.stats && !declared.has('clock');
+  const selfInScope = rules.self && !declared.has('self');
+  /** Whether an operand is a whole stat entry: `self`, or one key of `stats`. */
+  const isStatEntry = (operand: SyntaxNode) => {
+    if (operand.name === 'VariableName') return selfInScope && code.slice(operand.from, operand.to) === 'self';
+    const root = operand.name === 'MemberExpression' ? operand.firstChild : null;
+    return statsInScope && root?.name === 'VariableName' && code.slice(root.from, root.to) === 'stats';
+  };
+  const inSlot = (from: number, to: number) => overlapsAny(from, to, ranges);
   /** Whether a chain's root is an owner global the code has not shadowed. */
   const ownerRootInScope = (root: string | null) =>
     (root === 'entities' && entitiesInScope) || (root === 'persona' && personaInScope) || (root === 'dictionaries' && dictionariesInScope);
@@ -1174,6 +1239,9 @@ export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): 
     if (cursor.type.name === 'MemberExpression' && clockInScope) {
       const problem = checkClockField(cursor.node, code);
       if (problem && !overlapsAny(problem.from, problem.to, ranges)) diagnostics.push(problem);
+    }
+    if (cursor.type.name === 'BinaryExpression' || cursor.type.name === 'UnaryExpression') {
+      diagnostics.push(...checkWholeStatOperands(cursor.node, code, isStatEntry, inSlot));
     }
     if (cursor.type.name !== 'VariableName') continue;
 
