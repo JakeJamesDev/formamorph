@@ -1,5 +1,5 @@
 import { memo, useMemo, type ComponentProps } from 'react';
-import { Streamdown, defaultRehypePlugins } from 'streamdown';
+import { Streamdown, defaultRehypePlugins, defaultRemarkPlugins } from 'streamdown';
 import { createCodePlugin } from '@streamdown/code';
 import { markdownCodeThemes } from '@/lib/markdownCodeTheme';
 import remarkGfm from 'remark-gfm';
@@ -15,12 +15,14 @@ import 'streamdown/styles.css';
 // `singleTilde: false` hands `~x~` to remarkSubSuper (subscript); GFM keeps `~~strike~~`.
 // The marker plugin is Obsidian's `==highlight==`, plus `=r=…==` for a color key; `remove` drops an empty
 // marker rather than leaving a hollow mark for the stylesheet to paint. Styling lives in index.css against
-// the classes it emits.
+// the classes it emits. `codeMeta` is Streamdown's: it hands a fence's info string after the language to the
+// block renderer.
 const REMARK_PLUGINS: ComponentProps<typeof Streamdown>['remarkPlugins'] = [
   [remarkGfm, { singleTilde: false }],
   remarkBreaks,
   remarkSubSuper,
   [remarkFlexibleMarkers, { actionForEmptyContent: 'remove' }],
+  defaultRemarkPlugins.codeMeta,
 ];
 
 // Streamdown boxes every table in a bordered card inside a second bordered scroller. Our markdown
@@ -91,8 +93,8 @@ const COMPONENTS: MarkdownComponents = {
 
 /**
  * Renders text as GitHub-flavored Markdown via Streamdown, which formats incomplete markdown as it
- * streams in. Used for AI narration and for world descriptions. `controls={false}` hides the
- * table/code copy/download buttons we don't need.
+ * streams in. Used for AI narration and for world descriptions. `controls={false}` hides Streamdown's own
+ * table and code buttons; the help window adds its own code toolbar through `components`.
  *
  * `animate` runs the per-word entrance animation on newly-streamed words (used for the live narration
  * reveal; off for committed/static text so it doesn't re-animate on pagination). `animation` is the

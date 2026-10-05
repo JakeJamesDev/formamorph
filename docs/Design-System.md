@@ -927,6 +927,7 @@ Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-wa
 - 💬 **Conversation.** A scrolling log of questions and answers above the question field. It stays at its end while an answer comes in, unless the player scrolled up. The question field is one line and grows with its text while focused, as the game's action box does.
 - 🙋 **Question bubble.** The player's question, right-aligned on `muted`, with an 8-unit left margin so it never spans the full width.
 - 📝 **Answer.** Markdown through the streaming renderer, with no bubble. A `Meta` line says **Stopped** under an answer the player ended.
+- 📋 **Code block.** A fence in an answer or a guide page is the highlighted block with a ghost icon button, **Copy**, at the right of its header row. Copy confirms with the **Copied** toast. Code blocks outside the window have no controls.
 - 🔗 **Source link.** A small bordered chip under an answer: the page in the muted color, a chevron, then the section in the foreground color. Chips wrap, under a `Meta` label **Sources**. A press opens the section in the reader.
 - ⌨️ **Question field.** A two-row text area with an icon button beside it. The button is **Send**, and it is **Stop** in the outline variant while an answer comes in. While a game turn generates, **Send** is unavailable and a helper line under the field says why.
 - 🔎 **Search result row.** The section name at label weight, the page as `Meta`, and a two-line excerpt in the helper role. The wide rail leaves out the excerpt.
@@ -974,6 +975,7 @@ The mobile sheet slides in from the edge that holds the Help tab, with the same 
 | Narrow and wide layouts | [`GuideBody.tsx`](../src/components/formaquestion/GuideBody.tsx) |
 | Search field, result rows, contents, reader | [`GuideParts.tsx`](../src/components/formaquestion/GuideParts.tsx) |
 | Conversation, question bubble, answer, not-from-the-guide notice, source link, question field | [`AskParts.tsx`](../src/components/formaquestion/AskParts.tsx) |
+| Code block toolbar | `CodeSnippet` in [`CodeSnippet.tsx`](../src/components/formaquestion/CodeSnippet.tsx) |
 | The one instance, F1, focus and motion | [`Formaquestion.tsx`](../src/components/formaquestion/Formaquestion.tsx) |
 | Minimal chrome: pill, bubbles, ask pill | `MinimalChat` in [`MinimalChat.tsx`](../src/components/formaquestion/MinimalChat.tsx) |
 | Mascot piece and head view | [`MascotPiece.tsx`](../src/components/formaquestion/MascotPiece.tsx) |
@@ -1033,7 +1035,7 @@ A pattern that is not built gets its composition and its reference here when its
 
 ### Writing review
 
-**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Nearest Sections**, **Clear**, **Try Again**, **Show Head Only**, **Show Full Mascot** and **Close Reader** are labels in Title Case. The hints and status lines are one sentence with no period. The not-from-the-guide notice is two sentences, so each has a period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
+**Help**, **Formaquestion**, **Ask**, **Search**, **Guide**, **Wide View**, **Close**, **Contents**, **Back to Conversation**, **On This Page**, **Introduction**, **Ask a Question**, **Send**, **Stop**, **Stopped**, **Sources**, **Nearest Sections**, **Clear**, **Try Again**, **Show Head Only**, **Show Full Mascot**, **Close Reader** and **Copy** are labels in Title Case. The hints and status lines are one sentence with no period. The not-from-the-guide notice is two sentences, so each has a period. The line above the docs search in a conversation is two sentences, so each has a period. With no matching section it is one sentence. The tab's tooltip is two sentences, so each has a period. Docs text in the reader is authored content and keeps its own voice. This review is local; it does not certify STE compliance.
 
 ## Pattern: Filter Row With Filters Popover
 
