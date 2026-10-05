@@ -42,6 +42,17 @@ npx vite-node testing/baseline/harness/help-code-probe.cli.ts -- --tools --endpo
 - The test-arm persona misses write the world `traits.Seasoned`.
 - **The known-case rates understate the model.** The request names the Code tab but never the open stat. Every brave-at-courage miss on both arms reads `self.value`, which is right when Courage's own Code tab is open. The case accepts only `stats.Courage.value`, so it rejects that valid answer. quotes-pin ("my Int") can reject the same way, though it passed 5/5 on both arms here.
 
+**Corrected known-case rates (ticket 12).** The baseline's saved answers re-scored offline with `self.value` accepted on `brave-at-courage` and `quotes-pin`. The original rates reproduce first (21/25 and 19/25).
+
+| | rider | test |
+|---|---|---|
+| Known cases pass, as first recorded | 84% (21/25) | 76% (19/25) |
+| Known cases pass, corrected | 100% (25/25) | 88% (22/25) |
+| brave-at-courage, corrected | 100% (5/5) | 100% (5/5) |
+| Persona case (Q29), unchanged | 100% (5/5) | 40% (2/5) |
+
+The stopped re-run saved no answers, so it cannot be re-scored.
+
 **Stopped re-run (2026-10-05).** The same command after ticket 11 (`ef314b2c`) added the test-first line. Stopped by the user at 57 of 130 questions, so the probe wrote no summary. LM Studio's log shows 28 turns that called `test_stat_code`, each in the same turn as `set_face`, against 0 in the baseline. The model filled the `stat` input with invented names, such as `ProwlerStat`, since it does not know the open stat.
 
 **Decision (Q37).** No new run. The code test's default stays on, as ticket 06 landed it.

@@ -48,6 +48,21 @@ describe('the known cases', () => {
   it.each(Object.entries(KNOWN))('fail %s on the code the source session gave', async (id, { given }) => {
     expect(await passes(id, given)).toBe(false);
   });
+
+  // The request names no open stat, so a read of the open stat's own value is as right as the named path.
+  it('pass brave-at-courage on a self.value read', async () => {
+    expect(await passes('brave-at-courage', 'traits.Brave.enabled = self.value >= 50;')).toBe(true);
+  });
+
+  it('pass quotes-pin on a self.value read', async () => {
+    const code = "if (clock.day > 30 && self.value > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n}";
+    expect(await passes('quotes-pin', code)).toBe(true);
+  });
+
+  it('still fail a known case that drops the stat read', async () => {
+    expect(await passes('brave-at-courage', 'traits.Brave.enabled = true;')).toBe(false);
+    expect(await passes('quotes-pin', "if (clock.day > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n}")).toBe(false);
+  });
 });
 
 // The code test's view of the same code: the test arm's answers see these results.

@@ -188,6 +188,8 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Q38.** (User ruling 2026-10-05.) Two more tickets. 12 makes the known cases fair: `self.value` is an alternate where the question says "my X" and the request does not name the open stat, and 08's saved batches are re-scored offline. 13 adds a help focus registry beside the help world registry: the selected item's `{ kind, id, name }` reaches the help request, the surface line names it, the code test's `stat` defaults to it, and the two cases require the named stat again. The out-of-scope line on naming the open stat is reopened. The surface registry stays ids only. Probe concurrency was also fixed: LM Studio shares the loaded context across its slots, so the harness now clamps `--parallel` from `lms ps` and prints a line per answer.
 
+- **Ticket 12 result.** (2026-10-05.) `brave-at-courage` and `quotes-pin` accept `self.value` beside the named stat. 08's 1621 s baseline re-scored offline from its saved answers (the old rates reproduce: rider 21/25, test 19/25): rider **100% (25/25)**, test **88% (22/25)**, against 84% and 76% as first recorded. `brave-at-courage` was 1/5 rider and 2/5 test, now 5/5 on both. The persona case is unchanged (rider 5/5, test 2/5). The stopped re-run saved no answers, so it cannot be re-scored. Each known case's context dependency is listed in the audit note in `help-code-cases.ts`.
+
 ## Backlog
 
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
