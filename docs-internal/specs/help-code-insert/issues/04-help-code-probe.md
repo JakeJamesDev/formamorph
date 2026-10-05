@@ -1,6 +1,6 @@
 # 04: Help Code Probe
 
-Status: ready-for-human
+Status: done
 Blocked by: 01 — Close the Guide Fence and Check Every Fence; 03 — Code Rider on the Help Preset
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

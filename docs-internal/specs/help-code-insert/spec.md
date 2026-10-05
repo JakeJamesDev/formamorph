@@ -1,6 +1,7 @@
 # Spec: Help Code Insert
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-05. Tickets 01-05 done; last landing d02907b3. Closed without gates.
 Spec session: help-code-insert — spec
 
 ## Problem Statement
