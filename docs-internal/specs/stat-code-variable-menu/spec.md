@@ -1,8 +1,8 @@
 # Stat Code Variable Menu: Drill Down To Every Name
 
-Status: ready-for-agent
+Status: done
 Spec session: stat-code-variable-menu — spec
-Status note: Grilled 2026-10-05, Q1–Q16. Tickets to be cut.
+Status note: Closed 2026-10-05. Tickets 01–05 done, last landing 9012da3e, cleanup 077f15c1. Closed without gates; the full suite was green on main after the last landing.
 
 ## Problem Statement
 
@@ -61,7 +61,7 @@ The **Variable** menu becomes a drill-down. The top level lists the sandbox's gl
 **2. Menu component.**
 
 - A new drill menu component replaces the flat insert popover for the Variable button. It keeps the Variable label and icon, opens as a popover under the toolbar, and owns a level stack. Each level renders in the existing drill slide, entering from the right going deeper and from the left going back.
-- A group level and a field level render plain rows. A name-list level renders the existing breadcrumb picker list: search box, rows with their trail, an empty message when the search misses.
+- A group level and a field level render plain rows. A name-list level renders the existing breadcrumb picker list: search box, rows with their trail, an empty message when the search misses. Inside the search box Up and Down stay with the list; Back is reached by Shift+Tab or by Backspace on an empty search (ruling Q19). The menu is 16rem wide at every level (ruling Q20).
 - Every level below the top has a Back row first, as the Traits + menu has.
 - Picking a field inserts its text through the same insert path the Slot menu uses, with the same selection and undo behavior, and closes the menu.
 - Opening the menu resets the stack to the top level.
@@ -72,7 +72,7 @@ The **Variable** menu becomes a drill-down. The top level lists the sandbox's gl
 
 **3. Call sites.**
 
-- The stat box passes the names it already passes to the editor; the builder takes them from the editor's session. No new plumbing is needed for the stat box.
+- The stat box passes the names it already passes to the editor; the builder takes them from the editor's session. One widening: world traits travel as places (id, name, group path) rather than bare names, so a Traits row shows its group path, or World with none, as the template slot picker does (ruling Q18).
 - The template editor renders the same component in template mode. The menu picks template mode from the editor's slots flag, so the swap lands with the menu itself and no intermediate state shows world-mode markers in the template editor (ruling Q17).
 - The Tool script editor keeps its flat list. The surface type keeps its snippets field for that caller.
 - The stat code snippet list is removed. The surface's snippets field is empty for stat code; the drill tree takes its place.
@@ -107,6 +107,6 @@ A good test picks through the menu as an author does and reads what landed in th
 
 ## Further Notes
 
-- Grilled 2026-10-05. Q1 one panel, drill in place; Q2 real names; Q3 full path to every member; Q4 spec and tickets; Q5 searchable list with trail at name levels; Q6 template editor same drill, type-over names; Q7 Tool editor out of scope; Q8 info as hover tooltip; Q9 This Stat is its own top row; Q10 empty group stays with one disabled row; Q11 functions offered, caret inside; Q12 reads only; Q13 Persona unions persona-capable entities; Q14 reopen at top; Q15 arrows, Enter, Escape, Backspace back; Q16 one guide paragraph. Q17 (ticket 02 intent question, 2026-10-05): the menu picks template mode from the slots flag in ticket 02; ticket 04 adds tests and verification only. Ticket 02 landed 2026-10-05 as ebd8bbd3.
+- Grilled 2026-10-05. Q1 one panel, drill in place; Q2 real names; Q3 full path to every member; Q4 spec and tickets; Q5 searchable list with trail at name levels; Q6 template editor same drill, type-over names; Q7 Tool editor out of scope; Q8 info as hover tooltip; Q9 This Stat is its own top row; Q10 empty group stays with one disabled row; Q11 functions offered, caret inside; Q12 reads only; Q13 Persona unions persona-capable entities; Q14 reopen at top; Q15 arrows, Enter, Escape, Backspace back; Q16 one guide paragraph. Q17 (ticket 02 intent question, 2026-10-05): the menu picks template mode from the slots flag in ticket 02; ticket 04 adds tests and verification only. Ticket 02 landed 2026-10-05 as ebd8bbd3. Q18–Q20 (ticket 03 intent questions, 2026-10-05): world traits carry their group path; Up in the search box stays with the list; 16rem on every level.
 - The flat eleven-row list landed on main on 2026-10-05 as a stopgap. This spec replaces it.
 - The drill pattern (slide, Back row) and the breadcrumb picker list are existing design-system patterns, so no new visual pattern needs approval.
