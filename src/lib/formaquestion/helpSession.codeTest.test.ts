@@ -63,7 +63,7 @@ const sedge = (): StatCodeWorld => ({
 
 // The Mascot is off, so the face call stays out of the offered functions.
 const ask = (fetchImpl: FetchSpy, settings: HelpSettingsChange = {}, over: Partial<HelpQuestion> = {}) =>
-  askHelp({ question: CODE_QUESTION, settings: helpSettingsOf({ mascot: false, ...settings }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
+  askHelp({ question: CODE_QUESTION, settings: helpSettingsOf({ mascot: false, codeTest: true, ...settings }), snapshot: CAPABLE, index, fetchImpl: pastPicks(fetchImpl), ...over });
 
 async function collect(events: AsyncIterable<HelpEvent>): Promise<HelpEvent[]> {
   const all: HelpEvent[] = [];

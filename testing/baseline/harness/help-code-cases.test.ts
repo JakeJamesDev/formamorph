@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hasCodeWords, isCodeTurn } from '@/lib/formaquestion/helpCodeRider';
-import { fixtureRunner, HELP_CODE_CASES } from './help-code-cases';
+import { testStatCode } from '@/lib/formaquestion/helpCodeTestRun';
+import { FIXTURE_STAT, FIXTURE_WORLD, fixtureRunner, HELP_CODE_CASES, testsClean } from './help-code-cases';
 import { passesCase, scoreCodeAnswer, scoreNames } from './help-code-score';
 
 const answer = (code: string) => `Put this in **Before the AI**:\n\n\`\`\`javascript before\n${code}\n\`\`\``;
@@ -46,6 +47,22 @@ describe('the known cases', () => {
 
   it.each(Object.entries(KNOWN))('fail %s on the code the source session gave', async (id, { given }) => {
     expect(await passes(id, given)).toBe(false);
+  });
+});
+
+// The code test's view of the same code: the test arm's answers see these results.
+describe('the known cases under the code test', () => {
+  const tested = async (id: string, code: string) => {
+    const c = HELP_CODE_CASES.find((x) => x.id === id);
+    return testsClean(await testStatCode(code, 'before', FIXTURE_STAT.name, c?.world ?? FIXTURE_WORLD));
+  };
+
+  it.each(Object.entries(KNOWN))('test %s clean on the code the guide writes', async (id, { right }) => {
+    expect(await tested(id, right)).toBe(true);
+  });
+
+  it.each(Object.entries(KNOWN))('flag %s on the code the source session gave', async (id, { given }) => {
+    expect(await tested(id, given)).toBe(false);
   });
 });
 

@@ -5,6 +5,7 @@
 //   names    the Default rider with `entities` and `persona` named beside `traits` (the Q10 arm; only through `--arms`)
 //   noqr     the Default preset over docs with no Quick Reference section, so no code turn pins it
 //   control  the same session with a custom preset whose rider is empty, so no turn carries one
+//   test     with `--tools`: the rider arm with the code test on, against the case's fixture world (the Q19 arm)
 //   <name>   with `--alt FILE,FILE`: per file, the session with a custom preset whose rider is the file's text,
 //            as an arm named after the file
 //   <name>   with `--docs-alt PAGE=FILE,PAGE=FILE`: per file, the Default preset over docs whose page PAGE is
@@ -15,6 +16,9 @@
 // every fence runs, the fences hold those names, and they hold no invented one (an unknown clock field, a whole
 // stat compared, or a name the case rules out).
 //
+// With `--tools`, the endpoint takes function calls and the arms default to rider and test. Each answer also
+// counts its code test calls, and whether the last one came back clean: no error and no dropped write.
+//
 // Checks, per answer (help-code-score.ts): fence, closed, tagged (per fence), runs (every fence runs in the
 // stat-code sandbox against the fixture stat), truncated (an open fence, of the fenced answers), `cap` (the
 // answer request stopped on the token cap), and on known cases `pass`. Bars: Q7 on the rider arm's code cases
@@ -22,7 +26,7 @@
 // not below noqr's); Q10 compares names with rider on the known cases.
 //
 // Usage: npx vite-node testing/baseline/harness/help-code-probe.cli.ts --
-//          [--endpoint URL] [--model default] [--token T] [--runs 8] [--parallel 4] [--only id,id] [--arms a,b] [--alt FILE,FILE] [--docs-alt PAGE=FILE] [--show]
+//          [--endpoint URL] [--model default] [--token T] [--runs 8] [--parallel 4] [--only id,id] [--arms a,b] [--alt FILE,FILE] [--docs-alt PAGE=FILE] [--tools] [--show]
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import sidebar from '../../../docs/_Sidebar.md?raw';
@@ -33,8 +37,11 @@ import { DEFAULT_CODE_RIDER, QUICK_REFERENCE_SECTION } from '@/lib/formaquestion
 import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { DEFAULT_HELP_OPTIONS, type HelpPresetStore } from '@/lib/formaquestion/helpPresets';
 import { askHelp } from '@/lib/formaquestion/helpSession';
+import { HELP_CODE_TEST } from '@/lib/formaquestion/helpCodeTest';
+import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
 import { DEFAULT_HELP_SETTINGS, helpSettingsOf, type HelpSettings } from '@/lib/formaquestion/helpSettings';
-import { HELP_CODE_CASES, fixtureRunner, type HelpCodeCase, type HelpCodeKind } from './help-code-cases';
+import { emptyToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { FIXTURE_WORLD, HELP_CODE_CASES, fixtureRunner, testsClean, type HelpCodeCase, type HelpCodeKind } from './help-code-cases';
 import { passesCase, scoreCodeAnswer, scoreNames, summarizeCodeScores, type CodeScore, type NameScore } from './help-code-score';
 import { noUsage, pct, probeSnapshot, sessionFetch, type Usage } from './help-probe-shared';
 
@@ -50,6 +57,7 @@ const runs = Number(argVal('--runs', '8'));
 const parallel = Number(argVal('--parallel', '4'));
 const only = argVal('--only', '');
 const show = args.includes('--show');
+const tools = args.includes('--tools');
 const altFiles = argVal('--alt', '').split(',').filter(Boolean);
 const armList = argVal('--arms', '').split(',').filter(Boolean);
 const docsAlts = argVal('--docs-alt', '').split(',').filter(Boolean).map((spec) => {
@@ -61,12 +69,18 @@ const docsAlts = argVal('--docs-alt', '').split(',').filter(Boolean).map((spec) 
   return { page: spec.slice(0, at), file: spec.slice(at + 1) };
 });
 
-/** `rider`, `names`, `noqr`, `control`, or an alt arm's file name. */
+/** `rider`, `names`, `noqr`, `control`, `test`, or an alt arm's file name. */
 type Arm = string;
 const altName = (file: string) => path.basename(file, path.extname(file));
-const ALL_ARMS: Arm[] = ['rider', 'names', 'noqr', ...altFiles.map(altName), ...docsAlts.map((alt) => altName(alt.file)), 'control'];
+const ALL_ARMS: Arm[] = ['rider', 'names', 'noqr', ...altFiles.map(altName), ...docsAlts.map((alt) => altName(alt.file)), 'control', ...(tools ? ['test'] : [])];
 // `names` asks a settled question (Q10), so it runs only when `--arms` names it.
-const ARMS = armList.length ? ALL_ARMS.filter((arm) => armList.includes(arm)) : ALL_ARMS.filter((arm) => arm !== 'names');
+const ARMS = armList.length
+  ? ALL_ARMS.filter((arm) => armList.includes(arm))
+  : ALL_ARMS.filter((arm) => (tools ? arm === 'rider' || arm === 'test' : arm !== 'names'));
+if (armList.includes('test') && !tools) {
+  console.error('help-code-probe: the test arm calls a function, so it needs --tools and an endpoint that takes function calls');
+  process.exit(1);
+}
 const cases = only ? HELP_CODE_CASES.filter((c) => only.split(',').includes(c.id)) : HELP_CODE_CASES;
 
 const NAMES_AFTER = 'traits through `traits`';
@@ -84,14 +98,16 @@ const withRider = (code: string): HelpSettings => {
   };
   return helpSettingsOf({ presets });
 };
-const SETTINGS: Record<Arm, HelpSettings> = {
+// Every arm but test turns the code test off, whatever its default.
+const SETTINGS: Record<Arm, HelpSettings> = Object.fromEntries(Object.entries({
   rider: DEFAULT_HELP_SETTINGS,
   names: withRider(DEFAULT_CODE_RIDER.replace(NAMES_AFTER, NAMES_AFTER + NAMES_CLAUSE)),
   noqr: DEFAULT_HELP_SETTINGS,
   control: withRider(''),
   ...Object.fromEntries(altFiles.map((file) => [altName(file), withRider(readFileSync(file, 'utf8').trim())])),
   ...Object.fromEntries(docsAlts.map((alt) => [altName(alt.file), DEFAULT_HELP_SETTINGS])),
-};
+}).map(([arm, settings]): [Arm, HelpSettings] => [arm, { ...settings, codeTest: false }]));
+SETTINGS.test = { ...DEFAULT_HELP_SETTINGS, codeTest: true };
 
 const index = bundledDocsIndex();
 // The same pages with no Quick Reference section in the guide.
@@ -114,23 +130,50 @@ const INDEX: Record<Arm, DocsIndex> = {
     return [altName(file), createDocsIndex({ pages: { ...BUNDLED_DOCS, [page]: readFileSync(file, 'utf8') }, sidebar })];
   })),
 };
-const snapshot = probeSnapshot({ endpoint, model, token });
+const snapshot = probeSnapshot({ endpoint, model, token }, tools);
 
-interface Sample { answer: string; finish: string | null; usage: Usage }
+interface Sample {
+  answer: string; finish: string | null; usage: Usage;
+  /** The code test calls the answer made. */
+  tests: number;
+  /** Whether the last code test came back with no error and no dropped write; null with no call. */
+  lastClean: boolean | null;
+}
+
+interface SentMessage { role: string; content: unknown; tool_call_id?: string; tool_calls?: { id: string; function: { name: string } }[] }
+
+/** The last code test result an answer request carries in its tool rounds. */
+function lastTestResult(messages: readonly SentMessage[]): CodeTestResult | null {
+  const ids = new Set(messages.flatMap((m) => m.tool_calls ?? []).filter((call) => call.function.name === HELP_CODE_TEST.name).map((call) => call.id));
+  const result = messages.filter((m) => m.role === 'tool' && m.tool_call_id !== undefined && ids.has(m.tool_call_id)).at(-1);
+  if (!result) return null;
+  try {
+    return JSON.parse(String(result.content)) as CodeTestResult;
+  } catch {
+    return null;
+  }
+}
 
 /** One question through the app's help session. Each request goes out with streaming off, to read its finish and tokens. */
 async function ask(arm: Arm, c: HelpCodeCase): Promise<Sample> {
   const usage = noUsage();
   let finish: string | null = null;
+  let tests = 0;
+  let last: CodeTestResult | null = null;
   // The pick request comes first; the answer's finish is the one the cap shows on.
   const fetchImpl = sessionFetch(usage, (body, completion) => {
-    if (!String(body.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT)) finish = completion.choices?.[0]?.finish_reason ?? null;
+    if (String(body.messages[0]?.content).startsWith(HELP_PICK_SYSTEM_PROMPT)) return;
+    finish = completion.choices?.[0]?.finish_reason ?? null;
+    tests += (completion.choices?.[0]?.message?.tool_calls ?? []).filter((call) => call.function.name === HELP_CODE_TEST.name).length;
+    last = lastTestResult(body.messages as SentMessage[]) ?? last;
   });
+  const world = { snapshot: emptyToolSnapshot, authored: () => c.world ?? FIXTURE_WORLD };
   let answer = '';
-  for await (const event of askHelp({ question: c.question, settings: SETTINGS[arm], snapshot, index: INDEX[arm], fetchImpl, surface: c.surface })) {
+  for await (const event of askHelp({ question: c.question, settings: SETTINGS[arm], snapshot, index: INDEX[arm], fetchImpl, surface: c.surface, world })) {
     if (event.type === 'done') answer = event.text;
   }
-  return { answer, finish, usage };
+  // A call whose result never came back counts as not clean.
+  return { answer, finish, usage, tests, lastClean: tests ? last !== null && testsClean(last) : null };
 }
 
 async function pool<T>(jobs: (() => Promise<T>)[], limit: number): Promise<T[]> {
@@ -182,6 +225,16 @@ console.log(`${rows.length} questions in ${((Date.now() - started) / 1000).toFix
 
 const known = new Set(cases.filter((c) => c.names).map((c) => c.id));
 
+/** The code test cells: answers that called it, calls per answer, and of the callers, those whose last call came back clean. */
+function testCells(scored: readonly Row[]) {
+  const called = scored.filter((r) => (r.sample?.tests ?? 0) > 0);
+  return [
+    `tested ${pct(called.length, scored.length)}`,
+    `calls ${(scored.reduce((sum, r) => sum + (r.sample?.tests ?? 0), 0) / Math.max(1, scored.length)).toFixed(1)}`,
+    `clean ${pct(called.filter((r) => r.sample?.lastClean).length, called.length)}`,
+  ];
+}
+
 /** Every metric of one arm over a set of rows, as printable cells. */
 function cells(set: Row[]) {
   const scored = set.filter((r): r is Row & { score: CodeScore } => r.score !== null);
@@ -196,6 +249,7 @@ function cells(set: Row[]) {
       `tok ${Math.round(scored.reduce((sum, r) => sum + (r.sample?.usage.answerTokens ?? 0), 0) / Math.max(1, scored.length))}`,
       // A failed request on a known case counts as a miss.
       ...(set.some((r) => known.has(r.caseId)) ? [`pass ${pct(set.filter((r) => r.pass).length, set.length)}`] : []),
+      ...(tools ? testCells(scored) : []),
     ].join('  '),
   };
 }
@@ -230,6 +284,15 @@ if (known.size && ARMS.includes('rider')) {
   const held = ARMS.includes('noqr') ? ` · other code cases runs ${percent(otherRuns('rider'))} vs noqr ${percent(otherRuns('noqr'))} ${otherRuns('rider') >= otherRuns('noqr') ? 'HELD' : 'DROPPED'}` : '';
   console.log(`Q9 bar, rider arm: known cases pass ${percent(pass)} (≥80%) ${pass >= 0.8 ? 'MET' : 'MISSED'}${runs < 5 ? ' (under 5 runs)' : ''}${held}`);
   if (ARMS.includes('names')) console.log(`Q10 rider names: known cases pass names ${percent(knownPass('names'))} vs rider ${percent(pass)}`);
+  if (ARMS.includes('test')) {
+    const persona = (arm: Arm) => share(of(arm, (r) => r.caseId === 'seasoned-on-persona'), (r) => r.pass === true);
+    const testPass = knownPass('test');
+    console.log(`Q9 bar, test arm: known cases pass ${percent(testPass)} (≥80%) ${testPass >= 0.8 ? 'MET' : 'MISSED'}`
+      + `${ARMS.includes('noqr') ? ` · other code cases runs ${percent(otherRuns('test'))} vs noqr ${percent(otherRuns('noqr'))}` : ''}`);
+    console.log(`Q19 code test: known cases pass test ${percent(testPass)} vs rider ${percent(pass)}`
+      + ` · other code cases runs test ${percent(otherRuns('test'))} vs rider ${percent(otherRuns('rider'))}`
+      + ` · persona case (Q29) test ${percent(persona('test'))} vs rider ${percent(persona('rider'))}`);
+  }
 }
 
 const nameMisses = rows.flatMap((r) => [...(r.names?.missing ?? []).map((name) => `missing ${name}`), ...(r.names?.invented ?? [])]
