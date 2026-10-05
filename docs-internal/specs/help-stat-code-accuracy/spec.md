@@ -184,6 +184,8 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Q35.** (Ticket 11 intent, 2026-10-05.) The test-first line belongs to the code test function, not to the player's Code prompt. It rides whenever the function is offered, alone after the user message when the rider is cleared. Without the function, the rider is byte-identical to before. A player who wants no line turns the code test off.
 
+- **Q36–Q37.** (User rulings 2026-10-05.) 08's full re-run was stopped at 57 of 130 answers after the user found the test unfair: `brave-at-courage` and `quotes-pin` reject a valid `self.value` answer because the request never names the open stat, so the known-case rates (84% rider, 76% test) understate the model. The 28 test-arm answers seen did call the code test, so the rider line works on the full set. **08 lands as is:** default on, numbers recorded with that caveat. Probe discipline is a skill rule, not harness wiring: every probe starts with a minutes-long smoke run that proves the mechanism fires, and a long run gets a check-in after a few answers with a stop when the mechanism is absent. The help-code probe prints nothing until the end, which made the check-in impossible; the one harness change is a per-answer line.
+
 ## Backlog
 
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
