@@ -18,6 +18,7 @@ function customized(): HelpSettings {
   let presets = duplicateHelpPreset(DEFAULT_HELP_SETTINGS.presets, DEFAULT_HELP_PRESET_ID, 'p-1', 'Chat Buddy');
   presets = editHelpPrompt(presets, 'p-1', 'answer', 'Answer like a pirate. <NOT_IN_GUIDE>');
   presets = editHelpPrompt(presets, 'p-1', 'pick', 'Pick well.');
+  presets = editHelpPrompt(presets, 'p-1', 'code', 'Give each box as one block.');
   presets = editHelpOptions(presets, 'p-1', 'answer', { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 });
   presets = editHelpOptions(presets, 'p-1', 'pick', { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 });
   presets = editHelpOptions(presets, 'p-1', 'lookup', { temperature: 0.6, maxTokens: 1500 });
@@ -43,7 +44,7 @@ describe('buildHelpPresetFile', () => {
   it('holds the field list and no other key', () => {
     const file = fileOf(customized());
     expect(Object.keys(file).sort()).toEqual([...HELP_PRESET_FILE_FIELDS].sort());
-    expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'lookup', 'pick']);
+    expect(Object.keys(file.prompts).sort()).toEqual(['answer', 'code', 'lookup', 'pick']);
     expect(Object.keys(file.options).sort()).toEqual(['answer', 'lookup', 'pick']);
     for (const block of Object.values(file.options)) expect(Object.keys(block).sort()).toEqual(['maxTokens', 'repetitionPenalty', 'temperature']);
     // The face call has no switch and no call limit, so it has no row.
@@ -63,7 +64,7 @@ describe('buildHelpPresetFile', () => {
       formamorphHelpPreset: HELP_PRESET_FILE_VERSION,
       appVersion: '9.9.9',
       name: 'Chat Buddy',
-      prompts: { answer: 'Answer like a pirate. <NOT_IN_GUIDE>', pick: 'Pick well.' },
+      prompts: { answer: 'Answer like a pirate. <NOT_IN_GUIDE>', pick: 'Pick well.', code: 'Give each box as one block.' },
       options: {
         answer: { temperature: 0.9, repetitionPenalty: 1.1, maxTokens: 1200 },
         pick: { temperature: 0.4, repetitionPenalty: 1.04, maxTokens: 90 },
@@ -183,7 +184,8 @@ describe('parseHelpPresetFile', () => {
   it.each([
     ['a missing name', (f: Record<string, unknown>) => ({ ...f, name: undefined }), 'name'],
     ['a blank name', (f: Record<string, unknown>) => ({ ...f, name: '  ' }), 'name'],
-    ['a missing prompt', (f: Record<string, unknown>) => ({ ...f, prompts: { answer: 'a', pick: 'b' } }), 'prompts.lookup'],
+    ['a missing prompt', (f: Record<string, unknown>) => ({ ...f, prompts: { answer: 'a', pick: 'b', code: 'c' } }), 'prompts.lookup'],
+    ['a missing Code rider', (f: Record<string, unknown>) => ({ ...f, prompts: { answer: 'a', pick: 'b', lookup: 'l' } }), 'prompts.code'],
     ['options of one block for every request', (f: Record<string, unknown>) => ({ ...f, options: { temperature: 0.2, repetitionPenalty: 1, maxTokens: 800 } }), 'options.answer'],
     ['a missing Lookup block', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), lookup: undefined } }), 'options.lookup'],
     ['a Pick temperature out of range', (f: Record<string, unknown>) => ({ ...f, options: { ...block(f), pick: { temperature: 3, repetitionPenalty: 1, maxTokens: 150 } } }), 'options.pick.temperature'],
@@ -198,7 +200,7 @@ describe('parseHelpPresetFile', () => {
   });
 
   it('keeps a chip this build does not know as plain text', () => {
-    const file = parseHelpPresetFile(textOf({ ...good(), prompts: { answer: 'Say <FUTURE_CHIP> now.', pick: 'p', lookup: 'l' } }));
+    const file = parseHelpPresetFile(textOf({ ...good(), prompts: { answer: 'Say <FUTURE_CHIP> now.', pick: 'p', lookup: 'l', code: 'c' } }));
     expect(file.prompts.answer).toBe('Say <FUTURE_CHIP> now.');
     expect(parseHelpPrompt(file.prompts.answer)).toEqual([{ type: 'text', value: 'Say <FUTURE_CHIP> now.' }]);
   });

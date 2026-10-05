@@ -5,7 +5,7 @@ import { SamplerControl } from '@/components/modals/SamplerControl';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { Tip } from '@/components/ui/tooltip';
 import { DEFAULT_HELP_OPTIONS, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, type HelpRequestOptions } from '@/lib/formaquestion/helpPresets';
-import type { HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
+import type { HelpRequestKey } from '@/lib/formaquestion/helpPrompt';
 import { PROMPTS_COPY } from './formaquestionSettingsTabs';
 
 /**
@@ -15,7 +15,7 @@ import { PROMPTS_COPY } from './formaquestionSettingsTabs';
  * moves. Mount it with a key per preset and prompt, since the boxes start from the stored values.
  */
 export function RequestOptions({ prompt, options, readOnly, readOnlyReason, onRequestEdit, onExitFullscreen, onChange }: {
-  prompt: HelpPromptKey;
+  prompt: HelpRequestKey;
   options: HelpRequestOptions;
   readOnly: boolean;
   readOnlyReason?: string;

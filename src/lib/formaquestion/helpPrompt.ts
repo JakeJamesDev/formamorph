@@ -2,8 +2,9 @@ import type { DocSection } from '@/lib/docs/docsIndex';
 import { languageDirective } from '@/lib/languages';
 import { DOCS_LOOKUP, sectionBlock } from './docsLookup';
 import { HELP_CHIP, renderHelpPrompt } from './helpChips';
+import { DEFAULT_CODE_RIDER } from './helpCodeRider';
 
-/** The three texts a help preset holds, as stored: chips in place. */
+/** The four texts a help preset holds, as stored: chips in place. */
 export interface HelpPromptTexts {
   /** The system prompt of the answer request. */
   readonly answer: string;
@@ -11,12 +12,20 @@ export interface HelpPromptTexts {
   readonly pick: string;
   /** The system prompt of the answer request in lookup mode. */
   readonly lookup: string;
+  /** The rider a code turn adds to the user message, sent verbatim. */
+  readonly code: string;
 }
 
 export type HelpPromptKey = keyof HelpPromptTexts;
 
+/** The prompts that run a request of their own, each with its option block. */
+export type HelpRequestKey = Exclude<HelpPromptKey, 'code'>;
+
 /** The prompts in rail order. */
-export const HELP_PROMPT_KEYS: readonly HelpPromptKey[] = ['answer', 'pick', 'lookup'];
+export const HELP_PROMPT_KEYS: readonly HelpPromptKey[] = ['answer', 'pick', 'lookup', 'code'];
+
+/** True for a prompt that runs a request of its own, so it has an option block. */
+export const isHelpRequestKey = (key: HelpPromptKey): key is HelpRequestKey => key !== 'code';
 
 /** The answer rules both help prompts share. */
 const ANSWER_RULES = [
@@ -57,6 +66,7 @@ export const DEFAULT_HELP_PROMPTS: HelpPromptTexts = {
     '- Take each fact, each step and each name from the guide sections you read.',
     ...ANSWER_RULES,
   ].join('\n'),
+  code: DEFAULT_CODE_RIDER,
 };
 
 /** The chips each prompt reads back, in palette order. */
@@ -64,6 +74,7 @@ export const HELP_PROMPT_CHIPS = {
   answer: [HELP_CHIP.marker, HELP_CHIP.voice],
   pick: [HELP_CHIP.pickLimit, HELP_CHIP.replyFormat],
   lookup: [HELP_CHIP.marker, HELP_CHIP.lookupFunction, HELP_CHIP.voice],
+  code: [],
 } as const satisfies Record<HelpPromptKey, readonly string[]>;
 
 /** The default help prompt as the request carries it with no Voice. */

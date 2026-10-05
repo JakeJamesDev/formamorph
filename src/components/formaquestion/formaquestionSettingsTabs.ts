@@ -185,6 +185,7 @@ export const PROMPTS_COPY = {
     answer: { label: 'Answer', hint: 'Tells your AI how to answer from the guide sections' },
     pick: { label: 'Search', hint: 'Tells your AI how to choose guide sections from the heading list' },
     lookup: { label: 'Lookup', hint: 'Tells your AI how to answer with the lookup function' },
+    code: { label: 'Code', hint: 'Tells your AI how to write stat code on questions about code' },
   },
   options: {
     title: 'Options',

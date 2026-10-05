@@ -1,11 +1,11 @@
 /**
- * The help preset store: the three help prompts as one named set. The Default preset is read-only and reads
- * its texts and options from the code, so each release updates it for every player who has no custom
- * preset. A custom preset stores its own three texts and three option blocks. The store is a device
+ * The help preset store: the help prompts and the Code rider as one named set. The Default preset is read-only
+ * and reads its texts and options from the code, so each release updates it for every player who has no custom
+ * preset. A custom preset stores its own four texts and three option blocks. The store is a device
  * setting, apart from the gameplay prompt presets.
  */
 import { HELP_PICK_MAX_TOKENS } from './helpPicks';
-import { DEFAULT_HELP_PROMPTS, type HelpPromptKey, type HelpPromptTexts } from './helpPrompt';
+import { DEFAULT_HELP_PROMPTS, type HelpPromptKey, type HelpPromptTexts, type HelpRequestKey } from './helpPrompt';
 
 /** One request's sampler values and cap. A preset holds them, so the Default preset's follow the code. */
 export interface HelpRequestOptions {
@@ -14,8 +14,8 @@ export interface HelpRequestOptions {
   readonly maxTokens: number;
 }
 
-/** One option block per prompt: each prompt's request sends its own. */
-export type HelpPresetOptions = { readonly [K in HelpPromptKey]: HelpRequestOptions };
+/** One option block per request prompt: each prompt's request sends its own. The rider rides the answer's. */
+export type HelpPresetOptions = { readonly [K in HelpRequestKey]: HelpRequestOptions };
 
 /** The answer caps leave room for a long list of steps; the pick cap, for the copied lines. */
 export const DEFAULT_HELP_OPTIONS: HelpPresetOptions = {
@@ -51,7 +51,7 @@ export const EMPTY_HELP_PRESET_STORE: HelpPresetStore = { activeId: DEFAULT_HELP
 export const defaultHelpPreset = (): HelpPreset => ({ id: DEFAULT_HELP_PRESET_ID, name: DEFAULT_HELP_PRESET_NAME, prompts: DEFAULT_HELP_PROMPTS, options: DEFAULT_HELP_OPTIONS });
 
 /** One block per prompt, each made by `block`. */
-export const mapHelpOptions = (block: (key: HelpPromptKey) => HelpRequestOptions): HelpPresetOptions => ({ answer: block('answer'), pick: block('pick'), lookup: block('lookup') });
+export const mapHelpOptions = (block: (key: HelpRequestKey) => HelpRequestOptions): HelpPresetOptions => ({ answer: block('answer'), pick: block('pick'), lookup: block('lookup') });
 
 const copyOptions = (options: HelpPresetOptions): HelpPresetOptions => mapHelpOptions((key) => ({ ...options[key] }));
 
@@ -68,7 +68,7 @@ export const activeHelpPreset = (store: HelpPresetStore): HelpPreset => helpPres
 /** True when the active preset is the Default preset, which refuses edits. */
 export const isDefaultHelpPresetActive = (store: HelpPresetStore): boolean => customOf(store, store.activeId) === undefined;
 
-/** The three texts the help session sends, chips in place. */
+/** The texts the help session sends, chips in place. */
 export const activeHelpPrompts = (store: HelpPresetStore): HelpPromptTexts => activeHelpPreset(store).prompts;
 
 /** The option blocks the help session sends. */
@@ -100,14 +100,14 @@ export function editHelpPrompt(store: HelpPresetStore, id: string, key: HelpProm
 }
 
 /** Sets options of one prompt's block in a custom preset. */
-export const editHelpOptions = (store: HelpPresetStore, id: string, key: HelpPromptKey, change: Partial<HelpRequestOptions>): HelpPresetStore =>
+export const editHelpOptions = (store: HelpPresetStore, id: string, key: HelpRequestKey, change: Partial<HelpRequestOptions>): HelpPresetStore =>
   withCustom(store, id, (preset) => ({ ...preset, options: { ...preset.options, [key]: { ...preset.options[key], ...change } } }));
 
 /** Returns one prompt of a custom preset to the default text. */
 export const resetHelpPrompt = (store: HelpPresetStore, id: string, key: HelpPromptKey): HelpPresetStore =>
   editHelpPrompt(store, id, key, DEFAULT_HELP_PROMPTS[key]);
 
-/** Returns all three prompts of a custom preset, and their options, to the defaults. */
+/** Returns every text of a custom preset, and its options, to the defaults. */
 export const resetHelpPreset = (store: HelpPresetStore, id: string): HelpPresetStore =>
   withCustom(store, id, (preset) => ({ ...preset, prompts: { ...DEFAULT_HELP_PROMPTS }, options: copyOptions(DEFAULT_HELP_OPTIONS) }));
 
@@ -146,12 +146,12 @@ function readOptions(value: unknown): HelpPresetOptions {
   return mapHelpOptions((key) => readStoredBlock(stored[key], DEFAULT_HELP_OPTIONS[key]));
 }
 
-/** A stored preset with its id, a name and three texts; anything else is dropped. */
+/** A stored preset with its id, a name and four texts; anything else is dropped. */
 function readPreset(value: unknown): HelpPreset | null {
   if (!isRecord(value) || !isText(value.id) || value.id === '' || !isText(value.name) || !isRecord(value.prompts)) return null;
-  const { answer, pick, lookup } = value.prompts;
-  if (!isText(answer) || !isText(pick) || !isText(lookup)) return null;
-  return { id: value.id, name: value.name, prompts: { answer, pick, lookup }, options: readOptions(value.options) };
+  const { answer, pick, lookup, code } = value.prompts;
+  if (!isText(answer) || !isText(pick) || !isText(lookup) || !isText(code)) return null;
+  return { id: value.id, name: value.name, prompts: { answer, pick, lookup, code }, options: readOptions(value.options) };
 }
 
 /**

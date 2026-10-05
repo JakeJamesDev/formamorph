@@ -7,7 +7,7 @@ import { planToolImport } from '@/lib/tools/toolPack';
 import { isRecord, parseTool } from '@/lib/tools/toolValidation';
 import type { Tool, ToolEnabledMap } from '@/types';
 import { DOCS_LOOKUP } from './docsLookup';
-import { HELP_PROMPT_KEYS, type HelpPromptKey, type HelpPromptTexts } from './helpPrompt';
+import { HELP_PROMPT_KEYS, type HelpPromptTexts, type HelpRequestKey } from './helpPrompt';
 import {
   DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, defaultHelpPreset, HELP_REPETITION_PENALTY_RANGE, HELP_TEMPERATURE_RANGE, mapHelpOptions, type HelpPreset, type HelpPresetOptions, type HelpRequestOptions,
 } from './helpPresets';
@@ -63,12 +63,12 @@ const blocksOf = (options: HelpPresetOptions): HelpPresetOptions => mapHelpOptio
 export function buildHelpPresetFile(settings: HelpSettings, presetId: string, appVersion: string): HelpPresetFile | null {
   const preset = presetId === DEFAULT_HELP_PRESET_ID ? defaultHelpPreset() : settings.presets.presets.find((p) => p.id === presetId);
   if (!preset) return null;
-  const { answer, pick, lookup } = preset.prompts;
+  const { answer, pick, lookup, code } = preset.prompts;
   return {
     formamorphHelpPreset: HELP_PRESET_FILE_VERSION,
     appVersion,
     name: preset.name,
-    prompts: { answer, pick, lookup },
+    prompts: { answer, pick, lookup, code },
     options: blocksOf(preset.options),
     tools: settings.tools.map((tool) => ({ tool: structuredClone(tool), enabled: settings.toolSwitches[tool.id] === true })),
     functions: Object.fromEntries(FUNCTION_FIELDS.map((fn) => [fn.name, { enabled: settings[fn.enabled], maxCalls: settings[fn.maxCalls] }])),
@@ -94,7 +94,7 @@ function recordAt(parent: Record<string, unknown>, key: string, field = key): Re
 }
 
 /** The option block of `key`, else a refusal that names the block or its bad field. */
-function parseBlock(options: Record<string, unknown>, key: HelpPromptKey): HelpRequestOptions {
+function parseBlock(options: Record<string, unknown>, key: HelpRequestKey): HelpRequestOptions {
   const field = `options.${key}`;
   const block = recordAt(options, key, field);
   if (!isNumberIn(block.temperature, HELP_TEMPERATURE_RANGE)) throw refusal(`${field}.temperature`);
@@ -129,7 +129,7 @@ export function parseHelpPresetFile(json: string): HelpPresetFile {
   if (!isText(parsed.name) || parsed.name.trim() === '') throw refusal('name');
 
   const prompts = recordAt(parsed, 'prompts');
-  const [answer, pick, lookup] = HELP_PROMPT_KEYS.map((key) => {
+  const [answer, pick, lookup, code] = HELP_PROMPT_KEYS.map((key) => {
     if (!isText(prompts[key])) throw refusal(`prompts.${key}`);
     return prompts[key];
   });
@@ -152,7 +152,7 @@ export function parseHelpPresetFile(json: string): HelpPresetFile {
     formamorphHelpPreset: version,
     appVersion: parsed.appVersion,
     name: parsed.name,
-    prompts: { answer, pick, lookup },
+    prompts: { answer, pick, lookup, code },
     options,
     tools,
     functions,

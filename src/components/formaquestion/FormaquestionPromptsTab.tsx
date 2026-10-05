@@ -15,7 +15,7 @@ import {
   activeHelpPreset, DEFAULT_HELP_PRESET_ID, DEFAULT_HELP_PRESET_NAME, deleteHelpPreset, duplicateHelpPreset, editHelpOptions, editHelpPrompt, isDefaultHelpPresetActive,
   renameHelpPreset, resetHelpPreset, resetHelpPrompt, selectHelpPreset, type HelpPresetStore,
 } from '@/lib/formaquestion/helpPresets';
-import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, HELP_PROMPT_KEYS, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
+import { DEFAULT_HELP_PROMPTS, HELP_PROMPT_CHIPS, HELP_PROMPT_KEYS, isHelpRequestKey, type HelpPromptKey } from '@/lib/formaquestion/helpPrompt';
 import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
 import { filesFrom } from '@/lib/importFiles';
 import { toastError } from '@/lib/linkToast';
@@ -35,6 +35,7 @@ const VOCABULARIES: Record<HelpPromptKey, ChipVocabulary> = {
   answer: helpChipVocabulary(HELP_PROMPT_CHIPS.answer),
   pick: helpChipVocabulary(HELP_PROMPT_CHIPS.pick),
   lookup: helpChipVocabulary(HELP_PROMPT_CHIPS.lookup),
+  code: helpChipVocabulary(HELP_PROMPT_CHIPS.code),
 };
 
 /** The select value of a prompt's Options row. */
@@ -42,15 +43,15 @@ const optionsValue = (key: HelpPromptKey) => `${key}:options`;
 
 /** The prompt a select value names, and whether it is that prompt's Options row. */
 const selectionOf = (value: string): { key: HelpPromptKey; options: boolean } | undefined => {
-  const key = HELP_PROMPT_KEYS.find((id) => value === id || value === optionsValue(id));
+  const key = HELP_PROMPT_KEYS.find((id) => value === id || (isHelpRequestKey(id) && value === optionsValue(id)));
   return key && { key, options: value !== key };
 };
 
 type Pending = { kind: 'add' } | { kind: 'rename' } | null;
 
 /**
- * The Prompts tab: the shared preset header, and the three prompts in a rail, each with Edit | Preview and
- * an Options row. The Default preset shows its prompts read-only with a way to duplicate. A custom prompt
+ * The Prompts tab: the shared preset header, and the prompts in a rail, each with Edit | Preview. Each prompt
+ * that runs a request has an Options row; the Code rider goes out with the answer request. The Default preset shows its prompts read-only with a way to duplicate. A custom prompt
  * resets and compares to the default text from the footer, and the header resets the whole preset. A preset
  * exports to a help preset file, and a file imports as a new preset. Full screen lifts the whole tab.
  */
@@ -146,7 +147,7 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
             {HELP_PROMPT_KEYS.map((id) => (
               <Fragment key={id}>
                 <SelectItem value={id}>{PROMPTS_COPY.prompts[id].label}</SelectItem>
-                <SelectItem value={optionsValue(id)}>{`${PROMPTS_COPY.prompts[id].label} ${PROMPTS_COPY.options.title}`}</SelectItem>
+                {isHelpRequestKey(id) && <SelectItem value={optionsValue(id)}>{`${PROMPTS_COPY.prompts[id].label} ${PROMPTS_COPY.options.title}`}</SelectItem>}
               </Fragment>
             ))}
           </SelectContent>
@@ -157,18 +158,20 @@ export function PromptsTab({ settings, onChange }: { settings: HelpSettings; onC
               <CompactSelectionRow selected={key === id && !showOptions} showCheck={false} aria-pressed={undefined} aria-current={key === id && !showOptions ? 'true' : undefined} onClick={() => open(id, false)}>
                 {PROMPTS_COPY.prompts[id].label}
               </CompactSelectionRow>
-              <CompactSelectionRow
-                className="pl-6" selected={key === id && showOptions} showCheck={false} aria-pressed={undefined}
-                aria-label={`${PROMPTS_COPY.prompts[id].label} ${PROMPTS_COPY.options.title}`}
-                aria-current={key === id && showOptions ? 'true' : undefined} onClick={() => open(id, true)}
-              >
-                {PROMPTS_COPY.options.title}
-              </CompactSelectionRow>
+              {isHelpRequestKey(id) && (
+                <CompactSelectionRow
+                  className="pl-6" selected={key === id && showOptions} showCheck={false} aria-pressed={undefined}
+                  aria-label={`${PROMPTS_COPY.prompts[id].label} ${PROMPTS_COPY.options.title}`}
+                  aria-current={key === id && showOptions ? 'true' : undefined} onClick={() => open(id, true)}
+                >
+                  {PROMPTS_COPY.options.title}
+                </CompactSelectionRow>
+              )}
             </Fragment>
           ))}
         </nav>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {showOptions ? (
+          {showOptions && isHelpRequestKey(key) ? (
             <RequestOptions
               key={`${active.id}:${key}`}
               prompt={key}
