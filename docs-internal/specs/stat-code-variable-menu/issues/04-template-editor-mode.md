@@ -1,6 +1,6 @@
 # 04: Template Editor Mode
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02 — Drill Menu in the Stat Box
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
