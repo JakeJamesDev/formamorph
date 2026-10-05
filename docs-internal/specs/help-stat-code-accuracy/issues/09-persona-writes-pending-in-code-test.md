@@ -19,3 +19,7 @@ Morphie's code test runs on the authored world with no playthrough, so `persona`
 - [ ] The editor's Test Code output is byte-identical for the same code (test in place)
 - [ ] The no-world run (Q27) is unchanged
 - [ ] Changelog fragment written
+
+## Notes
+
+Ticket 08's branch (`ticket/help-stat-code-accuracy-08`) holds a harness test that runs the code test on each known case's fixture world and expects the guide's code to test clean. It fails today on the persona case and goes green once this ticket lands. Use it as a check; land your own test too, since 08 has not landed.
