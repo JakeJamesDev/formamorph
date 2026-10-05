@@ -1,6 +1,53 @@
 import { describe, expect, it } from 'vitest';
 import { hasCodeWords, isCodeTurn } from '@/lib/formaquestion/helpCodeRider';
-import { HELP_CODE_CASES } from './help-code-cases';
+import { fixtureRunner, HELP_CODE_CASES } from './help-code-cases';
+import { passesCase, scoreCodeAnswer, scoreNames } from './help-code-score';
+
+const answer = (code: string) => `Put this in **Before the AI**:\n\n\`\`\`javascript before\n${code}\n\`\`\``;
+const passes = async (id: string, code: string) => {
+  const names = HELP_CODE_CASES.find((c) => c.id === id)?.names;
+  if (!names) throw new Error(`no known case ${id}`);
+  return passesCase(await scoreCodeAnswer(answer(code), fixtureRunner), scoreNames(answer(code), names));
+};
+
+// Each known case's code as the guide writes it, and the code the source session gave for it.
+const KNOWN: Record<string, { right: string; given: string }> = {
+  'prowler-at-night': {
+    right: "traits.Prowler.enabled = clock.daypart === 'night';",
+    given: 'if (clock.time >= 20 || clock.time <= 5) {\n  traits.Prowler.enabled = true;\n} else {\n  traits.Prowler.enabled = false;\n}',
+  },
+  'seasoned-after-two-weeks': {
+    right: 'traits.Seasoned.enabled = clock.day > 14;',
+    given: 'if (clock.days >= 14) {\n  traits.Seasoned.enabled = true;\n} else {\n  traits.Seasoned.enabled = false;\n}',
+  },
+  'seasoned-on-persona': {
+    right: 'persona.traits.Seasoned.enabled = clock.day > 14;',
+    given: 'if (clock.day > 14) {\n  traits.Seasoned.enabled = true;\n}',
+  },
+  'brave-at-courage': {
+    right: 'traits.Brave.enabled = stats.Courage.value >= 50;',
+    given: 'if (stats.Courage >= 50) {\n  traits.Brave.enabled = true;\n}',
+  },
+  'quotes-pin': {
+    right: "if (clock.day > 30 && stats.Int.value > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n}",
+    given: "if (clock.days >= 30 && self.value > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n} else {\n  placeholders.Quotes.unpin();\n}",
+  },
+};
+
+describe('the known cases', () => {
+  it('are the code cases that carry names', () => {
+    expect(HELP_CODE_CASES.filter((c) => c.names).map((c) => c.id)).toEqual(Object.keys(KNOWN));
+    expect(HELP_CODE_CASES.filter((c) => c.names).every((c) => c.kind === 'code')).toBe(true);
+  });
+
+  it.each(Object.entries(KNOWN))('pass %s on the code the guide writes', async (id, { right }) => {
+    expect(await passes(id, right)).toBe(true);
+  });
+
+  it.each(Object.entries(KNOWN))('fail %s on the code the source session gave', async (id, { given }) => {
+    expect(await passes(id, given)).toBe(false);
+  });
+});
 
 // The set against the real rider trigger: a trigger change that flips a case fails here, not as a silent arm swap.
 describe('the help-code question set', () => {

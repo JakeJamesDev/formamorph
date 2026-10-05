@@ -4,7 +4,7 @@ import { STAT_CODE_TAB } from '@/lib/formaquestion/helpCodeRider';
 import { executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from '@/lib/statCodeExecutor';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
 import type { Stat } from '@/types';
-import type { SnippetRunner } from './help-code-score';
+import { ref, type CaseNames, type SnippetRunner } from './help-code-score';
 
 /** `code` wants a fenced answer on the rider arm; `prose` is a how-to control that wants none on either arm. */
 export type HelpCodeKind = 'code' | 'prose';
@@ -15,6 +15,8 @@ export interface HelpCodeCase {
   question: string;
   /** What the player has open. A code case with it names no code word, so the open Code tab alone fires the rider. */
   surface?: Surface;
+  /** A known case's real names. It passes when its code runs, holds them, and holds no invented one. */
+  names?: CaseNames;
 }
 
 const statPanel = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
@@ -29,6 +31,37 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   { id: 'hunger-drain', kind: 'code', question: 'How do I make this stat go down by 2 every turn when Hunger is above 7?', surface: CODE_TAB },
   { id: 'rested-when-full', kind: 'code', question: 'How do I turn on the Rested trait when this stat is full?', surface: CODE_TAB },
   { id: 'night-regen', kind: 'code', question: 'How can this stat recover 1 point per hour, but only at night?', surface: CODE_TAB },
+  // Known cases: the tasks of one player session on a stat's Code tab, each asked on its own.
+  {
+    id: 'prowler-at-night', kind: 'code', surface: CODE_TAB,
+    question: 'I want a trait called Prowler to activate when it\'s nighttime. Could you write it for me?',
+    names: { present: [ref('clock.daypart'), ref('traits.Prowler.enabled')] },
+  },
+  {
+    id: 'seasoned-after-two-weeks', kind: 'code', surface: CODE_TAB,
+    question: 'What if I want the Seasoned trait to activate after it has been 2 weeks?',
+    names: { present: [ref('clock.day'), ref('traits.Seasoned.enabled')] },
+  },
+  {
+    id: 'seasoned-on-persona', kind: 'code', surface: CODE_TAB,
+    question: 'My Seasoned trait is on a custom character. How do I make it activate after it has been 2 weeks?',
+    names: { present: [ref('clock.day'), ref('persona.traits.Seasoned.enabled')], absent: [ref('traits.Seasoned')] },
+  },
+  {
+    id: 'brave-at-courage', kind: 'code', surface: CODE_TAB,
+    question: 'I want the Brave trait to activate when my Courage is 50 or more.',
+    names: { present: [ref('stats.Courage.value'), ref('traits.Brave.enabled', 'persona.traits.Brave.enabled')] },
+  },
+  {
+    id: 'quotes-pin', kind: 'code', surface: CODE_TAB,
+    question: 'Set the Quotes placeholder to \'The wind is howling\', but only after a month has passed, my Int is over 30, and I have the trait Grumpy.',
+    names: {
+      present: [
+        ref('clock.day'), ref('stats.Int.value'), ref('traits.Grumpy.enabled', 'persona.traits.Grumpy.enabled'),
+        ref('placeholders.Quotes.pin', 'placeholders.Quotes.value'),
+      ],
+    },
+  },
   { id: 'add-stat', kind: 'prose', question: 'How do I add a new stat to my world?' },
   { id: 'hide-stat', kind: 'prose', question: 'How do I hide a stat from the player?' },
   { id: 'change-theme', kind: 'prose', question: 'How do I change the theme?' },
@@ -40,7 +73,9 @@ const stat = (name: string, min: number, max: number, value: number, regen: numb
 
 /** The stat every snippet belongs to, and its neighbors the questions name. */
 export const FIXTURE_STAT = stat('Health', 0, 100, 60, 1);
-export const FIXTURE_STATS: readonly Stat[] = [FIXTURE_STAT, stat('Stamina', 0, 100, 40, 2), stat('Hunger', 0, 10, 8, 0)];
+export const FIXTURE_STATS: readonly Stat[] = [
+  FIXTURE_STAT, stat('Stamina', 0, 100, 40, 2), stat('Hunger', 0, 10, 8, 0), stat('Courage', 0, 100, 55, 0), stat('Int', 0, 50, 32, 0),
+];
 
 const wildcard = (name: string, values: string[], value: string): SandboxPlaceholderNode => ({
   name, path: [name], entry: { id: name.toLowerCase(), value, values, text: value, roll: () => values[0] },
@@ -48,9 +83,17 @@ const wildcard = (name: string, values: string[], value: string): SandboxPlaceho
 const trait = (name: string, enabled: boolean, acquired: boolean): SandboxTrait =>
   ({ name, enabled, acquired, id: name.toLowerCase(), mode: 'optional', available: true, group: '', playerToggle: true });
 
+// The persona holds the traits a question says "I have", so either owner's path runs.
 export const FIXTURE_OPTIONS: StatCodeRunOptions = {
-  placeholders: [wildcard('Weather', ['sunny', 'rainy', 'stormy'], 'rainy'), wildcard('Mood', ['calm', 'wary'], 'calm')],
-  traits: [trait('Poisoned', true, true), trait('Rested', false, false), trait('Brave', true, true)],
+  placeholders: [
+    wildcard('Weather', ['sunny', 'rainy', 'stormy'], 'rainy'), wildcard('Mood', ['calm', 'wary'], 'calm'),
+    wildcard('Quotes', ['The sea is calm', 'The wind is howling'], 'The sea is calm'),
+  ],
+  traits: [
+    trait('Poisoned', true, true), trait('Rested', false, false), trait('Brave', true, true),
+    trait('Prowler', false, false), trait('Seasoned', false, false), trait('Grumpy', true, true),
+  ],
+  persona: { name: 'Wren', traits: [trait('Seasoned', false, false), trait('Brave', false, false), trait('Grumpy', true, true)] },
 };
 
 /** Runs a snippet as the fixture stat's code, in the real stat-code sandbox and its own interrupt timeout. */
