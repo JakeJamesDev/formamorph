@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
+import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useWheelScroll } from '@/lib/useWheelScroll';
 import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
@@ -198,14 +199,16 @@ export function OptionSwitcher<T extends string>({ value, onChange, options, ari
  * alignment guard can tell it apart from a plain one-line control. Omitting `label` leaves the label cell
  * empty, which is how a row that is only a button or a status line still lands in the control column.
  */
-export function Row({ label, htmlFor, children, hint, top, info, muted, experimental }: {
+export function Row({ label, htmlFor, children, hint, top, info, muted, experimental, target }: {
   label?: string; htmlFor?: string; children: ReactNode; hint?: string;
   top?: boolean; info?: ReactNode; muted?: boolean; experimental?: boolean;
+  /** Marks the row as a Take Me There target. */
+  target?: TargetAttribute;
 }) {
   return (
     // Row gaps are margins rather than `gap-y`: the label needs a full gap under it when the grid stacks
     // on mobile, and the hint needs a tight one, which a single gap value can't give both.
-    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4">
+    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4" {...target}>
       {label === undefined
         // Holds the column open on wide screens only: on mobile the grid is one column, where an empty
         // cell would just be a gap above the control.
@@ -244,12 +247,14 @@ export function ValueSlider({ id, value, onChange, min, max, step, format, ariaL
  *  explanation on demand doesn't have to be hand-built to get it.
  *  `disabled` is for a row whose value is not the reader's to set yet — one still being read from a
  *  server, or one a write is in flight for. The hint keeps its normal weight; the box alone dims. */
-export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experimental, disabled }: {
+export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experimental, disabled, target }: {
   label: string; htmlFor: string; checked: boolean; onChange: (v: boolean) => void; hint: string;
   info?: ReactNode; experimental?: boolean; disabled?: boolean;
+  /** Marks the row as a Take Me There target. */
+  target?: TargetAttribute;
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4" {...target}>
       <RowLabel htmlFor={htmlFor} info={info} experimental={experimental}>{label}</RowLabel>
       <div className="flex items-start gap-2">
         {/* The box is shorter than the line of text beside it, so a `1lh` sleeve centers it on that line —

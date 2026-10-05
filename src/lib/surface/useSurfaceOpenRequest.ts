@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { endpointTabForRoute, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { randomUUID } from '@/lib/uuid';
-import { opensInHelpWindow, resolveSurface, stepTab, type SurfaceSteps, type TabKey } from './surfaceRoute';
+import { opensInHelpWindow, resolveSurface, stepTab, targetRoute, type SurfaceSteps, type TabKey } from './surfaceRoute';
 
 /**
  * Acts on a pending `requestSurface(...)` once per request. `open` gets the steps and `clear`, which it
@@ -48,6 +48,8 @@ export interface SettingsLanding {
   endpointTab?: string;
   promptTab?: string;
   promptSurface?: string;
+  /** The route text of the row to land on. */
+  target?: string;
 }
 
 export function settingsLanding(steps: SurfaceSteps): SettingsLanding {
@@ -56,6 +58,7 @@ export function settingsLanding(steps: SurfaceSteps): SettingsLanding {
     endpointTab: endpointTabForRoute(stepTab(steps, 'settingsEndpoints')),
     promptTab: stepTab(steps, 'settingsPrompts') ?? stepTab(steps, 'settingsPromptPreset'),
     promptSurface: stepTab(steps, 'settingsPromptSurfaces'),
+    target: targetRoute(steps),
   };
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SURFACE_EXCLUSIONS, SURFACE_IDS } from '@/lib/docs/surfaceMap';
-import { opensInHelpWindow, resolveSurface, stepTab } from './surfaceRoute';
+import { opensInHelpWindow, resolveSurface, stepTab, targetRoute } from './surfaceRoute';
+import { routeText, SURFACE_TARGETS } from './surfaceTargets';
 
 describe('resolveSurface', () => {
   it('opens a screen alone', () => {
@@ -71,6 +72,19 @@ describe('resolveSurface with a target', () => {
 
   it('gives a bare route no target', () => {
     expect(resolveSurface('settings.display')).not.toHaveProperty('target');
+  });
+});
+
+describe('targetRoute', () => {
+  it('gives back the route text of every registered target', () => {
+    for (const [surface, targets] of Object.entries(SURFACE_TARGETS)) {
+      for (const target of targets) expect(targetRoute(resolveSurface(surface, target)!)).toBe(routeText(surface, target));
+    }
+  });
+
+  it('gives nothing for steps with no target', () => {
+    expect(targetRoute(resolveSurface('settings.display')!)).toBeUndefined();
+    expect(targetRoute(resolveSurface('settings.display', 'nowhere')!)).toBeUndefined();
   });
 });
 

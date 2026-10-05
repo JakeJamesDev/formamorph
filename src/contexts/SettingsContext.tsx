@@ -1532,6 +1532,11 @@ function useProvideSettings() {
   // A pending "open this surface" request. The view that can host it acts on it and clears it.
   const [surfaceRequest, setSurfaceRequest] = useState<SurfaceOpenRequest | null>(null);
   const requestSurface = useCallback((route: SurfaceRoute) => setSurfaceRequest({ ...route, nonce: randomUUID() }), []);
+  // DEV-only: send a Take Me There request without an answer (`window.__fmDev.requestSurface({ id, target })`).
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return registerDevHook('requestSurface', requestSurface);
+  }, [requestSurface]);
   // Clears only the request it names, so a newer one sent during a prompt survives the old one's answer.
   const clearSurfaceRequest = useCallback((nonce: string) => {
     setSurfaceRequest((current) => (current?.nonce === nonce ? null : current));
