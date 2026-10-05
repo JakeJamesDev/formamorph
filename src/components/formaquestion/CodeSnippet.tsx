@@ -1,9 +1,10 @@
-import { cloneElement, isValidElement, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Copy } from 'lucide-react';
 import type { ExtraProps } from 'streamdown';
 import { Button } from '@/components/ui/button';
-import { Tip } from '@/components/ui/tooltip';
-import { copyWithToast } from '@/lib/clipboard';
+import { FlashTip, Tip } from '@/components/ui/tooltip';
+import { copyText } from '@/lib/clipboard';
+import { useMountedRef } from '@/lib/useMountedRef';
 
 type HastElement = NonNullable<ExtraProps['node']>;
 type HastChild = HastElement['children'][number];
@@ -38,6 +39,38 @@ function snippetBlock(pre: HastElement | undefined): SnippetBlock | null {
   };
 }
 
+/** How long the copy result shows before it fades. */
+const FLASH_MS = 1200;
+
+/** Copy, confirmed by a tip at the button rather than a toast. */
+function CopyButton({ code }: { code: string }) {
+  const button = useRef<HTMLButtonElement>(null);
+  const mounted = useMountedRef();
+  // `shown` counts presses, so a second copy restarts the timer even with the same text.
+  const [flash, setFlash] = useState({ tip: '', open: false, shown: 0 });
+  useEffect(() => {
+    if (!flash.open) return;
+    const timer = setTimeout(() => setFlash((prev) => ({ ...prev, open: false })), FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [flash.open, flash.shown]);
+  const copy = () => {
+    void copyText(code).then((copied) => {
+      if (!mounted.current) return;
+      setFlash((prev) => ({ tip: copied ? 'Copied' : "Couldn't copy", open: true, shown: prev.shown + 1 }));
+    });
+  };
+  return (
+    <>
+      <Tip tip="Copy">
+        <Button ref={button} variant="ghost" size="icon" className="h-6 w-6" onClick={copy}>
+          <Copy aria-hidden className="h-3.5 w-3.5" />
+        </Button>
+      </Tip>
+      <FlashTip anchor={button} tip={flash.tip} open={flash.open} />
+    </>
+  );
+}
+
 /**
  * The `pre` renderer of the help window: Streamdown's highlighted block under a toolbar with Copy.
  * It wraps the block rather than replacing `code`, which would replace the highlighter.
@@ -51,11 +84,7 @@ export function CodeSnippet({ node, children, actions }: { node?: HastElement; c
     <div className="relative my-4 [&>[data-streamdown=code-block]]:my-0">
       {body}
       <div className="absolute right-2 top-2 flex h-8 items-center gap-1">
-        <Tip tip="Copy">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyWithToast(block.code)}>
-            <Copy aria-hidden className="h-3.5 w-3.5" />
-          </Button>
-        </Tip>
+        <CopyButton code={block.code} />
         {actions?.(block)}
       </div>
     </div>
