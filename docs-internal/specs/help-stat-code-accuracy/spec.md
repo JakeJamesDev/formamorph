@@ -192,9 +192,10 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Q39.** (Ticket 13 intent, 2026-10-05.) No rider change: the surface line already names the open stat on the Code tab, and a `self` line would be a prompt change with its own arm. Done-state: smoke, then the five known cases × 5 runs on the cloud default, rider arm, focus on the fixture stat, numbers recorded here. The Dictionary Editor's entry panel has no tab ledger, so it does not register a focus; the five world-editor panels and the Entity Editor's entity panel do. A trait opened inside an entity's Traits tab leaves the entity as the focus.
 
+- **Q40.** (Ticket 13, user ruling 2026-10-05.) Cloud probe, five known cases, 2 batches × 5 runs, rider arm with the focus on the fixture stat vs a no-focus control in the same batch: focus 26/50 (52%), control 33/50 (66%); runs 74% vs 86%. Not significant at this n (p≈0.2). Every non-persona miss on both arms is the fence tag-line drift (focus 13, control 7); no answer used `self.value`. 13 lands as built. Ticket 14 fixes the tag line in the rider and re-measures focus vs no-focus in the same batch.
+
 ## Backlog
 
 - The Dictionary Editor's entry panel registers a help focus once it reports a tab ledger. Raised by ticket 13.
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
 - Whole-stat error follow-ups from ticket 04's review: a number slot counts as a number literal for equality; bitwise operators join the flagged set; a non-name member such as `stats.length` gets a message that says `stats` holds entries by name. User's call on a ticket.
-- Fence tag-line drift: on the quotes-pin case, 5 of 8 runs put the slot tag on its own line, so the fence failed. A rider wording fix with its own probe. Raised by ticket 07.
