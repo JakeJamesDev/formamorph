@@ -16,6 +16,7 @@ import { ASSISTANT_BUBBLE, BUBBLE, FLOATING, PILL_BUTTON, TOP_FADE } from './flo
 import { cn } from '@/lib/utils';
 import { Answer } from './AskParts';
 import { HELD_LINE, useAskSend, useFollowEnd } from './useAskParts';
+import { emptyRoomLine, speakerName } from '@/lib/formaquestion/helpSpeaker';
 import { ResizeHandles, type ResizeHandlers } from './FormaquestionFrame';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { ScrollArrow } from './ScrollArrow';
@@ -182,7 +183,7 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
           ) : (
             <Hint role="status" className={ASSISTANT_BUBBLE}>Loading the guide…</Hint>
           ))}
-          {guide && chat.exchanges.length === 0 && <Hint className={ASSISTANT_BUBBLE}>Ask how to do something in Formamorph</Hint>}
+          {guide && chat.exchanges.length === 0 && <Hint className={ASSISTANT_BUBBLE}>{emptyRoomLine(speakerName(settings))}</Hint>}
           {guide && chat.exchanges.map((exchange) => (
             <div key={exchange.id} className="flex flex-col gap-2">
               <div className="ml-10 flex flex-col items-end gap-2 self-end">

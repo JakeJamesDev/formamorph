@@ -819,7 +819,7 @@ describe('the Mascot phases', () => {
     expect(drawn()).toEqual(look('thinking'));
 
     await reply.push(sseFrame({ reasoning_content: 'The player wants the Traits page.' }));
-    await within(conversation()).findByRole('button', { name: 'Thinking…' });
+    await within(conversation()).findByRole('button', { name: 'Morphie is thinking…' });
     expect(drawn()).toEqual(look('thinking'));
 
     await reply.push(sseFrame({ content: 'Open' }));

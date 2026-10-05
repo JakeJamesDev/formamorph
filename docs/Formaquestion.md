@@ -335,7 +335,7 @@ F1 does one of three things:
 
 The **Ask** tab sends your question to your AI, together with the guide sections that match it. The answer shows as the AI writes it.
 
-Until the answer starts, a line under your question says what it waits on: **Checking your AI…** for a connection check, **Searching with your AI…** for the **AI Search** request, **Searching the guide…** for **Semantic Search**, **Waiting for your AI…** for the answer request, and **Looking up…** while the AI reads more of the guide. While the model reasons, the **Thinking** header shows the wait instead.
+Until the answer starts, a line under your question says what it waits on: **Checking your AI…** for a connection check, **Searching with your AI…** for the **AI Search** request, **Searching the guide…** for **Semantic Search**, **Waiting for your AI…** for the answer request, and **Looking up…** while the AI reads more of the guide. While the model reasons, the **Thinking** header shows the wait instead. With the mascot on, these lines say its name: **Asking Morphie…**, **Morphie is thinking…**, **Morphie did not answer**, and the empty conversation asks you to **Ask Morphie how to do something in Formamorph**. A custom mascot's lines use its own name.
 
 - **Sources**, under an answer, lists the guide sections that the AI got. Select one to read it.
 - **Take Me There**, next to **Sources**, opens the screen that the top source describes. See [How to Go to the Screen an Answer Describes](#how-to-go-to-the-screen-an-answer-describes).

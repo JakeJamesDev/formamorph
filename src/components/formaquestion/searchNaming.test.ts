@@ -45,7 +45,7 @@ describe('the Search request name', () => {
   });
 
   it('shows in the wait line, the trace and the guide', () => {
-    const waitLines = read('AskParts.tsx');
+    const waitLines = read('../../lib/formaquestion/helpSpeaker.ts');
     expect(waitLines).not.toMatch(/Picking sections/);
     expect(waitLines).toMatch(/picking: 'Searching with your AI…'/);
     const trace = read('../../lib/formaquestion/helpSession.ts');

@@ -1,3 +1,4 @@
+import { thinkingLine } from '@/lib/formaquestion/helpSpeaker';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -38,16 +39,16 @@ export function ReasoningBlock({ text, ms, active }: { text: string; ms: number;
 }
 
 /** The header of a reasoning block: a pulsing dot while the model thinks, then the time it took. */
-export function ThinkingLabel({ active, ms }: { active: boolean; ms: number }) {
+export function ThinkingLabel({ active, ms, who = null }: { active: boolean; ms: number; /** Who thinks, when the header names someone, as the Mascot does. */ who?: string | null }) {
   if (active) {
     return (
       <span className="inline-flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse motion-reduce:animate-none" />
-        Thinking…
+        {thinkingLine(true, ms, who)}
       </span>
     );
   }
-  return <>{`Thought for ${Math.max(1, Math.round(ms / 1000))}s`}</>;
+  return <>{thinkingLine(false, ms, who)}</>;
 }
 
 /** A model's reasoning as markdown, muted and smaller than the text it precedes. */

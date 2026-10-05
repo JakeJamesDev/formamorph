@@ -35,8 +35,8 @@ async function send(field: HTMLElement, question: string) {
 const REASONING = 'The player wants the Traits page.';
 /** A native reasoning model: the scratchpad streams in its own field, then the answer. */
 const reasoned = () => [sseFrame({ reasoning_content: REASONING }), ...sseReply('Select **Add Trait**.')];
-/** The toggle reads "Thinking…" while the model reasons, then "Thought for Ns". */
-const THINKING = /^(Thinking…|Thought for \d+s)$/;
+/** The toggle names the Mascot, on here: "Morphie is thinking…" while the model reasons, then "Morphie thought for Ns". */
+const THINKING = /^(Morphie is thinking…|Morphie thought for \d+s)$/;
 const thinkingToggles = () => within(conversation()).getAllByRole('button', { name: THINKING });
 
 beforeEach(() => {
@@ -134,13 +134,13 @@ describe('the Thinking block of an answer', () => {
     const field = await openAsk();
     await send(field, 'How do I add a trait?');
     // The header pulses while the model reasons, and the time shows once the answer starts.
-    await within(conversation()).findByRole('button', { name: 'Thinking…' });
+    await within(conversation()).findByRole('button', { name: 'Morphie is thinking…' });
     // The pulsing header is the wait line while the model reasons.
-    expect(conversation()).not.toHaveTextContent('Waiting for your AI…');
+    expect(conversation()).not.toHaveTextContent('Asking Morphie…');
 
     await act(async () => { finish(); });
     await vi.waitFor(() => expect(conversation()).toHaveTextContent('Select Add Trait.'));
-    expect(within(conversation()).getByRole('button', { name: /^Thought for \d+s$/ })).toBeInTheDocument();
-    expect(within(conversation()).queryByRole('button', { name: 'Thinking…' })).toBeNull();
+    expect(within(conversation()).getByRole('button', { name: /^Morphie thought for \d+s$/ })).toBeInTheDocument();
+    expect(within(conversation()).queryByRole('button', { name: 'Morphie is thinking…' })).toBeNull();
   });
 });
