@@ -39,9 +39,11 @@ export interface MenuActions {
   /** The Mascot Position the radio items mark. The sheet draws no Mascot, so it leaves the choices out. */
   mascotPlacement?: MascotPlacement;
   onMascotPlacementChange?: (placement: MascotPlacement) => void;
+  /** The choices the chrome offers; Bubble has no over or under. */
+  mascotPlacements?: readonly { value: MascotPlacement; label: string }[];
 }
 
-export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, chatStyle, onChatStyleChange, mascotPlacement, onMascotPlacementChange, container, onOpenChange, large = false, round = false }: MenuActions & {
+export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, chatStyle, onChatStyleChange, mascotPlacement, onMascotPlacementChange, mascotPlacements = GENERAL_COPY.mascotPosition.options, container, onOpenChange, large = false, round = false }: MenuActions & {
   container?: HTMLElement;
   /** Called as the menu opens and closes. */
   onOpenChange?: (open: boolean) => void;
@@ -117,7 +119,7 @@ export function FormaquestionMenu({ onOpenAiContext, onOpenSettings, onClear, ch
                 if (isMascotPlacement(value) && value !== mascotPlacement) pending.current = () => onMascotPlacementChange(value);
               }}
             >
-              {GENERAL_COPY.mascotPosition.options.map(({ value, label }) => (
+              {mascotPlacements.map(({ value, label }) => (
                 <ContextMenuRadioItem key={value} value={value} checked={mascotPlacement === value}>{label}</ContextMenuRadioItem>
               ))}
             </ContextMenuRadioGroup>

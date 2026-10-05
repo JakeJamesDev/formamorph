@@ -81,6 +81,17 @@ describe('the bubble layout in full view', () => {
     expect(bubbleLayout(input({ empty: true, headView: true, scale: 'auto', heights: { content: 0, question: 0, input: 44 } })).chat.h).toBe(SCREEN.height * 0.6);
   });
 
+  it('stands the column toward the screen edge under Inside, in both views', () => {
+    const outside = bubbleLayout(input());
+    const inside = bubbleLayout(input({ placement: 'inside' }));
+    expect(outside.side).toBe('right');
+    expect(inside.side).toBe('left');
+    expect(inside.chat.x).toBeGreaterThan(inside.her.x);
+    expect(inside.tail.points).toBe('left');
+    const head = bubbleLayout(input({ headView: true, scale: 'auto', placement: 'inside' }));
+    expect(head.her.x).toBe(head.bubble.x);
+  });
+
   it('mirrors the group when she crosses the center of the screen', () => {
     const right = bubbleLayout(input({ at: { x: 900, y: 850 } }));
     const left = bubbleLayout(input({ at: { x: 700, y: 850 } }));

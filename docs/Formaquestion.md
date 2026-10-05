@@ -149,15 +149,15 @@ The arrow shows when the end of the conversation is more than half a window heig
 <!-- route: formaquestionSettings.general#mascot-position -->
 
 1. Select **⋮** in the Formaquestion title bar, or in the pill above a bare column.
-2. Under **Mascot Position**, select **Beside**, **Below** or **Auto**.
+2. Under **Mascot Position**, select **Above**, **Below**, **Inside** or **Outside**.
 
-You can also set it in the **Window** group of the **General** tab. Both places change the same setting, and this device keeps it.
+You can also set it in the **Mascot Position** dropdown in the **Window** group of the **General** tab. Both places change the same setting, and this device keeps it.
 
-- **Beside** stands the mascot next to the chat, on the side with more room.
-- **Below** stands the mascot under the chat. The chat stops growing at a set share of the screen height, so the mascot always has room. If the chat is taller when you select **Below**, it shrinks to that height.
-- **Auto** stands the mascot under the chat while the chat is at most that tall, and beside it when the chat grows taller. The mascot moves the moment the chat crosses the line.
+- **Above** stands the mascot over the chat, and **Below** under it. The chat stops growing at a set share of the screen height, so the mascot always has room. If the chat is taller when you select one of them, it shrinks to that height.
+- **Inside** stands the mascot beside the chat, toward the middle of the screen. **Outside** stands it beside the chat, toward the nearer edge of the screen.
+- The side flips only when the piece you drag crosses the middle of the screen. Drag the pill and the chat crosses to the mascot's other side; drag the mascot and the chat crosses to hers.
 - The reader stays beside the chat.
-- **Mascot Position** applies to the **Minimal** and **Full** styles. Under **Bubble**, the row and the **⋮** menu choices are hidden.
+- Under **Bubble**, only **Inside** and **Outside** apply, so the dropdown and the **⋮** menu offer those two. Without the mascot, there is nothing to place, so they are hidden.
 - The **⋮** menu of the mobile-size sheet has no **Mascot Position** choices, since the sheet shows no mascot.
 
 ## How to Change the Size of the Mascot
@@ -408,8 +408,8 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | Setting | Default | What it does |
 |---|---|---|
 | **Mascot** | On | Shows the mascot with a bare chat column. It takes effect at once, with no **Save**. With it off, the **Mascot** tab disables every control and shows a link back to this row. |
-| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Bubble**, **Minimal** or **Full**. **Auto** is **Bubble** with the **Mascot** on. The **⋮** menu has the same four choices. |
-| **Mascot Position** | Auto | Sets whether the mascot stands beside or under the chat: **Beside**, **Below** or **Auto**. **Auto** stands the mascot under a short chat and beside a tall one. The **⋮** menu has the same three choices. Hidden under **Bubble**. |
+| **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Bubble** with the **Mascot** on. The **⋮** menu has the same three choices. |
+| **Mascot Position** | Outside | Sets where the mascot stands around the chat: **Above**, **Below**, **Inside** or **Outside**. The **⋮** menu has the same choices. Under **Bubble**, only **Inside** and **Outside** show. Hidden while the mascot is off. |
 | **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Bubble** and **Minimal** styles. Set 0 for none. |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |

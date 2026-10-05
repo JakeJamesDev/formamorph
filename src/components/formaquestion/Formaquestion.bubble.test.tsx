@@ -456,17 +456,26 @@ describe('Mascot Position under Bubble', () => {
     expect(within(dialog).queryByRole('radiogroup', { name: 'Mascot Position' })).toBeNull();
   });
 
-  it('leaves the row and the ⋮ menu entry out under Bubble', async () => {
+  it('offers Inside and Outside alone under Bubble, in the ⋮ menu and the dropdown, and reads a stored Below as Outside', async () => {
+    localStorage.setItem('formamorph.formaquestion.mascotPlacement', 'below');
     await openWindow();
     await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
-    expect(await screen.findByRole('group', { name: 'Chat Style' })).toBeInTheDocument();
-    expect(screen.queryByRole('group', { name: 'Mascot Position' })).toBeNull();
+    const group = await screen.findByRole('group', { name: 'Mascot Position' });
+    expect(within(group).getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual(['Inside', 'Outside']);
     await userEvent.keyboard('{Escape}');
 
     await openHelpSettings();
     const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
-    expect(within(dialog).getByRole('radiogroup', { name: 'Chat Style' })).toBeInTheDocument();
-    expect(within(dialog).queryByRole('radiogroup', { name: 'Mascot Position' })).toBeNull();
+    const position = within(dialog).getByRole('combobox', { name: 'Mascot Position' });
+    expect(position).toHaveTextContent('Outside');
+    await userEvent.click(position);
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['Inside', 'Outside']);
+  });
+
+  it('stands the column toward the screen edge under Inside', async () => {
+    localStorage.setItem('formamorph.formaquestion.mascotPlacement', 'inside');
+    await openWindow();
+    expect(helpWindow()).toHaveAttribute('data-fq-side', 'left');
   });
 
   it('shows the row and the ⋮ menu entry under Minimal', async () => {
@@ -478,7 +487,7 @@ describe('Mascot Position under Bubble', () => {
 
     await openHelpSettings();
     const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
-    expect(within(dialog).getByRole('radiogroup', { name: 'Mascot Position' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('combobox', { name: 'Mascot Position' })).toBeInTheDocument();
   });
 
   it('lists three Chat Styles in the ⋮ menu and the General row', async () => {

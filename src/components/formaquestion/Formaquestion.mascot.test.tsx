@@ -103,8 +103,8 @@ beforeEach(async () => {
   ({ Formaquestion } = await import('./Formaquestion'));
   ({ openDocs } = await import('@/lib/formaquestion/docsOpener'));
   localStorage.clear();
-  // These tests read the Minimal chrome's Beside geometry on Auto, which a new device no longer starts on.
-  localStorage.setItem(PLACEMENT_KEY, 'beside');
+  // These tests read the Minimal chrome's geometry with her toward the middle (Inside) on Auto scale; a new device starts on Outside at 25%.
+  localStorage.setItem(PLACEMENT_KEY, 'inside');
   localStorage.setItem('formamorph.formaquestion.mascotScale', 'auto');
   storeMinimalWindow();
   ai.current = helpAi({ revalidate: vi.fn(async () => true) });
@@ -149,24 +149,27 @@ describe('the minimal chrome', () => {
   });
 
   it('moves the window by her body too, and past the middle the column flips while she stays under the pointer', async () => {
+    // Outside: she stands at the right edge, the column on her left.
+    localStorage.setItem(PLACEMENT_KEY, 'outside');
     await openWindow();
     loadBase();
-    const before = parseFloat(helpWindow().style.left);
-    expect(mascot()).toHaveClass('cursor-move');
-    fireEvent.pointerDown(mascot()!, { button: 0, pointerId: 1, clientX: 700, clientY: 400 });
-    fireEvent.pointerMove(mascot()!, { pointerId: 1, clientX: 650, clientY: 400 });
-    expect(parseFloat(helpWindow().style.left)).toBe(before - 50);
-    expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-
-    // Her center crosses the middle going right: she keeps her place under the pointer, and the column crosses to her left.
-    fireEvent.pointerMove(mascot()!, { pointerId: 1, clientX: 1000, clientY: 400 });
     expect(column().compareDocumentPosition(mascot()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(parseFloat(helpWindow().style.left)).toBe(before + 300 - NARROW_WIDTH);
+    const herLeft = parseFloat(helpWindow().style.left) + NARROW_WIDTH;
+    expect(mascot()).toHaveClass('cursor-move');
+    fireEvent.pointerDown(mascot()!, { button: 0, pointerId: 1, clientX: 900, clientY: 400 });
+    fireEvent.pointerMove(mascot()!, { pointerId: 1, clientX: 850, clientY: 400 });
+    expect(parseFloat(helpWindow().style.left)).toBe(herLeft - 50 - NARROW_WIDTH);
+    expect(column().compareDocumentPosition(mascot()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Her center crosses the middle going left: she keeps her place under the pointer, and the column crosses to her right.
+    fireEvent.pointerMove(mascot()!, { pointerId: 1, clientX: 300, clientY: 400 });
+    expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(parseFloat(helpWindow().style.left)).toBe(herLeft - 600);
     // The flip remounted her in the other slot, so the release lands on the window, and the drag still ends there.
     fireEvent.pointerUp(window, { pointerId: 1 });
-    expect(JSON.parse(localStorage.getItem(BOX_KEY)!).x).toBe(before + 300 - NARROW_WIDTH);
-    fireEvent.pointerMove(window, { pointerId: 1, clientX: 900, clientY: 400 });
-    expect(parseFloat(helpWindow().style.left)).toBe(before + 300 - NARROW_WIDTH);
+    expect(JSON.parse(localStorage.getItem(BOX_KEY)!).x).toBe(herLeft - 600 + parseFloat(mascot()!.style.width));
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 500, clientY: 400 });
+    expect(parseFloat(helpWindow().style.left)).toBe(herLeft - 600);
   });
 
   it('moves both pieces by the pill, and the stored box is the column, which survives a remount', async () => {
@@ -530,7 +533,7 @@ describe('the Mascot below', () => {
   const px = (value: string) => parseFloat(value);
 
   beforeEach(() => {
-    localStorage.removeItem(PLACEMENT_KEY);
+    localStorage.setItem(PLACEMENT_KEY, 'below');
   });
 
   it('stands her under a short column on Auto, filling the room to the screen margin', async () => {
@@ -543,19 +546,6 @@ describe('the Mascot below', () => {
     expect(px(mascot()!.style.height)).toBe(px(group.height) - columnHeight);
     expect(px(mascot()!.style.width)).toBeCloseTo(px(mascot()!.style.height) * ASPECT);
     expect(column().compareDocumentPosition(mascot()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it('stands her beside once the column is dragged past the cap on Auto', async () => {
-    await openWindow();
-    loadBase();
-    const grip = column().querySelector<HTMLElement>('[data-fq-resize]')!;
-    fireEvent.pointerDown(grip, { button: 0, pointerId: 1, clientX: 900, clientY: 300 });
-    fireEvent.pointerMove(grip, { pointerId: 1, clientX: 900, clientY: 900 });
-    fireEvent.pointerUp(grip, { pointerId: 1 });
-    const columnHeight = px(column().style.height);
-    expect(columnHeight).toBeGreaterThan(window.innerHeight * MASCOT_BELOW_CAP);
-    expect(mascot()!.style.height).toBe(`${columnHeight}px`);
-    expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('stops the grip at the cap on Below', async () => {
@@ -607,35 +597,47 @@ describe('the Mascot Position', () => {
     localStorage.removeItem(PLACEMENT_KEY);
   });
 
-  it('puts the row after Chat Style with Beside, Below and Auto, and Auto chosen', async () => {
+  it('puts the dropdown after Chat Style with Above, Below, Inside and Outside, and Outside chosen', async () => {
     await openWindow();
     const dialog = await generalDialog();
-    const rows = within(dialog).getAllByRole('radiogroup').map((group) => group.getAttribute('aria-label'));
-    expect(rows.indexOf('Mascot Position')).toBe(rows.indexOf('Chat Style') + 1);
-    const row = within(within(dialog).getByRole('radiogroup', { name: 'Mascot Position' }));
-    expect(row.getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Beside', 'Below', 'Auto']);
-    expect(row.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'true');
+    const chatStyle = within(dialog).getByRole('radiogroup', { name: 'Chat Style' });
+    const position = within(dialog).getByRole('combobox', { name: 'Mascot Position' });
+    expect(chatStyle.compareDocumentPosition(position) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(position).toHaveTextContent('Outside');
+    await userEvent.click(position);
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['Above', 'Below', 'Inside', 'Outside']);
   });
 
-  it('writes the device store from the row, and the menu marks the new value', async () => {
+  it('writes the device store from the dropdown, and the menu marks the new value', async () => {
     await openWindow();
     const dialog = await generalDialog();
-    await userEvent.click(within(dialog).getByRole('radio', { name: 'Below' }));
+    await userEvent.click(within(dialog).getByRole('combobox', { name: 'Mascot Position' }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Below' }));
     expect(stored()).toBe('below');
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(helpWindow()).toHaveAttribute('data-state', 'open'));
     const group = await menuPosition();
-    expect(within(group).getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual(['Beside', 'Below', 'Auto']);
+    expect(within(group).getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual(['Above', 'Below', 'Inside', 'Outside']);
     expect(checkedIn(group)).toEqual(['Below']);
   });
 
-  it('writes the device store from the menu, and the row marks the new value', async () => {
+  it('writes the device store from the menu, and the dropdown marks the new value', async () => {
     await openWindow();
-    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Beside' }));
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Inside' }));
     await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
-    expect(stored()).toBe('beside');
+    expect(stored()).toBe('inside');
     const dialog = await generalDialog();
-    expect(within(dialog).getByRole('radio', { name: 'Beside' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(dialog).getByRole('combobox', { name: 'Mascot Position' })).toHaveTextContent('Inside');
+  });
+
+  it('stands her over the column under Above, her feet on its top', async () => {
+    await openWindow();
+    loadBase();
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Above' }));
+    await waitFor(() => expect(stored()).toBe('above'));
+    expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const top = parseFloat(helpWindow().style.top);
+    expect(top + parseFloat(mascot()!.style.height) + parseFloat(column().style.height)).toBe(top + parseFloat(helpWindow().style.height));
   });
 
   it('stores the cap height when Below is picked over a column taller than the cap', async () => {
@@ -662,14 +664,14 @@ describe('the Mascot Position', () => {
     expect(screen.queryByRole('group', { name: 'Mascot Position' })).toBeNull();
   });
 
-  it('leaves the column alone when Auto is picked over a tall column', async () => {
+  it('leaves the column alone when Inside is picked over a tall column', async () => {
     const tall = Math.round(window.innerHeight * 0.9);
     localStorage.setItem(BOX_KEY, JSON.stringify({ x: 40, y: 0, minimal: { w: 380, h: tall }, full: { w: 560, h: tall } }));
-    localStorage.setItem(PLACEMENT_KEY, 'beside');
+    localStorage.setItem(PLACEMENT_KEY, 'outside');
     await openWindow();
     loadBase();
-    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Auto' }));
-    await waitFor(() => expect(stored()).toBe('auto'));
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Inside' }));
+    await waitFor(() => expect(stored()).toBe('inside'));
     expect(JSON.parse(localStorage.getItem(BOX_KEY)!).minimal.h).toBe(tall);
   });
 

@@ -26,9 +26,14 @@ import { PromptsTab } from './FormaquestionPromptsTab';
 import { ToolsTab } from './FormaquestionToolsTab';
 import { useHelpRevealSource } from './useHelpRevealSource';
 import { setMascotPlacement, useMascotPlacement } from './useMascotDevice';
+import { isMascotPlacement, isVerticalPlacement, type MascotPlacement, type WindowChrome } from '@/lib/formaquestion/windowBox';
 import { useMascotDraft } from './useMascotDraft';
 import type { SemanticSearch } from './useSemanticSearch';
-import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
+import { FORMAQUESTION_SETTINGS_TABS, GENERAL_COPY, placementOptions, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
+
+/** The placement the dropdown marks: Bubble draws a stored Above or Below as Outside, so the dropdown says so. */
+const shownPlacement = (placement: MascotPlacement, chrome: WindowChrome): MascotPlacement =>
+  (chrome === 'bubble' && isVerticalPlacement(placement) ? 'outside' : placement);
 
 const MB = 1048576;
 
@@ -118,20 +123,23 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
             onChange={(chatStyle) => onChange({ chatStyle })}
           />
         </Row>
-        {/* Bubble ignores Mascot Position (Q9), and without her there is nothing to place. */}
-        {settings.mascot && chatChrome(settings) !== 'bubble' && (
+        {/* Without her there is nothing to place; Bubble offers Inside and Outside alone (Q34). */}
+        {settings.mascot && (
           <Row
+            htmlFor="fq-mascot-position"
             target={targetAttribute('formaquestionSettings.general', 'mascot-position')}
             label={GENERAL_COPY.mascotPosition.label}
             hint={GENERAL_COPY.mascotPosition.hint}
             info={<HintInfo>{GENERAL_COPY.mascotPosition.info}</HintInfo>}
           >
-            <OptionSwitcher
-              ariaLabel={GENERAL_COPY.mascotPosition.label}
-              value={placement}
-              options={GENERAL_COPY.mascotPosition.options}
-              onChange={setMascotPlacement}
-            />
+            <Select value={shownPlacement(placement, chatChrome(settings))} onValueChange={(value) => { if (isMascotPlacement(value)) setMascotPlacement(value); }}>
+              <SelectTrigger id="fq-mascot-position" aria-label={GENERAL_COPY.mascotPosition.label} className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {placementOptions(chatChrome(settings)).map(({ value, label }) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </Row>
         )}
         <Row htmlFor="fq-scrim-opacity" target={targetAttribute('formaquestionSettings.general', 'backdrop')} label={GENERAL_COPY.scrimOpacity.label} hint={GENERAL_COPY.scrimOpacity.hint}>

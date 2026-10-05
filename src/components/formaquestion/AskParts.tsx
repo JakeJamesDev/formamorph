@@ -61,16 +61,21 @@ function fallbackLine(status: Extract<HelpStatus, 'no-ai' | 'failed'>, partial: 
 
 /** A source under an answer: the page, then the section. It opens the section in the reader. */
 function SourceLink({ guide, section, onOpen }: { guide: Guide; section: DocSection; onOpen: (id: string) => void }) {
+  const page = guide.titleOf(section.page);
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(section.id)}
-      className={cn('inline-flex max-w-full items-center gap-1 rounded border bg-muted/40 px-1.5 py-0.5 text-meta text-muted-foreground hover:bg-accent hover:text-accent-foreground', FOCUS_RING)}
-    >
-      <span className="truncate">{guide.titleOf(section.page)}</span>
-      <ChevronRight aria-hidden className="h-3 w-3 shrink-0" />
-      <span className="truncate text-foreground">{section.label}</span>
-    </button>
+    // The whole name rides the tooltip, since a long one ends in an ellipsis.
+    <Tip tip={`${page} › ${section.label}`} labelsChild={false}>
+      <button
+        type="button"
+        onClick={() => onOpen(section.id)}
+        className={cn('inline-flex max-w-full items-center gap-1 overflow-hidden rounded border bg-muted/40 px-1.5 py-0.5 text-meta text-muted-foreground hover:bg-accent hover:text-accent-foreground', FOCUS_RING)}
+      >
+        {/* Each part may shrink to its ellipsis, so a long name never widens the chip past its row. */}
+        <span className="min-w-0 shrink truncate">{page}</span>
+        <ChevronRight aria-hidden className="h-3 w-3 shrink-0" />
+        <span className="min-w-0 shrink truncate text-foreground">{section.label}</span>
+      </button>
+    </Tip>
   );
 }
 

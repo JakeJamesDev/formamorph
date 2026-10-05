@@ -1,6 +1,7 @@
 /** The Bubble chrome's layout: the Mascot, the answer bubble that speaks for her, and the column under it, in CSS pixels. */
 import type { MascotMask } from './mascot';
 import type { MascotSize } from './mascotMask';
+import { DEFAULT_MASCOT_PLACEMENT, type MascotPlacement } from './windowBox';
 import {
   CORNER_CLEARANCE, DEFAULT_HEIGHT_SHARE, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, NARROW_WIDTH, READER_GAP, READER_WIDTH, SCREEN_MARGIN, TAB_CLEARANCE,
   type BubblePoint, type MascotScale, type MascotSide, type Viewport, type WindowBox, type WindowSize,
@@ -49,6 +50,8 @@ export interface BubbleInput {
   readonly scale: MascotScale;
   readonly viewport: Viewport;
   readonly headView: boolean;
+  /** Inside stands the column on her side toward the screen's edge; outside (and the vertical placements) on her side toward the middle. */
+  readonly placement?: MascotPlacement;
   readonly heights: BubbleHeights;
   /** The chat width the bubble grip set, or null for the default. */
   readonly width: number | null;
@@ -108,8 +111,12 @@ const headHeightAt = (scale: MascotScale, mask: MascotMask, viewport: Viewport):
 /** The chat width the player set, else the default, inside the room. */
 const bubbleWidthFor = (width: number | null, room: number): number => Math.min(Math.max(width ?? BUBBLE_DEFAULT_WIDTH, BUBBLE_MIN_WIDTH), room);
 
-/** The side of the screen a point stands on. */
-const sideOf = (x: number, viewport: Viewport): MascotSide => (x > viewport.width / 2 ? 'right' : 'left');
+/** The side of the column she stands on: the half of the screen her center is in, or the other one under Inside (Q34). */
+const sideOf = (x: number, viewport: Viewport, placement: MascotPlacement = DEFAULT_MASCOT_PLACEMENT): MascotSide => {
+  const half: MascotSide = x > viewport.width / 2 ? 'right' : 'left';
+  if (placement !== 'inside') return half;
+  return half === 'right' ? 'left' : 'right';
+};
 
 /**
  * The pieces for her place. In full view the bubble's bottom sits at her head's bottom and grows up to the
@@ -124,7 +131,7 @@ export function bubbleLayout(input: BubbleInput): BubbleLayout {
   return input.headView ? headLayout(input) : fullLayout(input);
 }
 
-function fullLayout({ at, base, mask, scale, viewport, heights, width, height, empty, showReader }: BubbleInput): BubbleLayout {
+function fullLayout({ at, base, mask, scale, viewport, placement, heights, width, height, empty, showReader }: BubbleInput): BubbleLayout {
   const { width: vw, height: vh } = viewport;
   const aspect = base.width / base.height;
   const mouthShare = (mask.y + mask.height * TAIL_MOUTH_SHARE) / base.height;
@@ -151,7 +158,7 @@ function fullLayout({ at, base, mask, scale, viewport, heights, width, height, e
   const minH = Math.max(BUBBLE_MIN_HEIGHT, bubbleBottomOff - mouth + TAIL_INSET);
 
   const wanted = at ?? { x: vw - TAB_CLEARANCE - herW / 2, y: vh - CORNER_CLEARANCE };
-  const side = sideOf(wanted.x, viewport);
+  const side = sideOf(wanted.x, viewport, placement);
   const herX = side === 'right'
     ? clamp(wanted.x - herW / 2, SCREEN_MARGIN + w + TAIL_LENGTH, vw - SCREEN_MARGIN - herW)
     : clamp(wanted.x - herW / 2, SCREEN_MARGIN, vw - SCREEN_MARGIN - herW - TAIL_LENGTH - w);
@@ -173,7 +180,7 @@ function fullLayout({ at, base, mask, scale, viewport, heights, width, height, e
   return finish({ side, her, chat, bubble, tail, strip, question, input: inputBox, scrolls, at: { x: herX + herW / 2, y: bottom } }, viewport, showReader);
 }
 
-function headLayout({ at, mask, scale, viewport, heights, width, height, empty, showReader }: BubbleInput): BubbleLayout {
+function headLayout({ at, mask, scale, viewport, placement, heights, width, height, empty, showReader }: BubbleInput): BubbleLayout {
   const { width: vw, height: vh } = viewport;
   const aspect = mask.width / mask.height;
   const room = vw - SCREEN_MARGIN * 2;
@@ -189,7 +196,7 @@ function headLayout({ at, mask, scale, viewport, heights, width, height, empty, 
   const under = zoneH + BUBBLE_GAP + heights.input;
 
   const wanted = at ?? { x: vw - TAB_CLEARANCE - headW / 2, y: vh - CORNER_CLEARANCE };
-  const side = sideOf(wanted.x, viewport);
+  const side = sideOf(wanted.x, viewport, placement);
   // The head stands at the column's end nearest the screen edge, so the column's outer edge is the head's.
   const columnX = clamp(side === 'right' ? wanted.x + headW / 2 - w : wanted.x - headW / 2, SCREEN_MARGIN, vw - SCREEN_MARGIN - w);
   const bottom = clamp(wanted.y, SCREEN_MARGIN + BUBBLE_MIN_HEIGHT + TAIL_LENGTH + under, vh - SCREEN_MARGIN);

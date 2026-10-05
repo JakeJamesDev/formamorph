@@ -29,6 +29,7 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { EdgeTab } from './EdgeTab';
 import { FormaquestionFrame, type ResizeHandlers } from './FormaquestionFrame';
 import { FORMAQUESTION_TABS, openSectionChange, useGuideView, type GuideViewChange } from './formaquestionTabs';
+import { placementOptions } from './formaquestionSettingsTabs';
 import { asFormaquestionSettingsTab, type FormaquestionSettingsTab } from './formaquestionSettingsTabs';
 import { FormaquestionSettings } from './FormaquestionSettings';
 import { FormaquestionAiContext } from './FormaquestionAiContext';
@@ -461,9 +462,12 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const layout = sheet || bubble ? null : windowLayout(boxChrome, box, viewport, pieces);
   if (layout) sideRef.current = layout.side;
   const side = layout?.side ?? 'left';
+  const stacked = layout?.placement === 'below' || layout?.placement === 'above';
   const below = layout?.placement === 'below';
-  // Below, she centers under the column; beside, she takes the side the reader leaves.
-  const mascotSide = below ? null : side;
+  // Over or under the column she centers on it; beside, she takes the side the reader leaves.
+  const mascotSide = stacked ? null : side;
+  // A new placement starts the side over from the column's place (Q34).
+  useEffect(() => { sideRef.current = undefined; }, [placement]);
   const readerSide = layout?.readerSide ?? 'right';
   // Picking Below clamps the column to the cap at once and keeps that height (Q9).
   const shownPlacement = useRef(placement);
@@ -473,7 +477,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     if (shownPlacement.current === placement) return;
     shownPlacement.current = placement;
     const kept = boxOf(stored, boxChrome);
-    if (drawnPlacement !== 'below' || drawnHeight === undefined || drawnHeight === kept.h) return;
+    if ((drawnPlacement !== 'below' && drawnPlacement !== 'above') || drawnHeight === undefined || drawnHeight === kept.h) return;
     const next = withBox(stored, boxChrome, { ...kept, h: drawnHeight });
     setStored(next);
     writeStoredWindow(next);
@@ -534,6 +538,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     scale,
     viewport,
     headView,
+    placement,
     heights: bubbleHeights,
     width: stored.chat?.w ?? null,
     height: stored.chat?.h ?? null,
@@ -569,7 +574,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     chatStyle: settings.chatStyle,
     onChatStyleChange: (chatStyle) => changeSettings({ chatStyle }),
     // Bubble ignores Mascot Position (Q9).
-    ...(sheet || bubble || !settings.mascot ? {} : { mascotPlacement: placement, onMascotPlacementChange: setMascotPlacement }),
+    ...(sheet || !settings.mascot ? {} : { mascotPlacement: placement, onMascotPlacementChange: setMascotPlacement, mascotPlacements: placementOptions(chrome) }),
   };
 
   // She is a drag target beside or under the box, as she is under Bubble, and stays under the pointer while the column flips sides (Q33); the sheet has no moves.
@@ -656,7 +661,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
               // On the sheet a dim, blurred backdrop stands in for the frame, because the bubbles fill the screen.
               ? cn('app-viewport pointer-events-auto bg-background/80 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm', sheetMotion)
               // Only the pieces take presses; the gaps between them belong to the app.
-              : `pointer-events-none fixed ${below ? 'flex-col' : 'items-end'} ${windowMotion}`,
+              : `pointer-events-none fixed ${stacked ? 'flex-col' : 'items-end'} ${windowMotion}`,
           )}
           style={layout ? {
             left: layout.group.x,
@@ -666,10 +671,11 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
             transformOrigin: originFrom(layout.group.x, layout.group.y),
           } : undefined}
         >
-          {layout && below ? (
+          {layout && stacked ? (
             <>
+              {!below && <div className="flex" style={{ marginLeft: (layout.mascotAt?.x ?? 0) - layout.group.x }}>{wholeMascot}</div>}
               <div
-                className="flex shrink-0 items-end"
+                className={cn('flex shrink-0 items-end', !below && 'mt-auto')}
                 style={{
                   marginLeft: layout.column.x - (readerSide === 'left' ? readerSpace : 0) - layout.group.x,
                   width: layout.column.w + readerSpace,
@@ -680,7 +686,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
                 {chatColumn}
                 {readerSide === 'right' && readerPiece}
               </div>
-              <div className="mt-auto flex" style={{ marginLeft: (layout.mascotAt?.x ?? 0) - layout.group.x }}>{wholeMascot}</div>
+              {below && <div className="mt-auto flex" style={{ marginLeft: (layout.mascotAt?.x ?? 0) - layout.group.x }}>{wholeMascot}</div>}
             </>
           ) : (
             <>
@@ -744,7 +750,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
         <div
           data-state={open ? 'open' : 'closed'}
           className={`pointer-events-none fixed flex items-end ${windowMotion}`}
-          style={below && layout.mascot && layout.mascotAt ? {
+          style={stacked && layout.mascot && layout.mascotAt ? {
             left: layout.mascotAt.x,
             top: layout.mascotAt.y,
             width: layout.mascot.w,
