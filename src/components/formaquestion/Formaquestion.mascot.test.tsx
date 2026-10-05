@@ -148,6 +148,27 @@ describe('the minimal chrome', () => {
     expect(mascot()).not.toBeNull();
   });
 
+  it('moves the window by her body too, and past the middle the column flips while she stays under the pointer', async () => {
+    await openWindow();
+    loadBase();
+    const before = parseFloat(helpWindow().style.left);
+    expect(mascot()).toHaveClass('cursor-move');
+    fireEvent.pointerDown(mascot()!, { button: 0, pointerId: 1, clientX: 700, clientY: 400 });
+    fireEvent.pointerMove(mascot()!, { pointerId: 1, clientX: 650, clientY: 400 });
+    expect(parseFloat(helpWindow().style.left)).toBe(before - 50);
+    expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Her center crosses the middle going right: she keeps her place under the pointer, and the column crosses to her left.
+    fireEvent.pointerMove(mascot()!, { pointerId: 1, clientX: 1000, clientY: 400 });
+    expect(column().compareDocumentPosition(mascot()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(parseFloat(helpWindow().style.left)).toBe(before + 300 - NARROW_WIDTH);
+    // The flip remounted her in the other slot, so the release lands on the window, and the drag still ends there.
+    fireEvent.pointerUp(window, { pointerId: 1 });
+    expect(JSON.parse(localStorage.getItem(BOX_KEY)!).x).toBe(before + 300 - NARROW_WIDTH);
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 900, clientY: 400 });
+    expect(parseFloat(helpWindow().style.left)).toBe(before + 300 - NARROW_WIDTH);
+  });
+
   it('moves both pieces by the pill, and the stored box is the column, which survives a remount', async () => {
     const { view } = await openWindow();
     loadBase();
@@ -542,12 +563,15 @@ describe('the Mascot below', () => {
     await openWindow();
     loadBase();
     const grip = column().querySelector<HTMLElement>('[data-fq-resize]')!;
+    const top = px(helpWindow().style.top);
     fireEvent.pointerDown(grip, { button: 0, pointerId: 1, clientX: 900, clientY: 300 });
     fireEvent.pointerMove(grip, { pointerId: 1, clientX: 900, clientY: 900 });
     fireEvent.pointerUp(grip, { pointerId: 1 });
-    expect(px(column().style.height)).toBe(window.innerHeight * MASCOT_BELOW_CAP);
+    // The column's bottom stops at the cap line, and its top never moves to make room.
+    expect(px(helpWindow().style.top)).toBeCloseTo(top);
+    expect(top + px(column().style.height)).toBeCloseTo(window.innerHeight * MASCOT_BELOW_CAP);
     const stored = JSON.parse(localStorage.getItem(BOX_KEY)!) as { minimal: { h: number } };
-    expect(stored.minimal.h).toBe(window.innerHeight * MASCOT_BELOW_CAP);
+    expect(stored.minimal.h).toBeCloseTo(window.innerHeight * MASCOT_BELOW_CAP - top);
   });
 
   it('stands her under the full frame, centered', async () => {
@@ -626,16 +650,16 @@ describe('the Mascot Position', () => {
     expect(box.minimal.h).toBe(window.innerHeight * MASCOT_BELOW_CAP);
   });
 
-  it('keeps the stored height when Below is picked while no Mascot is drawn', async () => {
+  it('keeps the stored height under a stored Below while no Mascot is drawn, and offers no Mascot Position then', async () => {
     const tall = Math.round(window.innerHeight * 0.9);
     storeFramedWindow({ chatStyle: 'minimal', mascot: false });
     localStorage.setItem(BOX_KEY, JSON.stringify({ x: 40, y: 0, minimal: { w: 380, h: tall }, full: { w: 560, h: tall } }));
-    localStorage.setItem(PLACEMENT_KEY, 'beside');
+    localStorage.setItem(PLACEMENT_KEY, 'below');
     await openWindow();
-    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Below' }));
-    await waitFor(() => expect(stored()).toBe('below'));
     expect(parseFloat(column().style.height)).toBe(tall);
-    expect(JSON.parse(localStorage.getItem(BOX_KEY)!).minimal.h).toBe(tall);
+    await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
+    expect(await screen.findByRole('group', { name: 'Chat Style' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Mascot Position' })).toBeNull();
   });
 
   it('leaves the column alone when Auto is picked over a tall column', async () => {

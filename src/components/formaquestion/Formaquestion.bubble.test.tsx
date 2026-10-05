@@ -8,7 +8,7 @@ import { mascotImageUrl } from '@/lib/formaquestion/mascotAssets';
 import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 import { sseFrame, sseReply, sseResponse, textSnapshot, textTarget } from '@/test/aiTextFixtures';
 import { helpAi } from '@/test/helpAiFixture';
-import { openHelpSettings, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
+import { openHelpSettings, storeFramedWindow, storeMinimalWindow, stubHelpStream } from '@/test/helpFixtures';
 import type { HelpAi } from './useHelpAi';
 
 const ai = vi.hoisted(() => ({ current: null as unknown as HelpAi }));
@@ -88,6 +88,13 @@ describe('the bubble chrome', () => {
     expect(bubble()).toBeNull();
     expect(strip()).toBeNull();
     expect(screen.queryByRole('note', { name: 'Your Question' })).toBeNull();
+    // The chat room still stands, with its grip on it and the scrim over it, so the chat's size shows before the first answer.
+    const grip = piece('resize')!;
+    const room = grip.parentElement!.style;
+    expect(parseFloat(room.height)).toBeGreaterThan(100);
+    expect(parseFloat(piece('scrim')!.style.top)).toBe(parseFloat(room.top) - 12);
+    // The pill stands at her outer edge: she is on the right, so it sits at her right.
+    expect(helpWindow().querySelector('[data-fq-drag]')!.parentElement).toHaveClass('justify-end');
   });
 
   it('speaks the newest answer from the bubble, with its question under it and Sources and Take Me There in the strip', async () => {
@@ -436,6 +443,19 @@ describe('paging through the conversation', () => {
 });
 
 describe('Mascot Position under Bubble', () => {
+  it('leaves the row and the ⋮ menu entry out with the Mascot off, since there is nothing to place', async () => {
+    storeFramedWindow({ chatStyle: 'minimal', mascot: false });
+    await openWindow();
+    await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));
+    expect(await screen.findByRole('group', { name: 'Chat Style' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Mascot Position' })).toBeNull();
+    await userEvent.keyboard('{Escape}');
+
+    await openHelpSettings();
+    const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
+    expect(within(dialog).queryByRole('radiogroup', { name: 'Mascot Position' })).toBeNull();
+  });
+
   it('leaves the row and the ⋮ menu entry out under Bubble', async () => {
     await openWindow();
     await userEvent.click(within(helpWindow()).getByRole('button', { name: 'More Actions' }));

@@ -118,8 +118,8 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
             onChange={(chatStyle) => onChange({ chatStyle })}
           />
         </Row>
-        {/* Bubble ignores Mascot Position (Q9). */}
-        {chatChrome(settings) !== 'bubble' && (
+        {/* Bubble ignores Mascot Position (Q9), and without her there is nothing to place. */}
+        {settings.mascot && chatChrome(settings) !== 'bubble' && (
           <Row
             target={targetAttribute('formaquestionSettings.general', 'mascot-position')}
             label={GENERAL_COPY.mascotPosition.label}

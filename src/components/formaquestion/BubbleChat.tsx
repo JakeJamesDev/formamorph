@@ -69,7 +69,7 @@ type Place = (box: WindowBox, sized?: boolean) => CSSProperties;
  * answer's Thinking toggle, its Sources popover and Take Me There (Q14, Q22). The bubble and the strip share the folds. Without
  * an exchange the bubble shows only the guide's load state, and no strip draws.
  */
-function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, settings, onSettingsChange, onOpen, onGo, resize, contentRef }: {
+function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, settings, onSettingsChange, onOpen, onGo, contentRef }: {
   layout: BubbleLayout;
   place: Place;
   page: BubblePage;
@@ -82,7 +82,6 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
   onSettingsChange: (change: HelpSettingsChange) => void;
   onOpen: (id: string) => void;
   onGo: (route: SurfaceRoute) => void;
-  resize: DragHandlers;
   contentRef: RefObject<HTMLDivElement>;
 }) {
   const folds = useAnswerFolds(exchange, settings, onSettingsChange);
@@ -94,7 +93,7 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
     if (!writing.current && viewportRef.current) viewportRef.current.scrollTop = 0;
   }, [viewportRef]);
   const waitingId = useId();
-  const { group, tail, grip } = layout;
+  const { group, tail } = layout;
   return (
     <>
       {/* The bubble is two layers with the tail between them: the tail covers the surface's border where it joins, and the text and the scroll bar cover the tail (Q31). */}
@@ -130,10 +129,6 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
           </div>
         </ScrollArea>
         <ScrollArrow shown={away} onClick={toEnd} />
-      </div>
-      {/* On the chat room's corner, as Minimal's grip is on its box; outside the bubble, so the fade never hides it. */}
-      <div className="pointer-events-none" style={place(layout.chat)}>
-        <Grip corner={grip} handlers={resize} name="resize" />
       </div>
       {guide && exchange && (
         <div data-fq-strip="" className="flex items-center gap-2" style={place(layout.strip)}>
@@ -173,7 +168,7 @@ function Speech({ layout, place, page, exchange, guide, failed, onRetry, chat, s
  * her feet. The layout places every piece; this draws them and reports the heights the layout stacks.
  */
 export function BubbleChat({
-  layout, page, mascot, headView, guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo,
+  layout, page, mascot, guide, failed, onRetry, chat, settings, onSettingsChange, draft, onDraftChange, onOpen, onGo,
   move, resize, mascotResize, headToggle, menu, onClose, onHeights, reader,
 }: {
   layout: BubbleLayout;
@@ -181,7 +176,6 @@ export function BubbleChat({
   page: BubblePage;
   /** The Mascot: her whole body, or her head in head view. */
   mascot: ReactNode;
-  headView: boolean;
   /** Null until the docs load. */
   guide: Guide | null;
   failed: boolean;
@@ -243,8 +237,8 @@ export function BubbleChat({
     width: box.w,
     ...(sized ? { height: box.h } : {}),
   });
-  // In head view her head stands inside the column, over the input.
-  const columnTop = speaking ? layout.chat.y : (headView ? layout.her : layout.input).y;
+  // The chat room stands even before the first answer, so the scrim covers it and its grip shows (Q33).
+  const columnTop = layout.chat.y;
   // The pill and her grip fade when idle over her head, in both views (Q5, Q31).
   const fade = usePillFade(true);
   const hover = fade && { onPointerEnter: fade.props.onPointerEnter, onPointerLeave: fade.props.onPointerLeave };
@@ -265,6 +259,10 @@ export function BubbleChat({
           }}
         />
       )}
+      {/* On the chat room's corner, as Minimal's grip is on its box; outside the bubble, so the fade never hides it. */}
+      <div className="pointer-events-none" style={place(layout.chat)}>
+        <Grip corner={layout.grip} handlers={resize} name="resize" />
+      </div>
       {speaking && (
         <Speech
           key={exchange?.id}
@@ -280,7 +278,6 @@ export function BubbleChat({
           onSettingsChange={onSettingsChange}
           onOpen={onOpen}
           onGo={onGo}
-          resize={resize}
           contentRef={contentRef}
         />
       )}
@@ -295,8 +292,8 @@ export function BubbleChat({
         <AskPill draft={draft} onDraftChange={onDraftChange} chat={chat} />
       </div>
       <div data-fq-body="" {...move} {...hover} className="pointer-events-auto flex cursor-move touch-none items-end" style={place(layout.her)}>{mascot}</div>
-      {/* The pill stands over her head, inside her bounds: centered on her body, and at her head's outer edge in head view, where it may be the wider. */}
-      <div className={cn('flex', !headView ? 'justify-center' : layout.side === 'right' ? 'justify-end' : 'justify-start')} style={place(layout.her, false)}>{pill}</div>
+      {/* The pill stands over her head, inside her bounds, at the outer edge; in head view it may be the wider. */}
+      <div className={cn('flex', layout.side === 'right' ? 'justify-end' : 'justify-start')} style={place(layout.her, false)}>{pill}</div>
       {/* Her grip, on her top corner on the bubble side (Q19). */}
       <div className="pointer-events-none" style={place(layout.her)}>
         <Grip corner={layout.mascotGrip} handlers={mascotResize} name="mascot-resize" fade={fade?.props} />

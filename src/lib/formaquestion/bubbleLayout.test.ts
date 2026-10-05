@@ -73,6 +73,14 @@ describe('the bubble layout in full view', () => {
     expect(bottomOf(layout.input)).toBe(bottomOf(layout.her));
   });
 
+  it('shows the chat room before the first answer: the set height, else the default share of the screen', () => {
+    const full = bubbleLayout(input({ empty: true, heights: { content: 0, question: 0, input: 44 } }));
+    expect(full.chat.h).toBe(Math.min(SCREEN.height * 0.6, bottomOf(full.chat) - M));
+    expect(full.chat.h).toBeGreaterThan(BUBBLE_MIN_HEIGHT);
+    expect(bubbleLayout(input({ empty: true, height: 200, heights: { content: 0, question: 0, input: 44 } })).chat.h).toBe(200);
+    expect(bubbleLayout(input({ empty: true, headView: true, scale: 'auto', heights: { content: 0, question: 0, input: 44 } })).chat.h).toBe(SCREEN.height * 0.6);
+  });
+
   it('mirrors the group when she crosses the center of the screen', () => {
     const right = bubbleLayout(input({ at: { x: 900, y: 850 } }));
     const left = bubbleLayout(input({ at: { x: 700, y: 850 } }));

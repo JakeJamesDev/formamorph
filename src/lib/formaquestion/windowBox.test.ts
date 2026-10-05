@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  boxOf, clampBox, defaultBox, defaultWindow, isWide, moveBox, movePieces, readStoredHeadView, readStoredWindow, resizeBox,
+  boxOf, clampBox, defaultBox, defaultWindow, dragColumn, dragMascot, isWide, moveBox, movePieces, readStoredHeadView, readStoredWindow, resizeBox,
   resizePieces, swapWidth, windowLayout, withBox, writeStoredHeadView, writeStoredWindow,
   headHeight, readStoredMascotScale, writeStoredMascotScale, readStoredMascotPlacement, writeStoredMascotPlacement, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, type MascotScale,
   MASCOT_BELOW_CAP, MIN_HEIGHT, MIN_WIDTH, NARROW_WIDTH, READER_GAP, READER_WIDTH, WIDE_WIDTH, type StoredWindow, type Viewport,
@@ -124,6 +124,35 @@ describe('moveBox and resizeBox', () => {
   it('passes the handle through resizePieces', () => {
     const pieces = { mascotAspect: null, placement: 'beside' as const };
     expect(resizePieces('full', start, -100, 0, SCREEN, pieces, 'w')).toEqual({ ...start, x: 500, w: 500 });
+  });
+
+  it('keeps her under the pointer when she is dragged, and flips the column to her other side past the middle', () => {
+    const pieces = { mascotAspect: 0.75, placement: 'beside' as const };
+    const before = windowLayout('full', start, SCREEN, pieces);
+    expect(before.side).toBe('left');
+    const herX = before.mascotAt!.x;
+    // A short drag: she moves by it, and the column with her.
+    const moved = dragMascot('full', start, 40, 10, SCREEN, pieces);
+    expect(moved.side).toBe('left');
+    expect(moved.mascotAt).toEqual({ x: herX + 40, y: before.mascotAt!.y + 10 });
+    // Once her center crosses the middle the column stands on her other side, and she is still under the pointer.
+    const flipped = dragMascot('full', start, 500, 0, SCREEN, pieces);
+    expect(flipped.side).toBe('right');
+    expect(flipped.mascotAt!.x).toBe(herX + 500);
+    expect(flipped.column.x + flipped.column.w).toBe(herX + 500);
+    // The column drag flips on the column's own crossing, and the kept side holds between drags.
+    expect(windowLayout('full', flipped.column, SCREEN, { ...pieces, side: 'right' }).side).toBe('right');
+    expect(dragColumn('full', flipped.column, 600, 0, SCREEN, { ...pieces, side: 'right' }).side).toBe('left');
+  });
+
+  it('stops a left handle drag at her room beside the frame, and never moves the right edge', () => {
+    const pieces = { mascotAspect: 0.75, placement: 'beside' as const };
+    const grown = resizePieces('full', start, -5000, 0, SCREEN, pieces, 'w');
+    expect(grown.x + grown.w).toBe(start.x + start.w);
+    expect(grown.w).toBeGreaterThan(start.w);
+    const { group } = windowLayout('full', grown, SCREEN, pieces);
+    expect(group.x).toBeGreaterThanOrEqual(0);
+    expect(group.x + group.w).toBeLessThanOrEqual(SCREEN.width);
   });
 });
 
@@ -338,7 +367,7 @@ describe('movePieces', () => {
   it('stops where the Mascot would leave the screen, beside the column or the frame', () => {
     expect(movePieces('minimal', { x: 1000, y: 0, w: NARROW_WIDTH, h: 560 }, 500, 0, SCREEN, pieces).x).toBe(SCREEN.width - NARROW_WIDTH);
     const nearLeft = { mascotAspect: 0.75, side: 'right' } as const;
-    expect(movePieces('full', { x: 500, y: 0, w: WIDE_WIDTH, h: 560 }, -600, 0, SCREEN, nearLeft)).toEqual({ x: 0, y: 0, w: WIDE_WIDTH, h: 560 });
+    expect(movePieces('full', { x: 100, y: 0, w: WIDE_WIDTH, h: 560 }, -600, 0, SCREEN, nearLeft)).toEqual({ x: 0, y: 0, w: WIDE_WIDTH, h: 560 });
   });
 });
 
@@ -514,11 +543,20 @@ describe('the Mascot below', () => {
     expect(below({ x: 1100, y: 300, w: NARROW_WIDTH, h: 800 }).column.y).toBe(0);
   });
 
-  it('stands a percent Mascot at the bottom, and drops the column no further than lets her fit', () => {
+  it('stands a percent Mascot right under the column, and drops the column no further than lets her fit', () => {
     const fits = below({ x: 1100, y: 100, w: NARROW_WIDTH, h: 400 }, { scale: 25, baseHeight: BASE_HEIGHT });
     expect(fits.mascot).toEqual({ w: 225, h: 300 });
-    expect(fits.group.y + fits.group.h).toBe(BOTTOM);
+    expect(fits.mascotAt?.y).toBe(500);
+    expect(fits.group.y + fits.group.h).toBe(800);
     expect(below({ x: 1100, y: 500, w: NARROW_WIDTH, h: 400 }, { scale: 25, baseHeight: BASE_HEIGHT }).column.y).toBe(BOTTOM - 400 - 300);
+  });
+
+  it('stops a bottom handle drag where her room ends, and never moves the column top', () => {
+    const start = { x: 1100, y: 100, w: NARROW_WIDTH, h: 400 };
+    const pieces = { mascotAspect: ASPECT, placement: 'below' as const, scale: 25, baseHeight: BASE_HEIGHT };
+    const grown = resizePieces('minimal', start, 0, 5000, SCREEN, pieces, 's');
+    expect(grown.y).toBeCloseTo(100);
+    expect(grown.y + grown.h).toBeCloseTo(BOTTOM - 300);
   });
 
   it('clamps a tall percent to the room under the column at the top', () => {

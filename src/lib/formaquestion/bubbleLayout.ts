@@ -2,7 +2,7 @@
 import type { MascotMask } from './mascot';
 import type { MascotSize } from './mascotMask';
 import {
-  CORNER_CLEARANCE, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, NARROW_WIDTH, READER_GAP, READER_WIDTH, SCREEN_MARGIN, TAB_CLEARANCE,
+  CORNER_CLEARANCE, DEFAULT_HEIGHT_SHARE, HEAD_HEIGHT, MASCOT_SCALE_MAX, MASCOT_SCALE_MIN, NARROW_WIDTH, READER_GAP, READER_WIDTH, SCREEN_MARGIN, TAB_CLEARANCE,
   type BubblePoint, type MascotScale, type MascotSide, type Viewport, type WindowBox, type WindowSize,
 } from './windowBox';
 
@@ -54,7 +54,7 @@ export interface BubbleInput {
   readonly width: number | null;
   /** The chat room's height the grip set, or null to fit the answer. A set room holds for any answer, as the Minimal box does. */
   readonly height: number | null;
-  /** No exchange yet: no bubble, strip or question draws (Q13). */
+  /** No exchange yet: no bubble, strip or question draws, and the chat room shows its set height or the default share (Q13, Q33). */
   readonly empty: boolean;
   readonly showReader: boolean;
 }
@@ -160,7 +160,7 @@ function fullLayout({ at, base, mask, scale, viewport, heights, width, height, e
   const columnX = side === 'right' ? herX - TAIL_LENGTH - w : herX + herW + TAIL_LENGTH;
 
   const bubbleBottom = her.y + bubbleBottomOff;
-  const { chat, bubble } = chatAndBubble(columnX, bubbleBottom, w, minH, height, heights.content);
+  const { chat, bubble } = chatAndBubble(columnX, bubbleBottom, w, minH, roomHeight(height, empty, viewport), heights.content);
   const strip = { x: columnX, y: bubbleBottom + BUBBLE_GAP, w, h: empty ? 0 : STRIP_HEIGHT };
   const inputBox = { x: columnX, y: bottom - heights.input, w, h: heights.input };
   const question = { x: columnX, y: inputBox.y - BUBBLE_GAP - heights.question, w, h: empty ? 0 : heights.question };
@@ -203,11 +203,15 @@ function headLayout({ at, mask, scale, viewport, heights, width, height, empty, 
   const strip = { x: besideX, y: zoneTop, w: besideW, h: empty ? 0 : STRIP_HEIGHT };
   const question = { x: besideX, y: zoneBottom - (empty ? 0 : heights.question), w: besideW, h: empty ? 0 : heights.question };
   const bubbleBottom = zoneTop - TAIL_LENGTH;
-  const { chat, bubble } = chatAndBubble(columnX, bubbleBottom, w, BUBBLE_MIN_HEIGHT, height, heights.content);
+  const { chat, bubble } = chatAndBubble(columnX, bubbleBottom, w, BUBBLE_MIN_HEIGHT, roomHeight(height, empty, viewport), heights.content);
   const tail: BubbleTail = { x: clamp(her.x + headW / 2, columnX + TAIL_INSET, columnX + w - TAIL_INSET), y: bubbleBottom, points: 'down' };
   const scrolls = heights.content > bubble.h;
   return finish({ side, her, chat, bubble, tail, strip, question, input: inputBox, scrolls, at: { x: her.x + headW / 2, y: bottom } }, viewport, showReader);
 }
+
+/** The room's set height; with none set and no exchange, the default share of the screen, so the room and its grip show before the first answer (Q33). */
+const roomHeight = (height: number | null, empty: boolean, viewport: Viewport): number | null =>
+  (height ?? (empty ? viewport.height * DEFAULT_HEIGHT_SHARE : null));
 
 /**
  * The chat's room over `bottom`, which the Backdrop fills, and the bubble inside it. The room is the set height,
