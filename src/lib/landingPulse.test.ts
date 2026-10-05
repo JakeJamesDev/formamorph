@@ -106,6 +106,19 @@ describe('pulseLanding', () => {
     expect(node).not.toHaveClass(LANDING_PULSE_CLASS);
   });
 
+  it('scales the ring from 4px to 10px out for the row it lands on, and clears the scale with the class', () => {
+    reduceMotion(false);
+    const node = row();
+    node.getBoundingClientRect = () => ({ width: 200, height: 24 } as DOMRect);
+    const cancel = pulseLanding(node);
+    // (200 + 20) / (200 + 8) across, (24 + 20) / (24 + 8) down: the 4px ring lands 10px out on both axes.
+    expect(Number(node.style.getPropertyValue('--landing-sx'))).toBeCloseTo(220 / 208, 5);
+    expect(Number(node.style.getPropertyValue('--landing-sy'))).toBeCloseTo(44 / 32, 5);
+    cancel();
+    expect(node.style.getPropertyValue('--landing-sx')).toBe('');
+    expect(node.style.getPropertyValue('--landing-sy')).toBe('');
+  });
+
   it('leaves a newer pulse alone when an older call cancels', () => {
     reduceMotion(false);
     const node = row();
@@ -121,7 +134,8 @@ describe('landing keyframes', () => {
     const css = readFileSync(resolve(__dirname, '../index.css'), 'utf8');
     for (const name of [LANDING_PULSE_CLASS, LANDING_RING_CLASS]) {
       expect(css).toMatch(new RegExp(`@keyframes ${name} \\{`));
-      expect(css).toMatch(new RegExp(`\\.${name} \\{\\s*animation: ${name} `));
+      // The ring is the row's ::after; its animation events still target the row.
+      expect(css).toMatch(new RegExp(`\\.${name}::after \\{\\s*animation: ${name} `));
     }
   });
 });
