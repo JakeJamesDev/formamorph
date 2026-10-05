@@ -200,7 +200,7 @@ Rulings from ticket 03 (2026-10-02):
 - A staff badge wins. The server already sends a null `supporter` for staff, and the client does not add a second rule.
 - The badge tooltip states the tenure in whole months, then in years and months. It shows no tenure when `since` is null.
 - Two new color tokens, one per tier, serve the badge tint, the name color, and the ring. Both themes define them.
-- **Q18 (2026-10-05): the badge heart beats.** The heart icon beats once when the badge first appears, once per page load per account, and beats again while the pointer or focus is on the badge. Nothing moves at rest, so a list of twenty supporters is still. The arrival beat is skipped under `prefers-reduced-motion`; the hover beat stays, because the player asked for it. The Supporter+ badge uses a heart with a plus (ruled the same day), and the whole icon beats.
+- **Q18 (2026-10-05): the badge heart beats.** The heart icon beats once when the badge first appears, once per page load per account, and beats again while the pointer or focus is on the badge. Nothing moves at rest, so a list of twenty supporters is still. The arrival beat is skipped under `prefers-reduced-motion`; the hover beat stays, because the player asked for it. The Supporter+ badge uses a heart with a plus (ruled the same day), and the whole icon beats. The badge is a tab stop with the shared inset focus ring, so a keyboard reaches the beat and the tenure tooltip; it opens nothing, so it is not a button. Two badges for one account in the same render both beat: that is expected (review ruling, 2026-10-05).
 - Surfaces that print a stored name snapshot (contest podiums, the reports queue) show no flair (A5).
 
 ### Account settings (client)
