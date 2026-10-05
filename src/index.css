@@ -62,8 +62,8 @@
     --silver: 215 14% 40%;
     --bronze: 22 62% 36%;
     /* Supporter Flair tier colors: one pair per mode, never per palette. supporterTokens.test.ts checks contrast. */
-    --supporter: 12 80% 30%;
-    --supporter-plus: 318 75% 30%;
+    --supporter: 318 75% 30%;
+    --supporter-plus: 268 70% 32%;
     /* Theme-independent dark scrim for overlays on imagery + modal backdrops (light text must stay readable). */
     --overlay: 0 0% 0%;
     --border: 214.3 31.8% 91.4%;
@@ -107,8 +107,8 @@
     --gold: 45 92% 60%;
     --silver: 214 16% 76%;
     --bronze: 25 72% 58%;
-    --supporter: 12 85% 84%;
-    --supporter-plus: 318 75% 85%;
+    --supporter: 318 75% 85%;
+    --supporter-plus: 268 85% 87%;
     --overlay: 0 0% 0%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
