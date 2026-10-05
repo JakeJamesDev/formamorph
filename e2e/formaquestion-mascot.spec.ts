@@ -565,26 +565,48 @@ test.describe('the second pass controls', () => {
       await expect(stack.locator('[data-fq-mascot-preview]')).toHaveCount(1);
       await expect(stack.locator('[data-fq-mascot-controls]')).toHaveCount(1);
       await expect(stack.locator('xpath=..').locator('> [data-orientation="vertical"]')).toHaveCount(1);
-      // The switch row stays outside it.
-      await expect(stack.getByTestId('mascot-switch-row')).toHaveCount(0);
     });
   });
 
-  test('the Mascot switch stays put in its row while the controls scroll', async ({ page }) => {
-    await openApp(page);
-    await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
-    await loaded(page, '[data-fq-mask-target]');
-    const row = page.getByTestId('mascot-switch-row');
-    const presetRow = (await page.getByTestId('mascot-preset-row').boundingBox())!;
-    const before = (await row.boundingBox())!;
-    expect(before.y).toBeGreaterThan(presetRow.y + presetRow.height - 1);
-    const controls = scroller(page, 'mascot-controls');
-    await controls.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
-    await expect.poll(() => controls.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-    expect((await row.boundingBox())!.y).toBeCloseTo(before.y, 0);
-    // The row sits above both columns.
-    const top = (await scroller(page, 'mascot-preview').boundingBox())!.y;
-    expect(before.y + before.height).toBeLessThanOrEqual(top);
+  test.describe('with the Mascot off', () => {
+    const boxOf = async (locator: ReturnType<Page['locator']>) => (await locator.boundingBox())!;
+
+    test("one line holds the columns' place, centered, and its link opens General", async ({ page }) => {
+      await openApp(page, { FORMAMORPH_helpSettings: { mascot: false } });
+      await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+
+      const line = page.getByTestId('mascot-off-status');
+      await expect(line).toContainText('The Mascot is off. Select “General” to turn it on.');
+      await expect(page.locator('[data-fq-mascot-preview]')).toBeHidden();
+      await expect(page.locator('[data-fq-mascot-controls]')).toBeHidden();
+      await expect(page.getByTestId('mascot-footer').getByRole('button', { name: 'Save' })).toBeDisabled();
+      await expect(page.getByRole('combobox', { name: 'Preset' })).toBeDisabled();
+
+      // The line sits between the preset row and the footer, centered across the footer's width.
+      const header = await boxOf(page.getByTestId('mascot-preset-row'));
+      const footer = await boxOf(page.getByTestId('mascot-footer'));
+      const text = await boxOf(line.locator('p'));
+      expect(text.y).toBeGreaterThan(header.y + header.height);
+      expect(text.y + text.height).toBeLessThan(footer.y);
+      expect(text.x + text.width / 2).toBeCloseTo(footer.x + footer.width / 2, -1);
+
+      await line.getByRole('button', { name: 'General' }).click();
+      await expect(page.getByRole('tab', { name: 'General' })).toHaveAttribute('data-state', 'active');
+    });
+
+    test('toggling the switch on General moves neither the preset row nor the footer', async ({ page }) => {
+      await openApp(page);
+      await gotoDev(page, 'mainMenu', { modal: 'formaquestionSettings', tab: 'mascot' });
+      await loaded(page, '[data-fq-mask-target]');
+      const frame = async () => [await boxOf(page.getByTestId('mascot-preset-row')), await boxOf(page.getByTestId('mascot-footer'))];
+      const on = await frame();
+
+      await page.getByRole('tab', { name: 'General' }).click();
+      await page.getByRole('checkbox', { name: 'Mascot' }).click();
+      await page.getByRole('tab', { name: 'Mascot' }).click();
+      await expect(page.getByTestId('mascot-off-status')).toContainText('The Mascot is off');
+      expect(await frame()).toEqual(on);
+    });
   });
 
   test('the Endpoint tab puts Answer and Search on one row, over an editor headed by the active endpoint', async ({ page }) => {

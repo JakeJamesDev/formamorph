@@ -100,6 +100,7 @@ function GeneralTab({ settings, onChange, semantic, answerTarget }: {
   return (
     <div className="grid gap-6 py-4">
       <Section title="Window">
+        <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...GENERAL_COPY.mascot} />
         <Row label={GENERAL_COPY.chatStyle.label} hint={GENERAL_COPY.chatStyle.hint}>
           <OptionSwitcher
             ariaLabel={GENERAL_COPY.chatStyle.label}
@@ -239,7 +240,7 @@ export function FormaquestionSettings({ open, onOpenChange, tab, onTabChange, se
               <ToolsTab settings={settings} onChange={onChange} toolsSupported={toolsSupported(answerTarget.reasoning)} />
             </TabsContent>
             <TabsContent value="mascot" className="min-h-0 flex-1 px-2 data-[state=active]:flex flex-col">
-              <MascotTab settings={settings} onChange={onChange} control={mascotDraft} />
+              <MascotTab settings={settings} control={mascotDraft} onOpenGeneral={() => changeTab('general')} />
             </TabsContent>
           </Tabs>
         </DialogContent>

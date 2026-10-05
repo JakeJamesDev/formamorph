@@ -89,11 +89,16 @@ async function openHelpSettingsTab(page: Page, tab: 'Prompts' | 'Mascot'): Promi
   await page.getByRole('menuitem', { name: 'Settings' }).click();
   const dialog = page.getByRole('dialog', { name: 'Formaquestion Settings' });
   // Below `sm` (640px) the tab strip is a select.
-  if (page.viewportSize()!.width >= 640) await dialog.getByRole('tab', { name: tab }).click();
-  else {
-    await dialog.getByRole('combobox', { name: 'Tab' }).click();
-    await page.getByRole('option', { name: tab }).click();
-  }
+  const goTo = async (name: string) => {
+    if (page.viewportSize()!.width >= 640) await dialog.getByRole('tab', { name }).click();
+    else {
+      await dialog.getByRole('combobox', { name: 'Tab' }).click();
+      await page.getByRole('option', { name }).click();
+    }
+  };
+  // The Mascot tab edits nothing while the Mascot is off; its switch is on General.
+  if (tab === 'Mascot') await dialog.getByRole('checkbox', { name: 'Mascot' }).click();
+  await goTo(tab);
   await dialog.getByRole('combobox', { name: 'Preset' }).waitFor();
   // Settled first: a click on a still-zooming dialog waits for it, and the recorder's clock runs meanwhile.
   await settle(dialog);

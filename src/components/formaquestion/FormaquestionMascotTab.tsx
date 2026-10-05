@@ -9,7 +9,7 @@ import { PresetNameDialog } from '@/components/modals/PresetNameDialog';
 import { PanelShell } from '@/components/PanelShell';
 import { PresetHeader } from '@/components/presetHeader/PresetHeader';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
-import { CheckRow, OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
+import { OptionSwitcher, Row, Section, ValueSlider } from '@/components/SettingsRows';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +29,8 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { randomUUID } from '@/lib/uuid';
-import type { HelpSettings, HelpSettingsChange } from '@/lib/formaquestion/helpSettings';
+import type { HelpSettings } from '@/lib/formaquestion/helpSettings';
+import { cn } from '@/lib/utils';
 import {
   MASCOT_LAYER_KINDS, MASCOT_PICK_NAMES, composeMascot, mascotPickWarnings, type MascotImageRef, type MascotLayer,
   type MascotLayerKind, type MascotMask, type MascotPickName, type MascotPickWarning, type MascotRig,
@@ -490,15 +491,18 @@ function RowAction({ copy, onClick, disabled, children }: {
 }
 
 /**
- * The Mascot tab of Formaquestion Settings: the preset header, the switch, and the editor of the selected
- * mascot's draft. Player images go to the mascot image store; the draft drops them at Save or Cancel.
+ * The Mascot tab of Formaquestion Settings: the preset header and the editor of the selected mascot's draft.
+ * Player images go to the mascot image store; the draft drops them at Save or Cancel. With the Mascot off,
+ * the tab keeps every row mounted and disabled under a status line that links to the switch on General.
  * Full screen lifts the whole tab, footer included.
  */
-export function MascotTab({ settings, onChange, control }: {
+export function MascotTab({ settings, control, onOpenGeneral }: {
   settings: HelpSettings;
-  onChange: (change: HelpSettingsChange) => void;
   control: MascotDraftControl;
+  /** Opens the General tab, where the Mascot switch lives. */
+  onOpenGeneral: () => void;
 }) {
+  const off = !settings.mascot;
   const { rig } = control.draft;
   const { readOnly, mascot: selected } = control;
   const mounted = useMountedRef();
@@ -821,10 +825,11 @@ export function MascotTab({ settings, onChange, control }: {
   return (
     // The morph source: the window grows out of the whole tab, and its contents move into the window.
     <div ref={panelRef} className="flex min-h-0 flex-1 flex-col pt-4">
-      <PanelShell morph={morph} sourceRef={panelRef} title={MASCOT_COPY.mascot.label} showTitle={false}>
+      <PanelShell morph={morph} sourceRef={panelRef} title={MASCOT_COPY.title} showTitle={false}>
       {/* Moves with the contents, so the shortcut's own-element check holds inside the window too.
           Focus leaving a control closes the step a typed run or key nudge opened. */}
       <div className="flex min-h-0 flex-1 flex-col" onKeyDown={shortcut} onBlur={control.closeStep}>
+      <fieldset disabled={off} className="m-0 min-w-0 flex-shrink-0 border-0 p-0">
       <PresetHeader
         label={copy.label}
         actions={presetActions}
@@ -849,10 +854,20 @@ export function MascotTab({ settings, onChange, control }: {
         data-testid="mascot-card-input"
         onChange={pickCard}
       />
+      </fieldset>
       <p className="flex-shrink-0 pt-1 text-helper text-muted-foreground">{copy.hint}</p>
-      <div className="flex-shrink-0 pt-4" data-testid="mascot-switch-row">
-        <CheckRow htmlFor="fq-mascot" checked={settings.mascot} onChange={(mascot) => onChange({ mascot })} {...MASCOT_COPY.mascot} />
+      {/* The off line takes the columns' place; the rows stay mounted and disabled. Always mounted, so a screen reader announces it. */}
+      <div role="status" data-testid="mascot-off-status" className={cn('flex items-center justify-center px-6 text-center', off && 'min-h-0 flex-1')}>
+        {off && (
+          <p className="text-helper text-muted-foreground">
+            {MASCOT_COPY.off.before}
+            <Button variant="link" className="h-auto p-0 text-helper" onClick={onOpenGeneral}>{MASCOT_COPY.off.link}</Button>
+            {MASCOT_COPY.off.after}
+          </p>
+        )}
       </div>
+      {/* A class, not the `hidden` attribute: the flex utility overrides `[hidden]`. */}
+      <fieldset disabled={off} className={cn('m-0 flex min-h-0 min-w-0 flex-1 flex-col border-0 p-0', off && 'hidden')}>
       {/* From lg each column scrolls alone, so the preview stays in view; under it one scroller holds both. */}
       {wide ? (
         <div data-fq-mascot-columns="" className={`grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-6 ${morph.contentInOverlay ? COLUMNS_FULL_SCREEN : COLUMNS_DOCKED}`}>
@@ -869,7 +884,8 @@ export function MascotTab({ settings, onChange, control }: {
           {controlsColumn}
         </ScrollArea>
       )}
-      <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border py-3" data-testid="mascot-footer">
+      </fieldset>
+      <fieldset disabled={off} className="m-0 flex min-w-0 flex-shrink-0 items-center justify-end gap-2 border-0 border-t border-border p-0 py-3" data-testid="mascot-footer">
         <div className="mr-auto flex gap-1">
           <RowAction copy={MASCOT_COPY.footer.undo} disabled={!control.canUndo} onClick={control.undo}>
             <Undo2 className="h-4 w-4" aria-hidden />
@@ -880,7 +896,7 @@ export function MascotTab({ settings, onChange, control }: {
         </div>
         <Button variant="outline" disabled={!control.dirty} onClick={() => { setSelection(null); control.cancel(); }}>{MASCOT_COPY.footer.cancel}</Button>
         <Button disabled={!control.dirty} onClick={control.save}>{MASCOT_COPY.footer.save}</Button>
-      </div>
+      </fieldset>
       <PresetNameDialog
         open={renaming}
         mode="rename"
