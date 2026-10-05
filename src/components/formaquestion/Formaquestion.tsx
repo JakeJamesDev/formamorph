@@ -11,6 +11,7 @@ import { docTargetId, type DocTarget } from '@/lib/docs/docsLinks';
 import { opensInHelpWindow, resolveSurface, stepTab, targetRoute, type SurfaceRoute } from '@/lib/surface/surfaceRoute';
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { registerDocsOpener } from '@/lib/formaquestion/docsOpener';
+import { onStatCodeInsert } from '@/lib/formaquestion/statCodeInsert';
 import { createGuide } from '@/lib/formaquestion/guide';
 import { cn } from '@/lib/utils';
 import { wikiPageUrl } from '@/lib/helpTopics';
@@ -246,14 +247,13 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     setOpen(false);
   }, [aimAtTab]);
 
-  const openDialog = useCallback((kind: FormaquestionDialog) => {
-    setDialog(kind);
+  // On the desktop the window closes for a dialog and opens again after it.
+  const stepAside = useCallback(() => {
     if (sheet || !open) return;
     reopen.current = { focus: returnFocusRef.current };
     closeWindow();
   }, [sheet, open, closeWindow]);
-  const closeDialog = useCallback(() => {
-    setDialog(null);
+  const comeBack = useCallback(() => {
     const waiting = reopen.current;
     reopen.current = null;
     if (!waiting) return;
@@ -261,6 +261,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     aimAtTab();
     setOpen(true);
   }, [aimAtTab]);
+  const openDialog = useCallback((kind: FormaquestionDialog) => {
+    setDialog(kind);
+    stepAside();
+  }, [stepAside]);
+  const closeDialog = useCallback(() => {
+    setDialog(null);
+    comeBack();
+  }, [comeBack]);
 
   // A "Learn more" link or a notice asks for a docs heading. The window opens now and shows it once the
   // docs have loaded. While nothing is registered, those links go to the wiki.
@@ -358,6 +366,14 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
     }
     if (target) land(target);
   }, [requestSurface, sheet, closeWindow, openDialog, changeViewInWindow, land]);
+
+  // Insert: the sheet closes as for Take Me There; the desktop window steps aside for the replace confirm.
+  useEffect(() => onStatCodeInsert((event) => {
+    if (sheet) {
+      if (event !== 'settled') closeWindow();
+    } else if (event === 'confirming') stepAside();
+    else if (event === 'settled') comeBack();
+  }), [sheet, closeWindow, stepAside, comeBack]);
 
   // A failed load drops the request, so a later Try Again does not jump the view.
   useEffect(() => {

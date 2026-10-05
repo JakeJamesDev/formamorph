@@ -11,7 +11,8 @@ import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from "@/lib/st
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
 import { STAT_CODE_SURFACE } from "@/lib/statCodeSurface";
-import { TIMING_LABEL, type StatCodeTiming } from "@/lib/statCodeTiming";
+import { CODE_BOX_TARGET, TIMING_LABEL, type StatCodeTiming } from "@/lib/statCodeTiming";
+import { targetAttribute } from "@/lib/surface/surfaceTargets";
 import type { Stat, Trait } from "@/types";
 
 /** Test Code names each bound a run wrote with its Details field label. */
@@ -85,6 +86,13 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
     setWarnings([]);
     setProblems(null);
   }, []);
+
+  // A write from outside the box, such as the help window's Insert, makes the report stale as typing does.
+  const [reportedCode, setReportedCode] = useState(value);
+  if (reportedCode !== value) {
+    setReportedCode(value);
+    clearReport();
+  }
 
   const write = (code: string) => {
     clearReport();
@@ -170,7 +178,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" {...targetAttribute('worldEditorStat.code', CODE_BOX_TARGET[timing])}>
       <CodeArea
         value={value}
         onChange={write}

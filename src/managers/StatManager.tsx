@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { useState, useMemo, useCallback, useEffect, type ReactNode } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useGameData } from "@/contexts/GameDataContext";
 import { useEditingDraft } from "@/lib/useEditingDraft";
 import { Input } from "@/components/ui/input";
@@ -31,11 +31,22 @@ import { clamp } from "@/lib/utils";
 import { useEditorMode } from '@/lib/editorMode';
 import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescriptorsSection';
 import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/statPanelTabs';
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { registerStatCodeInsert, reportStatCodeInsert } from "@/lib/formaquestion/statCodeInsert";
+import { labelPlaceholders } from "@/lib/placementLetters";
+import { CODE_BOX_TARGET, CODE_FIELD, REPLACE_CODE_TITLE, replaceCodeDescription, type StatCodeTiming } from "@/lib/statCodeTiming";
+import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
+import { useLanding } from "@/lib/surface/useLanding";
 import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
 
 export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and Code don't run.
 
 **Hidden** hides the stat from the player. It's still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
+
+const findBox = (timing: StatCodeTiming) =>
+  findTargetRow(document, routeText('worldEditorStat.code', CODE_BOX_TARGET[timing]));
+// The editor is a contenteditable, which the landing's own control list leaves out.
+const boxEditor = (row: HTMLElement) => row.querySelector<HTMLElement>('[contenteditable="true"], textarea');
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -62,7 +73,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
   onTabChange: (tab: StatPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const { updateStat, stats, placeholders, placeholderGroups, placeholderOwners, traits, traitGroups, entities, entityGroups, dictionaries } = useGameData();
+  const { updateStat, stats, placeholders, placeholderGroups, placeholderOwners, placementLetters, traits, traitGroups, entities, entityGroups, dictionaries } = useGameData();
   const [newDescriptor, setNewDescriptor] = useState<{ threshold: number | string; description: string }>({
     threshold: "",
     description: "",
@@ -184,6 +195,41 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
     const owning = focusField ? statTabForField(focusField.fieldKey) : null;
     if (owning) onTabChange(owning);
   }, [focusField, onTabChange]);
+
+  // The help window's Insert writes a box the way typing does, then shows that box on the Code tab.
+  const landOnBox = useLanding(findBox, { pulse: true, focus: boxEditor });
+  const [pendingInsert, setPendingInsert] = useState<{ timing: StatCodeTiming; code: string } | null>(null);
+  const writeInsert = useCallback((timing: StatCodeTiming, code: string) => {
+    apply({ [CODE_FIELD[timing]]: code });
+    onTabChange('code');
+    landOnBox(timing);
+  }, [apply, onTabChange, landOnBox]);
+  // Read at insert time, so the registration does not change with each keystroke.
+  const latestStat = useRef(editingStat);
+  latestStat.current = editingStat;
+  const statName = labelPlaceholders(editingStat.name ?? '', placeholders, { letters: placementLetters, owners: placeholderOwners });
+  // Simple mode has no Code tab to show the box on.
+  useEffect(() => {
+    if (!advanced) return;
+    return registerStatCodeInsert({
+      statName,
+      insert: (timing, code) => {
+        if (latestStat.current[CODE_FIELD[timing]]?.trim()) {
+          setPendingInsert({ timing, code });
+          return;
+        }
+        writeInsert(timing, code);
+        reportStatCodeInsert('written');
+      },
+    });
+  }, [advanced, statName, writeInsert]);
+  // Closing the panel settles the confirm too, so the help window never waits on one that is gone.
+  const confirming = pendingInsert !== null;
+  useEffect(() => {
+    if (!confirming) return;
+    reportStatCodeInsert('confirming');
+    return () => reportStatCodeInsert('settled');
+  }, [confirming]);
 
   if (!editingStat) return null;
 
@@ -442,11 +488,22 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
 
 
   return (
-    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Stat Fields" surfaceTabs="worldEditorStat">
-      {tabs.map((t) => (
-        <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
-      ))}
-    </PanelTabs>
+    <>
+      <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Stat Fields" surfaceTabs="worldEditorStat">
+        {tabs.map((t) => (
+          <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
+        ))}
+      </PanelTabs>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={(open) => { if (!open) setPendingInsert(null); }}
+        title={REPLACE_CODE_TITLE}
+        description={replaceCodeDescription('code')}
+        onConfirm={() => pendingInsert && writeInsert(pendingInsert.timing, pendingInsert.code)}
+        // The landing focuses the box; the help window's menu that had focus is gone.
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      />
+    </>
   );
 };
 

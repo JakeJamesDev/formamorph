@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { SURFACE_IDS } from '@/lib/docs/surfaceMap';
 import { resolveSurface } from './surfaceRoute';
-import { findTargetRow, isSurfaceTarget, SURFACE_TARGETS, targetAttribute } from './surfaceTargets';
+import { findTargetRow, isSurfaceTarget, PANEL_TARGETS, SURFACE_TARGETS, targetAttribute } from './surfaceTargets';
 
 describe('SURFACE_TARGETS', () => {
   it('keys every entry by a surface id', () => {
@@ -21,6 +21,25 @@ describe('SURFACE_TARGETS', () => {
       const steps = resolveSurface(surface);
       expect(steps && (steps.tabs.at(-1) ?? steps.dialog ?? steps.view), surface).toBe(surface);
     }
+  });
+});
+
+describe('PANEL_TARGETS', () => {
+  it('keys kebab-case targets by surface ids that no route opens as themselves', () => {
+    for (const [surface, targets] of Object.entries(PANEL_TARGETS)) {
+      expect(SURFACE_IDS as readonly string[], surface).toContain(surface);
+      expect(targets.filter((target) => !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(target)), surface).toEqual([]);
+      expect(surface in SURFACE_TARGETS, surface).toBe(false);
+      const steps = resolveSurface(surface);
+      expect(steps && (steps.tabs.at(-1) ?? steps.dialog ?? steps.view), surface).not.toBe(surface);
+    }
+  });
+
+  it('gives a panel target the same attribute, and no route', () => {
+    expect(targetAttribute('worldEditorStat.code', 'before-code')).toEqual({
+      'data-surface-target': 'worldEditorStat.code#before-code',
+    });
+    expect(isSurfaceTarget('worldEditorStat.code', 'before-code')).toBe(false);
   });
 });
 
