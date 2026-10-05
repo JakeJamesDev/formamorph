@@ -21,6 +21,17 @@ export function useFollowEnd(exchanges: readonly HelpExchange[]) {
     if (following.current) viewport.scrollTop = viewport.scrollHeight;
     setAway(showsScrollArrow(viewport));
   }, [exchanges.length, last?.answer, last?.reasoning, last?.status]);
+  // A taller viewport can bring the end into view with no scroll, and the arrow goes with it.
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const observer = new ResizeObserver(() => {
+      if (following.current) viewport.scrollTop = viewport.scrollHeight;
+      setAway(showsScrollArrow(viewport));
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
   const onScroll = (event: UIEvent<HTMLDivElement>) => {
     const viewport = event.currentTarget;
     const { scrollHeight, scrollTop, clientHeight } = viewport;

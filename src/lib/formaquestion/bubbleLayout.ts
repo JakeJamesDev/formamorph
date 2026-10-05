@@ -138,7 +138,8 @@ function fullLayout({ at, base, mask, scale, viewport, placement, heights, width
   const bottomShare = (mask.y + mask.height) / base.height;
   const below = stackBelow(heights, empty);
   // Her height fits the margins with the smallest bubble above her: it reaches past her mouth, and it is never under the minimum (Q17).
-  const roomH = vh - SCREEN_MARGIN * 2;
+  // Her feet may stand flush with the screen bottom; the margin holds at the top.
+  const roomH = vh - SCREEN_MARGIN;
   let bodyH = Math.min(
     bodyHeightAt(scale, base, viewport),
     roomH,
@@ -162,7 +163,7 @@ function fullLayout({ at, base, mask, scale, viewport, placement, heights, width
   const herX = side === 'right'
     ? clamp(wanted.x - herW / 2, SCREEN_MARGIN + w + TAIL_LENGTH, vw - SCREEN_MARGIN - herW)
     : clamp(wanted.x - herW / 2, SCREEN_MARGIN, vw - SCREEN_MARGIN - herW - TAIL_LENGTH - w);
-  const bottom = clamp(wanted.y, Math.max(bodyH + SCREEN_MARGIN, SCREEN_MARGIN + minH + bodyH - bubbleBottomOff), vh - SCREEN_MARGIN);
+  const bottom = clamp(wanted.y, Math.max(bodyH + SCREEN_MARGIN, SCREEN_MARGIN + minH + bodyH - bubbleBottomOff), vh);
   const her = { x: herX, y: bottom - bodyH, w: herW, h: bodyH };
   const columnX = side === 'right' ? herX - TAIL_LENGTH - w : herX + herW + TAIL_LENGTH;
 
@@ -199,7 +200,7 @@ function headLayout({ at, mask, scale, viewport, placement, heights, width, heig
   const side = sideOf(wanted.x, viewport, placement);
   // The head stands at the column's end nearest the screen edge, so the column's outer edge is the head's.
   const columnX = clamp(side === 'right' ? wanted.x + headW / 2 - w : wanted.x - headW / 2, SCREEN_MARGIN, vw - SCREEN_MARGIN - w);
-  const bottom = clamp(wanted.y, SCREEN_MARGIN + BUBBLE_MIN_HEIGHT + TAIL_LENGTH + under, vh - SCREEN_MARGIN);
+  const bottom = clamp(wanted.y, SCREEN_MARGIN + BUBBLE_MIN_HEIGHT + TAIL_LENGTH + under, vh);
 
   const inputBox = { x: columnX, y: bottom - heights.input, w, h: heights.input };
   const zoneBottom = inputBox.y - BUBBLE_GAP;

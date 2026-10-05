@@ -458,6 +458,9 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const mascotAspect = settings.mascot && mascotBase && !(minimal && showHead) ? mascotBase.width / mascotBase.height : null;
   // The side flips only as the dragged piece crosses the middle: the column from the pill, she from her body (Q33). The first layout picks it.
   const sideRef = useRef<MascotSide | undefined>(undefined);
+  // A new placement starts the side over from the column's place, in this same render (Q34).
+  const placementRef = useRef(placement);
+  if (placementRef.current !== placement) { placementRef.current = placement; sideRef.current = undefined; }
   const pieces = { mascotAspect, showReader: readerShown, side: sideRef.current, scale, baseHeight: mascotBase?.height, placement };
   const layout = sheet || bubble ? null : windowLayout(boxChrome, box, viewport, pieces);
   if (layout) sideRef.current = layout.side;
@@ -466,8 +469,7 @@ export function Formaquestion({ suspended = false, loadIndex = loadDocsIndex }: 
   const below = layout?.placement === 'below';
   // Over or under the column she centers on it; beside, she takes the side the reader leaves.
   const mascotSide = stacked ? null : side;
-  // A new placement starts the side over from the column's place (Q34).
-  useEffect(() => { sideRef.current = undefined; }, [placement]);
+
   const readerSide = layout?.readerSide ?? 'right';
   // Picking Below clamps the column to the cap at once and keeps that height (Q9).
   const shownPlacement = useRef(placement);

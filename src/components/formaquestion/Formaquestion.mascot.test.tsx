@@ -621,6 +621,15 @@ describe('the Mascot Position', () => {
     expect(checkedIn(group)).toEqual(['Below']);
   });
 
+  it('moves her to the other side of the column the moment Inside is picked, with no drag', async () => {
+    await openWindow();
+    loadBase();
+    // Outside at the right edge: she stands right of the column.
+    expect(column().compareDocumentPosition(mascot()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Inside' }));
+    await waitFor(() => expect(mascot()!.compareDocumentPosition(column()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
+  });
+
   it('writes the device store from the menu, and the dropdown marks the new value', async () => {
     await openWindow();
     await userEvent.click(within(await menuPosition()).getByRole('menuitemradio', { name: 'Inside' }));
