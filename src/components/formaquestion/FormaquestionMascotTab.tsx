@@ -58,7 +58,6 @@ import {
   type MascotSelection,
 } from '@/lib/formaquestion/mascotSelection';
 import { MascotPiece } from './MascotPiece';
-import { MascotScaleRow } from './MascotScaleRow';
 import { WidgetLabel, WidgetRow } from './WidgetRow';
 import { usePointerDrag } from './usePointerDrag';
 import type { MascotReplay } from './useMascotMotion';
@@ -700,7 +699,6 @@ export function MascotTab({ settings, control, onOpenGeneral }: {
         </figure>
       </div>
       <Hint>{MASCOT_COPY.preview.hint}</Hint>
-      <MascotScaleRow />
       <TransitionControls
         transition={rig.transition}
         readOnly={readOnly}

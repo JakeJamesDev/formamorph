@@ -162,15 +162,14 @@ You can also set it in the **Mascot Position** dropdown in the **Window** group 
 
 ## How to Change the Size of the Mascot
 <!-- keywords: bigger mascot, smaller mascot, scale, resize mascot, mascot too big, mascot too small, size slider, auto size, fit the chat, percent -->
-<!-- route: formaquestionSettings.mascot#scale -->
+<!-- route: formaquestionSettings.general#mascot-scale -->
 
 1. Select **⋮** in the Formaquestion title bar, then **Settings**.
-2. Select the **Mascot** tab.
-3. Move **Scale** in the preview.
+2. On the **General** tab, move **Mascot Scale** in the **Window** group.
 
 The first stop is **Auto**. **Auto** fits the mascot to the height of the chat, and follows the chat when you resize it. Any other stop is a percent of the base image's size in pixels, from 25% to 150%. A percent mascot stays level with the bottom of the chat column and rises above it. It never grows past the room on the screen.
 
-The preview does not change with **Scale**. The window does. This device keeps the setting, outside your mascot card. See [Mascot](#mascot).
+The **Mascot** tab's preview does not change with **Mascot Scale**. The window does. This device keeps the setting, outside your mascot card. It is hidden while the mascot is off. See [Mascot](#mascot).
 
 ## How to Set the Head View With the Mask
 <!-- keywords: crop, mask handles, head only, face crop, resize the box, move the box, trim, drag the edges, corners, arrow keys, head view box, face box, keyboard -->
@@ -403,13 +402,14 @@ The **Guide** tab lists each page of this guide. Select a page to show or hide i
 <!-- keywords: mascot switch, turn off the mascot, turn on the mascot, chat style, window style, reasoning, thinking, effort, reasoning budget, answer reveal, answer animation, fade in, keyword search, ai search, open screen, history length, extra request, earlier questions, no guide -->
 <!-- route: formaquestionSettings.general -->
 
-The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Mascot**, **Chat Style**, **Mascot Position** and **Backdrop** are in **Window**.
+The **General** tab sets how the window looks, how your AI answers, how a question finds its guide sections, and what the request holds. Its rows are in four groups: **Window**, **Answer**, **Search** and **Request**. **Mascot**, **Chat Style**, **Mascot Position**, **Mascot Scale** and **Backdrop** are in **Window**.
 
 | Setting | Default | What it does |
 |---|---|---|
 | **Mascot** | On | Shows the mascot with a bare chat column. It takes effect at once, with no **Save**. With it off, the **Mascot** tab disables every control and shows a link back to this row. |
 | **Chat Style** | Auto | Sets how the window looks: **Auto**, **Minimal** or **Full**. **Auto** is **Bubble** with the **Mascot** on. The **⋮** menu has the same three choices. |
 | **Mascot Position** | Outside | Sets where the mascot stands around the chat: **Above**, **Below**, **Inside** or **Outside**. The **⋮** menu has the same choices. Under **Bubble**, only **Inside** and **Outside** show. Hidden while the mascot is off. |
+| **Mascot Scale** | 25% | Sizes the mascot beside the chat. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. Hidden while the mascot is off. |
 | **Backdrop** | 60% | Shades the screen behind the chat so the text stands out, from 0 to 100% in steps of 5. The backdrop shows with the **Bubble** and **Minimal** styles. Set 0 for none. |
 | **Reasoning** | Off | Lets your AI reason before it answers, so answers take longer. The levels and the budget come from the **Answer Endpoint**. **Global** follows **Native Reasoning** under Settings → Output. The **AI Search** request never reasons. For a model that cannot reason, a note shows in place of the control. |
 | **Answer Reveal** | Fade | Sets how each answer appears as it streams. **Choose reveal animation…** opens the same dialog as **Narration Reveal**, with its own values: a change to one never changes the other. With every effect off, answers show with no animation. |
@@ -569,11 +569,11 @@ Only **Duplicate**, **Import**, **Export** and **View full screen** show while *
 
 Your changes on the tab show in the preview at once. The window, the face your AI picks and **AI Context** keep the saved mascot until you select **Save** at the bottom of the tab. **Cancel** drops your changes. When you change the mascot, the tab or close **Formaquestion Settings** with changes not saved, the app asks you to save them, exit without saving, or stay.
 
-With the mascot on and the **Chat Style** at **Auto** or **Bubble**, the mascot speaks the newest answer from a speech bubble that points at its head. A long answer grows up to the top of the screen, then scrolls inside the bubble. Under the bubble, a strip holds **Previous Answer** and **Next Answer** at its ends. Between them are the answer's **Thinking** toggle, **Sources** and **Take Me There**. The open **Thinking** text shows inside the bubble. **Sources** opens a list of the guide sections the answer used; select one to open it in the reader. Your question and the ask field stand at the mascot's feet. Before your first question, only the mascot and the ask field show. Drag the mascot, or the pill over its head, to move the window. The bubble stands on the side of the mascot with more room. It moves to the other side when you drag the mascot past the middle of the screen. Drag the corner grip on the bubble to change the chat's width and height. The **Backdrop** fills the size you set, and a short answer's bubble stays small inside it, as in the minimal column. Drag the grip on the mascot's top corner to change its size; it sets the same **Scale** as the **Mascot** tab. In the head view, the bubble, the head with the pill, the strip, your question and the ask field stand in one column.
+With the mascot on and the **Chat Style** at **Auto** or **Bubble**, the mascot speaks the newest answer from a speech bubble that points at its head. A long answer grows up to the top of the screen, then scrolls inside the bubble. Under the bubble, a strip holds **Previous Answer** and **Next Answer** at its ends. Between them are the answer's **Thinking** toggle, **Sources** and **Take Me There**. The open **Thinking** text shows inside the bubble. **Sources** opens a list of the guide sections the answer used; select one to open it in the reader. Your question and the ask field stand at the mascot's feet. Before your first question, only the mascot and the ask field show. Drag the mascot, or the pill over its head, to move the window. The bubble stands on the side of the mascot with more room. It moves to the other side when you drag the mascot past the middle of the screen. Drag the corner grip on the bubble to change the chat's width and height. The **Backdrop** fills the size you set, and a short answer's bubble stays small inside it, as in the minimal column. Drag the grip on the mascot's top corner to change its size; it sets the same **Mascot Scale** as the **General** tab. In the head view, the bubble, the head with the pill, the strip, your question and the ask field stand in one column.
 
 With the **Chat Style** at **Minimal**, Formaquestion has no frame, no title bar and no tabs. It is a bare chat column with the mascot beside it. The mascot stands on the side of the column that has more room on the screen. It moves to the other side when you drag the column past the middle of the screen, and the head on the pill moves to the same end. Select a source name under an answer to open the guide section in a reader on the other side of the column. Close the reader with **Close Reader**. The column and the mascot stay. The pill above the column holds the grip, the **⋮** menu and **Close**, and the grip moves all three pieces. Drag the corner under the ask field to change the column's size.
 
-With the **Chat Style** at **Full**, the whole mascot stands beside the framed window, on the same side rule. Its height follows the frame while **Scale** is **Auto**. A mobile-size screen shows no mascot with the framed sheet.
+With the **Chat Style** at **Full**, the whole mascot stands beside the framed window, on the same side rule. Its height follows the frame while **Mascot Scale** is **Auto**. A mobile-size screen shows no mascot with the framed sheet.
 
 The tab has two columns on a wide dialog. The preview stays in view on the left, and the other rows scroll on the right. On a narrower dialog, the preview comes first and the whole tab scrolls.
 
@@ -581,9 +581,8 @@ The tab has two columns on a wide dialog. The preview stays in view on the left,
 |---|---|
 | **Mascot** | Shows the mascot with a bare chat column. On by default. |
 | **Voice** | Tells your AI how help answers sound while the mascot is on. The **Mascot Voice** chip sends this text. |
-| **Preview** | Shows the Idle look, or what you select. Select a layer to see the base with all of that layer's overlays. Select one overlay to see the base with that overlay alone. Drag the Mask on it to set the head view. The **Scale** slider, the **Transition** rows and **Play** are in the same box. |
-| **Scale** | Sizes the mascot beside the chat. **Auto** fits the height of the chat. A percent, from 25% to 150%, is a share of the base image's size in pixels. This device keeps it, outside your mascot card. |
-| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. **Show Full Mascot** goes back. With a percent **Scale**, the head draws at that share of its size, and never taller than the chat. |
+| **Preview** | Shows the Idle look, or what you select. Select a layer to see the base with all of that layer's overlays. Select one overlay to see the base with that overlay alone. Drag the Mask on it to set the head view. The **Transition** rows and **Play** are in the same box. |
+| **Head View** | Shows the part of the mascot inside the box. A mobile-size screen shows only the head, at the pill. On a desktop, **Show Head Only** in the pill shows the head in place of the whole mascot. **Show Full Mascot** goes back. With a percent **Mascot Scale**, the head draws at that share of its size, and never taller than the chat. |
 | **Base Image** | Draws under every layer. Upload your own image, or remove yours to go back to the default. |
 | **Layers** | Lists every layer in draw order, with its name, its kind and its **Enabled** checkbox |
 | **Initial Look**, **Idle Look**, **Thinking Look** | Set the face and the state that the mascot shows at each moment. See [The Looks](#the-looks). |

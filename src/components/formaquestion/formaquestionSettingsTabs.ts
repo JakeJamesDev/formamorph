@@ -28,6 +28,7 @@ export const GENERAL_COPY = {
       { value: 'full', label: 'Full' },
     ],
   },
+  mascotScale: { label: 'Mascot Scale', hint: "Sizes the Mascot beside the chat. Auto fits the chat's height." },
   mascotPosition: {
     label: 'Mascot Position',
     hint: 'Sets where the Mascot stands around the chat',
@@ -65,7 +66,6 @@ export const MASCOT_COPY = {
   /** The status line of the off state. The link is the General tab's name, quoted like a control label. */
   off: { before: 'The Mascot is off. Enable it in “', link: 'General', after: '” to customize it.' },
   voice: { label: 'Voice', hint: 'Tells your AI how help answers sound while the mascot is on' },
-  scale: { label: 'Scale', hint: "Sizes the Mascot beside the chat. Auto fits the chat's height." },
   preview: {
     label: 'Preview',
     hint: 'Shows the Idle look, or the layer or overlay you select',

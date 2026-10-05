@@ -356,14 +356,13 @@ describe('the Mascot scale', () => {
     expect(mascot()!.style.height).toBe(column().style.height);
   });
 
-  it('follows the Scale slider at once, and keeps the percent across a remount', async () => {
+  it('follows the Mascot Scale slider at once, and keeps the percent across a remount', async () => {
     const { view } = await openWindow();
     loadBase();
     expect(mascot()!.style.height).toBe(helpWindow().style.height);
     await openHelpSettings();
     const dialog = await screen.findByRole('dialog', { name: 'Formaquestion Settings' });
-    await userEvent.click(within(dialog).getByRole('tab', { name: 'Mascot' }));
-    within(dialog).getByRole('slider', { name: 'Scale' }).focus();
+    within(dialog).getByRole('slider', { name: 'Mascot Scale' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     await userEvent.keyboard('{Escape}');
     expect(localStorage.getItem(SCALE_KEY)).toBe('25');
