@@ -20,7 +20,7 @@ export const HELP_CODE_TEST: OfferedFunction = {
     'Purpose: Check stat code you wrote, and run it once on the open world, before you give it to the player.',
     'Use when: You wrote stat code for the player. Call it before you answer. When it reports errors or dropped writes, fix the code and call it again. When an error remains after your last call, give your best code and name the remaining error in one sentence.',
     'Input: code, box and stat. The code reads that stat as self.',
-    'Output: JSON with errors and warnings, each with its line, and run: the value the code set, its writes, its dropped writes, or the error it threw. With world false, no world is open: names go unchecked and run is null.',
+    'Output: JSON with errors and warnings, each with its line, and run: the value the code set, its writes, its pending writes, its dropped writes, or the error it threw. A pending write lands on the played persona in play. It is not an error. With world false, no world is open: names go unchecked and run is null.',
   ].join('\n'),
   params: [
     { name: 'code', type: 'string', description: 'The whole contents of the box.', required: true, options: [] },

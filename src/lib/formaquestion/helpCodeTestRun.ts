@@ -48,6 +48,6 @@ export async function testStatCode(code: string, box: StatCodeTiming, statName: 
   return {
     world: true,
     ...findings(code, analysisOptionsOf(names, selfName)),
-    run: await runTestCode(code, box, stat ? { ...stat, name: selfName } : { id: crypto.randomUUID(), name: '' }, names),
+    run: await runTestCode(code, box, stat ? { ...stat, name: selfName } : { id: crypto.randomUUID(), name: '' }, names, { pendingPersona: true }),
   };
 }

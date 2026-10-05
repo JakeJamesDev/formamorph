@@ -1,6 +1,6 @@
 # 09: Persona Writes Pending In Code Test
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 06 — Code Test Function
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
