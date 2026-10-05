@@ -69,7 +69,7 @@ export function OutputSettingsSection({ source, mode, nativeReasoningRuledOut }:
       <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
       {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
           shows a prompt's editor tab only while it's enabled here. */}
-      <Row {...rowCopy('systemPrompts')}>
+      <Row target={targetAttribute('settings.output', 'choices')} {...rowCopy('systemPrompts')}>
         <CheckboxOptionGroup options={[
           { id: 'choicesEnabled', label: 'Choices', checked: choicesEnabled, onChange: setChoicesEnabled },
           { id: 'statUpdatesEnabled', label: 'Stat Updates', checked: statUpdatesEnabled, onChange: setStatUpdatesEnabled },

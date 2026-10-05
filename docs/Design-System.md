@@ -1229,7 +1229,7 @@ The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **
 
 **Purpose:** Point the eye at one row after a **Take Me There** landing, or after a link that jumps to a setting, such as the Mascot tab's off-state link to **General**. The ring runs once and stops.
 
-> ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production: Take Me There landings in the Settings dialog and the World Editor, the jump from a prompt's anatomy to a Messages field, and the Mascot tab's off-state link to the Mascot row of Formaquestion Settings → General.
+> ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production: Take Me There landings in the Settings dialog, on the game screen (the action box, the page buttons and the **Export Story** format buttons) and in the World Editor, the jump from a prompt's anatomy to a Messages field, and the Mascot tab's off-state link to the Mascot row of Formaquestion Settings → General.
 
 **Density:** None of its own. The ring draws outside the row's box and changes no layout.
 

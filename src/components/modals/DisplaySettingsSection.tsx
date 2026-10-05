@@ -172,6 +172,7 @@ export function DisplaySettingsSection({ source, mode }: { source: DisplaySettin
       {!imageGenDisabled && (
         <CheckRow
           htmlFor="sceneImageAuto"
+          target={targetAttribute('settings.display', 'scene-images')}
           checked={sceneImageAuto}
           onChange={setSceneImageAuto}
           {...rowCopy('sceneImages')}

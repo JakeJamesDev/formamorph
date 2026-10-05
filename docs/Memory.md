@@ -70,7 +70,7 @@ To bring back one deleted memory instead, select the **Deleted** filter chip, th
 
 ## How to Turn Memory Off
 <!-- keywords: disable, summaries, stop, faster, remove, fewer requests, speed up, no recap, save tokens, skip, switch off, cheaper, too slow -->
-<!-- route: settings.output -->
+<!-- route: settings.output#settings-mode -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.
@@ -81,7 +81,7 @@ During play, the **How to Play** help has the same **Memory Summaries** checkbox
 
 ## How to Date Each Memory
 <!-- keywords: time, timestamp, day, calendar, clock, when it happened, how long ago, time passing, hours, chronology, time of day, elapsed, story date -->
-<!-- route: settings.output -->
+<!-- route: settings.output#settings-mode -->
 
 1. Open **Settings**.
 2. Select **Advanced** next to the title.

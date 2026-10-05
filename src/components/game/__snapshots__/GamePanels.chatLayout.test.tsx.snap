@@ -9,7 +9,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
       class="flex-grow flex flex-col overflow-hidden p-4 sm:p-1"
     >
       <div
-        class="flex flex-col flex-grow overflow-hidden gap-2"
+        class="flex flex-col flex-grow overflow-hidden gap-2 -mx-3 -mb-3 px-3 pb-3"
       >
         <div
           class="flex flex-col overflow-hidden narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 relative"
@@ -265,122 +265,127 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
         <div
           class="flex flex-col items-center gap-2"
         >
-          <nav
-            aria-label="pagination"
-            class="mx-auto flex w-full justify-center"
-            role="navigation"
+          <div
+            data-surface-target="gameViewer#pager"
           >
-            <ul
-              class="flex flex-row items-center gap-1"
+            <nav
+              aria-label="pagination"
+              class="mx-auto flex w-full justify-center"
+              role="navigation"
             >
-              <li
-                class=""
+              <ul
+                class="flex flex-row items-center gap-1"
               >
-                <a
-                  aria-label="Go to previous page"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
-                  href="#"
+                <li
+                  class=""
                 >
-                  <svg
-                    aria-hidden="true"
-                    class="lucide lucide-chevron-left h-4 w-4"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
+                  <a
+                    aria-label="Go to previous page"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
+                    href="#"
                   >
-                    <path
-                      d="m15 18-6-6 6-6"
-                    />
-                  </svg>
-                  <span
-                    class="hidden md:inline"
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-chevron-left h-4 w-4"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m15 18-6-6 6-6"
+                      />
+                    </svg>
+                    <span
+                      class="hidden md:inline"
+                    >
+                      Previous
+                    </span>
+                  </a>
+                </li>
+                <li
+                  class=""
+                >
+                  <a
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                    href="#"
                   >
-                    Previous
-                  </span>
-                </a>
-              </li>
-              <li
-                class=""
-              >
-                <a
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                  href="#"
+                    1
+                  </a>
+                </li>
+                <li
+                  class=""
                 >
-                  1
-                </a>
-              </li>
-              <li
-                class=""
-              >
-                <button
-                  aria-controls="radix-:r19:"
-                  aria-current="page"
-                  aria-expanded="false"
-                  aria-haspopup="dialog"
-                  aria-label="Page 2 of 3 — jump to a page"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
-                  data-state="closed"
-                  type="button"
-                >
-                  2
-                </button>
-              </li>
-              <li
-                class=""
-              >
-                <a
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                  href="#"
-                >
-                  3
-                </a>
-              </li>
-              <li
-                class=""
-              >
-                <a
-                  aria-label="Go to next page"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5"
-                  href="#"
-                >
-                  <span
-                    class="hidden md:inline"
+                  <button
+                    aria-controls="radix-:r19:"
+                    aria-current="page"
+                    aria-expanded="false"
+                    aria-haspopup="dialog"
+                    aria-label="Page 2 of 3 — jump to a page"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
+                    data-state="closed"
+                    type="button"
                   >
-                    Next
-                  </span>
-                  <svg
-                    aria-hidden="true"
-                    class="lucide lucide-chevron-right h-4 w-4"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
+                    2
+                  </button>
+                </li>
+                <li
+                  class=""
+                >
+                  <a
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                    href="#"
                   >
-                    <path
-                      d="m9 18 6-6-6-6"
-                    />
-                  </svg>
-                </a>
-              </li>
-            </ul>
-          </nav>
+                    3
+                  </a>
+                </li>
+                <li
+                  class=""
+                >
+                  <a
+                    aria-label="Go to next page"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5"
+                    href="#"
+                  >
+                    <span
+                      class="hidden md:inline"
+                    >
+                      Next
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-chevron-right h-4 w-4"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m9 18 6-6-6-6"
+                      />
+                    </svg>
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
         <div
           class="flex flex-col gap-2"
         >
           <div
             class="flex items-end"
+            data-surface-target="gameViewer#action-box"
           >
             <div
               class="relative flex-grow mr-2 flex-shrink-0"
@@ -466,7 +471,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
       class="flex-grow flex flex-col overflow-hidden p-4 sm:p-1"
     >
       <div
-        class="flex flex-col flex-grow overflow-hidden gap-2"
+        class="flex flex-col flex-grow overflow-hidden gap-2 -mx-3 -mb-3 px-3 pb-3"
       >
         <div
           class="flex flex-col overflow-hidden narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 relative"
@@ -857,122 +862,127 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
         <div
           class="flex flex-col items-center gap-2"
         >
-          <nav
-            aria-label="pagination"
-            class="mx-auto flex w-full justify-center"
-            role="navigation"
+          <div
+            data-surface-target="gameViewer#pager"
           >
-            <ul
-              class="flex flex-row items-center gap-1"
+            <nav
+              aria-label="pagination"
+              class="mx-auto flex w-full justify-center"
+              role="navigation"
             >
-              <li
-                class=""
+              <ul
+                class="flex flex-row items-center gap-1"
               >
-                <a
-                  aria-label="Go to previous page"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
-                  href="#"
+                <li
+                  class=""
                 >
-                  <svg
-                    aria-hidden="true"
-                    class="lucide lucide-chevron-left h-4 w-4"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
+                  <a
+                    aria-label="Go to previous page"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
+                    href="#"
                   >
-                    <path
-                      d="m15 18-6-6 6-6"
-                    />
-                  </svg>
-                  <span
-                    class="hidden md:inline"
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-chevron-left h-4 w-4"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m15 18-6-6 6-6"
+                      />
+                    </svg>
+                    <span
+                      class="hidden md:inline"
+                    >
+                      Previous
+                    </span>
+                  </a>
+                </li>
+                <li
+                  class=""
+                >
+                  <a
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                    href="#"
                   >
-                    Previous
-                  </span>
-                </a>
-              </li>
-              <li
-                class=""
-              >
-                <a
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                  href="#"
+                    1
+                  </a>
+                </li>
+                <li
+                  class=""
                 >
-                  1
-                </a>
-              </li>
-              <li
-                class=""
-              >
-                <a
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                  href="#"
-                >
-                  2
-                </a>
-              </li>
-              <li
-                class=""
-              >
-                <button
-                  aria-controls="radix-:rl:"
-                  aria-current="page"
-                  aria-expanded="false"
-                  aria-haspopup="dialog"
-                  aria-label="Page 3 of 3 — jump to a page"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
-                  data-state="closed"
-                  type="button"
-                >
-                  3
-                </button>
-              </li>
-              <li
-                class=""
-              >
-                <a
-                  aria-label="Go to next page"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5 pointer-events-none opacity-50"
-                  href="#"
-                >
-                  <span
-                    class="hidden md:inline"
+                  <a
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                    href="#"
                   >
-                    Next
-                  </span>
-                  <svg
-                    aria-hidden="true"
-                    class="lucide lucide-chevron-right h-4 w-4"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
+                    2
+                  </a>
+                </li>
+                <li
+                  class=""
+                >
+                  <button
+                    aria-controls="radix-:rl:"
+                    aria-current="page"
+                    aria-expanded="false"
+                    aria-haspopup="dialog"
+                    aria-label="Page 3 of 3 — jump to a page"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
+                    data-state="closed"
+                    type="button"
                   >
-                    <path
-                      d="m9 18 6-6-6-6"
-                    />
-                  </svg>
-                </a>
-              </li>
-            </ul>
-          </nav>
+                    3
+                  </button>
+                </li>
+                <li
+                  class=""
+                >
+                  <a
+                    aria-label="Go to next page"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5 pointer-events-none opacity-50"
+                    href="#"
+                  >
+                    <span
+                      class="hidden md:inline"
+                    >
+                      Next
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-chevron-right h-4 w-4"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="m9 18 6-6-6-6"
+                      />
+                    </svg>
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
         <div
           class="flex flex-col gap-2"
         >
           <div
             class="flex items-end"
+            data-surface-target="gameViewer#action-box"
           >
             <div
               class="relative flex-grow mr-2 flex-shrink-0"

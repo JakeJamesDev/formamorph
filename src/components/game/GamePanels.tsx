@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
 import { useImageAttachments } from '@/lib/useImageAttachments';
@@ -789,8 +790,9 @@ export const MiddlePanel = ({
             </span>
           </div>
         )}
-        {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. */}
-        <div className="flex flex-col flex-grow overflow-hidden gap-2">
+        {/* gap-2 gives every row below (message area, pager, Start Game, input) consistent spacing. The padding
+            is the Landing Pulse's room around the action box; the negative margins keep every row in place. */}
+        <div className="flex flex-col flex-grow overflow-hidden gap-2 -mx-3 -mb-3 px-3 pb-3">
           {/* Once audio exists, the seek bar is frozen above the scroll area (rather than scrolling with the
               narration) and carries the audio-specific buttons on its row. */}
           {hasAudio && (
@@ -1007,7 +1009,11 @@ export const MiddlePanel = ({
             {likePrompt}
             {locationSuggestion}
             {/* Chat has no Pager: the scroll is the one way through the turns. */}
-            {!chatLayout && <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-center" />}
+            {!chatLayout && (
+              <div {...targetAttribute('gameViewer', 'pager')}>
+                <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-center" />
+              </div>
+            )}
           </div>
           {progressBar}
           <div className={cn('flex flex-col gap-2', attachDragOver && 'rounded-md ring-2 ring-inset ring-ring')} {...intakeProps}>
@@ -1018,7 +1024,7 @@ export const MiddlePanel = ({
                 className="pt-1.5"
               />
             )}
-            <div className="flex items-end">
+            <div className="flex items-end" {...targetAttribute('gameViewer', 'action-box')}>
               {/* The opening turn sends the drawn opening, so images wait for the game to start. */}
               {imageAttachments && isGameStarted && (
                 <AttachImagesButton attaching={attaching} disabled={disabled} onFiles={(files) => void attachFiles(files)} className="mr-2 shrink-0" />

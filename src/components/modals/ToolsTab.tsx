@@ -26,6 +26,7 @@ import { blankTool, finishDraft } from '@/lib/tools/toolDraft';
 import type { OfferedFunction } from '@/lib/tools/toolSchema';
 import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { sampleToolSnapshot, type ToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { toolSummary, type ToolsView } from './toolsView';
 import { ToolEditor } from './ToolEditor';
 import { ToolTryIt, type TryItWorld } from './ToolTryIt';
@@ -326,13 +327,14 @@ export function ToolsTab({
 
       <div className="grid flex-1 min-h-0 gap-4 grid-rows-[minmax(0,10rem)_minmax(0,1fr)] sm:grid-rows-1 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
         <ScrollArea className="h-full min-h-0 rounded-md border">
-          <nav aria-label="Tools" className="p-2 flex flex-col gap-1">
+          {/* The side padding is the Landing Pulse's room around the Share Tools row. */}
+          <nav aria-label="Tools" className="px-3 py-2 flex flex-col gap-1">
             <p className="text-meta text-muted-foreground px-1 pt-1">Built-In</p>
             {fixedFunctions.map(toolButton)}
             {catalogTools.map(toolButton)}
 
             {my && (<>
-            <div className="flex items-center justify-between gap-1 px-1 pt-3">
+            <div className="flex items-center justify-between gap-1 px-1 pt-3" {...targetAttribute('settings.tools', 'share-tools')}>
               <p className="text-meta text-muted-foreground">My Tools</p>
               <span className="flex items-center">
                 <Tip tip="Import Tools">
