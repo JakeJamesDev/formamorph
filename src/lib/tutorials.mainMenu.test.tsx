@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act, cleanup } from '@testing-library/react';
-import { TUTORIAL_APPEAR_DELAY_MS, resetTutorials, seenTutorials, useTutorial } from './tutorials';
+import { HELP_TAB_TUTORIAL_ID, TUTORIAL_APPEAR_DELAY_MS, resetTutorials, seenTutorials, useTutorial } from './tutorials';
 
 /**
  * The main menu's two footer explanations, which are never both available: the profile circle offers an
@@ -8,15 +8,19 @@ import { TUTORIAL_APPEAR_DELAY_MS, resetTutorials, seenTutorials, useTutorial } 
  * the handover — signing in must reach the feedback note without restarting the app.
  */
 
-const Menu = ({ signedIn }: { signedIn: boolean }) => {
+const Menu = ({ signedIn, helpTab = false }: { signedIn: boolean; helpTab?: boolean }) => {
   const { active, nav, dismiss } = useTutorial('mainMenu', {
-    held: signedIn ? ['main-menu-sign-in'] : ['main-menu-feedback'],
+    held: [
+      ...(helpTab ? [] : [HELP_TAB_TUTORIAL_ID]),
+      signedIn ? 'main-menu-sign-in' : 'main-menu-feedback',
+    ],
   });
   return (
     <div>
       <span>{active ? active.title : 'nothing'}</span>
       <button onClick={nav.next}>Got It</button>
       <button onClick={() => dismiss('main-menu-feedback')}>use feedback</button>
+      <button onClick={() => dismiss(HELP_TAB_TUTORIAL_ID)}>open help</button>
     </div>
   );
 };
@@ -74,5 +78,21 @@ describe('main menu explanations', () => {
     render(<Menu signedIn={false} />);
     settle();
     expect(screen.getByText('nothing')).toBeInTheDocument();
+  });
+
+  it('explains the Help tab before anything else on the menu', () => {
+    render(<Menu signedIn={false} helpTab />);
+    settle();
+    expect(screen.getByText('Ask Morphie!')).toBeInTheDocument();
+    act(() => { screen.getByRole('button', { name: 'Got It' }).click(); });
+    expect(screen.getByText('Sign In')).toBeInTheDocument();
+  });
+
+  it('reads the Help note when the reader opens the window', () => {
+    render(<Menu signedIn helpTab />);
+    settle();
+    act(() => { screen.getByRole('button', { name: 'open help' }).click(); });
+    expect(seenTutorials()).toContain(HELP_TAB_TUTORIAL_ID);
+    expect(screen.getByText('Bugs & Suggestions')).toBeInTheDocument();
   });
 });
