@@ -76,7 +76,12 @@ describe('the rider', () => {
   });
 
   it('carries no example code', () => {
-    expect(DEFAULT_CODE_RIDER).not.toMatch(/[=;(){}]|\breturn\b|\bfunction\b/);
-    expect(DEFAULT_CODE_RIDER).not.toMatch(new RegExp(`\\b(?:${SANDBOX_GLOBAL_NAMES.join('|')})\\b`));
+    expect(DEFAULT_CODE_RIDER).not.toMatch(/[=;(){}[\]]|\breturn\b|\bfunction\b/);
+  });
+
+  it('names each sandbox object it names alone, never with a member', () => {
+    const named = [...DEFAULT_CODE_RIDER.matchAll(new RegExp(`\`(${SANDBOX_GLOBAL_NAMES.join('|')})([^\`]*)\``, 'g'))];
+    expect(named.length).toBeGreaterThan(0);
+    expect(named.filter(([, , rest]) => rest !== '').map(([code]) => code)).toEqual([]);
   });
 });

@@ -47,11 +47,15 @@ export async function send(url: RequestInfo | URL, init: RequestInit | undefined
   return json;
 }
 
-/** A fetch for the help session: each request goes out through `send` and comes back as the stream the session reads. */
-export function sessionFetch(usage: Usage): typeof fetch {
+/**
+ * A fetch for the help session: each request goes out through `send` and comes back as the stream the session
+ * reads. `onCompletion` sees each request's body and its completion.
+ */
+export function sessionFetch(usage: Usage, onCompletion?: (body: { messages: { content: unknown }[] }, completion: Completion) => void): typeof fetch {
   return (async (url: RequestInfo | URL, init?: RequestInit) => {
     const result = await send(url, init, usage);
     if (result instanceof Response) return result;
+    onCompletion?.(JSON.parse(String(init?.body)), result);
     const choice = result.choices?.[0];
     const frame = (delta: Record<string, unknown>, finish: string | null = null) =>
       `data: ${JSON.stringify({ choices: [{ delta, finish_reason: finish }] })}\n\n`;
