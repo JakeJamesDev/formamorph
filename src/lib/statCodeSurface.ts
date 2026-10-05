@@ -31,6 +31,12 @@ export const CLOCK_MEMBERS: readonly SurfaceEntry[] = [
   { name: 'previous', detail: shapeOf(CLOCK_PREVIOUS_FIELDS), info: 'The clock at the start of this turn: day and daypart.' },
 ];
 
+/** The fields of the clock object that `path` names, or null when `path` is no clock object. */
+export function clockFieldsAt(path: string): readonly SurfaceEntry[] | null {
+  if (path === 'clock') return CLOCK_MEMBERS;
+  return path === 'clock.previous' ? CLOCK_PREVIOUS_FIELDS : null;
+}
+
 /** Every name the sandbox injects into the program, in the order an author meets them. */
 export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'self', detail: 'Stat', info: 'The stat this code belongs to. Write self.value to set its value.' },
