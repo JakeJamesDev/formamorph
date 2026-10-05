@@ -744,6 +744,26 @@ b {
   animation: stat-fill-slide 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Landing Pulse: `pulseLanding` takes each class off on animationend, so each needs an animation that ends. */
+.landing-pulse,
+.landing-ring {
+  border-radius: calc(var(--radius) - 2px);
+}
+@keyframes landing-pulse {
+  0%, 40% { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; }
+  100%    { outline: 2px solid hsl(var(--ring) / 0); outline-offset: 10px; }
+}
+.landing-pulse {
+  animation: landing-pulse 1500ms ease-out;
+}
+/* Reduced motion: the same ring, still, for the same time. */
+@keyframes landing-ring {
+  from, to { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; }
+}
+.landing-ring {
+  animation: landing-ring 1500ms step-end;
+}
+
 /* Karaoke TTS highlighter: soft accent tint on the sentence being narrated (CSS Custom Highlight API). */
 ::highlight(tts-active) {
   background-color: hsl(var(--primary) / 0.25);

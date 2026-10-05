@@ -1211,6 +1211,60 @@ The probe asks for a model list or node info and never sends a prompt, so no che
 
 The labels are **Preset**, **Duplicate**, **Rename**, **Import**, **Export**, **Publish**, **Reset**, **Delete**, **Preset Actions**, **Add New Preset…**, **Recheck** and **Compare**, all in Title Case. **View full screen** and **Exit full screen** keep the sentence case of the editor's own full-screen toggles. An icon's tooltip is its label, unless the surface passes a longer tip: the **Mascot** tab's tips say what each action does, such as "Make an editable copy of this mascot". The Reset and Compare tooltips are one sentence with no period. The badge lines are status text: one word or phrase, and the missing model name changes with the preset. Each confirm names what it changes, the preset or the prompt, and says "This can't be undone." The reference sample text and status lines were checked against the Writing Guide by copy role. This review does not certify the production confirm text as ASD-STE100 compliant.
 
+## Pattern: Landing Pulse
+
+**Purpose:** Point the eye at one row after a **Take Me There** landing. The ring runs once and stops.
+
+> ✅ **Approved.** The user approved this pattern in the reference (2026-10-04). Production has no landing that uses it yet.
+
+**Density:** None of its own. The ring draws outside the row's box and changes no layout.
+
+### Composition
+
+- 🎯 **One row.** The ring goes on the whole row: the label, the control and its hint. It never goes on a section or a tab.
+- ⭕ **Ring.** A 2px outline in the `ring` color, 4px outside the row. It uses `outline`, so it moves nothing. The row takes `--radius` minus 2px while the ring shows, and the ring's corners grow with its offset. Use the pattern on rows with no fill or border of their own, so the corner change does not show.
+- ⏱️ **Pulse.** 1500ms in all. The ring holds for the first 40%, then grows to 10px out and fades to clear. It runs once, and the class leaves the row when the animation ends.
+- ♿ **Reduced motion.** The same ring, still, for the same 1500ms. Then it goes away at once.
+- 🛑 **Canceled.** When the row hides mid-pulse, the class comes off with the animation.
+- ⌨️ **Focus.** The landing focuses the row's control, not the label's ⓘ button. Where a control draws a select and a segmented group and hides one per width, focus goes to the one on screen. The control's own inset focus ring then sits inside the landing ring.
+- 🔁 **Repeat.** A second landing on the same row restarts the pulse from the start.
+- 📏 **Room.** The pulse reaches 12px past the row. Give the row at least that much padding inside its scroll area, or the fade clips.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Add the class, restart it, take it off on animation end | `pulseLanding` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
+| The control to focus | `landingControl` in [`landingPulse.ts`](../src/lib/landingPulse.ts) |
+| The ring, the pulse and the still ring | `.landing-pulse` and `.landing-ring` in [`index.css`](../src/index.css) |
+| Isolated reference | [`LandingPulseReference.tsx`](../src/components/design-system/LandingPulseReference.tsx) |
+
+`pulseLanding` reads the system's reduced-motion setting, and a caller can pass `reducedMotion` to choose. It returns a cancel for unmount. Only the **Take Me There** landing uses the pattern.
+
+Open `#dev?modal=designSystem&tab=landing-pulse` for a sample Settings tab in both themes. Pick a **Target Row**, check **Reduced Motion** for the still ring, then press **Play Landing** in either theme.
+
+### Responsive behavior
+
+- At `sm` and wider, the ring wraps the label column and the control column as one row.
+- Below `sm`, the row stacks, and the ring wraps the label, the control and the hint.
+- The ring and its pulse are the same at every width.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Idle | No ring. The row has no landing class. |
+| Pulse | The `landing-pulse` class: the ring holds, then grows and fades. |
+| Reduced motion | The `landing-ring` class: the ring holds without movement, then goes away. |
+| Ended | The class is off the row. A later landing adds it again. |
+| Canceled | The row hid mid-pulse. The class is off the row. |
+| Repeat | The pulse restarts from the start. One end takes the class off. |
+| Focus | The control's inset focus ring shows inside the landing ring. |
+
+### Writing review
+
+The pattern adds no player-facing text. The reference labels **Play Landing**, **Target Row** and **Reduced Motion** are Title Case. The row labels and hints come from the production Settings copy. The card description is one sentence with a period, as the other references have. This review is local; it does not certify STE compliance.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

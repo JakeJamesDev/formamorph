@@ -7,6 +7,7 @@ import { FormaquestionReference } from '@/components/design-system/Formaquestion
 import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackFilterRowReference';
 import { SupporterFlairReference } from '@/components/design-system/SupporterFlairReference';
 import { PresetHeaderReference } from '@/components/design-system/PresetHeaderReference';
+import { LandingPulseReference } from '@/components/design-system/LandingPulseReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -367,6 +368,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Preset Header',
     description: 'Preset select, actions, reachability, and Reset and Compare',
     Component: PresetHeaderReference,
+  },
+  {
+    id: 'landing-pulse',
+    label: 'Landing Pulse',
+    description: 'One ring pulse on the row a Take Me There landing points at',
+    Component: LandingPulseReference,
   },
 ];
 
