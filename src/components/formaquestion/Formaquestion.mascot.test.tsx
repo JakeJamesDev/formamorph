@@ -734,7 +734,7 @@ describe('the Mascot phases', () => {
     expect(drawn()).toEqual(look('answering'));
   });
 
-  it('does not replay the wave on a remount after the first send', async () => {
+  it('waves on a remount, which starts an empty conversation (Q28)', async () => {
     stubHelpStream(sseReply('Open the Traits tab.'));
     const { view, field } = await openWindow();
     await send(field, 'How do I add a trait?');
@@ -742,7 +742,7 @@ describe('the Mascot phases', () => {
     view.unmount();
 
     await openWindow();
-    expect(drawn()).toEqual(look('answering'));
+    expect(drawn()).toEqual(look('initial'));
   });
 
   it('keeps the wave through a Settings round trip that turns the Mascot on', async () => {
@@ -873,7 +873,7 @@ describe('the Mascot phases', () => {
     await waitFor(() => expect(drawn()).toEqual(look('answering')));
   });
 
-  it('rests when a question stops before any content, and does not wave again after a clear', async () => {
+  it('rests when a question stops before any content, and waves again after a clear (Q28)', async () => {
     const reply = heldReply();
     stubHelpStream(reply.respond);
     const { field } = await openWindow();
@@ -884,7 +884,26 @@ describe('the Mascot phases', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Clear Conversation' }));
-    expect(drawn()).toEqual(look('answering'));
+    await waitFor(() => expect(drawn()).toEqual(look('initial')));
+  });
+
+  it('shows Thinking for a question in progress after a clear, and the first answer ends the Initial look', async () => {
+    stubHelpStream(sseReply('Open the Traits tab.'));
+    const { field } = await openWindow();
+    await send(field, 'How do I add a trait?');
+    await within(conversation()).findByText(/Open the Traits tab/);
+    await userEvent.click(screen.getByRole('button', { name: 'More Actions' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Clear Conversation' }));
+    await waitFor(() => expect(drawn()).toEqual(look('initial')));
+
+    const reply = heldReply();
+    stubHelpStream(reply.respond);
+    await send(field, 'And a skill?');
+    expect(drawn()).toEqual(look('thinking'));
+
+    await reply.push(sseFrame({ content: 'Open the Skills tab.' }));
+    await reply.end();
+    await waitFor(() => expect(drawn()).toEqual(look('answering')));
   });
 });
 

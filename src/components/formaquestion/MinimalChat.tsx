@@ -32,13 +32,12 @@ export interface HeadToggle {
 }
 
 /** The only chrome: it moves the window, swaps the Mascot's view, holds the ⋮ menu, and closes the window. */
-export function Pill({ move, large, headToggle, menu, onClose, className, fade }: {
+export function Pill({ move, large, headToggle, menu, onClose, fade }: {
   move?: DragHandlers;
   large: boolean;
   headToggle?: HeadToggle;
   menu: MenuProps;
   onClose: () => void;
-  className?: string;
   /** Fades the pill out when idle. Null keeps it up. */
   fade?: PillFade | null;
 }) {
@@ -49,7 +48,7 @@ export function Pill({ move, large, headToggle, menu, onClose, className, fade }
       data-fq-drag=""
       {...move}
       {...fading}
-      className={cn(FLOATING, 'flex shrink-0 select-none items-center self-end rounded-full border bg-background p-0.5', move && 'cursor-move touch-none', className, fadeClass)}
+      className={cn(FLOATING, 'flex shrink-0 select-none items-center self-end rounded-full border bg-background p-0.5', move && 'cursor-move touch-none', fadeClass)}
     >
       {move && <GripVertical aria-hidden className="mx-0.5 h-4 w-4 text-muted-foreground" />}
       {headToggle && (

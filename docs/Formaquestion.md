@@ -121,6 +121,7 @@ You can also set it in the **Window** group of the **General** tab. Both places 
 
 - **Auto** is **Bubble** while the mascot is on, and **Full** while it's off.
 - **Bubble** shows the mascot speaking the newest answer from a speech bubble. With the mascot off, **Bubble** shows **Minimal**.
+- In **Bubble**, the pill and the mascot's grip show when the window opens and hide after one second, and the speech bubble's box fades with them. The chat's corner grip stays in view. They come back when your pointer is over the mascot or a piece, when keyboard focus is on a piece, and while the **⋮** menu is open. On a touch screen they stay up. With reduced motion, they show and hide with no fade.
 - **Minimal** is a bare chat column. **Full** is the framed window.
 - **Full** with the mascot on keeps the mascot beside the frame.
 - The window stays where it was, and your conversation stays. Each style keeps its own size. See [The Window](#the-window).
