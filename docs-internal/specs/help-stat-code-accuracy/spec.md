@@ -178,6 +178,8 @@ Every code turn carries one guide section with the whole sandbox API, so retriev
 
 - **Q32.** (Ticket 10 landing, 2026-10-05.) The create-it tag needs no near match among every owner's names, not only the owner the code reached, so a typo of a name another owner holds stays an error. Result shape: top-level `notInWorld [{line, kind, name, path}]` and `run.assumed` (stat names). Untested edge: two persona-capable entities sharing a placeholder name give the stand-in two children of that name; the pin reports pending and the values check follows sandbox key order.
 
+- **Q33.** (Ticket 08, user ruling 2026-10-05.) First tool arm on MeroMero v2 31B, 13 code cases × 2 arms × 5 runs, 0 failed: rider 84% on the known cases (Q9 met on this model; persona 5/5), test arm 76% (persona 2/5). The model called the code test **0 times in 65 answers** while calling `set_face` every time, so the arm measured offering the function, not using it. Q19's "no gain" does not apply yet. 08 holds. Ticket 11 reopens Q20 on this evidence: the rider gains a test-first line when the function is offered, then a short trigger probe (five cases × 2 runs) checks that the model calls it at all. On a trigger, 08 re-runs the full arm and Q19 decides the default. On none, the numbers are recorded and the default is the user's call. The brave-at-courage case missed on both arms with `stats.Courage` and no `.value`.
+
 ## Backlog
 
 - A Test Bench rule that runs the stat-code analysis on each filled box and lists its errors. Raised by ticket 03; new scope, user's call.
