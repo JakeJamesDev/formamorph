@@ -1,4 +1,4 @@
-import { BookOpen, Braces, ChartColumn, Globe, MapPin, Sparkles, Users, type LucideIcon } from 'lucide-react';
+import { BookOpen, Braces, ChartColumn, Globe, MapPin, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 
 /** The World Editor's tab groups, in rail order. A group with no tab in the current mode draws nothing. */
 export const WORLD_EDITOR_TAB_GROUPS = [
@@ -26,7 +26,7 @@ export const WORLD_EDITOR_TABS = [
   { value: 'stats', label: 'Stats', group: 'content', icon: ChartColumn },
   { value: 'entities', label: 'Entities', group: 'content', icon: Users },
   { value: 'locations', label: 'Locations', group: 'content', icon: MapPin },
-  { value: 'traits', label: 'Traits', group: 'content', icon: Sparkles },
+  { value: 'traits', label: 'Traits', group: 'content', icon: ToggleRight },
   { value: 'dictionary', label: 'Dictionary', group: 'vocabulary', icon: BookOpen },
   { value: 'placeholders', label: 'Placeholders', group: 'vocabulary', icon: Braces, advancedOnly: true },
 ] as const satisfies readonly WorldEditorTab[];
