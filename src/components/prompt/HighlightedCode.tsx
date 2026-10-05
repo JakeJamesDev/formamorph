@@ -41,3 +41,4 @@ export function HighlightedCode({ code, slots, language, className }: {
 }
 
 export default HighlightedCode;
+// scroll-guard: allow horizontal: highlighted code scrolls on both axes

@@ -219,3 +219,4 @@ export function CardTags({ tags, onHide, omitEmpty }: { tags: string[]; onHide?:
     </div>
   );
 }
+// scroll-guard: allow responsive-columns: one pane on mobile, two independent columns on desktop

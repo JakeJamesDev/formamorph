@@ -437,3 +437,4 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     destroy() { view.destroy(); },
   };
 }
+// scroll-guard: allow native-editor: caret, selection, and editing are bound to the scrolling element

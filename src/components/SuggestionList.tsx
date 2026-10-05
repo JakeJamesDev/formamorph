@@ -43,3 +43,4 @@ export function SuggestionList({ items, active, onPick, onHover, label, classNam
     </div>
   );
 }
+// scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input

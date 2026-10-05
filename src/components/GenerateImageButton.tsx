@@ -310,3 +310,4 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
     </>
   );
 }
+// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

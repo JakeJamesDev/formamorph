@@ -446,3 +446,4 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

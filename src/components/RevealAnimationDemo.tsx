@@ -354,3 +354,4 @@ export function RevealAnimationDemoButton({ source, kind = 'narration' }: { sour
     </>
   );
 }
+// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

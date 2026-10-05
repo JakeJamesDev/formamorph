@@ -361,3 +361,4 @@ export function DateTimeField({
     </div>
   );
 }
+// scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input

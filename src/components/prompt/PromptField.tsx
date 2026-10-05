@@ -1041,3 +1041,4 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
 };
 
 export default PromptField;
+// scroll-guard: allow native-editor: caret, selection, and editing are bound to the scrolling element

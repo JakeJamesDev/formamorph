@@ -210,3 +210,4 @@ export function PresetHeaderReference() {
     </Card>
   );
 }
+// scroll-guard: allow horizontal: wide preset header scrolls sideways

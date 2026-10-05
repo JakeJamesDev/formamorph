@@ -75,3 +75,4 @@ export function AgeGateDialog({
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: dialog body scrolls natively; header and footer ownership not reviewed

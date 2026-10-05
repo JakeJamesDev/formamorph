@@ -140,3 +140,4 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

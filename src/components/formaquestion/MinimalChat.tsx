@@ -202,3 +202,4 @@ export function MinimalChat({ guide, failed, onRetry, chat, settings, onSettings
     </div>
   );
 }
+// scroll-guard: allow migration-candidate: answer bubble scrolls natively with a hidden bar

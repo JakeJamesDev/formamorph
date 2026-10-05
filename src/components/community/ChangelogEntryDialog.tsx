@@ -153,3 +153,4 @@ export function ChangelogEntryDialog({
     </Dialog>
   );
 }
+// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite

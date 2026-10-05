@@ -172,3 +172,4 @@ export function FontTuneButton({ font, source }: { font: FontChoice; source?: Fo
     </>
   );
 }
+// scroll-guard: allow migration-candidate: local content pane; height not confirmed definite
