@@ -11,7 +11,7 @@ import { useMascotMotion, type MascotReplay } from './useMascotMotion';
  * The Mascot: the composition's images, bottom first, each stretched to the base size. The first image is
  * the base; its natural size gives the aspect the caller lays the piece out at.
  */
-export function MascotPiece({ images, hold = [], size, frame, view = 'full', transition, replay, move, onBase }: {
+export function MascotPiece({ images, hold = [], size, frame, view = 'full', transition, replay, move, label, onBase }: {
   /** The composition, as `composeMascot` returns it. */
   images: readonly MascotImageRef[];
   /** Images to keep resolved while they are not drawn, such as the whole rig, so a change of look draws at once. */
@@ -27,6 +27,8 @@ export function MascotPiece({ images, hold = [], size, frame, view = 'full', tra
   replay?: MascotReplay;
   /** Pointer handlers that make her a drag target. Without them she takes no presses. */
   move?: DragHandlers;
+  /** Her name, as the image's accessible name. Unset, the piece is decoration, as the tab's previews are. */
+  label?: string;
   /** The base's natural size, once it loads and whenever it changes. */
   onBase: (size: MascotSize) => void;
 }) {
@@ -47,7 +49,7 @@ export function MascotPiece({ images, hold = [], size, frame, view = 'full', tra
   return (
     <div
       ref={pieceRef}
-      aria-hidden
+      {...(label === undefined ? { 'aria-hidden': true } : { role: 'img', 'aria-label': label })}
       data-fq-piece="mascot"
       data-fq-view={view}
       data-fq-body={move ? '' : undefined}

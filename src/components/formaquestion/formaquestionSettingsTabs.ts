@@ -1,4 +1,5 @@
 import { MASCOT_BELOW_CAP, isVerticalPlacement, type MascotPlacement, type WindowChrome } from '@/lib/formaquestion/windowBox';
+import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 
 /** The tabs of Formaquestion Settings, in order. Guarded against the dev-router ledger by `devRouter.test.ts`. */
 export const FORMAQUESTION_SETTINGS_TABS = [
@@ -97,7 +98,7 @@ export const MASCOT_COPY = {
   removeOverlay: 'Remove overlay',
   preset: {
     label: 'Preset',
-    hint: 'Picks the mascot help shows. Default updates with each release.',
+    hint: `Picks the mascot help shows. ${DEFAULT_MASCOT_NAME} updates with each release.`,
     readOnly: (name: string) => `${name} is read-only`,
     /** The header actions' tooltips, by action key. */
     tips: {
@@ -106,7 +107,7 @@ export const MASCOT_COPY = {
       delete: 'Delete this mascot and its images',
       import: 'Add a mascot from a card',
       export: 'Save this mascot as a card',
-      reset: 'Put this mascot back to the Default',
+      reset: `Put this mascot back to ${DEFAULT_MASCOT_NAME}`,
     },
     deleteTitle: 'Delete Mascot',
     deleteBody: (name: string) => `Delete the "${name}" mascot and its images? You can't undo it.`,

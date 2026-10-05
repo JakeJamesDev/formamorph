@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { DOCS_LOOKUP } from '@/lib/formaquestion/docsLookup';
 import { GENERAL_KNOWLEDGE_MARKER } from '@/lib/formaquestion/generalKnowledge';
 import { frameVoice, HELP_CHIP } from '@/lib/formaquestion/helpChips';
+import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 import { HELP_PICK_LIMIT } from '@/lib/formaquestion/helpPicks';
 import { DEFAULT_MASCOT_RIG } from '@/lib/formaquestion/mascot';
 import { activeHelpPreset, DEFAULT_HELP_OPTIONS, DEFAULT_HELP_PRESET_ID, duplicateHelpPreset, editHelpOptions, editHelpPrompt, EMPTY_HELP_PRESET_STORE } from '@/lib/formaquestion/helpPresets';
@@ -74,9 +75,9 @@ describe('the Prompts tab on the Default preset', () => {
   });
 
   it.each([
-    ['Answer', [GENERAL_KNOWLEDGE_MARKER, frameVoice(DEFAULT_MASCOT_RIG.voice)]],
+    ['Answer', [GENERAL_KNOWLEDGE_MARKER, frameVoice(DEFAULT_MASCOT_RIG.voice, DEFAULT_MASCOT_NAME)]],
     ['Search', [`Pick ${HELP_PICK_LIMIT} sections at most.`, '- Reply with the lines of your picks alone']],
-    ['Lookup', [GENERAL_KNOWLEDGE_MARKER, `with ${DOCS_LOOKUP.name}.`, frameVoice(DEFAULT_MASCOT_RIG.voice)]],
+    ['Lookup', [GENERAL_KNOWLEDGE_MARKER, `with ${DOCS_LOOKUP.name}.`, frameVoice(DEFAULT_MASCOT_RIG.voice, DEFAULT_MASCOT_NAME)]],
   ])('gives the %s prompt Edit and Preview, no Values, and previews its chips as sent', async (label, sent) => {
     renderTab();
     const user = userEvent.setup();

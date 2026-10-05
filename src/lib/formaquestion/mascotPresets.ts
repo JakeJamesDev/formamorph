@@ -1,6 +1,7 @@
 /**
  * The mascot preset store: the Default mascot and the player's own, each a named rig. The Default mascot is
- * read-only and reads its rig from the code, so each release updates it. Custom mascots hold their images by
+ * read-only and reads its rig from the code, so each release updates it. A preset's name is the mascot's name:
+ * the AI and the window know her by it, and the Default's is Morphie. Custom mascots hold their images by
  * id in the mascot image store; a duplicate shares its source's ids.
  */
 import { isRecord } from '@/lib/tools/toolValidation';
@@ -20,7 +21,7 @@ export interface MascotPresetStore {
 }
 
 export const DEFAULT_MASCOT_ID = 'default';
-export const DEFAULT_MASCOT_NAME = 'Default';
+export const DEFAULT_MASCOT_NAME = 'Morphie';
 
 /** The store of a player who has made no mascot. */
 export const EMPTY_MASCOT_PRESET_STORE: MascotPresetStore = { activeId: DEFAULT_MASCOT_ID, mascots: [] };

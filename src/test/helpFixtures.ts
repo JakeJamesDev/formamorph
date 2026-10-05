@@ -4,16 +4,17 @@ import { vi } from 'vitest';
 import { renderHelpPrompt } from '@/lib/formaquestion/helpChips';
 import { DEFAULT_HELP_PROMPTS, HELP_PICK_SYSTEM_PROMPT } from '@/lib/formaquestion/helpPrompt';
 import { DEFAULT_MASCOT_RIG, type MascotRig } from '@/lib/formaquestion/mascot';
+import { DEFAULT_MASCOT_NAME } from '@/lib/formaquestion/mascotPresets';
 import type { MascotPresetStore } from '@/lib/formaquestion/mascotPresets';
 import { writeStoredWindow } from '@/lib/formaquestion/windowBox';
 import type { Tool } from '@/types';
 import { sseReply, sseResponse } from './aiTextFixtures';
 
 /** The default answer prompt as a player who changed nothing sends it: the mascot on, with the default Voice. */
-export const VOICED_HELP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: DEFAULT_MASCOT_RIG.voice });
+export const VOICED_HELP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.answer, { voice: DEFAULT_MASCOT_RIG.voice, name: DEFAULT_MASCOT_NAME });
 
 /** The default lookup prompt as a player who changed nothing sends it. */
-export const VOICED_LOOKUP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.lookup, { voice: DEFAULT_MASCOT_RIG.voice });
+export const VOICED_LOOKUP_PROMPT = renderHelpPrompt(DEFAULT_HELP_PROMPTS.lookup, { voice: DEFAULT_MASCOT_RIG.voice, name: DEFAULT_MASCOT_NAME });
 
 /** Stores the window's place, with one size for both chromes. */
 export function storeWindowBox({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {

@@ -376,6 +376,16 @@ describe('the Mascot scale', () => {
 });
 
 describe('the Mascot switch', () => {
+  it('names the window\'s Mascot after the active preset: Morphie by default, else the custom name', async () => {
+    const { view } = await openWindow();
+    expect(mascot()).toHaveAttribute('role', 'img');
+    expect(mascot()).toHaveAccessibleName('Morphie');
+    view.unmount();
+    localStorage.setItem('FORMAMORPH_helpSettings', JSON.stringify({ mascotPresets: mascotStoreOf(DEFAULT_MASCOT_RIG) }));
+    await openWindow();
+    expect(mascot()).toHaveAccessibleName('Mine');
+  });
+
   it('shows today\'s window while off', async () => {
     storeFramedWindow();
     await openWindow();
@@ -1038,7 +1048,7 @@ describe('the mascot draft', () => {
     const dialog = await openMascotTab();
     const user = userEvent.setup();
     await user.click(within(dialog).getByRole('combobox', { name: 'Preset' }));
-    await user.click(await screen.findByRole('option', { name: 'Default' }));
+    await user.click(await screen.findByRole('option', { name: 'Morphie' }));
     await closeSettings();
     expect(drawn()).toEqual(look('answering'));
     expect(drawn()).not.toEqual(IDLE);
