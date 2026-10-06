@@ -41,6 +41,7 @@ EDITOR_SPEED_HEAP_SNAPSHOT=1 npm run profile:editor-speed
 | `EDITOR_SPEED_ONLY` | all | Steps to run, comma-separated |
 | `EDITOR_SPEED_LIBRARY` | `bench` | `bench`: default worlds plus the bench world. `defaults`: default worlds only. `empty`: no worlds |
 | `EDITOR_SPEED_HEAP_SNAPSHOT` | unset | Snapshot the Main Menu heap and print its top retainers |
+| `EDITOR_SPEED_DRAG_NODE` | unset | Location id the `canvasDrag` step grabs. Unset, it grabs the fourth box drawn, which depends on the view |
 | `EDITOR_SPEED_SKIP_BUILD` | unset | Reuse the last build |
 | `EDITOR_SPEED_SHOT` | unset | Screenshot a failed step into `.out/` |
 | `EDITOR_SPEED_HEADED` | unset | Show the browser |

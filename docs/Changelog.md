@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The Main Menu lists your worlds without loading each one in full.** Large libraries open faster and use less memory. Your library updates itself once; older Formamorph builds can't open it afterward.
+  - **The Locations Canvas opens fast on large worlds, and shows dashed travel arrows only for the hovered or selected locations.** Click a dashed arrow to author a Connection. Arrows hide while you drag. A selected location keeps its arrows on touch screens.
 
 ---
 

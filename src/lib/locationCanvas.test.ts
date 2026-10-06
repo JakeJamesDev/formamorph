@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
-  applyCanvasDrop, buildLocationCanvas, connectIntent, connectionEnds, deleteIntent, directionIntent,
+  applyCanvasDrop, buildLocationCanvas, canvasFocus, connectIntent, connectionEnds, deleteIntent, directionIntent,
   applyCanvasDrops, beginCanvasDrag, directionOf, dropIntent, dropTarget, updateIntent, isStationaryClick,
   isTravelClick, multiDropIntents, leafTarget,
   TOUCH_SLOP,
@@ -21,8 +21,8 @@ const landing: GameLocation = { id: "landing", name: "Landing", isStarting: true
 const shore: GameLocation = { id: "shore", name: "Shore" };
 const world = [village, tavern, cellar, house, landing, shore];
 
-const canvas = (locations: GameLocation[], connections: Connection[] = []) =>
-  buildLocationCanvas(locations, connections);
+const canvas = (locations: GameLocation[], connections: Connection[] = [], focus: string[] = []) =>
+  buildLocationCanvas(locations, connections, { focus });
 const nodeOf = (locations: GameLocation[], id: string, connections: Connection[] = []) =>
   canvas(locations, connections).nodes.find((n) => n.id === id)!;
 const edgeIds = (locations: GameLocation[], connections: Connection[] = []) =>
@@ -135,7 +135,7 @@ describe("buildLocationCanvas edges", () => {
   });
 
   it("draws implicit sibling travel as one dashed arrow per direction", () => {
-    const edges = canvas([village, tavern, house]).edges;
+    const edges = canvas([village, tavern, house], [], ["tavern"]).edges;
     expect(edges.map((e) => e.id).sort()).toEqual(["implicit:house>tavern", "implicit:tavern>house"]);
     expect(edges.every((e) => e.kind === "implicit")).toBe(true);
     expect(edges.map((e) => [e.source, e.target]).sort()).toEqual([["house", "tavern"], ["tavern", "house"]]);
@@ -143,8 +143,77 @@ describe("buildLocationCanvas edges", () => {
 
   it("draws nothing implicit for a pair an authored Connection has replaced", () => {
     const oneWay: Connection = { id: "c2", a: "tavern", b: "house", aToB: {} };
-    // Only the Connection's own arrow survives — no dashed remnant of the free walk back.
+    // Only the Connection's own arrow survives — no dashed remnant of the free walk back, focused or not.
     expect(edgeIds([village, tavern, house], [oneWay])).toEqual(["connection:c2:aToB"]);
+    const focused = canvas([village, tavern, house], [oneWay], ["tavern", "house"]).edges;
+    expect(focused.map((e) => e.id)).toEqual(["connection:c2:aToB"]);
+  });
+
+  describe("focus", () => {
+    // Ten siblings under one parent: a full mesh would be 90 arrows.
+    const hub: GameLocation = { id: "hub", name: "Hub" };
+    const spokes: GameLocation[] = Array.from({ length: 10 }, (_, i) => ({ id: `s${i}`, name: `S${i}`, parentId: "hub" }));
+    const crowd = [hub, ...spokes];
+    const implicitOf = (map: ReturnType<typeof canvas>) => map.edges.filter((e) => e.kind === "implicit");
+
+    it("draws no implicit arrow when nothing is focused, and keeps Connection arrows", () => {
+      const link: Connection = { id: "c1", a: "s0", b: "s1", aToB: {} };
+      const map = canvas(crowd, [link]);
+      expect(implicitOf(map)).toEqual([]);
+      expect(map.edges.map((e) => e.id)).toEqual(["connection:c1:aToB"]);
+    });
+
+    it("draws a focused location's sibling arrows, in both directions", () => {
+      const edges = implicitOf(canvas(crowd, [], ["s3"]));
+      const others = spokes.filter((s) => s.id !== "s3");
+      expect(edges.map((e) => e.id).sort()).toEqual(
+        others.flatMap((s) => [`implicit:s3>${s.id}`, `implicit:${s.id}>s3`]).sort(),
+      );
+    });
+
+    it("equals the location's siblings minus the pairs a Connection replaced", () => {
+      const replaced: Connection[] = [
+        { id: "c1", a: "s3", b: "s4", aToB: {} },
+        { id: "c2", a: "s5", b: "s3", aToB: {}, bToA: {} },
+      ];
+      const edges = implicitOf(canvas(crowd, replaced, ["s3"]));
+      const partners = new Set(edges.map((e) => (e.source === "s3" ? e.target : e.source)));
+      expect([...partners].sort()).toEqual(
+        spokes.map((s) => s.id).filter((id) => !["s3", "s4", "s5"].includes(id)).sort(),
+      );
+    });
+
+    it("draws the union of several focused locations, each shared pair once", () => {
+      const edges = implicitOf(canvas(crowd, [], ["s0", "s1"]));
+      // s0 and s1 each pair with the 9 others: 17 distinct pairs, two arrows each.
+      expect(edges.length).toBe(34);
+      expect(new Set(edges.map((e) => e.id)).size).toBe(34);
+    });
+
+    it("draws no containment arrow for a focused parent or child", () => {
+      expect(implicitOf(canvas(crowd, [], ["hub"]))).toEqual([]);
+      expect(implicitOf(canvas(crowd, [], ["s0"])).some((e) => e.source === "hub" || e.target === "hub")).toBe(false);
+    });
+
+    it("ignores a focused id the world does not hold", () => {
+      expect(implicitOf(canvas(crowd, [], ["gone"]))).toEqual([]);
+    });
+  });
+
+  describe("canvasFocus", () => {
+    it("is the hovered location plus every selected one", () => {
+      expect(canvasFocus({ hovered: "a", selected: ["b", "c"], dragging: false }).sort()).toEqual(["a", "b", "c"]);
+      expect(canvasFocus({ hovered: null, selected: ["b"], dragging: false })).toEqual(["b"]);
+      expect(canvasFocus({ hovered: "b", selected: ["b"], dragging: false })).toEqual(["b"]);
+    });
+
+    it("is empty while a drag is in flight", () => {
+      expect(canvasFocus({ hovered: "a", selected: ["b"], dragging: true })).toEqual([]);
+    });
+
+    it("is empty with no hover and no selection", () => {
+      expect(canvasFocus({ hovered: null, selected: [], dragging: false })).toEqual([]);
+    });
   });
 
   it("draws one solid arrow per travelable direction of a Connection", () => {
@@ -432,7 +501,7 @@ describe("dropIntent", () => {
     expect(before.edges.filter((e) => e.id.includes("shore"))).toEqual([]);
 
     const after = applyCanvasDrop(stranded, dropIntent(stranded, "shore", { x: 40, y: 60 })!);
-    const map = buildLocationCanvas(after, []);
+    const map = buildLocationCanvas(after, [], { focus: ["shore"] });
     // Held by the Tavern, Shore is now a sibling of the Cellar: free travel both ways, and reachable.
     expect(map.nodes.find((n) => n.id === "shore")!.data.unreachable).toBe(false);
     expect(map.edges.filter((e) => e.kind === "implicit").map((e) => e.id).sort())
@@ -714,9 +783,10 @@ describe("connectIntent", () => {
 
   it("materializes a dashed implicit arrow into the pair's whole travel rule", () => {
     // Clicking Tavern↔House's dashed arrow is the same gesture as dragging between them.
-    const before = canvas([village, tavern, house]).edges;
+    const before = canvas([village, tavern, house], [], ["tavern"]).edges;
+    expect(before.length).toBe(2);
     expect(before.every((e) => e.kind === "implicit")).toBe(true);
-    const after = canvas([village, tavern, house], applied([], connectIntent("tavern", "house", []))).edges;
+    const after = canvas([village, tavern, house], applied([], connectIntent("tavern", "house", [])), ["tavern"]).edges;
     expect(after.map((e) => e.kind)).toEqual(["connection", "connection"]);
   });
 
@@ -811,7 +881,8 @@ describe("deleteIntent", () => {
     const conn: Connection = { id: "c10", a: "tavern", b: "house", aToB: {} };
     const gone = applied([conn], deleteIntent(conn));
     expect(gone).toEqual([]);
-    expect(edgeIds([village, tavern, house], gone)).toEqual(["implicit:house>tavern", "implicit:tavern>house"]);
+    expect(canvas([village, tavern, house], gone, ["tavern"]).edges.map((e) => e.id).sort())
+      .toEqual(["implicit:house>tavern", "implicit:tavern>house"]);
   });
 });
 

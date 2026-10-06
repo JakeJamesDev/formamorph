@@ -33,8 +33,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
-  applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, CANVAS_GRID, connectIntent,
-  connectionEnds, deleteIntent, directionIntent, directionOf, updateIntent, isStationaryClick, leafTarget,
+  applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, canvasFocus, CANVAS_GRID,
+  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, implicitCanvasEdges,
+  updateIntent, isStationaryClick, leafTarget,
   LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
   type CanvasDragSession, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
@@ -106,6 +107,9 @@ const FlashContext = createContext<string | null>(null);
 
 /** How long a box stays marked after the map travels to it. */
 const FLASH_MS = 1400;
+
+/** How long a hover outlasts the pointer leaving a box or an arrow. */
+const HOVER_GRACE_MS = 250;
 
 /** Marked as arrived-at: the ring a selected box wears, in the accent color and pulsing where motion is
  *  welcome. Stands in place of the selection ring rather than beside it — two rings on one box is one ring. */
@@ -829,7 +833,8 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     const node = getInternalNode(id);
     if (!node) return;
     const { x, y } = node.internals.positionAbsolute;
-    setCenter(x + (node.measured.width ?? 0) / 2, y + (node.measured.height ?? 0) / 2, {
+    // A box culled off screen was never measured, so its authored size stands in.
+    setCenter(x + (node.measured.width ?? node.width ?? 0) / 2, y + (node.measured.height ?? node.height ?? 0) / 2, {
       zoom: Math.max(getZoom(), 0.8),
       duration: reduceMotion ? 0 : 400,
     });
@@ -882,19 +887,6 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // The leg whose arrow was clicked last, tied to its record so a later selection never inherits it.
   const [hintFocus, setHintFocus] = useState<TravelHintFocus & { connectionId: string } | null>(null);
 
-  // A dashed arrow is a click away from being authored; a solid one opens the record it came from.
-  const handleEdgeClick = useCallback((_: unknown, edge: Edge) => {
-    const clicked = map.edges.find((e) => e.id === edge.id);
-    if (!clicked) return;
-    if (!clicked.connectionId) {
-      applyIntent(connectIntent(clicked.source, clicked.target, connections));
-      return;
-    }
-    setSelectedConnectionId(clicked.connectionId);
-    const { connectionId, leg } = clicked;
-    if (leg) setHintFocus((last) => ({ connectionId, leg, nonce: (last?.nonce ?? 0) + 1 }));
-  }, [map, connections, applyIntent, setSelectedConnectionId]);
-
   const [nodes, setNodes, onNodesChange] = useNodesState<LocationNodeType>([]);
 
   // What the toolbar and the keyboard act on. Read off the nodes rather than tracked beside them: every way a
@@ -909,10 +901,12 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   }, [setNodes, selectedIdsRef]);
 
   // A selection made in the list view is the canvas's whole selection; one made here is already on the nodes.
+  // The editor closing its detail panel clears `selectedId`, which is not the author letting go of the
+  // location on the map: a finger has no hover, so the selection is what keeps its implicit arrows drawn.
   useEffect(() => {
     if (selectedId === lastSyncedRef.current) return;
     lastSyncedRef.current = selectedId;
-    setSelection((id) => id === selectedId);
+    if (selectedId !== null) setSelection((id) => id === selectedId);
   }, [selectedId, setSelection, lastSyncedRef]);
 
   // The mapper owns what is on the map; xyflow owns only the in-flight drag, so a world edit anywhere
@@ -934,12 +928,66 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     })));
   }, [map, setNodes, selectedIdsRef]);
 
+  // Implicit arrows belong to the locations the author is looking at: the hovered one and the selected ones,
+  // and none while a drag is in flight. The hover outlives the pointer by a beat, so the pointer can cross
+  // the gap to a dashed arrow without the arrow leaving.
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const hoverTimer = useRef<number | null>(null);
+  const cancelHoverClear = useCallback(() => {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+  }, []);
+  const hoverOn = useCallback((id: string) => {
+    cancelHoverClear();
+    setHoveredId(id);
+  }, [cancelHoverClear]);
+  const hoverOff = useCallback(() => {
+    cancelHoverClear();
+    hoverTimer.current = window.setTimeout(() => setHoveredId(null), HOVER_GRACE_MS);
+  }, [cancelHoverClear]);
+  // Clicking a dashed arrow removes it, and its pointer-leave never comes.
+  const hoverEnd = useCallback(() => {
+    cancelHoverClear();
+    setHoveredId(null);
+  }, [cancelHoverClear]);
+  useEffect(() => cancelHoverClear, [cancelHoverClear]);
+
+  // A node change on every drag frame rebuilds `selectedIds`; the focus keeps its identity until it differs.
+  const focusRef = useRef<string[]>([]);
+  const focus = useMemo(() => {
+    const next = canvasFocus({ hovered: hoveredId, selected: selectedIds, dragging });
+    const last = focusRef.current;
+    if (next.length === last.length && next.every((id, i) => id === last[i])) return last;
+    focusRef.current = next;
+    return next;
+  }, [hoveredId, selectedIds, dragging]);
+
+  const implicitEdges = useMemo(
+    () => implicitCanvasEdges(locations, connections, focus),
+    [locations, connections, focus],
+  );
+
   const edges = useMemo(
-    () => map.edges.map(
+    () => [...map.edges, ...implicitEdges].map(
       (edge) => toFlowEdge(edge, connectionStyle, { selected: edge.connectionId === selectedConnectionId }),
     ),
-    [map, selectedConnectionId, connectionStyle],
+    [map, implicitEdges, selectedConnectionId, connectionStyle],
   );
+
+  // A dashed arrow is a click away from being authored; a solid one opens the record it came from.
+  const handleEdgeClick = useCallback((_: unknown, edge: Edge) => {
+    const clicked = implicitEdges.find((e) => e.id === edge.id) ?? map.edges.find((e) => e.id === edge.id);
+    if (!clicked) return;
+    if (!clicked.connectionId) {
+      hoverEnd();
+      applyIntent(connectIntent(clicked.source, clicked.target, connections));
+      return;
+    }
+    setSelectedConnectionId(clicked.connectionId);
+    const { connectionId, leg } = clicked;
+    if (leg) setHintFocus((last) => ({ connectionId, leg, nonce: (last?.nonce ?? 0) + 1 }));
+  }, [map, implicitEdges, connections, applyIntent, setSelectedConnectionId, hoverEnd]);
 
   const [dropInto, setDropInto] = useState<DropTarget>(IDLE);
 
@@ -977,6 +1025,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   );
   const handleDragStart = useCallback(() => {
     dragSessionRef.current = beginCanvasDrag(locations);
+    setDragging(true);
   }, [locations]);
 
   /** What the nodes a drag is carrying are asking the world to become — the one answer the highlight is drawn
@@ -1003,6 +1052,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // A whole selection dragged at once is that one gesture, made of every node it carried.
   const handleDragStop = useCallback((_: unknown, node: Node, dragged: Node[]) => {
     setDropInto(IDLE);
+    setDragging(false);
     const session = sessionFor();
     dragSessionRef.current = null;
     const drops = dropsFor(session, dragged.length ? dragged : [node]);
@@ -1292,6 +1342,12 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         }}
         onSelectionChange={handleSelectionChange}
         onEdgeClick={handleEdgeClick}
+        onNodeMouseEnter={(_, node) => hoverOn(node.id)}
+        onNodeMouseLeave={hoverOff}
+        onEdgeMouseEnter={cancelHoverClear}
+        onEdgeMouseLeave={hoverOff}
+        // A big map holds far more than the pane shows, and a box off screen costs a render for nothing.
+        onlyRenderVisibleElements
         onPaneClick={() => setSelectedConnectionId(null)}
         onPaneContextMenu={(e) => openMenu(e, { kind: 'pane' })}
         onNodeContextMenu={(e, node) => openMenu(e, menuTargetFor(node.id))}

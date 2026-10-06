@@ -1,6 +1,6 @@
 # 03: Focus-Only Implicit Edges on the Canvas
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: 02
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: high
@@ -27,3 +27,20 @@ Update the existing canvas e2e specs that click an implicit edge so they select 
 - [ ] Harness `canvas` step on the bench world at 6x: no main-thread block over 1 s.
 - [ ] Guard bites: emitting all pairs again turns the zero-edge unit test red.
 - [ ] Four gates green; canvas e2e spec green.
+
+## Comments
+
+Harness at 6x on the bench world (2026-10-06). Before is the spec baseline; after is this ticket.
+
+| Step | Before | After |
+|---|---|---|
+| `canvas` visible | 32.7 s | 0.94–1.03 s |
+| `canvas` worst block | 23.3 s | 0.28–0.32 s |
+| `canvas` DOM nodes | 117k | 1.6k |
+| `canvas` implicit edges | 23,100 | 0 |
+| `open` worst block | 2.0 s | 1.6 s |
+
+- `canvasDrag` is not comparable with the baseline. Culling changes which box the step grabs (`nth(3)`). On `loc-00285`: 14.4 s blocked and frame p95 300 ms without culling, 5.0 s and p95 150 ms with it. Ticket 10 owns the rest. The step now reports the grabbed id, and `EDITOR_SPEED_DRAG_NODE` pins it.
+- The Map keeps drawing edges for its current location until ticket 04 adds hover and its own tests.
+- Selection from the editor no longer clears the canvas selection when `selectedId` becomes null. That is what keeps a touch selection after the detail panel closes.
+- `implicitPairs` and `overriddenPairs` have no production caller now. Only `locationGraph.ts` and its tests use them.
