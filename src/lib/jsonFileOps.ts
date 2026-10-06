@@ -2,13 +2,18 @@
  * The JSON file worker's operations, kept pure so they run and test without a worker around them.
  */
 import { measurePublishBytes } from './publishLimits';
+import { buildPublishBody } from './publishBody';
+import type { PublishPayload } from './publishPayload';
+import { migrateWorld } from './version';
 import { indexBackup } from './backupIndex';
 import { restoreBackup, type RestoreRequest } from './backupRestore';
 
 export type JsonFileOp =
   | { op: 'serialize'; value: unknown; space?: number; mime?: string; splitDepth?: number }
   | { op: 'parse'; text: string }
+  | { op: 'parseWorld'; file: Blob }
   | { op: 'measure'; value: unknown }
+  | { op: 'publishBody'; payload: PublishPayload; contestEventId: string | null }
   | { op: 'indexBackup'; file: Blob }
   | { op: 'restoreBackup'; request: RestoreRequest };
 
@@ -56,8 +61,12 @@ export function runJsonFileOp(request: JsonFileOp, onProgress?: (progress: unkno
   switch (request.op) {
     case 'parse':
       return JSON.parse(request.text);
+    case 'parseWorld':
+      return request.file.text().then((text) => migrateWorld(JSON.parse(text)));
     case 'measure':
       return measurePublishBytes(request.value);
+    case 'publishBody':
+      return buildPublishBody(request.payload, request.contestEventId);
     case 'indexBackup':
       return indexBackup(request.file);
     case 'restoreBackup':

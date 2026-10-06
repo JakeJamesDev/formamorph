@@ -417,6 +417,27 @@ const STEPS = {
     });
   },
 
+  /** Import the bench world file through the Main Menu's file input. Declines the image optimizer, so the step times the import itself. */
+  async import({ page, cdp }) {
+    await page.goto(page.url());
+    await page.getByText('Large Bench World', { exact: false }).first().waitFor({ timeout: 60_000 });
+    await settle(page, 2000);
+    const input = page.locator('input[type="file"][accept=".json"]');
+    return traced(page, cdp, async () => {
+      const t0 = Date.now();
+      await input.setInputFiles(WORLD);
+      const keep = page.getByRole('button', { name: 'Keep as-is' });
+      await keep.waitFor({ timeout: 180_000 });
+      const promptMs = Date.now() - t0;
+      await keep.click();
+      // A lone import opens the world's details once it is stored.
+      await page.getByRole('button', { name: 'Edit World' }).waitFor({ timeout: 180_000 });
+      const visibleMs = Date.now() - t0;
+      await settle(page, 1500);
+      return { promptMs, visibleMs, settledMs: Date.now() - t0 };
+    });
+  },
+
   /** Bare put and get of the bench record on a blank page of the same origin: the structured-clone floor. */
   async idb({ page, rate }) {
     const blank = await page.context().newPage();

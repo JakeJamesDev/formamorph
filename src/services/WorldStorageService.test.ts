@@ -10,6 +10,15 @@ import { getDownloadState } from '@/lib/downloadState';
 import { PUBLISH_LIMITS } from '@/lib/publishLimits';
 import { KIND_LABELS } from '@/lib/catalogKinds';
 import { openWorldLibrary, putWorldRecords } from '@/lib/worldLibrary';
+import { Blob as NodeBlob } from 'node:buffer';
+
+vi.mock('@/lib/jsonFileWorkerUtils', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...(await (await import('@/test/inlineJsonWorker')).inlineJsonWorker()),
+}));
+
+/** The JSON a publish sent as the `n`th fetch call's body. */
+const sentBody = async (n: number) => JSON.parse(await (vi.mocked(fetch).mock.calls[n][1]?.body as Blob).text());
 
 const res = (body: unknown, ok = true, status = 200): Response =>
   ({ ok, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
@@ -160,6 +169,10 @@ describe('deleteComment', () => {
 });
 
 describe('publishItem', () => {
+  // The worker builds the body with the browser's native Blob. jsdom's is a JS polyfill that takes seconds
+  // to copy the 100 MB the limit cases send; Node's native one is what the worker has.
+  beforeEach(() => { vi.stubGlobal('Blob', NodeBlob); });
+
   const payload = (over = {}) => ({
     kind: 'world' as const, name: 'N', description: 'D', thumbnail: 't', contentData: { a: 1 }, ...over,
   });
@@ -192,7 +205,7 @@ describe('publishItem', () => {
 
     await WorldStorageService.publishItem(payload({ kind: 'entity', contentData: { name: 'Mara' } }));
 
-    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    const body = await sentBody(0);
     expect(body.kind).toBe('entity');
     expect(body.contentData).toEqual({ name: 'Mara' });
   });
@@ -212,7 +225,7 @@ describe('publishItem', () => {
 
     await WorldStorageService.publishItem(payload({ tags: ['fantasy'] }));
 
-    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    const body = await sentBody(0);
     expect(body).toEqual(wholeBody);
   });
 
@@ -225,7 +238,7 @@ describe('publishItem', () => {
     const [url, init] = vi.mocked(fetch).mock.calls[0];
     expect(init?.method).toBe('PUT');
     expect(url as string).toContain('/worlds/w99');
-    expect(JSON.parse(init?.body as string)).toEqual(wholeBody);
+    expect(JSON.parse(await (init?.body as Blob).text())).toEqual(wholeBody);
   });
 
   it('carries the contest entry when given one, and omits it when not', async () => {
@@ -235,8 +248,8 @@ describe('publishItem', () => {
     await WorldStorageService.publishItem(payload(), null, 'ev1');
     await WorldStorageService.publishItem(payload());
 
-    const entered = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
-    const plain = JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string);
+    const entered = await sentBody(0);
+    const plain = await sentBody(1);
     expect(entered.contestEventId).toBe('ev1');
     expect(plain).not.toHaveProperty('contestEventId');
   });

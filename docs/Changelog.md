@@ -34,6 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Dragging a location on the Locations Canvas checks drop targets faster on large worlds.** The canvas no longer rechecks every location's ancestry on each pointer move, and group frames redraw only when the drop target changes.
   - **The World Editor uses far less memory on large worlds while you edit and save.** It no longer keeps extra copies of the world to track unsaved edits. Saving a large world also finishes faster.
   - **The location and persona pickers stay quick while you type in a large world.** The Connect To, Starting Location and Starts On lists redraw only the items that changed. They look and work as before.
+  - **Importing a large world and publishing one no longer freeze the app.** The Main Menu reads and upgrades the world file in the background, and Publish builds its upload there too. Messages stay the same.
 
 ---
 
