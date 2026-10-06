@@ -17,6 +17,17 @@ The same element looks or acts differently on different surfaces. Some surfaces 
 | 4 | **Popup close button outline.** The X button on popups has an outer border and focuses that border when the popup opens. Remove the border and the focus on open. | Where does initial focus go instead? |
 | 5 | **List item remove button.** List items have an X button. | Should it be an icon button that turns destructive red on hover? |
 
+## Rulings
+
+- **Q1 Trait icon:** `ToggleRight` everywhere. `Sparkles` stays on the built-in placeholder mark and AI actions.
+- **Q2 Entity icon:** `User` for one entity. `Users` only where a tab or heading lists many entities.
+- **Q3 Stat icon:** `ChartColumn` everywhere.
+- **Q4 World icon:** `Earth` everywhere, as in `KIND_ICONS`.
+- **Q5 Blueprint icon:** `LayoutTemplate` everywhere, chips included. `Link2` means a linked copy only.
+- **Q6 Persona icon:** `CircleUserRound`, so a persona never reads as an entity.
+- **Q7 Nav rail states:** hover is `bg-accent`. Selected is `bg-primary/10` with `text-primary`, `font-medium` and the primary bar. This replaces the Design System's Nav Rail state rule. Stat Code Templates need a new icon, because Q5 gives `LayoutTemplate` to Blueprints.
+- **Q8 One side-navigation recipe:** the mobile Sections bar and the Enter World categories take the Q7 states.
+
 Items 1 and 2 are audited in [audit.md](audit.md). Item 3 is parked: Playwright frame sampling did not reproduce it.
 
 ## Related
