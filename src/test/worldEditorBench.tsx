@@ -93,11 +93,13 @@ export const renderWorldEditorBench = (
   world: World,
   mode: EditorMode,
   props: Partial<Omit<ComponentProps<typeof WorldEditor>, 'onClose'>> = {},
+  /** Wraps the whole tree, as the app's root boundary does. */
+  wrap: (tree: ReactNode) => ReactNode = (tree) => tree,
 ) => {
   let ctx!: GameDataHandle;
   writeEditorMode(mode);
   const onClose = vi.fn();
-  const tree = (editorProps: typeof props) => (
+  const tree = (editorProps: typeof props) => wrap(
     <SettingsProvider>
       <TooltipProvider>
         <GameDataProvider>
@@ -106,7 +108,7 @@ export const renderWorldEditorBench = (
           </Harness>
         </GameDataProvider>
       </TooltipProvider>
-    </SettingsProvider>
+    </SettingsProvider>,
   );
   const view = render(tree(props));
   return {

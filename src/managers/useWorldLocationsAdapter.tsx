@@ -11,6 +11,7 @@ import type { FocusFieldHint } from '@/types';
 import { focusFieldForItem } from '@/views/findFocus';
 import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import type { LocationView } from '@/views/locationViews';
+import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 import LocationCanvas from './LocationCanvas';
 import LocationManager from './LocationManager';
 import LocationTree from './LocationTree';
@@ -71,7 +72,7 @@ export function useWorldLocationsAdapter({ selectedId, onSelect, search, view, t
   const canvas = view === 'canvas';
   return {
     tree: canvas
-      ? <LocationCanvas selectedId={selectedId} onSelect={onSelect} />
+      ? <PanelErrorBoundary><LocationCanvas selectedId={selectedId} onSelect={onSelect} /></PanelErrorBoundary>
       : <LocationTree selectedId={selectedId} onSelect={onSelect} />,
     ownsSlot: canvas,
     rows,

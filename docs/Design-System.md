@@ -1366,6 +1366,42 @@ Open `#dev?modal=designSystem&tab=landing-pulse` for a sample Settings tab in bo
 
 The pattern adds no player-facing text. The reference labels **Play Landing**, **Target Row** and **Reduced Motion** are Title Case. The row labels and hints come from the production Settings copy. The card description is one sentence with a period, as the other references have. This review is local; it does not certify STE compliance.
 
+## Pattern: Panel Crash Card
+
+**Purpose:** Tell the author that one editor panel stopped working, in that panel's place, while the rest of the editor stays live.
+
+> ✅ **Approved.** The user approved this pattern from a mock (2026-10-06). Production: the World Editor's tab bodies, detail panel, Locations Canvas and Test Bench.
+
+**Density:** Comfortable. The card is centered in the space of the panel it replaces and takes no more than 24rem.
+
+### Composition
+
+- ⚠️ **Icon.** A warning triangle in the `warning` color, above the title.
+- 🔤 **Title.** "This Panel Stopped Working" in `title` size and semibold.
+- 📝 **Line.** "Your unsaved edits are kept. Try again, or view the details to report the problem." in the muted text color.
+- 🔘 **Buttons.** **View Details** is outline and **Try Again** is the primary button, side by side. They wrap on a narrow panel.
+- 🧱 **Surface.** A bordered `card` with a 1.5rem pad, inside a 0.75rem pad that keeps it off the panel edge. The panel's own frame stays.
+- ♿ **Announced.** The card has `role="alert"`, so a screen reader reads it when it replaces the panel.
+
+### Behavior
+
+- 🔁 **Try Again** remounts the panel. A panel that throws again shows the card again.
+- 🔎 **View Details** opens the Error Details dialog on the panel's error, with its component stack. The dialog has Copy and Report Bug.
+- 🧭 **A different item clears the card.** The detail panel's card goes away when the author selects another item or tab.
+- 💾 **Edits stay.** Edits live in the data provider, not in the panel, so Try Again loses none of them.
+- 🚫 **Not for the whole app.** A crash above the editor shows the full-screen recovery screen, which has the same composition and the title "Formamorph Stopped Working".
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The card | `PanelCrashCard` in [`PanelCrashCard.tsx`](../src/components/PanelCrashCard.tsx) |
+| Catch a crash, show the card, remount, reset on a new key | `PanelErrorBoundary` in [`PanelErrorBoundary.tsx`](../src/components/PanelErrorBoundary.tsx) |
+| The dialog View Details opens | `ErrorDetailsHost` in [`ErrorDetailsDialog.tsx`](../src/components/ErrorDetailsDialog.tsx) |
+| Isolated reference | [`PanelCrashCardReference.tsx`](../src/components/design-system/PanelCrashCardReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=panel-crash-card` for the card in both themes, beside a list at desktop width and alone at phone width.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.
