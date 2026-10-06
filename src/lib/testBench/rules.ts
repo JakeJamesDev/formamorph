@@ -16,7 +16,7 @@ import {
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { travelEnds } from '@/lib/locationGraph';
 import {
-  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId,
+  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId, pinsTargeting,
   valuePinners, type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
 } from '@/lib/placeholderPins';
 import { copyOf, effectiveCopy } from '@/lib/blueprints';
@@ -455,12 +455,21 @@ const traitToggleMissingStat: Rule = {
 
 // ── Placeholder pins, from every source ────────────────────────────────────────────────────────────────────
 
-/** The world as the pin editors read it, so a finding labels a source exactly as its editor does. */
-const pinEditorWorld = (world: RuleWorld): PinEditorWorld => ({
-  traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [],
-  locations: world.locations ?? [], stats: world.stats ?? [], placeholders: allPlaceholders(world),
-  placeholderGroups: world.placeholderGroups ?? [], placeholderOwners: placeholderOwners(world), placementLetters: lettersOf(world),
-});
+/** The world as the pin editors read it, so a finding labels a source exactly as its editor does. One per
+ *  world object, so every rule shares the pin index cached on it. */
+const pinEditorByWorld = new WeakMap<RuleWorld, PinEditorWorld>();
+const pinEditorWorld = (world: RuleWorld): PinEditorWorld => {
+  let editor = pinEditorByWorld.get(world);
+  if (!editor) {
+    editor = {
+      traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [],
+      locations: world.locations ?? [], stats: world.stats ?? [], placeholders: allPlaceholders(world),
+      placeholderGroups: world.placeholderGroups ?? [], placeholderOwners: placeholderOwners(world), placementLetters: lettersOf(world),
+    };
+    pinEditorByWorld.set(world, editor);
+  }
+  return editor;
+};
 
 /** Every pin in the world, walked once per world object — four rules read the same list. A fresh Add
  *  Placeholder Pin row names no placeholder yet, so it is an edit in progress rather than a pin to check. */
@@ -591,11 +600,9 @@ const placeholderPinConflict: Rule = {
   check: (world) => {
     const editor = pinEditorWorld(world);
     const byId = indexPlaceholders(editor.placeholders);
-    const rows = pinRowsOf(world);
-    const targets = [...new Set(rows.map((row) => row.pin.placeholderId))].filter((id) => byId.has(id));
+    const targets = [...new Set(pinRowsOf(world).map((row) => row.pin.placeholderId))].filter((id) => byId.has(id));
     return targets.flatMap((id) => {
-      const contested = rows
-        .filter((row) => row.pin.placeholderId === id)
+      const contested = pinsTargeting(editor, id)
         .map((row) => ({ row, conflict: pinConflict(editor, id, row.source) }))
         .filter((entry) => entry.conflict !== null);
       const texts = new Set(contested.map((entry) => pinText(entry.row.pin, byId)));
