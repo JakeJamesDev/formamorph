@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, editorModeSelect, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { rowOf } from '@/test/landing';
 
-/** The World Editor's mobile header row: the `?` sits right of Find, the toolbar holds only the list's controls. */
+/** The World Editor's mobile header row: back, Find, the Test Bench and the mode, and nothing in the list toolbar. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -22,21 +22,13 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// The Dictionary tab stands in for a tab whose help copy isn't written yet.
-vi.mock('@/lib/helpTopics', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/helpTopics')>();
-  const { 'worldEditor.dictionary': _dropped, ...HELP_TOPICS } = actual.HELP_TOPICS;
-  return {
-    ...actual,
-    HELP_TOPICS,
-    worldEditorTopicId: (tab: string) => (HELP_TOPICS[`worldEditor.${tab}`] ? `worldEditor.${tab}` : undefined),
-  };
-});
-
 const WORLD = benchEditorWorld({});
 
-const findButton = () => screen.getByRole('button', { name: 'Find and replace' });
+const button = (name: string | RegExp) => screen.getByRole('button', { name });
 const helpButtons = () => screen.queryAllByRole('button', { name: /^About / });
+/** True when each element comes after the one before it in the document. */
+const inOrder = (elements: HTMLElement[]) => elements.every((el, i) => i === 0
+  || (elements[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
 /** The tab root: whatever rows the tab adds, then the panels. The editor's tab list is read hidden, since
  *  it waits behind the closed Sections bar. */
 const panelsHost = () => {
@@ -46,37 +38,43 @@ const panelsHost = () => {
 };
 
 let undoMobile: (() => void) | null = null;
-beforeEach(() => { localStorage.clear(); });
+beforeEach(() => { localStorage.clear(); undoMobile = asMobile(); });
 afterEach(() => { undoMobile?.(); undoMobile = null; });
 
 describe('World Editor header row (mobile)', () => {
-  beforeEach(() => { undoMobile = asMobile(); });
-
-  it('puts the ? directly after Find, and keeps it out of the list toolbar', async () => {
+  it('reads back, Find, Test Bench and the Mode Select, with no ? on any tab', async () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'stats' });
     await waitFor(() => expect(rowOf('worldEditor.stats#list-toolbar')).not.toBeNull());
-    const help = screen.getByRole('button', { name: 'About Stats' });
-    expect(findButton().nextElementSibling).toBe(help);
-    expect(within(rowOf('worldEditor.stats#list-toolbar')!).queryByRole('button', { name: /^About / })).toBeNull();
-    expect(helpButtons()).toHaveLength(1);
+    const header = [button('Back'), button('Find and replace'), button(/^Test Bench/), editorModeSelect()];
+    expect(inOrder(header)).toBe(true);
+    expect(editorModeSelect()).toHaveTextContent('Advanced');
+    expect(helpButtons()).toHaveLength(0);
+
+    for (const tab of [/^Overview$/, /^Entities$/, /^Dictionary$/]) {
+      openEditorTab(tab);
+      expect(helpButtons()).toHaveLength(0);
+    }
   });
 
-  it('renders no toolbar row on Overview, so the panel starts the card', async () => {
+  it('keeps the header controls out of the list toolbar', async () => {
+    renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'stats' });
+    await waitFor(() => expect(rowOf('worldEditor.stats#list-toolbar')).not.toBeNull());
+    const toolbar = within(rowOf('worldEditor.stats#list-toolbar')!);
+    expect(toolbar.queryByRole('button', { name: 'Find and replace' })).toBeNull();
+    expect(toolbar.queryByRole('combobox', { name: 'Editor mode' })).toBeNull();
+  });
+
+  it('renders no toolbar row on Overview, so the panel starts the card', () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
-    await screen.findByRole('button', { name: 'About Overview' });
     // The Sections bar's list shares the tab root; past it, nothing but panels.
     const rows = Array.from(panelsHost().children).filter((row) => row.getAttribute('role') !== 'tablist');
     expect(rows.every((row) => row.getAttribute('role') === 'tabpanel')).toBe(true);
-    expect(findButton().nextElementSibling).toBe(screen.getByRole('button', { name: 'About Overview' }));
   });
 
-  it('follows the active tab, and hides on a tab with no topic', async () => {
-    renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'stats' });
-    await screen.findByRole('button', { name: 'About Stats' });
-    openEditorTab(/^Entities$/);
-    await screen.findByRole('button', { name: 'About Entities' });
-    expect(helpButtons()).toHaveLength(1);
-    openEditorTab(/^Dictionary$/);
-    await waitFor(() => expect(helpButtons()).toHaveLength(0));
+  it('keeps Export World and Save in the footer in Simple, with no Optimize Images', () => {
+    renderWorldEditorBench(WORLD, 'simple', { initialTab: 'overview' });
+    expect(button('Export World')).toBeInTheDocument();
+    expect(button('Save')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
   });
 });

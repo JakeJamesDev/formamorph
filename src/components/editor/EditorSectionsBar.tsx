@@ -2,23 +2,11 @@ import { Fragment, useRef } from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { NavDisclosure } from '@/components/NavDisclosure';
 import { cn } from '@/lib/utils';
-import type { LucideIcon } from 'lucide-react';
-
-export interface SectionsTab {
-  value: string;
-  label: string;
-  icon: LucideIcon;
-}
-
-export interface SectionsGroup {
-  id: string;
-  /** Captions the group in the list. A group without one is a lone slot. */
-  label?: string;
-  tabs: readonly SectionsTab[];
-}
+import type { NavRailGroup } from '@/components/NavRail';
 
 export interface EditorSectionsBarProps {
-  groups: readonly SectionsGroup[];
+  /** The same groups the host feeds its Nav Rail, so both draw the same splits. */
+  groups: readonly NavRailGroup[];
   value: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,13 +34,9 @@ export function EditorSectionsBar({ groups, value, open, onOpenChange }: EditorS
       className="shrink-0"
     >
       <TabsPrimitive.List aria-label="Editor Sections" className="flex flex-col gap-1 border-t border-border/60 p-3">
-        {drawn.map((group) => (
+        {drawn.map((group, index) => (
           <Fragment key={group.id}>
-            {group.label && (
-              <p aria-hidden className="mb-1 mt-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground first:mt-0">
-                <span>{group.label}</span><span className="h-px flex-1 bg-border" />
-              </p>
-            )}
+            {index > 0 && <div aria-hidden data-sections-separator className="mx-2 my-1.5 h-px shrink-0 bg-border" />}
             {group.tabs.map(({ value: tab, label, icon: Icon }) => (
               <TabsPrimitive.Trigger
                 key={tab}

@@ -3,7 +3,7 @@
 
 How a world's entities and dictionaries follow a library item, and what that link does at each step: editing, updating, publishing, downloading, and repair.
 
-> The same story, in short, is the `?` beside the **Linked** badge in the [World Editor](WorldEditor) and in the title bar of **Update Available** and **Update This World**.
+> The same story, in short, opens from **About Linked Content…** in a linked copy's menu in the [World Editor](WorldEditor), and from the `?` in the title bar of **Update Available** and **Update This World**.
 
 ## How to Link a Copy to Your Library
 <!-- keywords: save entity, sync, connect, share between worlds, reuse, item, attach to original, use character elsewhere, same character two worlds, store for later, bind to master, keep copies matching, reattach -->

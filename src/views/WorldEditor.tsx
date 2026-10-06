@@ -28,12 +28,10 @@ import { TourBar } from '@/components/authoringTour/TourBar';
 import { TourInPlay } from '@/components/authoringTour/InPlayPane';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { HelpButton } from '@/components/HelpButton';
 import { useListSearch } from '@/components/listToolbarHooks';
 import { useListEditor, type ListEditorParts } from '@/components/listEditorHooks';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
-import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -906,11 +904,17 @@ const WorldEditorInner = ({
       </span>
     </Tip>
   );
-  // The active tab's help topic, when it has copy yet — drives the mobile `?` right of Find.
-  const helpTopicId = worldEditorTopicId(activeTab);
-  // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
-  const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
-  // Mobile's header. No control here shrinks, so a tight row never squeezes a square button; the gap fits 375px.
+  const modeSelect = modeShell(
+    <ModeSelect
+      mode={mode}
+      onModeChange={pickMode}
+      descriptions={EDITOR_MODE_DESCRIPTIONS}
+      hiddenNotice={hasHiddenData ? EDITOR_HIDDEN_NOTICE : undefined}
+      disabled={touring}
+      aria-label="Editor mode"
+    />,
+  );
+  // Mobile's header. No control here shrinks, so a tight row never squeezes a square button; the gap fits 360px.
   const headerBar = (
     <div className="flex w-full items-center gap-2 [&>*]:shrink-0">
       <div className="flex items-center gap-1">
@@ -921,33 +925,8 @@ const WorldEditorInner = ({
       </div>
       <span className="ml-auto" />
       {findButton}
-      {helpButton}
       {benchButton}
-      {modeShell(
-        <ToggleGroup
-          type="single"
-          value={mode}
-          disabled={touring}
-          onValueChange={(v) => { if (v) pickMode(v as EditorMode); }}
-          aria-label="Editor mode"
-          className="h-8"
-        >
-          <ToggleGroupItem value="simple" className="px-2 py-1">Simple</ToggleGroupItem>
-          {/* The marker rides the switch that acts on it: it says "there is more through here", which is exactly
-              what this control does, and the row has no room for a second thing saying so. */}
-          <Tip tip={hasHiddenData ? EDITOR_HIDDEN_NOTICE.tip : undefined} labelsChild={false}>
-            <ToggleGroupItem value="advanced" className="relative px-2 py-1">
-              Advanced
-              {hasHiddenData && (
-                <span
-                  aria-label={EDITOR_HIDDEN_NOTICE.label}
-                  className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
-                />
-              )}
-            </ToggleGroupItem>
-          </Tip>
-        </ToggleGroup>,
-      )}
+      {modeSelect}
     </div>
   );
   const optimizeLabel = optimizeProgress === null ? 'Optimize Images'
@@ -1020,16 +999,7 @@ const WorldEditorInner = ({
       center={<>{findButton}{benchButton}</>}
       end={(
         <>
-          {modeShell(
-            <ModeSelect
-              mode={mode}
-              onModeChange={pickMode}
-              descriptions={EDITOR_MODE_DESCRIPTIONS}
-              hiddenNotice={hasHiddenData ? EDITOR_HIDDEN_NOTICE : undefined}
-              disabled={touring}
-              aria-label="Editor mode"
-            />,
-          )}
+          {modeSelect}
           <Separator orientation="vertical" className="mx-1 h-5" />
           {worldActions}
           {saveButton}

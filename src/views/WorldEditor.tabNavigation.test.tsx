@@ -35,9 +35,12 @@ const listCard = () => {
 
 beforeEach(() => { localStorage.clear(); });
 
-/** The rail read top to bottom: each tab's name, and `|` for a line between groups. */
-const railRows = () => Array.from(editorTabs().children).map((row) =>
-  (row.getAttribute('role') === 'tab' ? row.textContent : row.hasAttribute('data-rail-separator') ? '|' : null));
+/** The tab list read top to bottom: each tab's name, `|` for a line between groups, and `?` for anything else,
+ *  a caption included. */
+const listRows = (separator: string) => Array.from(editorTabs().children).map((row) =>
+  (row.getAttribute('role') === 'tab' ? row.textContent : row.hasAttribute(separator) ? '|' : '?'));
+const railRows = () => listRows('data-rail-separator');
+const sectionRows = () => listRows('data-sections-separator');
 const railToggle = () => screen.getByRole('button', { name: /^(Collapse|Expand)$/ });
 
 // Only this spy: restoring every mock would also wipe the storage mock's resolved values.
@@ -128,19 +131,28 @@ describe('World Editor Sections bar (mobile)', () => {
     expect(document.getElementById('world-editor-sections')).toHaveAttribute('inert');
   });
 
-  it('lists the grouped tabs with captions when open, and closes on a pick', async () => {
+  it('draws the rail\'s order and lines, with no captions, in both modes', () => {
+    for (const mode of ['simple', 'advanced'] as const) {
+      undo?.();
+      const desktop = renderWorldEditorBench(WORLD, mode);
+      const rail = railRows();
+      desktop.unmount();
+
+      undo = asMobile();
+      const mobile = renderWorldEditorBench(WORLD, mode);
+      fireEvent.click(sections());
+      expect(sectionRows()).toEqual(rail);
+      mobile.unmount();
+    }
+  });
+
+  it('lists the grouped tabs when open, and closes on a pick', async () => {
     const user = userEvent.setup();
     renderWorldEditorBench(WORLD, 'advanced');
     await user.click(sections());
     expect(sections()).toHaveAttribute('aria-expanded', 'true');
     expect(tabNames()).toEqual(['Overview', 'Stats', 'Entities', 'Locations', 'Traits', 'Dictionary', 'Placeholders']);
-    const body = document.getElementById('world-editor-sections')!;
-    expect(body).not.toHaveAttribute('inert');
-    expect(within(body).getByText('Content')).toBeInTheDocument();
-    expect(within(body).getByText('Vocabulary')).toBeInTheDocument();
-    // Overview is a lone row above the first caption, under no caption of its own.
-    const rows = Array.from(editorTabs().children).map((child) => child.textContent);
-    expect(rows.slice(0, 3).map((text) => text?.replace(/\s+/g, ''))).toEqual(['Overview', 'Content', 'Stats']);
+    expect(document.getElementById('world-editor-sections')).not.toHaveAttribute('inert');
 
     await user.click(within(editorTabs()).getByRole('tab', { name: 'Entities' }));
     expect(sections()).toHaveAttribute('aria-expanded', 'false');

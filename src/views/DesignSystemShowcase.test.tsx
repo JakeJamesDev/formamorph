@@ -353,8 +353,9 @@ describe('sections bar reference', () => {
     const bar = () => within(region).getByRole('tablist', { name: 'Editor Sections' });
     await user.click(sections());
     expect(within(bar()).getAllByRole('tab')).toHaveLength(7);
-    expect(within(bar()).getByText('Content')).toBeInTheDocument();
-    expect(within(bar()).getByText('Vocabulary')).toBeInTheDocument();
+    // Lines split the groups; no group name is drawn.
+    expect(bar().querySelectorAll('[data-sections-separator]')).toHaveLength(2);
+    expect(within(bar()).queryByText('Content')).toBeNull();
     await user.click(within(bar()).getByRole('tab', { name: 'Traits' }));
     expect(sections()).toHaveTextContent('Traits');
     expect(within(region).getByText('The trait tree beside the selected trait\'s details.')).toBeInTheDocument();
