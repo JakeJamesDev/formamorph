@@ -57,7 +57,8 @@ EDITOR_SPEED_HEAP_SNAPSHOT=1 npm run profile:editor-speed
 | `EDITOR_SPEED_LIBRARY` | `bench` | `bench`: default worlds plus the bench world. `defaults`: default worlds only. `empty`: no worlds |
 | `EDITOR_SPEED_HEAP_SNAPSHOT` | unset | Snapshot the Main Menu heap and print its top retainers |
 | `EDITOR_SPEED_DRAG_NODE` | unset | Location id the `canvasDrag` step grabs. Unset, it grabs the fourth box drawn, which depends on the view |
-| `EDITOR_SPEED_PROFILE` | unset | Print the 25 functions with the most self time during the `canvasDrag` pointer moves, and each step's main-thread time by trace event |
+| `EDITOR_SPEED_PROFILE` | unset | CPU-profile `open`, `typing` and the `canvasDrag` pointer moves: print the functions with the most self and total time, and write `.out/<step>.cpuprofile`. Also prints what `EDITOR_SPEED_TASKS` prints. `alloc` samples allocations instead. Starting the profiler adds a long task of its own, so read block times from a run without it |
+| `EDITOR_SPEED_TASKS` | unset | Print each step's main-thread time by trace event, and the events inside its three longest tasks |
 | `EDITOR_SPEED_SKIP_BUILD` | unset | Reuse the last build |
 | `EDITOR_SPEED_SHOT` | unset | Screenshot a failed step into `.out/` |
 | `EDITOR_SPEED_HEADED` | unset | Show the browser |

@@ -1,5 +1,5 @@
 import { useEditingDraft } from '@/lib/useEditingDraft';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useGameDataActions } from '@/contexts/GameDataContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { EntityGroup } from '@/types';
@@ -7,7 +7,7 @@ import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
 /** Right-panel editor for an entity group: just a name — groups are editor-only folders with no AI fields. */
 const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
-  const { updateEntityGroup } = useGameData();
+  const { updateEntityGroup } = useGameDataActions();
   const { draft: editingGroup, setField } = useEditingDraft(group, updateEntityGroup);
 
   if (!editingGroup) return null;

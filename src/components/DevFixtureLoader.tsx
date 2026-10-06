@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useGameDataActions } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
 import { loadDevFixture } from '@/lib/devFixtures';
 import type { Entity } from '@/types';
@@ -11,7 +11,7 @@ import type { Entity } from '@/types';
  * Renders nothing; mounted inside GameDataProvider alongside the views. No-op / tree-shaken in production.
  */
 export function DevFixtureLoader({ onPicked }: { onPicked: (picked: Entity[] | null) => void }) {
-  const { loadWorldData } = useGameData();
+  const { loadWorldData } = useGameDataActions();
   const devRoute = useDevRoute();
   const loadedRef = useRef<string | null>(null);
 

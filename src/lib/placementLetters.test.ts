@@ -143,6 +143,28 @@ describe('the document walk', () => {
     expect(texts).toEqual(['first', 'later', 't-first', 't-later', 'Origins']);
   });
 
+  it('letters a whole world as the text walk does, and again after an edit replaces one record', () => {
+    const world = {
+      entities: [{ id: 'e', name: chip('town', 'p-ent') }],
+      locations: [{ id: 'l', name: chip('town', 'p-loc') }],
+      traits: [{ id: 't', name: chip('town', 'p-trait'), statChanges: [] }],
+      stats: [{ id: 's', name: chip('town', 'p-stat'), type: 'number' as const, description: '', min: 0, max: 1, regen: 0, descriptors: [] }],
+      dictionaries: [{ id: 'd', name: 'book', entries: [{ id: 'en', name: chip('town', 'p-entry'), key: [], value: '' }] }],
+      worldOverview: { systemPrompt: chip('town', 'p-ov') } as never,
+      placeholders: [P('p', 'ph', [chip('town', 'p-value')]), TOWN],
+    };
+    const letters = worldPlacementLetters(world);
+    expect([...letters]).toEqual([...placementLetters(worldPlacementTexts(world))]);
+    expect(letters.get('p-value')).toBe('G');
+
+    // A chip added to the entity, which the walk already read once, moves every later letter.
+    const edited = { ...world, entities: [{ id: 'e', name: `${chip('town', 'p-ent')} ${chip('town', 'p-new')}` }] };
+    const after = worldPlacementLetters(edited);
+    expect(after.get('p-new')).toBe('B');
+    expect(after.get('p-value')).toBe('H');
+    expect([...after]).toEqual([...placementLetters(worldPlacementTexts(edited))]);
+  });
+
   it('bundles the walk and the lettering for a world and for a library item', () => {
     const a = chip('town', 'e1');
     const b = chip('town', 'e2');

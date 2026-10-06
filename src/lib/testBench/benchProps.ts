@@ -53,6 +53,8 @@ export interface IssuesProps {
   fixingRuleId: string | null;
   /** The world's publish size in bytes, null until the first measure lands. */
   publishBytes: number | null;
+  /** The first rule pass hasn't landed yet, so an empty list means nothing. */
+  checking: boolean;
   onOpenItem: OpenFindingItem;
   onDismissRule: (ruleId: string) => void;
   onRestoreRule: (ruleId: string) => void;

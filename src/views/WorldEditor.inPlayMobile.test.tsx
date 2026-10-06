@@ -24,15 +24,6 @@ vi.mock('@/lib/jsonFileWorkerUtils', () => ({
   serializeJsonBlob: vi.fn(), parseJsonText: vi.fn(), terminateWorker: vi.fn(),
 }));
 
-// jsdom has no Worker: the measure answers with the real byte count, off a promise like the worker's.
-vi.mock('@/lib/jsonMeasureClient', async () => {
-  const { measurePublishBytes } = await import('@/lib/publishLimits');
-  return {
-    measureJsonBytes: async (value: unknown) => measurePublishBytes(value),
-    terminateMeasureWorker: vi.fn(),
-  };
-});
-
 vi.mock('react-toastify', () => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
   ToastContainer: () => null,

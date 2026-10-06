@@ -22,15 +22,6 @@ vi.mock('@/lib/jsonFileWorkerUtils', () => ({
   serializeJsonBlob: vi.fn(), parseJsonText: vi.fn(), terminateWorker: vi.fn(),
 }));
 
-// jsdom has no Worker: the measure answers with the real byte count, off a promise like the worker's.
-vi.mock('@/lib/jsonMeasureClient', async () => {
-  const { measurePublishBytes } = await import('@/lib/publishLimits');
-  return {
-    measureJsonBytes: async (value: unknown) => measurePublishBytes(value),
-    terminateMeasureWorker: vi.fn(),
-  };
-});
-
 vi.mock('react-toastify', () => ({
   toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
   ToastContainer: () => null,
@@ -101,6 +92,12 @@ describe('WorldEditor — the Bench Popover', () => {
     // The entity opened in the detail panel, and the list is still there to work down.
     expect(await screen.findByText('Name')).toBeInTheDocument();
     expect(popoverShown()).toBe(true);
+  });
+
+  it('shows no count until the first pass lands, then the count', async () => {
+    setup();
+    expect(flask()).toHaveAccessibleName('Test Bench');
+    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench, 1 new finding'));
   });
 
   it('quiets the badge on the way out, the same as closing the panel does', async () => {

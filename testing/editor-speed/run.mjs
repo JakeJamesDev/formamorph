@@ -89,7 +89,7 @@ function blocksBetween(events, start, end) {
   const blocks = events
     .filter((e) => e.ph === 'X' && e.name === 'RunTask' && main.get(e.pid) === e.tid && e.dur > BLOCK_US && e.ts + e.dur > t0 && e.ts < t1)
     .map((e) => e.dur / 1000);
-  if (process.env.EDITOR_SPEED_PROFILE) {
+  if (process.env.EDITOR_SPEED_PROFILE || process.env.EDITOR_SPEED_TASKS) {
     // Time per trace event type on the main thread. Types nest (script inside a task), so read each on its own.
     const sums = new Map();
     for (const e of events) {
@@ -98,6 +98,20 @@ function blocksBetween(events, start, end) {
     }
     const top = [...sums].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, ms]) => `${Math.round(ms)} ms  ${k}`);
     console.log(`[trace ${start}] main-thread time by event\n${top.join('\n')}`);
+    // The three longest tasks, each with the events inside it, so a block reads as what filled it.
+    const tasks = events
+      .filter((e) => e.ph === 'X' && e.name === 'RunTask' && main.get(e.pid) === e.tid && e.dur > BLOCK_US && e.ts + e.dur > t0 && e.ts < t1)
+      .sort((a, b) => b.dur - a.dur).slice(0, 3);
+    for (const task of tasks) {
+      const inside = new Map();
+      for (const e of events) {
+        if (e === task || e.ph !== 'X' || main.get(e.pid) !== e.tid || e.ts < task.ts || e.ts + e.dur > task.ts + task.dur) continue;
+        const label = e.args?.data?.functionName ? `${e.name} ${e.args.data.functionName}` : e.args?.data?.type ? `${e.name} ${e.args.data.type}` : e.name;
+        inside.set(label, (inside.get(label) ?? 0) + e.dur / 1000);
+      }
+      const parts = [...inside].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, ms]) => `  ${Math.round(ms)} ms  ${k}`);
+      console.log(`[trace ${start}] task of ${Math.round(task.dur / 1000)} ms at +${Math.round((task.ts - t0) / 1000)} ms\n${parts.join('\n')}`);
+    }
   }
   return {
     blocks: blocks.length,
@@ -130,14 +144,35 @@ async function traced(page, cdp, body) {
   return { ...extra, ...blocksBetween(events, 'step-start', 'step-end') };
 }
 
+/** Run `body` under the V8 allocation sampler and print the functions that allocated the most. */
+async function allocations(cdp, label, body) {
+  await cdp.send('HeapProfiler.enable');
+  await cdp.send('HeapProfiler.startSampling', { samplingInterval: 32768, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+  try { return await body(); } finally {
+    const { profile } = await cdp.send('HeapProfiler.stopSampling');
+    const self = new Map();
+    const walk = (node) => {
+      const f = node.callFrame;
+      const key = `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.lineNumber + 1}`;
+      self.set(key, (self.get(key) ?? 0) + node.selfSize);
+      for (const child of node.children) walk(child);
+    };
+    walk(profile.head);
+    const top = [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, bytes]) => `${Math.round(bytes / 1e6)} MB  ${k}`);
+    console.log(`[allocations ${label}] top allocating functions\n${top.join('\n')}`);
+  }
+}
+
 /** Run `body` under the V8 CPU profiler and print the functions with the most self time. */
 async function profiled(cdp, label, body) {
+  if (process.env.EDITOR_SPEED_PROFILE === 'alloc') return allocations(cdp, label, body);
   await cdp.send('Profiler.enable');
   await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
   await cdp.send('Profiler.start');
   let result;
   try { result = await body(); } finally {
     const { profile } = await cdp.send('Profiler.stop');
+    await writeFile(path.join(HERE, '.out', `${label.replace(/\W+/g, '-')}.cpuprofile`), JSON.stringify(profile));
     const self = new Map();
     const byId = new Map(profile.nodes.map((n) => [n.id, n]));
     profile.samples.forEach((id, i) => {
@@ -147,6 +182,23 @@ async function profiled(cdp, label, body) {
     });
     const top = [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, us]) => `${Math.round(us / 1000)} ms  ${k}`);
     console.log(`[profile ${label}] top self time\n${top.join('\n')}`);
+    // Inclusive time per function: each sample counts once for every distinct function on its stack.
+    const parent = new Map();
+    for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+    const total = new Map();
+    profile.samples.forEach((id, i) => {
+      const seen = new Set();
+      for (let at = id; at !== undefined; at = parent.get(at)) {
+        const f = byId.get(at).callFrame;
+        if (!f.url) continue;
+        const key = `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.lineNumber + 1}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        total.set(key, (total.get(key) ?? 0) + (profile.timeDeltas[i] ?? 0));
+      }
+    });
+    const topTotal = [...total].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([k, us]) => `${Math.round(us / 1000)} ms  ${k}`);
+    console.log(`[profile ${label}] top total time\n${topTotal.join('\n')}`);
     await cdp.send('Profiler.disable');
   }
   return result;
@@ -249,12 +301,15 @@ const STEPS = {
     await edit.waitFor({ timeout: 60_000 });
     await settle(page);
     return traced(page, cdp, async () => {
-      const t0 = Date.now();
-      await edit.click();
-      await page.getByRole('tab', { name: 'Entities' }).first().waitFor({ timeout: 180_000 });
-      const visibleMs = Date.now() - t0;
-      await settle(page, 1500);
-      return { visibleMs, settledMs: Date.now() - t0 };
+      const body = async () => {
+        const t0 = Date.now();
+        await edit.click();
+        await page.getByRole('tab', { name: 'Entities' }).first().waitFor({ timeout: 180_000 });
+        const visibleMs = Date.now() - t0;
+        await settle(page, 1500);
+        return { visibleMs, settledMs: Date.now() - t0 };
+      };
+      return process.env.EDITOR_SPEED_PROFILE ? profiled(cdp, 'open', body) : body();
     });
   },
 
@@ -274,10 +329,13 @@ const STEPS = {
     try {
       return await traced(page, cdp, async () => {
         const t0 = Date.now();
-        await page.keyboard.type(' the quick brown fox jumps', { delay: 120 });
-        const typedMs = Date.now() - t0;
-        const heapPeakMb = await peak();
-        await settle(page, 1500);
+        const type = async () => {
+          await page.keyboard.type(' the quick brown fox jumps', { delay: 120 });
+          const typed = { typedMs: Date.now() - t0, heapPeakMb: await peak() };
+          await settle(page, 1500);
+          return typed;
+        };
+        const { typedMs, heapPeakMb } = await (process.env.EDITOR_SPEED_PROFILE ? profiled(cdp, 'typing', type) : type());
         if (!(await field.evaluate((el) => (el.value ?? el.textContent ?? '').includes('quick brown fox')))) throw new Error('typed text did not land in the field');
         const lat = await page.evaluate(() => window.__bench.events.filter((e) => /key|input|beforeinput/.test(e.name)).map((e) => e.duration));
         return {

@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, type ReactNode, type SetStateAction } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
 import { canonicalEqual } from '@/lib/canonicalStringify';
 import { dirtyDiff } from '@/lib/dirtyDiff';
@@ -235,11 +235,9 @@ function useProvideGameData() {
         .filter(g => g.id !== groupId)
         .map(g => (g.parentId === groupId ? { ...g, parentId } : g));
     });
-    setEntities(prev => {
-      const parentId = entityGroups.find(g => g.id === groupId)?.parentId ?? null;
-      return prev.map(e => (e.groupId === groupId ? { ...e, groupId: parentId } : e));
-    });
-  }, [entityGroups]);
+    const parentId = latest.current.entityGroups.find(g => g.id === groupId)?.parentId ?? null;
+    setEntities(prev => prev.map(e => (e.groupId === groupId ? { ...e, groupId: parentId } : e)));
+  }, []);
 
   const addTrait = useCallback((newTrait: Trait) => {
     setTraits(prevTraits => [...prevTraits, newTrait]);
@@ -270,6 +268,7 @@ function useProvideGameData() {
   // Removing a group reparents its direct children (subgroups + traits) to the group's own parent,
   // rather than orphaning them under a deleted id. Blueprints detaches its linked items and moves the rest up.
   const removeTraitGroup = useCallback((groupId: string) => {
+    const { traits, traitGroups, entities } = latest.current;
     if (traitGroups.find(g => g.id === groupId)?.system === 'blueprints') {
       const removed = removeBlueprints({ traits, traitGroups }, entities);
       if (!removed) return;
@@ -284,12 +283,10 @@ function useProvideGameData() {
         .filter(g => g.id !== groupId)
         .map(g => (g.parentId === groupId ? { ...g, parentId } : g));
     });
-    setTraits(prev => {
-      const parentId = traitGroups.find(g => g.id === groupId)?.parentId ?? null;
-      return prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t));
-    });
+    const parentId = traitGroups.find(g => g.id === groupId)?.parentId ?? null;
+    setTraits(prev => prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t)));
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
-  }, [traits, traitGroups, entities]);
+  }, []);
 
   const updateWorldOverview = useCallback((updates: Partial<WorldOverview>) => {
     setWorldOverview(prev => ({ ...prev, ...updates }));
@@ -429,15 +426,15 @@ function useProvideGameData() {
   if (!sameOwners(ownersRef.current, owners)) ownersRef.current = owners;
   const placeholderOwnerIndex = ownersRef.current;
 
-  // The current world through a ref, so a write can route by the lists as they stand without the
-  // callbacks below rebuilding on every edit and, with them, every chip field's vocabulary.
-  const worldRef = useRef(getWorldData);
-  worldRef.current = getWorldData;
+  // The committed state, which every action reads at call time so it keeps one identity.
+  const committed = { entities, entityGroups, traits, traitGroups, locations, placeholders, worldOverview, worldId, savedWorld, getWorldData };
+  const latest = useRef(committed);
+  useLayoutEffect(() => { latest.current = committed; });
 
   // The home is decided once, purely; the append itself is a functional update on that one slice, so a
   // burst of creates (an import absorbing several placeholders) never reads a stale world.
   const addPlaceholder = useCallback((newPlaceholder: Placeholder, home?: PlaceholderHome) => {
-    const target = placeholderHomeFor(worldRef.current(), newPlaceholder, home);
+    const target = placeholderHomeFor(latest.current.getWorldData(), newPlaceholder, home);
     if (target.kind === 'world') {
       setWorldPlaceholders(prev => [...prev, newPlaceholder]);
       return;
@@ -457,14 +454,14 @@ function useProvideGameData() {
   // Renaming a value carries the trait pins written before value ids existed, so vocabulary cleanup is one
   // field edit rather than a hunt through every trait. A pin naming its value by id needs nothing.
   const updatePlaceholder = useCallback((updated: Placeholder) => {
-    const before = placeholders.find(p => p.id === updated.id);
+    const before = latest.current.placeholders.find(p => p.id === updated.id);
     // An edit that drops a chip value releases what it pointed at — see the scoped store, whose generic
     // update path this replaces so the world's own pin sweep runs beside it.
     writeListHolding(updated.id, list => releasePlaceholderOwners(list.map(p => (p.id === updated.id ? updated : p))));
     if (!before) return;
     const renames = renamedPlaceholderValues(before.values ?? [], updated.values ?? []);
     if (renames.length) setTraits(prev => repinRenamedValues(prev, updated.id, renames));
-  }, [placeholders, writeListHolding]);
+  }, [writeListHolding]);
 
   const removePlaceholder = useCallback((id: string) => {
     writeListHolding(id, list => removePlaceholderCascade(list, id));
@@ -473,7 +470,7 @@ function useProvideGameData() {
   // Every list at once — a drop on the Placeholders tab that moves a record between owners. Only the
   // slices that changed are written.
   const setPlaceholderLists = useCallback((next: PlaceholderSlices) => {
-    const world = worldRef.current();
+    const world = latest.current.getWorldData();
     if (next.placeholders !== world.placeholders) setWorldPlaceholders(next.placeholders);
     if (next.entities !== world.entities) setEntities(next.entities);
     if (next.dictionaries !== world.dictionaries) setDictionaries(next.dictionaries);
@@ -492,10 +489,10 @@ function useProvideGameData() {
 
   // A whole-list write (a drag, a promote) is scattered back to the lists that hold each id.
   const setPlaceholders = useCallback((action: SetStateAction<Placeholder[]>) => {
-    const world = worldRef.current();
-    const current = allPlaceholders(world);
-    const next = typeof action === 'function' ? action(current) : action;
-    if (next === current) return;
+    const world = latest.current.getWorldData();
+    const list = allPlaceholders(world);
+    const next = typeof action === 'function' ? action(list) : action;
+    if (next === list) return;
     setPlaceholderLists(scatterPlaceholders(world, next));
   }, [setPlaceholderLists]);
 
@@ -507,7 +504,7 @@ function useProvideGameData() {
   const phStore = useMemo(
     () => ({
       placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder,
-      placedIds: () => directChipTargets(chipBearingTexts(worldRef.current())),
+      placedIds: () => directChipTargets(chipBearingTexts(latest.current.getWorldData())),
       owners: placeholderOwnerIndex, lists, setLists: setPlaceholderLists, copiesInUse,
     }),
     [placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder, placeholderOwnerIndex, lists, setPlaceholderLists, copiesInUse],
@@ -545,18 +542,20 @@ function useProvideGameData() {
    * from it is the revert. `loadWorldData` re-baselines, so `isWorldDirty` clears as a side effect.
    */
   const discardChanges = useCallback(() => {
+    const { savedWorld, worldId } = latest.current;
     // No baseline means nothing has been loaded yet; there is no state worth restoring.
     if (!savedWorld) return;
     // The baseline is current, so the migration steps for older versions don't run on it.
     loadWorldData({ ...savedWorld, id: worldId ?? '', version: APP_VERSION });
-  }, [savedWorld, worldId, loadWorldData]);
+  }, [loadWorldData]);
 
   // Persist the current world and re-baseline so isWorldDirty clears. Edited copies of owned library items
   // go to the library only after the world is stored, so a failed save changes neither. The stamps they
   // produce go into the stored world and onto the live copies, so each holds the revision it wrote. Here
   // rather than in the editor, so every world save writes back, whichever surface asked for it.
   const saveWorld = useCallback(async (): Promise<SaveResult> => {
-    const data = getWorldData();
+    const { worldId, worldOverview, placeholders, locations } = latest.current;
+    const data = latest.current.getWorldData();
     try {
       const writeBack = await planOwnedWriteBack({
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
@@ -593,18 +592,51 @@ function useProvideGameData() {
       console.error('Error saving world:', error);
       return { ok: false, error, world: { id: worldId ?? '', version: APP_VERSION, ...data } };
     }
-  }, [worldId, worldOverview, getWorldData, placeholders, locations, setDictionaries]);
+  }, [setDictionaries]);
 
   useEffect(() => {
     WorldStorageService.initialize();
     loadWorldMetadata();
   }, [loadWorldMetadata]);
 
-  const value = {
+  // One identity for the provider's life, so a component that only writes never re-renders on an edit.
+  const actions = useMemo(() => ({
+    updateWorldOverview, loadWorldMetadata,
+    addStat, updateStat, removeStat,
+    addLocation, updateLocation, removeLocation,
+    addConnection, updateConnection, removeConnection,
+    addEntity, updateEntity, editEntity, removeEntity,
+    addEntityGroup, updateEntityGroup, removeEntityGroup,
+    addTrait, updateTrait, removeTrait,
+    addTraitGroup, updateTraitGroup, removeTraitGroup,
+    addDictionary, updateDictionary, removeDictionary,
+    addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
+    addPlaceholder, updatePlaceholder, removePlaceholder,
+    addPlaceholderGroup, updatePlaceholderGroup, setPlaceholderGroups,
+    setStats, setLocations, setConnections, setEntities, setEntityGroups, setTraits, setTraitGroups, setStatUpdates,
+    setDictionaries, setWorldPlaceholders,
+    loadWorldData, setWorldId, saveWorld, discardChanges, setOwnedLibraryIds,
+  }), [
+    updateWorldOverview, loadWorldMetadata,
+    addStat, updateStat, removeStat,
+    addLocation, updateLocation, removeLocation,
+    addConnection, updateConnection, removeConnection,
+    addEntity, updateEntity, editEntity, removeEntity,
+    addEntityGroup, updateEntityGroup, removeEntityGroup,
+    addTrait, updateTrait, removeTrait,
+    addTraitGroup, updateTraitGroup, removeTraitGroup,
+    addDictionary, updateDictionary, removeDictionary,
+    addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry,
+    addPlaceholder, updatePlaceholder, removePlaceholder,
+    addPlaceholderGroup, updatePlaceholderGroup,
+    setDictionaries, loadWorldData, saveWorld, discardChanges, setOwnedLibraryIds,
+  ]);
+
+  const worldLoaded = savedWorld !== null;
+  const value = useMemo(() => ({
+    ...actions,
     worldMetadata,
     worldOverview,
-    updateWorldOverview,
-    loadWorldMetadata,
     stats,
     locations,
     connections,
@@ -617,60 +649,12 @@ function useProvideGameData() {
     // The combined view: shared placeholders, then every entity's and book's own.
     placeholders,
     worldPlaceholders,
-    getWorldData,
-    addStat,
-    updateStat,
-    removeStat,
-    addLocation,
-    updateLocation,
-    removeLocation,
-    addConnection,
-    updateConnection,
-    removeConnection,
-    addEntity,
-    updateEntity,
-    editEntity,
-    removeEntity,
-    addEntityGroup,
-    updateEntityGroup,
-    removeEntityGroup,
-    addTrait,
-    updateTrait,
-    removeTrait,
-    addTraitGroup,
-    updateTraitGroup,
-    removeTraitGroup,
-    addDictionary,
-    updateDictionary,
-    removeDictionary,
-    addDictionaryEntry,
-    updateDictionaryEntry,
-    removeDictionaryEntry,
-    addPlaceholder,
-    updatePlaceholder,
-    removePlaceholder,
     placeholderGroups,
-    addPlaceholderGroup,
-    updatePlaceholderGroup,
-    setPlaceholderGroups,
-    setStats,
-    setLocations,
-    setConnections,
-    setEntities,
-    setEntityGroups,
-    setTraits,
-    setTraitGroups,
-    setStatUpdates,
-    setDictionaries,
-    setWorldPlaceholders,
-    loadWorldData,
-    worldId, setWorldId,
+    getWorldData,
+    worldId,
     // True once loadWorldData has run. A world file may have no id, so worldId can't signal this.
-    worldLoaded: savedWorld !== null,
+    worldLoaded,
     isWorldDirty,
-    saveWorld,
-    discardChanges,
-    setOwnedLibraryIds,
     // The scoped dictionary store, forwarded so the provider can bind the editing widgets to the world's books.
     dictStore,
     // Likewise for placeholders, so the same editing widgets bind to the world's placeholders.
@@ -679,14 +663,21 @@ function useProvideGameData() {
     placementLetters,
     // Placeholder id → the entity or book that owns it, for the surfaces that read a chip as `Molly › Eyes`.
     placeholderOwners: placeholderOwnerIndex,
-  };
+  }), [
+    actions, worldMetadata, worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups,
+    statUpdates, dictionaries, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
+    isWorldDirty, dictStore, phStore, placementLetters, placeholderOwnerIndex,
+  ]);
 
-  return value;
+  return { value, actions };
 }
 
-type GameDataContextValue = ReturnType<typeof useProvideGameData>;
+type GameDataContextValue = ReturnType<typeof useProvideGameData>['value'];
+/** The data context's actions: every one keeps its identity while the world changes. */
+export type GameDataActions = ReturnType<typeof useProvideGameData>['actions'];
 
 const GameDataContext = createContext<GameDataContextValue | null>(null);
+const GameDataActionsContext = createContext<GameDataActions | null>(null);
 
 /** Access the editor's world-definition store (overview, stats, locations, entities, traits, trait groups,
  *  stat updates, dictionary) plus their CRUD callbacks, load/save, and the `isWorldDirty` flag. Throws
@@ -705,35 +696,48 @@ export const useGameData = () => {
 // eslint-disable-next-line react-refresh/only-export-components
 export const useGameDataOptional = () => useContext(GameDataContext);
 
+/** Only the store's actions. A component that reads nothing else does not re-render when the world changes.
+ *  Throws if called outside a `GameDataProvider`. */
+// eslint-disable-next-line react-refresh/only-export-components
+export const useGameDataActions = (): GameDataActions => {
+  const actions = useContext(GameDataActionsContext);
+  if (!actions) throw new Error('useGameDataActions must be used within a GameDataProvider');
+  return actions;
+};
+
 /** Hides the loaded world from everything under it: optional reads get null, required reads throw, chips
  *  letter from nothing, and a rename asks no offer. A library editor wraps its body in it and provides its
  *  own stores inside. */
 export const NoWorld = ({ children }: { children: ReactNode }) => (
   <GameDataContext.Provider value={null}>
-    <DictionaryStoreProvider value={null}>
-      <PlaceholderStoreProvider value={null}>
-        <PlacementLettersProvider letters={EMPTY_LETTERS}>
-          <CodeRenameContext.Provider value={null}>{children}</CodeRenameContext.Provider>
-        </PlacementLettersProvider>
-      </PlaceholderStoreProvider>
-    </DictionaryStoreProvider>
+    <GameDataActionsContext.Provider value={null}>
+      <DictionaryStoreProvider value={null}>
+        <PlaceholderStoreProvider value={null}>
+          <PlacementLettersProvider letters={EMPTY_LETTERS}>
+            <CodeRenameContext.Provider value={null}>{children}</CodeRenameContext.Provider>
+          </PlacementLettersProvider>
+        </PlaceholderStoreProvider>
+      </DictionaryStoreProvider>
+    </GameDataActionsContext.Provider>
   </GameDataContext.Provider>
 );
 
 /** Provides the world-editor data store (see `useGameData`); on mount it initializes storage and loads
  *  the world-metadata list. */
 export const GameDataProvider = ({ children }: { children: ReactNode }) => {
-  const value = useProvideGameData();
+  const { value, actions } = useProvideGameData();
 
   return (
     <GameDataContext.Provider value={value}>
-      <DictionaryStoreProvider value={value.dictStore}>
-        <PlaceholderStoreProvider value={value.phStore}>
-          <PlacementLettersProvider letters={value.placementLetters}>
-            {children}
-          </PlacementLettersProvider>
-        </PlaceholderStoreProvider>
-      </DictionaryStoreProvider>
+      <GameDataActionsContext.Provider value={actions}>
+        <DictionaryStoreProvider value={value.dictStore}>
+          <PlaceholderStoreProvider value={value.phStore}>
+            <PlacementLettersProvider letters={value.placementLetters}>
+              {children}
+            </PlacementLettersProvider>
+          </PlaceholderStoreProvider>
+        </DictionaryStoreProvider>
+      </GameDataActionsContext.Provider>
     </GameDataContext.Provider>
   );
 };

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Finding } from './rules';
+import { findingIdentity } from './findingKeys';
 import {
   EMPTY_BENCH_STATE,
-  findingIdentity,
   partitionFindings,
   readBenchState,
   withDismissed,

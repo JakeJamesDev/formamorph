@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SurfaceLayer, SurfaceReporterContext, type SurfaceReporter } from '@/components/ui/surface';
 import { SettingsProvider } from '@/contexts/SettingsContext';
-import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
+import { GameDataProvider, useGameDataActions } from '@/contexts/GameDataContext';
 import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext';
 import { UserProfileProvider } from '@/contexts/UserProfileContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
@@ -20,7 +20,7 @@ import type { World } from '@/types';
 /** Loads the world into GameData first, the way the main menu does before it enters the game. */
 // eslint-disable-next-line react-refresh/only-export-components -- test-only module; nothing is hot-reloaded
 function WithWorld({ world, children }: { world: World; children: ReactNode }) {
-  const { loadWorldData } = useGameData();
+  const { loadWorldData } = useGameDataActions();
   const [ready, setReady] = useState(false);
   useEffect(() => {
     loadWorldData(world);

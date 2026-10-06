@@ -44,6 +44,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The location and persona pickers stay quick while you type in a large world.** The Connect To, Starting Location and Starts On lists redraw only the items that changed. They look and work as before.
   - **Importing a large world and publishing one no longer freeze the app.** The Main Menu reads and upgrades the world file in the background, and Publish builds its upload there too. Messages stay the same.
   - **Long editor lists on large worlds draw only the rows on screen, so a drag starts without a pause.** The Entities, Locations, Traits and Placeholders lists look and work as before, and a drag still scrolls to any row.
+  - **Opening and typing in the World Editor stay responsive on large worlds.** The Test Bench checks the world in the background, and its badge shows a count once the first check ends.
 
 ---
 

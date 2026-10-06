@@ -67,6 +67,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     codeCheckStatus: 'idle',
     fixingRuleId: null,
     publishBytes: null,
+    checking: false,
     onOpenItem: vi.fn(),
     onDismissRule: vi.fn(),
     onRestoreRule: vi.fn(),
@@ -126,6 +127,12 @@ describe('TestBench panel', () => {
     await userEvent.hover(screen.getByRole('button', { name: 'Old Tobb' }));
 
     expect(await screen.findByText('Old Tobb', { selector: 'div' })).toBeVisible();
+  });
+
+  it('says it is checking, never clean, before the first pass lands', () => {
+    renderBench(world([{ id: 'e1', name: 'Maren', aliases: ['Wren'] }]), { issues: { checking: true } });
+    expect(screen.getByText('Checking…')).toBeInTheDocument();
+    expect(screen.queryByText('No Problems Found')).toBeNull();
   });
 
   it('reports a clean world as verified, with the number of rules that ran', () => {

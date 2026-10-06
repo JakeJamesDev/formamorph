@@ -8,6 +8,7 @@
  * item changes its wording, which raises it as new again, so a stale mark can never hide a fresh defect.
  */
 import { createKeyedRecordStore } from '@/lib/keyedStorage';
+import { findingKeys } from './findingKeys';
 import type { Finding } from './rules';
 
 const store = createKeyedRecordStore('local', 'FORMAMORPH_benchFindingState');
@@ -29,27 +30,9 @@ export interface MarkedFinding extends Finding {
 
 export const EMPTY_BENCH_STATE: BenchWorldState = { seen: {}, dismissed: [] };
 
-/** Order-insensitive so reordering a world's lists can't make an old finding read as a new one. */
-export const findingIdentity = (finding: Finding): string =>
-  [finding.ruleId, ...finding.items.map((item) => item.id).sort()].join('|');
-
-// FNV-1a, so the record stores a few characters per finding rather than every message in full.
-const hash = (text: string): string => {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < text.length; i += 1) {
-    h ^= text.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(36);
-};
-
-/** What the finding currently says — its message and the names it uses. This is what an edit changes. */
-const wording = (finding: Finding): string =>
-  hash(JSON.stringify([finding.message, ...finding.items.map((item) => item.name)]));
-
 const mark = (finding: Finding, state: BenchWorldState): MarkedFinding => {
-  const identity = findingIdentity(finding);
-  return { ...finding, identity, isNew: state.seen[identity] !== wording(finding) };
+  const keys = findingKeys(finding);
+  return { ...finding, identity: keys.identity, isNew: state.seen[keys.identity] !== keys.wording };
 };
 
 /** The findings the Issues list shows, and the ones the author muted, each marked new-or-known. */
@@ -75,10 +58,9 @@ export function withSeen(state: BenchWorldState, findings: Finding[]): BenchWorl
   const seen = { ...state.seen };
   let changed = false;
   for (const finding of findings) {
-    const identity = findingIdentity(finding);
-    const said = wording(finding);
-    if (seen[identity] === said) continue;
-    seen[identity] = said;
+    const { identity, wording } = findingKeys(finding);
+    if (seen[identity] === wording) continue;
+    seen[identity] = wording;
     changed = true;
   }
   return changed ? { ...state, seen } : state;
@@ -88,13 +70,13 @@ export function withSeen(state: BenchWorldState, findings: Finding[]): BenchWorl
 export function withDismissed(state: BenchWorldState, findings: Finding[]): BenchWorldState {
   const dismissed = new Set(state.dismissed);
   const before = dismissed.size;
-  for (const finding of findings) dismissed.add(findingIdentity(finding));
+  for (const finding of findings) dismissed.add(findingKeys(finding).identity);
   return dismissed.size === before ? state : { ...state, dismissed: [...dismissed] };
 }
 
 /** `state` with `findings` audible again. */
 export function withRestored(state: BenchWorldState, findings: Finding[]): BenchWorldState {
-  const lifted = new Set(findings.map(findingIdentity));
+  const lifted = new Set(findings.map((finding) => findingKeys(finding).identity));
   const dismissed = state.dismissed.filter((identity) => !lifted.has(identity));
   return dismissed.length === state.dismissed.length ? state : { ...state, dismissed };
 }
