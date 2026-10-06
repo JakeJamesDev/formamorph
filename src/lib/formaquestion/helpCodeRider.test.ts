@@ -75,6 +75,16 @@ describe('the rider', () => {
     expect(DEFAULT_CODE_RIDER.match(/```/g)).toHaveLength(STAT_CODE_TIMINGS.length);
   });
 
+  it('says, above the fence lines, that the app reads the word after the language to pick each box', () => {
+    const lines = DEFAULT_CODE_RIDER.split('\n');
+    const purpose = lines.findIndex((l) => l.includes(`reads the word after \`${CODE_RIDER_LANGUAGE}\` on the opening line`));
+    expect(purpose).toBeGreaterThanOrEqual(0);
+    for (const slot of STAT_CODE_TIMINGS) {
+      expect(lines[purpose], slot).toContain(`\`${slot}\` for **${TIMING_LABEL[slot]}**`);
+      expect(lines.findIndex((l) => l.endsWith(`\`\`\`${CODE_RIDER_LANGUAGE} ${slot}`)), slot).toBeGreaterThan(purpose);
+    }
+  });
+
   it('carries no example code', () => {
     expect(DEFAULT_CODE_RIDER).not.toMatch(/[=;(){}[\]]|\breturn\b|\bfunction\b/);
   });
