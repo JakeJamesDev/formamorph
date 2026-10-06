@@ -122,7 +122,7 @@ The dialog has no close button. After **Decline**, the app asks again the next t
 | **Prompts** | Prompt presets that change how the AI writes. |
 | **Contest** | The entries of a contest. It shows only while a contest exists. See [Contests](#contests). |
 
-On a wide screen the tabs are a list on the left. In portrait they are a menu at the top.
+On a wide screen the tabs are a side rail on the left, below the search and filters. Select **Collapse** at the bottom of the rail to show only icons, and **Expand** to show the names again. In portrait the tabs are a menu at the top.
 
 ### Search, Sort and Filters
 

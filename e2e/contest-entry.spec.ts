@@ -312,7 +312,7 @@ test('a world published with the entry switch on shows up in the contest tab', a
 
   // Exact: the menu's event banner behind this dialog is a button too, and a contest whose own title
   // carries the word would otherwise match it as well.
-  await page.getByRole('button', { name: 'Contest', exact: true }).click();
+  await page.getByRole('tab', { name: 'Contest', exact: true }).click();
   // The bar's Rules button, not the contest's title: the title also sits in the menu's event banner
   // behind this dialog. What ties the grid below to *this* contest is the entry itself — the tab shows
   // only worlds carrying the contest's id, so a listing appearing here is the server having stored it.
@@ -411,7 +411,7 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
   await signIn(page, username, password);
 
   await gotoDev(page, 'mainMenu', { modal: 'community' });
-  await page.getByRole('button', { name: 'Contest', exact: true }).click();
+  await page.getByRole('tab', { name: 'Contest', exact: true }).click();
 
   // The bar counts the shared place instead of naming one of two winners, and counts what placed below.
   const barLine = runnerUp ? '2 worlds tied for 1st · 1 more placed' : '2 worlds tied for 1st';

@@ -15,7 +15,8 @@ import {
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
 import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
-import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
+import { BROWSE_TABS, BROWSE_TAB_LABELS, COMMUNITY_NAV_RAIL_KEY, type BrowseTab } from "@/lib/browseTabs";
+import { NavRail, type NavRailGroup } from "@/components/NavRail";
 import { listingId, listingRef, type ListingRef } from "@/lib/worldDependencies";
 import { contestPhase, placementsBy, entriesOf, orderContestEntries, type ContestPlacement } from "@/lib/contests";
 import { isContestEvent } from "@/lib/serverEvents";
@@ -834,43 +835,31 @@ const CommunityCreationsBrowser = ({
     : kindSections;
   const activeSectionMeta = sections.find((s) => s.key === browseTab) ?? sections[0];
 
-  // Landscape: a vertical rail beside the results, below the header. Its explanation opens to the right of
-  // the rows, not of the rail: the rail is as tall as the results, so above or below it is off the screen,
-  // and an arrow can't aim at the middle of a column that is mostly empty.
+  // Landscape: the Nav Rail beside the results, below the header, split where the dropdown draws its lines.
+  const sectionTabs = (includes: (key: BrowseTab) => boolean) =>
+    sections.filter((s) => includes(s.key)).map(({ key, label, icon }) => ({ value: key, label, icon }));
+  const railGroups: NavRailGroup[] = [
+    { id: 'kinds', tabs: sectionTabs((key) => key !== 'prompt' && key !== 'contest') },
+    { id: 'presets', tabs: sectionTabs((key) => key === 'prompt') },
+    { id: 'contest', tabs: sectionTabs((key) => key === 'contest') },
+  ];
+  // The explanation points at the tab list, not the rail: the rail is as tall as the results, and an arrow
+  // can't aim at the middle of a column that is mostly empty.
+  const [railTabs, setRailTabs] = useState<HTMLElement | null>(null);
+  const findRailTabs = useCallback((column: HTMLDivElement | null) => {
+    setRailTabs(column?.querySelector<HTMLElement>('[role="tablist"]') ?? null);
+  }, []);
   const landscapeRail = (
-    <nav
-      className="flex flex-col w-48 shrink-0 border-r p-3"
-      onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}
-    >
-    <TutorialPopover
-      entry={tutorial?.id === 'community-kind-tabs' ? tutorial : null}
-      nav={tutorialNav}
-      side="right"
-      align="start"
-    >
-    <div className="flex flex-col gap-1">
-      {sections.map(({ key, label, icon: Icon }) => {
-        const active = browseTab === key;
-        return (
-          <React.Fragment key={key}>
-            {(key === 'prompt' || key === 'contest') && <div role="separator" className="my-2 h-hairline bg-border" />}
-            <button
-              onClick={() => setBrowseTab(key)}
-              aria-current={active ? 'true' : undefined}
-              className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-2 text-label font-medium transition-colors shrink-0",
-                active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </button>
-          </React.Fragment>
-        );
-      })}
+    <div ref={findRailTabs}className="flex shrink-0" onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}>
+      <NavRail label="Community Sections" groups={railGroups} value={browseTab} storageKey={COMMUNITY_NAV_RAIL_KEY} />
+      <TutorialPopover
+        entry={tutorial?.id === 'community-kind-tabs' && railTabs ? tutorial : null}
+        nav={tutorialNav}
+        anchor={railTabs}
+        side="right"
+        align="start"
+      />
     </div>
-    </TutorialPopover>
-    </nav>
   );
 
   // Portrait: a dropdown carrying every section, icon mirrored onto the closed trigger itself.
@@ -1147,11 +1136,18 @@ const CommunityCreationsBrowser = ({
       <BrowserShell presentation={presentation} open={open} onOpenChange={onOpenChange}>
           {/* The kind switcher lives in the header and its results below it, so one root spans both.
               `contents` on the root and each panel leaves the dialog's own flex column untouched. */}
-          <Tabs surfaceTabs="community" value={browseTab} onValueChange={(v) => setBrowseTab(v as BrowseTab)} className="contents">
+          <Tabs
+            surfaceTabs="community"
+            value={browseTab}
+            onValueChange={(v) => setBrowseTab(v as BrowseTab)}
+            orientation="vertical"
+            className="contents"
+          >
           {/* Header: back · title · search · refresh always visible. On mobile the sort/filter controls
-              collapse behind a "Filters" toggle; on desktop they stay inline. */}
+              collapse behind a "Filters" toggle; on desktop they stay inline and the whole block spans the
+              window above the rail. */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
-            <div className={isMobile ? 'px-3 py-2 space-y-2' : 'pb-4'}>
+            <header className={isMobile ? 'px-3 py-2 space-y-2' : 'px-3 pb-3 space-y-3'}>
               {isMobile ? (
                 // Two rows on mobile, not four. The title goes screen-reader-only the way the World
                 // Editor's does — the header it names is the only thing on screen — which frees its row
@@ -1186,8 +1182,9 @@ const CommunityCreationsBrowser = ({
                   </div>
                 </>
               ) : (
-                // The title row fills its header, so the search box grows into the free space.
-                <div className="flex min-h-14 items-center px-3 py-2">
+                // The title row fills its header, so the search box grows into the free space. Refresh ends
+                // the row, after the sort select and the order toggle.
+                <div className="flex min-h-14 items-center py-2">
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
                     <div className="flex items-center gap-1">
                       <BackButton onClick={() => onOpenChange(false)} />
@@ -1195,8 +1192,10 @@ const CommunityCreationsBrowser = ({
                     </div>
                     {searchControl}
                     {quarantineControl}
-                    {refreshControl}
-                    {sortControl}
+                    <div className="flex items-center gap-1">
+                      {sortControl}
+                      {refreshControl}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1207,21 +1206,17 @@ const CommunityCreationsBrowser = ({
                   {filterBar}
                 </CollapsibleContent>
               ) : (
-                <div className="space-y-4 px-6 pt-2">
-                  {filterBar}
-                  {eventBanner}
-                </div>
+                filterBar
               )}
 
-              {isMobile && eventBanner}
-            </div>
+              {eventBanner}
+            </header>
           </Collapsible>
 
-          {/* The section switcher's landscape rail sits beside the results; the pager stays with them in
-              the same column. */}
+          {/* The rail sits beside the results; the pager stays with them in the same column. */}
           <div className={cn("flex min-h-0 flex-1", !isMobile ? "flex-row" : "flex-col")}>
           {!isMobile && landscapeRail}
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* The contest's own header: which contest, where it stands, its rules, and — once several have
               been run — which archive is being read. Above the grid rather than inside it, so it stays put
               while the entries scroll. */}

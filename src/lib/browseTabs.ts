@@ -32,3 +32,6 @@ export const BROWSE_TAB_LABELS: Record<BrowseTab, { one: string; many: string }>
 export function asBrowseTab(value: string | undefined): BrowseTab | undefined {
   return (BROWSE_TABS as readonly string[]).includes(value ?? '') ? (value as BrowseTab) : undefined;
 }
+
+/** Where Community Creations remembers its rail expanded or collapsed, apart from the World Editor's. */
+export const COMMUNITY_NAV_RAIL_KEY = 'formamorph.community.navRail';
