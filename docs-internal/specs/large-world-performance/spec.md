@@ -19,7 +19,7 @@ A profiling harness (`npm run profile:editor-speed`) loads a generated 126 MB wo
 | Drag a canvas node | max frame 717 ms | 2.1 s | 0.5 s | 1236 MB |
 | Save | 11.1 s | 11.6 s | 2.7 s | 1491 MB |
 
-The canvas draws 23,100 Implicit Navigation edges (every sibling pair, both directions) and 117k DOM nodes. The heap is already 823 MB on the Main Menu. When anything throws, the whole app goes blank: there is no error boundary, no global error handler, and a save that fails on full storage can hang with no message.
+The canvas draws 23,100 Implicit Navigation edges (every sibling pair, both directions) and 117k DOM nodes. The heap reaches 823 MB once the editor is open, holding the world about five times over (ticket 01). When anything throws, the whole app goes blank: there is no error boundary, no global error handler, and a save that fails on full storage can hang with no message.
 
 ## Solution
 
