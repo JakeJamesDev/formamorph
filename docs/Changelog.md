@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.0** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **🛠️ Developer tooling**
+  - **CI runs the test suite in four parallel shards, and a release tag runs the checks once.** The suite takes about 17 minutes on one 4-vCPU runner, so each shard runs a quarter of the test files beside a job for typecheck, lint and build. A tag push no longer starts the CI workflow, because the Release workflow runs it. A **Build Android APK** run skips the checks, since that APK is never published.
+
 ---
 
 <details>
