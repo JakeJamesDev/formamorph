@@ -7,7 +7,7 @@
  * Reads and writes the authored world through GameDataContext directly; the panel itself stays presentational
  * and receives everything as `panelProps`.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useGameData } from '@/contexts/GameDataContext';
 import { asBenchTab } from './benchTabs';
@@ -32,9 +32,8 @@ import { useDebouncedTriggerReport } from './useTriggerReport';
 import { useTriggerSemantics } from './useTriggerSemantics';
 import { joinHistory } from './triggers';
 import { hasSeenDownloadNote, markDownloadNoteSeen } from './downloadNote';
-import { useDebouncedFindings } from './useFindings';
+import { useBenchPass } from './useBenchPass';
 import { useLatestRun } from './useLatestRun';
-import { usePublishSize } from './usePublishSize';
 import { checkWorldSize } from './worldTooLarge';
 import { useSourceChecks } from './useSourceChecks';
 import { applyRepair, type MissingSource, type RepairAction, type ReplacementPick } from '@/lib/sourceChecks';
@@ -87,6 +86,15 @@ export interface TestBenchHandle {
   panelProps: TestBenchProps;
 }
 
+const NO_FINDINGS: Finding[] = [];
+
+/** `next`, or the last list while it says the same thing. */
+function useSameFindings(next: Finding[]): Finding[] {
+  const last = useRef(next);
+  if (last.current !== next && JSON.stringify(last.current) !== JSON.stringify(next)) last.current = next;
+  return last.current;
+}
+
 export function useTestBench({
   selectedLocationId, isMobile, advanced, routedTab, requestedTab, requestKey, navigateToItem, panelSuspended = false,
 }: TestBenchWiring): TestBenchHandle {
@@ -108,8 +116,9 @@ export function useTestBench({
   // `getWorldData` is memoized on the world arrays, so this payload's identity is the "world changed"
   // signal the rule pass debounces on.
   const benchWorld = useMemo(getWorldData, [getWorldData]);
-  const staticFindings = useDebouncedFindings(benchWorld);
-  const publishBytes = usePublishSize(benchWorld);
+  // Null until the first pass lands: the list holds every row till then, so it never reads as clean.
+  const pass = useBenchPass(benchWorld);
+  const publishBytes = pass.bytes;
   // Stat-code execution is the one check the live pass can't carry — each stat costs a sandbox VM. Its
   // findings are held from the last explicit run and dropped the moment the world moves, so a repaired stat
   // can never keep showing its old failure.
@@ -140,18 +149,21 @@ export function useTestBench({
     () => benchWorld.stats.filter((s) => !noBoxes(s)).length,
     [benchWorld],
   );
-  // Out of band like the stat-code findings: the byte count comes from the debounced worker measure, not
-  // the pure pass, so it's checked and merged in here rather than living in the rule catalog.
-  const sizeFindings = useMemo(() => checkWorldSize(benchWorld, publishBytes), [benchWorld, publishBytes]);
+  // Out of the rule catalog, since its input is the measured byte count rather than the world.
+  // Kept while it says the same thing: a keystroke in an over-limit world must not re-mark every finding.
+  const sizeFindings = useSameFindings(useMemo(() => checkWorldSize(benchWorld, publishBytes), [benchWorld, publishBytes]));
   const benchWorldMeta = worldMetadata.find((m) => m.id === worldId);
   // Out of band for a third reason: the answers come from the server, and only when the author asks. The
   // record outlives the session, so these rows come back with the world rather than with the request.
   const sources = useSourceChecks(benchWorld, worldId, benchWorldMeta?.sourceId);
-  const findings = useMemo(() => (
-    codeFindings.length === 0 && sizeFindings.length === 0 && sources.findings.length === 0
+  const sourceFindings = useSameFindings(sources.findings);
+  const findings = useMemo(() => {
+    const staticFindings = pass.findings;
+    if (staticFindings === null) return NO_FINDINGS;
+    return codeFindings.length === 0 && sizeFindings.length === 0 && sourceFindings.length === 0
       ? staticFindings
-      : [...staticFindings, ...codeFindings, ...sizeFindings, ...sources.findings]
-  ), [staticFindings, codeFindings, sizeFindings, sources.findings]);
+      : [...staticFindings, ...codeFindings, ...sizeFindings, ...sourceFindings];
+  }, [pass.findings, codeFindings, sizeFindings, sourceFindings]);
   // Semantic scoring is opt-in per session and never remembered: a toggle that came back on by itself would
   // let an author read a semantic firing as proof their keywords work.
   const [semanticOn, setSemanticOn] = useState(false);
@@ -379,6 +391,7 @@ export function useTestBench({
     codeCheckStatus,
     fixingRuleId,
     publishBytes,
+    checking: pass.findings === null,
     onOpenItem: openFindingItem,
     onDismissRule: bench.dismissRule,
     onRestoreRule: bench.restoreRule,

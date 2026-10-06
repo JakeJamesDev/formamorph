@@ -395,7 +395,11 @@ export function IssuesInstrument({ issues, onFix }: IssuesInstrumentProps) {
         </div>
       )}
       {issues.publishBytes !== null && <PublishSizeBar bytes={issues.publishBytes} />}
-      {issues.groups.length === 0 ? (
+      {issues.groups.length === 0 && issues.checking ? (
+        <div role="status" className="flex flex-col items-center gap-1 py-8 text-center">
+          <p className="text-label font-medium">Checking…</p>
+        </div>
+      ) : issues.groups.length === 0 ? (
         // Only when there is genuinely nothing: a world whose every finding is folded away is not clean, and
         // the fold below is what says so.
         issues.advancedOnlyCount === 0 && (

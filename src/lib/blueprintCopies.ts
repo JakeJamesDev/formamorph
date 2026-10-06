@@ -7,6 +7,7 @@ import { canBePlayer, resolveBearers, type Bearer, type BearerWorld } from './be
 import { copyOf, effectiveCopy } from './blueprints';
 import { entityTexts } from './entityTexts';
 import { blueprintIds } from './placeholderBlueprints';
+import { memoByRecord } from './memoByRecord';
 import { directChipTargets, remapPlaceholderIds } from './placeholders';
 import { offeredWorldTraits } from './traitTree';
 import { randomUUID } from './uuid';
@@ -26,18 +27,28 @@ const TEXT_FIELDS = ['name', 'playerDescription', 'aiDescription'] as const;
 const texts = (strings: readonly (string | undefined)[]): string[] => strings.filter((s): s is string => !!s);
 
 /** The placeholder ids a trait's text and pins name. A group has text only. */
-function traitTargets(item: Trait | TraitGroup): Set<string> {
+const traitTargets = memoByRecord((item: Trait | TraitGroup): ReadonlySet<string> => {
   const ids = directChipTargets(texts(TEXT_FIELDS.map((field) => item[field])));
   for (const pin of ('placeholderPins' in item ? item.placeholderPins : undefined) ?? []) ids.add(pin.placeholderId);
   return ids;
-}
+});
 
 /** The placeholder ids a placeholder's values name, through their chips and their value pins. */
-function valueTargets(p: Placeholder): Set<string> {
+const valueTargets = memoByRecord((p: Placeholder): ReadonlySet<string> => {
   const ids = directChipTargets(p.values.map((v) => v.text));
   for (const v of p.values) for (const pin of v.pins ?? []) ids.add(pin.placeholderId);
   return ids;
-}
+});
+
+/** The placeholder ids an entity's own text and its own placeholders' values name, reworded ones included. */
+const ownTargets = memoByRecord((e: Entity): ReadonlySet<string> => {
+  const ownPlaceholders = e.placeholders ?? [];
+  return directChipTargets(texts([
+    ...entityTexts(e),
+    ...ownPlaceholders.flatMap((p) => p.values.map((v) => v.text)),
+    ...ownPlaceholders.flatMap((p) => Object.values(p.valueOverrides ?? {}).map((o) => o.text?.value)),
+  ]));
+});
 
 /** Copy id → its blueprint id, across every entity, so a chip at another owner's copy still names a blueprint. */
 function copyBlueprints(entities: readonly Entity[]): Map<string, string> {
@@ -87,13 +98,8 @@ export function copyNeeds(world: CopyWorld): Map<string, Map<string, CopyNeed>> 
       ...(canBePlayer(e) ? [...root.traits, ...root.groups] : []),
     ];
     for (const item of items) for (const id of traitTargets(item)) { const b = asBlueprint(id); if (b) need(b, { kind: 'trait', item }); }
-    // The owner's own text and its placeholders' values, reworded ones included, keep a copy of its own in use.
-    const ownTexts = texts([
-      ...entityTexts(e),
-      ...ownPlaceholders.flatMap((p) => p.values.map((v) => v.text)),
-      ...ownPlaceholders.flatMap((p) => Object.values(p.valueOverrides ?? {}).map((o) => o.text?.value)),
-    ]);
-    for (const id of directChipTargets(ownTexts)) if (ownCopyIds.has(id)) need(copyBlueprint.get(id)!, { kind: 'own' });
+    // The owner's own text and its placeholders' values keep a copy of its own in use.
+    for (const id of ownTargets(e)) if (ownCopyIds.has(id)) need(copyBlueprint.get(id)!, { kind: 'own' });
     // What each needed placeholder reaches through its values, as this bearer reads it.
     const queue = [...needed.keys()];
     while (queue.length) {

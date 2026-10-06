@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { KeyboardSensor, PointerSensor, useSensor, useSensors, type Modifier } from '@dnd-kit/core';
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -14,11 +14,12 @@ export const DRAG_ACTIVATION_DISTANCE = 5;
 
 /** The house sensors: mouse or touch through one pointer sensor, plus keyboard sorting. */
 export function useEditorSensors(activationDistance = DRAG_ACTIVATION_DISTANCE) {
-  return useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: activationDistance } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  // Stable options: new ones rebuild dnd-kit's activators, and every sortable row redraws.
+  const pointer = useMemo(() => ({ activationConstraint: { distance: activationDistance } }), [activationDistance]);
+  return useSensors(useSensor(PointerSensor, pointer), useSensor(KeyboardSensor, KEYBOARD_OPTIONS));
 }
+
+const KEYBOARD_OPTIONS = { coordinateGetter: sortableKeyboardCoordinates };
 
 /**
  * Vertical lists: movement is Y-only and clamped to the scroll viewport. Without the clamp the in-flow
