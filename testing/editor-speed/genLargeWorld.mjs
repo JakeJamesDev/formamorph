@@ -1,6 +1,6 @@
 // Writes a large fake world with real, decodable PNG images for World Editor profiling.
 // Usage: node testing/editor-speed/genLargeWorld.mjs [--entities 400] [--locations 300] [--hub 150]
-//        [--image 256] [--bg-every 4] [--traits 120] [--entries 600] [--out <path>]
+//        [--image 256] [--bg-every 4] [--traits 120] [--entries 600] [--pins 1] [--source-pins 200] [--out <path>]
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,8 +19,10 @@ const cfg = {
   bgEvery: num('bg-every', 4), // every Nth location gets a background image
   traits: num('traits', 120),
   entries: num('entries', 600),
+  pins: num('pins', 0) > 0, // adds the pin load: one placeholder pinned from everywhere, sources pinning many
+  sourcePins: num('source-pins', 200), // pins on each heavy source
 };
-const out = args.out ?? join(here, '.out', `large-world-${cfg.entities}e-${cfg.locations}l.json`);
+const out = args.out ?? join(here, '.out', `large-world-${cfg.entities}e-${cfg.locations}l${cfg.pins ? '-pins' : ''}.json`);
 const { version } = JSON.parse(readFileSync(join(here, '../../package.json'), 'utf8'));
 
 // Seeded so two runs with the same flags write the same file.
@@ -143,6 +145,33 @@ const world = {
   dictionaries,
   placeholders: [],
 };
+
+// Pins use no `rand`, so the rest of the world is byte-identical with and without them.
+if (cfg.pins) {
+  const valuesOf = (key, n) => Array.from({ length: n }, (_, v) => ({ id: `${key}-v${v}`, text: `${key} value ${v}` }));
+  const pin = (placeholder, v) => ({ placeholderId: placeholder.id, value: placeholder.values[v].text, valueId: placeholder.values[v].id });
+
+  // Inbound: "Mood" is pinned by every trait, every other location, every stat band and 60 placeholders' values.
+  const mood = { id: 'ph-mood', name: 'Mood', values: valuesOf('mood', 12), roll: true };
+  for (const [i, t] of traits.entries()) t.placeholderPins = [pin(mood, i % 12)];
+  for (const [i, l] of locations.entries()) if (i % 2 === 1) l.placeholderPins = [pin(mood, i % 12)];
+  for (const s of world.stats) {
+    s.descriptors = [0, 25, 50, 75].map((threshold, b) => ({ id: `${s.id}-band${b}`, threshold, description: `band ${b}`, placeholderPins: [pin(mood, b)] }));
+  }
+  const pinners = Array.from({ length: 60 }, (_, i) => {
+    const key = `pinner${i}`;
+    return { id: `ph-${key}`, name: `Pinner ${i}`, roll: true, values: valuesOf(key, 4).map((v, j) => ({ ...v, pins: [pin(mood, (i + j) % 12)] })) };
+  });
+
+  // Outbound: one trait, one location and one placeholder value each pin `sourcePins` placeholders.
+  const targets = Array.from({ length: cfg.sourcePins }, (_, i) => ({ id: `ph-target${i}`, name: `Target ${i}`, roll: true, values: valuesOf(`target${i}`, 5) }));
+  const heavyPins = targets.map((t, i) => pin(t, i % 5));
+  traits.push({ id: 'trait-pin-heavy', name: 'Pin Heavy Trait', statChanges: [], playerDescription: '', aiDescription: '', groupId: traitGroups[0].id, order: traits.length, placeholderPins: heavyPins });
+  locations[0].placeholderPins = [pin(mood, 0), ...heavyPins];
+  const heavy = { id: 'ph-pin-heavy', name: 'Pin Heavy', roll: true, values: [{ id: 'heavy-v0', text: 'heavy value', pins: heavyPins }, { id: 'heavy-v1', text: 'light value' }] };
+
+  world.placeholders = [mood, heavy, ...pinners, ...targets];
+}
 
 mkdirSync(dirname(out), { recursive: true });
 const json = JSON.stringify(world);

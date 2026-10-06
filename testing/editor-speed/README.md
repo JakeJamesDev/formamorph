@@ -20,6 +20,18 @@ npm run profile:editor-speed
 - Writes `.out/results.json`, or `.out/results-<library>.json` for the other libraries. Needs Chromium: `npm run test:e2e:install`.
 - Outside the four gates.
 
+### Pins
+
+`node testing/editor-speed/genLargeWorld.mjs --pins 1` writes `.out/large-world-400e-300l-pins.json`: the same world plus 1,151 pins. "Mood" is pinned 551 times (every trait, half the locations, every stat band, 60 placeholders' values). "Pin Heavy Trait", "The Hub" and the "Pin Heavy" value each pin 200 placeholders. The other worlds are unchanged.
+
+```
+EDITOR_SPEED_WORLD=testing/editor-speed/.out/large-world-400e-300l-pins.json EDITOR_SPEED_ONLY=open,pinSourceTrait,pinSourceLocation,pinTarget npm run profile:editor-speed
+```
+
+- `pinTarget` opens "Mood" on the Placeholders tab and types into its Name.
+- `pinSourceTrait` and `pinSourceLocation` open the source, time its Pins tab, count pin rows, then type into Name.
+- The pin steps exist only when the world file name contains `-pins`. `EDITOR_SPEED_PROFILE=1` prints a CPU profile of each open.
+
 ### Main Menu heap
 
 Compare the menu heap across library sizes:

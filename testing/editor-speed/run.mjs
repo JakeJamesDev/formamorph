@@ -10,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { analyze, loadSnapshot, summarize } from './heapRetainers.mjs';
+import { pinSteps } from './pinSteps.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -505,6 +506,8 @@ const STEPS = {
       await blank.close();
     }
   },
+
+  ...(WORLD.includes('-pins') ? pinSteps({ settle, traced, pct, profiled }) : {}),
 };
 
 async function runThrottle(browser, base, rate) {
