@@ -60,6 +60,7 @@ The canvas draws 23,100 Implicit Navigation edges (every sibling pair, both dire
 | Q22 | Root Export World reads a plain module reference to the last world the data provider committed. No copy is made. The button is hidden when no world is held. |
 | Q23 | In-play Map: Implicit Navigation edges show from the player's current location, plus the hovered node on desktop. |
 | Q24 | Test seams as listed under Testing Decisions. No new seams. |
+| Q25 | Pin load joins this effort as tickets 17 and 18. On the pin world (`--pins 1`: one placeholder pinned 551 times, sources pinning 200 each), the pin-conflict check made each rules pass 16 s at 1x and the pinned placeholder never opened. |
 
 ## User Stories
 
@@ -108,6 +109,9 @@ The canvas draws 23,100 Implicit Navigation edges (every sibling pair, both dire
 43. As a developer, I want a harness that measures the editor on a large world under CPU throttle, so that every fix has before and after numbers.
 44. As a developer, I want the harness to cover pickers too, so that Q13 can be checked.
 45. As a developer, I want the heap and IndexedDB floors measured before the bar locks, so that we don't chase a target the storage layer can't reach.
+46. As an author, I want a placeholder pinned from hundreds of sources to open and edit without freezing, so that heavy pin use stays practical.
+47. As an author, I want a trait or location that pins hundreds of placeholders to open its Pins tab quickly, so that I can manage its pins.
+48. As an author, I want editing anything in a heavily pinned world to stay responsive, so that the pin-conflict check never blocks typing.
 
 ## Implementation Decisions
 
@@ -133,6 +137,8 @@ Tickets live in `issues/`. Blocking edges are on each ticket.
 | 14 | Split the data context | |
 | 15 | Picker memoization and harness step | Q13 |
 | 16 | Worker moves | |
+| 17 | Pin conflicts once per target | Q25 |
+| 18 | Pin row display names | Q25 |
 
 ### Canvas and Map (tickets 02–04)
 
