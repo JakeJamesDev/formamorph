@@ -8,7 +8,7 @@
 // depth-based nesting (see TraitTree history), which is why this passes `restrictYToScrollAncestor` rather
 // than taking the shared layer's vertical-list default.
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { EditorRow, EditorRowList, type EditorRowAction } from '@/components/EditorRow';
+import { EditorRow, type EditorRowAction } from '@/components/EditorRow';
 import { X, Copy } from 'lucide-react';
 import {
   pointerWithin, closestCenter,
@@ -18,6 +18,7 @@ import {
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { restrictYToScrollAncestor } from '@/components/dnd/dragInvariants';
 import { PlaceholderVocabularyProvider } from '@/components/prompt/PlaceholderText';
+import { VirtualRowList, VIRTUALIZE_AT } from '@/components/VirtualRowList';
 import type { Placeholder } from '@/types';
 
 // Pointer-precise collisions, but never empty: at the very bottom the pointer sits past the last row, so
@@ -208,6 +209,9 @@ function sameNode(a: object, b: object, depth = 1): boolean {
   ));
 }
 
+/** What selecting this row reports — see `selectionId` on the adapter. */
+const selectionOf = <N extends { id: string; depth: number }>(adapter: SortableTreeAdapter<N>, node: N) => adapter.selectionId?.(node) ?? node.id;
+
 export function SortableTree<N extends { id: string; depth: number }>({ adapter, selectedId, onSelect, revealSelected = false }: {
   adapter: SortableTreeAdapter<N>;
   selectedId: string | null;
@@ -229,7 +233,7 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
   useEffect(() => {
     if (!revealSelected || !selectedId || revealed.current === selectedId) return;
     const rows = adapter.getVisible(new Set());
-    const at = rows.findIndex((n) => (adapter.selectionId?.(n) ?? n.id) === selectedId);
+    const at = rows.findIndex((n) => selectionOf(adapter, n) === selectedId);
     if (at < 0) return;
     revealed.current = selectedId;
     const above = new Set<string>();
@@ -244,6 +248,11 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
   const overRef = useRef<string | null>(null);
   const offsetRef = useRef(0);
   const [projectedDepth, setProjectedDepth] = useState<number | null>(null);
+  // Fixed at drag start, so hiding the dragged subtree never switches the list's mode mid-drag.
+  const [dragWindowed, setDragWindowed] = useState(false);
+  const dragWindowedRef = useRef(false);
+  // The drop target, so a windowed list keeps its neighborhood mounted.
+  const [overId, setOverId] = useState<string | null>(null);
 
   // Visible rows: the tree minus collapsed nodes' children and (while dragging) the dragged subtree. One
   // result is kept, and a node that did not change keeps its object, so rows compare by identity.
@@ -273,22 +282,26 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
     overRef.current = null;
     offsetRef.current = 0;
     setActiveId(null);
+    setOverId(null);
     setProjectedDepth(null);
   }, []);
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
+    dragWindowedRef.current = rowsFor(null).length > VIRTUALIZE_AT;
+    setDragWindowed(dragWindowedRef.current);
     activeRef.current = String(active.id);
     overRef.current = String(active.id);
     offsetRef.current = 0;
     setActiveId(activeRef.current);
     setProjectedDepth(project(activeRef.current, overRef.current, 0));
-  }, [project]);
+  }, [project, rowsFor]);
   const handleDragMove = useCallback(({ delta }: DragMoveEvent) => {
     offsetRef.current = delta.x;
     setProjectedDepth(project(activeRef.current, overRef.current, delta.x));
   }, [project]);
   const handleDragOver = useCallback(({ over }: DragOverEvent) => {
     overRef.current = over ? String(over.id) : null;
+    if (dragWindowedRef.current) setOverId(overRef.current);
     setProjectedDepth(project(activeRef.current, overRef.current, offsetRef.current));
   }, [project]);
   const handleDragEnd = useCallback(({ active, over }: DragEndEvent) => {
@@ -302,6 +315,36 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
     return next;
   }), []);
 
+  const rowKey = useCallback((i: number) => visible[i].id, [visible]);
+  const renderRow = (node: N) => {
+    const selectId = selectionOf(adapter, node);
+    return (
+      <TreeRow
+        key={node.id}
+        node={node}
+        depth={node.id === activeId && projectedDepth !== null ? projectedDepth : node.depth}
+        selectId={selectId}
+        selected={selectedId === selectId}
+        onSelect={selectStable}
+        isCollapsed={collapsed.has(node.id)}
+        toggleCollapse={toggleCollapse}
+        inputs={adapter.rowInputs?.(node) ?? NO_INPUTS}
+        epoch={shared.current.epoch}
+        adapterRef={adapterRef}
+      />
+    );
+  };
+
+  const windowed = activeId ? dragWindowed : visible.length > VIRTUALIZE_AT;
+  // Kept mounted: the selected row for scroll-to-selection, the dragged row, and its drop neighborhood.
+  const pinned: number[] = [];
+  if (windowed && selectedId) pinned.push(visible.findIndex((n) => selectionOf(adapter, n) === selectedId));
+  if (windowed && activeId) {
+    pinned.push(visible.findIndex((n) => n.id === activeId));
+    const over = overId ? visible.findIndex((n) => n.id === overId) : -1;
+    if (over >= 0) pinned.push(over - 1, over, over + 1);
+  }
+
   return (
     <EditorDndContext
       collisionDetection={collisionWithFallback}
@@ -313,28 +356,15 @@ export function SortableTree<N extends { id: string; depth: number }>({ adapter,
       onDragCancel={reset}
     >
       <StableSortableContext items={visible} strategy={verticalListSortingStrategy}>
-        <EditorRowList>
-          <PlaceholderVocabularyProvider placeholders={adapter.placeholders}>
-            {visible.map((node) => {
-              const selectId = adapter.selectionId?.(node) ?? node.id;
-              return (
-                <TreeRow
-                  key={node.id}
-                  node={node}
-                  depth={node.id === activeId && projectedDepth !== null ? projectedDepth : node.depth}
-                  selectId={selectId}
-                  selected={selectedId === selectId}
-                  onSelect={selectStable}
-                  isCollapsed={collapsed.has(node.id)}
-                  toggleCollapse={toggleCollapse}
-                  inputs={adapter.rowInputs?.(node) ?? NO_INPUTS}
-                  epoch={shared.current.epoch}
-                  adapterRef={adapterRef}
-                />
-              );
-            })}
-          </PlaceholderVocabularyProvider>
-        </EditorRowList>
+        <PlaceholderVocabularyProvider placeholders={adapter.placeholders}>
+          <VirtualRowList
+            count={visible.length}
+            rowKey={rowKey}
+            renderRow={(i) => renderRow(visible[i])}
+            pinned={pinned}
+            windowed={windowed}
+          />
+        </PlaceholderVocabularyProvider>
       </StableSortableContext>
     </EditorDndContext>
   );

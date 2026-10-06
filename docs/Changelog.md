@@ -42,6 +42,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor uses far less memory on large worlds while you edit and save.** It no longer keeps extra copies of the world to track unsaved edits. Saving a large world also finishes faster.
   - **The location and persona pickers stay quick while you type in a large world.** The Connect To, Starting Location and Starts On lists redraw only the items that changed. They look and work as before.
   - **Importing a large world and publishing one no longer freeze the app.** The Main Menu reads and upgrades the world file in the background, and Publish builds its upload there too. Messages stay the same.
+  - **Long editor lists on large worlds draw only the rows on screen, so a drag starts without a pause.** The Entities, Locations, Traits and Placeholders lists look and work as before, and a drag still scrolls to any row.
 
 ---
 
