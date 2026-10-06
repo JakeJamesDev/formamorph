@@ -192,6 +192,18 @@ describe('Community Creations tour', () => {
     expect(screen.queryByText('Worlds, Entities, Dictionaries, Avatars & Prompts')).not.toBeInTheDocument();
   });
 
+  it('explains the tabs on the mobile Sections bar, and opening it counts as reading', () => {
+    const desktop = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ ...desktop(query), matches: true })) as typeof window.matchMedia;
+    renderBrowser();
+    settle();
+
+    expect(screen.getByText('Worlds, Entities, Dictionaries, Avatars & Prompts')).toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByRole('button', { name: /^Sections/ }));
+    expect(seenTutorials()).toContain('community-kind-tabs');
+    expect(screen.queryByText('Worlds, Entities, Dictionaries, Avatars & Prompts')).not.toBeInTheDocument();
+  });
+
   it('reaches the like heart third, on a card the reader can actually like', () => {
     renderBrowser();
     settle();

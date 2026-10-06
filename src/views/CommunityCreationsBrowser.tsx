@@ -22,7 +22,7 @@ import { contestPhase, placementsBy, entriesOf, orderContestEntries, type Contes
 import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
 import { ContestBar, ContestPodium } from "@/components/community/ContestBar";
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
@@ -87,6 +87,8 @@ import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
 import { CommunityFilterBar } from "@/components/community/CommunityFilterBar";
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { BackButton } from "@/components/BackButton";
+import { EditorSectionsBar } from "@/components/editor/EditorSectionsBar";
+import { badgeVariants } from "@/components/ui/badge";
 import { useTutorial } from "@/lib/tutorials";
 import { likeStateOf, optimisticLikeState, type LikeState } from "@/lib/likeCount";
 
@@ -556,6 +558,7 @@ const CommunityCreationsBrowser = ({
   // On mobile the sort/filter controls collapse behind a "Filters" toggle; on desktop they stay inline.
   const isMobile = useIsMobile();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sectionsOpen, setSectionsOpen] = useState(false);
 
   // The card that anchors the like tutorial: the first one on the page whose heart is a control rather
   // than a count. Your own listings can't be liked, and a signed-out reader can't like anything.
@@ -823,7 +826,7 @@ const CommunityCreationsBrowser = ({
     setManagingAddons(listingRef(first));
   }, [open, openManageAddonsOnMount, remoteWorlds, managingAddons]);
 
-  // Section switcher: a rail on landscape, a dropdown on portrait. Rows come from the kinds list; Contest
+  // Section switcher: a rail on landscape, the Sections bar on portrait. Rows come from the kinds list; Contest
   // is appended rather than generated (see browseTabs.ts), only while one exists to browse.
   const kindSections: SwitcherSection[] = CATALOG_KINDS.map((kind) => ({
     key: kind,
@@ -833,9 +836,8 @@ const CommunityCreationsBrowser = ({
   const sections: SwitcherSection[] = contests.length > 0
     ? [...kindSections, { key: 'contest', label: 'Contest', icon: Trophy }]
     : kindSections;
-  const activeSectionMeta = sections.find((s) => s.key === browseTab) ?? sections[0];
 
-  // Landscape: the Nav Rail beside the results, below the header, split where the dropdown draws its lines.
+  // Landscape: the Nav Rail beside the results, below the header.
   const sectionTabs = (includes: (key: BrowseTab) => boolean) =>
     sections.filter((s) => includes(s.key)).map(({ key, label, icon }) => ({ value: key, label, icon }));
   const railGroups: NavRailGroup[] = [
@@ -862,36 +864,22 @@ const CommunityCreationsBrowser = ({
     </div>
   );
 
-  // Portrait: a dropdown carrying every section, icon mirrored onto the closed trigger itself.
-  const portraitDropdown = (
+  // Portrait: the Sections bar under the header, fed the rail's groups so both draw the same splits.
+  const portraitSections = (
     <TutorialPopover
       entry={tutorial?.id === 'community-kind-tabs' ? tutorial : null}
       nav={tutorialNav}
       align="start"
     >
-    <div onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}>
-    <Select value={browseTab} onValueChange={(v) => setBrowseTab(v as BrowseTab)}>
-      <SelectTrigger className="w-[170px] h-9">
-        {/* A `<div>`, not a `<span>`: the trigger's `[&>span]:line-clamp-1` style stacks a direct-child span's flex children instead of rowing them. */}
-        <div className="flex items-center gap-2 min-w-0">
-          <activeSectionMeta.icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{activeSectionMeta.label}</span>
-        </div>
-      </SelectTrigger>
-      <SelectContent>
-        {sections.map(({ key, label, icon: Icon }) => (
-          <React.Fragment key={key}>
-            {(key === 'prompt' || key === 'contest') && <SelectSeparator />}
-            <SelectItem value={key}>
-              <span className="flex items-center gap-2">
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
-              </span>
-            </SelectItem>
-          </React.Fragment>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="shrink-0" onPointerDownCapture={() => dismissIfShowing('community-kind-tabs')}>
+      <EditorSectionsBar
+        groups={railGroups}
+        label="Community Sections"
+        bodyId="community-sections"
+        value={browseTab}
+        open={sectionsOpen}
+        onOpenChange={setSectionsOpen}
+      />
     </div>
     </TutorialPopover>
   );
@@ -950,9 +938,9 @@ const CommunityCreationsBrowser = ({
   // A contest's entries are ordered by the contest, not by the reader: shuffled until results are announced,
   // then by likes. Offering a sort that the grid then overrides would be a control that lies.
   const sortControl = browseTab === 'contest' ? null : (
-    <div className="flex items-center gap-1">
+    <div className={cn('flex items-center gap-1', isMobile && 'min-w-0 flex-1')}>
       <Select value={sortField} onValueChange={(v) => { setSortField(v); setCurrentPage(1); }}>
-        <SelectTrigger className="w-[160px] h-9"><SelectValue /></SelectTrigger>
+        <SelectTrigger className={cn('h-9', isMobile ? 'min-w-0 flex-1' : 'w-[160px]')}><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="updated_at">Last Updated</SelectItem>
           <SelectItem value="created_at">Creation Date</SelectItem>
@@ -1141,45 +1129,47 @@ const CommunityCreationsBrowser = ({
             value={browseTab}
             onValueChange={(v) => setBrowseTab(v as BrowseTab)}
             orientation="vertical"
+            // Arrows browse the open Sections bar without switching; the rail switches as it moves.
+            activationMode={isMobile ? 'manual' : 'automatic'}
             className="contents"
           >
-          {/* Header: back · title · search · refresh always visible. On mobile the sort/filter controls
-              collapse behind a "Filters" toggle; on desktop they stay inline and the whole block spans the
-              window above the rail. */}
+          {/* Header: back · title · search always visible. On mobile sort, refresh and the filters collapse
+              behind the Filters toggle; on desktop they stay inline and the whole block spans the window
+              above the rail. */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
             <header className={isMobile ? 'px-3 py-2 space-y-2' : 'px-3 pb-3 space-y-3'}>
               {isMobile ? (
-                // Two rows on mobile, not four. The title goes screen-reader-only the way the World
-                // Editor's does — the header it names is the only thing on screen — which frees its row
-                // for the search box, and the kind tabs drop to share a row with the Filters toggle.
+                // One row on mobile. The title goes screen-reader-only the way the World Editor's does — the
+                // header it names is the only thing on screen — which frees its row for the search box.
                 <>
                   <div className="flex items-center gap-2">
                     <BackButton onClick={() => onOpenChange(false)} />
                     <Heading className="sr-only">Community Creations</Heading>
                     {searchControl}
-                    {refreshControl}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {portraitDropdown}
-                    {quarantineControl}
                     <TutorialPopover entry={filtersToggleTutorial} nav={tutorialNav} align="end">
                     <CollapsibleTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="ml-auto shrink-0 gap-1"
+                        className="relative h-9 shrink-0 gap-1 px-2"
+                        aria-label={activeFilterCount > 0 ? `Filters, ${activeFilterCount} on` : 'Filters'}
                         onPointerDownCapture={() => {
                           dismissIfShowing('community-filters');
                           dismissIfShowing('community-hidden');
                         }}
                       >
                         <SlidersHorizontal className="h-4 w-4" />
-                        Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-                        <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={cn('h-4 w-4 transition-transform', filtersOpen && 'rotate-180')} />
+                        {activeFilterCount > 0 && (
+                          <span aria-hidden className={cn(badgeVariants(), 'absolute -right-2 -top-2 h-5 min-w-5 justify-center px-1.5')}>
+                            {activeFilterCount}
+                          </span>
+                        )}
                       </Button>
                     </CollapsibleTrigger>
                     </TutorialPopover>
                   </div>
+                  {quarantineControl && <div className="flex flex-wrap items-center gap-2">{quarantineControl}</div>}
                 </>
               ) : (
                 // The title row fills its header, so the search box grows into the free space. Refresh ends
@@ -1202,7 +1192,10 @@ const CommunityCreationsBrowser = ({
 
               {isMobile ? (
                 <CollapsibleContent className="space-y-3">
-                  {sortControl}
+                  <div className="flex items-center justify-end gap-1">
+                    {sortControl}
+                    {refreshControl}
+                  </div>
                   {filterBar}
                 </CollapsibleContent>
               ) : (
@@ -1212,6 +1205,7 @@ const CommunityCreationsBrowser = ({
               {eventBanner}
             </header>
           </Collapsible>
+          {isMobile && portraitSections}
 
           {/* The rail sits beside the results; the pager stays with them in the same column. */}
           <div className={cn("flex min-h-0 flex-1", !isMobile ? "flex-row" : "flex-col")}>

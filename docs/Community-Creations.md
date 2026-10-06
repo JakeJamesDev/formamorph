@@ -122,7 +122,7 @@ The dialog has no close button. After **Decline**, the app asks again the next t
 | **Prompts** | Prompt presets that change how the AI writes. |
 | **Contest** | The entries of a contest. It shows only while a contest exists. See [Contests](#contests). |
 
-On a wide screen the tabs are a side rail on the left, below the search and filters. Select **Collapse** at the bottom of the rail to show only icons, and **Expand** to show the names again. In portrait the tabs are a menu at the top.
+On a wide screen the tabs are a side rail on the left, below the search and filters. Select **Collapse** at the bottom of the rail to show only icons, and **Expand** to show the names again. In portrait, select the **Sections** bar under the header to open the tab list. It has the same order and lines as the rail.
 
 ### Search, Sort and Filters
 
@@ -143,7 +143,7 @@ Each filter becomes a chip in the bar. Select a chip's remove button to drop it.
 
 You can also type a filter in the search box: `author:`, `tag:` or `status:`, and `model:` on the **Prompts** tab. A space or **Enter** turns it into a chip. Each tab keeps its own filters, and they stay after you close the app.
 
-In portrait, sort and filters are behind the **Filters** button. It shows how many are on.
+In portrait, sort, refresh and filters are behind the **Filters** button. A badge on it shows how many filters are on.
 
 ### Hiding Listings
 

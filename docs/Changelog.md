@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's tabs move to a collapsible side rail inside the list.** Lines split the tab groups, and the rail remembers whether you collapsed it. It shows only icons when the list is narrow, and stays in place but unavailable while the Test Bench fills the list.
   - **On desktop, the World Editor puts Save, Export World and the mode select in one bar above both panes.** It shows Saved or Unsaved changes beside the title, with Find and the Test Bench in its center. The bar has no help button.
   - **On mobile, the World Editor's header holds Find, the Test Bench and the mode select, with no help button.** The Sections list splits its groups with lines, in the same order as the desktop rail. Morphie and the guide answer questions about each tab.
+  - **On mobile, Community Creations picks its section from a Sections bar under a one-row header.** The header holds back, search and a Filters icon with a count of active filters. Refresh moves into the Filters panel, beside sort.
 
 ### Minor Changes
 

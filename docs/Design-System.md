@@ -820,7 +820,9 @@ The World Editor groups its tabs this way:
 | Vocabulary | Dictionary · Placeholders (Advanced only) |
 | Logic | None yet, so it draws nothing |
 
-The group names are registry ids. The bar and the rail draw none of them.
+Community Creations has no landing tab. It groups Worlds, Entities, Dictionaries and Avatars, then Prompts, then Contest while a contest exists.
+
+The group names are registry ids. The bar and the rail draw none of them. Each host names its tab list and gives the folding body its own id.
 
 ### Production mapping
 
@@ -829,7 +831,7 @@ The group names are registry ids. The bar and the rail draw none of them.
 | The bar | `EditorSectionsBar` in [`EditorSectionsBar.tsx`](../src/components/editor/EditorSectionsBar.tsx) |
 | The shared disclosure | `NavDisclosure` in [`NavDisclosure.tsx`](../src/components/NavDisclosure.tsx), also used by [`EnterWorldWorkspace.tsx`](../src/views/EnterWorldWorkspace.tsx) |
 | The registry and its groups | [`worldEditorTabs.ts`](../src/views/worldEditorTabs.ts) |
-| The host | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
+| The hosts | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) and `CommunityCreationsBrowser` in [`CommunityCreationsBrowser.tsx`](../src/views/CommunityCreationsBrowser.tsx) |
 | Isolated reference | [`SectionsBarReference.tsx`](../src/components/design-system/SectionsBarReference.tsx) |
 
 ### State reference

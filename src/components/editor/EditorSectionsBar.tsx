@@ -7,14 +7,18 @@ import type { NavRailGroup } from '@/components/NavRail';
 export interface EditorSectionsBarProps {
   /** The same groups the host feeds its Nav Rail, so both draw the same splits. */
   groups: readonly NavRailGroup[];
+  /** Names the tab list, as the host's Nav Rail names its own. */
+  label: string;
+  /** The id of the folding body, unique on the page. */
+  bodyId: string;
   value: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** The World Editor's mobile tab picker: a Sections bar folding the grouped tab list. Must sit inside a vertical
+/** A surface's mobile tab picker: a Sections bar folding the grouped tab list. Must sit inside a vertical
  *  `Tabs` root with manual activation, so arrows browse the open list and a pick closes it. */
-export function EditorSectionsBar({ groups, value, open, onOpenChange }: EditorSectionsBarProps) {
+export function EditorSectionsBar({ groups, label, bodyId, value, open, onOpenChange }: EditorSectionsBarProps) {
   const bar = useRef<HTMLButtonElement>(null);
   const drawn = groups.filter((group) => group.tabs.length > 0);
   const current = drawn.flatMap((group) => group.tabs).find((tab) => tab.value === value);
@@ -30,10 +34,10 @@ export function EditorSectionsBar({ groups, value, open, onOpenChange }: EditorS
       onOpenChange={onOpenChange}
       label="Sections"
       current={current?.label}
-      bodyId="world-editor-sections"
+      bodyId={bodyId}
       className="shrink-0"
     >
-      <TabsPrimitive.List aria-label="Editor Sections" className="flex flex-col gap-1 border-t border-border/60 p-3">
+      <TabsPrimitive.List aria-label={label} className="flex flex-col gap-1 border-t border-border/60 p-3">
         {drawn.map((group, index) => (
           <Fragment key={group.id}>
             {index > 0 && <div aria-hidden data-sections-separator className="mx-2 my-1.5 h-px shrink-0 bg-border" />}
