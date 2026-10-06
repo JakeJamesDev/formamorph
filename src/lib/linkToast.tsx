@@ -1,8 +1,10 @@
-import { toast } from 'react-toastify';
+import { toast, type ToastOptions } from 'react-toastify';
 import { describeError, showErrorDetails, type ToastText } from './errorDetails';
 
 /** An error toast with a text link under its lines; it stays open on click so the link can be pressed. */
-export function linkToast(message: string | readonly string[], linkLabel: string, onLink: () => void): void {
+export function linkToast(
+  message: string | readonly string[], linkLabel: string, onLink: () => void, options: ToastOptions = {},
+): void {
   const lines = typeof message === 'string' ? [message] : message;
   toast.error(
     <div className="flex flex-col items-start gap-1">
@@ -11,7 +13,7 @@ export function linkToast(message: string | readonly string[], linkLabel: string
         {linkLabel}
       </button>
     </div>,
-    { position: 'top-right', autoClose: 8000, closeOnClick: false, pauseOnHover: true, draggable: true },
+    { position: 'top-right', autoClose: 8000, closeOnClick: false, pauseOnHover: true, draggable: true, ...options },
   );
 }
 

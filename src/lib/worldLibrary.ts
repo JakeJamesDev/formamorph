@@ -9,7 +9,7 @@ import type { ContentLink, WorldMetadata } from '@/types';
 import { describePlaceholders } from './placeholders';
 import { allPlaceholders, type PlaceholderHomesWorld } from './placeholderHomes';
 import { migrateCarriedPlaceholders } from './version';
-import { promisifyRequest } from './idb';
+import { promisifyRequest, transactionDone } from './idb';
 
 export const WORLD_LIBRARY_DB = 'worldsDB';
 export const WORLD_LIBRARY_VERSION = 2;
@@ -179,16 +179,6 @@ export function putWorldRecord(transaction: IDBTransaction, record: StoredWorldS
 export function deleteWorldRecord(transaction: IDBTransaction, id: string): IDBRequest {
   transaction.objectStore(WORLD_META_STORE).delete(id);
   return transaction.objectStore(WORLD_STORE).delete(id);
-}
-
-/** Resolve when `transaction` commits; reject with its error when it fails or aborts. */
-export function transactionDone(transaction: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    transaction.oncomplete = () => resolve();
-    const fail = () => reject(transaction.error ?? new Error('The library write was aborted'));
-    transaction.onerror = fail;
-    transaction.onabort = fail;
-  });
 }
 
 /** Write whole world records and their metadata in one transaction. */

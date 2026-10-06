@@ -1,4 +1,4 @@
-import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { openDatabase, promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
 import type { CommunityLink, LibraryDetails } from '@/types';
 
 /**
@@ -105,32 +105,26 @@ export class LibraryStore<T, M> {
     if (!record.name || !record.data || !this.isValid(record.data)) {
       throw new Error(`Invalid ${this.lowerNoun}: missing required fields`);
     }
-    return new Promise<void>((resolve, reject) => {
-      const store = this.objectStore('readwrite');
-      const getRequest = store.get(record.id);
-      getRequest.onsuccess = () => {
-        const existing = getRequest.result as StoredRecord<T> | undefined;
-        const putRequest = store.put({
-          id: record.id,
-          name: record.name,
-          data: record.data,
-          libraryDetails: record.libraryDetails ?? existing?.libraryDetails,
-          createdAt: existing?.createdAt ?? record.createdAt ?? new Date().toISOString(),
-          lastAccessed: new Date().toISOString(),
-          // Community link (publish/download): read-merged so an editor save that passes only id/name/data
-          // keeps it. `??`, not `||`: a download's `dirty: false` must win over an existing `true`.
-          sourceId: record.sourceId ?? existing?.sourceId,
-          dirty: record.dirty ?? existing?.dirty,
-          editedAt: record.editedAt ?? existing?.editedAt,
-          downloadedAt: record.downloadedAt ?? existing?.downloadedAt,
-          sourceUpdatedAt: record.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
-          sourceAuthorId: record.sourceAuthorId ?? existing?.sourceAuthorId,
-          sourceAuthorName: record.sourceAuthorName ?? existing?.sourceAuthorName,
-        });
-        putRequest.onsuccess = () => resolve();
-        putRequest.onerror = () => reject(`Failed to store ${this.lowerNoun}`);
-      };
-      getRequest.onerror = () => reject(`Failed to store ${this.lowerNoun}`);
+    const store = this.objectStore('readwrite');
+    const read = store.get(record.id) as IDBRequest<StoredRecord<T> | undefined>;
+    return writeAfterRead(store.transaction, read, (existing) => {
+      store.put({
+        id: record.id,
+        name: record.name,
+        data: record.data,
+        libraryDetails: record.libraryDetails ?? existing?.libraryDetails,
+        createdAt: existing?.createdAt ?? record.createdAt ?? new Date().toISOString(),
+        lastAccessed: new Date().toISOString(),
+        // Community link (publish/download): read-merged so an editor save that passes only id/name/data
+        // keeps it. `??`, not `||`: a download's `dirty: false` must win over an existing `true`.
+        sourceId: record.sourceId ?? existing?.sourceId,
+        dirty: record.dirty ?? existing?.dirty,
+        editedAt: record.editedAt ?? existing?.editedAt,
+        downloadedAt: record.downloadedAt ?? existing?.downloadedAt,
+        sourceUpdatedAt: record.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
+        sourceAuthorId: record.sourceAuthorId ?? existing?.sourceAuthorId,
+        sourceAuthorName: record.sourceAuthorName ?? existing?.sourceAuthorName,
+      });
     });
   }
 
@@ -138,6 +132,8 @@ export class LibraryStore<T, M> {
   async delete(id: string): Promise<void> {
     await this.ensureInitialized();
     if (!id) throw new Error(`${this.noun} ID is required`);
-    await promisifyRequest(this.objectStore('readwrite').delete(id));
+    const store = this.objectStore('readwrite');
+    store.delete(id);
+    await transactionDone(store.transaction);
   }
 }

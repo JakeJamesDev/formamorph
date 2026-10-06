@@ -9,6 +9,9 @@ import { NEW_WORLD_NAME } from '@/lib/blankWorld';
 import { readEditorMode } from '@/lib/editorMode';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
 import WorldStorageService from '../services/WorldStorageService';
+import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
+import { SAVE_FAILED, STORAGE_FULL } from '@/lib/saveFailureToast';
 import type { World } from '@/types';
 
 /**
@@ -220,6 +223,18 @@ describe('Authoring Tour steps', () => {
     await waitFor(() => expect(next).toBeEnabled());
     expect(note('World Name')).toBeInTheDocument();
     expect(within(tourBar()!).getByText(`Authoring Tour · 1 / ${TOTAL}`)).toBeInTheDocument();
+    expect(toastTexts(vi.mocked(toast.error))).toEqual([expect.stringContaining(SAVE_FAILED)]);
+  });
+
+  it('says the storage is full when the save runs out of space', async () => {
+    storeWorld.mockRejectedValueOnce(new DOMException('The quota has been exceeded.', 'QuotaExceededError'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await openTourOn(NAMED_WORLD);
+    fireEvent.click(within(note('World Name')).getByRole('button', { name: 'Next' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    expect(toastTexts(vi.mocked(toast.error))[0]).toContain(STORAGE_FULL);
+    expect(note('World Name')).toBeInTheDocument();
   });
 
   it('Back to Tour returns to the step tab and focuses its field', async () => {

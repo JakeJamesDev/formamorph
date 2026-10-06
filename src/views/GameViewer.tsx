@@ -165,6 +165,7 @@ import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
+import { toastSaveFailure } from "../lib/saveFailureToast";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
@@ -4787,8 +4788,9 @@ const GameViewer = ({
         onSave={async () => {
           const next = takeEditorLeave();
           const saved = await saveWorld(); setShowEditorExitPrompt(false); setIsEditingWorld(false);
-          // A failed save stops the request; the editor still closes, as it always has.
-          if (saved) next?.then(); else next?.cancel();
+          // A failed save stops the request and closes the editor; the toast keeps Export World for the edits.
+          if (saved.ok) next?.then();
+          else { next?.cancel(); void toastSaveFailure(saved.error, saved.world); }
         }}
         onExit={() => { const next = takeEditorLeave(); setShowEditorExitPrompt(false); setIsEditingWorld(false); next?.then(); }}
       />

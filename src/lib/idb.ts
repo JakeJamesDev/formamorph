@@ -42,6 +42,49 @@ export function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
 }
 
 /**
+ * Resolve when `transaction` commits; reject with its error when it fails or aborts.
+ *
+ * A write is done only at commit: a full disk aborts the transaction after every request in it succeeded.
+ */
+export function transactionDone(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    // A failed request's error reaches the transaction before the abort sets `transaction.error`.
+    const fail = (event: Event) => reject(
+      (event.target as IDBRequest | IDBTransaction | null)?.error ?? transaction.error ?? new Error('The write was aborted'),
+    );
+    transaction.onerror = fail;
+    transaction.onabort = fail;
+  });
+}
+
+/**
+ * Read with `read`, then write from its result in the same transaction; resolve when that commits.
+ *
+ * Settles on every path: a write that throws aborts the transaction and rejects with what it threw, and a
+ * write that writes nothing resolves when the transaction completes.
+ *
+ * @param transaction - The read-write transaction `read` runs in
+ * @param read - The request whose result the write needs
+ * @param write - Queues the writes; may throw to refuse
+ */
+export function writeAfterRead<T>(
+  transaction: IDBTransaction, read: IDBRequest<T>, write: (result: T) => void,
+): Promise<void> {
+  const done = transactionDone(transaction);
+  let thrown: { error: unknown } | null = null;
+  read.onsuccess = () => {
+    try {
+      write(read.result);
+    } catch (error) {
+      thrown = { error };
+      transaction.abort();
+    }
+  };
+  return done.catch((error: unknown) => { throw thrown ? thrown.error : error; });
+}
+
+/**
  * Empty one object store.
  *
  * A transaction rather than a database delete: a delete is blocked by any connection still open, and

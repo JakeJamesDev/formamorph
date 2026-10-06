@@ -4,6 +4,7 @@ import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBenc
 import { toastTexts } from '@/test/toastText';
 import { markHelpSeen } from '@/lib/helpSeenStore';
 import { openingsEnabled } from '@/lib/openings';
+import WorldStorageService from '../services/WorldStorageService';
 import type { Dictionary, Entity, World } from '@/types';
 
 /**
@@ -470,6 +471,9 @@ describe('Editing a copy of your own library item', () => {
     // The copy did not write, so it still holds the revision it opened with and stays Linked.
     expect(ctx().dictionaries[0].link?.sourceRevision).toBe(REVISION);
     expect(ctx().dictionaries[0].link?.localReplacement).toBeUndefined();
+    // The stored world says the same, or the next open would pull the old item over the edit.
+    const stored = vi.mocked(WorldStorageService.storeWorld).mock.calls.at(-1)![0];
+    expect((stored.data.dictionaries as Dictionary[])[0].link?.sourceRevision).toBe(REVISION);
   });
 
   it('marks an edit made while the library cannot be read, which is not the same as owned', async () => {
