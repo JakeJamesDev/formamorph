@@ -47,7 +47,7 @@ Search and replace results, AI Context, Formaquestion take-me-there, context men
 
 ## 2. Hover and selected states
 
-**Token fact:** in the default theme, `--secondary`, `--muted` and `--accent` hold the same value in light and dark ([index.css:40](../../../src/index.css)). So `bg-secondary`, `bg-muted` and `bg-accent` look identical by default and differ slightly in the named themes.
+**Token fact:** in the base blue theme, `--secondary`, `--muted` and `--accent` hold the same value in light and dark ([index.css:40](../../../src/index.css)). The default theme is graphite (`DEFAULT_THEME_COLOR`), where they differ by 1–2% lightness and `--primary` is near black (light) or near white (dark). So a hover and a selected state built from those grays, or from a light primary tint, read as the same.
 
 ### Main surfaces
 
