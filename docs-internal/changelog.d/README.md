@@ -20,9 +20,12 @@ Minor / Added / 👤 / Prompts
 - **Audience** is `👤`, `🛠️` or `⚙️` (or `user`, `dev`, `backend`).
 - **Topic** is optional: the group header the entry sits under, without its colon. A missing group is created before the loose entries.
 
-## Folding
+## One fragment, one new entry
 
-A fragment whose bold lead already exists under 🚧 In Progress folds into that line. Write the exact lead and only your new sentences. Prepare appends the sentences that are not there yet and ignores the bucket. 🔁 Re-running prepare after the main branch moves replays the fold onto the new changelog, once.
+- 📏 The lead holds at most 20 words and the body at most 40. The changelog lint fails the gates past that.
+- ➕ A fragment always lands as its own entry. To grow a feature that is already unreleased, write a lead for what your ticket adds and name the feature as the **Topic**.
+- 🚫 Prepare refuses a fragment whose lead is already under 🚧 In Progress with other text. Appending to one line is how entries grew into walls of text.
+- 🔁 Re-running prepare after the main branch moves places the fragment again, once.
 
 ## Checks
 

@@ -19,14 +19,21 @@ export function parseEntry(line) {
   };
 }
 
+/** The most words an entry's bold lead and its body may hold. A feature that needs more is a group of entries. */
+export const LEAD_WORDS = 20;
+export const BODY_WORDS = 40;
+
+const words = (text) => text.split(/\s+/).filter(Boolean).length;
+
 /** Is this line an indented bullet with no bold lead? Those ship nothing, so they're a format error. */
 function isUnleadBullet(line) {
   return /^\s{2,}-\s/.test(line) && !/^\s{2,}-\s+\*\*/.test(line);
 }
 
 /** Lint a slice of changelog lines (one release section). Returns a list of human-readable problems; an
- *  empty list means the section is well-formed. Checks the three things the extractor cannot recover from:
- *  a group with fewer than two children, a bullet with no bold lead, and nesting past one level. */
+ *  empty list means the section is well-formed. Checks the three things the extractor cannot recover from
+ *  (a group with fewer than two children, a bullet with no bold lead, nesting past one level), and the
+ *  word limits on each entry's lead and body. */
 export function lintSection(lines) {
   const problems = [];
   let openHeader = null; // { text, children }
@@ -53,6 +60,12 @@ export function lintSection(lines) {
       if (/^(-\s+\*\*|####\s|###\s|##\s)/.test(line)) closeHeader();
       continue;
     }
+    if (!entry.header) {
+      const lead = words(entry.text);
+      const body = words(line.replace(/^\s*-\s+\*\*.+?\*\*/, ''));
+      if (lead > LEAD_WORDS) problems.push(`Lead has ${lead} words; the limit is ${LEAD_WORDS}: ${entry.text}`);
+      if (body > BODY_WORDS) problems.push(`Body has ${body} words; the limit is ${BODY_WORDS}: ${entry.text}`);
+    }
     if (entry.depth === 1) {
       if (openHeader) openHeader.children += 1;
       else problems.push(`Indented entry with no group header above it: ${entry.text}`);
@@ -75,6 +88,14 @@ export function latestReleaseBounds(lines) {
     if (/^<\/details>/.test(lines[i])) { end = i; break; }
   }
   return [start, end];
+}
+
+/** Line bounds of one collapsed release, found by the version in its summary, or null when it is absent. */
+export function releaseBounds(lines, version) {
+  const summary = lines.findIndex((l) => l.includes(`✅ ${version} — Released`));
+  if (summary === -1) return null;
+  const end = lines.findIndex((l, i) => i > summary && /^<\/details>/.test(l));
+  return [summary - 1, end === -1 ? lines.length : end];
 }
 
 /** Line bounds of the unreleased section: from the `## 🚧 In Progress` heading to the next divider or
