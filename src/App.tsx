@@ -12,6 +12,7 @@ import { surfaceRegistry } from './lib/surface/surfaceRegistry';
 import { SurfaceLayer, SurfaceReporterContext } from './components/ui/surface';
 import { DevFixtureLoader } from './components/DevFixtureLoader';
 import { ViewportReadout } from './components/ViewportReadout';
+import { RootErrorBoundary } from './components/RootErrorBoundary';
 import { GameDataProvider } from './contexts/GameDataContext';
 import { UserProfileProvider } from './contexts/UserProfileContext';
 import { SettingsProvider } from './contexts/SettingsContext';
@@ -237,6 +238,8 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+      {/* Above every provider but the theme, so a crash anywhere below shows the recovery screen. */}
+      <RootErrorBoundary>
       {/* Above everything that opens a dialog: screens, dialogs and tabs report what is open to the
           surface registry. */}
       <SurfaceReporterContext.Provider value={surfaceRegistry}>
@@ -278,6 +281,7 @@ function App() {
         </SettingsProvider>
       </TooltipProvider>
       </SurfaceReporterContext.Provider>
+      </RootErrorBoundary>
     </ThemeProvider>
   );
 }

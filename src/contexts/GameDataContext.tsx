@@ -4,6 +4,7 @@ import WorldStorageService from '../services/WorldStorageService';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import { dirtyDiff } from '@/lib/dirtyDiff';
 import { registerDevHook } from '@/lib/devRouter';
+import { holdUnsavedWorld } from '@/lib/unsavedWorld';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLinksTo, removeBlueprints } from '@/lib/traitLinks';
@@ -530,6 +531,12 @@ function useProvideGameData() {
     () => !!savedSnapshot && canonicalStringify(getWorldData(), stringifyCache.current) !== savedCanonical,
     [getWorldData, savedCanonical, savedSnapshot],
   );
+  // The crash screen sits above this provider and exports from here. A reader of the committed world, held
+  // only while it has unsaved edits, so nothing is built per commit and nothing is copied. Never released on
+  // unmount: the crash unmounts this provider, and the screen reads the reference afterward.
+  useEffect(() => {
+    holdUnsavedWorld(isWorldDirty ? () => ({ id: worldId ?? '', version: APP_VERSION, ...getWorldData() }) : null);
+  }, [isWorldDirty, worldId, getWorldData]);
   // DEV: names what `isWorldDirty` is reacting to. Parses the stored snapshot, as the baseline above does.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
