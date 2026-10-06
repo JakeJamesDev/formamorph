@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import type { AIRequestType, Tool, ToolEnabledMap, ToolParam } from '@/types';
 import { Button } from '@/components/ui/button';
+import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -272,21 +273,29 @@ export function ToolsTab({
     );
   }
 
-  const toolButton = (tool: OfferedFunction) => (
-    <button
-      key={tool.id}
-      type="button"
-      onClick={() => select(tool.id)}
-      aria-current={tool.id === selectedId ? 'true' : undefined}
-      className={cn(
-        'flex items-center gap-2 text-left text-label rounded px-2 py-1.5',
-        tool.id === selectedId ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
-      )}
-    >
-      <span aria-hidden className={cn('h-2 w-2 flex-shrink-0 rounded-full', enabledTools[tool.id] === true ? 'bg-primary' : 'bg-muted-foreground/40')} />
-      <span className="font-mono truncate">{tool.name}</span>
-    </button>
-  );
+  const toolButton = (tool: OfferedFunction) => {
+    const isSelected = tool.id === selectedId;
+    const isEnabled = enabledTools[tool.id] === true;
+    // The dot sits on the primary fill when selected, so it takes the foreground tone.
+    const dotTone = isSelected
+      ? (isEnabled ? 'bg-primary-foreground' : 'bg-primary-foreground/40')
+      : (isEnabled ? 'bg-primary' : 'bg-muted-foreground/40');
+    return (
+      <CompactSelectionRow
+        key={tool.id}
+        selected={isSelected}
+        showCheck={false}
+        aria-pressed={undefined}
+        aria-current={isSelected ? 'true' : undefined}
+        onClick={() => select(tool.id)}
+      >
+        <span className="flex items-center gap-2">
+          <span aria-hidden className={cn('h-2 w-2 flex-shrink-0 rounded-full', dotTone)} />
+          <span className="font-mono truncate">{tool.name}</span>
+        </span>
+      </CompactSelectionRow>
+    );
+  };
 
   const builtInSelected = !!selected && isCatalogToolId(selected.id);
 
