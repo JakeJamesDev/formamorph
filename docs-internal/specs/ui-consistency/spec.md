@@ -25,7 +25,7 @@ The same element looks or acts differently on different surfaces. Some surfaces 
 - **Q4 World icon:** `Earth` everywhere, as in `KIND_ICONS`.
 - **Q5 Blueprint icon:** `LayoutTemplate` everywhere, chips included. `Link2` means a linked copy only.
 - **Q6 Persona icon:** `CircleUserRound`, so a persona never reads as an entity.
-- **Q7 Nav rail states:** hover is `bg-accent`. Selected is `bg-primary` with `text-primary-foreground`, `font-medium` and the primary bar, the same fill as `EditorRow`. This replaces the Design System's Nav Rail state rule. A `bg-primary/10` tint was picked first and reopened: renders showed it matches today in the default graphite theme and leaves pale text in blue light (option C in `_coloraudit/nav-rail-options.png`). Stat Code Templates need a new icon, because Q5 gives `LayoutTemplate` to Blueprints.
+- **Q7 Nav rail states:** hover is `bg-accent`. Selected is `bg-primary` with `text-primary-foreground`, `font-medium`, the same fill as `EditorRow`. The side bar stays and takes `bg-foreground`, so it reads against the fill in every theme. This replaces the Design System's Nav Rail state rule. A `bg-primary/10` tint was picked first and reopened: renders showed it matches today in the default graphite theme and leaves pale text in blue light (option C in `_coloraudit/nav-rail-options.png`). Stat Code Templates need a new icon, because Q5 gives `LayoutTemplate` to Blueprints.
 - **Q8 One side-navigation recipe:** the mobile Sections bar and the Enter World categories take the Q7 states.
 
 Items 1 and 2 are audited in [audit.md](audit.md). Item 3 is parked: Playwright frame sampling did not reproduce it.
