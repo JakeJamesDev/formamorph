@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,8 @@ import { useEditorMode } from '@/lib/editorMode';
 import { ALLOWED_PERSONAS, limitsToWorld, worldPersonaRules } from '@/lib/personaPick';
 import { customPersonaEntity } from '@/lib/blueprints';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectOptions } from "@/components/SelectOptions";
 import type { AllowedPersonas, VrmLicense } from '@/types';
 
 /**
@@ -100,16 +101,16 @@ const NONE = 'none';
 const PersonaRulesFields = () => {
   const { worldOverview, updateWorldOverview, entities } = useGameData();
   const { allowed, start } = worldPersonaRules(worldOverview);
-  const personas = entities.filter((entity) => entity.persona === true);
-  const custom = customPersonaEntity(entities);
+  const personas = useMemo(() => entities.filter((entity) => entity.persona === true), [entities]);
+  const custom = useMemo(() => customPersonaEntity(entities), [entities]);
   const limited = limitsToWorld(allowed, { world: personas, custom });
   const hint = allowed === 'world' && !limited ? WORLD_ONLY_WITHOUT_PERSONAS_HINT : ALLOWED_PERSONAS_HINTS[allowed];
 
-  const options = [
+  const options = useMemo(() => [
     ...(limited ? [] : [{ value: PLAYER_DEFAULT, label: "Player's Default" }]),
     ...(limited && !custom ? [] : [{ value: NONE, label: custom ? custom.name || 'Custom Persona' : 'None' }]),
     ...personas.map((entity) => ({ value: entity.id, label: entity.name || 'Unnamed' })),
-  ];
+  ], [limited, custom, personas]);
   // Under World Only the absent pick is the first offered persona; a stale pick reads as the absent one.
   const stored = start?.source === 'world' ? start.entityId : start ? NONE : PLAYER_DEFAULT;
   const selected = options.some((o) => o.value === stored) ? stored : options[0]?.value;
@@ -146,7 +147,7 @@ const PersonaRulesFields = () => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            <SelectOptions options={options} />
           </SelectContent>
         </Select>
       </div>

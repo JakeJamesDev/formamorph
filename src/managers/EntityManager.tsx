@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields, EntityStartingLocationField } from './EntityFields';
@@ -67,6 +67,16 @@ const EntityManager = ({
     updateEntity(next);
   };
 
+  // Read as the tree it is, so a picker presents the hierarchy the way the game's own list does.
+  const locationOptions = useMemo(
+    () => locationRows(locations).map(({ location, depth }) => ({
+      label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
+      value: location.id,
+      depth,
+    })),
+    [locations, placeholders, placementLetters, placeholderOwners],
+  );
+
   const handleLocationsChange = (ids: string[]) => {
     if (editingEntity) writeWhole(withEntityLocations(editingEntity, ids));
   };
@@ -81,12 +91,6 @@ const EntityManager = ({
   if (!editingEntity) return null;
 
   const groupProps = { value: editingEntity, onChange: handleChange, placeholders, ownerId: entity.id };
-  // Read as the tree it is, so a picker presents the hierarchy the way the game's own list does.
-  const locationOptions = locationRows(locations).map(({ location, depth }) => ({
-    label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
-    value: location.id,
-    depth,
-  }));
   const tabs = entityPanelTabsFor(advanced);
 
   return (

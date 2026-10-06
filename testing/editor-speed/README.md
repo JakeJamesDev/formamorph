@@ -8,9 +8,10 @@ npm run profile:editor-speed
 
 - Generates the world with `genLargeWorld.mjs` if it is missing (400 entities, 300 locations with 150 under one parent, 475 noise PNGs, ~126 MB). Run the generator yourself to change sizes: `node testing/editor-speed/genLargeWorld.mjs --entities 1000`.
 - Builds an unminified production bundle into `testing/editor-speed/.build/`, serves it, and writes the world straight into the library store.
-- Steps, in order: `open`, `typing`, `treeDrag`, `canvas`, `canvasDrag`, `save`, `idb`.
+- Steps, in order: `open`, `typing`, `treeDrag`, `canvas`, `canvasDrag`, `save`, `picker`, `idb`.
 - Reports per step: wall time, main-thread blocks over 50 ms (from a trace), frame intervals for drags, input-to-paint latency for typing, DOM counts for the canvas, and JS heap after GC.
 - `typing` and `save` also report `heapStartMb` (after GC) and `heapPeakMb`, sampled every 50 ms without GC, so garbage the step allocates shows.
+- `picker` opens the first location's Presence tab (adding a Connection when it has none), types 26 keys into a Travel Hint, then opens Connect To. It reports input latency, `openMs` for the picker, and `options` for the items listed. Run it after `open`: `EDITOR_SPEED_ONLY=open,picker`.
 - Reports the Main Menu first: the number of worlds in the library and `heapMenuMb`, the JS heap after GC.
 - `idb` runs outside the app, on a blank page of the same origin. It times IndexedDB on the bench world record, 3 runs each, and reports the median. This is the structured-clone floor for open and save.
   - `put` and `get`: one bare call each.

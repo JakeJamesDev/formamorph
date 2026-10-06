@@ -5,6 +5,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectOptions } from "@/components/SelectOptions";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -282,7 +283,7 @@ export const EntityStartingLocationField = ({ value, onChange, options }: Entity
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={AUTOMATIC}>Automatic</SelectItem>
-          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          <SelectOptions options={options} />
         </SelectContent>
       </Select>
     </div>
