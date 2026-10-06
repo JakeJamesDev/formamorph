@@ -5,6 +5,7 @@
 import type { SaveRecord } from '@/types';
 import { openDatabase, promisifyRequest } from './idb';
 import { putSaveRecord } from '@/components/modals/dbUtils';
+import { WORLD_LIBRARY_DB, WORLD_STORE, openWorldLibrary, putWorldRecords } from './worldLibrary';
 import {
   RECORD_IMAGES,
   readBackupRecord,
@@ -17,19 +18,37 @@ import {
 import type { ImageCodec, OptimizeMode } from './imageOptimCore';
 import { encodeImageDataUrl, measureImageDataUrl } from './imageEncode';
 
-/** IndexedDB location of each id-keyed store (saves are handled via dbUtils, which owns the v2 schema). */
-export const STORE_TARGETS: Record<Exclude<BackupCategory, 'saves'>, { db: string; store: string }> = {
-  worlds: { db: 'worldsDB', store: 'worlds' },
-  entities: { db: 'entitiesDB', store: 'entities' },
-  dictionaries: { db: 'dictionariesDB', store: 'dictionaries' },
+/** One id-keyed backup store: where it lives, how to open its database, and how to write records into it. */
+export interface StoreTarget {
+  db: string;
+  store: string;
+  open(): Promise<IDBDatabase>;
+  write(db: IDBDatabase, records: IdRecord[]): Promise<void>;
+}
+
+/** A store whose database holds that one store at version 1. */
+const plainTarget = (db: string, store: string): StoreTarget => ({
+  db,
+  store,
+  open: () => openDatabase(db, 1, [{ name: store, keyPath: 'id' }]),
+  write: async (conn, records) => {
+    const target = conn.transaction([store], 'readwrite').objectStore(store);
+    await Promise.all(records.map((r) => promisifyRequest(target.put(r))));
+  },
+});
+
+/** Each id-keyed store (saves are handled via dbUtils, which owns the v2 schema). */
+export const STORE_TARGETS: Record<Exclude<BackupCategory, 'saves'>, StoreTarget> = {
+  worlds: { db: WORLD_LIBRARY_DB, store: WORLD_STORE, open: () => openWorldLibrary(), write: putWorldRecords },
+  entities: plainTarget('entitiesDB', 'entities'),
+  dictionaries: plainTarget('dictionariesDB', 'dictionaries'),
 };
 
-async function writeStore(target: { db: string; store: string }, records: IdRecord[]): Promise<void> {
+async function writeStore(target: StoreTarget, records: IdRecord[]): Promise<void> {
   if (!records.length) return;
-  const db = await openDatabase(target.db, 1, [{ name: target.store, keyPath: 'id' }]);
+  const db = await target.open();
   try {
-    const store = db.transaction([target.store], 'readwrite').objectStore(target.store);
-    await Promise.all(records.map((r) => promisifyRequest(store.put(r))));
+    await target.write(db, records);
   } finally {
     db.close();
   }

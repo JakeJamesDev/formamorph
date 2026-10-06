@@ -9,6 +9,7 @@ import AuthService from './AuthService';
 import { getDownloadState } from '@/lib/downloadState';
 import { PUBLISH_LIMITS } from '@/lib/publishLimits';
 import { KIND_LABELS } from '@/lib/catalogKinds';
+import { openWorldLibrary, putWorldRecords } from '@/lib/worldLibrary';
 
 const res = (body: unknown, ok = true, status = 200): Response =>
   ({ ok, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
@@ -425,19 +426,16 @@ const readRaw = (id: string): Promise<StoredWorldRecord | undefined> =>
 
 /**
  * Patch a stored record in place, bypassing `storeWorld` — its sticky merge would restore the very
- * `sourceHash` these tests need to stale or clear.
+ * `sourceHash` these tests need to stale or clear. The metadata goes with it, as every library write does.
  */
-const writeRaw = (record: StoredWorldRecord): Promise<void> =>
-  new Promise((resolve, reject) => {
-    const open = indexedDB.open('worldsDB');
-    open.onerror = () => reject(open.error);
-    open.onsuccess = () => {
-      const db = open.result;
-      const req = db.transaction(['worlds'], 'readwrite').objectStore('worlds').put(record);
-      req.onsuccess = () => { resolve(); db.close(); };
-      req.onerror = () => { reject(req.error); db.close(); };
-    };
-  });
+const writeRaw = async (record: StoredWorldRecord): Promise<void> => {
+  const db = await openWorldLibrary();
+  try {
+    await putWorldRecords(db, [record]);
+  } finally {
+    db.close();
+  }
+};
 
 describe('linkWorldToListing', () => {
   const world: StoredWorldRecord = {

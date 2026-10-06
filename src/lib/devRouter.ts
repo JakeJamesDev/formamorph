@@ -165,8 +165,9 @@ export function installDevRouter(): () => void {
       return svc.getWorldData(id);
     },
     /** Write an exported world straight into storage, replacing any world with the same id. Mirrors the
-     *  import path: migrate first, then derive the record's metadata from the migrated overview. */
-    async putWorld(world: unknown) {
+     *  import path: migrate first, then derive the record's metadata from the migrated overview. `wrapper`
+     *  sets local-only record fields, such as a download link. */
+    async putWorld(world: unknown, wrapper: { sourceId?: string; downloadedAt?: string } = {}) {
       const [{ default: svc }, { migrateWorld }] = await Promise.all([
         import('@/services/WorldStorageService'),
         import('@/lib/version'),
@@ -180,6 +181,7 @@ export function installDevRouter(): () => void {
         author: data.worldOverview?.author || '',
         thumbnail: data.worldOverview?.thumbnail || '',
         dirty: true,
+        ...wrapper,
         data: data as unknown as { worldOverview: unknown; stats: unknown[]; locations: unknown[];
           entities: unknown[]; traits: unknown[]; statUpdates: unknown[] },
       });

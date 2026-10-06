@@ -145,16 +145,22 @@ async function seedWorld(page) {
     const world = await (await fetch('/__bench/world.json')).json();
     world.id = id;
     const db = await new Promise((resolve, reject) => {
-      const q = indexedDB.open('worldsDB', 1);
-      q.onupgradeneeded = () => q.result.createObjectStore('worlds', { keyPath: 'id' });
+      const q = indexedDB.open('worldsDB', 2);
+      q.onupgradeneeded = () => {
+        q.result.createObjectStore('worlds', { keyPath: 'id' });
+        q.result.createObjectStore('worldMeta', { keyPath: 'id' });
+      };
       q.onsuccess = () => resolve(q.result);
       q.onerror = () => reject(q.error);
     });
     await new Promise((resolve, reject) => {
-      const tx = db.transaction('worlds', 'readwrite');
+      const tx = db.transaction(['worlds', 'worldMeta'], 'readwrite');
       const now = new Date().toISOString();
       const o = world.worldOverview;
-      tx.objectStore('worlds').put({ id, name: o.name, description: o.description, author: o.author, thumbnail: o.thumbnail, dirty: false, createdAt: now, lastAccessed: now, data: world });
+      const meta = { id, name: o.name, description: o.description, author: o.author, thumbnail: o.thumbnail, dirty: false, createdAt: now, lastAccessed: now };
+      tx.objectStore('worlds').put({ ...meta, data: world });
+      // The bench world has no placeholder chips in its blurb and no linked copies, so its list fields are its overview's.
+      tx.objectStore('worldMeta').put({ ...meta, tags: o.tags || [], linkedCopies: [] });
       tx.oncomplete = () => resolve();
       tx.onerror = tx.onabort = () => reject(tx.error);
     });
