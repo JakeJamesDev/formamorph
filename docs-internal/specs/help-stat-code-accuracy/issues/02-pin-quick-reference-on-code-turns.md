@@ -1,6 +1,6 @@
 # 02: Pin The Quick Reference On Code Turns
 
-Status: ready-for-human
+Status: done
 Blocked by: 01 — Quick Reference Section
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

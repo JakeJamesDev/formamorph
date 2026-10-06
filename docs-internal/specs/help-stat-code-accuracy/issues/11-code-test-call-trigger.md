@@ -1,6 +1,6 @@
 # 11: Code Test Call Trigger
 
-Status: ready-for-human
+Status: done
 Blocked by: 10 — Half-Built World In Code Test
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
