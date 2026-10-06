@@ -55,7 +55,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 <!-- route: settings.output#thinking-mode -->
 
 1. Open **Settings**.
-2. In the switch next to the title, select **Advanced**.
+2. In the mode select next to the title, select **Advanced**.
 3. Open the **Output** tab.
 4. Under **Thinking**, select **Staged**. The **Limit Active Characters** row shows only in this mode.
 5. Select the **Limit Active Characters** checkbox.
@@ -66,7 +66,7 @@ The line under the control says what the picked mode does. **Native** adds no th
 <!-- route: settings.data#settings-mode -->
 
 1. Open **Settings**.
-2. In the switch next to the title, select **Advanced**.
+2. In the mode select next to the title, select **Advanced**.
 3. Open the **Data** tab.
 4. In the **Storage** section, select **Restore Default Worlds**. The button is off when you have deleted none of the bundled worlds.
 5. Select **Confirm** in **Restore Default Worlds**.
@@ -78,14 +78,14 @@ Each deleted bundled world comes back at its latest version. Worlds you still ha
 ## Simple and Advanced
 <!-- keywords: missing setting, missing tab, expert mode, show everything, basic mode, more options, dot indicator, hidden option, power user -->
 
-A switch next to the **Settings** title shows **Simple** or **Advanced**.
+A mode select next to the **Settings** title shows **Simple** or **Advanced**. Open it to see what each mode does.
 
 | Mode | What it shows |
 |---|---|
 | **Simple** | The settings for everyday play: appearance, scene, narration, reading, the core turn passes, the endpoint connection and autosave |
 | **Advanced** | Every setting, plus the **Prompts** and **Tools** tabs |
 
-The mode only changes what you see. A hidden setting still applies. A dot on **Advanced** tells you that a hidden setting is off its default.
+The mode only changes what you see. A hidden setting still applies. A dot on the mode select tells you that a hidden setting is off its default.
 
 In the tables below, **Advanced** marks a row that shows in Advanced mode only.
 

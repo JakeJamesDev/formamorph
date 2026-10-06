@@ -7,8 +7,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
 import { settingsTabsFor, type SettingsTabId } from './settingsTabs';
-import { readSettingsMode } from '@/lib/settingsMode';
-import type { SettingsMode } from '@/lib/settingsMode';
+import { readSettingsMode } from '@/lib/settingsMode';import type { SettingsMode } from '@/lib/settingsMode';
 
 // The bundled-engine panel talks to Electron IPC, and the embedding model is a worker download. Neither
 // runs in jsdom, and neither is what these tests are about.
@@ -36,6 +35,11 @@ const openSettingsOnTab = (initialTab: SettingsTabId) => render(
 );
 
 const tabNames = () => screen.getAllByRole('tab').map((t) => t.textContent);
+const modeSelect = () => screen.getByRole('combobox', { name: 'Settings mode' });
+const pickMode = async (name: 'Simple' | 'Advanced') => {
+  await userEvent.click(modeSelect());
+  await userEvent.click(screen.getByRole('option', { name: new RegExp(name) }));
+};
 
 beforeEach(() => localStorage.clear());
 
@@ -72,7 +76,8 @@ describe('settings mode', () => {
   // The tab strip becomes a dropdown below sm, and it is a second renderer of the same list.
   it('omits hidden tabs from the small-screen tab dropdown too', () => {
     // Radix opens a Select from the keyboard; a click needs pointer capture, which jsdom has not got.
-    const openTabDropdown = () => fireEvent.keyDown(screen.getAllByRole('combobox')[0], { key: 'Enter' });
+    const openTabDropdown = () => fireEvent.keyDown(
+      screen.getAllByRole('combobox').find((c) => c.textContent === 'Display')!, { key: 'Enter' });
     const { unmount } = openSettings('simple');
     openTabDropdown();
     expect(screen.queryByRole('option', { name: 'Prompts' })).toBeNull();
@@ -203,20 +208,44 @@ describe('settings mode', () => {
     expect(screen.getByText('Landscape (W × H)')).toBeTruthy();
   });
 
-  it('marks the Advanced switch only while Simple is hiding a non-default value', () => {
+  it('switches modes through the mode select', async () => {
+    openSettings('simple');
+    expect(tabNames()).not.toContain('Prompts');
+    await pickMode('Advanced');
+    expect(tabNames()).toContain('Prompts');
+    expect(modeSelect()).toHaveTextContent('Advanced');
+    await pickMode('Simple');
+    expect(tabNames()).not.toContain('Prompts');
+    expect(modeSelect()).toHaveTextContent('Simple');
+  });
+
+  it('describes each mode in the mode select list', async () => {
+    openSettings('simple');
+    await userEvent.click(modeSelect());
+    expect(screen.getByRole('option', { name: /Simple/ })).toHaveTextContent('Just the essentials');
+    expect(screen.getByRole('option', { name: /Advanced/ })).toHaveTextContent('Every setting');
+  });
+
+  // The Settings tutorial note and the Take Me There targets for the Data and Output tabs land on this control.
+  it('carries the Take Me There target on the mode select', () => {
+    openSettings('advanced');
+    expect(modeSelect()).toHaveAttribute('data-surface-target', 'settings.data#settings-mode');
+  });
+
+  it('marks the mode select only while Simple is hiding a non-default value', () => {
     const { unmount } = openSettings('simple');
-    expect(screen.queryByLabelText('Hidden settings are off their defaults')).toBeNull();
+    expect(modeSelect()).not.toHaveAccessibleDescription();
     unmount();
 
     // Markdown Formatting is a hidden row, and off is not its default.
     localStorage.setItem('FORMAMORPH_markdownOutput', 'false');
     const second = openSettings('simple');
-    expect(screen.getByLabelText('Hidden settings are off their defaults')).toBeTruthy();
+    expect(modeSelect()).toHaveAccessibleDescription('Hidden settings are off their defaults');
     second.unmount();
 
     // Advanced hides nothing, so it has nothing to report.
     openSettings('advanced');
-    expect(screen.queryByLabelText('Hidden settings are off their defaults')).toBeNull();
+    expect(modeSelect()).not.toHaveAccessibleDescription();
   });
 
   it('keeps Autosave on Data in Simple, and hides only its Storage housekeeping', async () => {

@@ -27,12 +27,12 @@ import { SETTINGS_OPTIONS } from '@/components/modals/settingsCopy';
 import { optionRowCopy, rowCopy } from '@/components/modals/settingsRowCopy';
 import { DisplaySettingsSection } from '@/components/modals/DisplaySettingsSection';
 import { OutputSettingsSection } from '@/components/modals/OutputSettingsSection';
-import { SettingsModeSwitch } from '@/components/modals/SettingsModeSwitch';
+import { ModeSelect } from '@/components/ui/mode-select';
 import type { SettingsSource } from '@/components/modals/settingsSource';
 import { useLocalSettingsSource } from '@/components/design-system/useLocalSettingsSource';
 import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAdvancedData';
 import { reasoningRuledOut } from '@/lib/reasoningEffort';
-import type { SettingsMode } from '@/lib/settingsMode';
+import { SETTINGS_MODE_DESCRIPTIONS, SETTINGS_HIDDEN_NOTICE, type SettingsMode } from '@/lib/settingsMode';
 import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { CommunityCardReference } from '@/components/design-system/CommunityCardReference';
@@ -196,7 +196,14 @@ function SettingsReference() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center gap-3">
         <Meta role="status" aria-live="polite" className="min-w-0 flex-1">{status}</Meta>
-        <SettingsModeSwitch mode={mode} onModeChange={setMode} hasHiddenValues={hasHiddenValues} />
+        <ModeSelect
+          mode={mode}
+          onModeChange={setMode}
+          descriptions={SETTINGS_MODE_DESCRIPTIONS}
+          hiddenNotice={hasHiddenValues ? SETTINGS_HIDDEN_NOTICE : undefined}
+          size="sm"
+          aria-label="Settings mode"
+        />
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <Card role="region" aria-labelledby="display-reference-title">

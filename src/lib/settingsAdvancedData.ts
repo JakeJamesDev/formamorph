@@ -1,5 +1,5 @@
 /**
- * Detects whether anything Settings' Simple mode hides is holding a non-default value, so the mode switch
+ * Detects whether anything Settings' Simple mode hides is holding a non-default value, so the mode select
  * can say so. Its field list is the enumeration of what Simple hides; the gates themselves live at the
  * rows' call sites in `SettingsModal`.
  *
