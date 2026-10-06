@@ -1,6 +1,7 @@
 # Surface Nav Rail
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-06. Tickets 01-08 landed; last landing 594edf6e. Closed without gates.
 Spec session: surface-nav-rail — spec
 
 Supersedes the desktop and help rulings of `world-editor-edge-rail` (its Q1, Q3, Q7, Q11, Q15, Q16). That effort's Q5, Q8, Q12 and Q13 still hold where this spec does not replace them.

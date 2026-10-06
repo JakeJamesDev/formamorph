@@ -17,13 +17,15 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **👤 User-facing**
-  - **The World Editor and Community Creations move their sections to a collapsible side rail.** Settings swaps its Simple/Advanced switch for a mode select that says what each mode shows.
-  - **The World Editor and Community Creations keep the back arrow in the same place on every screen.** Every header now shares one back button, one height and one side spacing.
-  - **Community Creations picks its section from a collapsible side rail below a full-width header.** The rail remembers if you collapse it. The sort select, the order toggle and refresh now end the header row.
-  - **The World Editor's tabs move to a collapsible side rail inside the list.** Lines split the tab groups, and the rail remembers whether you collapsed it. It shows only icons when the list is narrow, and stays in place but unavailable while the Test Bench fills the list.
-  - **On desktop, the World Editor puts Save, Export World and the mode select in one bar above both panes.** It shows Saved or Unsaved changes beside the title, with Find and the Test Bench in its center. The bar has no help button.
-  - **On mobile, the World Editor's header holds Find, the Test Bench and the mode select, with no help button.** The Sections list splits its groups with lines, in the same order as the desktop rail. Morphie and the guide answer questions about each tab.
-  - **On mobile, Community Creations picks its section from a Sections bar under a one-row header.** The header holds back, search and a Filters icon with a count of active filters. Refresh moves into the Filters panel, beside sort.
+  - **Side Rail:**
+    - **The World Editor and Community Creations move their sections to a collapsible side rail.** Lines split the rail's groups, and the rail remembers if you collapse it.
+    - **The World Editor and Community Creations keep the back arrow in the same place on every screen.** Every header now shares one back button, one height and one side spacing.
+    - **In the World Editor, the side rail sits inside the list.** It shows only icons when the list is narrow, and stays in place but unavailable while the Test Bench fills the list.
+    - **In Community Creations, the side rail sits below a full-width header.** The sort select, the order toggle and refresh now end the header row.
+    - **On desktop, the World Editor puts Save, Export World and the mode select in one bar above both panes.** It shows Saved or Unsaved changes beside the title, with Find and the Test Bench in its center. The bar has no help button.
+    - **On mobile, the World Editor's header holds Find, the Test Bench and the mode select, with no help button.** The Sections list splits its groups with lines, in the same order as the desktop rail. Morphie and the guide answer questions about each tab.
+    - **On mobile, Community Creations picks its section from a Sections bar under a one-row header.** The header holds back, search and a Filters icon with a count of active filters. Refresh moves into the Filters panel, beside sort.
+  - **Settings swaps its Simple/Advanced switch for a mode select that says what each mode shows.**
 
 ### Minor Changes
 
@@ -112,10 +114,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **`formamorph.ai/account` and your profile's Settings tab have a Patreon section to link Patreon and show Supporter Flair.** The section shows your tier and how long you've supported. Clear **Show Supporter Flair** to hide your flair. **Unlink** asks first and removes the flair at once.
     - **A supporter's name shows a Supporter or Supporter+ badge, the tier color and a ring around their Profile Image.** It shows on community cards, listing details, comments, feedback, notifications and profiles. Point at the badge to see how long they've supported. Staff keep their staff badge only.
     - **`formamorph.ai/supporters` lists the Patreon supporters who linked their account and kept Supporter Flair on.** Supporter+ names come first, and the longest-standing supporter leads each section. Each name links to the profile. The landing page footer and the account page link to it.
-  - **World Editor:**
-    - **The World Editor's ? help button sits in the header row, right of the Find and replace button.** The Overview form starts right under the header.
-    - **On the World Editor's Locations tab, List and Canvas are icons with tooltips at the end of the search row.**
-    - **On mobile, the World Editor's Sections bar names the current tab and opens the tab list.** The list shows Overview alone at the top, then the Content and Vocabulary groups.
+  - **On the World Editor's Locations tab, List and Canvas are icons with tooltips at the end of the search row.**
   - **In Backup & Restore, each save shows the name of its world at the right of its row.** Point at the row to see the full name when it is too long to fit.
   - **The User Profile dialog has a Settings tab with your email, Change Password and Delete Account.** You can add or change your account email there, and resend the verification email. The dialog header now shows only **Log Out**.
 - **🛠️ Developer tooling**
