@@ -124,3 +124,22 @@ describe('PlaceholderSectionList', () => {
     expect(screen.getByTestId('host-dialog')).toContainElement(row);
   });
 });
+
+describe('PlaceholderSectionList — many closed pickers over one long list', () => {
+  // A pin editor holds one picker per pin, each over every placeholder: 200 pickers over 1,000 rows.
+  const rows = Array.from({ length: 1000 }, (_, i) => ({ token: chip(`ph${i}`), label: `Placeholder ${i}`, color: undefined }));
+
+  it('mounts closed in well under a second, each trigger reading its own pick', () => {
+    const t0 = performance.now();
+    render(
+      <>
+        {Array.from({ length: 200 }, (_, i) => (
+          <PlaceholderSectionList key={i} rows={rows} selectedId={`ph${i * 5}`} onSelect={() => {}} />
+        ))}
+      </>,
+    );
+    const ms = performance.now() - t0;
+    expect(screen.getByRole('button', { name: 'Placeholder 995' })).toBeInTheDocument();
+    expect(ms).toBeLessThan(500);
+  });
+});

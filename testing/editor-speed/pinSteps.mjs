@@ -34,7 +34,7 @@ export function pinSteps({ settle, traced, pct, profiled }) {
     await page.keyboard.type(TEXT, { delay: 120 });
     const typedMs = Date.now() - t0;
     await settle(page, 1500);
-    if (!(await field.inputValue()).includes('quick brown fox')) throw new Error('typed text did not land in Name');
+    if (!(await field.evaluate((el) => (el.value ?? el.textContent ?? '').includes('quick brown fox')))) throw new Error('typed text did not land in Name');
     const lat = await page.evaluate(() => window.__bench.events.filter((e) => /key|input|beforeinput/.test(e.name)).map((e) => e.duration));
     return { keys: TEXT.length, typedMs, latP50: pct(lat, 50), latP95: pct(lat, 95), latMax: pct(lat, 100) };
   };
@@ -45,19 +45,27 @@ export function pinSteps({ settle, traced, pct, profiled }) {
   const pinSource = (tab, label) => async ({ page, cdp }) => traced(page, cdp, async () => {
     const opened = await openRow(page, cdp, tab, label, () => page.getByRole('tab', { name: 'Pins' }));
     const pinsTab = page.getByRole('tab', { name: 'Pins' });
+    // The longest main-thread task while the Pins tab opens, apart from the typing that follows.
+    await page.evaluate(() => {
+      window.__pinTasks = [];
+      new PerformanceObserver((list) => window.__pinTasks.push(...list.getEntries().map((e) => e.duration))).observe({ type: 'longtask' });
+    });
     const t0 = Date.now();
     const showPins = async () => {
       await pinsTab.click();
-      await page.getByRole('button', { name: 'Remove Pin' }).first().waitFor({ timeout: process.env.EDITOR_SPEED_PROFILE ? 60_000 : 180_000 });
+      // A CSS locator: a role query computes every button's accessible name, and with 200 rows that scan is
+      // most of what the step would time.
+      await page.locator('button[aria-label="Remove Pin"]').first().waitFor({ timeout: process.env.EDITOR_SPEED_PROFILE ? 60_000 : 180_000 });
     };
     await (process.env.EDITOR_SPEED_PROFILE ? profiled(cdp, `${label} Pins tab`, showPins) : showPins());
     const pinsTabMs = Date.now() - t0;
     await settle(page, 1500);
+    const pinsTabMaxBlockMs = Math.round(await page.evaluate(() => Math.max(0, ...window.__pinTasks)));
     const dom = await domNodes(page);
-    const pinRows = await page.getByRole('button', { name: 'Remove Pin' }).count();
+    const pinRows = await page.locator('button[aria-label="Remove Pin"]').count();
     await page.getByRole('tab', { name: 'Details' }).click();
     await settle(page);
-    return { ...opened, pinsTabMs, pinRows, domNodes: dom, ...(await typeName(page)) };
+    return { ...opened, pinsTabMs, pinsTabMaxBlockMs, pinRows, domNodes: dom, ...(await typeName(page)) };
   });
 
   return {

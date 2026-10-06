@@ -17,6 +17,24 @@ const rowId = (row: ChipRow): string => decodePlaceholderToken(row.token)?.id ??
 /** True where `id` is the pick. Picking nothing is `''`, which no row may match. */
 const isPicked = (id: string, selectedId: string): boolean => id !== '' && id === selectedId;
 
+/** The row index per rows list, built on the first lookup. Callers pass memoized lists, so none changes in place. */
+const rowsById = new WeakMap<readonly ChipRow[], Map<string, ChipRow>>();
+
+/** The first row naming `selectedId`. Many pickers over one rows list share one index of it. */
+function pickedRow(rows: readonly ChipRow[], selectedId: string): ChipRow | undefined {
+  if (selectedId === '') return undefined;
+  let byId = rowsById.get(rows);
+  if (!byId) {
+    byId = new Map();
+    for (const row of rows) {
+      const id = rowId(row);
+      if (id !== '' && !byId.has(id)) byId.set(id, row);
+    }
+    rowsById.set(rows, byId);
+  }
+  return byId.get(selectedId);
+}
+
 /**
  * What a closed picker shows for the row it settled on: an owner's placeholder as the whole `Keeper › Mood`
  * behind that owner's icon, and a shared one as its plain name. The path is what keeps a pick clear once the
@@ -30,6 +48,38 @@ export const PlaceholderRowPath = ({ row }: { row: ChipRow }) => (
     </span>
   ) : <span className="truncate">{row.label}</span>
 );
+
+/** The open list. Its own component, so a closed picker builds no row elements: Radix mounts the content only
+ *  while open, and a component element renders only once mounted. */
+function SectionRows({ rows, selectedId, placeholders, onPick }: {
+  rows: readonly ChipRow[];
+  selectedId: string;
+  placeholders?: readonly Placeholder[];
+  onPick: (id: string) => void;
+}) {
+  return (
+    <ScrollArea className="max-h-56">
+      {/* A heading is drawn off the first row under it, so a section nothing offers shows none. */}
+      {rows.map((row, i) => (
+        <Fragment key={row.token}>
+          {chipSectionOpens(rows, i) && row.heading && (
+            <div className="px-2 pb-0.5 pt-1.5"><ChipRowHeading row={row} placeholders={placeholders} /></div>
+          )}
+          <button
+            type="button"
+            data-testid="placeholder-section-row"
+            onClick={() => onPick(rowId(row))}
+            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent"
+          >
+            <span className="min-w-0 flex-1 truncate">{row.label}</span>
+            {isPicked(rowId(row), selectedId) && <Check className="h-4 w-4 shrink-0" aria-hidden />}
+          </button>
+        </Fragment>
+      ))}
+      {!rows.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders</p>}
+    </ScrollArea>
+  );
+}
 
 /**
  * The picker every placeholder-choosing dropdown is: a popover over the vocabulary's own sectioned rows,
@@ -61,7 +111,7 @@ export function PlaceholderSectionList({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const selected = rows.find((row) => isPicked(rowId(row), selectedId));
+  const selected = pickedRow(rows, selectedId);
   const content = selected ? <PlaceholderRowPath row={selected} />
     : <span className="truncate text-muted-foreground">{empty}</span>;
 
@@ -82,26 +132,12 @@ export function PlaceholderSectionList({
         )}
       </PopoverTrigger>
       <PopoverContent portal={false} align="start" className="w-64 p-1">
-        <ScrollArea className="max-h-56">
-          {/* A heading is drawn off the first row under it, so a section nothing offers shows none. */}
-          {rows.map((row, i) => (
-            <Fragment key={row.token}>
-              {chipSectionOpens(rows, i) && row.heading && (
-                <div className="px-2 pb-0.5 pt-1.5"><ChipRowHeading row={row} placeholders={placeholders} /></div>
-              )}
-              <button
-                type="button"
-                data-testid="placeholder-section-row"
-                onClick={() => { onSelect(rowId(row)); setOpen(false); }}
-                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent"
-              >
-                <span className="min-w-0 flex-1 truncate">{row.label}</span>
-                {isPicked(rowId(row), selectedId) && <Check className="h-4 w-4 shrink-0" aria-hidden />}
-              </button>
-            </Fragment>
-          ))}
-          {!rows.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders</p>}
-        </ScrollArea>
+        <SectionRows
+          rows={rows}
+          selectedId={selectedId}
+          placeholders={placeholders}
+          onPick={(id) => { onSelect(id); setOpen(false); }}
+        />
         {footer?.(() => setOpen(false))}
       </PopoverContent>
     </Popover>

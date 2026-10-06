@@ -823,17 +823,39 @@ function pinIndex(world: PinEditorWorld): PinIndex {
 }
 const indexCache = new WeakMap<PinEditorWorld, PinIndex>();
 
+/** Each placeholder's display name, read once per placeholder list: every value row of a placeholder shares
+ *  one entry, and a world object that only moved a trait keeps the list. */
+interface NameBook {
+  owners: PinEditorWorld['placeholderOwners'];
+  letters: PinEditorWorld['placementLetters'];
+  names: Map<string, string>;
+}
+const nameBooks = new WeakMap<readonly Placeholder[], NameBook>();
+
+function nameBook({ placeholders, placeholderOwners: owners, placementLetters: letters }: PinEditorWorld): NameBook {
+  const hit = nameBooks.get(placeholders);
+  if (hit && hit.owners === owners && hit.letters === letters) return hit;
+  const book = { owners, letters, names: new Map<string, string>() };
+  nameBooks.set(placeholders, book);
+  return book;
+}
+
 /** The spellings every pin surface shares: chips labeled, a band as `Hunger ≤ 20`, a value as
  *  `Region = Northern`. */
 function labeler(world: PinEditorWorld) {
   const { placeholders, placeholderOwners: owners, placementLetters: letters } = world;
+  const { names } = nameBook(world);
   const text = (s: string) => labelPlaceholders(s, placeholders, { letters, owners });
+  const nameOf = (id: string) => {
+    let name = names.get(id);
+    if (name === undefined) names.set(id, (name = placeholderDisplayName(id, placeholders, { letters, owners })));
+    return name;
+  };
   return {
     text,
     band: (stat: Stat, band: StatDescriptor) =>
       `${text(stat.name)} ≤ ${band.threshold}${thresholdUnitOf(stat) === 'percent' ? '%' : ''}`,
-    value: (ph: Placeholder, value: PlaceholderValue) =>
-      `${placeholderDisplayName(ph.id, placeholders, { letters, owners })} = ${placeholderValueLine(text(value.text))}`,
+    value: (ph: Placeholder, value: PlaceholderValue) => `${nameOf(ph.id)} = ${placeholderValueLine(text(value.text))}`,
   };
 }
 
