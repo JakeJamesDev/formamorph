@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, type ReactNode, type SetStateAction } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
-import { canonicalStringify } from '@/lib/canonicalStringify';
+import { canonicalEqual } from '@/lib/canonicalStringify';
 import { dirtyDiff } from '@/lib/dirtyDiff';
 import { registerDevHook } from '@/lib/devRouter';
 import { holdUnsavedWorld } from '@/lib/unsavedWorld';
@@ -51,6 +51,8 @@ import type {
 /** What a world save answers: done, or the error that stopped it with the world it could not store. */
 export type SaveResult = { ok: true } | { ok: false; error: unknown; world: World };
 
+type WorldData = Omit<World, 'id' | 'version'>;
+
 /** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
 const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', enabled: true, entries: [] });
 
@@ -69,7 +71,7 @@ function buildWorldData(
   dictionaries: Dictionary[],
   placeholders: Placeholder[],
   placeholderGroups: PlaceholderGroup[],
-): Omit<World, 'id' | 'version'> {
+): WorldData {
   return {
     worldOverview: overview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups,
   };
@@ -119,8 +121,9 @@ function useProvideGameData() {
     setOwnedBookIds(ownedLibraryIds.current);
   }, [setOwnedBookIds]);
   const [worldId, setWorldId] = useState<string | null>(null);
-  // Serialized last-saved world; compared against current data to flag pending edits.
-  const [savedSnapshot, setSavedSnapshot] = useState<string>('');
+  // The last saved or loaded world, compared against current data to flag pending edits. It shares every
+  // record no edit has replaced, so it costs only the records edited since.
+  const [savedWorld, setSavedWorld] = useState<WorldData | null>(null);
 
   const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
     setStats(prevStats => [...prevStats, withDefaultDescriptors(newStat)]);
@@ -384,9 +387,9 @@ function useProvideGameData() {
     setPlaceholderGroups(nextPlaceholderGroups);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
-    setSavedSnapshot(JSON.stringify(buildWorldData(
+    setSavedWorld(buildWorldData(
       normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups,
-    )));
+    ));
 
     return { world: worldData, isDefault };
   }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
@@ -517,22 +520,10 @@ function useProvideGameData() {
     [entities, entityGroups, locations, traits, traitGroups, stats, dictionaries, worldOverview, worldPlaceholders],
   ));
 
-  // Per-keystroke dirty check over image-heavy world data: canonicalStringify caches by identity, so an
-  // edit re-serializes only that record and its ancestors and the base64 elsewhere is left alone.
-  //
-  // Both sides go through the same canonical form rather than raw JSON, because raw JSON called a world
-  // changed over things no author did: a record rebuilt with its keys in another order, and an optional
-  // field that keeps an empty `[]` once it has been filled in and cleared again.
-  const stringifyCache = useRef(new WeakMap<object, string>());
-  // Derived from the stored snapshot rather than captured beside it, so the baseline cannot be built by a
-  // different route than the value it is compared against. Recomputed only on load and save.
-  const savedCanonical = useMemo(
-    () => (savedSnapshot ? canonicalStringify(JSON.parse(savedSnapshot), new WeakMap()) : ''),
-    [savedSnapshot],
-  );
+  // Per-keystroke and canonical: unedited records match by identity, and key order or emptied fields don't count.
   const isWorldDirty = useMemo(
-    () => !!savedSnapshot && canonicalStringify(getWorldData(), stringifyCache.current) !== savedCanonical,
-    [getWorldData, savedCanonical, savedSnapshot],
+    () => savedWorld !== null && !canonicalEqual(getWorldData(), savedWorld),
+    [getWorldData, savedWorld],
   );
   // The crash screen sits above this provider and exports from here. A reader of the committed world, held
   // only while it has unsaved edits, so nothing is built per commit and nothing is copied. Never released on
@@ -540,25 +531,25 @@ function useProvideGameData() {
   useEffect(() => {
     holdUnsavedWorld(isWorldDirty ? () => ({ id: worldId ?? '', version: APP_VERSION, ...getWorldData() }) : null);
   }, [isWorldDirty, worldId, getWorldData]);
-  // DEV: names what `isWorldDirty` is reacting to. Parses the stored snapshot, as the baseline above does.
+  // DEV: names what `isWorldDirty` is reacting to.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    return registerDevHook('dirtyDiff', () => (savedSnapshot ? dirtyDiff(JSON.parse(savedSnapshot), getWorldData()) : []));
-  }, [savedSnapshot, getWorldData]);
+    return registerDevHook('dirtyDiff', () => (savedWorld ? dirtyDiff(savedWorld, getWorldData()) : []));
+  }, [savedWorld, getWorldData]);
 
   /**
    * Drop every pending edit and restore the last saved (or freshly loaded) world.
    *
    * The editor's managers write straight through to this store as you type, so "exit without saving" has
-   * nothing of its own to roll back — the only record of the pre-edit world is `savedSnapshot`, and reloading
-   * from it is the revert. `loadWorldData` re-baselines the snapshot, so `isWorldDirty` clears as a side effect.
+   * nothing of its own to roll back — the only record of the pre-edit world is `savedWorld`, and reloading
+   * from it is the revert. `loadWorldData` re-baselines, so `isWorldDirty` clears as a side effect.
    */
   const discardChanges = useCallback(() => {
     // No baseline means nothing has been loaded yet; there is no state worth restoring.
-    if (!savedSnapshot) return;
-    // The snapshot is `buildWorldData` output — `Omit<World, 'id' | 'version'>` — so the id has to go back on.
-    loadWorldData({ ...JSON.parse(savedSnapshot), id: worldId ?? '' } as World);
-  }, [savedSnapshot, worldId, loadWorldData]);
+    if (!savedWorld) return;
+    // The baseline is current, so the migration steps for older versions don't run on it.
+    loadWorldData({ ...savedWorld, id: worldId ?? '', version: APP_VERSION });
+  }, [savedWorld, worldId, loadWorldData]);
 
   // Persist the current world and re-baseline so isWorldDirty clears. Edited copies of owned library items
   // go to the library only after the world is stored, so a failed save changes neither. The stamps they
@@ -596,7 +587,7 @@ function useProvideGameData() {
         setEntities((prev) => stampLinks(prev, written));
         setDictionaries((prev) => stampLinks(prev, written));
       }
-      setSavedSnapshot(JSON.stringify(world));
+      setSavedWorld(world);
       return { ok: true };
     } catch (error) {
       console.error('Error saving world:', error);
@@ -675,7 +666,7 @@ function useProvideGameData() {
     loadWorldData,
     worldId, setWorldId,
     // True once loadWorldData has run. A world file may have no id, so worldId can't signal this.
-    worldLoaded: savedSnapshot !== '',
+    worldLoaded: savedWorld !== null,
     isWorldDirty,
     saveWorld,
     discardChanges,
