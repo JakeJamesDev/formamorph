@@ -11,7 +11,7 @@ Recommended model rationale: mobile header rearrangement in one view, reusing th
 
 On mobile Community Creations' header first row reads back, search, Filters (Q28). Filters is an icon button with its turning chevron and a count badge while filters are on. Refresh moves into the Filters panel: its first row is the sort select filling the row, then the order toggle and refresh at the right edge.
 
-The Sections bar under the header replaces the section dropdown, grouped like the rail (Q29). Changelog fragment: the lead **The World Editor and Community Creations move their sections to a collapsible side rail.** and a sentence on Community's mobile header.
+The Sections bar under the header replaces the section dropdown, grouped like the rail (Q29). Changelog fragment: its own lead on Community's mobile header and Sections bar (Q37).
 
 From the prototype branch `prototype/world-editor-tabs` (final commit `dbe3c035`, Community header `54a3e233`); launch entry `proto-world-editor-tabs`, port 5245. Mobile settled in commits `9ef4923c` and `40d2329c`.
 

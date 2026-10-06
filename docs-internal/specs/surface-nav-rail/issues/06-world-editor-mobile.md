@@ -13,7 +13,7 @@ The World Editor's mobile header reads: back, Find, the Test Bench, the Mode Sel
 
 The Sections bar draws the rail's grouping: a plain line between groups and no captions (Q19), so its order and splits match the rail's. Mobile keeps its footer with Export World, Optimize Images in Advanced, and Save (Q25).
 
-The Design System's Sections Bar pattern and showcase show lines instead of captions. Changelog fragment: the lead **The World Editor and Community Creations move their sections to a collapsible side rail.** and a sentence on the mobile editor header.
+The Design System's Sections Bar pattern and showcase show lines instead of captions. Changelog fragment: its own lead on the mobile editor header and Sections bar (Q37).
 
 From the prototype branch `prototype/world-editor-tabs` (final commit `dbe3c035`, Community header `54a3e233`); launch entry `proto-world-editor-tabs`, port 5245. Mobile settled in commits `40d2329c` and `685642a7`.
 
