@@ -16,22 +16,53 @@ export function pairKey(a: string, b: string): string {
   return [a, b].sort().join("|");
 }
 
-/** Every pair the containment tree links for free: parent↔child, and sibling↔sibling under a real parent. */
-export function implicitPairs(locations: GameLocation[]): [string, string][] {
-  const byParent = new Map<string, GameLocation[]>();
+/** Who contains whom, built in one pass over the world so a location's implicit neighbors cost its own
+ *  degree, not the world's sibling pairs. A parent id counts even when no location carries it. */
+export interface ParentIndex {
+  parentOf: Map<string, string>;
+  childrenOf: Map<string, string[]>;
+}
+
+export function parentIndex(locations: GameLocation[]): ParentIndex {
+  const parentOf = new Map<string, string>();
+  const childrenOf = new Map<string, string[]>();
   for (const loc of locations) {
     const parentId = loc.parentId ?? null;
     if (parentId === null) continue; // top-level locations share no parent, so they are not siblings
-    const group = byParent.get(parentId);
-    if (group) group.push(loc);
-    else byParent.set(parentId, [loc]);
+    parentOf.set(loc.id, parentId);
+    const group = childrenOf.get(parentId);
+    if (group) group.push(loc.id);
+    else childrenOf.set(parentId, [loc.id]);
   }
+  return { parentOf, childrenOf };
+}
+
+/** The ids the containment tree links to `id` for free: its parent, its children, and its siblings. */
+export function implicitNeighbors(id: string, { parentOf, childrenOf }: ParentIndex): string[] {
+  const out = new Set<string>(childrenOf.get(id));
+  const parentId = parentOf.get(id);
+  if (parentId !== undefined) {
+    out.add(parentId);
+    for (const sibling of childrenOf.get(parentId) ?? []) if (sibling !== id) out.add(sibling);
+  }
+  return [...out];
+}
+
+/** Whether the containment tree links `a` and `b` for free, in one probe. */
+export function isImplicitPair({ parentOf }: ParentIndex, a: string, b: string): boolean {
+  if (a === b) return parentOf.get(a) === a; // only a location that names itself its parent pairs with itself
+  const parentA = parentOf.get(a);
+  return parentA === b || parentOf.get(b) === a || (parentA !== undefined && parentA === parentOf.get(b));
+}
+
+/** Every pair the containment tree links for free: parent↔child, and sibling↔sibling under a real parent. */
+export function implicitPairs(locations: GameLocation[]): [string, string][] {
   const pairs = new Map<string, [string, string]>();
-  for (const [parentId, children] of byParent) {
+  for (const [parentId, children] of parentIndex(locations).childrenOf) {
     for (let i = 0; i < children.length; i++) {
-      pairs.set(pairKey(children[i].id, parentId), [children[i].id, parentId]);
+      pairs.set(pairKey(children[i], parentId), [children[i], parentId]);
       for (let j = i + 1; j < children.length; j++) {
-        pairs.set(pairKey(children[i].id, children[j].id), [children[i].id, children[j].id]);
+        pairs.set(pairKey(children[i], children[j]), [children[i], children[j]]);
       }
     }
   }
@@ -70,8 +101,12 @@ const authoredPairs = (connections: Connection[]) => new Set(connections.map((c)
 /** The implicit pairs an authored Connection has replaced — what an editor surface must show as no longer
  *  free, so an author narrowing travel to one way can see they did. */
 export function overriddenPairs(locations: GameLocation[], connections: Connection[]): [string, string][] {
-  const authored = authoredPairs(connections);
-  return implicitPairs(locations).filter(([a, b]) => authored.has(pairKey(a, b)));
+  const index = parentIndex(locations);
+  const out = new Map<string, [string, string]>();
+  for (const { a, b } of connections) {
+    if (isImplicitPair(index, a, b)) out.set(pairKey(a, b), [a, b]);
+  }
+  return [...out.values()];
 }
 
 /** How a destination is reached: for free through containment, or across an authored Connection. */
@@ -91,10 +126,8 @@ export function effectiveDestinations(
 ): Map<string, DestinationVia> {
   const authored = authoredPairs(connections);
   const out = new Map<string, DestinationVia>();
-  for (const [a, b] of implicitPairs(locations)) {
-    if (authored.has(pairKey(a, b))) continue;
-    if (a === id) out.set(b, { via: "implicit" });
-    if (b === id) out.set(a, { via: "implicit" });
+  for (const other of implicitNeighbors(id, parentIndex(locations))) {
+    if (!authored.has(pairKey(id, other))) out.set(other, { via: "implicit" });
   }
   for (const connection of connections) {
     for (const { from, to, leg } of connectionLegs(connection)) {
@@ -113,33 +146,46 @@ export function effectiveDestinations(
  * is unreachable. Treating that as "no starts" would badge an entire ordinary world.
  */
 export function reachableFromStarts(locations: GameLocation[], connections: Connection[]): Set<string> {
-  // The whole graph's travel, gathered once before the walk: asking `effectiveDestinations` per visited
-  // location rebuilds the sibling mesh each time, which large grouped worlds cannot afford.
   const authored = authoredPairs(connections);
-  const adjacency = new Map<string, string[]>();
-  const link = (from: string, to: string) => {
-    const out = adjacency.get(from);
-    if (out) out.push(to);
-    else adjacency.set(from, [to]);
-  };
-  for (const [a, b] of implicitPairs(locations)) {
-    if (authored.has(pairKey(a, b))) continue;
-    link(a, b);
-    link(b, a);
-  }
+  const { parentOf, childrenOf } = parentIndex(locations);
+  const legs = new Map<string, string[]>();
   for (const connection of connections) {
-    for (const { from, to } of connectionLegs(connection)) link(from, to);
+    for (const { from, to } of connectionLegs(connection)) {
+      const out = legs.get(from);
+      if (out) out.push(to);
+      else legs.set(from, [to]);
+    }
   }
 
   const flagged = locations.filter((l) => l.isStarting);
   const seen = new Set((flagged.length ? flagged : locations).map((l) => l.id));
   const queue = [...seen];
-  while (queue.length) {
-    const id = queue.shift()!;
-    for (const dest of adjacency.get(id) ?? []) {
-      if (!seen.has(dest)) {
-        seen.add(dest);
-        queue.push(dest);
+  const visit = (id: string) => {
+    if (!seen.has(id)) {
+      seen.add(id);
+      queue.push(id);
+    }
+  };
+  // Siblings are a clique minus the overridden pairs, so each parent keeps the siblings no visit has claimed
+  // yet. A visit claims all it can link to and skips only the few overridden pairs: the walk stays linear
+  // in the children, where visiting every sibling's full sibling list would be quadratic.
+  const unclaimed = new Map<string, Set<string>>();
+  for (let next = 0; next < queue.length; next++) {
+    const id = queue[next];
+    for (const to of legs.get(id) ?? []) visit(to);
+    for (const child of childrenOf.get(id) ?? []) {
+      if (!authored.has(pairKey(id, child))) visit(child);
+    }
+    const parentId = parentOf.get(id);
+    if (parentId === undefined) continue;
+    if (!authored.has(pairKey(id, parentId))) visit(parentId);
+    let group = unclaimed.get(parentId);
+    if (!group) unclaimed.set(parentId, (group = new Set(childrenOf.get(parentId))));
+    for (const sibling of group) {
+      if (seen.has(sibling)) group.delete(sibling);
+      else if (!authored.has(pairKey(id, sibling))) {
+        group.delete(sibling);
+        visit(sibling);
       }
     }
   }

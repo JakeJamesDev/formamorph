@@ -3,7 +3,7 @@ import type {
   World, SaveObject, Stat, GameState, Trait, TraitGroup, Entity, PlayerStat, Connection, ConnectionLeg, GameLocation, Placeholder, PlaceholderValue,
   Opening,
 } from '@/types';
-import { implicitPairs, pairKey } from './locationGraph';
+import { isImplicitPair, parentIndex } from './locationGraph';
 import { normalizeCustomVRM } from './worldImport';
 import { autoBindLegacyBodyStats } from './bodyMorphs';
 import { appendCurrentToHistory } from './turnHistory';
@@ -181,7 +181,7 @@ function migrateLocationConnections(world: Record<string, unknown>): void {
   // Pairs the containment tree already linked. A record replaces that link (ADR-0002), so a one-sided
   // declaration between two such locations has to be recorded two-way or the *other* end silently loses a
   // trip it used to have for free — the migration would narrow navigation the author never narrowed.
-  const implicit = new Set(implicitPairs(world.locations as GameLocation[]).map(([a, b]) => pairKey(a, b)));
+  const index = parentIndex(world.locations as GameLocation[]);
   const records: Connection[] = [];
   const done = new Set<string>();
   for (const key of declared) {
@@ -190,7 +190,7 @@ function migrateLocationConnections(world: Record<string, unknown>): void {
     const reciprocal = `${to}|${from}`;
     done.add(key);
     done.add(reciprocal);
-    const twoWay = declared.has(reciprocal) || implicit.has(pairKey(from, to));
+    const twoWay = declared.has(reciprocal) || isImplicitPair(index, from, to);
     records.push({ id: randomUUID(), a: from, b: to, aToB: {}, ...(twoWay ? { bToA: {} } : {}) });
   }
   const existing = Array.isArray(world.connections) ? (world.connections as Connection[]) : [];
