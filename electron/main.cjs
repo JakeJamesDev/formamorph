@@ -211,6 +211,62 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
 ]);
 
+/** Recover a window whose renderer died (a crash or out of memory) or hung. A dead renderer leaves a blank
+ *  window, so say what happened and reload; a hung one gets the choice to wait. */
+function watchRenderer(win) {
+  const contents = win.webContents;
+  let hangPrompt = null;
+  let killedByUser = false; // the hang prompt's Reload ends the renderer on purpose; skip the crash prompt
+  let crashPrompted = false;
+
+  contents.on('render-process-gone', async (_event, details) => {
+    if (details.reason === 'clean-exit' || win.isDestroyed()) return;
+    if (killedByUser) {
+      killedByUser = false;
+      contents.reload();
+      return;
+    }
+    if (crashPrompted) return;
+    crashPrompted = true;
+    hangPrompt?.abort();
+    await dialog.showMessageBox(win, {
+      type: 'error',
+      title: 'Formamorph Stopped Working',
+      message: details.reason === 'oom' ? 'Formamorph ran out of memory.' : 'The Formamorph window stopped working.',
+      detail: 'Unsaved changes are lost. Reload to continue.',
+      buttons: ['Reload'],
+    });
+    crashPrompted = false;
+    if (!win.isDestroyed()) contents.reload();
+  });
+
+  contents.on('unresponsive', async () => {
+    if (hangPrompt || win.isDestroyed()) return;
+    hangPrompt = new AbortController();
+    const prompt = hangPrompt;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      title: 'Formamorph Is Not Responding',
+      message: 'The Formamorph window is not responding.',
+      detail: 'Wait for it to recover, or reload now. Reloading loses unsaved changes.',
+      buttons: ['Wait', 'Reload'],
+      defaultId: 0,
+      cancelId: 0,
+      signal: prompt.signal,
+    });
+    if (hangPrompt === prompt) hangPrompt = null;
+    if (prompt.signal.aborted || response !== 1 || win.isDestroyed()) return;
+    // A hung page can't reload itself: end its process, and the death handler reloads. The flag skips the
+    // crash prompt for that death; the timer clears it if no death event comes.
+    killedByUser = true;
+    setTimeout(() => { killedByUser = false; }, 30000);
+    contents.forcefullyCrashRenderer();
+  });
+
+  // The page recovered by itself: drop the prompt.
+  contents.on('responsive', () => hangPrompt?.abort());
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -251,6 +307,8 @@ function createWindow() {
       if (/^https?:\/\//.test(url)) shell.openExternal(url);
     }
   });
+
+  watchRenderer(win);
 
   // Dev: load the Vite dev server when its URL is provided; otherwise the packaged build.
   const devURL = process.env.VITE_DEV_SERVER_URL;
