@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import {
-  Background, ReactFlow, type Edge, type Node, type NodeProps,
+  Background, Handle, Position, ReactFlow, type Edge, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { MapPin } from 'lucide-react';
@@ -8,8 +8,10 @@ import { FloatingEdge } from '@/components/FloatingEdge';
 import { toFlowEdge } from '@/lib/canvasEdges';
 import { useCanvasConnectionStyle } from '@/lib/canvasPrefs';
 import {
-  buildLocationCanvas, CANVAS_GRID, isTravelClick, TOUCH_SLOP, UNNAMED_LOCATION, type TravelPress,
+  buildLocationCanvas, CANVAS_GRID, implicitCanvasEdges, isTravelClick, mapFocus, TOUCH_SLOP, UNNAMED_LOCATION,
+  type TravelPress,
 } from '@/lib/locationCanvas';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -67,13 +69,24 @@ const TravelButton = ({ id, data, className }: {
   );
 };
 
+/** Unseen ends xyflow needs before it draws an arrow; `FloatingEdge` ignores where they sit. */
+const ArrowEnds = () => (
+  <>
+    <Handle type="source" position={Position.Top} isConnectable={false} className="!pointer-events-none !opacity-0" />
+    <Handle type="target" position={Position.Top} isConnectable={false} className="!pointer-events-none !opacity-0" />
+  </>
+);
+
 /** A location with no sub-locations: one box carrying its name, the whole of it the way there. */
 const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => (
-  <TravelButton
-    id={id}
-    data={data}
-    className={cn('flex h-full w-full justify-center rounded-md border px-3', data.here && hereRing)}
-  />
+  <>
+    <TravelButton
+      id={id}
+      data={data}
+      className={cn('flex h-full w-full justify-center rounded-md border px-3', data.here && hereRing)}
+    />
+    <ArrowEnds />
+  </>
 );
 
 /** A location holding sub-locations: a box around them, named along its top. The name is the way *to* it —
@@ -81,6 +94,7 @@ const MapLocationNode = ({ id, data }: NodeProps<MapNode>) => (
 const MapGroupNode = ({ id, data }: NodeProps<MapNode>) => (
   <div className={cn('h-full w-full rounded-md border bg-muted/40', data.here && hereRing)}>
     <TravelButton id={id} data={data} className="flex w-full rounded-t-md border-b px-3 py-1.5" />
+    <ArrowEnds />
   </div>
 );
 
@@ -105,12 +119,22 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
     if (location) onTravel(location);
   }, [locations, onTravel]);
 
+  // The layout does not depend on who is focused, so a hover redraws arrows and never the boxes.
   const map = useMemo(
     () => buildLocationCanvas(locations, connections, {
       resolveName: (location) => location.name || UNNAMED_LOCATION,
-      focus: currentLocationId ? [currentLocationId] : [],
     }),
-    [locations, connections, currentLocationId],
+    [locations, connections],
+  );
+
+  // Implicit arrows come from where the player stands, plus the box under the pointer. A touch screen has
+  // no hover: its stray mouse events must not leave arrows behind.
+  const canHover = useMediaQuery('(hover: hover)');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const hovered = canHover ? hoveredId : null;
+  const implicitEdges = useMemo(
+    () => implicitCanvasEdges(locations, connections, mapFocus({ current: currentLocationId, hovered })),
+    [locations, connections, currentLocationId, hovered],
   );
 
   const nodes = useMemo<MapNode[]>(() => map.nodes.map((node) => ({
@@ -127,8 +151,8 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
   })), [map, currentLocationId]);
 
   const edges = useMemo<Edge[]>(
-    () => map.edges.map((edge) => toFlowEdge(edge, connectionStyle, { interactive: false })),
-    [map, connectionStyle],
+    () => [...map.edges, ...implicitEdges].map((edge) => toFlowEdge(edge, connectionStyle, { interactive: false })),
+    [map, implicitEdges, connectionStyle],
   );
 
   return (
@@ -158,6 +182,12 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
           nodesDraggable={false}
           nodesConnectable={false}
           nodesFocusable={false}
+          // A large world keeps only the boxes and arrows in view in the DOM.
+          onlyRenderVisibleElements
+          onNodeMouseEnter={(_, node) => setHoveredId(node.id)}
+          onNodeMouseLeave={() => setHoveredId(null)}
+          // A pan can cull the hovered box, and a culled box never sends its mouse-leave.
+          onMoveStart={() => setHoveredId(null)}
           elementsSelectable={false}
           edgesFocusable={false}
           // Any button's drag pans — the canvas's right- and middle-drag panning, plus the left button,
