@@ -42,19 +42,12 @@ async function stubCatalog(page: Page): Promise<void> {
 }
 
 /**
- * Selects a section the way a reader does on this viewport: a rail row on desktop (landscape), the
- * header dropdown on mobile (portrait). `current` is the section the closed dropdown trigger is showing,
- * needed to find it before the click changes what it says.
+ * Selects a section the way a reader does on this viewport: a rail row on desktop (landscape), a row of
+ * the Sections bar on mobile (portrait).
  */
-async function selectSection(page: Page, testInfo: TestInfo, current: string, target: string): Promise<void> {
-  if (testInfo.project.name === 'mobile') {
-    // The trigger's accessible name is empty — role="combobox" takes its name only from an explicit
-    // label, never its content — so `hasText` is what the rest of this codebase's Select triggers use.
-    await page.getByRole('combobox').filter({ hasText: current }).click();
-    await page.getByRole('option', { name: target }).click();
-  } else {
-    await page.getByRole('button', { name: target }).click();
-  }
+async function selectSection(page: Page, testInfo: TestInfo, target: string): Promise<void> {
+  if (testInfo.project.name === 'mobile') await page.getByRole('button', { name: /^Sections/ }).click();
+  await page.getByRole('tablist', { name: 'Community Sections' }).getByRole('tab', { name: target }).click();
 }
 
 test.describe('Community Creations from the main menu', () => {
@@ -72,11 +65,11 @@ test.describe('Community Creations from the main menu', () => {
     await expect(page.getByText('E2E Sedge Landing')).toBeVisible();
 
     // Kinds are rows in the section switcher over one catalog, so switching is a filter rather than a fetch.
-    await selectSection(page, testInfo, 'Worlds', 'Entities');
+    await selectSection(page, testInfo, 'Entities');
     await expect(page.getByText('E2E Sedge Warden')).toBeVisible();
     await expect(page.getByText('E2E Sedge Landing')).toBeHidden();
 
-    await selectSection(page, testInfo, 'Entities', 'Worlds');
+    await selectSection(page, testInfo, 'Worlds');
     await page.getByText('E2E Sedge Landing').click();
 
     // The details modal is its own dialog above the browser's.
@@ -84,19 +77,19 @@ test.describe('Community Creations from the main menu', () => {
     await expect(details).toBeVisible();
   });
 
-  test('shows the closed dropdown trigger with its icon beside the label, not stacked above it', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'the switcher is a rail on desktop; the stacking trap is dropdown-only');
+  test('fits the mobile header row at 360px', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the one-row header is the portrait layout');
+    await page.setViewportSize({ width: 360, height: 740 });
     await gotoDev(page, 'mainMenu', { modal: 'community' });
 
-    const trigger = page.getByRole('combobox').filter({ hasText: 'Worlds' });
-    // The trigger carries two icons — the section glyph and the dropdown's own chevron — so the first.
-    const icon = trigger.locator('svg').first();
-    const label = trigger.getByText('Worlds');
-    const [iconBox, labelBox] = await Promise.all([icon.boundingBox(), label.boundingBox()]);
-    expect(iconBox).not.toBeNull();
-    expect(labelBox).not.toBeNull();
-    // Stacked (the line-clamp trap) puts the label well below the icon; on the same row their tops match.
-    expect(Math.abs(iconBox!.y - labelBox!.y)).toBeLessThan(4);
+    const back = page.getByRole('button', { name: 'Back' });
+    const filters = page.getByRole('button', { name: /^Filters/ });
+    await expect(filters).toBeVisible();
+    const [backBox, filtersBox] = await Promise.all([back.boundingBox(), filters.boundingBox()]);
+    // One row: the two ends share a line, and Filters ends inside the window.
+    expect(Math.abs(backBox!.y + backBox!.height / 2 - (filtersBox!.y + filtersBox!.height / 2))).toBeLessThan(2);
+    expect(filtersBox!.x + filtersBox!.width).toBeLessThanOrEqual(360);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
   });
 
   test('keeps the first two tour steps on screen, each with an arrow at its control', async ({ page }, testInfo) => {

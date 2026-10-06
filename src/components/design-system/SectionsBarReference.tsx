@@ -51,7 +51,14 @@ export function SectionsBarReference() {
           activationMode="manual"
           className="max-w-sm overflow-hidden rounded-md border border-border"
         >
-          <EditorSectionsBar groups={groups} value={shownTab} open={open} onOpenChange={setOpen} />
+          <EditorSectionsBar
+            groups={groups}
+            label="Editor Sections"
+            bodyId="sections-bar-reference"
+            value={shownTab}
+            open={open}
+            onOpenChange={setOpen}
+          />
           {WORLD_EDITOR_TABS.map(({ value }) => (
             <TabsContent key={value} value={value} className="mt-0 p-4">
               <p className="text-body text-muted-foreground">{BODY[value]}</p>

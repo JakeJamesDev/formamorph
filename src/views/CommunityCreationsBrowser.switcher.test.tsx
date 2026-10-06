@@ -8,7 +8,7 @@ import { stubMatchMedia } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
 
 /**
- * The section switcher itself: a rail on landscape, a dropdown on portrait. The contest/events/tutorial
+ * The section switcher itself: a rail on landscape, the Sections bar on portrait. The contest/events/tutorial
  * suites drive it incidentally to reach a tab; this file is about the switcher's own shape.
  */
 
@@ -199,53 +199,110 @@ describe('the desktop header', () => {
   });
 });
 
-describe('the section switcher on portrait (the dropdown)', () => {
+describe('the section switcher on portrait (the Sections bar)', () => {
   beforeEach(() => stubMatchMedia(true));
 
-  it('shows the current section on the closed trigger instead of a rail', async () => {
+  const sections = () => screen.findByRole('button', { name: /^Sections/ });
+  const list = () => screen.getByRole('tablist', { name: 'Community Sections' });
+  /** A tab list's rows in order: tab names, `|` for a group line, `?` for anything else, a caption included. */
+  const rows = (tabs: HTMLElement, separator: string) => Array.from(tabs.children).map((child) =>
+    (child.getAttribute('role') === 'tab' ? child.textContent : child.hasAttribute(separator) ? '|' : '?'));
+
+  it('replaces the dropdown with the bar, which names the current section', async () => {
     renderBrowser();
 
-    expect(screen.queryByRole('tab', { name: 'Entities' })).not.toBeInTheDocument();
-    const trigger = await screen.findByRole('combobox');
-    expect(trigger).toHaveTextContent('Worlds');
+    const bar = await sections();
+    expect(bar).toHaveTextContent('Worlds');
+    expect(bar).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: 'Community Sections' })).not.toBeInTheDocument();
   });
 
-  it('switches section by picking an option, each carrying its icon', async () => {
+  it('draws the rail\'s order and lines, Contest included', async () => {
+    server.contests = [runningContest()];
+    stubMatchMedia(false);
+    const desktop = renderBrowser();
+    await screen.findByRole('tab', { name: 'Contest' });
+    const rail = rows(screen.getByRole('tablist', { name: 'Community Sections' }), 'data-rail-separator');
+    desktop.unmount();
+
+    stubMatchMedia(true);
     renderBrowser();
+    await userEvent.click(await sections());
+    await within(list()).findByRole('tab', { name: 'Contest' });
 
-    const trigger = await screen.findByRole('combobox');
-    await userEvent.click(trigger);
-    const entities = screen.getByRole('option', { name: 'Entities' });
-    expect(entities.querySelector('svg')).not.toBeNull();
-    await userEvent.click(entities);
-
-    expect(trigger).toHaveTextContent('Entities');
+    expect(rows(list(), 'data-sections-separator')).toEqual(rail);
   });
 
-  it('offers the Prompts section with its icon', async () => {
+  it('switches section on a pick and closes', async () => {
+    catalog.items = [{ _id: 'e-1', id: 'e-1', name: 'A Wren', kind: 'entity', tags: [], author: { id: 'a1', username: 'wren_hallow' } }];
     renderBrowser();
 
-    const trigger = await screen.findByRole('combobox');
-    await userEvent.click(trigger);
+    await userEvent.click(await sections());
+    await userEvent.click(within(list()).getByRole('tab', { name: 'Entities' }));
 
-    const prompts = screen.getByRole('option', { name: 'Prompts' });
-    expect(prompts.querySelector('svg')).not.toBeNull();
-    await userEvent.click(prompts);
+    expect(await sections()).toHaveTextContent('Entities');
+    expect(await sections()).toHaveAttribute('aria-expanded', 'false');
+    expect(await screen.findByText('A Wren')).toBeInTheDocument();
+  });
+});
 
-    expect(trigger).toHaveTextContent('Prompts');
+describe('the mobile header', () => {
+  beforeEach(() => stubMatchMedia(true));
+
+  const header = async () => (await screen.findByRole('heading', { name: 'Community Creations' })).closest('header')!;
+  const filters = () => screen.getByRole('button', { name: /^Filters/ });
+
+  it('reads back, search, then Filters on its first row, with refresh out of sight', async () => {
+    renderBrowser();
+    const block = await header();
+
+    const row = within(block).getByRole('button', { name: 'Back' }).parentElement!;
+    const controls = Array.from(row.querySelectorAll('button, input')).map((el) =>
+      (el.tagName === 'INPUT' ? 'search' : el.getAttribute('aria-label')));
+    expect(controls).toEqual(['Back', 'search', 'Filters']);
+    expect(screen.queryByRole('button', { name: 'Refresh catalog' })).not.toBeInTheDocument();
   });
 
-  it('offers every catalog kind, Avatars included', async () => {
+  it('turns its chevron while the panel is open', async () => {
     renderBrowser();
+    await header();
+    const chevron = () => filters().querySelectorAll('svg')[1];
 
-    const trigger = await screen.findByRole('combobox');
-    await userEvent.click(trigger);
+    expect(chevron()).not.toHaveClass('rotate-180');
+    await userEvent.click(filters());
+    expect(filters()).toHaveAttribute('aria-expanded', 'true');
+    expect(chevron()).toHaveClass('rotate-180');
+  });
 
-    const avatars = screen.getByRole('option', { name: 'Avatars' });
-    expect(avatars.querySelector('svg')).not.toBeNull();
-    await userEvent.click(avatars);
+  it('shows no badge with no filters, and the count while filters are on', async () => {
+    renderBrowser();
+    await header();
+    expect(filters()).toHaveAccessibleName('Filters');
+    expect(filters()).toHaveTextContent('');
+    cleanup();
 
-    expect(trigger).toHaveTextContent('Avatars');
+    localStorage.setItem('FORMAMORPH_communityFilters', JSON.stringify({ world: { authorFilter: ['wren_hallow', 'ash_vale'] } }));
+    renderBrowser();
+    await header();
+    expect(filters()).toHaveAccessibleName('Filters, 2 on');
+    expect(filters()).toHaveTextContent('2');
+  });
+
+  it('opens on a row of the sort select, then the order toggle, then refresh', async () => {
+    renderBrowser();
+    await header();
+    await userEvent.click(filters());
+
+    const sort = screen.getByRole('combobox');
+    const order = screen.getByRole('button', { name: 'Descending' });
+    const refresh = screen.getByRole('button', { name: 'Refresh catalog' });
+    const row = refresh.parentElement!;
+    expect(row.contains(sort) && row.contains(order)).toBe(true);
+    const follows = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(sort, order)).toBe(true);
+    expect(follows(order, refresh)).toBe(true);
+    expect(sort).toHaveClass('flex-1');
   });
 });
 

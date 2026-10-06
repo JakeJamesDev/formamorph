@@ -1148,6 +1148,8 @@ const WorldEditorInner = ({
               >
                 <EditorSectionsBar
                   groups={tabGroups}
+                  label="Editor Sections"
+                  bodyId="world-editor-sections"
                   value={activeTab}
                   open={sectionsOpen}
                   onOpenChange={setSectionsOpen}
