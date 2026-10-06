@@ -224,5 +224,5 @@ Tickets live in `issues/`. Blocking edges are on each ticket.
 ## Further Notes
 
 - Harness: `npm run profile:editor-speed`; world generator `node testing/editor-speed/genLargeWorld.mjs` (flags for every size).
-- Ticket 01 may show the IndexedDB structured-clone of a 126 MB world as a floor for open and save. If so, Q1 for those two steps goes back to the user before ticket 13.
+- Ticket 01 findings (2026-10-06): Q1 and Q8 stand. The 823 MB in the baseline is the heap after open; the Main Menu holds 70 MB (27 MB empty, 67 MB with the defaults only). At 6x, a bare IndexedDB `get` of the bench world blocks 0.33–0.36 s and a bare `put` 0.76–0.81 s. `storeWorld` reads the old record before its put in one task and blocks 1.1 s, so the save path must drop that read. The open-editor heap holds the world about five times: live, `savedSnapshot`, `savedCanonical`, and ~355 MB of dirty-check canonical cache. After save, stale closures keep a second generation of each copy, about 970 MB of serialized strings in all. Ticket 13 owns those copies. Full numbers are in ticket 01.
 - The Test Bench rules took 112 ms unthrottled on the bench world (about 670 ms at 6x) and run after each typing pause. They didn't show as long blocks in the baseline run; ticket 14 re-measures.
