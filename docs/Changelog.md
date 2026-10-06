@@ -30,6 +30,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Map shows travel arrows from your location, and from the one you hover on a desktop.** Arrows draw on the Map again. The Map renders only the boxes in view.
   - **The desktop app recovers from a crashed or frozen window, and Android gives the app more memory.** The desktop app shows a message, then reloads. When the window hangs, you can wait or reload.
   - **A failed world save always shows an error, and full storage shows the space left with an Export World button.** Saves never hang. Save & Exit in play and the Authoring Tour show the same message. Linked library items change only after the world saves.
+  - **Editor lists on large worlds redraw only the rows that changed.** Typing in a name and dragging a row in the Entities, Locations, Traits and Placeholders lists stay responsive when a world has hundreds of rows.
 
 ---
 

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { Tip } from '@/components/ui/tooltip';
 import { usePlacementLetters } from '@/contexts/PlacementLettersContext';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
@@ -18,6 +18,40 @@ const MissingChip = ({ label, className }: { label?: string; className?: string 
   </Tip>
 );
 
+interface Vocabulary {
+  placeholders: readonly Placeholder[];
+  vocab: ReturnType<typeof placeholderVocabulary>;
+  byId: ReadonlyMap<string, Placeholder>;
+}
+
+const SharedVocabulary = createContext<Vocabulary | null>(null);
+
+function useVocabulary(placeholders: readonly Placeholder[]): Vocabulary {
+  const letters = usePlacementLetters();
+  const vocab = useMemo(() => placeholderVocabulary(placeholders, { letters }), [placeholders, letters]);
+  const byId = useMemo(() => new Map(placeholders.map((p) => [p.id, p])), [placeholders]);
+  return useMemo(() => ({ placeholders, vocab, byId }), [placeholders, vocab, byId]);
+}
+
+/**
+ * Builds the chip vocabulary once for every {@link PlaceholderText} below it that draws from the same
+ * `placeholders`, so a list of rows reads one vocabulary instead of building one per row.
+ */
+export const PlaceholderVocabularyProvider = ({ placeholders, children }: {
+  placeholders: readonly Placeholder[];
+  children: ReactNode;
+}) => <SharedVocabulary.Provider value={useVocabulary(placeholders)}>{children}</SharedVocabulary.Provider>;
+
+type TextProps = {
+  text: string;
+  placeholders: readonly Placeholder[];
+  /** Applied to each pill, e.g. to shrink them inside an already-small chip. */
+  className?: string;
+  /** Drop the per-placeholder accent for a muted pill. For text that names something rather than offering
+   *  it — a section heading — where a colored pill would read as a chip waiting to be placed. */
+  neutral?: boolean;
+};
+
 /**
  * Authored text with its placeholders drawn as chips rather than spelled out — for the read-only surfaces
  * that show a name: the editor trees, the flat item lists, and a committed alias or keyword.
@@ -33,21 +67,23 @@ const MissingChip = ({ label, className }: { label?: string; className?: string 
  *
  * Text with no chips renders as plain text and costs one regex test, so this is safe to use for every row.
  */
-const PlaceholderText = ({ text, placeholders, className, neutral }: {
-  text: string;
-  placeholders: readonly Placeholder[];
-  /** Applied to each pill, e.g. to shrink them inside an already-small chip. */
-  className?: string;
-  /** Drop the per-placeholder accent for a muted pill. For text that names something rather than offering
-   *  it — a section heading — where a colored pill would read as a chip waiting to be placed. */
-  neutral?: boolean;
-}) => {
-  const letters = usePlacementLetters();
-  const vocab = useMemo(() => placeholderVocabulary(placeholders, { letters }), [placeholders, letters]);
-  const byId = useMemo(() => new Map(placeholders.map((p) => [p.id, p])), [placeholders]);
+const PlaceholderText = ({ text, ...rest }: TextProps) => (
+  !text || !hasPlaceholders(text) ? <>{text}</> : <Chips text={text} {...rest} />
+);
 
-  if (!text || !hasPlaceholders(text)) return <>{text}</>;
+const Chips = (props: TextProps) => {
+  const shared = useContext(SharedVocabulary);
+  return shared?.placeholders === props.placeholders
+    ? <ChipRun text={props.text} className={props.className} neutral={props.neutral} {...shared} />
+    : <OwnChips {...props} />;
+};
 
+const OwnChips = ({ placeholders, ...rest }: TextProps) => {
+  const vocabulary = useVocabulary(placeholders);
+  return <ChipRun {...rest} {...vocabulary} />;
+};
+
+const ChipRun = ({ text, className, neutral, vocab, byId }: Omit<TextProps, 'placeholders'> & Vocabulary) => {
   return (
     <>
       {parsePlaceholderText(text).map((seg, i): ReactNode => {

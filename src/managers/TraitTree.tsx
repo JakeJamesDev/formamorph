@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
 import { detachDropsStats, detachLink, removeLink } from '@/lib/traitLinks';
 import { SortableTree, type SortableTreeAdapter, type TreeRowSpec } from './SortableTree';
+import { chipInput } from './chipInput';
 import { useRemoveWorldTrait } from './useRemoveWorldTrait';
 import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
@@ -123,7 +124,15 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     else detach(entityId, link.id);
   };
 
-  const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow): TreeRowSpec => {
+  // The gate a row shows. A link row reads its bearer's gate on the original. A one-entity tree's own rows
+  // have no owner entry, since the editor edits them as the root; their gates are still the entity's.
+  const gateOfRow = (node: FlatTraitNode, linkRow: LinkRow | undefined): GateState | undefined => (
+    linkRow
+      ? gateOf(gates, linkRow.entityId, linkRow.originalId)
+      : gateOf(gates, tree.ownerOf.get(node.id) ?? entityRoot?.bearer.id ?? PLAYER_BEARER, node.id)
+  );
+
+  const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow, select: (id: string) => void): TreeRowSpec => {
     const isGroup = node.kind === 'group';
     const name = (isGroup ? node.group?.name : node.leaf?.name) ?? '';
     // No original to read: the stored name, read-only, but removable inside a world.
@@ -145,7 +154,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       };
     }
     // A link row reads its bearer's gate on the original.
-    const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, linkRow.entityId, linkRow.originalId), placeholders);
+    const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOfRow(node, linkRow), placeholders);
     const overrides = linkRow.link.overrides?.[linkRow.originalId];
     const modified = overrides && Object.keys(overrides).length ? 'Modified for this link' : undefined;
     // The glyph's tip names the modification its badge marks.
@@ -175,7 +184,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
             <button
               type="button"
               aria-label={`Open ${labelPlaceholders(name, placeholders)}`}
-              onClick={(e) => { e.stopPropagation(); onSelect(linkRow.originalId); }}
+              onClick={(e) => { e.stopPropagation(); select(linkRow.originalId); }}
               className="shrink-0 px-0.5"
             >
               {glyph}
@@ -196,7 +205,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           <button
             type="button"
             aria-label={`Open ${labelPlaceholders(name, placeholders)}`}
-            onClick={(e) => { e.stopPropagation(); onSelect(opens); }}
+            onClick={(e) => { e.stopPropagation(); select(opens); }}
             className="shrink-0 px-0.5"
           >
             <Link2 className="h-4 w-4" />
@@ -210,6 +219,21 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   };
 
   const adapter: SortableTreeAdapter<FlatTraitNode> = {
+    visibleDeps: [tree],
+    rowDeps: [entityRoot],
+    rowInputs: (node) => {
+      const linkRow = tree.linkRows.get(node.id);
+      const entity = tree.entityNodes.get(node.id);
+      const gate = gateOfRow(node, linkRow);
+      const gateKey = gate?.requirements.length
+        ? `${gate.requirements.some((r) => r.unresolved)}|${gateLine(gate, { revealHidden: true })}`
+        : '';
+      return [
+        linkRow, entity, tree.ownerOf.get(node.id), gateKey,
+        chipInput(placeholders, node.group?.name, node.leaf?.name, entity?.name, linkRow?.link.originalName, gateKey),
+      ];
+    },
+    placeholders,
     getVisible: (collapsed) => ownedTraitRows(tree, collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) => (entityRoot
       ? getEntityRootDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT)
@@ -237,9 +261,9 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       }
       for (const entity of next.entities) editEntity(entity.id, () => entity);
     },
-    rowSpec: (node) => {
+    rowSpec: (node, select) => {
       const linkRow = tree.linkRows.get(node.id);
-      if (linkRow) return linkRowSpec(node, linkRow);
+      if (linkRow) return linkRowSpec(node, linkRow, select);
       const entity = tree.entityNodes.get(node.id);
       if (entity) {
         return {
@@ -253,10 +277,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       }
       const isGroup = node.kind === 'group';
       const ownerId = tree.ownerOf.get(node.id);
-      // A one-entity tree's own rows have no owner entry, since the editor edits them as the root; their gates
-      // are still the entity's.
-      const gateBearer = ownerId ?? entityRoot?.bearer.id ?? PLAYER_BEARER;
-      const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, gateBearer, node.id), placeholders);
+      const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOfRow(node, undefined), placeholders);
       if (node.group?.system === 'blueprints') {
         return {
           lead: 'chevron',
