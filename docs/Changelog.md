@@ -28,6 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Locations Canvas opens fast on large worlds, and shows dashed travel arrows only for the hovered or selected locations.** Click a dashed arrow to author a Connection. Arrows hide while you drag. A selected location keeps its arrows on touch screens.
   - **The Map shows travel arrows from your location, and from the one you hover on a desktop.** Arrows draw on the Map again. The Map renders only the boxes in view.
   - **The desktop app recovers from a crashed or frozen window, and Android gives the app more memory.** The desktop app shows a message, then reloads. When the window hangs, you can wait or reload.
+  - **A failed world save always shows an error, and full storage shows the space left with an Export World button.** Saves never hang. Save & Exit in play and the Authoring Tour show the same message. Linked library items change only after the world saves.
 
 ---
 

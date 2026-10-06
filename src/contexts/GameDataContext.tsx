@@ -22,8 +22,8 @@ import {
 } from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import { chipBearingTexts } from '@/lib/testBench/rules';
-import { markEdited, stampLinks } from '@/lib/linkedContent';
-import { writeBackOwnedCopies } from '@/lib/libraryWriteBack';
+import { markEdited, stampLinks, type LinkStamp } from '@/lib/linkedContent';
+import { planOwnedWriteBack } from '@/lib/libraryWriteBack';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
@@ -47,6 +47,9 @@ import type {
   PlaceholderGroup,
   World,
 } from '@/types';
+
+/** What a world save answers: done, or the error that stopped it with the world it could not store. */
+export type SaveResult = { ok: true } | { ok: false; error: unknown; world: World };
 
 /** A fresh, empty "Default" book — the ≥1-book invariant's seed. */
 const makeDefaultBook = (): Dictionary => ({ id: randomUUID(), name: 'Default', enabled: true, entries: [] });
@@ -557,21 +560,22 @@ function useProvideGameData() {
     loadWorldData({ ...JSON.parse(savedSnapshot), id: worldId ?? '' } as World);
   }, [savedSnapshot, worldId, loadWorldData]);
 
-  // Persist the current world and re-baseline so isWorldDirty clears. Returns success. Edited copies of
-  // owned library items go to the library first; the stamps they produce go into the stored world and
-  // onto the live copies, so each holds the revision it wrote. Here rather than in the editor, so every
-  // world save writes back, whichever surface asked for it.
-  const saveWorld = useCallback(async (): Promise<boolean> => {
+  // Persist the current world and re-baseline so isWorldDirty clears. Edited copies of owned library items
+  // go to the library only after the world is stored, so a failed save changes neither. The stamps they
+  // produce go into the stored world and onto the live copies, so each holds the revision it wrote. Here
+  // rather than in the editor, so every world save writes back, whichever surface asked for it.
+  const saveWorld = useCallback(async (): Promise<SaveResult> => {
+    const data = getWorldData();
     try {
-      const data = getWorldData();
-      const stamps = await writeBackOwnedCopies({
+      const writeBack = await planOwnedWriteBack({
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
         traits: data.traits, traitGroups: data.traitGroups ?? [],
       });
-      const world = stamps.length
+      const stamped = (stamps: LinkStamp[]) => (stamps.length
         ? { ...data, entities: stampLinks(data.entities, stamps), dictionaries: stampLinks(data.dictionaries, stamps) }
-        : data;
-      await WorldStorageService.storeWorld({
+        : data);
+      const editedAt = new Date().toISOString();
+      const store = (world: typeof data) => WorldStorageService.storeWorld({
         id: worldId ?? '',
         name: worldOverview.name,
         description: worldOverview.description,
@@ -580,18 +584,23 @@ function useProvideGameData() {
         // A save means the local copy was edited; flag it dirty and stamp the edit time (sourceId and
         // other sticky fields are preserved by storeWorld).
         dirty: true,
-        editedAt: new Date().toISOString(),
+        editedAt,
         data: { version: APP_VERSION, ...world },
       });
-      if (stamps.length) {
-        setEntities((prev) => stampLinks(prev, stamps));
-        setDictionaries((prev) => stampLinks(prev, stamps));
+      // Stamps are stored only after their writes land; a stamp ahead of its item pulls the old item over the copy.
+      await store(data);
+      const written = await writeBack();
+      const world = stamped(written);
+      if (written.length) {
+        await store(world);
+        setEntities((prev) => stampLinks(prev, written));
+        setDictionaries((prev) => stampLinks(prev, written));
       }
       setSavedSnapshot(JSON.stringify(world));
-      return true;
+      return { ok: true };
     } catch (error) {
       console.error('Error saving world:', error);
-      return false;
+      return { ok: false, error, world: { id: worldId ?? '', version: APP_VERSION, ...data } };
     }
   }, [worldId, worldOverview, getWorldData, placeholders, locations, setDictionaries]);
 

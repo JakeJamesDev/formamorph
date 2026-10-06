@@ -17,11 +17,11 @@ import {
   buildBackup, listBackupItems, analyzeBackup, applyBackup, restoreBackup,
   type BackupBundle, type BackupIndex, type RestoreRequest,
 } from '@/lib/backup';
-import { promisifyRequest } from '@/lib/idb';
+import { promisifyRequest, transactionDone } from '@/lib/idb';
 import { jsonParts } from '@/lib/jsonFileOps';
 import { STORE_TARGETS, type StoreTarget } from '@/lib/backupRestore';
 import {
-  WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, transactionDone, worldMetaOf, type WorldMetaRecord,
+  WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, worldMetaOf, type WorldMetaRecord,
 } from '@/lib/worldLibrary';
 
 /** The file `saveBackup` writes for a bundle. */

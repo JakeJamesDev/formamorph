@@ -5,10 +5,10 @@ import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
 import { PUBLISH_LIMITS, measurePublishBytes, publishLimitRefusal } from '@/lib/publishLimits';
 import { toast } from 'react-toastify';
-import { promisifyRequest } from '@/lib/idb';
+import { promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
 import {
   WORLD_META_STORE, WORLD_STORE, deleteWorldRecord, libraryTransaction, listFieldsOf, openWorldLibrary,
-  putWorldRecord, readAllWorldMeta, readWorldMeta, transactionDone, type LinkedCopy, type WorldMetaRecord,
+  putWorldRecord, readAllWorldMeta, readWorldMeta, type LinkedCopy, type WorldMetaRecord,
 } from '@/lib/worldLibrary';
 import { contentHash } from '@/lib/contentHash';
 import { readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
@@ -345,27 +345,11 @@ class WorldStorageService {
     await this.ensureInitialized();
     if (!worldId) throw new Error('World ID is required');
 
-    return new Promise<void>((resolve, reject) => {
-      const transaction = libraryTransaction(this.db!, 'readwrite');
-      const read = transaction.objectStore(WORLD_STORE).get(worldId);
-      read.onsuccess = () => {
-        const record = read.result;
-        if (!record?.data || typeof record.data !== 'object') {
-          reject(new Error('World not found'));
-          return;
-        }
-        let revised: Record<string, unknown>;
-        try {
-          revised = revise(record.data as Record<string, unknown>);
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
-          return;
-        }
-        if (revised === record.data) { resolve(); return; }
-        putWorldRecord(transaction, { ...record, data: revised });
-        transactionDone(transaction).then(resolve, () => reject(new Error('Failed to store world')));
-      };
-      read.onerror = () => reject(new Error('Failed to read world'));
+    const transaction = libraryTransaction(this.db!, 'readwrite');
+    return writeAfterRead(transaction, transaction.objectStore(WORLD_STORE).get(worldId), (record) => {
+      if (!record?.data || typeof record.data !== 'object') throw new Error('World not found');
+      const revised = revise(record.data as Record<string, unknown>);
+      if (revised !== record.data) putWorldRecord(transaction, { ...record, data: revised });
     });
   }
 
@@ -456,35 +440,30 @@ class WorldStorageService {
       throw new Error('Invalid world data: missing required fields');
     }
 
-    return new Promise<void>((resolve, reject) => {
-      const transaction = libraryTransaction(this.db!, 'readwrite');
-      // Read-merge so the download link survives saves: sourceId is sticky (inherited unless the
-      // caller supplies one), and dirty defaults to the existing/false unless the caller sets it.
-      // The sticky fields all live in the metadata record, so the old world data is never read.
-      const getRequest = transaction.objectStore(WORLD_META_STORE).get(world.id);
-      getRequest.onsuccess = () => {
-        const existing = getRequest.result as WorldMetaRecord | undefined;
-        putWorldRecord(transaction, {
-          id: world.id,
-          name: world.name,
-          description: world.description || '',
-          author: world.author || '',
-          thumbnail: world.thumbnail || '',
-          sourceId: world.sourceId ?? existing?.sourceId,
-          dirty: world.dirty ?? existing?.dirty ?? false,
-          editedAt: world.editedAt ?? existing?.editedAt,
-          downloadedAt: world.downloadedAt ?? existing?.downloadedAt,
-          sourceUpdatedAt: world.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
-          sourceAuthorId: world.sourceAuthorId ?? existing?.sourceAuthorId,
-          sourceHash: world.sourceHash ?? existing?.sourceHash,
-          data: world.data,
-          // createdAt is sticky: stamped once on first store, preserved across later saves.
-          createdAt: existing?.createdAt ?? new Date().toISOString(),
-          lastAccessed: new Date().toISOString()
-        });
-        transactionDone(transaction).then(resolve, () => reject('Failed to store world'));
-      };
-      getRequest.onerror = () => reject('Failed to store world');
+    const transaction = libraryTransaction(this.db!, 'readwrite');
+    // Read-merge so the download link survives saves: sourceId is sticky (inherited unless the
+    // caller supplies one), and dirty defaults to the existing/false unless the caller sets it.
+    // The sticky fields all live in the metadata record, so the old world data is never read.
+    const read = transaction.objectStore(WORLD_META_STORE).get(world.id) as IDBRequest<WorldMetaRecord | undefined>;
+    return writeAfterRead(transaction, read, (existing) => {
+      putWorldRecord(transaction, {
+        id: world.id,
+        name: world.name,
+        description: world.description || '',
+        author: world.author || '',
+        thumbnail: world.thumbnail || '',
+        sourceId: world.sourceId ?? existing?.sourceId,
+        dirty: world.dirty ?? existing?.dirty ?? false,
+        editedAt: world.editedAt ?? existing?.editedAt,
+        downloadedAt: world.downloadedAt ?? existing?.downloadedAt,
+        sourceUpdatedAt: world.sourceUpdatedAt ?? existing?.sourceUpdatedAt,
+        sourceAuthorId: world.sourceAuthorId ?? existing?.sourceAuthorId,
+        sourceHash: world.sourceHash ?? existing?.sourceHash,
+        data: world.data,
+        // createdAt is sticky: stamped once on first store, preserved across later saves.
+        createdAt: existing?.createdAt ?? new Date().toISOString(),
+        lastAccessed: new Date().toISOString()
+      });
     });
   }
 
@@ -572,16 +551,9 @@ class WorldStorageService {
   async linkWorldToListing(worldId: string, sourceId: string, sourceUpdatedAt?: string): Promise<void> {
     await this.ensureInitialized();
 
-    return new Promise<void>((resolve, reject) => {
-      const transaction = libraryTransaction(this.db!, 'readwrite');
-      const getRequest = transaction.objectStore(WORLD_STORE).get(worldId);
-      getRequest.onsuccess = () => {
-        const existing = getRequest.result;
-        if (!existing) return resolve();
-        putWorldRecord(transaction, { ...existing, sourceId, sourceUpdatedAt });
-        transactionDone(transaction).then(resolve, () => reject('Failed to link world to its listing'));
-      };
-      getRequest.onerror = () => reject('Failed to link world to its listing');
+    const transaction = libraryTransaction(this.db!, 'readwrite');
+    return writeAfterRead(transaction, transaction.objectStore(WORLD_STORE).get(worldId), (existing) => {
+      if (existing) putWorldRecord(transaction, { ...existing, sourceId, sourceUpdatedAt });
     });
   }
 

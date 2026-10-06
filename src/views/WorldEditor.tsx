@@ -83,6 +83,7 @@ import { exportedComponentLinks } from '@/lib/componentExportLinks';
 import { resolveImportedWorld } from '@/lib/worldBundleRun';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { toastSaveFailure } from '@/lib/saveFailureToast';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { parseJsonText, terminateWorker as terminateJsonWorker } from '@/lib/jsonFileWorkerUtils';
 import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
@@ -560,15 +561,15 @@ const WorldEditorInner = ({
 
   // `announce` false keeps a good save silent: the tour saves on every Next, and a toast per step is noise.
   const saveWorldWith = async (announce: boolean) => {
-    const ok = await saveWorldCtx();
-    if (ok) {
+    const result = await saveWorldCtx();
+    if (result.ok) {
       if (announce) toast.success('World saved successfully!');
       // The links made this session are now on disk, so they stop reading as pending.
       linking.clearPendingLinks();
     } else {
-      toast.error('Error saving world. Please try again.');
+      void toastSaveFailure(result.error, result.world);
     }
-    return ok;
+    return result.ok;
   };
   const saveWorld = () => saveWorldWith(true);
   const saveWorldQuietly = () => saveWorldWith(false);

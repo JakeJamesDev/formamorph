@@ -3,7 +3,7 @@
  * worker runs the whole restore: read, optimize, and write each record in turn.
  */
 import type { SaveRecord } from '@/types';
-import { openDatabase, promisifyRequest } from './idb';
+import { openDatabase, transactionDone } from './idb';
 import { putSaveRecord } from '@/components/modals/dbUtils';
 import { WORLD_LIBRARY_DB, WORLD_STORE, openWorldLibrary, putWorldRecords } from './worldLibrary';
 import {
@@ -32,8 +32,9 @@ const plainTarget = (db: string, store: string): StoreTarget => ({
   store,
   open: () => openDatabase(db, 1, [{ name: store, keyPath: 'id' }]),
   write: async (conn, records) => {
-    const target = conn.transaction([store], 'readwrite').objectStore(store);
-    await Promise.all(records.map((r) => promisifyRequest(target.put(r))));
+    const transaction = conn.transaction([store], 'readwrite');
+    for (const record of records) transaction.objectStore(store).put(record);
+    await transactionDone(transaction);
   },
 });
 

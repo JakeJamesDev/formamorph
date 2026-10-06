@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { LibraryRecordNotFoundError, LibraryStore, type StoredRecord } from './LibraryStore';
+import { failWritesOnQuota } from '@/test/quotaAbort';
 
 interface Payload {
   entries?: string[];
@@ -145,6 +146,22 @@ describe('getMetadata', () => {
 
   it('returns an empty list for an empty store', async () => {
     await expect(makeStore().getMetadata()).resolves.toEqual([]);
+  });
+});
+
+describe('a write on a full disk', () => {
+  let restore: (() => void) | null = null;
+  afterEach(() => { restore?.(); restore = null; });
+
+  it('rejects with the QuotaExceededError and keeps the stored record', async () => {
+    const store = makeStore();
+    await store.store(record({ data: { entries: ['before'] } }));
+    restore = failWritesOnQuota('things');
+
+    await expect(store.store(record({ data: { entries: ['after'] } })))
+      .rejects.toMatchObject({ name: 'QuotaExceededError' });
+
+    await expect(store.getData('a1')).resolves.toEqual({ entries: ['before'] });
   });
 });
 
