@@ -7,6 +7,7 @@ import {
   applyLocationDrop, type FlatLocationNode,
 } from '@/lib/locationTree';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { chipInput } from './chipInput';
 import { TREE_INDENT } from '@/components/EditorRow';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -23,6 +24,10 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
   );
 
   const adapter: SortableTreeAdapter<FlatLocationNode> = {
+    visibleDeps: [locations],
+    rowDeps: [],
+    rowInputs: (node) => [parentIds.has(node.id), chipInput(placeholders, node.location.name)],
+    placeholders,
     getVisible: (collapsed) => removeCollapsedChildren(locationRows(locations), collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) =>
       getLocationDropProjection(visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,

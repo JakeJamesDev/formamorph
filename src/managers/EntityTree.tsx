@@ -5,6 +5,7 @@ import {
   duplicateEntityNode, type FlatEntityNode,
 } from '@/lib/entityGroupTree';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { chipInput } from './chipInput';
 import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
@@ -20,6 +21,10 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
   const { ask: askRemoveEntity, dialog: removeEntityDialog } = useRemoveEntity();
 
   const adapter: SortableTreeAdapter<FlatEntityNode> = {
+    visibleDeps: [entityGroups, entities],
+    rowDeps: [],
+    rowInputs: (node) => [chipInput(placeholders, node.kind === 'group' ? node.group?.name : node.leaf?.name)],
+    placeholders,
     getVisible: (collapsed) => removeChildrenOf(flattenEntityTree(buildEntityTree(entityGroups, entities)), collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) =>
       getEntityDropProjection(visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,

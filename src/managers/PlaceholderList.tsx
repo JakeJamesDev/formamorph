@@ -20,6 +20,7 @@ import type { PlaceholderSlices } from '@/lib/placeholderHomes';
 import { BlueprintRefusalNotice } from './BlueprintRefusalNotice';
 import { usePlaceholderRowActions } from './usePlaceholderRowActions';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { chipInput } from './chipInput';
 
 /**
  * The Placeholders tab's tree. A value that is exactly one chip nests what it names, so the list already
@@ -89,6 +90,20 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
   };
 
   const adapter: SortableTreeAdapter<PlaceholderTreeNode> = {
+    visibleDeps: [nodes],
+    rowDeps: [scope],
+    rowInputs: (node) => {
+      if (node.kind === 'owner') return [chipInput(placeholders, node.owner.name)];
+      if (node.kind !== 'placeholder') return [];
+      const { copy, removeBlocked } = rowRules(node);
+      const usedBy = node.holderId === null ? usedByMap.get(node.placeholder.id) : undefined;
+      return [
+        parentRowIds.has(node.id), copy?.owner.name, copy?.blueprint, copy?.untouched, removeBlocked,
+        usedBy?.count, usedBy?.names.join('\n'),
+        chipInput(placeholders, copy && copyName(copy.owner.name, copy.blueprint?.name ?? node.placeholder.name)),
+      ];
+    },
+    placeholders,
     getVisible: (collapsed) => removeCollapsedPlaceholderRows(nodes, collapsed),
     // Over a world the indicator refuses what the drop would (a scoped row into a folder, a folder under
     // a row), so the indent never promises a landing that will not happen.
@@ -98,7 +113,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
       return depth;
     },
     onDrop,
-    rowSpec: (node) => {
+    rowSpec: (node, select) => {
       if (node.kind === 'group' && node.group.system === 'blueprints') {
         return {
           lead: 'chevron',
@@ -160,7 +175,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
           <button
             type="button"
             aria-label={`Open ${to === placeholder.id ? placeholder.name : blueprintName}`}
-            onClick={(e) => { e.stopPropagation(); onSelect(to); }}
+            onClick={(e) => { e.stopPropagation(); select(to); }}
             className="shrink-0 px-0.5"
           >
             {glyph}
