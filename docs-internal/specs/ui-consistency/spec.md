@@ -1,7 +1,8 @@
 # UI Consistency
 
-Status: needs-triage
-Status note: Opened 2026-10-06 from the user's notes. Each item needs a grill before tickets. The user names the canon where it is unclear.
+Status: ready-for-agent
+Spec session: ui-consistency — spec
+Status note: Opened 2026-10-06 from the user's notes. Rulings Q1–Q14 settled the same day from rendered before/after sheets; six tickets in `issues/`. Item 3 (first-hover flicker) is parked.
 
 ## Problem Statement
 
@@ -31,6 +32,7 @@ The same element looks or acts differently on different surfaces. Some surfaces 
 - **Q11 Flat selection lists:** the Settings Tools list and the Code Template library take the Q7 states (no side bar).
 - **Q12 Chat choice bubbles:** hover takes a solid border, `bg-primary/25` and the foreground text color; only the staged choice (`data-selected`) takes the full primary fill. Keyboard focus follows hover, plus its ring, so focus never reads as staged. Rendered in `_coloraudit/chat-choices-before-after.png`.
 - **Q13 Canvas search results:** unchanged. The highlighted row is the arrow-key target, not a lasting selection, so it matches hover on purpose.
+- **Q14 Code Templates icon:** `SquareFunction`, picked from `_coloraudit/code-templates-icon-options.png`.
 - **Q10 List-row X:** the X on a list row is an icon button that turns destructive red on hover, because it deletes.
 
 Items 1 and 2 are audited in [audit.md](audit.md). Item 3 is parked: Playwright frame sampling did not reproduce it.
