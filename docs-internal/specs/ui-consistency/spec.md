@@ -28,6 +28,7 @@ The same element looks or acts differently on different surfaces. Some surfaces 
 - **Q7 Nav rail states:** hover is `bg-accent`. Selected is `bg-primary` with `text-primary-foreground`, `font-medium`, the same fill as `EditorRow`. The side bar stays and takes `bg-foreground`, so it reads against the fill in every theme. This replaces the Design System's Nav Rail state rule. A `bg-primary/10` tint was picked first and reopened: renders showed it matches today in the default graphite theme and leaves pale text in blue light (option C in `_coloraudit/nav-rail-options.png`). Stat Code Templates need a new icon, because Q5 gives `LayoutTemplate` to Blueprints.
 - **Q8 One side-navigation recipe:** the mobile Sections bar and the Enter World categories take the Q7 states, without the side bar: the mobile list does not select from its left edge.
 - **Q9 Dialog close button:** focus still lands on the X when a dialog opens, with no ring. The ring shows for keyboard focus only (`focus-visible:` in place of `focus:` at `src/components/ui/dialog.tsx:82`), so a dialog opened from the keyboard still shows where focus is.
+- **Q10 List-row X:** the X on a list row is an icon button that turns destructive red on hover, because it deletes.
 
 Items 1 and 2 are audited in [audit.md](audit.md). Item 3 is parked: Playwright frame sampling did not reproduce it.
 
