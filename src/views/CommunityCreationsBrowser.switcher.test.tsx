@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityCreationsBrowser from './CommunityCreationsBrowser';
+import { COMMUNITY_NAV_RAIL_KEY } from '@/lib/browseTabs';
 import { stubMatchMedia } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
 
@@ -96,39 +97,105 @@ afterEach(() => {
 describe('the section switcher on landscape (the rail)', () => {
   beforeEach(() => stubMatchMedia(false));
 
-  it('lists the catalog kinds in kind order, with no header tabs', async () => {
+  const rail = () => screen.findByRole('tablist', { name: 'Community Sections' });
+  /** The rail's rows in order, read as tab names and separators. */
+  const railSequence = (list: HTMLElement) => Array.from(list.children).map((child) =>
+    (child.getAttribute('role') === 'tab' ? child.textContent : child.hasAttribute('data-rail-separator') ? '|' : '?'));
+
+  it('lists the catalog kinds in kind order, with Prompts after a line', async () => {
     renderBrowser();
 
-    const rows = await screen.findAllByRole('button', { name: /^(Worlds|Entities|Dictionaries|Avatars|Prompts)$/ });
-    expect(rows.map((r) => r.textContent)).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', 'Prompts']);
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(railSequence(await rail())).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', '|', 'Prompts']);
   });
 
-  it('marks the active row current to assistive technology, and moves it on click', async () => {
+  it('selects the active tab, and switches the section on click', async () => {
+    catalog.items = [{ _id: 'e-1', id: 'e-1', name: 'A Wren', kind: 'entity', tags: [], author: { id: 'a1', username: 'wren_hallow' } }];
     renderBrowser();
 
-    const worlds = await screen.findByRole('button', { name: 'Worlds' });
-    const entities = screen.getByRole('button', { name: 'Entities' });
-    expect(worlds).toHaveAttribute('aria-current', 'true');
-    expect(entities).not.toHaveAttribute('aria-current');
+    const list = await rail();
+    const worlds = within(list).getByRole('tab', { name: 'Worlds' });
+    const entities = within(list).getByRole('tab', { name: 'Entities' });
+    expect(worlds).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('A Wren')).not.toBeInTheDocument();
 
     await userEvent.click(entities);
 
-    expect(entities).toHaveAttribute('aria-current', 'true');
-    expect(worlds).not.toHaveAttribute('aria-current');
+    expect(entities).toHaveAttribute('aria-selected', 'true');
+    expect(worlds).toHaveAttribute('aria-selected', 'false');
+    expect(await screen.findByText('A Wren')).toBeInTheDocument();
   });
 
-  it('stays away on a server running no contests', async () => {
+  it('moves along the rail with the arrow keys', async () => {
     renderBrowser();
-    await screen.findByRole('button', { name: 'Worlds' });
-    expect(screen.queryByRole('button', { name: 'Contest' })).not.toBeInTheDocument();
+
+    const list = await rail();
+    await userEvent.click(within(list).getByRole('tab', { name: 'Worlds' }));
+    await userEvent.keyboard('{ArrowDown}');
+
+    expect(within(list).getByRole('tab', { name: 'Entities' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('appears below a rule while a contest exists', async () => {
+  it('draws no Contest tab on a server running no contests', async () => {
+    renderBrowser();
+    expect(within(await rail()).queryByRole('tab', { name: 'Contest' })).not.toBeInTheDocument();
+  });
+
+  it('adds Contest after a line while a contest exists', async () => {
     server.contests = [runningContest()];
     renderBrowser();
 
-    expect(await screen.findByRole('button', { name: 'Contest' })).toBeInTheDocument();
+    await within(await rail()).findByRole('tab', { name: 'Contest' });
+    expect(railSequence(await rail())).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', '|', 'Prompts', '|', 'Contest']);
+  });
+
+  it('starts expanded and remembers a collapse across a remount', async () => {
+    const { unmount } = renderBrowser();
+    await rail();
+    expect(screen.getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse' }));
+    unmount();
+    renderBrowser();
+    await rail();
+
+    expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('stores its collapse under its own key only', async () => {
+    renderBrowser();
+    await rail();
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse' }));
+
+    expect(Object.keys(localStorage).filter((key) => /navrail/i.test(key))).toEqual([COMMUNITY_NAV_RAIL_KEY]);
+  });
+});
+
+describe('the desktop header', () => {
+  beforeEach(() => stubMatchMedia(false));
+
+  const header = async () => (await screen.findByRole('heading', { name: 'Community Creations' })).closest('header')!;
+
+  it('holds the title row and the filter bar above the rail, never beside it', async () => {
+    renderBrowser();
+    const block = await header();
+    const list = await screen.findByRole('tablist', { name: 'Community Sections' });
+
+    expect(within(block).getByPlaceholderText(/^Search worlds/)).toBeInTheDocument();
+    expect(within(block).getByRole('button', { name: /Add Filter/ })).toBeInTheDocument();
+    expect(block.contains(list)).toBe(false);
+    expect(block.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('ends the title row with the sort select, the order toggle, then refresh', async () => {
+    renderBrowser();
+    const block = await header();
+
+    const sort = within(block).getByRole('combobox');
+    const order = within(block).getByRole('button', { name: 'Descending' });
+    const refresh = within(block).getByRole('button', { name: 'Refresh catalog' });
+    const follows = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(sort, order)).toBe(true);
+    expect(follows(order, refresh)).toBe(true);
   });
 });
 
@@ -138,7 +205,7 @@ describe('the section switcher on portrait (the dropdown)', () => {
   it('shows the current section on the closed trigger instead of a rail', async () => {
     renderBrowser();
 
-    expect(screen.queryByRole('button', { name: 'Entities' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Entities' })).not.toBeInTheDocument();
     const trigger = await screen.findByRole('combobox');
     expect(trigger).toHaveTextContent('Worlds');
   });
@@ -205,7 +272,7 @@ describe('every catalog kind saves into its own library, never falls back to ano
     catalog.items = [listed('model')];
     renderBrowser();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Avatars' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Avatars' }));
 
     expect(await screen.findByText('A model')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /download this avatar/i })).toBeInTheDocument();
@@ -215,7 +282,7 @@ describe('every catalog kind saves into its own library, never falls back to ano
     catalog.items = [listed('dictionary')];
     renderBrowser();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Dictionaries' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Dictionaries' }));
 
     expect(await screen.findByText('A dictionary')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /download this dictionary/i })).toBeInTheDocument();
@@ -236,7 +303,7 @@ describe('the Prompts section', () => {
     catalog.items = [prompt];
     renderBrowser();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Prompts' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Prompts' }));
 
     expect(await screen.findByText('Slow Burn')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Prompt' })).toBeInTheDocument();
@@ -248,14 +315,14 @@ describe('the Prompts section', () => {
     catalog.items = [prompt];
     renderBrowser();
 
-    await screen.findByRole('button', { name: 'Worlds' });
+    await screen.findByRole('tab', { name: 'Worlds' });
     expect(screen.queryByText('Slow Burn')).not.toBeInTheDocument();
   });
 
   it('shows its empty state when the server has no prompts', async () => {
     renderBrowser();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Prompts' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Prompts' }));
 
     expect(await screen.findByText(/No prompts available/)).toBeInTheDocument();
   });
