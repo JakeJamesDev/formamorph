@@ -4,6 +4,7 @@ import {
   dialogFullHeightMobile,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -445,17 +446,15 @@ export function StatCodeTemplateDialog({
   };
 
   const templateButton = (template: StatCodeTemplate) => (
-    <button
+    <CompactSelectionRow
       key={template.id}
-      type="button"
+      selected={template.id === selected?.id}
+      showCheck={false}
+      aria-pressed={undefined}
       onClick={() => setSelectedId(template.id)}
-      className={cn(
-        'text-left text-label rounded px-2 py-1.5',
-        template.id === selected?.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
-      )}
     >
       {template.name}
-    </button>
+    </CompactSelectionRow>
   );
 
   return (

@@ -55,6 +55,31 @@ describe('the list', () => {
     expect(listed()).toEqual([...BUILT_IN, 'get_weather', 'roll_dice', 'New Tool']);
   });
 
+  it('fills only the selected row with primary and keeps its enabled dot readable on it', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState([tool()])} />);
+    const selectedRow = () => list().getByRole('button', { name: 'get_entity' });
+    const otherRow = () => list().getByRole('button', { name: 'get_weather' });
+    const dot = (row: HTMLElement) => row.querySelector('[aria-hidden]')!;
+
+    expect(selectedRow()).toHaveAttribute('aria-current', 'true');
+    expect(selectedRow()).not.toHaveAttribute('aria-pressed');
+    expect(selectedRow()).toHaveClass('bg-primary', 'text-primary-foreground');
+    expect(selectedRow()).not.toHaveClass('bg-accent');
+    expect(dot(selectedRow())).toHaveClass('bg-primary-foreground/40');
+    expect(otherRow()).not.toHaveAttribute('aria-current');
+    expect(otherRow()).toHaveClass('hover:bg-secondary');
+    expect(otherRow()).not.toHaveClass('bg-primary');
+    expect(dot(otherRow())).toHaveClass('bg-muted-foreground/40');
+
+    await user.click(enabledBox());
+    expect(dot(selectedRow())).toHaveClass('bg-primary-foreground');
+    await user.click(otherRow());
+    expect(otherRow()).toHaveClass('bg-primary', 'text-primary-foreground');
+    expect(selectedRow()).not.toHaveClass('bg-primary');
+    expect(dot(selectedRow())).toHaveClass('bg-primary');
+  });
+
   it('offers New Tool and Import on a built-in preset, and an import arrives switched off', async () => {
     const user = userEvent.setup();
     const transfer: ToolFileTransfer = {

@@ -418,6 +418,19 @@ describe('which templates a box offers', () => {
     expect(screen.queryByRole('button', { name: 'Trait by Threshold' })).toBeNull();
   });
 
+  it('fills only the selected template with primary and leaves the others a neutral hover', async () => {
+    const user = userEvent.setup();
+    open('after');
+    const hourly = await screen.findByRole('button', { name: 'Hourly Change' });
+    await user.click(hourly);
+
+    expect(hourly).toHaveClass('bg-primary', 'text-primary-foreground');
+    expect(hourly).not.toHaveClass('bg-accent', 'hover:bg-secondary');
+    const other = screen.getByRole('button', { name: 'Weighted Blend' });
+    expect(other).toHaveClass('hover:bg-secondary');
+    expect(other).not.toHaveClass('bg-primary');
+  });
+
   it('names the box the selected template runs in', async () => {
     const user = userEvent.setup();
     open('after');

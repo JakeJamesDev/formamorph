@@ -320,6 +320,7 @@ The new description states the reference purpose. Action labels use the producti
 ### Composition
 
 - Put Built-In and My Templates in a categorized sidebar at desktop widths. Use one template selector on mobile so the detail pane keeps useful width.
+- Draw each library row with `CompactSelectionRow` and its check mark off. The selected template takes the primary fill; a hovered one takes the neutral hover, so the two never share a color. The Settings Tools list uses the same row.
 - Keep the selected template's name and explanation above its parameter form. Use the template declaration as the source of fields and defaults.
 - Put required stat choices and numeric parameters in the same form. Pick a stat, trait, entity or placeholder with the [Breadcrumb Picker](#pattern-breadcrumb-picker). Keep a short fixed set, such as a daypart, in a Select. Show validation beside the affected field and connect it to the control's accessible description.
 - Update the generated code preview as parameter values change. Keep the preview bounded and scrollable for long code.
