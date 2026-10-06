@@ -69,6 +69,12 @@ Q1–Q17 come from the grilling; Q18–Q32 from the prototype rounds (`prototype
 | Q30 | Find stays a button that opens the Find bar. Embedding the Find widget in the app bar was tried and rejected: the widget is too complex for the bar |
 | Q31 | Rejected on the way: the rail outside every card, back or a title in the rail's top slot, an expand toggle in the top slot, group captions, identity tiles on the title, the world's name in the bar, a labeled switch, word or icon toggles, icon segments for the mode, and a rail drawer on mobile |
 | Q32 | On desktop, Community's header row ends with the sort select, the order toggle and refresh, refresh furthest right: the same order as mobile's Filters panel (Q28). The search box fills the space between the title and that group |
+| Q33 | Ticket 02 lifts the World Editor's desktop header and tour bar out of the card into a full-width row above the panel group, so the back button meets the shared offset. Ticket 05 turns that row into the app bar. Mobile keeps its card header |
+| Q34 | While the rail is auto-collapsed (Q17), the foot toggle stays drawn and disabled, with an "Expand" flyout. It never writes the stored choice in that state |
+| Q35 | The rail has no change handler. It takes the active value only for the accent bar; the host's vertical tab root owns the change (Q8) |
+| Q36 | The collapsed rail's flyouts use the shared tooltip, with its timing, so no host card can clip them |
+| Q37 | Every ticket's changelog fragment carries its own lead. Prepare refuses a repeated lead, so the shared-lead plan was dropped after ticket 02 |
+| Q38 | Community's desktop title has no Globe icon, so both surfaces' titles start at the same x beside the back button |
 
 ## User Stories
 
@@ -122,13 +128,15 @@ Q1–Q17 come from the grilling; Q18–Q32 from the prototype rounds (`prototype
 
 ### Nav Rail (new shared component)
 
-- Takes the groups in order, the active value, a change handler, a label, a disabled flag, a storage key and a default state (Q3, Q4, Q16).
+- Takes the groups in order, the active value, a label, a disabled flag, a storage key and a default state (Q3, Q4, Q16, Q35).
 - Renders a vertical tab list (Q8). It must sit inside its host's tab root, which wraps the rail and the panels, as the edge-rail effort's Q5 required. Arrow keys move along it.
 - Draws a plain line between drawn groups and nothing for an empty group (Q10, Q19).
 - Collapse toggle at the foot. The expanded state persists per storage key in browser storage and survives a failed read or write (Q4, Q20).
 - Auto-collapse: the host passes whether there is room. When there isn't, the rail draws collapsed without writing the stored state (Q17). The threshold is tuned during the build against the list panel's minimum width, and recorded in the spec.
 - Motion, from the prototype: one row layout in both states (icon 11px in, which centers it in the 52px collapsed rail). Width animates 52px ↔ 192px over 200 ms on `cubic-bezier(0.2, 0, 0, 1)`. Labels stay mounted, clip in their own box, and fade on the same duration and curve. Reduced motion skips the animation (Q20).
 - Collapsed rows show the tab name in a flyout on hover or focus-visible, never on a pointer focus (Q21). The active row carries the accent bar on the rail's edge.
+- The disabled flag disables the tabs only, and disabled tabs show no flyout. The collapse toggle stays usable.
+- The shared tooltip has a `disabled` prop, so a tip can turn off without remounting its control and dropping focus.
 
 ### Mode Select (new shared component)
 
@@ -166,7 +174,7 @@ Q1–Q17 come from the grilling; Q18–Q32 from the prototype rounds (`prototype
 
 - The Design System guide gains Nav Rail, the surface app bar and Mode Select, each with a showcase entry, documented before adoption. Sections Bar is updated to draw lines without captions.
 - The World Editor guide drops the strip, the `?` and the footer Save/Export, and names the rail and the app bar. The Settings guide names the select.
-- Changelog: one Major Added entry under 👤 for the effort. Every ticket's fragment carries the exact lead **The World Editor and Community Creations move their sections to a collapsible side rail.** plus its own sentence; prepare folds them onto one line in landing order.
+- Changelog: each ticket's fragment is its own Major Added 👤 entry, with a lead that names what that ticket adds. Prepare refuses a lead already under 🚧 In Progress, so tickets never share one (Q37).
 
 ## Testing Decisions
 
