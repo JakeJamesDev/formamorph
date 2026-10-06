@@ -56,6 +56,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Test Bench checks pin conflicts quickly on placeholders pinned from hundreds of sources.** The check and the conflict note under each pin read a placeholder's pins once. They report the same conflicts and winners.
   - **A trait or location that pins hundreds of placeholders opens its Pins tab faster.** Each pin's picker builds its list only when you open it, and an edit updates only the pin you changed. Pins look and work as before.
   - **The selected tool in Settings and the selected code template now stand out from the hovered one.** Both lists fill the selected row with the primary color.
+  - **Dialogs no longer open with an outline around the close button.** The ring still shows when you reach the button with the keyboard.
 
 ---
 

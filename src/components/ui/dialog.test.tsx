@@ -47,6 +47,29 @@ describe('the stock open animation', () => {
   });
 });
 
+describe('the close button focus ring', () => {
+  const closeClasses = () => {
+    render(
+      <Dialog open>
+        <DialogContent aria-describedby={undefined}>
+          <DialogTitle>box</DialogTitle>
+          body
+        </DialogContent>
+      </Dialog>,
+    );
+    return screen.getByRole('button', { name: 'Close' }).className.split(/\s+/);
+  };
+
+  it('takes focus on open but draws its ring for keyboard focus only', () => {
+    const classes = closeClasses();
+    // A plain `focus:` ring would draw on the mouse-opened dialog's auto-focused X.
+    expect(classes).toContain('focus-visible:ring-2');
+    expect(classes).toContain('focus-visible:ring-ring');
+    expect(classes).toContain('focus-visible:ring-inset');
+    expect(classes.some(c => /^focus:ring/.test(c))).toBe(false);
+  });
+});
+
 describe('full-height dialog shells anchor to the top', () => {
   it('drops the centering a normal dialog uses', () => {
     const classes = classesFor(dialogFullHeight);
