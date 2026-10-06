@@ -61,6 +61,7 @@ The canvas draws 23,100 Implicit Navigation edges (every sibling pair, both dire
 | Q23 | In-play Map: Implicit Navigation edges show from the player's current location, plus the hovered node on desktop. |
 | Q24 | Test seams as listed under Testing Decisions. No new seams. |
 | Q25 | Pin load joins this effort as tickets 17 and 18. On the pin world (`--pins 1`: one placeholder pinned 551 times, sources pinning 200 each), the pin-conflict check made each rules pass 16 s at 1x and the pinned placeholder never opened. |
+| Q26 | Ticket 17 lands the conflict fix with `pinTarget` recorded as a miss. The pins section's Select pickers mount their items only while open or focused, with no visible change (Q13's "go further on a miss"), in ticket 19. Any change to the visible conflict-note text needs a user ruling. |
 
 ## User Stories
 
@@ -139,6 +140,7 @@ Tickets live in `issues/`. Blocking edges are on each ticket.
 | 16 | Worker moves | |
 | 17 | Pin conflicts once per target | Q25 |
 | 18 | Pin row display names | Q25 |
+| 19 | Pin section pickers and notes | Q13, Q26 |
 
 ### Canvas and Map (tickets 02–04)
 
