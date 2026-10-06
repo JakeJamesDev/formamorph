@@ -8,8 +8,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
-  Globe, ShieldAlert, Trophy,
+  Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, X, SlidersHorizontal, ChevronDown,
+  ShieldAlert, Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -85,6 +85,7 @@ import { RemoteWorldDetailsModal } from "@/components/community/RemoteWorldDetai
 import { RemoteWorldCard } from "@/components/community/RemoteWorldCard";
 import { CommunityFilterBar } from "@/components/community/CommunityFilterBar";
 import { TutorialPopover } from "@/components/TutorialPopover";
+import { BackButton } from "@/components/BackButton";
 import { useTutorial } from "@/lib/tutorials";
 import { likeStateOf, optimisticLikeState, type LikeState } from "@/lib/likeCount";
 
@@ -1056,6 +1057,9 @@ const CommunityCreationsBrowser = ({
   // row for two controls reads as a second, unrelated set of filters.
   // The explanation anchors to the Add Filter control inside the bar, not the bar: the bar spans the
   // row, and a popover can't aim its arrow at the middle of something wider than itself.
+  // The same event banner the main menu carries — the two surfaces share no shell, so this is a second
+  // instance rather than a moved one. The header's own spacing places it, so the card's margins are dropped.
+  const eventBanner = <EventBanner banners={banners} onOpenEvent={openEventFromBanner} className="mx-0 mb-0" />;
   const filterBar = (
     <div onPointerDownCapture={() => dismissIfShowing('community-filters')}>
     <CommunityFilterBar
@@ -1147,16 +1151,14 @@ const CommunityCreationsBrowser = ({
           {/* Header: back · title · search · refresh always visible. On mobile the sort/filter controls
               collapse behind a "Filters" toggle; on desktop they stay inline. */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen} className="shrink-0 border-b">
-            <div className="px-6 py-4 space-y-4">
+            <div className={isMobile ? 'px-3 py-2 space-y-2' : 'pb-4'}>
               {isMobile ? (
                 // Two rows on mobile, not four. The title goes screen-reader-only the way the World
                 // Editor's does — the header it names is the only thing on screen — which frees its row
                 // for the search box, and the kind tabs drop to share a row with the Filters toggle.
                 <>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
-                      <ArrowLeft className="h-5 w-5" />
-                    </Button>
+                    <BackButton onClick={() => onOpenChange(false)} />
                     <Heading className="sr-only">Community Creations</Heading>
                     {searchControl}
                     {refreshControl}
@@ -1184,15 +1186,18 @@ const CommunityCreationsBrowser = ({
                   </div>
                 </>
               ) : (
-                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                  <Button variant="ghost" size="icon" className="shrink-0" onClick={() => onOpenChange(false)} aria-label="Back">
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                  <Heading className="flex items-center gap-2 whitespace-nowrap mr-2"><Globe className="h-4 w-4 shrink-0" /> Community Creations</Heading>
-                  {searchControl}
-                  {quarantineControl}
-                  {refreshControl}
-                  {sortControl}
+                // The title row fills its header, so the search box grows into the free space.
+                <div className="flex min-h-14 items-center px-3 py-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-1">
+                      <BackButton onClick={() => onOpenChange(false)} />
+                      <Heading className="ml-1 whitespace-nowrap text-title font-semibold">Community Creations</Heading>
+                    </div>
+                    {searchControl}
+                    {quarantineControl}
+                    {refreshControl}
+                    {sortControl}
+                  </div>
                 </div>
               )}
 
@@ -1202,13 +1207,13 @@ const CommunityCreationsBrowser = ({
                   {filterBar}
                 </CollapsibleContent>
               ) : (
-                filterBar
+                <div className="space-y-4 px-6 pt-2">
+                  {filterBar}
+                  {eventBanner}
+                </div>
               )}
 
-              {/* The same event banner the main menu carries — the two surfaces share no shell, so this
-                  is a second instance rather than a moved one. Margins come from the header's own
-                  padding, so the card's are dropped. */}
-              <EventBanner banners={banners} onOpenEvent={openEventFromBanner} className="mx-0 mb-0" />
+              {isMobile && eventBanner}
             </div>
           </Collapsible>
 

@@ -38,7 +38,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
+import { BackButton } from '@/components/BackButton';
+import { Save, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -856,15 +857,13 @@ const WorldEditorInner = ({
   const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
   // No control here shrinks, so a tight row never squeezes a square button; the mobile gap fits it in 375px.
   const headerBar = (
-    <div className={cn('flex items-center [&>*]:shrink-0', isMobile ? 'gap-2' : 'gap-4')}>
-      {showBackButton && (
-        <Button variant="ghost" size="icon" className="border-transparent" onClick={requestClose}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-      )}
-      {/* On mobile you have just come from tapping this world open, and the row needs every pixel for the controls
-          that do something — so the heading is read out but not drawn there. */}
-      <CardTitle className={isMobile ? 'sr-only' : undefined}>World Editor</CardTitle>
+    <div className={cn('flex w-full items-center [&>*]:shrink-0', isMobile ? 'gap-2' : 'gap-4')}>
+      <div className="flex items-center gap-1">
+        {showBackButton && <BackButton onClick={requestClose} />}
+        {/* On mobile you have just come from tapping this world open, and the row needs every pixel for the controls
+            that do something — so the heading is read out but not drawn there. */}
+        <CardTitle className={isMobile ? 'sr-only' : cn(showBackButton && 'ml-1')}>World Editor</CardTitle>
+      </div>
       <Tip tip="Find and replace (Ctrl+F)" labelsChild={false}>
         <Button
           variant="ghost"
@@ -1060,7 +1059,7 @@ const WorldEditorInner = ({
         />
       )}
       <div
-        className="relative flex-grow flex overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+        className={cn('relative flex-grow flex overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset', !isMobile && 'flex-col')}
         ref={editorRootRef}
         // Focusable only as Find's fallback landing spot, never in the tab order — and it shows a ring there,
         // so a keyboard author who closed Find can see where focus went.
@@ -1083,8 +1082,8 @@ const WorldEditorInner = ({
         )}
         {isMobile ? (
           <div className="h-full w-full">
-            <Card className="h-full flex flex-col rounded-none border-x-0">
-              <CardHeader className="space-y-0 p-2">{headerBar}{tourBar}</CardHeader>
+            <Card className="h-full flex flex-col rounded-none border-x-0 border-t-0">
+              <CardHeader className="space-y-0 px-3 py-2">{headerBar}{tourBar}</CardHeader>
               <Tabs
                 value={activeTab}
                 onValueChange={setActiveTab}
@@ -1125,12 +1124,18 @@ const WorldEditorInner = ({
             </Card>
           </div>
         ) : (
+          <>
+          {/* The header spans the window above the panels: 12px sides, its first row centered in 56px. */}
+          <div className="shrink-0 border-b">
+            <div className="flex min-h-14 items-center px-3 py-2">{headerBar}</div>
+            {tourBar && <div className="px-3 pb-2">{tourBar}</div>}
+          </div>
+          <div className="min-h-0 flex-1">
           <PanelGroup direction="horizontal" ref={panelGroupRef}>
             {/* The Bench comes and goes, so every panel carries an id+order for the group to track it. */}
             <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
               <div className="h-full p-3">
                 <Card className="h-full flex flex-col">
-                  <CardHeader className="space-y-0 p-3 pb-2">{headerBar}{tourBar}</CardHeader>
                   <CardContent className="flex-grow flex flex-col overflow-hidden p-3">
                     {/* The embedded Bench takes the tab strip, the add/search bar and the list; the detail
                         panel beside it stays live, so a finding's item opens visibly next to the list being
@@ -1191,6 +1196,8 @@ const WorldEditorInner = ({
               </>
             )}
           </PanelGroup>
+          </div>
+          </>
         )}
       </div>
       {/* Mobile has no room for a third pane, so the Bench arrives as a full-height sheet over the editor. */}

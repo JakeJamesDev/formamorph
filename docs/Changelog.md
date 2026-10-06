@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The World Editor and Community Creations move their sections to a collapsible side rail.** Settings swaps its Simple/Advanced switch for a mode select that says what each mode shows.
+  - **The World Editor and Community Creations keep the back arrow in the same place on every screen.** Every header now shares one back button, one height and one side spacing.
 
 ### Minor Changes
 

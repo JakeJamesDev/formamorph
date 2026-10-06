@@ -249,8 +249,9 @@ describe('the entity Traits tab as a mirror', () => {
       fireEvent.click(rowNamed('Tamed')!);
       expect(leadsStrip('Back to Traits', 'Trait Fields')).toBe(true);
       expect(leadsStrip('Back to Entities', 'Entity Fields')).toBe(true);
-      // No push draws a row of its own for the control.
-      expect(screen.queryByRole('button', { name: /^(Back|Traits|Entities)$/ })).toBeNull();
+      // No push draws a row of its own for the control: the editor header's Back is the only one named Back.
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: /^(Traits|Entities)$/ })).toBeNull();
       fireEvent.click(backArrow()!);
       expect(detailsOpen()).toBe(false);
       expect(screen.getByRole('tablist', { name: 'Entity Fields' })).toBeInTheDocument();
