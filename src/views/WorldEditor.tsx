@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
 import { CodeRenameProvider } from '@/components/editor/CodeRenameOffer';
 import { TestBench, TestBenchButton } from '@/components/editor/TestBench';
+import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 import { BenchPopover } from '@/components/editor/BenchPopover';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
@@ -497,7 +498,7 @@ const WorldEditorInner = ({
     // The tour's In Play pane holds the Bench's desktop slot while the tour runs.
     panelSuspended: touring && !isMobile,
   });
-  const benchPanel = <TestBench {...bench.panelProps} />;
+  const benchPanel = <PanelErrorBoundary><TestBench {...bench.panelProps} /></PanelErrorBoundary>;
 
   const exportCurrentWorld = () => exportWorld(buildCurrentWorld());
 
@@ -820,7 +821,9 @@ const WorldEditorInner = ({
       {dictionaryEditor.dialog}
     </>
   );
+  // A different item opens a fresh panel, so the card clears with the selection.
   const detailContent = (
+    <PanelErrorBoundary resetKey={`${activeTab}:${selections[activeTab] ?? ''}`}>
     <ChipInsertTargetProvider>
     <div className={cn("p-3 [--panel-gutter:theme(spacing.3)]", detailFills && "flex flex-1 min-h-0 flex-col")}>
       {/* One palette for the whole panel, the Placeholders tab included: a value is a chip field like any
@@ -839,6 +842,7 @@ const WorldEditorInner = ({
       {listEditorParts?.detail}
     </div>
     </ChipInsertTargetProvider>
+    </PanelErrorBoundary>
   );
 
   // Shared chrome — reused by the desktop resizable split and the mobile single-panel layout.
@@ -947,7 +951,7 @@ const WorldEditorInner = ({
   // rest render empty; `contents` keeps that body a direct flex child of the tab root, as it was unwrapped.
   const tabPanels = (body: ReactNode) => visibleTabs.map((t) => (
     <TabsContent key={t.value} value={t.value} className="contents">
-      {t.value === activeTab ? body : null}
+      {t.value === activeTab ? <PanelErrorBoundary>{body}</PanelErrorBoundary> : null}
     </TabsContent>
   ));
   // The Locations toolbar's List/Canvas switch, icon buttons past the search box.

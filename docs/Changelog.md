@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **A crash of the whole app now shows a recovery screen with Copy Error Details, Export World and Reload.** Export World appears when you have unsaved edits. A toast with View Details now shows unhandled errors.
+  - **A crash in one World Editor panel shows a card there, and the rest of the editor keeps working.** Your unsaved edits stay. **Try Again** remounts the panel, and **View Details** opens the error with Copy and Report Bug.
 - **🛠️ Developer tooling**
   - **CI splits the test suite across four parallel runners, so a check takes about 5 minutes, not 20.** A tag push runs the checks once, through the Release workflow. A **Build Android APK** run skips them.
 

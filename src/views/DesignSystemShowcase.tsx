@@ -8,6 +8,7 @@ import { FeedbackFilterRowReference } from '@/components/design-system/FeedbackF
 import { SupporterFlairReference } from '@/components/design-system/SupporterFlairReference';
 import { PresetHeaderReference } from '@/components/design-system/PresetHeaderReference';
 import { LandingPulseReference } from '@/components/design-system/LandingPulseReference';
+import { PanelCrashCardReference } from '@/components/design-system/PanelCrashCardReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -382,6 +383,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Landing Pulse',
     description: 'One ring pulse on the row a Take Me There landing points at',
     Component: LandingPulseReference,
+  },
+  {
+    id: 'panel-crash-card',
+    label: 'Panel Crash Card',
+    description: 'The card a crashed editor panel shows in its own place',
+    Component: PanelCrashCardReference,
   },
 ];
 
