@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseEntry, lintSection, inProgressBounds, latestReleaseBounds, releaseBounds, LEAD_WORDS, BODY_WORDS } from './changelogFormat.mjs';
+import { parseEntry, lintSection, inProgressBounds, latestReleaseBounds, releaseBounds, oversizeGroups, LEAD_WORDS, BODY_WORDS, GROUP_ENTRIES } from './changelogFormat.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -71,6 +71,20 @@ describe('lintSection', () => {
       expect.stringMatching(new RegExp(`Lead has ${LEAD_WORDS + 1} words`)),
       expect.stringMatching(new RegExp(`Body has ${BODY_WORDS + 1} words.*Short lead`)),
     ]);
+  });
+
+  it('names the groups over the entry cap, and stops counting at the next audience or heading', () => {
+    const group = (name, count) => [`  - **${name}:**`, ...Array.from({ length: count }, (_, i) => `    - **${name} entry ${i}.** Detail.`)];
+    const body = lines([
+      '- **👤 User-facing**',
+      ...group('Big', GROUP_ENTRIES + 1),
+      ...group('Full', GROUP_ENTRIES),
+      '  - **A loose entry.** Detail.',
+      '- **🛠️ Developer tooling**',
+      ...group('Tools', 2),
+    ].join('\n'));
+    expect(oversizeGroups(body)).toEqual([{ text: 'Big', entries: GROUP_ENTRIES + 1 }]);
+    expect(oversizeGroups(body, 1).map((g) => g.text)).toEqual(['Big', 'Full', 'Tools']);
   });
 
   it('rejects a bullet with no bold lead, which would ship nothing', () => {

@@ -90,6 +90,30 @@ export function latestReleaseBounds(lines) {
   return [start, end];
 }
 
+/** The most entries a feature group holds once its spec closes. Close-spec merges a larger group down;
+ *  it is not a gate, because a group grows ticket by ticket while its effort is open. */
+export const GROUP_ENTRIES = 12;
+
+/** Every feature group in a slice of changelog lines with more than `max` entries, as { text, entries }. */
+export function oversizeGroups(lines, max = GROUP_ENTRIES) {
+  const groups = [];
+  let open = null;
+  for (const line of lines) {
+    const entry = parseEntry(line);
+    if (!entry) {
+      if (/^(-\s+\*\*|####\s|###\s|##\s)/.test(line)) open = null;
+      continue;
+    }
+    if (entry.depth === 0) {
+      open = entry.header ? { text: entry.text, entries: 0 } : null;
+      if (open) groups.push(open);
+    } else if (open) {
+      open.entries += 1;
+    }
+  }
+  return groups.filter((group) => group.entries > max);
+}
+
 /** Line bounds of one collapsed release, found by the version in its summary, or null when it is absent. */
 export function releaseBounds(lines, version) {
   const summary = lines.findIndex((l) => l.includes(`✅ ${version} — Released`));
