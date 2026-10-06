@@ -37,6 +37,7 @@ const THUMB_WIDTH = 300;
 const OG = { width: 1200, height: 630, quality: 0.88 };
 
 const ALL = ['01-library', '02-game', '03-world-details', '04-settings', '05-avatar'];
+const HELP_QUESTION = arg('question', 'How do I import a world someone shared?');
 const only = arg('only', '').split(',').filter(Boolean);
 const wanted = new Set(only.length ? only : ALL);
 
@@ -59,6 +60,8 @@ const newCtx = async () => {
       localStorage.setItem('FORMAMORPH_endpointUrl', url);
       localStorage.setItem('FORMAMORPH_modelName', model);
     }
+    // The Help tab note is a two-page tour, so the Got It loop can't close it.
+    if (!localStorage.getItem('formamorph.tutorialsSeen')) localStorage.setItem('formamorph.tutorialsSeen', JSON.stringify(['help-tab']));
   }, [ENDPOINT, MODEL]);
   return c;
 };
@@ -206,17 +209,38 @@ async function verifyGame(page) {
 let gameFrame = null;
 const failures = [];
 try {
-  if (wanted.has('01-library') || wanted.has('03-world-details')) {
+  if (wanted.has('01-library')) {
+    // Morphie answers one live question over the library, so this scene needs the capture endpoint.
     const p = await mk();
     await p.goto(`${BASE}/#dev?view=mainMenu`);
     await p.waitForTimeout(12000); // first boot seeds the bundled worlds into IndexedDB
     await p.dismiss();
-    if (wanted.has('01-library')) await sweep(p, '01-library');
-    if (wanted.has('03-world-details')) {
-      await p.getByText('Veilwood', { exact: true }).first().click();
-      await p.waitForTimeout(1800);
-      await sweep(p, '03-world-details');
-    }
+    await p.keyboard.press('F1');
+    const ask = p.getByRole('textbox', { name: 'Ask a Question' });
+    await ask.waitFor();
+    await p.waitForTimeout(2000); // the window's open animation; a fill during it is dropped
+    await ask.fill(HELP_QUESTION);
+    if ((await ask.inputValue()) !== HELP_QUESTION) throw new Error('Library capture: the question did not reach the Ask field');
+    await ask.press('Enter');
+    // Done = the log is idle and holds more than the question's wait line.
+    await p.waitForFunction(() => {
+      const log = document.querySelector('[role="log"][aria-label="Conversation"]');
+      return log?.getAttribute('aria-busy') === 'false' && (log.textContent ?? '').length > 200;
+    }, null, { timeout: 180000 });
+    await p.mouse.move(VIEWPORT.width / 2, 20);
+    await p.waitForTimeout(4000); // the reveal finishes and the pill fades
+    await sweep(p, '01-library');
+    await p.close();
+  }
+
+  if (wanted.has('03-world-details')) {
+    const p = await mk();
+    await p.goto(`${BASE}/#dev?view=mainMenu`);
+    await p.waitForTimeout(12000);
+    await p.dismiss();
+    await p.getByText('Veilwood', { exact: true }).first().click();
+    await p.waitForTimeout(1800);
+    await sweep(p, '03-world-details');
     await p.close();
   }
 
