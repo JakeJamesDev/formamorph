@@ -75,6 +75,7 @@ Q1–Q17 come from the grilling; Q18–Q32 from the prototype rounds (`prototype
 | Q36 | The collapsed rail's flyouts use the shared tooltip, with its timing, so no host card can clip them |
 | Q37 | Every ticket's changelog fragment carries its own lead. Prepare refuses a repeated lead, so the shared-lead plan was dropped after ticket 02 |
 | Q38 | Community's desktop title has no Globe icon, so both surfaces' titles start at the same x beside the back button |
+| Q39 | Q9 deletes only the tab topics behind the header `?`. The field topics and their in-panel `?` buttons stay |
 
 ## User Stories
 
