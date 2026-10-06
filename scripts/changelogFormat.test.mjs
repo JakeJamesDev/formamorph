@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseEntry, lintSection, inProgressBounds, latestReleaseBounds } from './changelogFormat.mjs';
+import { parseEntry, lintSection, inProgressBounds, latestReleaseBounds, releaseBounds, LEAD_WORDS, BODY_WORDS } from './changelogFormat.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -59,6 +59,20 @@ describe('lintSection', () => {
     expect(problems[0]).toMatch(/Image Generation.*at least 2/);
   });
 
+  it('rejects a lead or a body over its word limit, nested entries included, and spares a group header', () => {
+    const n = (count) => Array(count).fill('word').join(' ');
+    expect(lintSection(lines([
+      '- **👤 User-facing**',
+      `  - **${n(LEAD_WORDS)}.** ${n(BODY_WORDS)}`,
+      `  - **${n(LEAD_WORDS + 5)} group:**`,
+      `    - **${n(LEAD_WORDS + 1)}.** Detail.`,
+      `    - **Short lead.** ${n(BODY_WORDS + 1)}`,
+    ].join('\n')))).toEqual([
+      expect.stringMatching(new RegExp(`Lead has ${LEAD_WORDS + 1} words`)),
+      expect.stringMatching(new RegExp(`Body has ${BODY_WORDS + 1} words.*Short lead`)),
+    ]);
+  });
+
   it('rejects a bullet with no bold lead, which would ship nothing', () => {
     const problems = lintSection(lines('- **👤 User-facing**\n  - A change with no bold lead.'));
     expect(problems).toEqual([expect.stringMatching(/no bold lead/)]);
@@ -102,6 +116,13 @@ describe('the shipped changelog', () => {
 
   it('has a well-formed In Progress section', () => {
     const bounds = inProgressBounds(src);
+    expect(bounds).not.toBeNull();
+    expect(lintSection(src.slice(bounds[0], bounds[1]))).toEqual([]);
+  });
+
+  it.each(['3.2.0', '3.1.0', '3.0.0'])('has a well-formed %s release section', (version) => {
+    // Releases before 3.0.0 predate the group format and the word limits, and are left as they shipped.
+    const bounds = releaseBounds(src, version);
     expect(bounds).not.toBeNull();
     expect(lintSection(src.slice(bounds[0], bounds[1]))).toEqual([]);
   });
