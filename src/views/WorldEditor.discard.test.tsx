@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { useEffect, type ReactNode } from 'react';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
+import { pickEditorMode } from '@/test/worldEditorBench';
 import WorldEditor from './WorldEditor';
 import type { World } from '@/types';
 
@@ -219,7 +220,7 @@ describe('WorldEditor — exit without saving, after a rename rewrote stat code'
 
     // The Placeholders tab is Advanced only, and its panel opens on the row the author picks. A Radix tab
     // switches on the pointer press, not the click jsdom synthesizes after it.
-    fireEvent.click(screen.getByText('Advanced'));
+    pickEditorMode('Advanced');
     const tab = screen.getAllByRole('tab').find((t) => t.textContent === 'Placeholders')!;
     fireEvent.mouseDown(tab);
     fireEvent.pointerDown(tab, { pointerType: 'mouse', button: 0 });

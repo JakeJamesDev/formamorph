@@ -391,3 +391,33 @@ describe('nav rail reference', () => {
     expect(within(rail).getByRole('tab', { selected: true })).toHaveAccessibleName('Traits');
   });
 });
+
+describe('surface app bar reference', () => {
+  it('draws the bar in order and follows the sample save state, touching no storage', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Surface App Bar' }));
+
+    const region = screen.getByRole('region', { name: 'Surface App Bar' });
+    const order = [
+      within(region).getByRole('button', { name: 'Back' }),
+      within(region).getByRole('heading', { name: 'World Editor' }),
+      within(region).getByRole('button', { name: 'Find and replace' }),
+      within(region).getByRole('button', { name: 'Test Bench' }),
+      within(region).getByRole('combobox', { name: 'Sample editor mode' }),
+      within(region).getByRole('button', { name: 'Export World' }),
+      within(region).getByRole('button', { name: 'Save' }),
+    ];
+    order.slice(1).forEach((el, i) => {
+      expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+    expect(within(region).getByText('Saved', { selector: 'span' })).toBeInTheDocument();
+
+    await user.click(within(region).getByRole('radio', { name: 'Never Stored' }));
+    expect(within(region).queryByText(/^(Saved|Unsaved changes)$/, { selector: 'span' })).toBeNull();
+    await user.click(within(region).getByRole('radio', { name: 'Unsaved Changes' }));
+    await user.click(within(region).getByRole('button', { name: 'Save' }));
+    expect(within(region).getByText('Saved', { selector: 'span' })).toBeInTheDocument();
+    expect(localStorage).toHaveLength(0);
+  });
+});

@@ -127,6 +127,16 @@ export const openEditorTab = (name: RegExp) => {
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Editor Sections' })).getByRole('tab', { name }));
 };
 
+/** The desktop app bar's mode select. */
+export const editorModeSelect = () => screen.getByRole('combobox', { name: 'Editor mode' });
+
+/** Pick a mode from the desktop mode select, by keyboard: a click needs pointer capture, which jsdom has not
+ *  got, and the keyboard works under fake timers too. */
+export const pickEditorMode = (name: 'Simple' | 'Advanced') => {
+  fireEvent.keyDown(editorModeSelect(), { key: 'Enter' });
+  fireEvent.keyDown(screen.getByRole('option', { name: new RegExp(`^${name}`) }), { key: 'Enter' });
+};
+
 /** The entity panel's own tab, apart from the editor's tab of the same name. */
 export const entityFieldsTab = (name: string) =>
   within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });

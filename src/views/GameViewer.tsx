@@ -4578,7 +4578,7 @@ const GameViewer = ({
         const world = await WorldStorageService.getWorldData(targetWorldId) as World;
         // Use the migrated world for the save restore — the raw one may be a legacy shape whose locations/
         // stats lack the migration fixes (morph bindings, renamed keys) that loadWorldData just applied.
-        const { world: migrated } = loadWorldData(world);
+        const { world: migrated } = loadWorldData(world, false, { stored: true });
         return await loadGame(
           id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : [],
           Array.isArray(migrated.entities) ? migrated.entities.map((e) => e.id) : [],

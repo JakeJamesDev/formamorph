@@ -6,7 +6,7 @@ import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type Tar
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { editorTabGroupsFor, editorTabsFor, RAIL_ROOM_PX } from './worldEditorTabs';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
-import { useEditorMode, type EditorMode } from '@/lib/editorMode';
+import { EDITOR_HIDDEN_NOTICE, EDITOR_MODE_DESCRIPTIONS, useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import {
@@ -41,7 +41,11 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { NavRail } from '@/components/NavRail';
 import { useElementSize } from '@/lib/useElementSize';
 import { BackButton } from '@/components/BackButton';
-import { Save, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
+import { SurfaceAppBar } from '@/components/SurfaceAppBar';
+import { Separator } from '@/components/ui/separator';
+import { ModeSelect } from '@/components/ui/mode-select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Save, ImageDown, BookPlus, UserPlus, Loader2, Search, MoreHorizontal } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -156,7 +160,7 @@ const WorldEditorInner = ({
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     setLocations, setEntities, setDictionaries,
-    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
+    isWorldDirty, isWorldStored, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -178,6 +182,7 @@ const WorldEditorInner = ({
   };
   // null = idle; 'scanning' = measuring before the choice dialog; then the live per-image encode progress.
   const [optimizeProgress, setOptimizeProgress] = useState<{ done: number; total: number } | 'scanning' | null>(null);
+  const [worldMenuOpen, setWorldMenuOpen] = useState(false);
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   // Cancels an in-flight optimize when the editor closes: without it the orphaned run keeps the shared encode
   // worker busy for the whole world and then writes its stale click-time snapshot back into GameDataContext,
@@ -858,87 +863,179 @@ const WorldEditorInner = ({
   const hasHiddenData = !advanced && worldUsesAdvancedFeatures({
     worldOverview: getWorldData().worldOverview, stats, entities, locations, traits, dictionaries, placeholders,
   });
-  // The active tab's help topic, when it has copy yet — drives the `?` right of Find.
+  const findButton = (
+    <Tip tip="Find and replace (Ctrl+F)" labelsChild={false}>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => openFind(false)}
+        aria-label="Find and replace"
+        {...targetAttribute('worldEditor', 'find-button')}
+      >
+        <Search className="h-4 w-4" />
+      </Button>
+    </Tip>
+  );
+  // The flask's first stop is quick triage; the full panel is one button inside it.
+  const benchButton = (
+    <span data-tour-anchor="test-bench" className="inline-flex">
+      <BenchPopover {...bench.popoverProps}>
+        <TestBenchButton
+          count={bench.count}
+          newCount={bench.newCount}
+          open={bench.active}
+          onClick={bench.toggleFlask}
+        />
+      </BenchPopover>
+    </span>
+  );
+  // Using the control is itself the lesson, so it retires the tutorial as surely as the button does.
+  const pickMode = (next: EditorMode) => { dismissTutorial(); setMode(next); };
+  // The span takes the tip and the tour's focus: a disabled control gets no pointer events or focus of its own.
+  const modeShell = (control: ReactNode) => (
+    <Tip tip="End the Authoring Tour to switch modes" disabled={!touring} labelsChild={false}>
+      <span
+        data-tour-anchor="editor-mode"
+        className="inline-flex"
+        tabIndex={touring ? 0 : undefined}
+        {...targetAttribute('worldEditor', 'editor-mode')}
+      >
+        <TutorialPopover entry={tutorial?.id === EDITOR_MODE_TUTORIAL_ID ? tutorial : null} nav={tutorialNav}>
+          {control}
+        </TutorialPopover>
+      </span>
+    </Tip>
+  );
+  // The active tab's help topic, when it has copy yet — drives the mobile `?` right of Find.
   const helpTopicId = worldEditorTopicId(activeTab);
   // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
   const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
-  // No control here shrinks, so a tight row never squeezes a square button; the mobile gap fits it in 375px.
+  // Mobile's header. No control here shrinks, so a tight row never squeezes a square button; the gap fits 375px.
   const headerBar = (
-    <div className={cn('flex w-full items-center [&>*]:shrink-0', isMobile ? 'gap-2' : 'gap-4')}>
+    <div className="flex w-full items-center gap-2 [&>*]:shrink-0">
       <div className="flex items-center gap-1">
         {showBackButton && <BackButton onClick={requestClose} />}
-        {/* On mobile you have just come from tapping this world open, and the row needs every pixel for the controls
-            that do something — so the heading is read out but not drawn there. */}
-        <CardTitle className={isMobile ? 'sr-only' : cn(showBackButton && 'ml-1')}>World Editor</CardTitle>
+        {/* You have just come from tapping this world open, and the row needs every pixel for the controls that
+            do something — so the heading is read out but not drawn. */}
+        <CardTitle className="sr-only">World Editor</CardTitle>
       </div>
-      <Tip tip="Find and replace (Ctrl+F)" labelsChild={false}>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="ml-auto"
-          onClick={() => openFind(false)}
-          aria-label="Find and replace"
-          {...targetAttribute('worldEditor', 'find-button')}
-        >
-          <Search className="h-4 w-4" />
-        </Button>
-      </Tip>
+      <span className="ml-auto" />
+      {findButton}
       {helpButton}
-      {/* The flask's first stop is quick triage; the full panel is one button inside it. */}
-      <span data-tour-anchor="test-bench" className="inline-flex">
-        <BenchPopover {...bench.popoverProps}>
-          <TestBenchButton
-            count={bench.count}
-            newCount={bench.newCount}
-            open={bench.active}
-            onClick={bench.toggleFlask}
-          />
-        </BenchPopover>
-      </span>
-      {/* The span takes the tip: a disabled switch gets no pointer events of its own. */}
-      <Tip tip={touring ? 'End the Authoring Tour to switch modes' : undefined} labelsChild={false}>
-        <span
-          data-tour-anchor="editor-mode"
-          className="inline-flex"
-          tabIndex={touring ? 0 : undefined}
-          {...targetAttribute('worldEditor', 'editor-mode')}
+      {benchButton}
+      {modeShell(
+        <ToggleGroup
+          type="single"
+          value={mode}
+          disabled={touring}
+          onValueChange={(v) => { if (v) pickMode(v as EditorMode); }}
+          aria-label="Editor mode"
+          className="h-8"
         >
-          <TutorialPopover entry={tutorial?.id === EDITOR_MODE_TUTORIAL_ID ? tutorial : null} nav={tutorialNav}>
-            <ToggleGroup
-              type="single"
-              value={mode}
-              disabled={touring}
-              // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
-              onValueChange={(v) => { if (v) { dismissTutorial(); setMode(v as EditorMode); } }}
-              aria-label="Editor mode"
-              className={isMobile ? "h-8" : undefined}
-            >
-              <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
-              {/* The marker rides the switch that acts on it rather than sitting beside it as its own icon:
-                  it says "there is more through here", which is exactly what this control does, and a row on a
-                  mobile has no room for a second thing saying so. */}
-              <Tip
-                tip={hasHiddenData ? 'This world uses advanced features. Switch to Advanced to see them.' : undefined}
-                labelsChild={false}
-              >
-                <ToggleGroupItem
-                  value="advanced"
-                  className={cn('relative', isMobile && 'px-2 py-1')}
-                >
-                  Advanced
-                  {hasHiddenData && (
-                    <span
-                      aria-label="This world uses advanced features"
-                      className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
-                    />
-                  )}
-                </ToggleGroupItem>
-              </Tip>
-            </ToggleGroup>
-          </TutorialPopover>
-        </span>
-      </Tip>
+          <ToggleGroupItem value="simple" className="px-2 py-1">Simple</ToggleGroupItem>
+          {/* The marker rides the switch that acts on it: it says "there is more through here", which is exactly
+              what this control does, and the row has no room for a second thing saying so. */}
+          <Tip tip={hasHiddenData ? EDITOR_HIDDEN_NOTICE.tip : undefined} labelsChild={false}>
+            <ToggleGroupItem value="advanced" className="relative px-2 py-1">
+              Advanced
+              {hasHiddenData && (
+                <span
+                  aria-label={EDITOR_HIDDEN_NOTICE.label}
+                  className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
+                />
+              )}
+            </ToggleGroupItem>
+          </Tip>
+        </ToggleGroup>,
+      )}
     </div>
+  );
+  const optimizeLabel = optimizeProgress === null ? 'Optimize Images'
+    : optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`;
+  const optimizeIcon = optimizeProgress !== null
+    ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
+    : <ImageDown className="mr-2 h-4 w-4 shrink-0" />;
+  // Advanced gathers the world actions in a menu; Simple has only Export World, as an icon.
+  const worldActions = advanced ? (
+    <Popover open={worldMenuOpen} onOpenChange={setWorldMenuOpen}>
+      <Tip tip="More world actions">
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+      </Tip>
+      <PopoverContent align="end" className="w-56 p-1">
+        <div className="flex flex-col">
+          <Button
+            variant="ghost"
+            className="h-8 justify-start text-meta"
+            onClick={() => { setWorldMenuOpen(false); exportCurrentWorld(); }}
+          >
+            <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />
+            Export World
+          </Button>
+          {/* An oversized upload is already offered Optimize/Downscale as it lands, so this is the bulk pass
+              over a world that is already large. */}
+          <Tip tip="Downscale oversized images to conserve file size" labelsChild={false}>
+            <Button
+              variant="ghost"
+              className="h-8 justify-start text-meta"
+              disabled={optimizeProgress !== null}
+              onClick={() => { setWorldMenuOpen(false); void optimizeImages(); }}
+            >
+              {optimizeIcon}
+              {optimizeLabel}
+            </Button>
+          </Tip>
+        </div>
+      </PopoverContent>
+    </Popover>
+  ) : (
+    <Tip tip="Export World">
+      <Button variant="ghost" size="icon" onClick={exportCurrentWorld}>
+        <ActionIcon.export className="h-4 w-4" />
+      </Button>
+    </Tip>
+  );
+  const saveButton = (
+    <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty} data-tour-anchor="save">
+      <Save className="h-4 w-4 mr-2" />
+      Save
+    </Button>
+  );
+  // A world with no stored copy has nothing to call saved, so it shows no state at all.
+  const saveState = isWorldStored && (
+    <span className="ml-2 shrink-0 text-meta text-muted-foreground">{isWorldDirty ? 'Unsaved changes' : 'Saved'}</span>
+  );
+  const appBar = (
+    <SurfaceAppBar
+      start={(
+        <>
+          {showBackButton && <BackButton onClick={requestClose} />}
+          <CardTitle className={cn('shrink-0', showBackButton && 'ml-1')}>World Editor</CardTitle>
+          {saveState}
+        </>
+      )}
+      center={<>{findButton}{benchButton}</>}
+      end={(
+        <>
+          {modeShell(
+            <ModeSelect
+              mode={mode}
+              onModeChange={pickMode}
+              descriptions={EDITOR_MODE_DESCRIPTIONS}
+              hiddenNotice={hasHiddenData ? EDITOR_HIDDEN_NOTICE : undefined}
+              disabled={touring}
+              aria-label="Editor mode"
+            />,
+          )}
+          <Separator orientation="vertical" className="mx-1 h-5" />
+          {worldActions}
+          {saveButton}
+        </>
+      )}
+    />
   );
   const tourBar = tour.running && (
     <TourBar tour={tour} onBackToTour={() => { if (tour.step) showTourStep(tour.step); }} />
@@ -974,42 +1071,46 @@ const WorldEditorInner = ({
   const bodyGap = addSearchBar ? 'mt-4' : undefined;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
-  const footerBar = (
+  // The tab's own actions, on the two tabs that act on a selected item.
+  const tabActions = showImport && (
+    <>
+      {/* Export moves into this button's menu: what an author does with the selected entity or book is one
+          control, and saving it to the library is the everyday half of it. */}
+      <SelectedContentActions
+        disabled={!selectedLinkable}
+        {...(selectedLinkable
+          ? linking.controlFor(selectedLinkable, advanced)
+          : { faceLabel: 'Save to Library', faceTip: 'Select an entity or a dictionary first', onFace: () => {}, menu: [] })}
+      />
+      {/* The face opens the library picker; the chevron holds the file route into the same review. */}
+      <SplitButton
+        icon={activeTab === "dictionary"
+          ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
+          : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
+        label={importLabel}
+        onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else setShowAddEntity(true); }}
+        disabled={importDisabled}
+        menuLabel="More add options"
+        menu={[{
+          label: activeTab === "dictionary" ? 'Import Dictionary…' : 'Import Entity…',
+          onClick: () => linking.openImportFile(activeTab === "dictionary" ? 'dictionary' : 'entity'),
+        }]}
+      />
+    </>
+  );
+  // Desktop's world actions live in the app bar, so its footer draws only on a tab with actions of its own.
+  const desktopFooter = tabActions && <div className="p-3 border-t flex flex-wrap gap-2">{tabActions}</div>;
+  // Mobile has no app bar, so its footer keeps the world actions within thumb reach.
+  const mobileFooter = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
-      {downscaleDialog}
       {/* Wraps: two split buttons are wider than a phone, and each one has to stay joined. */}
       <div className="flex flex-wrap gap-2">
-        {showImport ? (
-          // Export moves into this button's menu: what an author does with the selected entity or book is
-          // one control, and saving it to the library is the everyday half of it.
-          <SelectedContentActions
-            disabled={!selectedLinkable}
-            {...(selectedLinkable
-              ? linking.controlFor(selectedLinkable, advanced)
-              : { faceLabel: 'Save to Library', faceTip: 'Select an entity or a dictionary first', onFace: () => {}, menu: [] })}
-          />
-        ) : exportContext && (
+        {tabActions || (exportContext && (
           <Button variant="outline" size="sm" onClick={exportContext.onClick} disabled={exportContext.disabled}>
             <ActionIcon.export className="h-4 w-4 mr-2 shrink-0" />
             <span className="truncate max-w-[14rem]">{exportContext.label}</span>
           </Button>
-        )}
-        {showImport && (
-          // The face opens the library picker; the chevron holds the file route into the same review.
-          <SplitButton
-            icon={activeTab === "dictionary"
-              ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
-              : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
-            label={importLabel}
-            onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else setShowAddEntity(true); }}
-            disabled={importDisabled}
-            menuLabel="More add options"
-            menu={[{
-              label: activeTab === "dictionary" ? 'Import Dictionary…' : 'Import Entity…',
-              onClick: () => linking.openImportFile(activeTab === "dictionary" ? 'dictionary' : 'entity'),
-            }]}
-          />
-        )}
+        ))}
       </div>
       <div className="flex gap-2">
         {/* Advanced-only: an oversized upload is already offered Optimize/Downscale as it lands, so what
@@ -1017,26 +1118,13 @@ const WorldEditorInner = ({
         {advanced && (
           <Tip tip="Downscale oversized images to conserve file size" labelsChild={false}>
             <Button variant="outline" size="sm" onClick={optimizeImages} disabled={optimizeProgress !== null}>
-              {optimizeProgress !== null ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`}
-                </>
-              ) : (
-                <>
-                  <ImageDown className="h-4 w-4 mr-2" />
-                  Optimize Images
-                </>
-              )}
+              {optimizeIcon}
+              {optimizeLabel}
             </Button>
           </Tip>
         )}
-        <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty} data-tour-anchor="save">
-          <Save className="h-4 w-4 mr-2" />
-          Save
-        </Button>
+        {saveButton}
       </div>
-      <Input type="file" accept=".json" onChange={loadWorld} className="hidden" id="load-world" />
     </div>
   );
 
@@ -1117,14 +1205,14 @@ const WorldEditorInner = ({
                   ))}
                 </CardContent>
               </Tabs>
-              {footerBar}
+              {mobileFooter}
             </Card>
           </div>
         ) : (
           <>
-          {/* The header spans the window above the panels: 12px sides, its first row centered in 56px. */}
+          {/* The app bar spans the window above the panels, with the tour bar under it. */}
           <div className="shrink-0 border-b">
-            <div className="flex min-h-14 items-center px-3 py-2">{headerBar}</div>
+            {appBar}
             {tourBar && <div className="px-3 pb-2">{tourBar}</div>}
           </div>
           <div className="min-h-0 flex-1">
@@ -1168,7 +1256,7 @@ const WorldEditorInner = ({
                           </>
                         )}
                       </CardContent>
-                      {footerBar}
+                      {desktopFooter}
                     </div>
                   </Tabs>
                 </Card>
@@ -1250,6 +1338,8 @@ const WorldEditorInner = ({
         onExit={() => { discardChanges(); linking.clearPendingLinks(); afterLeave.current(); }}
       />
       {worldExportDialog}
+      {downscaleDialog}
+      <Input type="file" accept=".json" onChange={loadWorld} className="hidden" id="load-world" />
       <AddDictionaryModal
         open={showAddDictionary}
         resume={resumePicker}

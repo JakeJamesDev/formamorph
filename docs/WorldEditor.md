@@ -4,13 +4,23 @@
 
 A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
 
-> 💡 Every tab has a **?** button with a short version of its page. It sits in the header row, right of the **Find and replace** button. These pages are the long version.
+> 💡 On mobile, every tab has a **?** button with a short version of its page. It sits in the header row, right of the **Find and replace** button. These pages are the long version.
 
 On desktop, pick a tab from the rail on the left side of the list. **Overview** stands alone at the top. Lines split Stats, Entities, Locations and Traits from Dictionary and Placeholders.
 
 - Select **Collapse** at the foot of the rail to show only icons. Point at an icon to see its tab's name. The editor remembers your choice on this device.
 - When the list is narrow, in a small window or after you drag the divider, the rail shows only icons until there's room again.
 - While the Test Bench is in the list's place, the rail's tabs are unavailable.
+
+On desktop, the bar at the top of the editor holds the controls that act on the whole world:
+
+| Where | What |
+| --- | --- |
+| Left | The back arrow, **World Editor**, and **Saved** or **Unsaved changes** |
+| Center | **Find and replace** and the Test Bench |
+| Right | The mode select, **Export World**, and **Save** |
+
+In Simple mode, **Export World** is an icon. In Advanced mode, **More world actions** holds **Export World** and **Optimize Images**. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
 On mobile, select **Sections** under the header to pick a tab. **Overview** stands alone at the top. Below it, **Content** holds Stats, Entities, Locations and Traits, and **Vocabulary** holds Dictionary and Placeholders.
 
@@ -34,7 +44,7 @@ To check a world before you play it, see [🧪 Test Bench](Test-Bench).
 <!-- route: worldEditor#editor-mode -->
 
 1. Open a world in the World Editor.
-2. In the header, select **Simple** or **Advanced**.
+2. On desktop, open the mode select in the bar at the top and pick **Simple** or **Advanced**. On mobile, select **Simple** or **Advanced** in the header.
 
 The app remembers your pick for every world. You can't switch while the Authoring Tour runs.
 
@@ -64,7 +74,7 @@ The tour opens the World Editor on a new world. Your other worlds don't change.
 1. Select the back arrow at the top left of the editor.
 2. In the **Unsaved changes** dialog, select **Save & Exit** to keep your changes. Select **Exit Without Saving** to discard them.
 
-To save and stay in the editor, select **Save** at the bottom right.
+To save and stay in the editor, select **Save**. On desktop it's at the right end of the bar at the top. On mobile it's at the bottom right.
 
 ## Editor Modes
 <!-- keywords: difference between views, which tabs hidden, dot on button, lose data switching, stripped down, full feature set, default view -->
@@ -85,7 +95,7 @@ Simple mode also hides these panel tabs:
 | Dictionary entry | **Matching** |
 | Dictionary book | **Placeholders** |
 
-Each tab's page says which of its fields Simple mode hides. When a world uses a field Simple mode hides, a dot shows on **Advanced**.
+Each tab's page says which of its fields Simple mode hides. When a world uses a field Simple mode hides, a dot shows on the mode control.
 
 Switching to Simple mode doesn't remove anything. The hidden fields keep their values, and the AI still reads them.
 
@@ -113,7 +123,7 @@ The tour first shows as an offer: **Take the Authoring Tour?** Select **Start To
 
 Each step points at one field. Fill it, or select **Use Example**, then select **Next**. **Next** waits until the field has a value. On desktop, the **In Play** pane shows where the field appears in play and what each prompt reads from it.
 
-The tour goes through the tabs in order: **Overview**, **Locations**, **Entities**, **Stats**, **Traits** and **Dictionary**. Its last steps show the **Advanced** switch and the Test Bench. Then select **Finish**, or **Play** to enter your world.
+The tour goes through the tabs in order: **Overview**, **Locations**, **Entities**, **Stats**, **Traits** and **Dictionary**. Its last steps show the mode control and the Test Bench. Then select **Finish**, or **Play** to enter your world.
 
 - Each **Next** saves the world.
 - **End Tour** in the tour bar stops the tour. **Back to Tour** returns you to the current step.
@@ -124,6 +134,8 @@ The tour goes through the tabs in order: **Overview**, **Locations**, **Entities
 
 Your edits stay in the editor until you select **Save**. Nothing saves by itself, except the Authoring Tour's steps. A new world isn't stored until its first save.
 
+On desktop, the bar at the top says **Saved** or **Unsaved changes** beside the title. A new world shows neither until its first save.
+
 When you leave with unsaved changes, the **Unsaved changes** dialog asks what to do:
 
 - **Save & Exit** saves, then closes the editor.
@@ -133,7 +145,7 @@ When you leave with unsaved changes, the **Unsaved changes** dialog asks what to
 ## Help Buttons
 <!-- keywords: question mark, info icon, explain this tab, colored icon, short reference -->
 
-Every tab has a **?** button in the header row, right of the **Find and replace** button. It opens a short help window for that tab. **Learn more** opens the tab's page in this guide.
+On mobile, every tab has a **?** button in the header row, right of the **Find and replace** button. It opens a short help window for that tab. **Learn more** opens the tab's page in this guide.
 
 A **?** you haven't opened yet shows in the accent color.
 

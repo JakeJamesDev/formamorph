@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, editorModeSelect, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
@@ -293,17 +293,17 @@ describe('Authoring Tour mode, End Tour and resume', () => {
   it('shows Simple while it runs and gives back the author’s own mode after', async () => {
     await openTourOn(NEW_WORLD, 'advanced');
     expect(screen.queryByRole('tab', { name: 'Placeholders' })).not.toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Simple' })).toHaveAttribute('data-state', 'on');
-    expect(screen.getByRole('radio', { name: 'Simple' })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: 'Advanced' })).toBeDisabled();
+    expect(editorModeSelect()).toHaveTextContent('Simple');
+    expect(editorModeSelect()).toBeDisabled();
     expect(readEditorMode()).toBe('advanced');
-    // The locked switch takes no pointer events, so the tip sits on the box around it.
+    // The locked select takes no pointer events, so the tip sits on the box around it.
     await userEvent.hover(document.querySelector('[aria-label="Editor mode"]')!.parentElement!);
     expect(await screen.findByText('End the Authoring Tour to switch modes', { selector: 'div' })).toBeVisible();
 
     fireEvent.click(within(tourBar()!).getByRole('button', { name: 'End Tour' }));
     expect(await screen.findByRole('tab', { name: 'Placeholders' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Advanced' })).toBeEnabled();
+    expect(editorModeSelect()).toHaveTextContent('Advanced');
+    expect(editorModeSelect()).toBeEnabled();
     expect(readEditorMode()).toBe('advanced');
   });
 

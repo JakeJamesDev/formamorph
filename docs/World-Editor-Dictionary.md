@@ -22,7 +22,7 @@ A dictionary entry uses no context until a keyword matches. Mention the Gloamwat
 3. On the book's row, select **Add entry**. The new entry opens in the panel.
 4. In **Trigger Keywords**, type a keyword and press Enter. Repeat for each keyword.
 5. Write the text the AI gets in **Value**.
-6. Select **Save** at the bottom of the editor.
+6. Select **Save**.
 
 > 💡 A comma doesn't split keywords. When a keyword holds commas, the field offers to split it.
 

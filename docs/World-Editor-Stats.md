@@ -22,7 +22,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 3. Select the **+** button (**Add to Stats**). The new stat opens in the panel.
 4. Set **Min**, **Max** and **Initial Value**.
 5. Write its **Description**.
-6. Select **Save** at the bottom of the editor.
+6. Select **Save**.
 
 > 💡 With the box empty, the new stat is named "New Stat". A new stat starts at 0 on a 0–100 range, with three descriptors: low, medium and high.
 

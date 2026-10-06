@@ -124,6 +124,8 @@ function useProvideGameData() {
   // The last saved or loaded world, compared against current data to flag pending edits. It shares every
   // record no edit has replaced, so it costs only the records edited since.
   const [savedWorld, setSavedWorld] = useState<WorldData | null>(null);
+  // The world on screen has a copy in world storage. A new world has a baseline but no copy until its first save.
+  const [worldStored, setWorldStored] = useState(false);
 
   const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
     setStats(prevStats => [...prevStats, withDefaultDescriptors(newStat)]);
@@ -304,7 +306,10 @@ function useProvideGameData() {
   // Returns the migrated world so a caller that also needs the loaded data (e.g. to seed a cross-world save
   // load, or to cache it for later reuse) uses the current-shape version rather than the raw input — which
   // would otherwise bypass the migration this function just applied.
-  const loadWorldData = useCallback((rawWorldData: World, isDefault = false): { world: World; isDefault: boolean } => {
+  // `stored` says the world came from world storage. Left out, the world reads as never stored.
+  const loadWorldData = useCallback((
+    rawWorldData: World, isDefault = false, { stored = false }: { stored?: boolean } = {},
+  ): { world: World; isDefault: boolean } => {
     // Central sanitation net: normalize any legacy import shape to the current version (idempotent),
     // so worlds reaching the editor are always current regardless of which entry point loaded them.
     const worldData = migrateWorld(rawWorldData);
@@ -387,6 +392,7 @@ function useProvideGameData() {
     setSavedWorld(buildWorldData(
       normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups,
     ));
+    setWorldStored(stored);
 
     return { world: worldData, isDefault };
   }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
@@ -427,7 +433,7 @@ function useProvideGameData() {
   const placeholderOwnerIndex = ownersRef.current;
 
   // The committed state, which every action reads at call time so it keeps one identity.
-  const committed = { entities, entityGroups, traits, traitGroups, locations, placeholders, worldOverview, worldId, savedWorld, getWorldData };
+  const committed = { entities, entityGroups, traits, traitGroups, locations, placeholders, worldOverview, worldId, savedWorld, worldStored, getWorldData };
   const latest = useRef(committed);
   useLayoutEffect(() => { latest.current = committed; });
 
@@ -542,11 +548,11 @@ function useProvideGameData() {
    * from it is the revert. `loadWorldData` re-baselines, so `isWorldDirty` clears as a side effect.
    */
   const discardChanges = useCallback(() => {
-    const { savedWorld, worldId } = latest.current;
+    const { savedWorld, worldId, worldStored } = latest.current;
     // No baseline means nothing has been loaded yet; there is no state worth restoring.
     if (!savedWorld) return;
     // The baseline is current, so the migration steps for older versions don't run on it.
-    loadWorldData({ ...savedWorld, id: worldId ?? '', version: APP_VERSION });
+    loadWorldData({ ...savedWorld, id: worldId ?? '', version: APP_VERSION }, false, { stored: worldStored });
   }, [loadWorldData]);
 
   // Persist the current world and re-baseline so isWorldDirty clears. Edited copies of owned library items
@@ -587,6 +593,7 @@ function useProvideGameData() {
         setDictionaries((prev) => stampLinks(prev, written));
       }
       setSavedWorld(world);
+      setWorldStored(true);
       return { ok: true };
     } catch (error) {
       console.error('Error saving world:', error);
@@ -655,6 +662,8 @@ function useProvideGameData() {
     // True once loadWorldData has run. A world file may have no id, so worldId can't signal this.
     worldLoaded,
     isWorldDirty,
+    // True once the world on screen has a copy in world storage: loaded from there, or saved.
+    isWorldStored: worldStored,
     // The scoped dictionary store, forwarded so the provider can bind the editing widgets to the world's books.
     dictStore,
     // Likewise for placeholders, so the same editing widgets bind to the world's placeholders.
@@ -666,7 +675,7 @@ function useProvideGameData() {
   }), [
     actions, worldMetadata, worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups,
     statUpdates, dictionaries, placeholders, worldPlaceholders, placeholderGroups, getWorldData, worldId, worldLoaded,
-    isWorldDirty, dictStore, phStore, placementLetters, placeholderOwnerIndex,
+    isWorldDirty, worldStored, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);
 
   return { value, actions };

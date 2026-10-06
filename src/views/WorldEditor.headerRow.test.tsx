@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { rowOf } from '@/test/landing';
 
-/** The World Editor's header row: the `?` sits right of Find, the toolbar holds only the list's controls. */
+/** The World Editor's mobile header row: the `?` sits right of Find, the toolbar holds only the list's controls. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -37,8 +37,8 @@ const WORLD = benchEditorWorld({});
 
 const findButton = () => screen.getByRole('button', { name: 'Find and replace' });
 const helpButtons = () => screen.queryAllByRole('button', { name: /^About / });
-/** The tab root: the desktop strip, whatever rows the tab adds, then the panels. The editor's tab
- *  list is read hidden too, since on mobile it waits behind the closed Sections bar. */
+/** The tab root: whatever rows the tab adds, then the panels. The editor's tab list is read hidden, since
+ *  it waits behind the closed Sections bar. */
 const panelsHost = () => {
   const tabs = screen.getByRole('tablist', { name: 'Editor Sections', hidden: true });
   const active = within(tabs).getByRole('tab', { selected: true, hidden: true });
@@ -49,8 +49,8 @@ let undoMobile: (() => void) | null = null;
 beforeEach(() => { localStorage.clear(); });
 afterEach(() => { undoMobile?.(); undoMobile = null; });
 
-describe.each([['desktop'], ['mobile']])('World Editor header row (%s)', (layout) => {
-  beforeEach(() => { if (layout === 'mobile') undoMobile = asMobile(); });
+describe('World Editor header row (mobile)', () => {
+  beforeEach(() => { undoMobile = asMobile(); });
 
   it('puts the ? directly after Find, and keeps it out of the list toolbar', async () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'stats' });
@@ -64,7 +64,7 @@ describe.each([['desktop'], ['mobile']])('World Editor header row (%s)', (layout
   it('renders no toolbar row on Overview, so the panel starts the card', async () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
     await screen.findByRole('button', { name: 'About Overview' });
-    // The desktop strip shares the tab root; past it, nothing but panels.
+    // The Sections bar's list shares the tab root; past it, nothing but panels.
     const rows = Array.from(panelsHost().children).filter((row) => row.getAttribute('role') !== 'tablist');
     expect(rows.every((row) => row.getAttribute('role') === 'tabpanel')).toBe(true);
     expect(findButton().nextElementSibling).toBe(screen.getByRole('button', { name: 'About Overview' }));

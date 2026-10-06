@@ -45,6 +45,7 @@ import { NarrationTurnReference } from '@/components/design-system/NarrationTurn
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
+import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
 import { PromptChipsReference } from '@/components/design-system/PromptChipsReference';
 
@@ -337,6 +338,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Nav Rail',
     description: 'Grouped tabs on a collapsible rail inside the surface',
     Component: NavRailReference,
+  },
+  {
+    id: 'surface-app-bar',
+    label: 'Surface App Bar',
+    description: 'A surface-wide top row with its tools on the center line',
+    Component: SurfaceAppBarReference,
   },
   {
     id: 'prompt-navigation',

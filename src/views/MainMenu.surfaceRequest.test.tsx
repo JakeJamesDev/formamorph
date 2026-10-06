@@ -120,9 +120,9 @@ describe('a surface request on the main menu', () => {
     fireEvent.change(await screen.findByDisplayValue('Sedge Landing'), { target: { value: 'Sedge Landing EDITED' } });
 
     requester.send('backup');
-    await screen.findByText('Unsaved changes');
+    await screen.findByRole('alertdialog', { name: 'Unsaved changes' });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('alertdialog', { name: 'Unsaved changes' })).toBeNull());
     expect(registry.get().dialog).toBe('worldEditor');
 
     requester.send('backup');
@@ -138,7 +138,7 @@ describe('a surface request on the main menu', () => {
 
     requester.send('settings.display');
     await waitFor(() => expect(registry.get().dialog).toBe('settings'));
-    expect(screen.queryByText('Unsaved changes')).toBeNull();
+    expect(screen.queryByRole('alertdialog', { name: 'Unsaved changes' })).toBeNull();
   });
 
   it('opens an Advanced-only Settings tab on Settings already open in Simple mode', async () => {

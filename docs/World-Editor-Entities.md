@@ -22,7 +22,7 @@ The default prompt introduces entities as "Characters and things that **may** ap
 3. Select the **+** button (**Add to Entities**). In Advanced mode, the button opens a menu: select **Add Entity**.
 4. The new entity opens in the panel. On the **Profile** tab, pick one or more places in **Locations**.
 5. On the **Descriptions** tab, write the **AI-Facing Description**.
-6. Select **Save** at the bottom of the editor.
+6. Select **Save**.
 
 > 💡 With the box empty, the new entity is named "New Entity". Rename it in **Name**.
 

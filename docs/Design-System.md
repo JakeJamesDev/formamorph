@@ -76,7 +76,7 @@ Open `#dev?modal=designSystem&tab=settings`.
 
 **Purpose:** Let a screen switch between Simple and Advanced, and say what each mode shows before the choice.
 
-Use [`ModeSelect`](../src/components/ui/mode-select.tsx). Settings uses it today. The World Editor adopts it with its own wording.
+Use [`ModeSelect`](../src/components/ui/mode-select.tsx). Settings uses it, and so does the World Editor's desktop app bar with its own wording.
 
 ### Composition
 
@@ -92,6 +92,7 @@ Use [`ModeSelect`](../src/components/ui/mode-select.tsx). Settings uses it today
 | --- | --- |
 | The picker | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx) |
 | Settings copy and dot text | `SETTINGS_MODE_DESCRIPTIONS` and `SETTINGS_HIDDEN_NOTICE` in [`settingsMode.ts`](../src/lib/settingsMode.ts) |
+| World Editor copy and dot text | `EDITOR_MODE_DESCRIPTIONS` and `EDITOR_HIDDEN_NOTICE` in [`editorMode.ts`](../src/lib/editorMode.ts) |
 | Live reference | The mode select in the Settings reference at `#dev?modal=designSystem&tab=settings` |
 
 ### State reference
@@ -905,6 +906,63 @@ The live reference draws the World Editor's registry as the rail beside sample p
 - Tab names come from the production registry, so the reference and the editor cannot drift.
 - **Collapse** and **Expand** are labels in Title Case.
 - **Unverified:** the reference's tab bodies, description, and option labels have terminology review only; vocabulary and grammar evidence is not recorded.
+
+## Pattern: Surface App Bar
+
+**Purpose:** Put a surface's identity, its everyday tools and its whole-surface actions in one row above everything they act on.
+
+**Rule:**
+
+- The bar spans the window above the surface's panels. Anything that belongs to the bar, such as the Authoring Tour bar, sits under it.
+- Left to right: back, the title, then a short status; the tools; the mode; the surface actions; the primary action last.
+- The tools sit on the window's center line. The two side columns share the leftover width equally, so the center group stays centered whatever the sides hold.
+- A plain line splits the mode from the actions after it.
+- A status says only what is true. The World Editor shows "Saved" or "Unsaved changes", and nothing for a world that has never been stored.
+- A list card's footer under the bar holds only the open tab's own actions, and draws nothing on a tab with none.
+
+**Density:** Compact. The row uses the shared surface-header geometry: 12px sides, centered in 56px.
+
+### Composition
+
+- The World Editor reads: back, **World Editor**, the save state; Find and the Test Bench; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; Save.
+- The title is the surface's name, never the open item's name.
+- Optimize Images shows its progress in its own menu row while it runs.
+- Tour anchors, tutorial notes and Take Me There targets ride the controls they always named.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The row and its three columns | `SurfaceAppBar` in [`SurfaceAppBar.tsx`](../src/components/SurfaceAppBar.tsx) |
+| The line between groups | `Separator` with `orientation="vertical"` in [`separator.tsx`](../src/components/ui/separator.tsx) |
+| Back | `BackButton` in [`BackButton.tsx`](../src/components/BackButton.tsx) |
+| The mode | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx) |
+| Whether the world is stored | `isWorldStored` from `useGameData` in [`GameDataContext.tsx`](../src/contexts/GameDataContext.tsx) |
+| The World Editor's bar | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
+| Isolated reference | [`SurfaceAppBarReference.tsx`](../src/components/design-system/SurfaceAppBarReference.tsx) |
+
+### Responsive behavior
+
+The bar is desktop-only. On mobile the surface keeps its card header, and its footer keeps the world actions within thumb reach.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Never stored | No save state. |
+| Saved | "Saved" in the meta role, muted. Save is disabled. |
+| Unsaved changes | "Unsaved changes" in the meta role, muted. Save is enabled. |
+| Simple | Export World as one icon button. |
+| Advanced | **More world actions** opens a menu with Export World and Optimize Images. |
+| Optimizing | The Optimize Images row shows a spinner and the count, and is disabled. |
+| Tour running | The Mode Select is disabled; its tooltip says to end the tour. |
+
+The live reference draws the World Editor's bar over sample controls, with a **Never Stored**, **Saved** and **Unsaved Changes** choice. Every control changes only the reference's own state, and it never reads or writes authored worlds, saves, library data, or storage.
+
+### Writing review
+
+- **Saved** and **Unsaved changes** are status text in sentence case, not labels.
+- **Unverified:** the reference's description and option labels have terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Narration Turn
 
