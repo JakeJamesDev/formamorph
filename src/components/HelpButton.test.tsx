@@ -42,7 +42,7 @@ describe('HelpButton', () => {
   });
 
   it('nudges until its topic is opened, then stays quiet — and the quiet persists across mounts', () => {
-    render(<HelpButton topicId="worldEditor.stats" />);
+    render(<HelpButton topicId="worldEditor.statCode" />);
     expect(tinted()).toBe(true);
 
     fireEvent.click(helpButton());
@@ -50,25 +50,24 @@ describe('HelpButton', () => {
 
     // A fresh mount re-reads the store, so the quiet is persisted rather than only in memory.
     cleanup();
-    render(<HelpButton topicId="worldEditor.stats" />);
+    render(<HelpButton topicId="worldEditor.statCode" />);
     expect(tinted()).toBe(false);
   });
 
   it('reads seen-state per topic on mount — an unseen topic still nudges after another was opened', () => {
-    // Seen-state is read once, on mount. The World Editor swaps topics on one button via `key={topicId}`,
-    // which remounts it — modeled here by cleanup + a fresh render for the next topic.
-    render(<HelpButton topicId="worldEditor.stats" />);
+    // Seen-state is read once, on mount, so the next topic gets a fresh render.
+    render(<HelpButton topicId="worldEditor.statCode" />);
     fireEvent.click(helpButton());
     expect(tinted()).toBe(false);
 
     cleanup();
-    render(<HelpButton topicId="worldEditor.dictionary" />);
+    render(<HelpButton topicId="worldEditor.aliases" />);
     expect(tinted()).toBe(true); // its own state — not inherited from the opened one
   });
 });
 
 describe('HelpButton Learn more', () => {
-  const topicId = 'worldEditor.stats';
+  const topicId = 'worldEditor.statCode';
   const topic = HELP_TOPICS[topicId];
   let unregister: (() => void) | null = null;
   beforeEach(() => {

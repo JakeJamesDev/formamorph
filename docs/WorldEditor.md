@@ -4,8 +4,6 @@
 
 A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
 
-> 💡 On mobile, every tab has a **?** button with a short version of its page. It sits in the header row, right of the **Find and replace** button. These pages are the long version.
-
 On desktop, pick a tab from the rail on the left side of the list. **Overview** stands alone at the top. Lines split Stats, Entities, Locations and Traits from Dictionary and Placeholders.
 
 - Select **Collapse** at the foot of the rail to show only icons. Point at an icon to see its tab's name. The editor remembers your choice on this device.
@@ -22,7 +20,7 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 
 In Simple mode, **Export World** is an icon. In Advanced mode, **More world actions** holds **Export World** and **Optimize Images**. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, select **Sections** under the header to pick a tab. **Overview** stands alone at the top. Below it, **Content** holds Stats, Entities, Locations and Traits, and **Vocabulary** holds Dictionary and Placeholders.
+On mobile, the header holds the back arrow, **Find and replace**, the Test Bench and the mode select. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Stats, Entities, Locations and Traits, then Dictionary and Placeholders. The footer holds **Export World**, **Optimize Images** in Advanced mode, and **Save**.
 
 Each tab has its own page.
 
@@ -143,9 +141,9 @@ When you leave with unsaved changes, the **Unsaved changes** dialog asks what to
 - **Cancel** keeps you in the editor.
 
 ## Help Buttons
-<!-- keywords: question mark, info icon, explain this tab, colored icon, short reference -->
+<!-- keywords: question mark, info icon, explain this section, colored icon, short reference -->
 
-On mobile, every tab has a **?** button in the header row, right of the **Find and replace** button. It opens a short help window for that tab. **Learn more** opens the tab's page in this guide.
+Some sections have a **?** button beside their name, such as **Aliases** and **Dynamic Value Calculation**. It opens a short help window for that section. **Learn more** opens the full page.
 
 A **?** you haven't opened yet shows in the accent color.
 

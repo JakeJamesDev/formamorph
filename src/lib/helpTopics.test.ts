@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
+import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { HELP_TOPICS, helpWikiUrl } from './helpTopics';
 
 describe('helpWikiUrl', () => {
@@ -50,6 +51,11 @@ describe('HELP_TOPICS registry', () => {
     expect(topic?.wikiPage).toBe('LinkedContent');
     expect(helpWikiUrl(topic!)).toBe('https://github.com/JakeJamesDev/formamorph/wiki/LinkedContent#-linked-content');
     expect(topic?.tabs?.map((t) => t.label)).toEqual(['Linked Copies', 'Updates', 'Publishing', 'Downloading', 'Repairs']);
+  });
+
+  it('holds no topic for a World Editor tab, since the editor has no tab-level ?', () => {
+    const tabTopics = WORLD_EDITOR_TABS.map((tab) => `worldEditor.${tab.value}`).filter((id) => id in HELP_TOPICS);
+    expect(tabTopics).toEqual([]);
   });
 
   it('registers the in-play entities topic the game panel mounts', () => {

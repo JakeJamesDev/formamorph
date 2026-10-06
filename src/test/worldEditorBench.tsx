@@ -127,10 +127,10 @@ export const openEditorTab = (name: RegExp) => {
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Editor Sections' })).getByRole('tab', { name }));
 };
 
-/** The desktop app bar's mode select. */
+/** The editor's mode select, in the desktop app bar or the mobile header. */
 export const editorModeSelect = () => screen.getByRole('combobox', { name: 'Editor mode' });
 
-/** Pick a mode from the desktop mode select, by keyboard: a click needs pointer capture, which jsdom has not
+/** Pick a mode from the mode select, by keyboard: a click needs pointer capture, which jsdom has not
  *  got, and the keyboard works under fake timers too. */
 export const pickEditorMode = (name: 'Simple' | 'Advanced') => {
   fireEvent.keyDown(editorModeSelect(), { key: 'Enter' });

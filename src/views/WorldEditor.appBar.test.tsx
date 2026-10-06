@@ -75,7 +75,8 @@ describe('World Editor app bar (desktop)', () => {
     expect(within(menu).getByRole('button', { name: 'Optimize Images' })).toBeEnabled();
     fireEvent.click(within(menu).getByRole('button', { name: 'Export World' }));
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    // The menu itself: the first-visit Authoring Tour offer is a dialog too, and opens on its own delay.
+    await waitFor(() => expect(menu).not.toBeInTheDocument());
   });
 
   it('shows no save state for a world never stored, even with edits, then Saved, then Unsaved changes', async () => {

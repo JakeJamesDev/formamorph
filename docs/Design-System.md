@@ -799,7 +799,7 @@ The live reference renders four of the five production strips against their own 
 
 - The bar is full width, under the header. It shows a tree icon, the label **Sections**, the current tab's name at the right, and a chevron that turns when open.
 - Opening it expands the tab list below the bar with a grid-rows reveal. The body is `inert` while closed.
-- The landing tab is a lone row above the first caption. Each group has a caption. A group with no visible tab draws nothing.
+- The landing tab is a lone row at the top. A plain line splits each group from the one before it, with no caption, so the order and splits match the Nav Rail. A group with no visible tab draws nothing.
 - A pick closes the bar and returns focus to it.
 - The list is a real tab list in a vertical tab root with manual activation, so the arrow keys move through the open list without picking.
 
@@ -815,10 +815,12 @@ The World Editor groups its tabs this way:
 
 | Group | Tabs |
 | --- | --- |
-| None (landing tab) | Overview |
+| Landing tab | Overview |
 | Content | Stats · Entities · Locations · Traits |
 | Vocabulary | Dictionary · Placeholders (Advanced only) |
 | Logic | None yet, so it draws nothing |
+
+The group names are registry ids. The bar and the rail draw none of them.
 
 ### Production mapping
 
@@ -838,13 +840,13 @@ The World Editor groups its tabs this way:
 | Open | The chevron turns and the list shows below the bar. |
 | Selected | The active row takes the muted background and the semibold foreground. |
 | Focus | The shared inset focus ring. Arrow keys move through the open list. |
-| Empty group | Nothing draws, so no caption is left without tabs under it. |
+| Empty group | Nothing draws, so no line is left without tabs under it. |
 
 The live reference draws the production registry as the Sections bar, with a Simple and Advanced switch. It holds its tab and mode in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
 
 ### Writing review
 
-- Tab and group names come from the production registry, so the reference and the editor cannot drift.
+- Tab names come from the production registry, so the reference and the editor cannot drift.
 - **Unverified:** the reference's tab bodies and description have terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Nav Rail

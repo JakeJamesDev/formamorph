@@ -30,7 +30,7 @@ export function SectionsBarReference() {
         <CardTitle id="sections-bar-title" className="text-heading">Sections Bar</CardTitle>
         <CardDescription>
           The World Editor&apos;s own tab registry, drawn as the mobile Sections bar. Open the bar to see the
-          grouped tabs, and pick one to close it.
+          tabs split into groups by lines, and pick one to close it.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
