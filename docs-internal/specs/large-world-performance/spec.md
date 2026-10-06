@@ -13,7 +13,7 @@ A profiling harness (`npm run profile:editor-speed`) loads a generated 126 MB wo
 | Step | Wall time | Main thread blocked | Worst block | Heap after GC |
 |---|---|---|---|---|
 | Open the editor | 2.4 s visible, 5.1 s settled | 2.9 s | 2.0 s | 823 MB |
-| Type 26 keys | ~56 ms per key | 0.2 s | 61 ms | 876 MB |
+| Type 26 keys into Name | 130 s | — | 21–22 s | 2.6 GB peak |
 | Drag a tree row | frames p95 367 ms, max 1.7 s | 14.5 s | 1.65 s | 993 MB |
 | Open the Locations Canvas | 32.7 s | 32.6 s | 23.3 s | 1236 MB |
 | Drag a canvas node | max frame 717 ms | 2.1 s | 0.5 s | 1236 MB |
