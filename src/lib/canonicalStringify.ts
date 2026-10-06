@@ -1,3 +1,6 @@
+const isEmpty = (v: unknown): boolean =>
+  v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+
 /**
  * A world serialized for *comparison* rather than for storage: two payloads that mean the same thing
  * produce the same string. `JSON.stringify` does not, and the difference is what made the editor's Save
@@ -22,7 +25,7 @@
  * differs from `memoStringify`'s, so the two must never share one.
  */
 export function canonicalStringify(value: unknown, cache: WeakMap<object, string>): string | undefined {
-  if (value === null || value === undefined || value === '') return undefined;
+  if (isEmpty(value)) return undefined;
   if (typeof value !== 'object') return JSON.stringify(value);
 
   const obj = value as object;
@@ -32,7 +35,6 @@ export function canonicalStringify(value: unknown, cache: WeakMap<object, string
   let out: string;
   if (Array.isArray(value)) {
     // Order is data here — a list of entities is not a set — so only the elements are normalized.
-    if (value.length === 0) return undefined;
     out = '[' + value.map((v) => canonicalStringify(v, cache) ?? 'null').join(',') + ']';
   } else {
     const parts: string[] = [];
@@ -45,4 +47,36 @@ export function canonicalStringify(value: unknown, cache: WeakMap<object, string
   }
   cache.set(obj, out);
   return out;
+}
+
+const isNonFinite = (v: unknown): boolean => typeof v === 'number' && !Number.isFinite(v);
+
+// JSON writes a non-finite element as null, so in a list it matches an empty element.
+const asElement = (v: unknown): unknown => (isNonFinite(v) ? null : v);
+
+/**
+ * Whether two values give the same {@link canonicalStringify} string, without building either. Shared
+ * records are equal by identity, so comparing a world against a baseline that shares its unedited records
+ * walks only what an edit replaced.
+ */
+export function canonicalEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  const aEmpty = isEmpty(a);
+  if (aEmpty || isEmpty(b)) return aEmpty && isEmpty(b);
+  // Every non-finite number serializes as null.
+  if (typeof a !== 'object' || typeof b !== 'object') return isNonFinite(a) && isNonFinite(b);
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    const other = b as unknown[];
+    if (a.length !== other.length) return false;
+    for (let i = 0; i < a.length; i++) if (!canonicalEqual(asElement(a[i]), asElement(other[i]))) return false;
+    return true;
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  for (const key of Object.keys(left)) {
+    if (!canonicalEqual(left[key], Object.hasOwn(right, key) ? right[key] : undefined)) return false;
+  }
+  for (const key of Object.keys(right)) if (!Object.hasOwn(left, key) && !isEmpty(right[key])) return false;
+  return true;
 }

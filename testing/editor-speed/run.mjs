@@ -160,6 +160,19 @@ const heapMb = async (cdp) => {
   return Math.round(usedSize / 1e6);
 };
 
+/** Start sampling the heap without GC, so garbage shows as a rise. The returned stop resolves the peak in MB. */
+const heapPeak = (cdp) => {
+  let peak = 0;
+  let sampling = true;
+  const loop = (async () => {
+    while (sampling) {
+      peak = Math.max(peak, (await cdp.send('Runtime.getHeapUsage')).usedSize);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  })();
+  return async () => { sampling = false; await loop; return Math.round(peak / 1e6); };
+};
+
 /** Write a heap snapshot of the page to `file` and return its retainer summary. */
 async function heapSnapshot(cdp, file) {
   const out = createWriteStream(file);
@@ -249,21 +262,31 @@ const STEPS = {
     await settle(page);
     const panel = page.locator('[role="tabpanel"]');
     await panel.locator('div.cursor-pointer:has(span.cursor-grab)').nth(5).click();
-    const field = panel.getByRole('textbox').nth(1);
+    const field = panel.getByRole('textbox', { name: 'Name', exact: true }).first();
     await field.waitFor({ timeout: 60_000 });
     await field.click();
     await page.keyboard.press('End');
     await settle(page);
     await page.evaluate(() => { window.__bench.events = []; });
-    return traced(page, cdp, async () => {
-      const t0 = Date.now();
-      await page.keyboard.type(' the quick brown fox jumps', { delay: 120 });
-      const typedMs = Date.now() - t0;
-      await settle(page, 1500);
-      if (!(await field.evaluate((el) => (el.value ?? el.textContent ?? '').includes('quick brown fox')))) throw new Error('typed text did not land in the field');
-      const lat = await page.evaluate(() => window.__bench.events.filter((e) => /key|input|beforeinput/.test(e.name)).map((e) => e.duration));
-      return { keys: 26, typedMs, settledMs: Date.now() - t0, slowEvents: lat.length, latP50: pct(lat, 50), latP95: pct(lat, 95), latMax: pct(lat, 100) };
-    });
+    const heapStartMb = await heapMb(cdp);
+    const peak = heapPeak(cdp);
+    try {
+      return await traced(page, cdp, async () => {
+        const t0 = Date.now();
+        await page.keyboard.type(' the quick brown fox jumps', { delay: 120 });
+        const typedMs = Date.now() - t0;
+        const heapPeakMb = await peak();
+        await settle(page, 1500);
+        if (!(await field.evaluate((el) => (el.value ?? el.textContent ?? '').includes('quick brown fox')))) throw new Error('typed text did not land in the field');
+        const lat = await page.evaluate(() => window.__bench.events.filter((e) => /key|input|beforeinput/.test(e.name)).map((e) => e.duration));
+        return {
+          keys: 26, typedMs, settledMs: Date.now() - t0, slowEvents: lat.length, latP50: pct(lat, 50), latP95: pct(lat, 95), latMax: pct(lat, 100),
+          heapStartMb, heapPeakMb,
+        };
+      });
+    } finally {
+      await peak();
+    }
   },
 
   async treeDrag({ page, cdp }) {
@@ -338,14 +361,20 @@ const STEPS = {
 
   async save({ page, cdp }) {
     const save = page.getByRole('button', { name: /^Save( World)?$/ }).first();
-    return traced(page, cdp, async () => {
-      const t0 = Date.now();
-      await save.click();
-      await page.getByText(/saved/i).first().waitFor({ timeout: 180_000 });
-      const savedMs = Date.now() - t0;
-      await settle(page);
-      return { savedMs };
-    });
+    const heapStartMb = await heapMb(cdp);
+    const peak = heapPeak(cdp);
+    try {
+      return await traced(page, cdp, async () => {
+        const t0 = Date.now();
+        await save.click();
+        await page.getByText(/saved/i).first().waitFor({ timeout: 180_000 });
+        const savedMs = Date.now() - t0;
+        await settle(page);
+        return { savedMs, heapStartMb, heapPeakMb: await peak() };
+      });
+    } finally {
+      await peak();
+    }
   },
 
   /** Bare put and get of the bench record on a blank page of the same origin: the structured-clone floor. */

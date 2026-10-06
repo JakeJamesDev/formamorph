@@ -10,6 +10,7 @@ npm run profile:editor-speed
 - Builds an unminified production bundle into `testing/editor-speed/.build/`, serves it, and writes the world straight into the library store.
 - Steps, in order: `open`, `typing`, `treeDrag`, `canvas`, `canvasDrag`, `save`, `idb`.
 - Reports per step: wall time, main-thread blocks over 50 ms (from a trace), frame intervals for drags, input-to-paint latency for typing, DOM counts for the canvas, and JS heap after GC.
+- `typing` and `save` also report `heapStartMb` (after GC) and `heapPeakMb`, sampled every 50 ms without GC, so garbage the step allocates shows.
 - Reports the Main Menu first: the number of worlds in the library and `heapMenuMb`, the JS heap after GC.
 - `idb` runs outside the app, on a blank page of the same origin. It times IndexedDB on the bench world record, 3 runs each, and reports the median. This is the structured-clone floor for open and save.
   - `put` and `get`: one bare call each.
