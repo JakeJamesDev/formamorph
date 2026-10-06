@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  # Branches only: a release tag runs these checks through release.yml.
   push:
+    branches: ['**']
   pull_request:
   workflow_call:
 
@@ -17,5 +19,20 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm run test
       - run: npm run build
+
+  # The suite is CPU-bound and a hosted runner has 4 vCPUs, so it runs as parallel shards.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --shard=${{ matrix.shard }}/4

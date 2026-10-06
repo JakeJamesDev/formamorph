@@ -38,8 +38,9 @@ on:
         default: false
 
 jobs:
+  # A site redeploy ships no app code, and a device-test APK is never published.
   check:
-    if: ${{ !inputs.site_only }}
+    if: ${{ !inputs.site_only && !inputs.android_only }}
     uses: ./.github/workflows/ci.yml
 
   build:
@@ -166,7 +167,7 @@ jobs:
   # no version so the landing page can link the GitHub latest redirect; the release tag carries it.
   android:
     needs: check
-    if: ${{ !inputs.site_only }}
+    if: ${{ !cancelled() && !inputs.site_only && (needs.check.result == 'success' || (inputs.android_only && needs.check.result == 'skipped')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
