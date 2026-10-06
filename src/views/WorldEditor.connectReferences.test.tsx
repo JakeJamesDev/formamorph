@@ -344,7 +344,9 @@ describe('Back', () => {
     await choose('Capital', 'Capital Harrow');
     await choose('Weather', 'Create New…');
 
-    fireEvent.click(connectControl('button', 'Back'));
+    // The editor header's own Back sits outside this dialog, so scope to it.
+    const connectDialog = screen.getByRole('dialog', { name: 'Connect World References', hidden: true });
+    fireEvent.click(within(connectDialog).getByRole('button', { name: 'Back', hidden: true }));
 
     // The picker is back with the book still checked, so confirming again needs no re-picking.
     const picker = await screen.findByRole('dialog', { name: 'Add Dictionary' });
