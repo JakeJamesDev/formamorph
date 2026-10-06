@@ -17,6 +17,7 @@ const boxName = (slot: StatCodeTiming) => TIMING_LABEL[slot];
 
 /**
  * The rider of the Default preset. Each fence line ends its line, so the slot is the first word after the language.
+ * The line above them says why the slot is there.
  * It names the sandbox objects, since without them the model invents variable names that throw.
  */
 export const DEFAULT_CODE_RIDER = [
@@ -24,6 +25,7 @@ export const DEFAULT_CODE_RIDER = [
   '- Write the code yourself from the rules in the guide sections. The guide has no script for most tasks.',
   `- Write the whole contents of the box the task needs. Name the box in one sentence: ${STAT_CODE_TIMINGS.map((slot) => `**${boxName(slot)}**`).join(' or ')}. Then give the block.`,
   '- Read the stat whose code it is as `self`, other stats through `stats`, traits through `traits`, placeholders through `placeholders`, and the time through `clock`.',
+  `- The app reads the word after \`${CODE_RIDER_LANGUAGE}\` on the opening line to put the code in the right box: ${STAT_CODE_TIMINGS.map((slot) => `\`${slot}\` for **${boxName(slot)}**`).join(', ')}.`,
   ...STAT_CODE_TIMINGS.map((slot) => `- Start the block of the **${boxName(slot)}** box with this line: \`\`\`${CODE_RIDER_LANGUAGE} ${slot}`),
   '- After the block, write at most three short steps.',
 ].join('\n');
