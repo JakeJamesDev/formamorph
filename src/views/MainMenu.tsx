@@ -70,7 +70,7 @@ import AuthService from '../services/AuthService';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
 import type { ReferenceChoices, ReferenceRow } from '@/lib/worldReferences';
 import type { World, Stat, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent, WorldOverview } from '@/types';
-import { migrateWorld } from '@/lib/version';
+import { parseWorldFile } from '@/lib/jsonFileWorkerUtils';
 import { updateBridge } from '@/lib/updates/updateBridge';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
@@ -1017,9 +1017,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     let stored = 0;
     for (const file of files) {
       try {
-        // Sanitize at the import boundary: migrate any legacy/v1.2 shape to the current version, then
-        // settle what the file's bundled content follows on this machine.
-        const world = await resolveImportedWorld(migrateWorld(JSON.parse(await file.text())) as World);
+        // Sanitize at the import boundary: the worker reads, parses and migrates the file to the current
+        // version (off-thread: an image-heavy world is tens of MB), then we settle what its bundled content follows.
+        const world = await resolveImportedWorld(await parseWorldFile(file));
         const id = `uploaded-${randomUUID()}`;
         world.id = id;
         parsed.push({ world, id });

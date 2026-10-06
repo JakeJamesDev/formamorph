@@ -4,6 +4,9 @@
 import { createWorkerClient } from './createWorkerClient';
 import type { BackupIndex } from './backupIndex';
 import type { RestoreCounts, RestoreRequest } from './backupRestore';
+import type { PublishBody } from './publishBody';
+import type { PublishPayload } from './publishPayload';
+import type { World } from '@/types';
 
 const client = createWorkerClient(
   // type:'module' — required in dev, where Vite serves the worker with bare ESM imports a classic worker rejects.
@@ -31,6 +34,13 @@ export const restoreBackupInWorker = (request: RestoreRequest, onProgress?: (don
 
 /** Parse an imported file's text off the main thread. Rejects on malformed JSON. */
 export const parseJsonText = (text: string): Promise<unknown> => client.run({ op: 'parse', text });
+
+/** Read, parse and migrate an imported world file off the main thread. Rejects on a file that is not JSON. */
+export const parseWorldFile = (file: Blob): Promise<World> => client.run({ op: 'parseWorld', file }) as Promise<World>;
+
+/** Build a publish request's body and size its content off the main thread. */
+export const buildPublishBodyInWorker = (payload: PublishPayload, contestEventId: string | null): Promise<PublishBody> =>
+  client.run({ op: 'publishBody', payload, contestEventId }) as Promise<PublishBody>;
 
 /** Terminate the JSON worker when it's no longer needed. */
 export const terminateWorker = () => client.terminate();

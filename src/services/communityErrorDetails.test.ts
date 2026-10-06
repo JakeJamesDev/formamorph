@@ -2,6 +2,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import AuthService from './AuthService';
 import WorldStorageService, { AnonymousLikeRefused } from './WorldStorageService';
+
+vi.mock('@/lib/jsonFileWorkerUtils', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...(await (await import('@/test/inlineJsonWorker')).inlineJsonWorker()),
+}));
 import AgeGateService from './AgeGateService';
 import AuditService from './AuditService';
 import EventService from './EventService';

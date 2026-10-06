@@ -41,6 +41,18 @@ if (typeof Blob !== 'undefined' && typeof Blob.prototype.arrayBuffer === 'undefi
   };
 }
 
+// Same gap for `text()`: the worker reads an imported file with it.
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.text === 'undefined') {
+  Blob.prototype.text = function text(this: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
+
 // jsdom implements no layout, so Range has no `getBoundingClientRect` (browsers do). Lexical measures the
 // selection range to scroll it into view after restoring a history entry, and the miss surfaces as an
 // unhandled error *after* the test that caused it — a real failure elsewhere would be lost in that noise.

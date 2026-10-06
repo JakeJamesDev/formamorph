@@ -8,7 +8,8 @@ npm run profile:editor-speed
 
 - Generates the world with `genLargeWorld.mjs` if it is missing (400 entities, 300 locations with 150 under one parent, 475 noise PNGs, ~126 MB). Run the generator yourself to change sizes: `node testing/editor-speed/genLargeWorld.mjs --entities 1000`.
 - Builds an unminified production bundle into `testing/editor-speed/.build/`, serves it, and writes the world straight into the library store.
-- Steps, in order: `open`, `typing`, `treeDrag`, `canvas`, `canvasDrag`, `save`, `picker`, `idb`.
+- Steps, in order: `open`, `typing`, `treeDrag`, `canvas`, `canvasDrag`, `save`, `picker`, `import`, `idb`.
+- `import` returns to the Main Menu, picks the bench world file in the world import input, and keeps the images as they are. It reports the time to the image prompt and to the world's details dialog.
 - Reports per step: wall time, main-thread blocks over 50 ms (from a trace), frame intervals for drags, input-to-paint latency for typing, DOM counts for the canvas, and JS heap after GC.
 - `typing` and `save` also report `heapStartMb` (after GC) and `heapPeakMb`, sampled every 50 ms without GC, so garbage the step allocates shows.
 - `picker` opens the first location's Presence tab (adding a Connection when it has none), types 26 keys into a Travel Hint, then opens Connect To. It reports input latency, `openMs` for the picker, and `options` for the items listed. Run it after `open`: `EDITOR_SPEED_ONLY=open,picker`.

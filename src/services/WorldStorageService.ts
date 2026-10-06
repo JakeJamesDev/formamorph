@@ -3,7 +3,8 @@ import { codedResponseError, readFailure, responseError } from './responseError'
 import type { CatalogKindQuery } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
-import { PUBLISH_LIMITS, measurePublishBytes, publishLimitRefusal } from '@/lib/publishLimits';
+import { PUBLISH_LIMITS, publishLimitRefusal } from '@/lib/publishLimits';
+import { buildPublishBodyInWorker } from '@/lib/jsonFileWorkerUtils';
 import { toast } from 'react-toastify';
 import { promisifyRequest, transactionDone, writeAfterRead } from '@/lib/idb';
 import {
@@ -1202,7 +1203,8 @@ class WorldStorageService {
    * reaches the world's own shape, and a server without an events layer is sent nothing new.
    */
   async publishItem(payload: PublishPayload, targetId: string | null = null, contestEventId: string | null = null) {
-    const bytes = measurePublishBytes(payload.contentData);
+    // Sized and built in the worker: stringifying a world that carries its images blocks the page for seconds.
+    const { bytes, body } = await buildPublishBodyInWorker(payload, contestEventId);
     if (bytes > PUBLISH_LIMITS[payload.kind]) {
       throw new Error(publishLimitRefusal(payload.kind, bytes));
     }
@@ -1224,23 +1226,7 @@ class WorldStorageService {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${AuthService.token}`
         },
-        body: JSON.stringify({
-          name: payload.name,
-          description: payload.description,
-          thumbnail: payload.thumbnail,
-          contentData: payload.contentData,
-          kind: payload.kind,
-          // Sent top-level because only a world keeps a copy inside its content, where the server looks
-          // first. A character or a book has nowhere in its own shape to hide these.
-          tags: payload.tags ?? [],
-          ...(contestEventId ? { contestEventId } : {}),
-          // Each omitted unless this publish has something to declare, so a publish that says nothing
-          // about relationships leaves the listing's own exactly as they are.
-          ...(payload.visibility ? { visibility: payload.visibility } : {}),
-          ...(payload.requiredDependencies ? { requiredDependencies: payload.requiredDependencies } : {}),
-          ...(payload.compatibleWorlds ? { compatibleWorlds: payload.compatibleWorlds } : {}),
-          ...(payload.models ? { models: payload.models } : {})
-        })
+        body
       });
 
       if (!response.ok) {
