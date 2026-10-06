@@ -1,8 +1,8 @@
 # Help Stat Code Accuracy
 
-Status: ready-for-agent
+Status: done
 Spec session: help-stat-code-accuracy — spec
-Status note: Grilled 2026-10-05, Q1–Q21. Tickets 01–08 cut.
+Status note: Closed 2026-10-05. Tickets 01–14 done, last landing 9bc896ac. Closed without gates. Rulings Q1–Q41; the four-arm focus batch waits in the Backlog.
 
 ## Problem Statement
 

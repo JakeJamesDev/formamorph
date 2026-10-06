@@ -1,6 +1,6 @@
 # 07: Code Probe Cases And Bar
 
-Status: ready-for-human
+Status: done
 Blocked by: 01 — Quick Reference Section; 02 — Pin The Quick Reference On Code Turns; 05 — Code Rider Names And Typo
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
