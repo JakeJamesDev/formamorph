@@ -34,7 +34,8 @@ export interface CodeTestResult {
   warnings: CodeTestFinding[];
   /** Absent with no world open. */
   notInWorld?: CodeTestMissing[];
-  run: TestCodeReport | null;
+  /** Absent with no world open. */
+  run?: TestCodeReport;
 }
 
 const lineAt = (code: string, from: number) => code.slice(0, from).split('\n').length;
@@ -81,7 +82,7 @@ function analysis(code: string, options: AnalysisOptions): Omit<CodeTestResult, 
 export async function testStatCode(code: string, box: StatCodeTiming, statName: string, world: StatCodeWorld | undefined): Promise<CodeTestResult> {
   if (!world) {
     const { errors, warnings } = analysis(code, {});
-    return { world: false, errors, warnings, run: null };
+    return { world: false, errors, warnings };
   }
   const names = statCodeNames(world);
   const stat = statNamed(world, statName.trim());

@@ -243,8 +243,9 @@ describe('a code test call', () => {
     );
     await collect(ask(fetchImpl));
     const [names, syntax] = results(fetchImpl);
-    expect(names).toMatchObject({ world: false, run: null });
+    expect(names).toMatchObject({ world: false });
     expect(names).not.toHaveProperty('notInWorld');
+    expect(names).not.toHaveProperty('run');
     expect(names.errors.map((error) => error.message)).toEqual([
       expect.stringContaining('clock has no field “time”'),
       expect.stringContaining('stats.Courage is a whole stat, not a number'),
