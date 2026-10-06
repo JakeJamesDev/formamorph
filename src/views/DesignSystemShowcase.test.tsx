@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DesignSystemShowcase } from './DesignSystemShowcase';
 import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
+import { NAV_RAIL_REFERENCE_STORAGE_KEY } from '@/components/design-system/NavRailReference';
 import { loadEmbeddingModel, disposeEmbeddingModel } from '@/lib/embeddingWorkerClient';
 
 vi.mock('@/lib/embeddingWorkerClient', async (importOriginal) => ({
@@ -362,5 +363,31 @@ describe('sections bar reference', () => {
     await user.click(sections());
     expect(within(bar()).getAllByRole('tab')).toHaveLength(6);
     expect(localStorage).toHaveLength(0);
+  });
+});
+
+describe('nav rail reference', () => {
+  it('draws the editor registry as the rail, collapses under its own key, and follows No Room and Disabled', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'Nav Rail' }));
+
+    const region = screen.getByRole('region', { name: 'Nav Rail' });
+    const rail = within(region).getByRole('tablist', { name: 'Sample Editor Sections' });
+    expect(within(rail).getAllByRole('tab')).toHaveLength(7);
+    await user.click(within(rail).getByRole('tab', { name: 'Traits' }));
+    expect(within(region).getByText('The trait tree beside the selected trait\'s details.')).toBeInTheDocument();
+
+    await user.click(within(region).getByRole('button', { name: 'Collapse' }));
+    expect(within(region).getByRole('button', { name: 'Expand' })).toBeEnabled();
+    expect(Object.keys(localStorage)).toEqual([NAV_RAIL_REFERENCE_STORAGE_KEY]);
+    await user.click(within(region).getByRole('button', { name: 'Expand' }));
+
+    await user.click(within(region).getByRole('checkbox', { name: 'No Room' }));
+    expect(within(region).getByRole('button', { name: 'Expand' })).toBeDisabled();
+
+    await user.click(within(region).getByRole('checkbox', { name: 'Disabled' }));
+    within(rail).getAllByRole('tab').forEach((tab) => expect(tab).toBeDisabled());
+    expect(within(rail).getByRole('tab', { selected: true })).toHaveAccessibleName('Traits');
   });
 });

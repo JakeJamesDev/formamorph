@@ -44,6 +44,7 @@ import { FooterActionOrderReference } from '@/components/design-system/FooterAct
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
+import { NavRailReference } from '@/components/design-system/NavRailReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
 import { PromptChipsReference } from '@/components/design-system/PromptChipsReference';
 
@@ -330,6 +331,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Sections Bar',
     description: 'Grouped tabs folded behind one bar on mobile',
     Component: SectionsBarReference,
+  },
+  {
+    id: 'nav-rail',
+    label: 'Nav Rail',
+    description: 'Grouped tabs on a collapsible rail inside the surface',
+    Component: NavRailReference,
   },
   {
     id: 'prompt-navigation',

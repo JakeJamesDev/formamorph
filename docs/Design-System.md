@@ -846,6 +846,66 @@ The live reference draws the production registry as the Sections bar, with a Sim
 - Tab and group names come from the production registry, so the reference and the editor cannot drift.
 - **Unverified:** the reference's tab bodies and description have terminology review only; vocabulary and grammar evidence is not recorded.
 
+## Pattern: Nav Rail
+
+**Purpose:** Navigate a surface's top-level sections from a rail inside the surface, so navigation reads as part of the panel and the section count can grow.
+
+**Rule:**
+
+- The rail is the first column inside the surface it drives, below the surface's full-width header. It spans that column's full height.
+- It is a real vertical tab list. Each row is a tab named by its label, and the arrow keys move along the rail. The host's panels stay where they are.
+- Groups draw in order, split by a plain line. A group with no tab draws nothing, not even its line. No group has a caption.
+- The active tab carries a primary accent bar on the rail's edge, the accent background and the foreground color. The others are muted.
+- A toggle at the bottom collapses the rail to icons and expands it to icons with labels. The rail starts expanded. Each surface remembers its choice on this device. A failed read or write falls back to expanded with no error.
+- When the host has no room, the rail draws collapsed and the toggle is disabled. The stored choice does not change, so the rail expands again when room returns.
+- A collapsed row names its tab in a flyout on hover or keyboard focus. The flyout is the shared tooltip, with its delay. Focus that a click brings and a tap show no flyout. The disabled toggle still names itself on hover.
+- When something replaces the panels, the rail stays drawn with every tab disabled. The selection is kept.
+
+**Density:** Compact. The rail is 52px collapsed and 192px expanded, and each row is 36px tall.
+
+### Composition
+
+- One row layout serves both states. The 18px icon sits 11px in, which centers it in the collapsed rail. The label clips in its own box as the rail narrows; no row changes layout.
+- The width animates over 200 ms on `cubic-bezier(0.2, 0, 0, 1)`. Labels stay mounted and fade on the same duration and curve. With reduced motion, both change at once.
+- Each tab's accessible name is its label, which stays mounted in both states. The flyout does not name the tab again, and the icon is hidden from assistive technology. The toggle is named **Collapse** or **Expand** and reports its expanded state.
+- The host's tab root wraps the rail and the panels with vertical orientation. The root owns the selection; the rail takes the active value only for its accent bar.
+- The rail takes the same groups as the mobile **Sections** bar, so the two draw the same order and splits.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The rail | `NavRail` in [`NavRail.tsx`](../src/components/NavRail.tsx) |
+| The flyout | `Tip` in [`tooltip.tsx`](../src/components/ui/tooltip.tsx), turned off while the rail is expanded |
+| Stored state | `readStorageJson` and `writeStorageJson` in [`keyedStorage.ts`](../src/lib/keyedStorage.ts) |
+| Reduced motion | `usePrefersReducedMotion` in [`usePrefersReducedMotion.ts`](../src/lib/usePrefersReducedMotion.ts) |
+| Isolated reference | [`NavRailReference.tsx`](../src/components/design-system/NavRailReference.tsx) |
+
+### Responsive behavior
+
+The rail is desktop-only. On mobile the Sections bar takes its place under the header. Below a host's width threshold the rail draws collapsed without a change to the stored choice.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Expanded | 192px. Icons with labels. The toggle reads **Collapse**. |
+| Collapsed | 52px. Icons only. Hover or keyboard focus shows the tab's name in a flyout. |
+| No room | Drawn collapsed. The toggle is disabled and its flyout reads **Expand**. |
+| Selected | Accent bar, accent background, and foreground color. |
+| Hover | The accent background and the foreground color. |
+| Focus | The shared inset focus ring. Arrow keys move along the rail. |
+| Disabled | Every tab is disabled at half opacity. The selection is kept. |
+| Empty group | Nothing draws, so no line stands without tabs under it. |
+
+The live reference draws the World Editor's registry as the rail beside sample panels, with **No Room** and **Disabled** options. It remembers its expanded state under its own key, `formamorph.designSystem.navRail`, and never reads or writes authored worlds, saves, library data, or a real surface's choice.
+
+### Writing review
+
+- Tab names come from the production registry, so the reference and the editor cannot drift.
+- **Collapse** and **Expand** are labels in Title Case.
+- **Unverified:** the reference's tab bodies, description, and option labels have terminology review only; vocabulary and grammar evidence is not recorded.
+
 ## Pattern: Narration Turn
 
 **Purpose:** Show one turn of the story the same way in the Pages and Chat layouts, so a turn's actions and its scene image controls cannot differ between them.

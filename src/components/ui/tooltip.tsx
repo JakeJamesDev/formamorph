@@ -90,6 +90,8 @@ interface TipProps {
    * `false` where the child's visible text already names it and the tip only spells that text out.
    */
   labelsChild?: boolean
+  /** Opens nothing while true, and keeps the control mounted, so a tip that comes and goes never moves focus. */
+  disabled?: boolean
 }
 
 /**
@@ -105,7 +107,7 @@ interface TipProps {
  *
  * The popup lives in `TooltipProvider`, so a tip with no provider above it never opens.
  */
-function Tip({ tip, children, side = "top", align = "center", labelsChild }: TipProps) {
+function Tip({ tip, children, side = "top", align = "center", labelsChild, disabled }: TipProps) {
   const payload = React.useMemo(() => (tip ? { tip, side, align } : undefined), [tip, side, align])
   if (!payload) return children
 
@@ -116,6 +118,7 @@ function Tip({ tip, children, side = "top", align = "center", labelsChild }: Tip
     <TooltipPrimitive.Trigger
       handle={tipHandle}
       payload={payload}
+      disabled={disabled}
       aria-label={names ? payload.tip : undefined}
       render={children}
     />

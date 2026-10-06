@@ -69,6 +69,29 @@ describe('a tip on a control', () => {
     expect(screen.queryByText('Delete world')).toBeNull();
   });
 
+  it('opens nothing while disabled, and keeps the same control when it turns back on', async () => {
+    const view = renderTip(
+      <Tip tip="Expand" labelsChild={false} disabled>
+        <button type="button">x</button>
+      </Tip>,
+    );
+    const control = screen.getByRole('button');
+    await userEvent.tab();
+    expect(screen.queryByText('Expand')).toBeNull();
+
+    view.rerender(
+      <TooltipProvider>
+        <Tip tip="Expand" labelsChild={false}>
+          <button type="button">x</button>
+        </Tip>
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole('button')).toBe(control);
+    await userEvent.tab({ shift: true });
+    await userEvent.tab();
+    expect(screen.getByText('Expand')).toBeVisible();
+  });
+
   it('leaves the control its own ref, which its call site is still using', () => {
     // The sweep wraps controls that already hand their node somewhere — a sortable's `setNodeRef`, a chip's
     // `innerRef`. If the trigger took that ref for itself, drag and the find bar would go quietly dead.
