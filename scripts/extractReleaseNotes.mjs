@@ -5,7 +5,8 @@
 //
 // Usage:
 //   node scripts/extractReleaseNotes.mjs                 → the "🚧 In Progress" section (the release workflow)
-//   node scripts/extractReleaseNotes.mjs --release 2.0.1 → a specific released version's collapsed section
+//   node scripts/extractReleaseNotes.mjs --release 3.0.0 → a specific released version's collapsed section
+//     (an older major lives in its archive: add --file docs/Changelog-v2.md)
 //   node scripts/extractReleaseNotes.mjs --file path.md  → read a different changelog file
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';

@@ -32,7 +32,7 @@ const ROOT = process.cwd();
  *  worlds, tests, and generated output. Paths are matched as substrings of the repo-relative path. */
 const EXCLUDED = [
   '.test.', '.spec.', '/defaultworlds/', 'GamePrompts.ts', 'promptSamplers', '/testing/', '/dist/',
-  '/node_modules/', '/graphify-out/', 'Changelog.md',
+  '/node_modules/', '/graphify-out/', 'Changelog.md', '/Changelog-v',
 ];
 const CHANGELOG = 'docs/Changelog.md';
 const EXTENSIONS = new Set(['.ts', '.tsx', '.md']);

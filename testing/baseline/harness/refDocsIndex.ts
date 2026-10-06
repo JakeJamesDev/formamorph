@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { releasedMinorChangelog } from '@/lib/docs/changelogSlice';
-import { NON_GUIDE_PAGES, pageNameOf, SIDEBAR_PAGE, type DocsPages } from '@/lib/docs/docsChecks';
+import { isNonGuidePage, pageNameOf, SIDEBAR_PAGE, type DocsPages } from '@/lib/docs/docsChecks';
 import type { DocsIndex, DocsIndexInput } from '@/lib/docs/docsIndex';
 
 /** Extracts `src/lib/docs` and `docs` at `ref` into `.scratch/docs-ref/<sha>` once, and builds its index. */
@@ -21,7 +21,7 @@ export async function refDocsIndex(ref: string): Promise<{ sha: string; index: D
   const read = (file: string) => readFileSync(path.join(docsDir, file), 'utf8');
   const pages: DocsPages = Object.fromEntries(
     readdirSync(docsDir)
-      .filter((file) => file.endsWith('.md') && !NON_GUIDE_PAGES.includes(pageNameOf(file)))
+      .filter((file) => file.endsWith('.md') && !isNonGuidePage(pageNameOf(file)))
       .map((file) => [pageNameOf(file), file === 'Changelog.md' ? releasedMinorChangelog(read(file)) : read(file)]),
   );
   const module = await import(pathToFileURL(path.join(dir, 'src/lib/docs/docsIndex.ts')).href) as {
