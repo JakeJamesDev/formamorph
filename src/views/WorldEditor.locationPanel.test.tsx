@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -161,7 +161,7 @@ describe('the World Editor location panel tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectLocation('The Veilwood');
     openPanelTab('Pins');
-    fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
+    pickEditorMode('Simple');
     expect(panelTabNames()).toEqual(['Details', 'Presence', 'Media']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);

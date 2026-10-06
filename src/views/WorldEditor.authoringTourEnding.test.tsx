@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, editorModeSelect, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { AUTHORING_TOUR_OFFER_ID, markTutorialSeen, resetTutorials, TUTORIAL_APPEAR_DELAY_MS } from '@/lib/tutorials';
 import { readTourRecord, reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
@@ -124,7 +124,7 @@ describe('Authoring Tour Save note', () => {
 });
 
 describe('Authoring Tour mode step', () => {
-  it('points at the mode switch and says Advanced shows more fields', async () => {
+  it('points at the mode select and says Advanced shows more fields', async () => {
     resumeAt('editor-mode');
     const step = await screen.findByRole('dialog', { name: MODE_STEP });
     expect(step).toHaveTextContent('Advanced mode shows more fields');
@@ -173,14 +173,14 @@ describe('Authoring Tour final step', () => {
   it('Finish saves, ends the tour and gives back the author’s own mode', async () => {
     resumeAt('play', 'advanced');
     const step = await screen.findByRole('dialog', { name: PLAY_STEP });
-    expect(screen.getByRole('radio', { name: 'Simple' })).toHaveAttribute('data-state', 'on');
+    expect(editorModeSelect()).toHaveTextContent('Simple');
     fireEvent.click(within(step).getByRole('button', { name: 'Finish' }));
 
     await waitFor(() => expect(tourBar()).not.toBeInTheDocument());
     expect(storeWorld).toHaveBeenCalledTimes(1);
     expect(readTourRecord(NEW_WORLD.id)).toBeNull();
-    expect(screen.getByRole('radio', { name: 'Advanced' })).toHaveAttribute('data-state', 'on');
-    expect(screen.getByRole('radio', { name: 'Advanced' })).toBeEnabled();
+    expect(editorModeSelect()).toHaveTextContent('Advanced');
+    expect(editorModeSelect()).toBeEnabled();
     expect(readEditorMode()).toBe('advanced');
   });
 

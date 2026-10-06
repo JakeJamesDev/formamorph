@@ -19,7 +19,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 2. Type the location's name in the **Search or add new locations** box.
 3. Select the **+** button (**Add to Locations**). The new location opens in the panel.
 4. On the **Details** tab, write the **AI-Facing Description**.
-5. Select **Save** at the bottom of the editor.
+5. Select **Save**.
 
 > 💡 With the box empty, the new location is named "New Location". Rename it in **Name**.
 

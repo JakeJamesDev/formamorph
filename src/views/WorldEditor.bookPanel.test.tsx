@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -129,12 +129,12 @@ describe('the World Editor dictionary book panel tabs', () => {
     selectBook('Fen Lore');
     openPanelTab('Placeholders');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
+    pickEditorMode('Simple');
     expect(panelStrip()).toBeNull();
     expect(detailsShown()).toEqual({ ...ALL_DETAILS, enabled: false });
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
-    fireEvent.click(screen.getByRole('radio', { name: /^Advanced/ }));
+    pickEditorMode('Advanced');
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 });

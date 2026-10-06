@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -138,7 +138,7 @@ describe('the World Editor entity panel tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectEntity('Wren');
     openPanelTab('Placeholders');
-    fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
+    pickEditorMode('Simple');
     expect(panelTabNames()).toEqual(['Profile', 'Descriptions']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Image', 'Name', 'Locations']);

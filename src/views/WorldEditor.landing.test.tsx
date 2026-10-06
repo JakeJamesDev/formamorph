@@ -68,9 +68,9 @@ describe('World Editor Take Me There landing', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Find and replace' })));
   });
 
-  it('focuses the selected mode when the request names the mode switch', async () => {
+  it('focuses the mode select when the request names the mode control', async () => {
     renderWorldEditorBench(WORLD, 'advanced', requestFor('worldEditor', 'editor-mode'));
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Advanced' })));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Editor mode' })));
   });
 
   it('takes the pulse class off when the animation ends', async () => {

@@ -14,6 +14,18 @@ import { createContext, useContext } from 'react';
 
 export type EditorMode = 'simple' | 'advanced';
 
+/** What each mode says about itself in the mode select's list. */
+export const EDITOR_MODE_DESCRIPTIONS: Record<EditorMode, string> = {
+  simple: 'Just the essentials',
+  advanced: 'Every tool and field',
+};
+
+/** The dot's accessible name and tooltip while Simple hides something this world uses. */
+export const EDITOR_HIDDEN_NOTICE = {
+  label: 'This world uses advanced features',
+  tip: 'This world uses advanced features. Switch to Advanced to see them.',
+};
+
 const STORAGE_KEY = 'formamorph.worldEditorMode';
 
 /** The stored preference, defaulting to Simple on first run. */

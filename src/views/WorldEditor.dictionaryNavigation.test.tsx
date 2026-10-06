@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, clickFlask, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, clickFlask, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -149,7 +149,7 @@ describe('World Editor — Simple mode has no Matching tab to open', () => {
     await findFirst('brackish');
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
-    fireEvent.click(screen.getByRole('radio', { name: /^Advanced/ }));
+    pickEditorMode('Advanced');
     // Naming Matching while it was unavailable would strand the author on it here.
     expect(shownPanelTab()).toBe('Details');
   });

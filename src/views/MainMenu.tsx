@@ -497,7 +497,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // authoring an existing world otherwise means clicking through the library grid.
   useEffect(() => registerDevHook('editWorld', async (id: string) => {
     const world = await WorldStorageService.getWorldData(id) as World;
-    loadWorldData(world);
+    loadWorldData(world, false, { stored: true });
     setShowWorldEditor(true);
   }), [loadWorldData]);
 
@@ -527,7 +527,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (!worldId) return;
     try {
       const world = await WorldStorageService.getWorldData(worldId) as World;
-      loadWorldData(world);
+      loadWorldData(world, false, { stored: true });
       setShowLoadDialog(false);
       onLoadSaveGame(saveId);
     } catch (error) {
@@ -986,7 +986,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       if (worldData && selectedWorld) {
         // Cache the migrated world (not the raw one) so downstream reuse — duplicate, use3DModel checks —
         // sees the current shape instead of the legacy input.
-        const { world: migrated } = loadWorldData(worldData as World, true);
+        const { world: migrated } = loadWorldData(worldData as World, true, { stored: true });
         setSelectedWorld({
           ...selectedWorld,
           data: migrated
@@ -1062,7 +1062,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       // A lone import opens the world's details; a batch just lands the cards.
       if (files.length === 1 && last) {
         const d = last.data;
-        loadWorldData(d, true);
+        loadWorldData(d, true, { stored: true });
         setSelectedWorld({ id: last.id, name: d.worldOverview?.name || 'Uploaded World', description: d.worldOverview?.description || 'Custom uploaded world', thumbnail: d.worldOverview?.thumbnail, createdAt: now, lastAccessed: now, data: d });
         setShowWorldModal(true);
       }
@@ -2631,7 +2631,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                   onApplied={(data) => {
                     setSelectedWorld((held) => (held ? { ...held, data } : held));
                     // The editor opens on the store, so it has to hold what was just written.
-                    loadWorldData(data, true);
+                    loadWorldData(data, true, { stored: true });
                   }}
                 />
               )}

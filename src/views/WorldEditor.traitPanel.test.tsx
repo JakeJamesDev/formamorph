@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -153,13 +153,13 @@ describe('the World Editor trait panel tabs', () => {
     selectTrait('Sedge-Born');
     openPanelTab('Pins');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
+    pickEditorMode('Simple');
     expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
-    fireEvent.click(screen.getByRole('radio', { name: /^Advanced/ }));
+    pickEditorMode('Advanced');
     expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
   });
 

@@ -6,12 +6,13 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import {
   AUTHORING_TOUR_OFFER_ID, TUTORIAL_APPEAR_DELAY_MS, markTutorialSeen, resetTutorials, seenTutorials,
 } from '@/lib/tutorials';
+import { pickEditorMode } from '@/test/worldEditorBench';
 import WorldEditor from './WorldEditor';
 import type { World } from '@/types';
 
 /**
  * The Simple/Advanced tutorial, through the real editor JSX. `tutorials.test.ts` covers the store; what
- * these guard is the wiring — that the editor mounts a tutorial at all, and that using the switch counts
+ * these guard is the wiring — that the editor mounts a tutorial at all, and that using the select counts
  * as reading it. Both are call sites an isolated store test cannot see.
  */
 
@@ -67,7 +68,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('World Editor tutorial', () => {
-  it('holds off until the appear delay, then explains the mode switch', () => {
+  it('holds off until the appear delay, then explains the mode select', () => {
     setup();
     expect(screen.queryByText('Simple vs. Advanced')).not.toBeInTheDocument();
     settle();
@@ -87,10 +88,10 @@ describe('World Editor tutorial', () => {
     expect(screen.queryByText('Simple vs. Advanced')).not.toBeInTheDocument();
   });
 
-  it('counts using the switch as reading it', () => {
+  it('counts using the select as reading it', () => {
     setup();
     settle();
-    fireEvent.click(screen.getByRole('radio', { name: 'Advanced' }));
+    pickEditorMode('Advanced');
     expect(screen.queryByText('Simple vs. Advanced')).not.toBeInTheDocument();
     expect(seenTutorials()).toContain('world-editor-mode-toggle');
   });
