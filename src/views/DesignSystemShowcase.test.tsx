@@ -62,14 +62,17 @@ describe('settings design reference', () => {
     const user = userEvent.setup();
     renderShowcase();
 
-    const modeSwitch = screen.getByRole('radiogroup', { name: 'Settings mode' });
+    const modeSelect = screen.getByRole('combobox', { name: 'Settings mode' });
+    expect(modeSelect).toHaveTextContent('Advanced');
     await user.click(screen.getByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label }));
-    await user.click(within(modeSwitch).getByRole('radio', { name: 'Simple' }));
+    await user.click(modeSelect);
+    await user.click(screen.getByRole('option', { name: /^Simple/ }));
     expect(screen.queryByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Memory' })).toBeNull();
-    expect(screen.getByLabelText('Hidden settings are off their defaults')).toBeInTheDocument();
+    expect(modeSelect).toHaveAccessibleDescription('Hidden settings are off their defaults');
 
-    await user.click(within(modeSwitch).getByRole('radio', { name: /^Advanced/ }));
+    await user.click(modeSelect);
+    await user.click(screen.getByRole('option', { name: /^Advanced/ }));
     expect(screen.getByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label })).not.toBeChecked();
     expect(screen.getByRole('heading', { name: 'Memory' })).toBeInTheDocument();
   });

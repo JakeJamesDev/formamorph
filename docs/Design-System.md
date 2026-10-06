@@ -51,7 +51,7 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 | Display tab body | `DisplaySettingsSection` in [`DisplaySettingsSection.tsx`](../src/components/modals/DisplaySettingsSection.tsx) |
 | Output tab body | `OutputSettingsSection` in [`OutputSettingsSection.tsx`](../src/components/modals/OutputSettingsSection.tsx) |
 | What a section reads and writes | `SettingsSource` in [`settingsSource.ts`](../src/components/modals/settingsSource.ts) |
-| Simple/Advanced switch | `SettingsModeSwitch` in [`SettingsModeSwitch.tsx`](../src/components/modals/SettingsModeSwitch.tsx) |
+| Simple/Advanced picker | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx); see [Pattern: Mode Select](#pattern-mode-select) |
 
 ### State reference
 
@@ -64,13 +64,44 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 | Validation | Set `aria-invalid`, connect the message with `aria-describedby`, and use `FieldError`. |
 | Overflow | Constrain the control column and preserve the full value through its menu, title, or detail view. |
 
-The live Settings reference renders the production Display and Output sections and the Simple/Advanced switch. A local source built from the settings defaults backs them, so a change writes no settings and no theme. Where Settings would save a theme or load the embedding model, the reference writes a status line. The Live Sample shows the reference theme, palette, and font in its own block. The Control States card shows all six states.
+The live Settings reference renders the production Display and Output sections and the Mode Select. A local source built from the settings defaults backs them, so a change writes no settings and no theme. Where Settings would save a theme or load the embedding model, the reference writes a status line. The Live Sample shows the reference theme, palette, and font in its own block. The Control States card shows all six states.
 Open `#dev?modal=designSystem&tab=settings`.
 
 ### Writing review
 
-- Section, row, hint, and switch copy comes from the production components, so the reference and Settings cannot drift. Reuse does not certify that copy as fully ASD-STE100 compliant.
+- Section, row, hint, and mode copy comes from the production components, so the reference and Settings cannot drift. Reuse does not certify that copy as fully ASD-STE100 compliant.
 - **Unverified:** the card descriptions, the Live Sample description, and the three status lines have terminology review only; vocabulary and grammar evidence is not recorded.
+
+## Pattern: Mode Select
+
+**Purpose:** Let a screen switch between Simple and Advanced, and say what each mode shows before the choice.
+
+Use [`ModeSelect`](../src/components/ui/mode-select.tsx). Settings uses it today. The World Editor adopts it with its own wording.
+
+### Composition
+
+- Keep the trigger 7.5rem wide in both modes. It shows the mode's name only, so the controls beside it never shift.
+- Give each mode a second line in the list. The caller supplies the lines: Settings says "Just the essentials" and "Every setting".
+- Show a small primary dot on the trigger's corner while Simple hides a setting that is off its default. The dot has an accessible name and a tooltip. The caller supplies both through `hiddenNotice`, and passes nothing when nothing is hidden.
+- Forward the ref and every extra attribute to the trigger. Tutorial notes, tour anchors and Take Me There targets land on it.
+- Keep the trigger in the same place in the tree when the dot appears. A remount drops keyboard focus.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The picker | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx) |
+| Settings copy and dot text | `SETTINGS_MODE_DESCRIPTIONS` and `SETTINGS_HIDDEN_NOTICE` in [`settingsMode.ts`](../src/lib/settingsMode.ts) |
+| Live reference | The mode select in the Settings reference at `#dev?modal=designSystem&tab=settings` |
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Default | The trigger shows the current mode. |
+| Open | The list shows both modes with their lines and a check on the current one. |
+| Hidden settings | The dot shows on the trigger while Simple hides a setting that is off its default. |
+| Focus | The shared inset ring. |
 
 ## Pattern: Focused Markdown Authoring
 

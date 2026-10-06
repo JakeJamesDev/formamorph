@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.0** (just released below)._
 
+### Major Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The World Editor and Community Creations move their sections to a collapsible side rail.** Settings swaps its Simple/Advanced switch for a mode select that says what each mode shows.
+
 ### Minor Changes
 
 #### ➕ Added

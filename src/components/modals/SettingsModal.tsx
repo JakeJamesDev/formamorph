@@ -13,7 +13,7 @@ import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/m
 import { blankTool } from '@/lib/tools/toolDraft';
 import { randomUUID } from '@/lib/uuid';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
-import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
+import { readSettingsMode, writeSettingsMode, SETTINGS_MODE_DESCRIPTIONS, SETTINGS_HIDDEN_NOTICE, type SettingsMode } from '@/lib/settingsMode';
 import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
@@ -28,7 +28,7 @@ import { DisplaySettingsSection } from './DisplaySettingsSection';
 import { OutputSettingsSection } from './OutputSettingsSection';
 import type { SettingsSource } from './settingsSource';
 import { useEmbeddingDownload } from './useEmbeddingDownload';
-import { SettingsModeSwitch } from './SettingsModeSwitch';
+import { ModeSelect } from '@/components/ui/mode-select';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { usePresetPublish } from '@/components/modals/usePresetPublish';
 import { type SharedPreset } from '@/lib/promptPresetShare';
@@ -196,8 +196,8 @@ function PromptOptionsPanel({ endpoint, attachments, maxOutput, verbatim, reason
   );
 }
 
-/** The mode switch is the target of the tab it sits over; the other tabs use Data's. */
-const MODE_SWITCH_TARGETS: Record<string, TargetAttribute> & { data: TargetAttribute } = {
+/** The mode select is the target of the tab it sits over; the other tabs use Data's. */
+const MODE_SELECT_TARGETS: Record<string, TargetAttribute> & { data: TargetAttribute } = {
   output: targetAttribute('settings.output', 'settings-mode'),
   data: targetAttribute('settings.data', 'settings-mode'),
 };
@@ -1038,18 +1038,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         className={SETTINGS_DIALOG_SIZE}
       >
         <DialogHeader className="flex-shrink-0">
-          {/* The close cross is absolutely placed over this row, so the switch is kept clear of it. */}
-          <div className="flex items-center gap-4 pr-8">
+          {/* The close cross is absolutely placed over this row, so the select is kept clear of it. */}
+          <div className="flex items-center justify-between gap-4 pr-8">
             <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
             <TutorialPopover entry={tutorial} nav={tutorialNav}>
-              <SettingsModeSwitch
+              <ModeSelect
                 mode={mode}
-                // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
+                // Using the select is itself the lesson, so it retires the tutorial as surely as the button does.
                 onModeChange={(next) => { dismissTutorial(); setMode(next); }}
-                hasHiddenValues={hasHiddenValues}
-                className="ml-auto"
-                // The Data and Output tabs' guide sections need Advanced, so they land on this switch.
-                {...(MODE_SWITCH_TARGETS[activeTab] ?? MODE_SWITCH_TARGETS.data)}
+                descriptions={SETTINGS_MODE_DESCRIPTIONS}
+                hiddenNotice={hasHiddenValues ? SETTINGS_HIDDEN_NOTICE : undefined}
+                size="sm"
+                aria-label="Settings mode"
+                // The Data and Output tabs' guide sections need Advanced, so they land on this select.
+                {...(MODE_SELECT_TARGETS[activeTab] ?? MODE_SELECT_TARGETS.data)}
               />
             </TutorialPopover>
           </div>
