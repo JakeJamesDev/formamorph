@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { BookOpen, Search } from 'lucide-react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { helpFocus, type HelpFocus } from '@/lib/formaquestion/helpFocus';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { renderReporting as render } from '@/test/surfaceReporter';
 import { Dialog, DialogContent, DialogTitle } from './dialog';
@@ -148,5 +149,27 @@ describe('the shared tab strips', () => {
     // Simple mode hides the Code tab.
     view.rerender(<Panel tabs={TABS.slice(0, 1)} value="code" />);
     expect(surface().tabs).toEqual(['worldEditorStat.details']);
+  });
+});
+
+describe('the help focus of a panel', () => {
+  const TABS = [{ value: 'details', label: 'Details', icon: BookOpen }] as const;
+  const COURAGE: HelpFocus = { kind: 'stat', id: 'courage', name: 'Courage' };
+  const panel = (surfaceTabs?: 'worldEditorStat') => (
+    <PanelTabs tabs={TABS} value="details" onValueChange={() => {}} stripLabel="Stat Fields" surfaceTabs={surfaceTabs} focus={COURAGE}>
+      <PanelTabContent value="details">Details body</PanelTabContent>
+    </PanelTabs>
+  );
+
+  it('registers the item while a panel with a tab ledger shows, and clears it at close', () => {
+    const view = render(<SurfaceLayer id="worldEditor">{panel('worldEditorStat')}</SurfaceLayer>);
+    expect(helpFocus.get()).toEqual(COURAGE);
+    view.unmount();
+    expect(helpFocus.get()).toBeUndefined();
+  });
+
+  it('registers nothing from a panel with no tab ledger', () => {
+    render(<SurfaceLayer id="worldEditor">{panel()}</SurfaceLayer>);
+    expect(helpFocus.get()).toBeUndefined();
   });
 });

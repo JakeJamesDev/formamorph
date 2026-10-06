@@ -35,9 +35,10 @@ import {
   emptySearchRecord, HELP_SAMPLER_FIELDS, recordQuery, searchTraceOf, traceSection,
   type HelpRequestTrace, type HelpSamplers, type HelpSearchRecord, type HelpSource, type HelpTrace,
 } from './helpTrace';
+import type { HelpFocus } from './helpFocus';
 import type { OpenWorld } from './helpWorld';
 import { mergeRanks } from './rankMerge';
-import { surfaceHint, surfaceWords, type SurfaceHint } from './surfaceHint';
+import { focusWords, openFocus, surfaceHint, surfaceWords, type SurfaceHint } from './surfaceHint';
 import { helpLookupUserMessage, helpSystemPrompt, helpUserMessage } from './helpPrompt';
 
 /** The fewest sections of each source's ranking the merge reads; a search that asks for more gets more. */
@@ -85,6 +86,8 @@ export interface HelpQuestion {
    * Code tab; an excluded Surface adds nothing.
    */
   surface?: Surface;
+  /** The selected item. It counts only while its panel is open in `surface`. */
+  focus?: HelpFocus;
   /** The images the player attached to this question. They go on the question alone, never on history. */
   images?: readonly ImageAttachment[];
   /**
@@ -385,11 +388,12 @@ function turnLead(hint: SurfaceHint | null, quickReference: DocSection | null, o
  * Throws the request pipeline's errors, and an error for an empty answer.
  */
 export async function* askHelp({
-  question, history = [], language = '', settings, snapshot, index, surface, images = [], world, screenRule, howToRule, embedder, signal, fetchImpl,
+  question, history = [], language = '', settings, snapshot, index, surface, focus, images = [], world, screenRule, howToRule, embedder, signal, fetchImpl,
 }: HelpQuestion): AsyncGenerator<HelpEvent, void, void> {
-  const hint = settings.openScreen ? surfaceHint(surface, index) : null;
-  // The Code tab counts only while the open screen does.
+  // The Code tab and the focus count only while the open screen does.
   const openSurface = settings.openScreen ? surface : null;
+  const shownFocus = openFocus(openSurface, focus);
+  const hint = settings.openScreen ? surfaceHint(surface, index, shownFocus) : null;
   const codeTurn = isCodeTurn(question, openSurface);
   const { lead, pinned, where } = turnLead(hint, codeTurn ? sectionWithId(index, QUICK_REFERENCE_SECTION) : null, isOnCodeTab(openSurface));
   const kept = keptHistory(history, settings.historyLength);
@@ -398,7 +402,7 @@ export async function* askHelp({
   const lookupMode = settings.lookup && takesFunctions;
   const playerTools = takesFunctions ? helpToolsOn(settings.tools, settings.toolSwitches) : [];
   const face = settings.mascot && takesFunctions ? createFaceCall(activeMascotRig(settings.mascotPresets)) : null;
-  const codeTest = codeTurn && settings.codeTest && takesFunctions ? createCodeTest(world?.authored) : null;
+  const codeTest = codeTurn && settings.codeTest && takesFunctions ? createCodeTest(world?.authored, shownFocus?.kind === 'stat' ? shownFocus.name : undefined) : null;
   // No part of the request can carry a section, so the question goes alone and its answer is never flagged.
   const bare = !lead && !lookupMode && !Object.values(settings.sources).some(Boolean);
   const record = bare ? null : emptySearchRecord((Object.keys(settings.sources) as HelpSource[]).filter((source) => settings.sources[source]));
@@ -454,6 +458,7 @@ export async function* askHelp({
   const customPrompt = isHelpPromptEdited(prompts, lookup ? 'lookup' : 'answer') || (codeTurn && isHelpPromptEdited(prompts, 'code'));
   const traceOf = (result?: AiStreamResult): HelpTrace => ({
     surface: surface ? surfaceWords(surface) : null,
+    focus: shownFocus ? focusWords(shownFocus) : null,
     openScreen: settings.openScreen,
     ...(lead && { lead: traceSection(lead) }),
     preset: activeHelpPreset(settings.presets).name,

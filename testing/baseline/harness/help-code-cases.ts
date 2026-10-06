@@ -2,6 +2,7 @@
 import type { SurfaceId } from '@/lib/docs/surfaceMap';
 import { STAT_CODE_TAB } from '@/lib/formaquestion/helpCodeRider';
 import type { CodeTestResult } from '@/lib/formaquestion/helpCodeTestRun';
+import type { HelpFocus } from '@/lib/formaquestion/helpFocus';
 import { executeStatCode, type SandboxPlaceholderNode, type SandboxTrait, type StatCodeRunOptions } from '@/lib/statCodeExecutor';
 import type { StatCodeWorld } from '@/lib/statCodeTestRun';
 import type { Surface } from '@/lib/surface/surfaceRegistry';
@@ -17,20 +18,23 @@ export interface HelpCodeCase {
   question: string;
   /** What the player has open. A code case with it names no code word, so the open Code tab alone fires the rider. */
   surface?: Surface;
+  /** The item the open panel shows. */
+  focus?: HelpFocus;
   /** A known case's real names. It passes when its code runs, holds them, and holds no invented one. */
   names?: CaseNames;
   /** The authored world the code test reads. Absent: `FIXTURE_WORLD`. */
   world?: StatCodeWorld;
 }
 
-const statPanel = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
-const CODE_TAB = statPanel(STAT_CODE_TAB);
-
 const stat = (name: string, min: number, max: number, value: number, regen: number): Stat =>
   ({ id: name.toLowerCase(), name, type: 'number', description: '', min, max, value, regen, descriptors: [] });
 
 /** The stat every snippet belongs to, and its neighbors the questions name. */
 export const FIXTURE_STAT = stat('Health', 0, 100, 60, 1);
+
+const statPanel = (...tabs: SurfaceId[]): Surface => ({ screen: 'worldEditor', dialog: null, tabs });
+/** The fixture stat's Code tab, open with that stat selected. */
+const ON_CODE_TAB = { surface: statPanel(STAT_CODE_TAB), focus: { kind: 'stat', id: FIXTURE_STAT.id, name: FIXTURE_STAT.name } } as const;
 export const FIXTURE_STATS: readonly Stat[] = [
   FIXTURE_STAT, stat('Stamina', 0, 100, 40, 2), stat('Hunger', 0, 10, 8, 0), stat('Courage', 0, 100, 55, 0), stat('Int', 0, 50, 32, 0),
 ];
@@ -95,43 +99,43 @@ export const HELP_CODE_CASES: readonly HelpCodeCase[] = [
   { id: 'cap-ai-change', kind: 'code', question: 'In the After the AI box, how do I stop the AI from moving Health by more than 10 in one turn?' },
   { id: 'pin-weather', kind: 'code', question: 'Write JavaScript that pins the Weather placeholder to stormy when Health is below 20.' },
   { id: 'floor-before', kind: 'code', question: 'What do I put in the Before the AI box so Health starts each turn at 10 or more?' },
-  { id: 'hunger-drain', kind: 'code', question: 'How do I make this stat go down by 2 every turn when Hunger is above 7?', surface: CODE_TAB },
-  { id: 'rested-when-full', kind: 'code', question: 'How do I turn on the Rested trait when this stat is full?', surface: CODE_TAB },
-  { id: 'night-regen', kind: 'code', question: 'How can this stat recover 1 point per hour, but only at night?', surface: CODE_TAB },
+  { id: 'hunger-drain', kind: 'code', question: 'How do I make this stat go down by 2 every turn when Hunger is above 7?', ...ON_CODE_TAB },
+  { id: 'rested-when-full', kind: 'code', question: 'How do I turn on the Rested trait when this stat is full?', ...ON_CODE_TAB },
+  { id: 'night-regen', kind: 'code', question: 'How can this stat recover 1 point per hour, but only at night?', ...ON_CODE_TAB },
   // Known cases: the tasks of one player session on a stat's Code tab, each asked on its own.
   // A case accepts every answer that is right under the context the request gives. Audit, per case:
   //   prowler-at-night, seasoned-after-two-weeks: the open Code tab; the trait and clock names come from the question.
   //   seasoned-on-persona: the question says the trait sits on a custom character, so the persona path is required.
-  //   brave-at-courage ("my Courage"), quotes-pin ("my Int"): the request names no open stat, so the open stat may
-  //     be that stat. `self.value` is as right as the named stat's own path.
+  //   brave-at-courage ("my Courage"), quotes-pin ("my Int"): the request names Health as the open stat, so only
+  //     the named stat's own path is right.
   //   quotes-pin also reads the persona or world trait path, since "I have the trait" names no owner.
   {
-    id: 'prowler-at-night', kind: 'code', surface: CODE_TAB,
+    id: 'prowler-at-night', kind: 'code', ...ON_CODE_TAB,
     question: 'I want a trait called Prowler to activate when it\'s nighttime. Could you write it for me?',
     names: { present: [ref('clock.daypart'), ref('traits.Prowler.enabled')] },
   },
   {
-    id: 'seasoned-after-two-weeks', kind: 'code', surface: CODE_TAB,
+    id: 'seasoned-after-two-weeks', kind: 'code', ...ON_CODE_TAB,
     question: 'What if I want the Seasoned trait to activate after it has been 2 weeks?',
     names: { present: [ref('clock.day'), ref('traits.Seasoned.enabled')] },
   },
   {
-    id: 'seasoned-on-persona', kind: 'code', surface: CODE_TAB,
+    id: 'seasoned-on-persona', kind: 'code', ...ON_CODE_TAB,
     question: 'My Seasoned trait is on a custom character. How do I make it activate after it has been 2 weeks?',
     names: { present: [ref('clock.day'), ref('persona.traits.Seasoned.enabled')], absent: [ref('traits.Seasoned')] },
     world: PERSONA_SEASONED_WORLD,
   },
   {
-    id: 'brave-at-courage', kind: 'code', surface: CODE_TAB,
+    id: 'brave-at-courage', kind: 'code', ...ON_CODE_TAB,
     question: 'I want the Brave trait to activate when my Courage is 50 or more.',
-    names: { present: [ref('stats.Courage.value', 'self.value'), ref('traits.Brave.enabled', 'persona.traits.Brave.enabled')] },
+    names: { present: [ref('stats.Courage.value'), ref('traits.Brave.enabled', 'persona.traits.Brave.enabled')] },
   },
   {
-    id: 'quotes-pin', kind: 'code', surface: CODE_TAB,
+    id: 'quotes-pin', kind: 'code', ...ON_CODE_TAB,
     question: 'Set the Quotes placeholder to \'The wind is howling\', but only after a month has passed, my Int is over 30, and I have the trait Grumpy.',
     names: {
       present: [
-        ref('clock.day'), ref('stats.Int.value', 'self.value'), ref('traits.Grumpy.enabled', 'persona.traits.Grumpy.enabled'),
+        ref('clock.day'), ref('stats.Int.value'), ref('traits.Grumpy.enabled', 'persona.traits.Grumpy.enabled'),
         ref('placeholders.Quotes.pin', 'placeholders.Quotes.value'),
       ],
     },

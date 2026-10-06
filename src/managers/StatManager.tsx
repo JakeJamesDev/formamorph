@@ -486,7 +486,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
 
   return (
     <>
-      <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Stat Fields" surfaceTabs="worldEditorStat">
+      <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Stat Fields" surfaceTabs="worldEditorStat" focus={{ kind: 'stat', id: stat.id, name: stat.name }}>
         {tabs.map((t) => (
           <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
         ))}

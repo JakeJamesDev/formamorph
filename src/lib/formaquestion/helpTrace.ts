@@ -69,6 +69,8 @@ export interface HelpSearchTrace {
 export interface HelpTrace {
   /** The screen the player asked from, in player words. Null when none was known. */
   surface: string | null;
+  /** The selected item the request named, in player words. Null when it named none. */
+  focus: string | null;
   /** Use the Open Screen was on. */
   openScreen: boolean;
   /** The open screen's section, when the setting was on and a section explains the screen. */

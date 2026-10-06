@@ -183,7 +183,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
 
 
   return (
-    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entry Fields" surfaceTabs={surfaceTabs}>
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entry Fields" surfaceTabs={surfaceTabs} focus={{ kind: 'entry', id: entry.id, name: entry.name }}>
       {tabs.map((t) => (
         <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
       ))}

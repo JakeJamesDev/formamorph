@@ -3,6 +3,7 @@
 // Each question runs in every arm inside the same batch, so the endpoint's drift hits them all:
 //   rider    the app's help session with the Default preset, whose Code rider rides every code turn
 //   names    the Default rider with `entities` and `persona` named beside `traits` (the Q10 arm; only through `--arms`)
+//   nofocus  the rider arm with no selected stat, so the surface line names none (the Q39 control; only through `--arms`)
 //   noqr     the Default preset over docs with no Quick Reference section, so no code turn pins it
 //   control  the same session with a custom preset whose rider is empty, so no turn carries one
 //   test     with `--tools`: the rider arm with the code test on, against the case's fixture world (the Q19 arm)
@@ -70,14 +71,14 @@ const docsAlts = argVal('--docs-alt', '').split(',').filter(Boolean).map((spec) 
   return { page: spec.slice(0, at), file: spec.slice(at + 1) };
 });
 
-/** `rider`, `names`, `noqr`, `control`, `test`, or an alt arm's file name. */
+/** `rider`, `names`, `nofocus`, `noqr`, `control`, `test`, or an alt arm's file name. */
 type Arm = string;
 const altName = (file: string) => path.basename(file, path.extname(file));
-const ALL_ARMS: Arm[] = ['rider', 'names', 'noqr', ...altFiles.map(altName), ...docsAlts.map((alt) => altName(alt.file)), 'control', ...(tools ? ['test'] : [])];
-// `names` asks a settled question (Q10), so it runs only when `--arms` names it.
+const ALL_ARMS: Arm[] = ['rider', 'names', 'nofocus', 'noqr', ...altFiles.map(altName), ...docsAlts.map((alt) => altName(alt.file)), 'control', ...(tools ? ['test'] : [])];
+// `names` asks a settled question (Q10) and `nofocus` one control (Q39), so each runs only when `--arms` names it.
 const ARMS = armList.length
   ? ALL_ARMS.filter((arm) => armList.includes(arm))
-  : ALL_ARMS.filter((arm) => (tools ? arm === 'rider' || arm === 'test' : arm !== 'names'));
+  : ALL_ARMS.filter((arm) => (tools ? arm === 'rider' || arm === 'test' : arm !== 'names' && arm !== 'nofocus'));
 if (armList.includes('test') && !tools) {
   console.error('help-code-probe: the test arm calls a function, so it needs --tools and an endpoint that takes function calls');
   process.exit(1);
@@ -103,6 +104,7 @@ const withRider = (code: string): HelpSettings => {
 const SETTINGS: Record<Arm, HelpSettings> = Object.fromEntries(Object.entries({
   rider: DEFAULT_HELP_SETTINGS,
   names: withRider(DEFAULT_CODE_RIDER.replace(NAMES_AFTER, NAMES_AFTER + NAMES_CLAUSE)),
+  nofocus: DEFAULT_HELP_SETTINGS,
   noqr: DEFAULT_HELP_SETTINGS,
   control: withRider(''),
   ...Object.fromEntries(altFiles.map((file) => [altName(file), withRider(readFileSync(file, 'utf8').trim())])),
@@ -174,7 +176,7 @@ async function ask(arm: Arm, c: HelpCodeCase): Promise<Sample> {
   });
   const world = { snapshot: emptyToolSnapshot, authored: () => c.world ?? FIXTURE_WORLD };
   let answer = '';
-  for await (const event of askHelp({ question: c.question, settings: SETTINGS[arm], snapshot, index: INDEX[arm], fetchImpl, surface: c.surface, world })) {
+  for await (const event of askHelp({ question: c.question, settings: SETTINGS[arm], snapshot, index: INDEX[arm], fetchImpl, surface: c.surface, focus: arm === 'nofocus' ? undefined : c.focus, world })) {
     if (event.type === 'done') answer = event.text;
   }
   // A call whose result never came back counts as not clean.

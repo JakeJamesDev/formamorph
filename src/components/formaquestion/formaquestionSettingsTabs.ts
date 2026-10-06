@@ -57,7 +57,7 @@ export const GENERAL_COPY = {
   keyword: { label: 'Keyword Search', hint: 'Matches the words in your question to guide sections' },
   aiPicks: { label: 'AI Search', hint: 'Asks your AI to choose the sections before answering. One extra request.' },
   semantic: { label: 'Semantic Search', hint: 'Finds sections by meaning, not exact words. Downloads a small model once.' },
-  openScreen: { label: 'Use the Open Screen', hint: 'Sends the screen you have open and its guide section' },
+  openScreen: { label: 'Use the Open Screen', hint: 'Sends the open screen, your selected item, and its guide section' },
   historyLength: { label: 'History Length', hint: 'Sets how many earlier questions and answers each request holds' },
 } as const;
 
@@ -162,6 +162,7 @@ export const AI_CONTEXT_COPY = {
   sourcesOn: 'Sources on',
   none: 'none',
   noScreen: 'No open screen',
+  focus: 'Selected',
   lead: 'Lead',
   merged: 'Merged',
   sentList: 'Sent',

@@ -416,8 +416,10 @@ The **General** tab sets how the window looks, how your AI answers, how a questi
 | **Keyword Search** | On | Finds the guide sections that have the words of your question |
 | **AI Search** | On | Sends one more request for each question, in which your AI chooses guide sections from the list of headings |
 | **Semantic Search** | Off | Finds guide sections by meaning, with a small model on your device. The first time you turn it on, the app downloads the model and shows the progress. If the download fails, the checkbox clears and **Retry** starts it again. Until the model is ready, questions use the other sources. |
-| **Use the Open Screen** | On | Sends the screen you have open and its guide section |
+| **Use the Open Screen** | On | Sends the open screen, your selected item, and its guide section |
 | **History Length** | 4 | Sets how many earlier questions and answers each request holds, from 0 to 20. 0 sends each question alone. |
+
+The selected item is a stat, trait, entity, location or dictionary entry open in the World Editor, or the entity open in the Entity Editor. Its name goes with the screen, such as "Code tab of the stat Courage".
 
 A question about code always sends the **Quick Reference** of the Stat Code Guide. On a stat's **Code** tab, it comes second, after the tab's own section. From any other screen, it comes first, and the answer request does not name the screen.
 
@@ -515,7 +517,7 @@ The **Tools** tab lists the functions your AI can call while it answers. It uses
 |---|---|---|
 | **read_guide** | Off | The guide lookup. It starts off, and it runs only while the **Answer Endpoint** takes function calls. Your AI reads more guide sections when the sections in the request don't answer the question. It can search the guide by words or read sections by id. It roughly quadruples the input tokens of a question. |
 | **roll** | Off | A dice roll. Ask your AI to roll, such as "roll two six-sided dice", and it rolls and gives you the total. |
-| **test_stat_code** | On | The code test. On a question about stat code, your AI checks its code and runs it once before it answers, as **Test Code** does. It reads the world you have open, so the names of its stats, traits, entities, placeholders and dictionaries can go to your **Answer Endpoint**. It never changes the world. With no world open, it checks the code without the names and does not run it. Your AI is told to fix what the test finds, and to give its best code and name the error that remains after its last call. |
+| **test_stat_code** | On | The code test. On a question about stat code, your AI checks its code and runs it once before it answers, as **Test Code** does. It reads the world you have open, so the names of its stats, traits, entities, placeholders and dictionaries can go to your **Answer Endpoint**. When your AI names no stat, it tests the stat you have selected. It never changes the world. With no world open, it checks the code without the names and does not run it. Your AI is told to fix what the test finds, and to give its best code and name the error that remains after its last call. |
 
 - **Enabled** turns a function on or off. This device keeps the switches, for every help preset.
 - **Max Calls per Request** sets how many times your AI can call the function for one question, from 1 to 20. Leave it blank for the default: 3 for **read_guide**, 4 for **roll**, 3 for **test_stat_code**.
@@ -661,7 +663,7 @@ The dialog has the layout of the game's [AI Context Inspector](How-to-Play#the-a
 
 | Block | What it shows |
 |---|---|
-| **Search** | The screen you had open and whether **Use the Open Screen** was on, the help preset, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
+| **Search** | The screen you had open, the item you had selected, and whether **Use the Open Screen** was on, the help preset, and each search the question ran. For each search: the sections each source ranked, then the merged order. A section marked **sent** reached your AI. **Sent** lists those sections in the order of the request. |
 | **Request N: AI Search** | The **AI Search** request, and the lines your AI chose |
 | **Request N: Answer** | The answer request, its **Tool Rounds** when the lookup ran, its reasoning, and the answer as your AI wrote it |
 

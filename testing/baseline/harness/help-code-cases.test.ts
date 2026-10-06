@@ -49,14 +49,20 @@ describe('the known cases', () => {
     expect(await passes(id, given)).toBe(false);
   });
 
-  // The request names no open stat, so a read of the open stat's own value is as right as the named path.
-  it('pass brave-at-courage on a self.value read', async () => {
-    expect(await passes('brave-at-courage', 'traits.Brave.enabled = self.value >= 50;')).toBe(true);
+  // The request names Health as the open stat, so `self` is not the stat the question names.
+  it('fail brave-at-courage on a self.value read', async () => {
+    expect(await passes('brave-at-courage', 'traits.Brave.enabled = self.value >= 50;')).toBe(false);
   });
 
-  it('pass quotes-pin on a self.value read', async () => {
+  it('fail quotes-pin on a self.value read', async () => {
     const code = "if (clock.day > 30 && self.value > 30 && traits.Grumpy.enabled) {\n  placeholders.Quotes.pin('The wind is howling');\n}";
-    expect(await passes('quotes-pin', code)).toBe(true);
+    expect(await passes('quotes-pin', code)).toBe(false);
+  });
+
+  it('name the fixture stat as the focus of every case on the Code tab', () => {
+    const onTab = HELP_CODE_CASES.filter((c) => c.surface);
+    expect(onTab.length).toBeGreaterThan(0);
+    expect(onTab.every((c) => c.focus?.kind === 'stat' && c.focus.name === FIXTURE_STAT.name)).toBe(true);
   });
 
   it('still fail a known case that drops the stat read', async () => {
