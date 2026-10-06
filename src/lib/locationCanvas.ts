@@ -3,7 +3,7 @@ import {
   createConnection, directionFrom, withDirection, type ConnectionDirection,
 } from "./connectionEditing";
 import {
-  connectionLegs, implicitPairs, isTwoWay, overriddenPairs, pairKey, reachableFromStarts,
+  connectionLegs, implicitNeighbors, isTwoWay, pairKey, parentIndex, reachableFromStarts,
 } from "./locationGraph";
 import { holderOf, isDescendantLocation } from "./locationTree";
 
@@ -15,6 +15,9 @@ import { holderOf, isDescendantLocation } from "./locationTree";
  * because being inside the box *is* the free travel between them. Implicit sibling travel gets one dashed
  * arrow per direction. An authored Connection gets one solid arrow per travelable direction, and takes that
  * pair's implicit arrows off the map, since the Connection is now the pair's whole travel rule.
+ *
+ * Implicit arrows are drawn for focused locations only: a sibling mesh is quadratic in a large group, and an
+ * author reads one location's travel at a time.
  */
 
 /** A plain location node's footprint. Groups are measured around their children instead. */
@@ -80,13 +83,53 @@ export interface LocationCanvasMap {
 }
 
 /**
+ * Who a canvas shows implicit travel for: the hovered location and every selected one. A drag in flight
+ * shows none, so the arrows are not redrawn on every frame of a move.
+ */
+export function canvasFocus(
+  { hovered, selected, dragging }: { hovered: string | null; selected: readonly string[]; dragging: boolean },
+): string[] {
+  if (dragging) return [];
+  return hovered !== null && !selected.includes(hovered) ? [...selected, hovered] : [...selected];
+}
+
+/**
+ * The dashed arrows of the focused locations: each sibling pair gets one per direction. A parent and its
+ * child get none (the box is the link), and neither does a pair an authored Connection has replaced.
+ */
+export function implicitCanvasEdges(
+  locations: GameLocation[],
+  connections: Connection[],
+  focus: Iterable<string>,
+): CanvasEdge[] {
+  const index = parentIndex(locations);
+  const known = new Set(locations.map((l) => l.id));
+  const authored = new Set(connections.map((c) => pairKey(c.a, c.b)));
+  const drawn = new Set<string>();
+  const edges: CanvasEdge[] = [];
+  for (const id of focus) {
+    if (!known.has(id)) continue;
+    for (const other of implicitNeighbors(id, index)) {
+      if (other === id || !known.has(other)) continue;
+      if (index.parentOf.get(id) === other || index.parentOf.get(other) === id) continue; // containment draws it
+      const key = pairKey(id, other);
+      if (drawn.has(key) || authored.has(key)) continue; // the Connection's arrows stand in its place
+      drawn.add(key);
+      edges.push({ id: `implicit:${id}>${other}`, source: id, target: other, kind: "implicit", paired: true });
+      edges.push({ id: `implicit:${other}>${id}`, source: other, target: id, kind: "implicit", paired: true });
+    }
+  }
+  return edges;
+}
+
+/**
  * World → the map. Nodes come out parents-first (xyflow resolves a nested position against a parent it has
- * already seen), and each group is sized around the children it holds.
+ * already seen), and each group is sized around the children it holds. Implicit arrows come only for `focus`.
  */
 export function buildLocationCanvas(
   locations: GameLocation[],
   connections: Connection[],
-  opts: { resolveName?: (location: GameLocation) => string } = {},
+  opts: { resolveName?: (location: GameLocation) => string; focus?: Iterable<string> } = {},
 ): LocationCanvasMap {
   const resolveName = opts.resolveName ?? ((location: GameLocation) => location.name);
   const known = new Set(locations.map((l) => l.id));
@@ -169,18 +212,7 @@ export function buildLocationCanvas(
   };
   emit(null);
 
-  const byId = new Map(locations.map((l) => [l.id, l]));
-  const parentChild = (a: string, b: string) =>
-    parentOf(byId.get(a)!) === b || parentOf(byId.get(b)!) === a;
-  const overridden = new Set(overriddenPairs(locations, connections).map(([a, b]) => pairKey(a, b)));
-
-  const edges: CanvasEdge[] = [];
-  for (const [a, b] of implicitPairs(locations)) {
-    if (parentChild(a, b)) continue; // containment already draws this: the child sits in the box
-    if (overridden.has(pairKey(a, b))) continue; // the Connection's arrows stand in its place
-    edges.push({ id: `implicit:${a}>${b}`, source: a, target: b, kind: "implicit", paired: true });
-    edges.push({ id: `implicit:${b}>${a}`, source: b, target: a, kind: "implicit", paired: true });
-  }
+  const edges = implicitCanvasEdges(locations, connections, opts.focus ?? []);
   for (const connection of connections) {
     if (!known.has(connection.a) || !known.has(connection.b)) continue;
     const paired = isTwoWay(connection);

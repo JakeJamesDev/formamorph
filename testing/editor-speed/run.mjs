@@ -271,10 +271,13 @@ const STEPS = {
   },
 
   async canvasDrag({ page, cdp }) {
-    const node = page.locator('.react-flow__node').nth(3);
+    const pinned = process.env.EDITOR_SPEED_DRAG_NODE;
+    const node = pinned ? page.locator(`.react-flow__node[data-id="${pinned}"]`) : page.locator('.react-flow__node').nth(3);
     const box = await node.boundingBox();
     if (!box) throw new Error('no canvas node');
-    return traced(page, cdp, async () => framed(page, async () => {
+    // The canvas draws only the boxes in view, so which box `nth(3)` is depends on the view: report it.
+    const dragged = await node.getAttribute('data-id');
+    const result = await traced(page, cdp, async () => framed(page, async () => {
       await page.mouse.move(box.x + 10, box.y + 10);
       await page.mouse.down();
       for (let i = 1; i <= 30; i++) await page.mouse.move(box.x + 10 + i * 6, box.y + 10 + i * 4);
@@ -282,6 +285,7 @@ const STEPS = {
       await page.keyboard.press('Control+z');
       await settle(page);
     }));
+    return { dragged, ...result };
   },
 
   async save({ page, cdp }) {

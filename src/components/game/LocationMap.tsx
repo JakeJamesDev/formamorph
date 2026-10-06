@@ -108,8 +108,9 @@ const LocationMap = ({ locations, connections, currentLocationId, onTravel }: {
   const map = useMemo(
     () => buildLocationCanvas(locations, connections, {
       resolveName: (location) => location.name || UNNAMED_LOCATION,
+      focus: currentLocationId ? [currentLocationId] : [],
     }),
-    [locations, connections],
+    [locations, connections, currentLocationId],
   );
 
   const nodes = useMemo<MapNode[]>(() => map.nodes.map((node) => ({

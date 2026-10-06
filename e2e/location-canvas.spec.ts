@@ -1,4 +1,4 @@
-import { test, expect, type Locator } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { openApp, gotoDev } from './app';
 
 interface DevRouter {
@@ -120,13 +120,80 @@ async function restAfter(viewport: Locator, from: At): Promise<At> {
   return last;
 }
 
+/** The dashed arrows on the map: implicit travel, drawn only for the locations in focus. */
+const implicitEdges = (page: Page) => page.locator('.react-flow__edge[data-id^="implicit:"]');
+
+/** Every location picked, so every implicit pair is in focus — composed with Ctrl+A from an empty corner of the
+ *  pane, since a tap on a node on a narrow layout opens the detail panel over the map instead. */
+async function selectEverything(page: Page): Promise<void> {
+  // A menu still closing holds the page's pointer events, so the press below would never reach the pane.
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+  await page.mouse.click(pane.x + 8, pane.y + 8);
+  await page.keyboard.press('Control+a');
+}
+
+/** Picks one location. On a narrow layout the tap opens its detail over the map, so the panel is closed again:
+ *  the selection is what the map keeps. */
+async function pickLocation(page: Page, id: string, touch: boolean): Promise<void> {
+  await page.locator(`.react-flow__node[data-id="${id}"]`).click();
+  if (touch) await page.getByRole('button', { name: /^Back to/ }).click();
+}
+
+/** Clicks the middle of an arrow's own box: an SVG hairline takes no element click, and react-flow reads the
+ *  pointer, not a dispatched event. */
+async function clickEdge(page: Page, edge: Locator): Promise<void> {
+  await edge.waitFor({ state: 'attached' });
+  const box = await edge.boundingBox();
+  if (!box) throw new Error('no edge box');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
+
+/** The pointer parked on empty pane, clear of every box and arrow, so no hover is left holding one in focus. */
+async function parkPointer(page: Page): Promise<void> {
+  const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+  await page.mouse.move(pane.x + pane.width - 8, pane.y + 8);
+}
+
 /**
  * The canvas draws its Connection inspector as a floating panel over the map. Anything the layout wraps the
  * canvas in can swallow the panel's clicks without changing a single rendered attribute — only real
  * hit-testing sees it, so this lives here rather than in the Vitest suite.
  */
 test.describe('Locations canvas', () => {
-  test('the connection inspector answers clicks', async ({ page }) => {
+  test('the connection inspector answers clicks', async ({ page }, testInfo) => {
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+    await page.locator('.react-flow__node[data-id="loc-outside"]').waitFor();
+
+    // A dashed arrow is implicit travel, shown for a selected location; clicking one authors the Connection
+    // and selects it.
+    await expect(implicitEdges(page)).toHaveCount(0);
+    await pickLocation(page, 'loc-child-a', testInfo.project.name === 'mobile');
+    await parkPointer(page);
+    await expect(implicitEdges(page)).toHaveCount(2);
+    await clickEdge(page, implicitEdges(page).first());
+
+    // A plain click, so Playwright's own actionability check is the assertion: anything covering the panel
+    // fails here rather than silently eating the edit.
+    const oneWay = page.locator('[aria-label^="Travel one way,"]').first();
+    await expect(oneWay).toBeVisible();
+    await oneWay.click();
+    await expect(oneWay).toHaveAttribute('data-state', 'on');
+  });
+
+  /**
+   * Which locations have implicit arrows is unit-tested; what only a real pointer shows is that hovering,
+   * leaving and dragging reach it. A drag is held mid-air, since nothing after the drop can show what was drawn
+   * while it was in the air.
+   */
+  test('implicit arrows follow the hovered location and hide while it is dragged', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'a finger has no hover');
     await openApp(page);
     await page.evaluate(async (world) => {
       const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
@@ -135,21 +202,53 @@ test.describe('Locations canvas', () => {
     }, WORLD);
     await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
 
-    // A dashed arrow is implicit travel; clicking one authors the Connection and selects it.
-    // Aimed with the mouse at the edge's own box: an SVG hairline takes no element click, and react-flow
-    // reads the pointer, not a dispatched event.
-    const edge = page.locator('.react-flow__edge').first();
-    await edge.waitFor({ state: 'attached' });
-    const box = await edge.boundingBox();
-    if (!box) throw new Error('no edge box');
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    const dock = page.locator('.react-flow__node[data-id="loc-child-a"]');
+    await dock.waitFor();
+    await expect(implicitEdges(page)).toHaveCount(0);
 
-    // A plain click, so Playwright's own actionability check is the assertion: anything covering the panel
-    // fails here rather than silently eating the edit.
-    const oneWay = page.locator('[aria-label^="Travel one way,"]').first();
-    await expect(oneWay).toBeVisible();
-    await oneWay.click();
-    await expect(oneWay).toHaveAttribute('data-state', 'on');
+    // Hovering the Dock shows its one sibling pair, and leaving it takes the arrows away again.
+    await dock.hover();
+    await expect(implicitEdges(page)).toHaveCount(2);
+    await parkPointer(page);
+    await expect(implicitEdges(page)).toHaveCount(0);
+
+    // A drag in flight draws none, and the drop gives them back to the location still in focus.
+    const box = (await dock.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(implicitEdges(page)).toHaveCount(2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2 + 30, { steps: 6 });
+    await expect(implicitEdges(page)).toHaveCount(0);
+    await page.mouse.up();
+    await expect(implicitEdges(page)).toHaveCount(2);
+  });
+
+  /**
+   * A finger has no hover, so what keeps a location's arrows on a touch screen is the selection — including
+   * after the tap's detail panel has been closed again, which clears the editor's selection but not the map's.
+   */
+  test('a tapped location keeps its implicit arrows after the detail panel closes, and they author', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'the panel only covers the map on a narrow layout');
+    await openApp(page);
+    await page.evaluate(async (world) => {
+      const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
+      const id = await dev.putWorld(world);
+      await dev.editWorld(id);
+    }, WORLD);
+    await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
+
+    await page.locator('.react-flow__node[data-id="loc-outside"]').waitFor();
+    await expect(implicitEdges(page)).toHaveCount(0);
+
+    await page.locator('.react-flow__node[data-id="loc-child-a"]').click();
+    await page.getByRole('button', { name: /^Back to/ }).click();
+    await expect(page.locator('.react-flow__node[data-id="loc-child-a"]')).toHaveClass(/selected/);
+    await expect(implicitEdges(page)).toHaveCount(2);
+
+    // And the arrows are clickable there: one tap authors the Connection and opens its inspector.
+    await clickEdge(page, implicitEdges(page).first());
+    await expect(page.locator('[aria-label^="Travel one way,"]').first()).toBeVisible();
+    await expect(implicitEdges(page)).toHaveCount(0);
   });
 
   /**
@@ -169,7 +268,8 @@ test.describe('Locations canvas', () => {
     const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
     await node('loc-outside').waitFor();
     // Dock↔Warehouse is the world's only free travel while the Beach stands on its own.
-    await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+    await selectEverything(page);
+    await expect(implicitEdges(page)).toHaveCount(2);
 
     const beach = await node('loc-outside').boundingBox();
     const harbor = await node('loc-parent').boundingBox();
@@ -181,7 +281,8 @@ test.describe('Locations canvas', () => {
     await page.mouse.up();
 
     // Three siblings under the Harbor now, so every pair of them travels freely: three pairs, six arrows.
-    await expect(page.locator('.react-flow__edge')).toHaveCount(6);
+    await selectEverything(page);
+    await expect(implicitEdges(page)).toHaveCount(6);
     const nested = await node('loc-outside').boundingBox();
     const grown = await node('loc-parent').boundingBox();
     if (!nested || !grown) throw new Error('no node box');
@@ -234,7 +335,6 @@ test.describe('Locations canvas', () => {
 
     // And what lit up is what took it — the Beach lands inside the box that was highlighted.
     await page.mouse.up();
-    await expect(page.locator('.react-flow__edge')).toHaveCount(6);
     await expect(harborBox).toHaveCount(0);
     const nested = (await node('loc-outside').boundingBox())!;
     const grown = (await node('loc-parent').boundingBox())!;
@@ -250,7 +350,8 @@ test.describe('Locations canvas', () => {
     // And it lands where the frame said: back out on its own, with the free travel it had inside now gone.
     await page.mouse.up();
     await expect(topLevel).toHaveCount(0);
-    await expect(page.locator('.react-flow__edge')).toHaveCount(2);
+    await selectEverything(page);
+    await expect(implicitEdges(page)).toHaveCount(2);
   });
 
   /**
@@ -510,7 +611,10 @@ test.describe('Locations canvas', () => {
     });
     expect(prevented).toBe(true);
 
-    // A right-click that stayed put opens ours, and its actions reach the selection.
+    // A right-click that stayed put opens ours, and its actions reach the selection. Framed again first: the
+    // canvas draws only the boxes in view, and the pan above may have taken one of the four out of it.
+    await page.locator('.react-flow__controls').getByRole('button', { name: /fit view/i }).click();
+    await expect(page.locator('.react-flow__node')).toHaveCount(4);
     await page.mouse.click(from.x, from.y, { button: 'right' });
     await expect(menu).toBeVisible();
     await menu.getByRole('menuitem', { name: 'Select All Locations' }).click();
@@ -712,7 +816,8 @@ test.describe('Locations canvas', () => {
 
     // What every arrow says is unchanged by the shape it is drawn in: an authored Connection stays solid and
     // an implicit one dashed, and both keep the arrowhead that gives the direction.
-    const implicit = page.locator('.react-flow__edge[data-id^="implicit:"] path.react-flow__edge-path').first();
+    await selectEverything(page);
+    const implicit = implicitEdges(page).locator('path.react-flow__edge-path').first();
     for (const edge of [authored, implicit]) {
       await expect(edge).toHaveAttribute('marker-end', /url\(/);
     }
@@ -741,9 +846,9 @@ test.describe('Locations canvas', () => {
     await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
 
     const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
-    const edges = page.locator('.react-flow__edge');
+    const edges = implicitEdges(page);
     await node('loc-outside').waitFor();
-    await expect(edges).toHaveCount(2); // Dock↔Warehouse only, while the Beach stands on its own
+    await expect(edges).toHaveCount(0); // nothing in focus yet
 
     // A real drag, onto the Harbor's title strip: the Beach is nested, so every sibling pair travels freely.
     const beach = (await node('loc-outside').boundingBox())!;
@@ -752,6 +857,8 @@ test.describe('Locations canvas', () => {
     await page.mouse.down();
     await page.mouse.move(harbor.x + harbor.width / 2, harbor.y + 12, { steps: 12 });
     await page.mouse.up();
+    // Everything picked, so every pair is in focus; it stays picked through the undo below.
+    await selectEverything(page);
     await expect(edges).toHaveCount(6);
 
     // One press takes the reparent back — and the list view is reading the same undone world.
@@ -765,13 +872,15 @@ test.describe('Locations canvas', () => {
     await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
     await node('loc-outside').waitFor();
     // The canvas takes no focus of its own — the last press is what says whose keyboard this is.
-    await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 } });
+    await selectEverything(page);
     await page.keyboard.press('Control+y');
     await expect(edges).toHaveCount(6);
     await page.keyboard.press('Control+z');
     await expect(edges).toHaveCount(2);
 
     // An arrangement moves both of the Harbor's children off each other; one press puts both back stacked.
+    // Selection cleared first: a right-click on a picked box among several is the selection's menu.
+    await page.keyboard.press('Escape');
     const overlapping = async () => {
       const dock = (await node('loc-child-a').boundingBox())!;
       const store = (await node('loc-child-b').boundingBox())!;
@@ -808,13 +917,17 @@ test.describe('Locations canvas', () => {
 
     const window_ = page.getByRole('dialog', { name: 'Locations Canvas' });
     const locker = window_.locator('.react-flow__node[data-id="loc-grandchild"]');
-    await locker.waitFor();
+    // On a narrow window the opening fit can leave every box out of view, and the canvas draws only the boxes
+    // in view; the map is up once its viewport and minimap are.
+    await window_.locator('.react-flow__viewport').waitFor();
     const minimap = window_.locator('.react-flow__minimap');
     await expect(minimap).toBeVisible();
 
     /** Whether the box's middle is inside the canvas's own frame — what "in view" means on a clipped map. */
     const frame = (await window_.locator('.react-flow').boundingBox())!;
     const inView = async () => {
+      // Culled off screen: the canvas draws only the boxes in view, and a box that is not drawn is not in view.
+      if (!(await locker.count())) return false;
       const box = (await locker.boundingBox())!;
       const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
       return at.x >= frame.x && at.x <= frame.x + frame.width
@@ -974,6 +1087,8 @@ test.describe('Locations canvas', () => {
     /** Whether the box's middle is inside the canvas's own frame — what "in view" means on a clipped map. */
     const frame = (await window_.locator('.react-flow').boundingBox())!;
     const inView = async (id: string) => {
+      // Culled off screen: the canvas draws only the boxes in view, and a box that is not drawn is not in view.
+      if (!(await node(id).count())) return false;
       const box = (await node(id).boundingBox())!;
       const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
       return at.x >= frame.x && at.x <= frame.x + frame.width
@@ -1005,7 +1120,9 @@ test.describe('Locations canvas', () => {
     // The whole run comes back in one press rather than one per keystroke, and nothing else moved with it.
     await page.keyboard.press('Control+z');
     await expect.poll(async () => translateOf(node('loc-b'))).toEqual(was);
-    expect(await flowX(node('loc-a'))).toBe(40);
+    // Framed on the whole map first: on a narrow window the Alpha is out of view, and so not drawn.
+    await window_.locator('.react-flow__controls').getByRole('button', { name: /fit view/i }).click();
+    await expect.poll(() => flowX(node('loc-a'))).toBe(40);
 
     // And the world kept the nudge rather than the live canvas carrying it: redo, then read it back off a
     // map rebuilt from the world.
