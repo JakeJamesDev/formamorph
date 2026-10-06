@@ -17,6 +17,8 @@ The same element looks or acts differently on different surfaces. Some surfaces 
 | 4 | **Popup close button outline.** The X button on popups has an outer border and focuses that border when the popup opens. Remove the border and the focus on open. | Where does initial focus go instead? |
 | 5 | **List item remove button.** List items have an X button. | Should it be an icon button that turns destructive red on hover? |
 
+Items 1 and 2 are audited in [audit.md](audit.md). Item 3 is parked: Playwright frame sampling did not reproduce it.
+
 ## Related
 
 - The Mascot overlay list drag fix (d9f715d0) made those lists match the World Editor drag pattern.
