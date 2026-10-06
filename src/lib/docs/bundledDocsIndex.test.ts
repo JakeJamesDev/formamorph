@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import fullChangelog from '../../../docs/Changelog.md?raw';
 import { BUNDLED_DOCS, bundledDocsIndex } from './bundledDocsIndex';
-import { NON_GUIDE_PAGES, pageNameOf } from './docsChecks';
+import { isNonGuidePage, pageNameOf } from './docsChecks';
 import { otherPagesLinked, SECTION_CHAR_LIMIT } from './docsIndex';
 import { SECTION_CUT_MARKER } from './sectionParts';
 
@@ -17,8 +17,8 @@ const sections = ids.flatMap((id) => index.get([id]).filter((section) => section
 
 describe('the bundled Docs Index', () => {
   it('holds every docs page except the non-guide pages', () => {
-    expect(Object.keys(BUNDLED_DOCS).sort()).toEqual(DOCS_FOLDER.filter((page) => !NON_GUIDE_PAGES.includes(page)).sort());
-    expect(contents.map((page) => page.page).filter((page) => NON_GUIDE_PAGES.includes(page))).toEqual([]);
+    expect(Object.keys(BUNDLED_DOCS).sort()).toEqual(DOCS_FOLDER.filter((page) => !isNonGuidePage(page)).sort());
+    expect(contents.map((page) => page.page).filter(isNonGuidePage)).toEqual([]);
   });
 
   it('splits every page into at least one section', () => {

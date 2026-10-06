@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { NON_GUIDE_PAGES } from '../src/lib/docs/docsChecks';
+import { isNonGuidePage } from '../src/lib/docs/docsChecks';
 import { docHeadings } from '../src/lib/docs/headingAnchors';
 import { gotoDev, openApp, openWorldEditor } from './app';
 import { expectScrollArrow, stubLongAnswer } from './scrollArrow';
@@ -446,7 +446,7 @@ test.describe('Formaquestion on a desktop screen', () => {
     const contents = helpWindow(page).getByRole('navigation', { name: 'Guide Contents' });
     // Each guide page in the docs folder shows by its own title.
     const titles = readdirSync('docs')
-      .filter((name) => name.endsWith('.md') && !NON_GUIDE_PAGES.includes(name.slice(0, -'.md'.length)))
+      .filter((name) => name.endsWith('.md') && !isNonGuidePage(name.slice(0, -'.md'.length)))
       .map((name) => docHeadings(readFileSync(`docs/${name}`, 'utf-8')).find((heading) => heading.level === 1)!.text);
     expect(titles.length).toBeGreaterThan(30);
     await expect(contents.getByRole('button')).toHaveCount(titles.length);
