@@ -1,8 +1,8 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useVirtualizer, defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
+import { useCallback, useMemo, useState } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
+import { VirtualRowList, VIRTUALIZE_AT } from '@/components/VirtualRowList';
 import { X, ChevronRight, ChevronDown, Copy, FilePlus } from 'lucide-react';
 import {
   closestCorners, useDroppable, MeasuringStrategy, type DragEndEvent, type DragStartEvent,
@@ -58,19 +58,9 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
   );
 }
 
-/** Entry count above which a zone renders through the virtualizer instead of mounting every row. Big
- *  imported books (tens of thousands of entries) crash the renderer if all rows mount at once. */
-const VIRTUALIZE_AT = 200;
-
-/** Estimated row height: EditorRow's `min-h-14` (56px); real heights are measured per row. */
-const ROW_ESTIMATE = 56;
-/** EditorRowList's `gap-1`, in px. */
-const ROW_GAP = 4;
-
 /**
- * Virtualized entry rows for a large zone: only the visible window mounts, absolutely positioned inside a
- * spacer sized to the whole list. Scrolling is owned by the nearest ScrollArea viewport. The dragged row is
- * pinned into the window (rangeExtractor) so a drag survives auto-scrolling it out of view.
+ * Windowed entry rows for a large zone. Big imported books (tens of thousands of entries) crash the
+ * renderer if all rows mount at once. The dragged row stays mounted so a drag survives auto-scroll.
  */
 function VirtualEntryRows({ entries, listClassName, setDropRef, selectedId, onSelectEntry, onToggleEntryEnabled, onDuplicateEntry, onRemoveEntry }: {
   entries: DictionaryEntry[];
@@ -83,81 +73,28 @@ function VirtualEntryRows({ entries, listClassName, setDropRef, selectedId, onSe
   onDuplicateEntry: (id: string) => void;
   onRemoveEntry: (id: string) => void;
 }) {
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
-  const [scrollMargin, setScrollMargin] = useState(0);
-
-  useLayoutEffect(() => {
-    setScrollEl((listRef.current?.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null) ?? null);
-  }, []);
-  // Anchor the window math to the list's offset in the viewport; re-anchor whenever the scroll content
-  // resizes (book headers and the other zone collapse/expand above this list). Guarded set, so the
-  // virtualizer's own height changes don't loop.
-  useLayoutEffect(() => {
-    const list = listRef.current;
-    if (!list || !scrollEl) return;
-    const measure = () => {
-      const margin = list.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop;
-      setScrollMargin((prev) => (Math.abs(prev - margin) > 1 ? margin : prev));
-    };
-    measure();
-    const content = scrollEl.firstElementChild;
-    if (typeof ResizeObserver === 'undefined' || !content) return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(content);
-    return () => observer.disconnect();
-  }, [scrollEl]);
-
-  // The dragged row stays mounted however far auto-scroll moves the window past it. A book drag matches
-  // no entry, so the pin is simply off then.
+  // A book drag matches no entry, so nothing is pinned then.
   const draggingId = useEditorDragActive();
   const activeIndex = draggingId ? entries.findIndex((e) => e.id === draggingId) : -1;
-  const rangeExtractor = useCallback((range: Range) => {
-    const indexes = defaultRangeExtractor(range);
-    if (activeIndex >= 0 && !indexes.includes(activeIndex)) indexes.push(activeIndex);
-    return indexes;
-  }, [activeIndex]);
-
-  const virtualizer = useVirtualizer({
-    count: entries.length,
-    getScrollElement: () => scrollEl,
-    estimateSize: () => ROW_ESTIMATE,
-    gap: ROW_GAP,
-    overscan: 8,
-    scrollMargin,
-    rangeExtractor,
-    // A sane window before the first real measurement, so rows paint immediately (and in jsdom, where
-    // ResizeObserver never fires and this stays the measurement).
-    initialRect: { width: 600, height: 600 },
-  });
-
+  const rowKey = useCallback((i: number) => entries[i].id, [entries]);
   return (
-    <EditorRowList
-      ref={(el) => { listRef.current = el; setDropRef(el); }}
+    <VirtualRowList
+      count={entries.length}
+      rowKey={rowKey}
+      pinned={activeIndex >= 0 ? [activeIndex] : undefined}
       className={listClassName}
-      style={{ position: 'relative', height: virtualizer.getTotalSize() }}
-    >
-      {virtualizer.getVirtualItems().map((row) => {
-        const entry = entries[row.index];
-        return (
-          <div
-            key={entry.id}
-            ref={virtualizer.measureElement}
-            data-index={row.index}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${row.start - scrollMargin}px)` }}
-          >
-            <EntryRow
-              entry={entry}
-              selected={selectedId === entry.id}
-              onSelect={onSelectEntry}
-              onToggleEnabled={onToggleEntryEnabled}
-              onDuplicate={onDuplicateEntry}
-              onRemove={onRemoveEntry}
-            />
-          </div>
-        );
-      })}
-    </EditorRowList>
+      listRef={setDropRef}
+      renderRow={(i) => (
+        <EntryRow
+          entry={entries[i]}
+          selected={selectedId === entries[i].id}
+          onSelect={onSelectEntry}
+          onToggleEnabled={onToggleEntryEnabled}
+          onDuplicate={onDuplicateEntry}
+          onRemove={onRemoveEntry}
+        />
+      )}
+    />
   );
 }
 

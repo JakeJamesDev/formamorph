@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { encodePlaceholderToken } from '@/lib/placeholders';
@@ -9,6 +9,7 @@ import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext
 import EntityTree from './EntityTree';
 import LocationTree from './LocationTree';
 import TraitTree from './TraitTree';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
 
 /**
@@ -199,5 +200,106 @@ describe('a drag move in the tree', () => {
     ]);
 
     expect(row?.style.paddingLeft).toBe(`${8 + 2 * 24}px`);
+  });
+});
+
+describe('a long tree', () => {
+  const COUNT = 400;
+  const names = Array.from({ length: COUNT }, (_, i) => `Entity ${i}`);
+  // jsdom has no layout. These are the sizes a browser reports: a 600px viewport and 56px rows.
+  const ROW = 56;
+  const STEP = ROW + 4;
+  const heightOf = (el: Element) => (el.hasAttribute('data-radix-scroll-area-viewport') ? 600 : ROW);
+  const realRect = Element.prototype.getBoundingClientRect;
+  const realHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+  const realWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+  beforeAll(() => {
+    Element.prototype.getBoundingClientRect = function () {
+      const height = heightOf(this as Element);
+      return { x: 0, y: 0, top: 0, left: 0, right: 600, bottom: height, width: 600, height, toJSON: () => ({}) } as DOMRect;
+    };
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return heightOf(this); } });
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => 600 });
+  });
+  afterAll(() => {
+    Element.prototype.getBoundingClientRect = realRect;
+    if (realHeight) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', realHeight);
+    if (realWidth) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', realWidth);
+  });
+
+  function LongTree({ scrolls = true, selectedId = null }: { scrolls?: boolean; selectedId?: string | null }) {
+    world.entities = names.map((n) => entity(n, n));
+    const tree = <EntityTree selectedId={selectedId} onSelect={() => {}} />;
+    return scrolls ? <ScrollArea style={{ height: 600 }}>{tree}</ScrollArea> : tree;
+  }
+
+  const mounted = () => screen.queryAllByText(/^Entity \d+$/).map((el) => el.textContent ?? '');
+  const viewport = () => document.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]')!;
+  const scrollTo = (top: number) => act(() => {
+    viewport().scrollTop = top;
+    viewport().dispatchEvent(new Event('scroll'));
+  });
+
+  it('mounts only the rows near the viewport', () => {
+    render(<LongTree />);
+    const rows = mounted();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThan(40);
+    expect(rows[0]).toBe('Entity 0');
+  });
+
+  it('shows every row in order as it scrolls', () => {
+    render(<LongTree />);
+    const seen: string[] = [];
+    for (let top = 0; top <= COUNT * STEP; top += 300) {
+      scrollTo(top);
+      for (const name of mounted()) if (!seen.includes(name)) seen.push(name);
+    }
+    expect(seen).toEqual(names);
+  });
+
+  it('keeps the dragged row mounted after it scrolls out of view', async () => {
+    const user = userEvent.setup();
+    render(<LongTree />);
+    const grip = screen.getAllByRole('button', { name: 'Drag to reorder or nest' })[1];
+    await user.pointer([
+      { keys: '[MouseLeft>]', target: grip, coords: { clientX: 0, clientY: 0 } },
+      { coords: { clientX: 0, clientY: 10 } },
+    ]);
+
+    scrollTo(300 * STEP);
+
+    expect(mounted()).toContain('Entity 1');
+    expect(mounted()).toContain('Entity 300');
+    // An unfinished drag leaves dnd-kit swallowing clicks in later tests.
+    await user.pointer({ keys: '[/MouseLeft]' });
+  });
+
+  it('keeps a selected row mounted, so the find bar can bring it on screen', () => {
+    render(<LongTree selectedId="Entity 350" />);
+    expect(document.querySelector('[data-editor-row-selected]')?.textContent).toContain('Entity 350');
+  });
+
+  it('keeps focus on a chevron whose collapse drops the tree under the window threshold', async () => {
+    const user = userEvent.setup();
+    world.entities = [
+      ...Array.from({ length: 10 }, (_, i) => ({ ...entity(`in-${i}`, `Inside ${i}`), groupId: 'g' }) as Entity),
+      ...Array.from({ length: 195 }, (_, i) => entity(`top-${i}`, `Top ${i}`)),
+    ];
+    world.groups = [{ id: 'g', name: 'Group', parentId: null, order: -1 }];
+    render(<ScrollArea style={{ height: 600 }}><EntityTree selectedId={null} onSelect={() => {}} /></ScrollArea>);
+    const chevron = screen.getByRole('button', { name: 'Collapse group' });
+    chevron.focus();
+
+    await user.keyboard('{Enter}');
+
+    expect(chevron).toBeInTheDocument();
+    expect(document.activeElement).toBe(chevron);
+    expect(chevron.getAttribute('aria-label')).toBe('Expand group');
+  });
+
+  it('mounts every row when no scroll viewport holds it', () => {
+    render(<LongTree scrolls={false} />);
+    expect(mounted()).toHaveLength(COUNT);
   });
 });
