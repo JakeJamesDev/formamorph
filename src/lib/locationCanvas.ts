@@ -5,7 +5,7 @@ import {
 import {
   connectionLegs, implicitNeighbors, isTwoWay, pairKey, parentIndex, reachableFromStarts,
 } from "./locationGraph";
-import { holderOf, isDescendantLocation } from "./locationTree";
+import { holderOf } from "./locationTree";
 
 /**
  * The canvas's mapping layer: world data in, node and edge descriptions out. Everything the map means lives
@@ -377,16 +377,47 @@ export interface CanvasDragSession {
   locations: GameLocation[];
   rects: Map<string, CanvasRect>;
   byId: Map<string, GameLocation>;
+  /** Each location's depth in the tree: 0 at the top level. */
+  depths: Map<string, number>;
+  /** Each ancestor's descendants, so "is this inside that" is one lookup. A location has no entry until it holds one. */
+  descendants: Map<string, Set<string>>;
+  /** Every location that holds at least one other: the ones drawn as group boxes. */
+  parents: Set<string>;
 }
 
 /** The map, measured once for a whole gesture. */
 export function beginCanvasDrag(locations: GameLocation[]): CanvasDragSession {
+  const byId = new Map(locations.map((l) => [l.id, l]));
+  const depths = new Map<string, number>();
+  const descendants = new Map<string, Set<string>>();
+  const parents = new Set<string>();
+  for (const loc of locations) {
+    if (loc.parentId) parents.add(loc.parentId);
+    // Walk up once per location; the seen guard keeps a malformed cycle from spinning.
+    const seen = new Set([loc.id]);
+    let depth = 0;
+    for (let at = byId.get(loc.parentId ?? ""); at && !seen.has(at.id); at = byId.get(at.parentId ?? "")) {
+      seen.add(at.id);
+      depth += 1;
+      const held = descendants.get(at.id);
+      if (held) held.add(loc.id);
+      else descendants.set(at.id, new Set([loc.id]));
+    }
+    depths.set(loc.id, depth);
+  }
   return {
     locations,
     rects: absoluteRects(buildLocationCanvas(locations, [])),
-    byId: new Map(locations.map((l) => [l.id, l])),
+    byId,
+    depths,
+    descendants,
+    parents,
   };
 }
+
+/** Whether `candidateId` is `ancestorId` or sits anywhere beneath it. */
+const isWithin = ({ descendants }: CanvasDragSession, ancestorId: string, candidateId: string): boolean =>
+  ancestorId === candidateId || !!descendants.get(ancestorId)?.has(candidateId);
 
 /** Every judging function takes either a running session or the bare world — the latter measures a one-shot
  *  session of its own, so a single question needs no ceremony and a drag's frames share one measurement. */
@@ -414,7 +445,7 @@ function measureDrag(
   const self = session.rects.get(id);
   if (!self) return null;
 
-  const held = holderOf(session.locations, target);
+  const held = target.parentId && session.byId.has(target.parentId) ? target.parentId : null;
   const heldOrigin = (held && session.rects.get(held)) || { x: 0, y: 0 };
   return {
     session,
@@ -434,32 +465,29 @@ function measureDrag(
  * containment test read against a different set of candidates, so they share one answer to differ from.
  */
 function innermostAt(
-  { session: { locations, byId, rects }, id, center }: DragGeometry,
+  { session, id, center }: DragGeometry,
   accepts: (loc: GameLocation) => boolean,
 ): string | null {
-  const depthOf = (loc: GameLocation) => {
-    let depth = 0;
-    for (let at = byId.get(loc.parentId ?? ""); at; at = byId.get(at.parentId ?? "")) depth += 1;
-    return depth;
-  };
+  const { locations, rects, depths } = session;
   // The innermost box wins: a nested group sits wholly inside the one holding it, so both contain the drop.
   let into: { id: string; depth: number } | null = null;
   for (const loc of locations) {
     const rect = rects.get(loc.id);
     if (!rect) continue;
-    if (!accepts(loc)) continue;
-    if (isDescendantLocation(locations, id, loc.id)) continue; // a location cannot come to hold itself
     const inside = center.x >= rect.x && center.x <= rect.x + rect.width
       && center.y >= rect.y && center.y <= rect.y + rect.height;
-    const depth = depthOf(loc);
-    if (inside && (!into || depth > into.depth)) into = { id: loc.id, depth };
+    if (!inside) continue;
+    if (!accepts(loc)) continue;
+    if (isWithin(session, id, loc.id)) continue; // a location cannot come to hold itself
+    const depth = depths.get(loc.id) ?? 0;
+    if (!into || depth > into.depth) into = { id: loc.id, depth };
   }
   return into?.id ?? null;
 }
 
 /** The box a measured drag would come to rest in. A leaf is a name, not a container. */
 const landsIn = (drag: DragGeometry): string | null =>
-  innermostAt(drag, (loc) => drag.session.locations.some((l) => l.parentId === loc.id));
+  innermostAt(drag, (loc) => drag.session.parents.has(loc.id));
 
 /**
  * The childless location a drag is currently over, which the canvas may arm after a dwell — the one gesture
@@ -476,13 +504,12 @@ export function leafTarget(
   carried: string[] = [],
 ): string | null {
   const session = asSession(world);
-  const { locations } = session;
   const drag = measureDrag(session, id, position);
   if (!drag) return null;
   return innermostAt(drag, (loc) => {
-    if (locations.some((l) => l.parentId === loc.id)) return false; // a group already takes drops on contact
+    if (session.parents.has(loc.id)) return false; // a group already takes drops on contact
     if (loc.id === id) return false;
-    return !carried.some((other) => other === loc.id || isDescendantLocation(locations, other, loc.id));
+    return !carried.some((other) => isWithin(session, other, loc.id));
   });
 }
 
@@ -491,10 +518,10 @@ export function leafTarget(
  * world rather than trusted: arming happened frames ago, and a location that has gained a child since is a
  * group box, which takes its drops by containment rather than by being aimed at.
  */
-const armable = (locations: GameLocation[], id: string, armed: string | null | undefined): armed is string =>
-  !!armed && armed !== id && locations.some((l) => l.id === armed)
-  && !locations.some((l) => l.parentId === armed)
-  && !isDescendantLocation(locations, id, armed);
+const armable = (session: CanvasDragSession, id: string, armed: string | null | undefined): armed is string =>
+  !!armed && armed !== id && session.byId.has(armed)
+  && !session.parents.has(armed)
+  && !isWithin(session, id, armed);
 
 /**
  * Drop geometry → what the world becomes. `position` is the resting place as the canvas reports it, measured
@@ -513,12 +540,12 @@ export function dropIntent(
   const session = asSession(world);
   const drag = measureDrag(session, id, position);
   if (!drag) return null;
-  const { rects, locations } = session;
+  const { rects } = session;
   const { held, heldOrigin } = drag;
 
   // An armed leaf outranks containment: it sits inside whatever box the drag is also over, so nesting into it
   // is the innermost answer, and it is the one the author watched light up.
-  const parentId = armable(locations, id, armed) ? armed : landsIn(drag);
+  const parentId = armable(session, id, armed) ? armed : landsIn(drag);
   if (parentId === held) return { kind: "move", id, parentId, position };
   const origin = (parentId && rects.get(parentId)) || { x: 0, y: 0 };
   return {
@@ -560,7 +587,7 @@ export function multiDropIntents(
 ): CanvasDrop[] {
   const session = asSession(world);
   const carried = (id: string) =>
-    moves.some((other) => other.id !== id && isDescendantLocation(session.locations, other.id, id));
+    moves.some((other) => other.id !== id && isWithin(session, other.id, id));
   // A leaf traveling in the drag is not a place to land: it is being moved, not aimed at.
   const into = armed && moves.some((move) => move.id === armed) ? null : armed;
   return moves

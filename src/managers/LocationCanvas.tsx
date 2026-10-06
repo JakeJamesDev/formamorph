@@ -86,6 +86,10 @@ interface DropTarget {
 
 const IDLE: DropTarget = { active: false, into: [], toTopLevel: false };
 
+const sameDropTarget = (a: DropTarget, b: DropTarget) =>
+  a.active === b.active && a.toTopLevel === b.toTopLevel
+  && a.into.length === b.into.length && a.into.every((id, i) => id === b.into[i]);
+
 /**
  * The childless location the drag has rested on long enough to nest into. Its own channel rather than a field
  * of the drop target: that is written on a drag frame, and a dwell fires while the pointer is *still*, so a
@@ -1040,11 +1044,13 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     // The leaf under the node the author is actually holding, never one traveling with it.
     dwellOn(leafTarget(session, node.id, node.position, moved.map((n) => n.id)));
     const drops = dropsFor(session, moved);
-    setDropInto({
+    const next: DropTarget = {
       active: true,
       into: drops.map((drop) => drop.parentId).filter((id): id is string => id !== null),
       toTopLevel: drops.some((drop) => drop.kind === 'reparent' && drop.parentId === null),
-    });
+    };
+    // Every group frame reads this context, so a frame that lands on the same target must not replace it.
+    setDropInto((prev) => (sameDropTarget(prev, next) ? prev : next));
   }, [sessionFor, dropsFor, dwellOn]);
 
   // A drag either moves a location or changes what holds it, and where it came to rest decides which — so

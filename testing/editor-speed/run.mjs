@@ -88,6 +88,16 @@ function blocksBetween(events, start, end) {
   const blocks = events
     .filter((e) => e.ph === 'X' && e.name === 'RunTask' && main.get(e.pid) === e.tid && e.dur > BLOCK_US && e.ts + e.dur > t0 && e.ts < t1)
     .map((e) => e.dur / 1000);
+  if (process.env.EDITOR_SPEED_PROFILE) {
+    // Time per trace event type on the main thread. Types nest (script inside a task), so read each on its own.
+    const sums = new Map();
+    for (const e of events) {
+      if (e.ph !== 'X' || main.get(e.pid) !== e.tid || e.ts < t0 || e.ts > t1) continue;
+      sums.set(e.name, (sums.get(e.name) ?? 0) + e.dur / 1000);
+    }
+    const top = [...sums].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, ms]) => `${Math.round(ms)} ms  ${k}`);
+    console.log(`[trace ${start}] main-thread time by event\n${top.join('\n')}`);
+  }
   return {
     blocks: blocks.length,
     blockMs: Math.round(blocks.reduce((a, b) => a + b, 0)),
@@ -117,6 +127,28 @@ async function traced(page, cdp, body) {
     cdp.off('Tracing.dataCollected', onData);
   }
   return { ...extra, ...blocksBetween(events, 'step-start', 'step-end') };
+}
+
+/** Run `body` under the V8 CPU profiler and print the functions with the most self time. */
+async function profiled(cdp, label, body) {
+  await cdp.send('Profiler.enable');
+  await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+  await cdp.send('Profiler.start');
+  let result;
+  try { result = await body(); } finally {
+    const { profile } = await cdp.send('Profiler.stop');
+    const self = new Map();
+    const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+    profile.samples.forEach((id, i) => {
+      const f = byId.get(id).callFrame;
+      const key = `${f.functionName || '(anonymous)'} ${f.url.split('/').pop()}:${f.lineNumber + 1}`;
+      self.set(key, (self.get(key) ?? 0) + (profile.timeDeltas[i] ?? 0));
+    });
+    const top = [...self].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, us]) => `${Math.round(us / 1000)} ms  ${k}`);
+    console.log(`[profile ${label}] top self time\n${top.join('\n')}`);
+    await cdp.send('Profiler.disable');
+  }
+  return result;
 }
 
 /** Resolve once the main thread has had no long task for `quietMs`. */
@@ -277,15 +309,31 @@ const STEPS = {
     if (!box) throw new Error('no canvas node');
     // The canvas draws only the boxes in view, so which box `nth(3)` is depends on the view: report it.
     const dragged = await node.getAttribute('data-id');
-    const result = await traced(page, cdp, async () => framed(page, async () => {
+    // Pointer events are acknowledged after the page handles them, so each call's wall time is that move's cost.
+    const moveMs = [];
+    let releaseMs = 0, undoMs = 0;
+    const drag = async () => {
       await page.mouse.move(box.x + 10, box.y + 10);
       await page.mouse.down();
-      for (let i = 1; i <= 30; i++) await page.mouse.move(box.x + 10 + i * 6, box.y + 10 + i * 4);
+      const moves = async () => {
+        for (let i = 1; i <= 30; i++) {
+          const t = Date.now();
+          await page.mouse.move(box.x + 10 + i * 6, box.y + 10 + i * 4);
+          moveMs.push(Date.now() - t);
+        }
+      };
+      await (process.env.EDITOR_SPEED_PROFILE ? profiled(cdp, 'canvasDrag moves', moves) : moves());
+      let t = Date.now();
       await page.mouse.up();
-      await page.keyboard.press('Control+z');
+      releaseMs = Date.now() - t;
       await settle(page);
-    }));
-    return { dragged, ...result };
+      t = Date.now();
+      await page.keyboard.press('Control+z');
+      undoMs = Date.now() - t;
+      await settle(page);
+    };
+    const result = await traced(page, cdp, async () => framed(page, drag));
+    return { dragged, moveP50: pct(moveMs, 50), moveP95: pct(moveMs, 95), moveMax: pct(moveMs, 100), releaseMs, undoMs, ...result };
   },
 
   async save({ page, cdp }) {
