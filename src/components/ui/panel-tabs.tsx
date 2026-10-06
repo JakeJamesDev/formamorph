@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ListDetailBack, ListDetailBackProvider } from '@/components/ui/list-detail';
 import { useListDetailBack } from '@/components/ui/listDetailBack';
 import type { SurfaceLedgerName } from '@/components/ui/surface';
+import { useHelpFocus, type HelpFocus } from '@/lib/formaquestion/helpFocus';
 import { cn } from '@/lib/utils';
 
 /** Set by a host to its side and bottom padding, so a tab body scrolls to the panel's edges. */
@@ -54,7 +55,7 @@ export function PanelTabsList({ tabs, stripLabel, labelClassName = 'hidden sm:in
  * below it. The panel takes the height its host gives it. One tab is no choice, so it gets no strip, and a
  * chosen tab the current mode hides shows the first tab. A pushed detail's back arrow leads the strip.
  */
-export function PanelTabs<T extends string>({ tabs, value, onValueChange, stripLabel, labelClassName, surfaceTabs, children }: {
+export function PanelTabs<T extends string>({ tabs, value, onValueChange, stripLabel, labelClassName, surfaceTabs, focus, children }: {
   tabs: readonly (PanelTab & { value: T })[];
   value: T;
   onValueChange: (value: T) => void;
@@ -62,8 +63,11 @@ export function PanelTabs<T extends string>({ tabs, value, onValueChange, stripL
   labelClassName?: string;
   /** The tab ledger the panel reports its shown tab under. */
   surfaceTabs?: SurfaceLedgerName;
+  /** The item the panel shows, for Formaquestion. Registered only with `surfaceTabs`, so a panel nested in another stays under its host's focus. */
+  focus?: HelpFocus;
   children: ReactNode;
 }) {
+  useHelpFocus(surfaceTabs ? focus : undefined);
   const shown = tabs.some((t) => t.value === value) ? value : tabs[0].value;
   const back = useListDetailBack();
   return (

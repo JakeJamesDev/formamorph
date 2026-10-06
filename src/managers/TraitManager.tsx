@@ -445,7 +445,7 @@ const TraitManager = ({
   };
 
   return (
-    <PanelTabs tabs={tabs} value={shownTab} onValueChange={onTabChange} stripLabel="Trait Fields" surfaceTabs={surfaceTabs}>
+    <PanelTabs tabs={tabs} value={shownTab} onValueChange={onTabChange} stripLabel="Trait Fields" surfaceTabs={surfaceTabs} focus={{ kind: 'trait', id: trait.id, name: trait.name }}>
       {tabs.map((t) => (
         <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
       ))}

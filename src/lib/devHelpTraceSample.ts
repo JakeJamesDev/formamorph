@@ -14,7 +14,8 @@ export function devHelpTraceSample(index: DocsIndex, question = 'How do I add a 
   const sent = merged.slice(0, 3);
   const endpoint = { preset: 'Default', routed: false, model: 'default', url: 'https://api.example.com/v1/chat/completions', reasoningFields: [], maxTokens: 800 };
   const trace: HelpTrace = {
-    surface: 'World Editor screen, Traits tab',
+    surface: 'World Editor screen, Traits tab, Details tab',
+    focus: 'trait Brave',
     openScreen: true,
     lead: sent[0],
     preset: 'Default',

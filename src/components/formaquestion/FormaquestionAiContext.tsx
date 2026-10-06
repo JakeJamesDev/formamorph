@@ -89,7 +89,9 @@ function SearchBlock({ trace, route }: { trace: HelpTrace; route: SurfaceRoute |
   return (
     <div className="space-y-2 text-meta">
       <p>
-        {trace.surface ?? AI_CONTEXT_COPY.noScreen} · {GENERAL_COPY.openScreen.label} {trace.openScreen ? 'on' : 'off'}
+        {trace.surface ?? AI_CONTEXT_COPY.noScreen}
+        {trace.focus && <> · {AI_CONTEXT_COPY.focus}: {trace.focus}</>}
+        {' · '}{GENERAL_COPY.openScreen.label} {trace.openScreen ? 'on' : 'off'}
         {trace.lead && <> · {AI_CONTEXT_COPY.lead}: {trace.lead.page} › {trace.lead.label}</>}
       </p>
       <p>{AI_CONTEXT_COPY.preset}: {trace.preset}</p>

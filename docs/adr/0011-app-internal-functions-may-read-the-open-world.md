@@ -15,11 +15,13 @@ The AI writes stat code that fails without an error: a wrong clock field reads `
 - **It applies nothing.** The run's writes are reported, never committed.
 - **With no world open, it reads nothing.** The analysis runs with every name check off, and the run is skipped: a run on an empty world reports throws on correct code.
 - **It keeps the ADR-0009 pattern.** Its own module and executor, the shared capability gate, no Tool catalog entry, and a built-in name a Formaquestion Tool cannot take.
+- **The selected item's name reaches the help request.** A panel that shows one stat, trait, entity, location or dictionary entry registers its kind, id and name while it shows, beside the open world. The surface line names it, and the code test reads the selected stat as `self` when the AI names none (Q38–Q39). The surface registry still holds surface ids only. **Use the Open Screen** off sends neither.
 - **The player can switch it off.** It has its own switch and call limit on the **Tools** tab, as the lookup and the roll do. The help preset file carries both.
 
 ## Consequences
 
 - A help request on a code turn can send world names to the help endpoint with no Tool on. The **Tools** tab row and the guide say so.
+- A help request from an item's panel sends that item's name, on any turn. The **Use the Open Screen** row says so.
 - A later fixed function that reads the world needs a purpose that the world's data serves, and the same per-device switch.
 - The help preset file's `functions` block gains the code test's entry. A file without it is refused; the file is unreleased.
 - No world or save export changes shape.

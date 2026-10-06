@@ -90,7 +90,7 @@ const EntityManager = ({
   const tabs = entityPanelTabsFor(advanced);
 
   return (
-    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entity Fields" surfaceTabs="worldEditorEntity">
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entity Fields" surfaceTabs="worldEditorEntity" focus={{ kind: 'entity', id: entity.id, name: entity.name }}>
 
         <PanelTabContent value="profile">
           <EntityProfileFields

@@ -76,7 +76,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
   const tabs = locationPanelTabsFor(advanced);
 
   return (
-    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Location Fields" surfaceTabs="worldEditorLocation">
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Location Fields" surfaceTabs="worldEditorLocation" focus={{ kind: 'location', id: location.id, name: location.name }}>
 
       <PanelTabContent value="details">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
