@@ -4,7 +4,8 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SelectOptions } from '@/components/SelectOptions';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
@@ -64,6 +65,10 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
   const targets = useMemo(
     () => connectionTargets(location.id, locations, connections),
     [location.id, locations, connections],
+  );
+  const targetOptions = useMemo(
+    () => targets.map((l) => ({ value: l.id, label: labelPlaceholders(l.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) })),
+    [targets, placeholders, placementLetters, placeholderOwners],
   );
 
   const handleAdd = () => {
@@ -132,9 +137,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
             <SelectValue placeholder={targets.length ? 'Connect to…' : 'No locations left to connect'} />
           </SelectTrigger>
           <SelectContent>
-            {targets.map((l) => (
-              <SelectItem key={l.id} value={l.id}>{labelPlaceholders(l.name, placeholders, { letters: placementLetters, owners: placeholderOwners })}</SelectItem>
-            ))}
+            <SelectOptions options={targetOptions} />
           </SelectContent>
         </Select>
         <Tip tip="Add Connection">

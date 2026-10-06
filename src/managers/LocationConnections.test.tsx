@@ -26,6 +26,9 @@ const setConnections = (next: Connection[]) => {
   listeners.forEach((listener) => listener());
 };
 
+/** Renders of the Connect To picker's items, counted in the stand-in below. */
+const itemRenders = vi.hoisted(() => ({ count: 0 }));
+
 // Radix Select never opens its listbox in jsdom, so the target picker stands in as a real native select —
 // same value, same onValueChange, and the options stay genuinely under test.
 vi.mock('@/components/ui/select', () => ({
@@ -40,19 +43,29 @@ vi.mock('@/components/ui/select', () => ({
   SelectTrigger: () => null,
   SelectValue: () => null,
   SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
-    <option value={value}>{children}</option>
-  ),
+  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => {
+    itemRenders.count += 1;
+    return <option value={value}>{children}</option>;
+  },
 }));
+
+const noPlaceholders: never[] = [];
+let unrelated = 0;
+/** A write elsewhere in the world, such as a keystroke in another field: it re-renders every reader of the context. */
+const touchUnrelated = () => {
+  unrelated += 1;
+  listeners.forEach((listener) => listener());
+};
 
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => ({
     locations,
     connections: useSyncExternalStore(subscribe, () => connections),
+    entities: useSyncExternalStore(subscribe, () => unrelated),
     addConnection,
     updateConnection,
     removeConnection,
-    placeholders: [],
+    placeholders: noPlaceholders,
   }),
 }));
 
@@ -143,6 +156,30 @@ describe('LocationConnections', () => {
     const options = within(screen.getByLabelText('Connect To')).getAllByRole('option');
     // Cave already has one; a second record for the same pair would claim to be its whole travel rule too.
     expect(options.map((o) => o.textContent).filter(Boolean)).toEqual(['Pool']);
+  });
+
+  describe('Connect To items', () => {
+    it('stay put when a write elsewhere in the world re-renders the panel', () => {
+      render(<LocationConnections location={at('ledge')} />);
+      const before = itemRenders.count;
+      act(() => touchUnrelated());
+      expect(itemRenders.count).toBe(before);
+    });
+
+    it('stay put while the author types a Travel Hint', () => {
+      render(<LocationConnections location={at('ledge')} />);
+      const before = itemRenders.count;
+      fireEvent.change(screen.getByLabelText('Travel Hint to Cave'), { target: { value: 'down the chute' } });
+      expect(lastUpdate().aToB).toEqual({ hint: 'down the chute' });
+      expect(itemRenders.count).toBe(before);
+    });
+
+    it('drop a partner once a Connection to it exists', () => {
+      render(<LocationConnections location={at('cave')} />);
+      expect(within(screen.getByLabelText('Connect To')).getAllByRole('option').map((o) => o.textContent).filter(Boolean)).toEqual(['Pool']);
+      act(() => setConnections([...connections, { id: 'c2', a: 'cave', b: 'pool', aToB: {} }]));
+      expect(within(screen.getByLabelText('Connect To')).getAllByRole('option').map((o) => o.textContent).filter(Boolean)).toEqual([]);
+    });
   });
 });
 

@@ -377,6 +377,46 @@ const STEPS = {
     }
   },
 
+  /** Type in a field of a location's Presence tab, then open its Connect To picker: the 300-item location list. */
+  async picker({ page, cdp }) {
+    await page.getByRole('tab', { name: 'Locations' }).first().click();
+    await page.getByRole('radio', { name: 'List' }).or(page.getByRole('tab', { name: 'List' })).first().click();
+    await settle(page);
+    await page.locator('div.cursor-pointer:has(span.cursor-grab)').first().click();
+    await page.getByRole('tab', { name: 'Presence' }).click();
+    const connectTo = page.getByRole('combobox', { name: 'Connect To' });
+    await connectTo.waitFor({ timeout: 60_000 });
+    const hint = page.getByRole('textbox', { name: /^Travel Hint/ }).first();
+    if (!(await hint.count())) {
+      // The location has no Connection yet: add one so the panel has a field to type in.
+      await connectTo.click();
+      await page.getByRole('option').first().click();
+      await page.getByRole('button', { name: 'Add Connection' }).click();
+      await hint.waitFor({ timeout: 60_000 });
+    }
+    await hint.click();
+    await page.keyboard.press('End');
+    await settle(page);
+    await page.evaluate(() => { window.__bench.events = []; });
+    const text = ' the quick brown fox jumps';
+    return traced(page, cdp, async () => {
+      const t0 = Date.now();
+      await page.keyboard.type(text, { delay: 120 });
+      const typedMs = Date.now() - t0;
+      await settle(page, 1500);
+      if (!(await hint.inputValue()).includes('quick brown fox')) throw new Error('typed text did not land in the field');
+      const lat = await page.evaluate(() => window.__bench.events.filter((e) => /key|input|beforeinput/.test(e.name)).map((e) => e.duration));
+      const t1 = Date.now();
+      await connectTo.click();
+      await page.getByRole('option').first().waitFor({ timeout: 180_000 });
+      const openMs = Date.now() - t1;
+      const options = await page.getByRole('option').count();
+      await page.keyboard.press('Escape');
+      await settle(page);
+      return { keys: text.length, typedMs, slowEvents: lat.length, latP50: pct(lat, 50), latP95: pct(lat, 95), latMax: pct(lat, 100), openMs, options };
+    });
+  },
+
   /** Bare put and get of the bench record on a blank page of the same origin: the structured-clone floor. */
   async idb({ page, rate }) {
     const blank = await page.context().newPage();

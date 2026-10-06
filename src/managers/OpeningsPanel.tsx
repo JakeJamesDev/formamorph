@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { SelectOptions } from '@/components/SelectOptions';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { ListSearchToolbar } from '@/components/ListToolbar';
@@ -52,6 +53,8 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
   const [filter, setFilter] = useState<string | null>(null);
   const view = openingsEditorView({ overview: worldOverview, entities, locations }, filter);
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
+  // A fresh array per render; the items inside skip their render while a start's id and label hold.
+  const startOptions = view.starts.map((l) => ({ value: l.id, label: label(l.name) }));
   const [world, ...ownedGroups] = view.groups;
   const owners = [...entities, ...locations];
   const anyOpenings = hasAuthoredOpenings(worldOverview) || owners.some(hasAuthoredOpenings);
@@ -79,7 +82,7 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_LOCATIONS}>All Locations</SelectItem>
-              {view.starts.map((l) => <SelectItem key={l.id} value={l.id}>{label(l.name)}</SelectItem>)}
+              <SelectOptions options={startOptions} />
             </SelectContent>
           </Select>
         </div>
