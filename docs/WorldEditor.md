@@ -6,6 +6,12 @@ A guide to each tab in the World Editor: what it does, why it exists, and the se
 
 > 💡 Every tab has a **?** button with a short version of its page. It sits in the header row, right of the **Find and replace** button. These pages are the long version.
 
+On desktop, pick a tab from the rail on the left side of the list. **Overview** stands alone at the top. Lines split Stats, Entities, Locations and Traits from Dictionary and Placeholders.
+
+- Select **Collapse** at the foot of the rail to show only icons. Point at an icon to see its tab's name. The editor remembers your choice on this device.
+- When the list is narrow, in a small window or after you drag the divider, the rail shows only icons until there's room again.
+- While the Test Bench is in the list's place, the rail's tabs are unavailable.
+
 On mobile, select **Sections** under the header to pick a tab. **Overview** stands alone at the top. Below it, **Content** holds Stats, Entities, Locations and Traits, and **Vocabulary** holds Dictionary and Placeholders.
 
 Each tab has its own page.

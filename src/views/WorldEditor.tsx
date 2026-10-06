@@ -4,7 +4,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
-import { editorTabGroupsFor, editorTabsFor } from './worldEditorTabs';
+import { editorTabGroupsFor, editorTabsFor, RAIL_ROOM_PX } from './worldEditorTabs';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
@@ -37,7 +37,9 @@ import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { NavRail } from '@/components/NavRail';
+import { useElementSize } from '@/lib/useElementSize';
 import { BackButton } from '@/components/BackButton';
 import { Save, ImageDown, BookPlus, UserPlus, Loader2, Search } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
@@ -111,6 +113,8 @@ function listToolbarTarget(tab: string): TargetAttribute | undefined {
   const surface = `worldEditor.${tab}`;
   return isSurfaceTarget(surface, 'list-toolbar') ? { [TARGET_ATTRIBUTE]: routeText(surface, 'list-toolbar') } : undefined;
 }
+
+const RAIL_STORAGE_KEY = 'formamorph.worldEditor.navRail';
 
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
@@ -451,6 +455,9 @@ const WorldEditorInner = ({
     clearEditorMatch();
   }, []);
   const isMobile = useIsMobile();
+  // An unmeasured card (0) has room: the rail never flashes collapsed before the first layout.
+  const [listCardRef, listCardSize] = useElementSize();
+  const railAutoCollapsed = listCardSize.width > 0 && listCardSize.width < RAIL_ROOM_PX;
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   // Leaving asks about unsaved edits first. The dialog around the editor refuses Escape so nothing bypasses
   // that prompt; the Android back button reaches this step instead.
@@ -936,18 +943,8 @@ const WorldEditorInner = ({
   const tourBar = tour.running && (
     <TourBar tour={tour} onBackToTour={() => { if (tour.step) showTourStep(tour.step); }} />
   );
-  // The desktop strip fills its row and the tabs share it out. Mobile picks tabs from the Sections bar.
-  const tabsList = (
-    <TabsList aria-label="Editor Sections" className="flex-shrink-0 w-full">
-      {visibleTabs.map((t) => (
-        <TabsTrigger key={t.value} value={t.value} className="flex-1">
-          {t.label}
-        </TabsTrigger>
-      ))}
-    </TabsList>
-  );
   // One panel per tab so every trigger's `aria-controls` resolves. Only the active tab has a body, so the
-  // rest render empty; `contents` keeps that body a direct flex child of the tab root, as it was unwrapped.
+  // rest render empty; `contents` keeps that body a direct flex child of its column.
   const tabPanels = (body: ReactNode) => visibleTabs.map((t) => (
     <TabsContent key={t.value} value={t.value} className="contents">
       {t.value === activeTab ? <PanelErrorBoundary>{body}</PanelErrorBoundary> : null}
@@ -971,10 +968,10 @@ const WorldEditorInner = ({
       ))}
     </ToggleGroup>
   );
-  // A tab with no list (Overview) renders no row. On mobile nothing sits above the row, so it takes no gap.
+  // A tab with no list (Overview) renders no row, and its body then takes no gap.
   const addSearchBar = listEditorParts
-    && listEditorParts.toolbar(isMobile ? '' : 'mt-4', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
-  const mobileBodyGap = addSearchBar ? 'mt-4' : undefined;
+    && listEditorParts.toolbar('', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
+  const bodyGap = addSearchBar ? 'mt-4' : undefined;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   const footerBar = (
@@ -1107,7 +1104,7 @@ const WorldEditorInner = ({
                     </ScrollArea>
                   ) : (
                     <ListDetail
-                      className={mobileBodyGap}
+                      className={bodyGap}
                       showDetail={listEditorParts.showDetail}
                       onBack={listEditorParts.onBack}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
@@ -1135,28 +1132,45 @@ const WorldEditorInner = ({
             {/* The Bench comes and goes, so every panel carries an id+order for the group to track it. */}
             <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
               <div className="h-full p-3">
-                <Card className="h-full flex flex-col">
-                  <CardContent className="flex-grow flex flex-col overflow-hidden p-3">
-                    {/* The embedded Bench takes the tab strip, the add/search bar and the list; the detail
-                        panel beside it stays live, so a finding's item opens visibly next to the list being
-                        triaged. The editor's own tab and selection state is untouched behind it. */}
-                    {bench.embedded ? (
-                      <div className="flex-grow min-h-0">{benchPanel}</div>
-                    ) : (
-                      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
-                        {tabsList}
-                        {addSearchBar}
-                        {/* The detail pane is the other half of a master-detail split, in its own resizable
-                            panel outside the tab root — the tab's own content is this list. */}
-                        {tabPanels(
-                          <div className="flex-grow min-h-0 mt-4" onClick={deselectOnListClick}>
-                            {listOwnsSlot ? listContent : <ScrollArea landingRoom className="h-full">{listContent}</ScrollArea>}
-                          </div>
+                <Card ref={listCardRef} className="h-full flex flex-col">
+                  {/* The rail is the card's first column, full height; the tab root wraps it and the panels. */}
+                  <Tabs
+                    value={activeTab}
+                    onValueChange={setActiveTab}
+                    orientation="vertical"
+                    className="flex min-h-0 flex-1"
+                  >
+                    <NavRail
+                      label="Editor Sections"
+                      groups={tabGroups}
+                      value={activeTab}
+                      storageKey={RAIL_STORAGE_KEY}
+                      autoCollapsed={railAutoCollapsed}
+                      disabled={bench.embedded}
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <CardContent className="flex-grow flex flex-col overflow-hidden p-3">
+                        {/* The embedded Bench replaces the list; the panels stay mounted empty so each rail tab controls one. */}
+                        {bench.embedded ? (
+                          <>
+                            <div className="flex-grow min-h-0">{benchPanel}</div>
+                            {tabPanels(null)}
+                          </>
+                        ) : (
+                          <>
+                            {addSearchBar}
+                            {/* The tab's content is this list; the detail pane sits in its own panel outside the tab root. */}
+                            {tabPanels(
+                              <div className={cn('flex-grow min-h-0', bodyGap)} onClick={deselectOnListClick}>
+                                {listOwnsSlot ? listContent : <ScrollArea landingRoom className="h-full">{listContent}</ScrollArea>}
+                              </div>
+                            )}
+                          </>
                         )}
-                      </Tabs>
-                    )}
-                  </CardContent>
-                  {footerBar}
+                      </CardContent>
+                      {footerBar}
+                    </div>
+                  </Tabs>
                 </Card>
               </div>
             </Panel>

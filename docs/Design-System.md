@@ -808,7 +808,7 @@ The live reference renders four of the five production strips against their own 
 
 - One registry holds the tabs in order, each with its value, name, icon and group, and the groups in order. The landing tab has no group. A helper returns the landing slot first, then the groups one mode shows, and drops the empty ones.
 - The disclosure is shared with the Enter World **Categories** bar, so both screens open and close the same way.
-- Desktop keeps the horizontal tab strip in the list card. The bar is mobile-only.
+- Desktop uses the Nav Rail in the list card, fed the same groups. The bar is mobile-only.
 
 The World Editor groups its tabs this way:
 
@@ -883,7 +883,7 @@ The live reference draws the production registry as the Sections bar, with a Sim
 
 ### Responsive behavior
 
-The rail is desktop-only. On mobile the Sections bar takes its place under the header. Below a host's width threshold the rail draws collapsed without a change to the stored choice.
+The rail is desktop-only. On mobile the Sections bar takes its place under the header. Below a host's width threshold the rail draws collapsed without a change to the stored choice. The World Editor's threshold is a 544px list card, the room its widest list toolbar needs beside the expanded rail.
 
 ### State reference
 

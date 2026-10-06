@@ -57,3 +57,7 @@ export function editorTabGroupsFor(advanced: boolean): WorldEditorTabGroup[] {
   }));
   return [landing, ...groups].filter((g) => g.tabs.length > 0);
 }
+
+/** The desktop list card's width below which the expanded rail would squeeze the widest list toolbar (Locations,
+ *  324px with its whole placeholder) under its width. */
+export const RAIL_ROOM_PX = 544;

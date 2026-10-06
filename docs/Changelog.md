@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor and Community Creations move their sections to a collapsible side rail.** Settings swaps its Simple/Advanced switch for a mode select that says what each mode shows.
   - **The World Editor and Community Creations keep the back arrow in the same place on every screen.** Every header now shares one back button, one height and one side spacing.
   - **Community Creations picks its section from a collapsible side rail below a full-width header.** The rail remembers if you collapse it. The sort select, the order toggle and refresh now end the header row.
+  - **The World Editor's tabs move to a collapsible side rail inside the list.** Lines split the tab groups, and the rail remembers whether you collapsed it. It shows only icons when the list is narrow, and stays in place but unavailable while the Test Bench fills the list.
 
 ### Minor Changes
 
