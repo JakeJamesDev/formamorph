@@ -29,6 +29,8 @@ The same element looks or acts differently on different surfaces. Some surfaces 
 - **Q8 One side-navigation recipe:** the mobile Sections bar and the Enter World categories take the Q7 states, without the side bar: the mobile list does not select from its left edge.
 - **Q9 Dialog close button:** focus still lands on the X when a dialog opens, with no ring. The ring shows for keyboard focus only (`focus-visible:` in place of `focus:` at `src/components/ui/dialog.tsx:82`), so a dialog opened from the keyboard still shows where focus is.
 - **Q11 Flat selection lists:** the Settings Tools list and the Code Template library take the Q7 states (no side bar).
+- **Q12 Chat choice bubbles:** hover takes a solid border, `bg-primary/25` and the foreground text color; only the staged choice (`data-selected`) takes the full primary fill. Keyboard focus follows hover, plus its ring, so focus never reads as staged. Rendered in `_coloraudit/chat-choices-before-after.png`.
+- **Q13 Canvas search results:** unchanged. The highlighted row is the arrow-key target, not a lasting selection, so it matches hover on purpose.
 - **Q10 List-row X:** the X on a list row is an icon button that turns destructive red on hover, because it deletes.
 
 Items 1 and 2 are audited in [audit.md](audit.md). Item 3 is parked: Playwright frame sampling did not reproduce it.
