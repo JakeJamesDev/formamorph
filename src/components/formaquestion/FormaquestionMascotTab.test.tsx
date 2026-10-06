@@ -194,11 +194,15 @@ describe('the layer list', () => {
     const body = layerRow('Happy');
     const grips = within(body).getAllByRole('button').filter((el) => el.getAttribute('aria-roledescription') === 'sortable');
     // The layer's own grip first, then one per overlay.
-    grips[2].focus();
+    const moved = grips[2];
+    moved.focus();
     await user.keyboard('[Space]');
     await user.keyboard('[ArrowUp]');
     await user.keyboard('[Space]');
     expect(layerOf('happy').images).toEqual([{ kind: 'bundled', name: 'eyes-closed' }, { kind: 'bundled', name: 'mouth-grin' }]);
+    // The row keeps its node, so the drop settles in place rather than sliding in from the old slot.
+    const after = within(layerRow('Happy')).getAllByRole('button').filter((el) => el.getAttribute('aria-roledescription') === 'sortable');
+    expect(after[1]).toBe(moved);
   });
 });
 

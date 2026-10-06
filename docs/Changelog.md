@@ -47,6 +47,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Importing a large world and publishing one no longer freeze the app.** The Main Menu reads and upgrades the world file in the background, and Publish builds its upload there too. Messages stay the same.
   - **Long editor lists on large worlds draw only the rows on screen, so a drag starts without a pause.** The Entities, Locations, Traits and Placeholders lists look and work as before, and a drag still scrolls to any row.
   - **Opening and typing in the World Editor stay responsive on large worlds.** The Test Bench checks the world in the background, and its badge shows a count once the first check ends.
+  - **On the Mascot tab of Formaquestion Settings, a dragged overlay stays inside its layer and drops in place.** It no longer jumps back to its old slot and slides to the new one.
 
 ---
 

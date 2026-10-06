@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode 
 import { verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { DragEndEvent } from '@dnd-kit/core';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { Info, Move, Play, Plus, Redo2, Undo2, X } from 'lucide-react';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -186,8 +187,19 @@ type UrlOf = (ref: MascotImageRef) => string | null;
 const dragStyle = ({ transform, transition, isDragging }: Pick<ReturnType<typeof useSortable>, 'transform' | 'transition' | 'isDragging'>) =>
   ({ transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined });
 
-/** An overlay's place in its layer, as a sortable id. The same image can sit in a layer twice. */
-const overlayId = (index: number): string => String(index);
+/** Sortable ids that follow each overlay through a reorder. A repeat of the same image takes its occurrence count. */
+function overlayIds(images: readonly MascotImageRef[]): string[] {
+  const seen = new Map<string, number>();
+  return images.map((image) => {
+    const key = image.kind === 'bundled' ? `bundled:${image.name}` : `stored:${image.id}`;
+    const count = seen.get(key) ?? 0;
+    seen.set(key, count + 1);
+    return `${key}#${count}`;
+  });
+}
+
+// An overlay list is its own drag boundary, so a row never leaves its layer.
+const OVERLAY_LIST_MODIFIERS = [restrictToVerticalAxis, restrictToParentElement];
 
 function Thumb({ url }: { url: string | null }) {
   return (
@@ -197,7 +209,8 @@ function Thumb({ url }: { url: string | null }) {
   );
 }
 
-function SortableOverlay({ index, image, urlOf, selected, readOnly, onSelect, onRemove }: {
+function SortableOverlay({ id, index, image, urlOf, selected, readOnly, onSelect, onRemove }: {
+  id: string;
   index: number;
   readOnly: boolean;
   image: MascotImageRef;
@@ -206,7 +219,7 @@ function SortableOverlay({ index, image, urlOf, selected, readOnly, onSelect, on
   onSelect: () => void;
   onRemove: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, ...drag } = useSortable({ id: overlayId(index) });
+  const { attributes, listeners, setNodeRef, ...drag } = useSortable({ id });
   return (
     <EditorRow
       setNodeRef={setNodeRef}
@@ -237,8 +250,12 @@ function LayerBody({ layer, urlOf, readOnly, selectedOverlay, onSelectOverlay, o
   onMoveOverlay: (from: number, to: number) => void;
 }) {
   const nameId = `fq-mascot-layer-${layer.id}`;
+  const ids = overlayIds(layer.images);
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (over && active.id !== over.id) onMoveOverlay(Number(active.id), Number(over.id));
+    if (!over || active.id === over.id) return;
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from !== -1 && to !== -1) onMoveOverlay(from, to);
   };
   return (
     <div className="grid gap-3 rounded-b-md border border-t-0 border-border p-3">
@@ -250,12 +267,13 @@ function LayerBody({ layer, urlOf, readOnly, selectedOverlay, onSelectOverlay, o
       <div className="grid gap-1">
         <span className="text-label">{MASCOT_COPY.overlays}</span>
         {layer.images.length > 0 && (
-          <EditorDndContext onDragEnd={handleDragEnd}>
-            <StableSortableContext items={layer.images.map((_, index) => overlayId(index))} strategy={verticalListSortingStrategy}>
+          <EditorDndContext modifiers={OVERLAY_LIST_MODIFIERS} onDragEnd={handleDragEnd}>
+            <StableSortableContext items={ids} strategy={verticalListSortingStrategy}>
               <EditorRowList className="min-w-0">
                 {layer.images.map((image, index) => (
                   <SortableOverlay
-                    key={overlayId(index)}
+                    key={ids[index]}
+                    id={ids[index]}
                     index={index}
                     image={image}
                     urlOf={urlOf}
