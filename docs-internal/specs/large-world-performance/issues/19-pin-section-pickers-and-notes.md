@@ -31,5 +31,6 @@ Report `npm run profile:editor-speed` pin steps before and after at 6x (Q7).
 - [ ] Each pin picker still opens positioned to the selected item, lists every source, filters by typeahead when focused, and selects by keyboard (existing tests pass; one added test covers typeahead on a focused, closed trigger).
 - [ ] The selected value shows on every closed trigger exactly as before.
 - [ ] Harness `pinTarget` at 6x: "Mood" opens and typing into its Name meets Q1, or the notes' remaining cost is reported with numbers.
+- [ ] Harness `open` at 6x on the plain bench world and the pin world, back to back on a quiet machine: both numbers recorded, and the pin world meets the same bar (no block over 1 s). Ticket 17 measured 1,258 ms under load.
 - [ ] Guard bites: mounting items while closed again brings the jsdom number back (recorded).
 - [ ] Four gates green.
