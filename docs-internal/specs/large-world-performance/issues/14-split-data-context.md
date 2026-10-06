@@ -13,6 +13,8 @@ Components that only call data actions stop re-rendering on every edit. The data
 
 From ticket 13's profile: after 13, open's worst block (2.0–2.9 s at 6x) is the Test Bench rules on mount (1.06 s), with publish-size measuring serializing the whole world for 0.3 s, plus React mount. Typing a real edit into Name costs 130 s for 26 keys with 21–22 s blocks: tree-row and tooltip re-renders (ticket 11's share) plus the rules after each pause. Publish-size measuring also builds a world-sized string on each pause, raising the heap ~290 MB while typing. This ticket owns the rules, the measuring string, and open's Q1.
 
+Ruling (spec session): the first rules pass may run after the World Editor paints. Until it finishes, the Test Bench badge shows no count, never zero.
+
 Report `npm run profile:editor-speed` steps before and after at 6x in the ticket (Q7).
 
 ## Acceptance criteria
