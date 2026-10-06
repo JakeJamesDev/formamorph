@@ -17,8 +17,12 @@ import {
   buildBackup, listBackupItems, analyzeBackup, applyBackup, restoreBackup,
   type BackupBundle, type BackupIndex, type RestoreRequest,
 } from '@/lib/backup';
-import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { promisifyRequest } from '@/lib/idb';
 import { jsonParts } from '@/lib/jsonFileOps';
+import { STORE_TARGETS, type StoreTarget } from '@/lib/backupRestore';
+import {
+  WORLD_LIBRARY_DB, WORLD_META_STORE, WORLD_STORE, transactionDone, worldMetaOf, type WorldMetaRecord,
+} from '@/lib/worldLibrary';
 
 /** The file `saveBackup` writes for a bundle. */
 const backupFile = (bundle: unknown) => new Blob(jsonParts(bundle, 3));
@@ -135,30 +139,34 @@ describe('itemLabel', () => {
   });
 });
 
-/** Seed a store directly, bypassing the module under test. */
-async function seed(dbName: string, store: string, records: { id: string; name?: string }[]) {
-  const db = await openDatabase(dbName, 1, [{ name: store, keyPath: 'id' }]);
-  const tx = db.transaction([store], 'readwrite').objectStore(store);
-  await Promise.all(records.map((r) => promisifyRequest(tx.put(r))));
+/** The backup target that owns `dbName`, so each database opens at its current version. */
+const targetOf = (dbName: string): StoreTarget => Object.values(STORE_TARGETS).find((t) => t.db === dbName)!;
+
+/** Seed a store through its target's own write, as a restore does. Worlds get their metadata. */
+async function seed(dbName: string, _store: string, records: { id: string; name?: string }[]) {
+  const target = targetOf(dbName);
+  const db = await target.open();
+  await target.write(db, records);
   db.close();
 }
 
-async function readAll(dbName: string, store: string): Promise<{ id: string; name?: string }[]> {
-  const db = await openDatabase(dbName, 1, [{ name: store, keyPath: 'id' }]);
-  const out = await promisifyRequest<{ id: string; name?: string }[]>(
-    db.transaction([store], 'readonly').objectStore(store).getAll(),
-  );
+async function readAll<T = { id: string; name?: string }>(dbName: string, store: string): Promise<T[]> {
+  const db = await targetOf(dbName).open();
+  const out = await promisifyRequest<T[]>(db.transaction([store], 'readonly').objectStore(store).getAll());
   db.close();
   return out;
 }
 
 /**
  * Empty a store rather than delete its database: `dbUtils` never closes the connections it opens, and a
- * leaked handle blocks `deleteDatabase` indefinitely.
+ * leaked handle blocks `deleteDatabase` indefinitely. The world library empties its metadata store too.
  */
 async function wipe(dbName: string, store: string) {
-  const db = await openDatabase(dbName, 1, [{ name: store, keyPath: 'id' }]);
-  await promisifyRequest(db.transaction([store], 'readwrite').objectStore(store).clear());
+  const db = await targetOf(dbName).open();
+  const stores = dbName === WORLD_LIBRARY_DB ? [WORLD_STORE, WORLD_META_STORE] : [store];
+  const tx = db.transaction(stores, 'readwrite');
+  for (const name of stores) tx.objectStore(name).clear();
+  await transactionDone(tx);
   db.close();
 }
 
@@ -297,6 +305,50 @@ describe('backup round trip (IndexedDB)', () => {
 
     expect(result.worlds).toEqual({ added: 1, overwritten: 0, skipped: 0 });
     expect(await readAll('worldsDB', 'worlds')).toEqual([{ id: 'w1', name: 'Keep' }]);
+    // The worker writes each world's metadata beside it, so the library lists exactly what was restored.
+    expect(await readAll(WORLD_LIBRARY_DB, WORLD_META_STORE)).toEqual([worldMetaOf({ id: 'w1', name: 'Keep' })]);
+  });
+
+  it('round-trips worlds and their metadata through a backup and a restore', async () => {
+    const link = { libraryId: 'lib-1', sourceName: 'Mara' };
+    const worlds = [
+      {
+        id: 'w1', name: 'Sedge Landing', description: 'Reeds.', author: 'Ann', thumbnail: 'data:image/png;base64,AAA',
+        sourceId: 'srv-1', dirty: true, createdAt: '2026-01-01T00:00:00.000Z',
+        data: { worldOverview: { tags: ['marsh'] }, entities: [{ id: 'e1', name: 'Mara', link }], dictionaries: [] },
+      },
+      { id: 'w2', name: 'Salt Reach', data: { worldOverview: {}, entities: [] } },
+    ];
+    await seed(WORLD_LIBRARY_DB, WORLD_STORE, worlds);
+    const bundle = await buildBackup({ worlds: new Set(['w1', 'w2']) });
+    await wipe(WORLD_LIBRARY_DB, WORLD_STORE);
+
+    const index = await readBackupIndex(backupFile(bundle));
+    await restoreBackup({
+      index, plans: await analyzeBackup(index), overwrite: NO_OVERWRITE, modes: {}, webpSupported: false,
+    });
+
+    expect(await readAll(WORLD_LIBRARY_DB, WORLD_STORE)).toEqual(worlds);
+    const meta = await readAll<WorldMetaRecord>(WORLD_LIBRARY_DB, WORLD_META_STORE);
+    expect(meta).toEqual(worlds.map(worldMetaOf));
+    expect(meta[0]).toMatchObject({
+      name: 'Sedge Landing', tags: ['marsh'], sourceId: 'srv-1', dirty: true,
+      linkedCopies: [{ itemId: 'e1', itemName: 'Mara', kind: 'entity', link }],
+    });
+    const getAll = IDBObjectStore.prototype.getAll;
+    const wholeReads: string[] = [];
+    vi.spyOn(IDBObjectStore.prototype, 'getAll').mockImplementation(function (this: IDBObjectStore, ...args) {
+      wholeReads.push(this.name);
+      return getAll.apply(this, args);
+    });
+    expect(await listBackupItems().then((items) => items.worlds)).toEqual([
+      { id: 'w1', label: 'Sedge Landing' }, { id: 'w2', label: 'Salt Reach' },
+    ]);
+    await analyzeBackup(index);
+    // The checklist and the conflict split list worlds from metadata, never from the world records.
+    expect(wholeReads).toContain(WORLD_META_STORE);
+    expect(wholeReads).not.toContain(WORLD_STORE);
+    vi.restoreAllMocks();
   });
 
   it('reports image progress across records while it optimizes', async () => {

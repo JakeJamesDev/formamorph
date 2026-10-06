@@ -19,6 +19,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **CI splits the test suite across four parallel runners, so a check takes about 5 minutes, not 20.** A tag push runs the checks once, through the Release workflow. A **Build Android APK** run skips them.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The Main Menu lists your worlds without loading each one in full.** Large libraries open faster and use less memory. Your library updates itself once; older Formamorph builds can't open it afterward.
+
 ---
 
 <details>

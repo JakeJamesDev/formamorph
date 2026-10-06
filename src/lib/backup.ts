@@ -7,7 +7,8 @@
  * Settings, downloaded models, and caches are intentionally excluded: they're either device-local or
  * re-derivable, not irreplaceable authored content.
  */
-import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { promisifyRequest } from '@/lib/idb';
+import { WORLD_META_STORE } from '@/lib/worldLibrary';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { indexBackupInWorker, restoreBackupInWorker, serializeJsonBlobSplit } from '@/lib/jsonFileWorkerUtils';
 import { getAllSaveRecords } from '@/components/modals/dbUtils';
@@ -21,7 +22,9 @@ import {
   type BackupIndex,
   type IdRecord,
 } from '@/lib/backupIndex';
-import { STORE_TARGETS, applyBackup, optimizes, type CategoryPlan, type RestoreCounts, type RestoreRequest } from '@/lib/backupRestore';
+import {
+  STORE_TARGETS, applyBackup, optimizes, type CategoryPlan, type RestoreCounts, type RestoreRequest, type StoreTarget,
+} from '@/lib/backupRestore';
 
 /** Bumped only if the bundle's shape changes incompatibly; readers warn on a newer value but still try. */
 export const BACKUP_FORMAT = 1;
@@ -45,8 +48,8 @@ export const CATEGORY_LABELS: Record<BackupCategory, string> = {
   dictionaries: 'Dictionaries',
 };
 
-async function readStore(target: { db: string; store: string }): Promise<IdRecord[]> {
-  const db = await openDatabase(target.db, 1, [{ name: target.store, keyPath: 'id' }]);
+async function readStore(target: StoreTarget): Promise<IdRecord[]> {
+  const db = await target.open();
   try {
     return await promisifyRequest<IdRecord[]>(
       db.transaction([target.store], 'readonly').objectStore(target.store).getAll(),
@@ -63,6 +66,13 @@ async function readCategory(category: BackupCategory): Promise<IdRecord[]> {
     : readStore(STORE_TARGETS[category]);
 }
 
+/** Read one category's records for listing; worlds come from the metadata store, without their data. */
+function listCategory(category: BackupCategory): Promise<IdRecord[]> {
+  return category === 'worlds'
+    ? readStore({ ...STORE_TARGETS.worlds, store: WORLD_META_STORE })
+    : readCategory(category);
+}
+
 /** One selectable line in the backup/restore checklist. */
 export interface BackupItem {
   id: string;
@@ -75,7 +85,7 @@ export async function listBackupItems(): Promise<Record<BackupCategory, BackupIt
   const out = { worlds: [], saves: [], entities: [], dictionaries: [] } as Record<BackupCategory, BackupItem[]>;
   await Promise.all(
     BACKUP_CATEGORIES.map(async (category) => {
-      out[category] = (await readCategory(category)).map((r) => ({
+      out[category] = (await listCategory(category)).map((r) => ({
         id: r.id,
         label: itemLabel(r),
         breadcrumb: itemBreadcrumb(category, r),
@@ -122,7 +132,7 @@ export function splitByConflict<T extends { id: string }>(
 }
 
 async function existingIdsFor(category: BackupCategory): Promise<Set<string>> {
-  return new Set((await readCategory(category)).map((r) => r.id));
+  return new Set((await listCategory(category)).map((r) => r.id));
 }
 
 /** Compare a backup against current storage, yielding one plan per category (for the import summary). */

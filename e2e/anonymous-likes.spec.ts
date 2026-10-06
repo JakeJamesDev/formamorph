@@ -254,23 +254,11 @@ const settings = {
 /** Record this playthrough's world as a copy downloaded from the listing, the way a download leaves it. */
 async function recordDownload(page: Page, world: Record<string, unknown>): Promise<void> {
   await page.evaluate(async ({ world, listingId }) => {
-    const dev = (window as unknown as { __fmDev: { putWorld(w: unknown): Promise<string> } }).__fmDev;
-    const id = await dev.putWorld(world);
+    const dev = (window as unknown as {
+      __fmDev: { putWorld(w: unknown, wrapper: { sourceId: string; downloadedAt: string }): Promise<string> };
+    }).__fmDev;
     // The download link is wrapper metadata rather than world content, so it goes onto the stored record.
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open('worldsDB', 1);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const transaction = request.result.transaction('worlds', 'readwrite');
-        transaction.onerror = () => reject(transaction.error);
-        transaction.oncomplete = () => resolve();
-        const store = transaction.objectStore('worlds');
-        const read = store.get(id);
-        read.onsuccess = () => {
-          store.put({ ...read.result, sourceId: listingId, downloadedAt: '2026-02-02T00:00:00.000Z' });
-        };
-      };
-    });
+    await dev.putWorld(world, { sourceId: listingId, downloadedAt: '2026-02-02T00:00:00.000Z' });
   }, { world, listingId: LISTING.id });
 }
 

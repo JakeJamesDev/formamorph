@@ -3,7 +3,8 @@ import { expect, it } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { openDatabase, promisifyRequest } from '@/lib/idb';
+import { promisifyRequest } from '@/lib/idb';
+import { openWorldLibrary } from '@/lib/worldLibrary';
 import { FindBarReference } from './FindBarReference';
 
 const renderReference = () => render(
@@ -15,7 +16,7 @@ const renderReference = () => render(
 const STORED_WORLD = { id: 'protected-world', name: 'Protected World', data: { marker: 'unchanged' } };
 
 const replaceWorldStore = async (records: object[]) => {
-  const db = await openDatabase('worldsDB', 1, [{ name: 'worlds', keyPath: 'id' }]);
+  const db = await openWorldLibrary();
   const store = db.transaction(['worlds'], 'readwrite').objectStore('worlds');
   await promisifyRequest(store.clear());
   await Promise.all(records.map((record) => promisifyRequest(store.put(record))));
@@ -23,7 +24,7 @@ const replaceWorldStore = async (records: object[]) => {
 };
 
 const readWorldStore = async (): Promise<object[]> => {
-  const db = await openDatabase('worldsDB', 1, [{ name: 'worlds', keyPath: 'id' }]);
+  const db = await openWorldLibrary();
   const records = await promisifyRequest<object[]>(db.transaction(['worlds'], 'readonly').objectStore('worlds').getAll());
   db.close();
   return records;

@@ -3,8 +3,7 @@
  *
  * These are an authoring convenience, not world content: they live on the machine, span every world, and
  * never enter a world or save export. They also get their own database rather than a store inside
- * `worldsDB`, because adding a store there would mean a version bump that the world service's own
- * `open(…, 1)` would then reject.
+ * `worldsDB`, because adding a store there would mean a version bump that every open tab must allow.
  */
 
 import { openDatabase, promisifyRequest } from '@/lib/idb';
