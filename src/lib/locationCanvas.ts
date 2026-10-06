@@ -93,6 +93,11 @@ export function canvasFocus(
   return hovered !== null && !selected.includes(hovered) ? [...selected, hovered] : [...selected];
 }
 
+/** Who the Map shows implicit travel for: the box the player stands in, plus the one under the pointer. */
+export function mapFocus({ current, hovered }: { current: string | null; hovered: string | null }): string[] {
+  return canvasFocus({ hovered, selected: current === null ? [] : [current], dragging: false });
+}
+
 /**
  * The dashed arrows of the focused locations: each sibling pair gets one per direction. A parent and its
  * child get none (the box is the link), and neither does a pair an authored Connection has replaced.

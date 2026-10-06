@@ -3,7 +3,7 @@ import {
   CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   applyCanvasDrop, buildLocationCanvas, canvasFocus, connectIntent, connectionEnds, deleteIntent, directionIntent,
   applyCanvasDrops, beginCanvasDrag, directionOf, dropIntent, dropTarget, updateIntent, isStationaryClick,
-  isTravelClick, multiDropIntents, leafTarget,
+  implicitCanvasEdges, isTravelClick, mapFocus, multiDropIntents, leafTarget,
   TOUCH_SLOP,
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
@@ -213,6 +213,48 @@ describe("buildLocationCanvas edges", () => {
 
     it("is empty with no hover and no selection", () => {
       expect(canvasFocus({ hovered: null, selected: [], dragging: false })).toEqual([]);
+    });
+  });
+
+  describe("mapFocus", () => {
+    // A hundred and fifty siblings under one parent: a full mesh would be 22,350 arrows.
+    const hub: GameLocation = { id: "hub", name: "Hub" };
+    const spokes: GameLocation[] = Array.from({ length: 150 }, (_, i) => ({ id: `s${i}`, name: `S${i}`, parentId: "hub" }));
+    const crowd = [hub, ...spokes];
+    const drawn = (connections: Connection[], focus: string[]) => implicitCanvasEdges(crowd, connections, focus);
+
+    it("is the current location, plus the hovered one", () => {
+      expect(mapFocus({ current: "a", hovered: null })).toEqual(["a"]);
+      expect(mapFocus({ current: "a", hovered: "b" })).toEqual(["a", "b"]);
+    });
+
+    it("lists the current location once when it is also the hovered one", () => {
+      expect(mapFocus({ current: "a", hovered: "a" })).toEqual(["a"]);
+    });
+
+    it("is the hovered location alone, or nothing, when the player stands nowhere", () => {
+      expect(mapFocus({ current: null, hovered: "b" })).toEqual(["b"]);
+      expect(mapFocus({ current: null, hovered: null })).toEqual([]);
+    });
+
+    it("draws only the current location's arrows on a world of 150 siblings", () => {
+      // 149 siblings, two arrows each; a drawn mesh would be 22,350 arrows.
+      const edges = drawn([], mapFocus({ current: "s7", hovered: null }));
+      expect(edges).toHaveLength(2 * 149);
+      expect(edges.every((e) => e.source === "s7" || e.target === "s7")).toBe(true);
+    });
+
+    it("leaves out the pairs a Connection has replaced", () => {
+      const replaced: Connection[] = [
+        { id: "c1", a: "s7", b: "s8", aToB: {} },
+        { id: "c2", a: "s9", b: "s7", aToB: {}, bToA: {} },
+      ];
+      expect(drawn(replaced, mapFocus({ current: "s7", hovered: null }))).toHaveLength(2 * (149 - 2));
+    });
+
+    it("adds a hovered location's arrows to the current one's", () => {
+      // Both focused: 149 + 149 - 1 shared pair, two arrows each.
+      expect(drawn([], mapFocus({ current: "s7", hovered: "s40" }))).toHaveLength(2 * 297);
     });
   });
 
