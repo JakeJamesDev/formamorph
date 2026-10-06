@@ -10,6 +10,7 @@ import { FeedbackEditDialog } from '@/components/menu/FeedbackEditDialog';
 import { PodiumDialog } from '@/components/menu/PodiumDialog';
 import { SentMessagesDialog } from '@/components/menu/SentMessagesDialog';
 import { ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
+import { RootCrashScreen } from '@/components/RootCrashScreen';
 import { RevealAnimationDialog } from '@/components/RevealAnimationDemo';
 import { devContestSamples } from '@/lib/devEventSample';
 import { devChangelogDraft, devFeedbackThread, devPickerRows, devPresetShareJson } from '@/lib/devPaneSamples';
@@ -68,6 +69,11 @@ export default function DevPaneRoutes() {
       <Pressed>
         <PlaceholderSectionList rows={devPickerRows()} selectedId="" onSelect={ignore} placeholders={[]} />
       </Pressed>
+    );
+    case 'rootCrash': return (
+      <div className="fixed inset-0 z-50 bg-background">
+        <RootCrashScreen error={new Error('Sample crash')} componentStack={'\n    at SampleComponent\n    at App'} />
+      </div>
     );
     default: return null;
   }

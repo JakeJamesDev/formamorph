@@ -4,8 +4,10 @@ import './fonts'
 import './index.css'
 import './lib/buildInfo'
 import { trackDevicePixelRatio } from './lib/devicePixelGrid'
+import { installGlobalErrorHandlers } from './lib/globalErrorHandlers'
 
 trackDevicePixelRatio()
+installGlobalErrorHandlers()
 if (import.meta.env.DEV && import.meta.env.VITE_FM_HOLD_UPDATES) void import('./lib/dev/heldUpdatesBanner')
 
 createRoot(document.getElementById('root')!).render(

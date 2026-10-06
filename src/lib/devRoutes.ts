@@ -16,7 +16,7 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  `customCode` opens MainMenu's Custom Code Execution dialog on canned stat code when the selected world has none; the
  *  rest mount one pane on canned props (`DevPaneRoutes`). The podium and the sent list still load from the
  *  server, so they show their empty state without one. Players never navigate to these. */
-export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'feedbackForm', 'feedbackEdit', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker'] as const;
+export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessages', 'feedbackForm', 'feedbackEdit', 'changelogEntry', 'fontTune', 'revealDemo', 'presetImport', 'generateImage', 'placeholderPicker', 'rootCrash'] as const;
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,
