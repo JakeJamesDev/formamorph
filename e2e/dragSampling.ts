@@ -10,13 +10,13 @@ import type { Locator, Page } from '@playwright/test';
  * browser suite instead of the unit one.
  *
  * Every editor list draws its rows through `EditorRow`, so one set of selectors reaches all of them: the
- * row is the clickable box, the label is its truncating span, and the grip is the cursor-grab span.
+ * row is the clickable box, the label is its truncating span or button, and the grip is the cursor-grab span.
  */
 
 /** One editor row, inside whatever root the caller scopes to. The grip is what tells a row apart from
  *  any other clickable box the surrounding panel happens to draw. */
 export const ROW = 'div.cursor-pointer:has(span.cursor-grab)';
-const LABEL = 'span.truncate';
+const LABEL = ':is(span, button).truncate';
 const GRIP = 'span.cursor-grab';
 
 /** Rows in a dialog — the dictionary editor, the save browser, and every modal list. */

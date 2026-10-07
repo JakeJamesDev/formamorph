@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openApp, openWorldEditor } from './app';
+import { openApp, openEditorSection, openWorldEditor } from './app';
 import {
   IN_TAB_PANEL, dragBy, dragWatchingHover, editorGrip, intermediates, rowIndents, rowLabels,
   ROW_STEP, samples, startSampler,
@@ -23,7 +23,7 @@ const ROOT_PADDING = 8;
 async function openTraits(page: Page): Promise<void> {
   await openApp(page);
   await openWorldEditor(page);
-  await page.getByRole('tab', { name: 'Traits' }).click();
+  await openEditorSection(page, 'Traits');
   await expect(page.locator(`${ROOT} span.cursor-grab`).first()).toBeVisible();
 }
 

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openApp, openWorldEditor } from './app';
+import { openApp, openEditorSection, openWorldEditor } from './app';
 import {
   IN_TAB_PANEL, dragWatchingHover, editorGrip, intermediates, rowLabels, samples, startSampler,
 } from './dragSampling';
@@ -19,7 +19,7 @@ const ROOT = IN_TAB_PANEL;
 async function openStats(page: Page): Promise<string[]> {
   await openApp(page);
   await openWorldEditor(page);
-  await page.getByRole('tab', { name: 'Stats' }).click();
+  await openEditorSection(page, 'Stats');
   await expect(page.locator(`${ROOT} span.cursor-grab`).first()).toBeVisible();
   const labels = await rowLabels(page, ROOT);
   expect(labels.length, 'the stats tab needs enough rows to displace one').toBeGreaterThanOrEqual(4);
