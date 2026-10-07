@@ -75,7 +75,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A placeholder's Placeholder Pins section opens quickly with dozens of pins.** Each pin's source list loads when you open or focus it. The lists look and work as before.
   - **Right-click menus inside a window, like the Locations Canvas menu, now highlight the row you hover.** The arrow keys move through the rows again.
 - **🛠️ Developer tooling**
-  - **The multi-select clears its live-region timers at unmount, so the full test suite exits 0.** The pin picker test, which opens four heavy pickers, has its own 20-second limit.
+  - **The multi-select and the endpoint badge cancel their updates at unmount, so the full test suite exits 0.** The pin picker test, which opens four heavy pickers, has its own 20-second limit.
 
 </details>
 
