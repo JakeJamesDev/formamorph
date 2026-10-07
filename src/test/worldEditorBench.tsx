@@ -40,6 +40,9 @@ export const asMobile = () => {
   };
 };
 
+/** Desktop's Search World field in the app bar. */
+export const searchWorldField = () => screen.getByRole('textbox', { name: 'Search World' });
+
 /** Ends a closed sheet's exit animation, which jsdom never runs, so vaul unmounts the sheet. */
 export const finishSheetExit = (sheet: HTMLElement) => {
   const end = new Event('animationend', { bubbles: true });

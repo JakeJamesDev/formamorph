@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CaseSensitive, ChevronDown, ChevronRight, ChevronUp, Crosshair, Plus, Replace, ReplaceAll, Type, WholeWord, X } from 'lucide-react';
+import { CaseSensitive, ChevronDown, ChevronRight, ChevronUp, Crosshair, Plus, Replace, ReplaceAll, Search, Type, WholeWord, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,14 +25,25 @@ import type { PlaceholderOwners } from '@/lib/placeholderHomes';
 import type { Placeholder, PlaceholderGroup } from '@/types';
 
 /**
- * The World Editor's find & replace bar — a floating strip over the editor content, opened from the header
- * magnifier or Ctrl+F (Ctrl+H opens it with the replace row already showing).
+ * The World Editor's find & replace bar, in one of two layouts. Floating is mobile's strip over the editor
+ * content, opened from the header magnifier or Ctrl+F (Ctrl+H opens it with the replace row showing). Docked
+ * is desktop's Search World field in the app bar, always mounted and live as you type.
  *
  * Replacement has two modes. Text splices a string; Placeholder splices a freshly minted chip token, and
  * skips fields that don't render chips rather than leaving a raw token showing as literal text.
  */
 
 interface EditorFindBarProps {
+  /** Floating by default. */
+  layout?: 'floating' | 'docked';
+  /** Docked: each new value focuses the field (Ctrl+F). */
+  focusSignal?: number;
+  /** Docked: true while the field holds text, false again when it empties or unmounts. */
+  onActiveChange?: (active: boolean) => void;
+  /** Docked: focus left the search. */
+  onLeave?: () => void;
+  /** Docked: attributes for the field's frame, such as a Take Me There target. */
+  fieldAttributes?: Readonly<Record<string, string>>;
   targets: SearchTarget[];
   placeholders: Placeholder[];
   /** The document's placement letters, so a chip answers a search by the name it shows. */
@@ -43,8 +54,8 @@ interface EditorFindBarProps {
   placeholderGroups?: readonly PlaceholderGroup[];
   /** Placeholder-replace mode follows the Placeholders tab in hiding from Simple mode. */
   allowPlaceholderReplace: boolean;
-  /** Open with the replace row expanded (Ctrl+H). */
-  startWithReplace: boolean;
+  /** Floating: open with the replace row expanded (Ctrl+H). */
+  startWithReplace?: boolean;
   /** Called with the hit to reveal, or `null` when there is none left to show. */
   onNavigate: (match: SearchMatch | null) => void;
   onAddPlaceholder: (placeholder: Placeholder) => void;
@@ -124,9 +135,32 @@ function ModeSwap({ onClick, label, last, children }: {
   );
 }
 
+/** A cell at the docked field's right edge that steps through the matches. */
+function StepCell({ onClick, disabled, label, last, children }: {
+  onClick: () => void;
+  disabled: boolean;
+  label: string;
+  last?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(FIELD_CELL, 'h-full shrink-0', last && 'rounded-r-md', FIELD_CELL_IDLE, 'disabled:pointer-events-none disabled:opacity-50')}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function EditorFindBar({
-  targets, placeholders, placementLetters, placeholderOwners, placeholderGroups, allowPlaceholderReplace, startWithReplace, onNavigate, onAddPlaceholder, onClose,
+  layout = 'floating', focusSignal, onActiveChange, onLeave, fieldAttributes,
+  targets, placeholders, placementLetters, placeholderOwners, placeholderGroups, allowPlaceholderReplace, startWithReplace = false, onNavigate, onAddPlaceholder, onClose,
 }: EditorFindBarProps) {
+  const docked = layout === 'docked';
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [matchCase, setMatchCase] = useState(false);
@@ -142,7 +176,18 @@ export default function EditorFindBar({
   const searchRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
-  useEffect(() => { searchRef.current?.focus(); }, []);
+  // Floating opens on request, so it takes focus; docked mounts with the editor, so it waits to be asked.
+  useEffect(() => { if (!docked) searchRef.current?.focus(); }, [docked]);
+  useEffect(() => { if (docked && focusSignal) searchRef.current?.focus(); }, [docked, focusSignal]);
+  const active = docked && query !== '';
+  // The cleanup reports the end too, so an unmount never leaves the host collecting for an empty field.
+  useEffect(() => {
+    if (!active) return;
+    onActiveChange?.(true);
+    return () => onActiveChange?.(false);
+    // The host's callback is a state setter; only the field's own change reports.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
   useEffect(() => { if (startWithReplace) setShowReplace(true); }, [startWithReplace]);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), 200);
@@ -273,10 +318,59 @@ export default function EditorFindBar({
     setChipId(placeholder.id);
   };
 
-  const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === 'Escape') { event.preventDefault(); onClose(); }
-    if (event.key === 'Enter') { event.preventDefault(); step(event.shiftKey ? -1 : 1); }
+  // Docked, Escape empties the field rather than removing it; the emptied query takes the marker with it.
+  const close = () => {
+    if (docked) { setQuery(''); setDebounced(''); }
+    onClose();
   };
+
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Escape') { event.preventDefault(); close(); }
+    // Docked, Enter steps only from the field; on a step cell it presses that cell.
+    if (event.key === 'Enter' && (!docked || event.target === searchRef.current)) {
+      event.preventDefault();
+      step(event.shiftKey ? -1 : 1);
+    }
+  };
+
+  if (docked) {
+    return (
+      <div
+        className="w-[26rem] max-w-full"
+        data-editor-find-skip
+        onKeyDown={onKeyDown}
+        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onLeave?.(); }}
+        role="search"
+      >
+        {/* One row in the field's frame, so the text keeps whatever the counter and cells leave in a narrow bar. */}
+        <div
+          {...fieldAttributes}
+          className="group relative flex h-8 items-center rounded-md border border-input bg-background"
+        >
+          <Search aria-hidden className="ml-2.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search World"
+            placeholder="Search World"
+            className="h-full min-w-0 flex-1 bg-transparent px-2 text-meta outline-none placeholder:text-muted-foreground"
+          />
+          {/* Always mounted, so the live region exists before its first count. */}
+          <span className={cn('shrink-0 text-meta', counter && 'px-2', matches.length ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
+            {counter}
+          </span>
+          <StepCell onClick={() => step(-1)} disabled={!matches.length} label="Previous match">
+            <ChevronUp className="h-4 w-4" />
+          </StepCell>
+          <StepCell onClick={() => step(1)} disabled={!matches.length} label="Next match" last>
+            <ChevronDown className="h-4 w-4" />
+          </StepCell>
+          <span aria-hidden className="pointer-events-none absolute -inset-px rounded-md ring-ring ring-inset group-focus-within:ring-2" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

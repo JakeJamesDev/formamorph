@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, FlaskConical, Save, Search } from 'lucide-react';
+import { ChevronRight, FlaskConical, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModeSelect } from '@/components/ui/mode-select';
@@ -10,8 +10,14 @@ import { TruncatedText } from '@/components/TruncatedText';
 import { Separator } from '@/components/ui/separator';
 import { ActionIcon } from '@/lib/actionIcons';
 import { EDITOR_MODE_DESCRIPTIONS, type EditorMode } from '@/lib/editorMode';
+import EditorFindBar from '@/components/editor/EditorFindBar';
+import { EMPTY_LETTERS } from '@/lib/placementLetters';
+import type { SearchTarget } from '@/lib/worldSearch';
+import type { Placeholder } from '@/types';
 
 const SAMPLE_WORLD_NAME = 'Sedge Landing';
+const NO_TARGETS: SearchTarget[] = [];
+const NO_PLACEHOLDERS: Placeholder[] = [];
 
 /** The World Editor's app bar over sample controls. Every control changes only this reference's own state. */
 export function SurfaceAppBarReference() {
@@ -22,13 +28,13 @@ export function SurfaceAppBarReference() {
       <CardHeader>
         <CardTitle id="surface-app-bar-title" className="text-heading">Surface App Bar</CardTitle>
         <CardDescription>
-          The World Editor&apos;s bar over sample controls. Find and the flask sit on the bar&apos;s center line
-          whatever the sides hold.
+          The World Editor&apos;s bar over sample controls. Search World sits on the bar&apos;s center line
+          when space allows, and never overlaps the sides.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="overflow-x-auto rounded-md border border-border">
-          <div className="min-w-[44rem] border-b">
+          <div className="min-w-[64rem] border-b">
             <SurfaceAppBar
               start={(
                 <>
@@ -39,18 +45,17 @@ export function SurfaceAppBarReference() {
                 </>
               )}
               center={(
-                <>
-                  <Tip tip="Find and replace">
-                    <Button variant="ghost" size="icon" onClick={() => setAction('Find and replace.')}>
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </Tip>
-                  <Tip tip="Test Bench">
-                    <Button variant="ghost" size="icon" onClick={() => setAction('Test Bench.')}>
-                      <FlaskConical className="h-4 w-4" />
-                    </Button>
-                  </Tip>
-                </>
+                // The production field over no world, so a search here finds nothing.
+                <EditorFindBar
+                  layout="docked"
+                  targets={NO_TARGETS}
+                  placeholders={NO_PLACEHOLDERS}
+                  placementLetters={EMPTY_LETTERS}
+                  allowPlaceholderReplace={false}
+                  onNavigate={() => {}}
+                  onAddPlaceholder={() => {}}
+                  onClose={() => setAction('Clear search.')}
+                />
               )}
               end={(
                 <>
@@ -64,6 +69,11 @@ export function SurfaceAppBarReference() {
                   <Tip tip="Export World">
                     <Button variant="ghost" size="icon" onClick={() => setAction('Export World.')}>
                       <ActionIcon.export className="h-4 w-4" />
+                    </Button>
+                  </Tip>
+                  <Tip tip="Test Bench">
+                    <Button variant="ghost" size="icon" onClick={() => setAction('Test Bench.')}>
+                      <FlaskConical className="h-4 w-4" />
                     </Button>
                   </Tip>
                   <Button size="sm" onClick={() => setAction('Save.')}>

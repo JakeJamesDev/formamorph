@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, clickFlask, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
+import { benchEditorWorld, clickFlask, renderWorldEditorBench, pickEditorMode, searchWorldField } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -65,16 +65,15 @@ const selectEntry = async (name = 'Hostile Forces') => {
   await screen.findByRole('tablist', { name: 'Entry Fields' });
 };
 
-/** Open Find and wait for the bar to take focus. */
+/** Press Ctrl+F and wait for Search World to take focus. */
 const openFind = async () => {
   fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
-  await screen.findByRole('search', { name: 'Find and replace in world' });
-  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Find')));
+  await waitFor(() => expect(document.activeElement).toBe(searchWorldField()));
 };
 
-/** Type a query and wait for the bar to land on its first hit, which it does on its own. */
+/** Type a query and wait for the search to land on its first hit, which it does on its own. */
 const findFirst = async (query: string) => {
-  fireEvent.change(screen.getByLabelText('Find'), { target: { value: query } });
+  fireEvent.change(searchWorldField(), { target: { value: query } });
   await waitFor(() => expect(screen.getByText(/^1 \/ \d+$/)).toBeInTheDocument());
 };
 

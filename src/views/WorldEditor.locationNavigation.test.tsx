@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, clickFlask, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, clickFlask, openEditorTab, renderWorldEditorBench, searchWorldField } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -71,21 +71,28 @@ const treeRow = (name: string) => {
 
 /** Select the location from the Locations list, the way an author reaches its panel. */
 const selectLocation = async (name = 'The Veilwood') => {
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: /^Locations/ }));
+  // The rail or, on mobile, the Sections bar; either one may still be mounting.
+  await waitFor(() => openEditorTab(/^Locations/));
   fireEvent.click(treeRow(name));
   await screen.findByRole('tablist', { name: 'Location Fields' });
 };
 
-/** Open Find (Ctrl+H for the replace row) and wait for the bar to take focus. */
-const openFind = async (withReplace = false) => {
-  fireEvent.keyDown(window, { key: withReplace ? 'h' : 'f', ctrlKey: true });
+/** Press Ctrl+F and wait for Search World to take focus. */
+const openFind = async () => {
+  fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
+  await waitFor(() => expect(document.activeElement).toBe(searchWorldField()));
+};
+
+/** Press Ctrl+H on mobile, where the floating bar opens with its replace row, and wait for its focus. */
+const openReplace = async () => {
+  fireEvent.keyDown(window, { key: 'h', ctrlKey: true });
   await screen.findByRole('search', { name: 'Find and replace in world' });
   await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Find')));
 };
 
-/** Type a query and wait for the bar to land on its first hit, which it does on its own. */
-const findFirst = async (query: string) => {
-  fireEvent.change(screen.getByLabelText('Find'), { target: { value: query } });
+/** Type a query and wait for the search to land on its first hit, which it does on its own. */
+const findFirst = async (query: string, field = searchWorldField()) => {
+  fireEvent.change(field, { target: { value: query } });
   await waitFor(() => expect(screen.getByText(/^1 \/ \d+$/)).toBeInTheDocument());
 };
 
@@ -148,6 +155,11 @@ describe('World Editor — a Find hit opens the location tab holding it', () => 
 });
 
 describe('World Editor — Replace reaches a location field on a tab that is not showing', () => {
+  // Mobile's floating bar holds the replace row.
+  let restoreViewport: () => void;
+  beforeEach(() => { restoreViewport = asMobile(); });
+  afterEach(() => restoreViewport());
+
   it('changes the record for a match the panel never mounted', async () => {
     const { ctx } = setup();
     await selectLocation();
@@ -155,8 +167,8 @@ describe('World Editor — Replace reaches a location field on a tab that is not
 
     // 'causeway' is only in the summary, which is on Details, so the panel never leaves it. The tags line on
     // Media is replaced in the same pass without ever being rendered.
-    await openFind(true);
-    await findFirst('lantern');
+    await openReplace();
+    await findFirst('lantern', screen.getByLabelText('Find'));
     await waitFor(() => expect(shownPanelTab()).toBe('Media'));
     openPanelTab('Details');
     await waitFor(() => expect(shownPanelTab()).toBe('Details'));

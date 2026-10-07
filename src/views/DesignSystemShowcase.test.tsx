@@ -404,10 +404,10 @@ describe('surface app bar reference', () => {
       within(region).getByRole('button', { name: 'Back' }),
       within(region).getByRole('heading', { name: 'World Editor' }),
       within(region).getByText('Sedge Landing'),
-      within(region).getByRole('button', { name: 'Find and replace' }),
-      within(region).getByRole('button', { name: 'Test Bench' }),
+      within(region).getByRole('textbox', { name: 'Search World' }),
       within(region).getByRole('combobox', { name: 'Sample editor mode' }),
       within(region).getByRole('button', { name: 'Export World' }),
+      within(region).getByRole('button', { name: 'Test Bench' }),
       within(region).getByRole('button', { name: 'Save' }),
     ];
     order.slice(1).forEach((el, i) => {

@@ -354,23 +354,42 @@ const WorldEditorInner = ({
   }, []);
 
   // ── Find & replace ────────────────────────────────────────────────────────
+  const isMobile = useIsMobile();
+  // Mobile's floating bar. Desktop's docked field is always there, so the shortcuts never open this.
   const [findOpen, setFindOpen] = useState(false);
   const [findWithReplace, setFindWithReplace] = useState(false);
+  // Desktop: the docked field holds text, and each Ctrl+F focuses it.
+  const [dockedSearching, setDockedSearching] = useState(false);
+  const [dockedFocusSignal, setDockedFocusSignal] = useState(0);
+  const dockedSearchRef = useRef<HTMLDivElement>(null);
   // Overview's fields sit in the list pane and every other tab's in the detail pane, so the hit lookup
   // spans the whole editor and skips the two boxes that aren't world text (the find bar, the list filter).
   const editorRootRef = useRef<HTMLDivElement>(null);
   // Where focus was when Find opened, so closing it puts the author back in the field they were typing in.
   const findOpenerRef = useRef<HTMLElement | null>(null);
   const openFind = useCallback((withReplace: boolean) => {
-    // Only the first press records: Ctrl+H over an open bar would otherwise capture the bar's own field.
-    // The ref answers that, not `findOpen`, so the shortcut listener isn't re-bound on every open.
-    if (!findOpenerRef.current) {
-      const active = document.activeElement;
-      findOpenerRef.current = active instanceof HTMLElement ? active : null;
+    const active = document.activeElement;
+    const control = active instanceof HTMLElement && active !== document.body ? active : null;
+    if (!isMobile) {
+      // A shortcut pressed inside the search keeps the control recorded before it.
+      if (!dockedSearchRef.current?.contains(active)) findOpenerRef.current = control;
+      setDockedFocusSignal((n) => n + 1);
+      return;
     }
+    // Only the first press records: Ctrl+H over an open bar would otherwise capture the bar's own field.
+    if (!findOpenerRef.current) findOpenerRef.current = control;
     setFindWithReplace(withReplace);
     setFindOpen(true);
+  }, [isMobile]);
+  const endDockedSearch = useCallback(() => {
+    clearEditorMatch();
+    setFindField(null);
+    const opener = findOpenerRef.current;
+    findOpenerRef.current = null;
+    // Otherwise focus stays in the emptied field.
+    if (opener?.isConnected) opener.focus();
   }, []);
+  const dropFindOpener = useCallback(() => { findOpenerRef.current = null; }, []);
   const closeFind = useCallback(() => {
     setFindOpen(false);
     clearEditorMatch();
@@ -397,15 +416,17 @@ const WorldEditorInner = ({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [openFind]);
   // A hit on a tab this mode hides has nowhere to navigate to, so it isn't a hit.
+  // Collected only while a search runs, so an idle field costs nothing on world edits.
+  const searching = isMobile ? findOpen : dockedSearching;
   const searchTargets = useMemo(() => {
-    if (!findOpen) return [];
+    if (!searching) return [];
     const reachable = new Set<string>(visibleTabs.map((t) => t.value));
     return collectSearchTargets({
       worldOverview, stats, entities, entityGroups, locations, traits, traitGroups, dictionaries, placeholders, placeholderGroups,
       updateWorldOverview, updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait,
       updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     }).filter((t) => reachable.has(t.tab));
-  }, [findOpen, visibleTabs, worldOverview, stats, entities, entityGroups, locations, traits, traitGroups,
+  }, [searching, visibleTabs, worldOverview, stats, entities, entityGroups, locations, traits, traitGroups,
       dictionaries, placeholders, placeholderGroups, updateWorldOverview, updateStat, updateEntity, updateEntityGroup,
       updateLocation, updateTrait, updateTraitGroup, updateDictionary, updateDictionaryEntry, updatePlaceholder,
       updatePlaceholderGroup]);
@@ -457,7 +478,6 @@ const WorldEditorInner = ({
     cancelEditorReveals();
     clearEditorMatch();
   }, []);
-  const isMobile = useIsMobile();
   // An unmeasured card (0) has room: the rail never flashes collapsed before the first layout.
   const [listCardRef, listCardSize] = useElementSize();
   const railAutoCollapsed = listCardSize.width > 0 && listCardSize.width < RAIL_ROOM_PX;
@@ -1016,12 +1036,32 @@ const WorldEditorInner = ({
           {worldTitle}
         </>
       )}
-      center={<>{findButton}{benchButton}</>}
+      center={(
+        <div ref={dockedSearchRef} className="contents">
+          <EditorFindBar
+            layout="docked"
+            focusSignal={dockedFocusSignal}
+            onActiveChange={setDockedSearching}
+            onLeave={dropFindOpener}
+            fieldAttributes={targetAttribute('worldEditor', 'find-button')}
+            targets={searchTargets}
+            placeholders={placeholders}
+            placementLetters={placementLetters}
+            placeholderOwners={placeholderOwners}
+            placeholderGroups={placeholderGroups}
+            allowPlaceholderReplace={advanced}
+            onNavigate={navigateToMatch}
+            onAddPlaceholder={addPlaceholder}
+            onClose={endDockedSearch}
+          />
+        </div>
+      )}
       end={(
         <>
           {modeSelect}
           <Separator orientation="vertical" className="mx-1 h-5" />
           {worldActions}
+          {benchButton}
           {saveButton}
         </>
       )}
@@ -1113,7 +1153,7 @@ const WorldEditorInner = ({
         // so a keyboard author who closed Find can see where focus went.
         tabIndex={-1}
       >
-        {findOpen && (
+        {findOpen && isMobile && (
           <EditorFindBar
             targets={searchTargets}
             placeholders={placeholders}

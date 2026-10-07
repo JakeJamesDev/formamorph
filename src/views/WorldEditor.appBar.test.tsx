@@ -46,17 +46,17 @@ const inOrder = (elements: HTMLElement[]) => elements.every((el, i) => i === 0
 beforeEach(() => { localStorage.clear(); vi.mocked(downloadBlob).mockClear(); });
 
 describe('World Editor app bar (desktop)', () => {
-  it('reads back, title, world name, Find, Test Bench, the mode, the world actions and Save, with no ?', () => {
+  it('reads back, title, world name, Search World, the mode, the world actions, Test Bench and Save, with no ?', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple', { initialTab: 'stats' });
     act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
     const order = [
       button('Back'),
       screen.getByRole('heading', { name: 'World Editor' }),
       barName('Sedge Landing'),
-      button('Find and replace'),
-      button(/^Test Bench/),
+      screen.getByRole('textbox', { name: 'Search World' }),
       screen.getByRole('combobox', { name: 'Editor mode' }),
       button('Export World'),
+      button(/^Test Bench/),
       button('Save'),
     ];
     expect(inOrder(order)).toBe(true);
