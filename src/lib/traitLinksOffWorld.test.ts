@@ -38,7 +38,7 @@ const paladinLink: TraitLink = { id: 'l-paladin', originalId: 'w-paladin', kind:
 /** A persona linking Class (Paladin on), Smite, and Paladin again, with a vow gated on Albus's Smite. */
 const mira: Entity = {
   id: 'mira', name: 'Mira', persona: true,
-  traits: [{ ...trait('t-vow', 'Vow'), requires: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } }] }],
+  traits: [{ ...trait('t-vow', 'Vow'), requires: [{ all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } }] }] }],
   traitLinks: [classLink, smiteLink, paladinLink],
 };
 
@@ -110,7 +110,7 @@ describe.each(carriers)('links through %s', (_name, carry) => {
   it('rebind a named-scope requirement by bearer name', async () => {
     const adopted = adoptOwnedTraits(await carry(mira), elsewhere);
     expect(adopted.traits![0].requires).toEqual([
-      { kind: 'trait', id: 'n-smite', name: 'Smite', bearer: { kind: 'entity', id: 'n-albus', name: 'Albus' } },
+      { all: [{ kind: 'trait', id: 'n-smite', name: 'Smite', bearer: { kind: 'entity', id: 'n-albus', name: 'Albus' } }] },
     ]);
   });
 });

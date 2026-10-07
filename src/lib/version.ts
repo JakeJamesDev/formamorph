@@ -397,6 +397,55 @@ function migrateExclusiveGroups(world: Record<string, unknown>): void {
   }
 }
 
+/** Each flat requirement wrapped in its own Requirement Row. A row passes through, and an empty row is
+ *  dropped, since a row with no Condition cannot exist (Q6). */
+const wrapFlatRequirements = (list: unknown[]): unknown[] => list.flatMap((entry) => {
+  if (entry && typeof entry === 'object' && 'kind' in entry) return [{ all: [entry] }];
+  const all = entry && typeof entry === 'object' ? (entry as Record<string, unknown>).all : undefined;
+  return Array.isArray(all) && all.length === 0 ? [] : [entry];
+});
+
+const traitWithRows = (raw: unknown) => {
+  const requires = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).requires : undefined;
+  return Array.isArray(requires) ? { ...(raw as object), requires: wrapFlatRequirements(requires) } : raw;
+};
+
+const linkWithRows = (raw: unknown) => {
+  const overrides = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).overrides : undefined;
+  if (!overrides || typeof overrides !== 'object') return raw;
+  const side = (value: unknown) => (Array.isArray(value) ? wrapFlatRequirements(value) : value);
+  return {
+    ...(raw as object),
+    overrides: Object.fromEntries(Object.entries(overrides).map(([id, fields]) => {
+      const requires = fields && typeof fields === 'object' ? (fields as Record<string, unknown>).requires : undefined;
+      if (!requires || typeof requires !== 'object') return [id, fields];
+      const { value, blueprint } = requires as Record<string, unknown>;
+      return [id, { ...(fields as object), requires: { ...requires, value: side(value), blueprint: side(blueprint) } }];
+    })),
+  };
+};
+
+/** One entity with its owned traits and both sides of each link's `requires` override in Requirement Rows.
+ *  A library entity never passes through `migrateWorld`, so its read boundary calls this too. Idempotent. */
+export function migrateEntityRequirementRows<T>(entity: T): T {
+  if (!entity || typeof entity !== 'object') return entity;
+  const { traits, traitLinks } = entity as Record<string, unknown>;
+  return {
+    ...entity,
+    ...(Array.isArray(traits) ? { traits: traits.map(traitWithRows) } : {}),
+    ...(Array.isArray(traitLinks) ? { traitLinks: traitLinks.map(linkWithRows) } : {}),
+  };
+}
+
+/**
+ * Turn the shipped flat `requires` list into Requirement Rows, one row per entry, on world traits and every
+ * entity. Not version-gated: 3.2.x worlds carry the flat list under the current version. Idempotent.
+ */
+function migrateRequirementRows(world: Record<string, unknown>): void {
+  if (Array.isArray(world.traits)) world.traits = world.traits.map(traitWithRows);
+  if (Array.isArray(world.entities)) world.entities = world.entities.map(migrateEntityRequirementRows);
+}
+
 /** Remove every entity link whose original sits outside Blueprints, overrides and all: only Blueprints items
  *  are linked. Not version-gated, since 3.1.0 worlds carry such links under the current version. */
 function dropRootTraitLinks(world: Record<string, unknown>): void {
@@ -469,7 +518,7 @@ function migrateStatCode(world: Record<string, unknown>): void {
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
- * opening-cue move, the player-setting split, the content-link guard and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * opening-cue move, the player-setting split, the requirement-row wrap, the content-link guard and the stat-code route rewrite run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
  * and renames v1.2 description keys on entities/locations/traits to the audience-based keys. Remaining field defaults are left to `loadWorldData`. Add further 2.0 → 2.x steps here when the shape changes — a version
@@ -489,6 +538,7 @@ export function migrateWorld(raw: unknown): World {
   migrateOpeningCue(world);
   migratePlayerSetting(world);
   migrateExclusiveGroups(world);
+  migrateRequirementRows(world);
   dropRootTraitLinks(world);
   normalizeContentLinks(world);
   migrateStatCode(world);

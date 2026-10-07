@@ -120,7 +120,7 @@ describe('planWriteBack', () => {
   });
 
   describe('an owned copy with owned traits', () => {
-    const oath = (requires: TraitRequirement[]): Entity['traits'] => [{ id: 't-oath', name: 'Oath', statChanges: [], requires }];
+    const oath = (requires: TraitRequirement[]): Entity['traits'] => [{ id: 't-oath', name: 'Oath', statChanges: [], requires: requires.map((r) => ({ all: [r] })) }];
     const item = { ...owned, data: person({ traits: oath([
       { kind: 'trait', id: 'w-paladin', name: 'Paladin' }, { kind: 'playingAs', id: SELF_ENTITY, name: 'Wren' },
     ]) }) };
@@ -356,7 +356,7 @@ describe('syncWorldContent', () => {
 
   it("binds an updated entity's owned trait requirements to the world, and keeps its tree placement", () => {
     const data = person({
-      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }],
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }] }],
     });
     const copy = person({ link: { libraryId: 'lib-9', sourceRevision: 'r1' }, traitPlacement: { groupId: 'g-cast', order: 2 } });
     const world = {
@@ -364,7 +364,7 @@ describe('syncWorldContent', () => {
       traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }], traitGroups: [{ id: 'g-cast', name: 'Cast', parentId: null }],
     };
     const result = syncWorldContent(world, [{ id: 'lib-9', name: 'Wren', revision: 'r2', owned: true, data }]);
-    expect(result.entities[0].traits![0].requires).toEqual([{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }]);
+    expect(result.entities[0].traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }] }]);
     expect(result.entities[0].traitPlacement).toEqual({ groupId: 'g-cast', order: 2 });
   });
 

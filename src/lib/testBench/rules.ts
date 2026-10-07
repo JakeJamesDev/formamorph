@@ -50,7 +50,7 @@ import {
   type BearerWorld,
 } from '@/lib/bearers';
 import {
-  WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
+  WORLD_OWNER, alwaysOnOverMax, gateConditions, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
 } from '@/lib/traitGates';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { canOwnStatTraits } from '@/lib/traitTree';
@@ -1906,8 +1906,9 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   const unresolved = new Map<string, string[]>();
   for (const [ownerId, states] of gateStates(editorGateInput(bearerWorldOf(world)))) {
     for (const [id, state] of states) {
-      if (ownerId === WORLD_OWNER) requirementTexts.set(id, state.requirements.map((r) => label(r.text)));
-      const dead = state.requirements.filter((r) => r.unresolved).map((r) => label(r.text));
+      const conditions = gateConditions(state);
+      if (ownerId === WORLD_OWNER) requirementTexts.set(id, conditions.map((c) => label(c.text)));
+      const dead = conditions.filter((c) => c.unresolved).map((c) => label(c.text));
       if (dead.length && !unresolved.has(id)) unresolved.set(id, dead);
     }
   }
@@ -1932,13 +1933,14 @@ const gateReportOf = (world: RuleWorld): GateReport => {
         const bearer = pass.bearers.get(r.ownerId);
         const link = bearer?.linkOf.get(r.traitId);
         states ??= gateStates({ ...pass.gate, active: {} });
+        const gate = gateOf(states, r.ownerId, r.traitId);
         return {
           ownerId: r.ownerId,
           traitId: r.traitId,
           traitName: bearer?.traits.find((t) => t.id === r.traitId)?.name ?? '',
           bearer: bearerName(bearer),
           ...(link ? { link } : {}),
-          requirements: (gateOf(states, r.ownerId, r.traitId)?.requirements ?? []).map((req) => label(req.text)),
+          requirements: gate ? gateConditions(gate).map((c) => label(c.text)) : [],
         };
       }))
       .filter((set) => set.length > 0);

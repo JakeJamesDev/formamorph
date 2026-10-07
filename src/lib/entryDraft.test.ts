@@ -67,8 +67,8 @@ describe('owned trait picks in the draft', () => {
   const ash: Entity = {
     id: 'ash', name: 'Ash', persona: true,
     traits: [
-      trait('tamed', { isDefault: true }), trait('scarred'), trait('guard', { requires: [{ kind: 'playingAs', id: 'ash' }] }),
-      trait('crest', { isDefault: true, requires: [{ kind: 'playingAs', id: 'ash' }] }),
+      trait('tamed', { isDefault: true }), trait('scarred'), trait('guard', { requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }] }),
+      trait('crest', { isDefault: true, requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }] }),
     ],
   };
   const bob: Entity = { id: 'bob', name: 'Bob', persona: true };
@@ -147,7 +147,7 @@ describe('library entities in the cast', () => {
   it("leaves a library default off when the player's trait it requires is not picked", () => {
     const knight: Entity = {
       id: 'knight', name: 'Knight',
-      traits: [trait('crest', { isDefault: true, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] })],
+      traits: [trait('crest', { isDefault: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }] })],
     };
     const w: EntryTraitWorld = { traits: [trait('paladin', { isDefault: true })], traitGroups: [], entities: [], library: [knight] };
     expect(withLibraryDefaults({ ...emptyEntryDraft(), traitIds: ['paladin'] }, w).ownedTraitIds.knight).toEqual(['crest']);

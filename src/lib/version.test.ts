@@ -883,6 +883,60 @@ describe('migrateWorld — exclusive groups to pick counts', () => {
   });
 });
 
+describe('migrateWorld — flat requirements to rows', () => {
+  const paladin = { kind: 'trait', id: 'paladin', name: 'Paladin' };
+  const orders = { kind: 'group', id: 'orders', bearer: { kind: 'you' } };
+  const persona = { kind: 'playingAs', id: 'aldric' };
+  // A 3.2.x world: flat lists on a world trait, an owned trait and both sides of a link override.
+  const raw = () => ({
+    version: APP_VERSION,
+    traits: [
+      { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'bp' },
+      { id: 'smite', name: 'Smite', statChanges: [], groupId: 'bp', requires: [paladin, orders] },
+      { id: 'brave', name: 'Brave', statChanges: [] },
+    ],
+    traitGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    entities: [{
+      id: 'mira', name: 'Mira',
+      traits: [{ id: 'vow', name: 'Vow', statChanges: [], requires: [persona] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { requires: { value: [persona], blueprint: [paladin, orders] }, isDefault: { value: true, blueprint: false } } },
+      }],
+    }],
+  });
+
+  it('wraps each flat entry in its own row on world traits', () => {
+    const world = migrateWorld(raw());
+    expect(world.traits[1].requires).toEqual([{ all: [paladin] }, { all: [orders] }]);
+    expect(world.traits[2].requires).toBeUndefined();
+  });
+
+  it('wraps an entity-owned trait and both sides of a link override', () => {
+    const [mira] = migrateWorld(raw()).entities;
+    expect(mira.traits![0].requires).toEqual([{ all: [persona] }]);
+    expect(mira.traitLinks![0].overrides!.smite).toEqual({
+      requires: { value: [{ all: [persona] }], blueprint: [{ all: [paladin] }, { all: [orders] }] },
+      isDefault: { value: true, blueprint: false },
+    });
+  });
+
+  it('leaves rows alone, so a second pass changes nothing', () => {
+    const once = migrateWorld(raw());
+    const twice = migrateWorld(JSON.parse(JSON.stringify(once)));
+    expect(twice.traits).toEqual(once.traits);
+    expect(twice.entities).toEqual(once.entities);
+    const rows = [{ all: [paladin, orders] }, { all: [persona] }];
+    expect(migrateWorld({ version: APP_VERSION, traits: [{ id: 't', name: 'T', statChanges: [], requires: rows }] }).traits[0].requires).toEqual(rows);
+  });
+
+  it('drops an empty row, which could only come from a hand-edited file', () => {
+    const requires = [{ all: [] }, { all: [persona] }];
+    expect(migrateWorld({ version: APP_VERSION, traits: [{ id: 't', name: 'T', statChanges: [], requires }] }).traits[0].requires)
+      .toEqual([{ all: [persona] }]);
+  });
+});
+
 describe('migrateWorld — links only into Blueprints', () => {
   const link = (id: string, originalId: string, kind: 'trait' | 'group' = 'trait') =>
     ({ id, originalId, kind, originalName: originalId, groupId: null, order: 0, overrides: { [originalId]: { isDefault: { value: true, blueprint: false } } } });

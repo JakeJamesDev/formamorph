@@ -44,6 +44,23 @@ describe('EntityStorageService', () => {
     expect((await EntityStorageService.getEntityData('e1')).name).toBe('Mara');
   });
 
+  it('reads a 3.2.x character’s flat trait gates as one row per entry, owned traits and link overrides', async () => {
+    const paladin = { kind: 'trait' as const, id: 'w-paladin', name: 'Paladin' };
+    // The flat list is what 3.2.x stored; the record type no longer allows it.
+    const flat = {
+      id: 'e1', name: 'Mara',
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [paladin, { kind: 'playingAs', id: 'aldric' }] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { requires: { value: [paladin], blueprint: [] } } },
+      }],
+    } as unknown as StoredEntityRecord['data'];
+    await EntityStorageService.storeEntity({ id: 'e1', name: 'Mara', data: flat });
+    const read = await EntityStorageService.getEntityData('e1');
+    expect(read.traits![0].requires).toEqual([{ all: [paladin] }, { all: [{ kind: 'playingAs', id: 'aldric' }] }]);
+    expect(read.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [paladin] }], blueprint: [] });
+  });
+
   it('leaves the community link unset on a hand-made character', async () => {
     await EntityStorageService.storeEntity(record('e1'));
     const stored = await readRaw('e1');

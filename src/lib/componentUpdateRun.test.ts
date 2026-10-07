@@ -132,11 +132,11 @@ describe('applyUpdate', () => {
     const [row] = await affectedCopies(source);
 
     await applyUpdate(row, 'update', source, sourceData({
-      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'elsewhere', name: 'Paladin' }] }],
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'elsewhere', name: 'Paladin' }] }] }],
     }));
 
     const [written] = await storedEntities('w-1');
-    expect(written.traits![0].requires).toEqual([{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }]);
+    expect(written.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }]);
   });
 
   it('leaves the record every wrapper field it had', async () => {

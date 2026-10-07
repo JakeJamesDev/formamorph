@@ -299,8 +299,8 @@ describe('the traits tab keeps how the player left it', () => {
 describe('a gated trait in play', () => {
   const TRAITS = [
     T('t-paladin', 'Paladin'),
-    T('t-plate', 'Plate Armor', { requires: [{ kind: 'trait', id: 't-paladin' }] }),
-    T('t-crown', 'Royal Crown', { requires: [{ kind: 'playingAs', id: 'e-aldric' }] }),
+    T('t-plate', 'Plate Armor', { requires: [{ all: [{ kind: 'trait', id: 't-paladin' }] }] }),
+    T('t-crown', 'Royal Crown', { requires: [{ all: [{ kind: 'playingAs', id: 'e-aldric' }] }] }),
   ];
   const aldric = { id: 'e-aldric', name: 'Sir Aldric', persona: true };
 
@@ -348,7 +348,7 @@ describe('entity nodes in the traits tab', () => {
     id: 'e-ash', name: 'Ash', persona: true,
     traits: [
       T('t-tamed', 'Tamed'), T('t-wild', 'Wild'), T('t-gruff', 'Gruff', { playerToggle: false }),
-      T('t-loyal', 'Loyal', { requires: [{ kind: 'trait' as const, id: 't-paladin' }] }),
+      T('t-loyal', 'Loyal', { requires: [{ all: [{ kind: 'trait' as const, id: 't-paladin' }] }] }),
     ],
   };
   const PALADIN = T('t-paladin', 'Paladin');
@@ -535,7 +535,7 @@ describe('an Always On trait', () => {
   const GROUPS = [G('g-oath', 'Oath', { maxPicks: 1 })];
   const TRAITS = [
     T('t-ring', 'Cursed Ring'),
-    T('t-curse', 'Curse', { mode: 'alwaysOn', requires: [{ kind: 'trait', id: 't-ring' }] }),
+    T('t-curse', 'Curse', { mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 't-ring' }] }] }),
     T('t-sworn', 'Sworn', { mode: 'alwaysOn', groupId: 'g-oath' }),
     T('t-free', 'Free', { groupId: 'g-oath' }),
   ];
@@ -575,9 +575,9 @@ describe('a Hidden trait', () => {
     T('t-bond', 'Blood Bond', { mode: 'hidden', groupId: 'g-oath' }),
     T('t-free', 'Free', { groupId: 'g-oath' }),
     T('t-omen', 'Omen', { mode: 'hidden', groupId: 'g-secret' }),
-    T('t-rite', 'Rite', { requires: [{ kind: 'trait', id: 't-lost' }, { kind: 'trait', id: 't-paladin' }] }),
-    T('t-lost', 'Lost Name', { mode: 'hidden', requires: [{ kind: 'trait', id: 't-paladin' }] }),
-    T('t-veil', 'Veil', { requires: [{ kind: 'trait', id: 't-lost' }] }),
+    T('t-rite', 'Rite', { requires: [{ all: [{ kind: 'trait', id: 't-lost' }] }, { all: [{ kind: 'trait', id: 't-paladin' }] }] }),
+    T('t-lost', 'Lost Name', { mode: 'hidden', requires: [{ all: [{ kind: 'trait', id: 't-paladin' }] }] }),
+    T('t-veil', 'Veil', { requires: [{ all: [{ kind: 'trait', id: 't-lost' }] }] }),
   ];
 
   it('never shows while active, in its row, its section or the active summary', () => {

@@ -34,9 +34,9 @@ const WORLD: World = benchEditorWorld({
   traits: [
     { id: 't-paladin', name: 'Paladin', groupId: 'g-class', statChanges: [] },
     { id: 't-rogue', name: 'Rogue', groupId: 'g-class', statChanges: [] },
-    { id: 't-plate', name: 'Plate Armor', statChanges: [], requires: [{ kind: 'trait', id: 't-paladin' }] },
+    { id: 't-plate', name: 'Plate Armor', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 't-paladin' }] }] },
     { id: 't-loose', name: 'Lamp-Lit', statChanges: [] },
-    { id: 't-mark', name: 'Guild Mark', statChanges: [], requires: [{ kind: 'trait', id: 'gone', name: 'Thief' }] },
+    { id: 't-mark', name: 'Guild Mark', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'gone', name: 'Thief' }] }] },
   ],
 } as Partial<World>);
 
@@ -66,7 +66,7 @@ describe('the Requires field', () => {
   it('adds a requirement from the picker, which lists each section with where its target lives', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Lamp-Lit');
-    expect(within(requiresField()).getByText('Available when any one of these holds')).toBeInTheDocument();
+    expect(within(requiresField()).queryByText(/any one of these/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
 
     const list = await screen.findByRole('listbox');
@@ -81,16 +81,16 @@ describe('the Requires field', () => {
     // A target asks which bearer next; the same bearer is the plain requirement.
     fireEvent.click(paladin);
     fireEvent.click(screen.getByRole('option', { name: /^Same Bearer/ }));
-    expect(traitRequires(ctx, 't-loose')).toEqual([{ kind: 'trait', id: 't-paladin' }]);
+    expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
     expect(within(requiresField()).getByRole('button', { name: 'Paladin' })).toBeInTheDocument();
   });
 
-  it('joins chips with "or" and filters the picker by name', async () => {
+  it('adds another way as a row joined by "or", and filters the picker by name', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Plate Armor');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
     const list = await screen.findByRole('listbox');
-    // A requirement already listed stays in place; its bearer reads disabled on the next page.
+    // A one-chip row already listed stays in place; its bearer reads disabled on the next page.
     fireEvent.click(within(list).getByRole('option', { name: /^Paladin/ }));
     expect(screen.getByRole('option', { name: /^Same Bearer/ })).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Back to targets' }));
@@ -103,7 +103,7 @@ describe('the Requires field', () => {
     fireEvent.click(screen.getByRole('option', { name: /any Class/ }));
     fireEvent.click(screen.getByRole('option', { name: /^Same Bearer/ }));
 
-    expect(traitRequires(ctx, 't-plate')).toEqual([{ kind: 'trait', id: 't-paladin' }, { kind: 'group', id: 'g-class' }]);
+    expect(traitRequires(ctx, 't-plate')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }, { all: [{ kind: 'group', id: 'g-class' }] }]);
     expect(within(requiresField()).getByText('or')).toBeInTheDocument();
   });
 
@@ -126,7 +126,7 @@ describe('the Requires field', () => {
     const world = benchEditorWorld({
       ...WORLD,
       traits: WORLD.traits.map((t) => (t.id === 't-plate'
-        ? { ...t, requires: [{ kind: 'group', id: 'g-class' }, { kind: 'playingAs', id: 'aldric' }] }
+        ? { ...t, requires: [{ all: [{ kind: 'group', id: 'g-class' }] }, { all: [{ kind: 'playingAs', id: 'aldric' }] }] }
         : t)),
     } as Partial<World>);
     renderWorldEditorBench(world, 'advanced');
@@ -173,7 +173,7 @@ describe('gate marks on the Traits tree', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     act(() => { ctx().removeTrait('t-paladin'); });
-    expect(traitRequires(ctx, 't-plate')).toEqual([{ kind: 'trait', id: 't-paladin' }]);
+    expect(traitRequires(ctx, 't-plate')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
     const row = treeRow('Plate Armor');
     expect(row.querySelector('.lucide-lock')).not.toBeNull();
     expect(within(row).getByText('Plate Armor').closest('.text-destructive')).not.toBeNull();

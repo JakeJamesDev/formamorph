@@ -352,7 +352,7 @@ describe('the retained entry draft', () => {
         id: 'wolf', name: 'Wolf',
         traits: [
           { id: 'loyal', name: 'Loyal', isDefault: true, statChanges: [] },
-          { id: 'oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'elsewhere', name: 'Extra trait' }] },
+          { id: 'oath', name: 'Oath', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'elsewhere', name: 'Extra trait' }] }] },
         ],
       },
     });
@@ -370,7 +370,7 @@ describe('the retained entry draft', () => {
     const copy = (onStartGame.mock.calls[0][5] as { id: string; name: string; traits: { requires?: { id: string }[] }[] }[])
       .find((e) => e.name === 'Wolf')!;
     expect(copy.id).not.toBe('wolf');
-    expect(copy.traits[1].requires).toEqual([{ kind: 'trait', id: 'extra', name: 'Extra trait' }]);
+    expect(copy.traits[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'extra', name: 'Extra trait' }] }]);
     expect(onStartGame.mock.calls[0][7]).toEqual({ [copy.id]: ['loyal'] });
   });
 
@@ -953,7 +953,7 @@ describe("an entity's owned traits at world entry", () => {
     record.data.entities = [
       {
         id: 'ash', name: 'Ash', playerDescription: '', aiDescription: '', aiSummary: '', persona: true,
-        traits: [{ id: 'guard', name: 'Royal Guard', statChanges: [], requires: [{ kind: 'playingAs', id: 'ash' }] }],
+        traits: [{ id: 'guard', name: 'Royal Guard', statChanges: [], requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }] }],
       },
       { id: 'bob', name: 'Bob', playerDescription: '', aiDescription: '', aiSummary: '', persona: true },
     ];

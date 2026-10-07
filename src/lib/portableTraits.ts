@@ -5,6 +5,7 @@ import { linksInTreeOrder, originalOf } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
+import { mapConditions } from './requirementRows';
 
 /** Off-world, a "playing as" or a named bearer on the entity itself names it by this id, since each copy has
  *  its own id. */
@@ -67,7 +68,7 @@ const withBearer = (r: TraitRequirement, map: (b: EntityBearer) => RequirementBe
   (r.kind !== 'playingAs' && r.bearer?.kind === 'entity' ? { ...r, bearer: map(r.bearer) } : r);
 
 const withRequires = (entity: Entity, map: (r: TraitRequirement) => TraitRequirement): Trait[] | undefined =>
-  entity.traits?.map((t) => (t.requires ? { ...t, requires: t.requires.map(map) } : t));
+  entity.traits?.map((t) => (t.requires ? { ...t, requires: mapConditions(t.requires, map) } : t));
 
 /** The entity with its links replaced; no links are stored as absent. */
 function withLinks<T extends Portable>(entity: T, links: TraitLink[] | undefined): T {

@@ -56,7 +56,7 @@ const WORLD: World = benchEditorWorld({
         { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], order: 0 },
         {
           id: 't-wild', name: 'Wild', groupId: 'g-bond', statChanges: [], order: 1,
-          requires: [{ kind: 'trait', id: 't-paladin' }, { kind: 'trait', id: 't-tamed' }, { kind: 'trait', id: 't-tamer' }],
+          requires: [{ all: [{ kind: 'trait', id: 't-paladin' }] }, { all: [{ kind: 'trait', id: 't-tamed' }] }, { all: [{ kind: 'trait', id: 't-tamer' }] }],
         },
         { id: 't-pack', name: 'Pack Sense', groupId: null, statChanges: [], order: 2 },
       ],

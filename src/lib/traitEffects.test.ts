@@ -265,14 +265,14 @@ describe('defaultPicks', () => {
     const traits = [
       T('x', { groupId: 'two', order: 0, isDefault: true }), T('y', { groupId: 'two', order: 1, isDefault: true }),
       T('z', { groupId: 'two', order: 2, mode: 'alwaysOn' }),
-      T('curse', { mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'x' }] }),
-      T('fixed', { mode: 'alwaysOn', isDefault: true, requires: [{ kind: 'trait', id: 'y' }] }),
+      T('curse', { mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'x' }] }] }),
+      T('fixed', { mode: 'alwaysOn', isDefault: true, requires: [{ all: [{ kind: 'trait', id: 'y' }] }] }),
     ];
     expect(defaultPicks(traits, groups)).toEqual(['x', 'z']);
   });
 
   it('takes the active Always On traits a caller settled', () => {
-    const traits = [T('x', { groupId: 'two', isDefault: true }), T('curse', { groupId: 'two', mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'x' }] })];
+    const traits = [T('x', { groupId: 'two', isDefault: true }), T('curse', { groupId: 'two', mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'x' }] }] })];
     expect(defaultPicks(traits, groups, ['curse'])).toEqual(['x', 'curse']);
   });
 });

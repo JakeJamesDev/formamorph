@@ -45,7 +45,7 @@ const world = (extra: Partial<BearerWorld> = {}): BearerWorld => ({
     trait('brave', { name: 'Brave', groupId: null, order: 0 }),
     trait('paladin', { name: 'Paladin', groupId: 'classes', order: 0, isDefault: true }),
     trait('wizard', { name: 'Wizard', groupId: 'classes', order: 1 }),
-    trait('smite', { name: 'Smite', groupId: 'blueprints', order: 1, requires: [{ kind: 'trait', id: 'paladin' }] }),
+    trait('smite', { name: 'Smite', groupId: 'blueprints', order: 1, requires: [{ all: [{ kind: 'trait', id: 'paladin' }] }] }),
   ],
   traitGroups: [
     group('oaths', null, 1, { name: 'Oaths' }),
@@ -136,7 +136,7 @@ describe('resolveBearers: links', () => {
   it("carries the link's other overrides on the effective traits: requirements, toggle and stat changes", () => {
     const overrides = {
       paladin: {
-        requires: { value: [{ kind: 'trait' as const, id: 'brave' }], blueprint: [] },
+        requires: { value: [{ all: [{ kind: 'trait' as const, id: 'brave' }] }], blueprint: [] },
         playerToggle: { value: true, blueprint: false },
         statChanges: { value: [{ statId: 'zeal', value: 2, type: 'min' as const }], blueprint: [] },
       },
@@ -144,7 +144,7 @@ describe('resolveBearers: links', () => {
     const b = bearer(world({ entities: [{ ...albus, traitLinks: [{ ...albus.traitLinks![0], overrides }] }] }), 'albus');
     expect(b.traits.find((t) => t.id === 'paladin')).toMatchObject({
       name: 'Paladin', groupId: 'classes', isDefault: true,
-      requires: [{ kind: 'trait', id: 'brave' }], playerToggle: true, statChanges: [{ statId: 'zeal', value: 2, type: 'min' }],
+      requires: [{ all: [{ kind: 'trait', id: 'brave' }] }], playerToggle: true, statChanges: [{ statId: 'zeal', value: 2, type: 'min' }],
     });
     const wizard = b.traits.find((t) => t.id === 'wizard')!;
     expect(wizard.playerToggle).toBeFalsy();
@@ -283,9 +283,12 @@ describe('resolveBearers: the player bearer', () => {
 
 describe('resolveBearers: a requirement never names yourself', () => {
   const albusPaladin = { kind: 'trait' as const, id: 'paladin', bearer: { kind: 'entity' as const, id: 'albus' } };
-  const squire = trait('squire', { name: 'Squire to Albus', groupId: null, order: 1, requires: [albusPaladin] });
-  const sworn = trait('sworn', { name: 'Sworn', groupId: null, order: 2, requires: [albusPaladin, { kind: 'trait', id: 'brave' }] });
-  const w = world({ traits: [...world().traits, squire, sworn] });
+  const brave = { kind: 'trait' as const, id: 'brave' };
+  const squire = trait('squire', { name: 'Squire to Albus', groupId: null, order: 1, requires: [{ all: [albusPaladin] }] });
+  const sworn = trait('sworn', { name: 'Sworn', groupId: null, order: 2, requires: [{ all: [albusPaladin] }, { all: [brave] }] });
+  // One row, so naming Albus closes the only way in rather than loosening it to Brave alone (Q23).
+  const pledged = trait('pledged', { name: 'Pledged', groupId: null, order: 3, requires: [{ all: [brave, albusPaladin] }] });
+  const w = world({ traits: [...world().traits, squire, sworn, pledged] });
 
   it('offers a root trait gated on Albus to everyone but Albus', () => {
     expect(ids(bearer(w, PLAYER_BEARER).traits)).toContain('squire');
@@ -293,20 +296,25 @@ describe('resolveBearers: a requirement never names yourself', () => {
     expect(ids(bearer(w, PLAYER_BEARER, AS_ALBUS).traits)).not.toContain('squire');
   });
 
-  it('keeps a trait with another way in, minus the requirement that names you', () => {
+  it('keeps a trait with another way in, minus the row that names you', () => {
     const asAlbus = bearer(w, PLAYER_BEARER, AS_ALBUS).traits.find((t) => t.id === 'sworn');
-    expect(asAlbus?.requires).toEqual([{ kind: 'trait', id: 'brave' }]);
+    expect(asAlbus?.requires).toEqual([{ all: [brave] }]);
     expect(bearer(w, PLAYER_BEARER).traits.find((t) => t.id === 'sworn')?.requires).toHaveLength(2);
   });
 
+  it('drops a whole row that names you, so a trait with no other row is not offered', () => {
+    expect(ids(bearer(w, PLAYER_BEARER, AS_ALBUS).traits)).not.toContain('pledged');
+    expect(bearer(w, PLAYER_BEARER).traits.find((t) => t.id === 'pledged')?.requires).toEqual([{ all: [brave, albusPaladin] }]);
+  });
+
   it('leaves the played entity’s own tree alone, so Albus can gate on himself there', () => {
-    const oath = trait('oath', { name: 'Oath', groupId: null, order: 0, requires: [albusPaladin] });
+    const oath = trait('oath', { name: 'Oath', groupId: null, order: 0, requires: [{ all: [albusPaladin] }] });
     const own = world({ entities: [{ ...albus, traits: [oath] }, mira, custom] });
-    expect(bearer(own, 'albus', AS_ALBUS).traits.find((t) => t.id === 'oath')?.requires).toEqual([albusPaladin]);
+    expect(bearer(own, 'albus', AS_ALBUS).traits.find((t) => t.id === 'oath')?.requires).toEqual([{ all: [albusPaladin] }]);
   });
 
   it('applies to the Custom Persona entity’s links under a library persona, and gates the player’s owner the same way', () => {
-    const vow = trait('vow-t', { name: 'Vow', groupId: 'blueprints', order: 2, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'lib' } }] });
+    const vow = trait('vow-t', { name: 'Vow', groupId: 'blueprints', order: 2, requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'lib' } }] }] });
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
     const linkedVow = world({
       traits: [...world().traits, vow],
@@ -426,10 +434,10 @@ describe('resolveBearers: the gate input', () => {
 
   it('names a requirement’s target from the originals when no present bearer holds it', () => {
     // Smite sits under Blueprints and no bearer links it under Albus, yet the gate still reads its name.
-    const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ kind: 'trait', id: 'smite', bearer: { kind: 'you' } }] })] };
+    const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ all: [{ kind: 'trait', id: 'smite', bearer: { kind: 'you' } }] }] })] };
     const r = resolveBearers(world({ entities: [albus, gated] }), AS_ALBUS);
-    expect(gateOf(gateStates({ ...r.gate, active: {} }), 'mira', 'vow')?.requirements).toEqual([
-      { text: 'You: Smite', holds: false, unresolved: false, hidden: false },
+    expect(gateOf(gateStates({ ...r.gate, active: {} }), 'mira', 'vow')?.rows).toEqual([
+      { holds: false, conditions: [{ text: 'You: Smite', holds: false, unresolved: false, hidden: false }] },
     ]);
   });
 
@@ -452,7 +460,9 @@ describe('editorGateInput', () => {
     expect(ids(input.owners[4].traits)).toEqual(['smite']);
     expect(input.active).toEqual({});
     expect(input.persona).toEqual(NONE);
-    expect(gateOf(gateStates(input), PLAYER_BEARER, 'smite')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false, hidden: false }]);
+    expect(gateOf(gateStates(input), PLAYER_BEARER, 'smite')?.rows).toEqual([
+      { holds: false, conditions: [{ text: 'Paladin', holds: false, unresolved: false, hidden: false }] },
+    ]);
   });
 
   it('reads an entity placement under Blueprints as the top level', () => {

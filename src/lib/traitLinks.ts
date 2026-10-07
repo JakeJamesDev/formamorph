@@ -9,6 +9,7 @@ import {
 } from './blueprints';
 import { blueprintItemIds, blueprintsGroup, buildTraitTree, canOwnStatTraits, flattenTraitTree, groupsBelow, hasStatEffects, isBlueprintItem, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
+import { mapConditions } from './requirementRows';
 
 type WorldTraitLists = Pick<BearerWorld, 'traits' | 'traitGroups'>;
 
@@ -129,7 +130,7 @@ export function detachLink(world: WorldTraitLists, entity: Entity, linkId: strin
       order: isOriginal(t.id) ? link.order ?? 0 : t.order,
       statChanges: keepStats ? rest.statChanges : [],
       ...(keepStats && statToggles ? { statToggles } : {}),
-      ...(rest.requires ? { requires: rest.requires.map((r) => (r.kind === 'trait' && ids.has(r.id) ? { ...r, id: ids.get(r.id)! } : r)) } : {}),
+      ...(rest.requires ? { requires: mapConditions(rest.requires, (r) => (r.kind === 'trait' && ids.has(r.id) ? { ...r, id: ids.get(r.id)! } : r)) } : {}),
     };
   });
   const groups = items.groups.map((g): TraitGroup => ({

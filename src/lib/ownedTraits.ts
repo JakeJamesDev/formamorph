@@ -4,6 +4,7 @@ import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
 import { WORLD_OWNER, type GateOwner } from './traitGates';
+import { mapConditions } from './requirementRows';
 import { effectivePlacement, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 
 const traitsOf = (entity: Entity): Trait[] => entity.traits ?? [];
@@ -90,7 +91,7 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
       ...t,
       id: remap(t.id)!,
       groupId: remap(t.groupId),
-      ...(t.requires ? { requires: t.requires.map(remapRequirement) } : {}),
+      ...(t.requires ? { requires: mapConditions(t.requires, remapRequirement) } : {}),
     })),
     groupsOf(entity).map((g) => ({ ...g, id: remap(g.id)!, parentId: remap(g.parentId) ?? null })),
   );

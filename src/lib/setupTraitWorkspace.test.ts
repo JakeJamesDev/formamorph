@@ -78,7 +78,7 @@ describe('buildTraitWorkspace with rows the player does not see', () => {
     trait('paladin', 'class'),
     { ...trait('bond', 'class'), mode: 'hidden' },
     { ...trait('veil', 'secret'), mode: 'hidden' },
-    { ...trait('curse', 'omens'), mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'paladin' }] },
+    { ...trait('curse', 'omens'), mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'paladin' }] }] },
   ];
   const shows = (picks: string[]) => (t: Trait) => isShown(t, picks);
 
@@ -95,7 +95,7 @@ describe('buildTraitWorkspace with rows the player does not see', () => {
 
   it("reads an entity's rows under that entity's picks", () => {
     const wolf: Entity = {
-      id: 'wolf', name: 'Wolf', traits: [{ ...trait('howl'), mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'x' }] }],
+      id: 'wolf', name: 'Wolf', traits: [{ ...trait('howl'), mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'x' }] }] }],
     };
     const tree = bearerTraitTree({ traits: [], traitGroups: [], entities: [wolf] }, undefined);
     const build = (picks: Record<string, string[]>) => buildTraitWorkspace(

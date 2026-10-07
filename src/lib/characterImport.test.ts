@@ -114,7 +114,7 @@ describe('Save to Library with owned traits', () => {
       traits: [
         { id: 't-tamed', name: 'Tamed', statChanges: [] },
         { id: 't-oath', name: 'Oath', statChanges: [], requires: [
-          { kind: 'trait', id: 't-tamed' }, { kind: 'group', id: 'g-class' }, { kind: 'playingAs', id: 'ash' },
+          { all: [{ kind: 'trait', id: 't-tamed' }] }, { all: [{ kind: 'group', id: 'g-class' }] }, { all: [{ kind: 'playingAs', id: 'ash' }] },
         ] },
       ],
     };
@@ -123,9 +123,9 @@ describe('Save to Library with owned traits', () => {
     const stored = await EntityStorageService.getEntityData(source.id);
     expect(stored).not.toHaveProperty('traitPlacement');
     expect(stored.traits![1].requires).toEqual([
-      { kind: 'trait', id: 't-tamed' },
-      { kind: 'group', id: 'g-class', name: 'Class' },
-      { kind: 'playingAs', id: SELF_ENTITY, name: 'Ash' },
+      { all: [{ kind: 'trait', id: 't-tamed' }] },
+      { all: [{ kind: 'group', id: 'g-class', name: 'Class' }] },
+      { all: [{ kind: 'playingAs', id: SELF_ENTITY, name: 'Ash' }] },
     ]);
   });
 });

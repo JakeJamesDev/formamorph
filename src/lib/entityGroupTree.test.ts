@@ -212,11 +212,11 @@ describe('duplicateEntityNode with owned traits', () => {
     const owner: Entity = {
       id: 'ash', name: 'Ash',
       traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null }],
-      traits: [{ id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], requires: [{ kind: 'playingAs', id: 'ash' }] }],
+      traits: [{ id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }] }],
     };
     const { entities, newId } = duplicateEntityNode([], [owner], 'ash');
     const copy = entities.find((e) => e.id === newId)!;
-    expect(copy.traits![0].requires).toEqual([{ kind: 'playingAs', id: newId }]);
+    expect(copy.traits![0].requires).toEqual([{ all: [{ kind: 'playingAs', id: newId }] }]);
     expect(copy.traits![0].id).not.toBe('t-tamed');
     expect(copy.traitGroups![0].id).not.toBe('g-bond');
     expect(copy.traits![0].groupId).toBe(copy.traitGroups![0].id);

@@ -146,12 +146,12 @@ describe('applyRepair', () => {
     const data: Entity = {
       id: 'other', name: 'Fen Warden',
       traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [
-        { kind: 'trait', id: 'elsewhere', name: 'Paladin' }, { kind: 'playingAs', id: 'self', name: 'Fen Warden' },
+        { all: [{ kind: 'trait', id: 'elsewhere', name: 'Paladin' }] }, { all: [{ kind: 'playingAs', id: 'self', name: 'Fen Warden' }] },
       ] }],
     };
     const repaired = applyRepair({ ...world(), traits: [{ id: 'w-paladin', name: 'Paladin', statChanges: [] }] }, 'e1', 'replace', { source, data });
     expect(repaired.entities![0].traits![0].requires).toEqual([
-      { kind: 'trait', id: 'w-paladin', name: 'Paladin' }, { kind: 'playingAs', id: 'e1', name: 'Fen Warden' },
+      { all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }, { all: [{ kind: 'playingAs', id: 'e1', name: 'Fen Warden' }] },
     ]);
   });
 

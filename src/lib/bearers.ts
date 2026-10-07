@@ -1,7 +1,7 @@
 // Bearers: who has which traits. A bearer is the player or an entity whose tree holds a trait, directly or
 // through a link. This module is the one place that expands a link to its original's live subtree.
 
-import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
+import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink, TraitPlacement, TraitRequirement } from '@/types';
 import { WORLD_OWNER, type GateInput, type GateOwner } from './traitGates';
 import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 import { buildTree, flattenTree } from './groupTree';
@@ -172,18 +172,19 @@ function entityBearer(world: BearerWorld, entity: Entity, persona: PersonaRef | 
 }
 
 /**
- * The player's traits without the ones that name the played persona as another bearer. A named-scope
- * requirement describes a relationship to someone else, so while the player is that someone the requirement
- * falls away, and a trait that had no other way in is not offered.
+ * The player's traits without the gates that name the played persona as another bearer. A named-scope
+ * Condition describes a relationship to someone else, so while the player is that someone it can never
+ * hold: its row falls away, and a trait that had no other row is not offered (Q23).
  */
 export function withoutSelfNamedGates(traits: readonly Trait[], playedId: string | null): Trait[] {
   if (playedId === null) return [...traits];
+  const selfNamed = (req: TraitRequirement) => req.kind !== 'playingAs' && req.bearer?.kind === 'entity' && req.bearer.id === playedId;
   return traits.flatMap((trait) => {
-    const requires = trait.requires ?? [];
-    if (requires.length === 0) return [trait];
-    const kept = requires.filter((req) => !(req.kind !== 'playingAs' && req.bearer?.kind === 'entity' && req.bearer.id === playedId));
+    const rows = trait.requires ?? [];
+    if (rows.length === 0) return [trait];
+    const kept = rows.filter((row) => !row.all.some(selfNamed));
     if (kept.length === 0) return [];
-    return [kept.length === requires.length ? trait : { ...trait, requires: kept }];
+    return [kept.length === rows.length ? trait : { ...trait, requires: kept }];
   });
 }
 
