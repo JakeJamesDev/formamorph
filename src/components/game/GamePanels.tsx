@@ -35,7 +35,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
+import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, NotebookPen, Brain, ScrollText, type LucideIcon } from "lucide-react";
+import { AvatarIcon, EntitiesIcon, LocationIcon, StatIcon, TraitIcon } from '@/lib/elementIcons';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { pageTurnId, withoutAttachment, setTurnAttachments, turnAttachments } from '@/lib/actionAttachments';
 import { useAttachmentIntake } from '@/lib/useAttachmentIntake';
@@ -298,8 +299,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
 
       <Tabs surfaceTabs="gameViewer" value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="grid w-full flex-shrink-0 auto-cols-fr grid-flow-col">
-          {isMobile && <PanelTab value="model" icon={User} label="Avatar" />}
-          <PanelTab value="entities" icon={Users} label="Entities" />
+          {isMobile && <PanelTab value="model" icon={AvatarIcon} label="Avatar" />}
+          <PanelTab value="entities" icon={EntitiesIcon} label="Entities" />
           <PanelTab value="notes" icon={NotebookPen} label="Notes" />
           <PanelTab value="memory" icon={Brain} label="Memory" />
           <PanelTab value="logs" icon={ScrollText} label={`Logs (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})`} />
@@ -1242,9 +1243,9 @@ export const RightPanel = ({
 
       <Tabs value={shownTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
         <TabsList className="grid w-full flex-shrink-0 auto-cols-fr grid-flow-col">
-          {hasShownStats && <PanelTab value="stats" icon={ChartColumn} label="Stats" />}
-          <PanelTab value="traits" icon={Sparkles} label="Traits" />
-          <PanelTab value="location" icon={MapPin} label="Location" />
+          {hasShownStats && <PanelTab value="stats" icon={StatIcon} label="Stats" />}
+          <PanelTab value="traits" icon={TraitIcon} label="Traits" />
+          <PanelTab value="location" icon={LocationIcon} label="Location" />
         </TabsList>
         <TabsContent value="stats" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)] relative">

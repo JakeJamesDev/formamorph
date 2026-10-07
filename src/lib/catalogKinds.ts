@@ -1,4 +1,6 @@
-import { BookOpen, Earth, PersonStanding, ScrollText, User, type LucideIcon } from 'lucide-react';
+import { ScrollText, type LucideIcon } from 'lucide-react';
+
+import { ELEMENT_ICONS } from '@/lib/elementIcons';
 
 /**
  * What a community listing can be. Mirrors the server's `config/kinds` — keep the two in step.
@@ -52,11 +54,10 @@ export const KIND_LABELS: Record<CatalogKind, { one: string; many: string }> = {
 
 /** The icon each kind wears everywhere: the browser's sections, profile tabs, and a prompt's card art. */
 export const KIND_ICONS: Record<CatalogKind, LucideIcon> = {
-  world: Earth,
-  entity: User,
-  dictionary: BookOpen,
-  // The same figure the local library's Avatars tab wears.
-  model: PersonStanding,
+  world: ELEMENT_ICONS.world,
+  entity: ELEMENT_ICONS.entity,
+  dictionary: ELEMENT_ICONS.dictionary,
+  model: ELEMENT_ICONS.avatar,
   prompt: ScrollText,
 };
 

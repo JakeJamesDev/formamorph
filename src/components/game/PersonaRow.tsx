@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { User } from 'lucide-react';
+import { PersonaIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -72,7 +72,7 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
       <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
         {image
           ? <img src={image} alt="" className={cn('h-full w-full', thumbFit('portrait'))} />
-          : <User aria-hidden className="h-4 w-4 text-muted-foreground" />}
+          : <PersonaIcon aria-hidden className="h-4 w-4 text-muted-foreground" />}
       </span>
       <span className="min-w-0 flex-1 truncate text-label">
         {persona ? persona.entity.name : <span className="text-muted-foreground">None</span>}

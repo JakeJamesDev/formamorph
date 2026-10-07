@@ -5,7 +5,8 @@
  * Presentational: findings arrive as props, and navigation is a callback the editor fulfills, so the panel
  * renders identically embedded in the editor's list panel, docked beside it, and inside the mobile sheet.
  */
-import { CircleX, FlaskConical, MapPin, PanelLeft, PanelRight, User, X } from 'lucide-react';
+import { CircleX, FlaskConical, PanelLeft, PanelRight, X, type LucideIcon } from 'lucide-react';
+import { EntityIcon, LocationIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -120,7 +121,7 @@ const NO_SELECTION = '__none__';
 /** One half of the lens. Empty of options means the world has nothing of that kind to pick, so the selector
  *  says so on its face rather than opening onto an empty list. */
 const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
-  icon: typeof User;
+  icon: LucideIcon;
   label: string;
   /** What the no-selection row reads as — also what the trigger shows while nothing is picked. */
   none: string;
@@ -167,7 +168,7 @@ const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, 
     <div className="flex items-center gap-1.5">
       <span className="shrink-0 text-meta text-muted-foreground">Testing as</span>
       <LensSelect
-        icon={User}
+        icon={EntityIcon}
         label="Test as character"
         none="Anyone"
         value={lens.state.pcTraitId}
@@ -176,7 +177,7 @@ const LensBar = ({ lens, pcOptions, locationOptions, statOverrides, onPcChange, 
       />
       <span className="shrink-0 text-meta text-muted-foreground">at</span>
       <LensSelect
-        icon={MapPin}
+        icon={LocationIcon}
         label="Test at location"
         none="Nowhere"
         value={lens.state.locationId}

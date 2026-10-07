@@ -2,17 +2,18 @@
  *  `EntityEditorModal` render from these, and the dev-router ledgers (`DEV_MODAL_TABS.worldEditorEntity`,
  *  `DEV_MODAL_TABS.entityEditor`, `DEV_MODAL_TABS.entityEditorEntity`) are guarded against them in
  *  `devRouter.test.ts`. */
-import { AlignLeft, Braces, Play, Sparkles, SquareUser, User } from 'lucide-react';
+import { AlignLeft } from 'lucide-react';
 
+import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { isOpeningFieldKey } from '@/lib/openings';
 import { tabForField } from './findFocus';
 
 export const ENTITY_PANEL_TABS = [
-  { value: 'profile', label: 'Profile', icon: User },
+  { value: 'profile', label: 'Profile', icon: ELEMENT_ICONS.entity },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
-  { value: 'traits', label: 'Traits', icon: Sparkles, advancedOnly: true },
-  { value: 'placeholders', label: 'Placeholders', icon: Braces, advancedOnly: true },
-  { value: 'openings', label: 'Openings', icon: Play, advancedOnly: true },
+  { value: 'traits', label: 'Traits', icon: ELEMENT_ICONS.trait, advancedOnly: true },
+  { value: 'placeholders', label: 'Placeholders', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
+  { value: 'openings', label: 'Openings', icon: ELEMENT_ICONS.opening, advancedOnly: true },
 ] as const;
 
 export type EntityPanelTab = (typeof ENTITY_PANEL_TABS)[number]['value'];
@@ -36,7 +37,7 @@ export type EntityEditorSubTab = (typeof ENTITY_EDITOR_SUBTABS)[number]['value']
 
 /** The library entity editor's top tabs: Entity for the fields, then the panel's own Traits and Placeholders. */
 export const ENTITY_EDITOR_TABS = [
-  { value: 'entity', label: 'Entity', icon: SquareUser },
+  { value: 'entity', label: 'Entity', icon: ELEMENT_ICONS.entity },
   ...ENTITY_PANEL_TABS.filter(
     (t): t is Extract<(typeof ENTITY_PANEL_TABS)[number], { value: LibraryTopTab }> => isLibraryTopTab(t.value),
   ),

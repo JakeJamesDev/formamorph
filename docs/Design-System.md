@@ -18,6 +18,7 @@ Use semantic values from the app. Do not sample colors from screenshots; HDR and
 | Borders and radius | [`src/index.css`](../src/index.css) | Use `border`, `input`, and `--radius`; use `h-hairline` or `w-hairline` for dividers. |
 | Spacing | Production component classes | Compose the existing 4-unit rhythm: 1rem between rows and 1.5rem between sections in settings surfaces. |
 | Focus | Production controls in [`src/components/ui`](../src/components/ui) | Keep the shared two-pixel inset `ring` treatment. Do not replace it with a palette-specific outline. |
+| Element icons | [`src/lib/elementIcons.ts`](../src/lib/elementIcons.ts) | Read the icon for a world element type from `ELEMENT_ICONS`. Never import it from `lucide-react`. One type wears one icon on every surface. `elementIcons.test.ts` fails on a direct import of a mapped icon. |
 
 Cards use `card` rather than inventing a second panel color. Destructive, success, warning, and information states keep their semantic colors across palettes.
 
@@ -170,7 +171,7 @@ Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Promp
 
 Built-in Placeholders (**Player Name**, **Character Name**) keep the chip shape and accent. Each carries a leading `Sparkles` icon from [`BuiltinMark`](../src/components/prompt/BuiltinMark.tsx) in the palette, the `{` menu, and the field.
 
-A blueprint chip keeps the chip shape and its placeholder's accent. It carries a leading `Link2` icon from [`BlueprintMark`](../src/components/prompt/BlueprintMark.tsx) in the same three places, because it reads each bearer's own copy. The showcase's **Blueprint Chips** card shows it.
+A blueprint chip keeps the chip shape and its placeholder's accent. It carries a leading `LayoutTemplate` icon, the Blueprint element icon, from [`BlueprintMark`](../src/components/prompt/BlueprintMark.tsx) in the same three places. `Link2` keeps the linked-copy meaning. The showcase's **Blueprint Chips** card shows it.
 
 - The palette and the `{` menu list them first, under a quiet **Built-in** heading.
 - A placed Built-in chip opens no pop-out. Its tooltip says what it becomes.

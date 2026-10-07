@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import { User } from 'lucide-react';
+import { EntityIcon } from '@/lib/elementIcons';
 import { linkToSource, unlink, type LibrarySource } from '@/lib/linkedContent';
 import { thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,7 @@ const AddEntityModal = ({ open, resume, onOpenChange, onAdd }: {
         {item.image ? (
           <img src={item.image} alt={item.name} className={cn('h-full w-full', thumbFit('portrait'))} />
         ) : (
-          <User className="h-4 w-4 text-muted-foreground" />
+          <EntityIcon className="h-4 w-4 text-muted-foreground" />
         )}
       </div>
     )}

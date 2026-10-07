@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { MapPin, User } from 'lucide-react';
+import { LocationIcon, PersonaIcon } from '@/lib/elementIcons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -53,7 +53,7 @@ export function PersonaPortrait({ image }: { image?: string }) {
     >
       {image
         ? <img src={image} alt="" {...THUMB_INTRINSIC.portrait} className={cn('h-full w-full', thumbFit('portrait'))} />
-        : <User aria-hidden className="h-6 w-6 text-muted-foreground" />}
+        : <PersonaIcon aria-hidden className="h-6 w-6 text-muted-foreground" />}
     </span>
   );
 }
@@ -135,7 +135,7 @@ export function PersonaPicker({ world = [], library, none = true, custom, value,
           )}
           {option.startsAt && (
             <span className="mt-1 flex items-center gap-1 break-words text-helper text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <LocationIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               Starts at {option.startsAt}
             </span>
           )}

@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { OptionSwitcher } from '@/components/SettingsRows';
 import type { CompatibleWorldRow, ReviewState } from '@/lib/compatibleWorlds';
 import { LISTING_OPTIONS, type ListingVisibility } from '@/lib/publishLinks';
-import { Globe } from 'lucide-react';
+import { WorldIcon } from '@/lib/elementIcons';
 
 /** The world author's answer, in the words the add-on review uses. */
 const REVIEW_LABELS: Record<ReviewState, string> = {
@@ -42,7 +42,7 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
     <div className="mt-4 rounded-md border p-3 space-y-3">
       {!declared && (
       <div className="flex items-start gap-2">
-        <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <WorldIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0 w-full space-y-2">
           <p className="text-label font-medium">Listing</p>
           <OptionSwitcher

@@ -1,4 +1,5 @@
-import { ExternalLink, User } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import { EntityIcon } from '@/lib/elementIcons';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
@@ -13,7 +14,7 @@ export const EntityTraitNodePanel = ({ entity, onOpenEntity }: { entity: Entity;
     <div className="space-y-4">
       <ListDetailFirstRow align="center">
         <div className="flex items-center gap-2 text-label font-medium">
-          <User className="h-4 w-4 shrink-0" aria-hidden />
+          <EntityIcon className="h-4 w-4 shrink-0" aria-hidden />
           <PlaceholderText text={entity.name} placeholders={placeholders} />
         </div>
       </ListDetailFirstRow>

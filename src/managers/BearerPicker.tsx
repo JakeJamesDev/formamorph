@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Check, ChevronRight, CircleUserRound, Folder, Link2, User } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, Link2 } from 'lucide-react';
+import { EntityIcon, GroupIcon, PersonaIcon } from '@/lib/elementIcons';
 import { useGameData, useGameDataOptional } from '@/contexts/GameDataContext';
 import type { Placeholder } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -59,14 +60,14 @@ export function BearerList({ choices, label, onPick, held, back }: {
               return (
                 <button key={row.id} type="button" className={MENU_ROW} onClick={() => go([...path, row.id], 'right')}>
                   {checkSlot(false)}
-                  <Folder className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <GroupIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(row.name)}</span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                 </button>
               );
             }
             const isHeld = held?.(row.id) ?? false;
-            const Icon = row.customPersona ? CircleUserRound : User;
+            const Icon = row.customPersona ? PersonaIcon : EntityIcon;
             return (
               <button
                 key={row.id}

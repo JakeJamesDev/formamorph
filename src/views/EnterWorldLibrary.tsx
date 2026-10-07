@@ -3,7 +3,8 @@ import { closestCorners, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowLeft, ArrowUp, BookOpen, Search, User } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Search } from 'lucide-react';
+import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
@@ -89,8 +90,8 @@ function Artwork({ src, name, fallback, large = false }: {
       ) : (
         <span role="img" aria-label={`${name} has no ${fallback}`}>
           {fallback === 'portrait'
-            ? <User aria-hidden className={cn('text-muted-foreground', large ? 'h-12 w-12' : 'h-5 w-5')} />
-            : <BookOpen aria-hidden className={cn('text-muted-foreground', large ? 'h-12 w-12' : 'h-5 w-5')} />}
+            ? <EntityIcon aria-hidden className={cn('text-muted-foreground', large ? 'h-12 w-12' : 'h-5 w-5')} />
+            : <DictionaryIcon aria-hidden className={cn('text-muted-foreground', large ? 'h-12 w-12' : 'h-5 w-5')} />}
         </span>
       )}
     </span>

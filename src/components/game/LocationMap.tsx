@@ -3,7 +3,7 @@ import {
   Background, Handle, Position, ReactFlow, type Edge, type Node, type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { MapPin } from 'lucide-react';
+import { LocationIcon } from '@/lib/elementIcons';
 import { FloatingEdge } from '@/components/FloatingEdge';
 import { toFlowEdge } from '@/lib/canvasEdges';
 import { useCanvasConnectionStyle } from '@/lib/canvasPrefs';
@@ -62,7 +62,7 @@ const TravelButton = ({ id, data, className }: {
           className,
         )}
       >
-        {data.here && <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
+        {data.here && <LocationIcon className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
         <span className="truncate">{data.label}</span>
       </button>
     </Tip>

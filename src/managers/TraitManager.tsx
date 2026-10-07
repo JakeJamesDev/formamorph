@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, User } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { EntityIcon } from '@/lib/elementIcons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import type { SurfaceLedgerName } from "@/components/ui/surface";
@@ -208,7 +209,7 @@ const TraitManager = ({
       {detailsHeader}
       {owner && ownerLine && (
         <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
-          <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <EntityIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0 space-y-0.5">
             <p className="text-label">
               Owned by{' '}

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { LayoutTemplate } from 'lucide-react';
+import { SquareFunction } from 'lucide-react';
 import {
   StatCodeTemplateDialog,
   type StatTemplateFileTransfer,
@@ -162,7 +162,7 @@ export function CodeTemplatesReference() {
           )}
         </div>
         <Button onClick={() => setOpen(true)}>
-          <LayoutTemplate className="h-4 w-4" />
+          <SquareFunction className="h-4 w-4" />
           Open Code Templates
         </Button>
       </div>

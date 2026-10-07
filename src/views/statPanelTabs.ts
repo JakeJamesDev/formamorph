@@ -1,12 +1,13 @@
 /** The stat detail panel's own tabs, in order. Single source of truth: `StatManager`'s `PanelTabsList`
  *  renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorStat`) is guarded against it in
  *  `devRouter.test.ts`. */
-import { Code, Gauge, ListOrdered } from 'lucide-react';
+import { Code, ListOrdered } from 'lucide-react';
 
+import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { tabForField } from './findFocus';
 
 export const STAT_PANEL_TABS = [
-  { value: 'details', label: 'Details', icon: Gauge },
+  { value: 'details', label: 'Details', icon: ELEMENT_ICONS.stat },
   { value: 'descriptors', label: 'Descriptors', icon: ListOrdered, advancedOnly: true },
   { value: 'code', label: 'Code', icon: Code, advancedOnly: true },
 ] as const;

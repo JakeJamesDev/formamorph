@@ -9,7 +9,8 @@
  * which of the two foldaway sections is open.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronRight, ClipboardPaste, Users } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, ClipboardPaste } from 'lucide-react';
+import { EntitiesIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -533,7 +534,7 @@ export function TriggersInstrument({
       </ScrollArea>
       {!empty && (
         <p className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground">
-          <Users className="h-3 w-3 shrink-0" aria-hidden />
+          <EntitiesIcon className="h-3 w-3 shrink-0" aria-hidden />
           Presence reads prose, not dialogue. A name only inside quotes was mentioned, not present.
         </p>
       )}
