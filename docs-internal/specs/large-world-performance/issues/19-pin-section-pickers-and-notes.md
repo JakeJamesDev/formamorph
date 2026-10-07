@@ -1,6 +1,6 @@
 # 19: Pin Section Pickers and Notes
 
-Status: ready-for-human
+Status: done
 Blocked by: 17
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
