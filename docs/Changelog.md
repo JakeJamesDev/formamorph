@@ -57,6 +57,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A trait or location that pins hundreds of placeholders opens its Pins tab faster.** Each pin's picker builds its list only when you open it, and an edit updates only the pin you changed. Pins look and work as before.
   - **The selected tool in Settings and the selected code template now stand out from the hovered one.** Both lists fill the selected row with the primary color.
   - **Dialogs no longer open with an outline around the close button.** The ring still shows when you reach the button with the keyboard.
+  - **The selected section in the World Editor and Community Creations side menus now stands out from the hovered one.** The selected section takes the primary color. Hover keeps the softer accent color. Enter World categories and the mobile Sections bar match.
 
 ---
 

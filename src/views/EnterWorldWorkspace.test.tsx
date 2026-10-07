@@ -214,6 +214,20 @@ describe('EnterWorldWorkspace', () => {
     expect(screen.getByRole('button', { name: 'Read Introduction' })).toBeInTheDocument();
   });
 
+  it('fills the current category with the primary color and hovers the others with the accent fill', () => {
+    render(<Harness />);
+
+    const navigation = screen.getByRole('navigation', { name: 'World setup categories' });
+    const current = within(navigation).getByRole('button', { name: /Culture/ });
+    expect(current).toHaveClass('bg-primary', 'text-primary-foreground', 'font-medium');
+    expect(current).not.toHaveClass('bg-muted', 'font-semibold', 'hover:bg-accent');
+    // The pick count sits on the fill, so it takes the fill's text color.
+    expect(within(current).getByLabelText('1 of 2 selected')).toHaveClass('text-primary-foreground');
+    const other = within(navigation).getByRole('button', { name: /Practice/ });
+    expect(other).toHaveClass('hover:bg-accent', 'hover:text-foreground', 'text-muted-foreground');
+    expect(other).not.toHaveClass('bg-primary');
+  });
+
   it('opens the first meaningful category in an always-expanded authored hierarchy', () => {
     render(<Harness />);
 

@@ -809,7 +809,7 @@ The live reference renders four of the five production strips against their own 
 ### Composition
 
 - One registry holds the tabs in order, each with its value, name, icon and group, and the groups in order. The landing tab has no group. A helper returns the landing slot first, then the groups one mode shows, and drops the empty ones.
-- The disclosure is shared with the Enter World **Categories** bar, so both screens open and close the same way.
+- The disclosure is shared with the Enter World **Categories** bar, so both screens open and close the same way. Both lists share the selected and hover states.
 - Desktop uses the Nav Rail in the list card, fed the same groups. The bar is mobile-only.
 
 The World Editor groups its tabs this way:
@@ -841,7 +841,8 @@ The group names are registry ids. The bar and the rail draw none of them. Each h
 | --- | --- |
 | Closed | The bar names the current tab. The list is `inert` and hidden from assistive technology. |
 | Open | The chevron turns and the list shows below the bar. |
-| Selected | The active row takes the muted background and the semibold foreground. |
+| Selected | The active row takes the primary fill, the primary foreground text and medium weight. It draws no edge bar, because the list does not select from its left edge. |
+| Hover | An unselected row takes the accent background and the foreground color. |
 | Focus | The shared inset focus ring. Arrow keys move through the open list. |
 | Empty group | Nothing draws, so no line is left without tabs under it. |
 
@@ -861,7 +862,7 @@ The live reference draws the production registry as the Sections bar, with a Sim
 - The rail is the first column inside the surface it drives, below the surface's full-width header. It spans that column's full height.
 - It is a real vertical tab list. Each row is a tab named by its label, and the arrow keys move along the rail. The host's panels stay where they are.
 - Groups draw in order, split by a plain line. A group with no tab draws nothing, not even its line. No group has a caption.
-- The active tab carries a primary accent bar on the rail's edge, the accent background and the foreground color. The others are muted.
+- The active tab takes the primary fill, the primary foreground text and medium weight, with a bar in the foreground color on the rail's edge. The others are muted, and a hovered one takes the accent background, so hover and selected never look alike.
 - A toggle at the bottom collapses the rail to icons and expands it to icons with labels. The rail starts expanded. Each surface remembers its choice on this device. A failed read or write falls back to expanded with no error.
 - When the host has no room, the rail draws collapsed and the toggle is disabled. The stored choice does not change, so the rail expands again when room returns.
 - A collapsed row names its tab in a flyout on hover or keyboard focus. The flyout is the shared tooltip, with its delay. Focus that a click brings and a tap show no flyout. The disabled toggle still names itself on hover.
@@ -874,7 +875,7 @@ The live reference draws the production registry as the Sections bar, with a Sim
 - One row layout serves both states. The 18px icon sits 11px in, which centers it in the collapsed rail. The label clips in its own box as the rail narrows; no row changes layout.
 - The width animates over 200 ms on `cubic-bezier(0.2, 0, 0, 1)`. Labels stay mounted and fade on the same duration and curve. With reduced motion, both change at once.
 - Each tab's accessible name is its label, which stays mounted in both states. The flyout does not name the tab again, and the icon is hidden from assistive technology. The toggle is named **Collapse** or **Expand** and reports its expanded state.
-- The host's tab root wraps the rail and the panels with vertical orientation. The root owns the selection; the rail takes the active value only for its accent bar.
+- The host's tab root wraps the rail and the panels with vertical orientation. The root owns the selection; the rail takes the active value only for its edge bar.
 - The rail takes the same groups as the mobile **Sections** bar, so the two draw the same order and splits.
 
 ### Production mapping
@@ -898,8 +899,8 @@ The rail is desktop-only. On mobile the Sections bar takes its place under the h
 | Expanded | 192px. Icons with labels. The toggle reads **Collapse**. |
 | Collapsed | 52px. Icons only. Hover or keyboard focus shows the tab's name in a flyout. |
 | No room | Drawn collapsed. The toggle is disabled and its flyout reads **Expand**. |
-| Selected | Accent bar, accent background, and foreground color. |
-| Hover | The accent background and the foreground color. |
+| Selected | Primary fill, primary foreground text, medium weight, and a foreground-color bar on the edge. |
+| Hover | The accent background and the foreground color, on unselected tabs only. |
 | Focus | The shared inset focus ring. Arrow keys move along the rail. |
 | Disabled | Every tab is disabled at half opacity. The selection is kept. |
 | Empty group | Nothing draws, so no line stands without tabs under it. |

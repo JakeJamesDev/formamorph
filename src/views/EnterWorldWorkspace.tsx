@@ -18,6 +18,7 @@ import type { ResolveEntityText } from '@/lib/resolveWorldNames';
 import { bearerTraitTree, playerEntityIds } from '@/lib/ownedTraitsInPlay';
 import { hasPersonaChoice } from '@/lib/personaPick';
 import { stripMarkdown } from '@/lib/stripMarkdown';
+import { navItemStates } from '@/lib/navSelection';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -115,7 +116,11 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     [traitTree, props.selectedTraits],
   );
   const playerIds = playerEntityIds(traitTree);
-  const youMark = <span className="ml-2 text-meta font-normal text-primary">You</span>;
+  // On the selected row the primary text would vanish into the primary fill.
+  const youMarkOf = (onFill: boolean) => (
+    <span className={cn('ml-2 text-meta font-normal', onFill ? 'text-primary-foreground' : 'text-primary')}>You</span>
+  );
+  const youMark = youMarkOf(false);
   // One entity, one role: the persona leaves the character list, and an added character leaves the picker.
   const personaId = props.persona?.source === 'library' ? props.persona.entityId : null;
   const personaOptions = useMemo(
@@ -155,15 +160,14 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     const picks = category.kind === 'traits' ? picksOf(category.entityId) : [];
     const shown = category.kind === 'traits' ? category.traits.filter((trait) => isShown(trait, picks)) : [];
     const selected = shown.filter((trait) => picks.includes(trait.id)).length;
+    const isCurrent = index === currentIndex;
     return (
       <button
         type="button"
-        aria-current={index === currentIndex ? 'page' : undefined}
+        aria-current={isCurrent ? 'page' : undefined}
         className={cn(
           'flex min-h-11 w-full min-w-0 items-center gap-2 rounded px-2 py-1 text-left text-label md:min-h-8',
-          index === currentIndex
-            ? 'bg-muted font-semibold text-foreground'
-            : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+          navItemStates(isCurrent),
         )}
         style={{ paddingLeft: 8 + Math.min(depth, 5) * 12 }}
         onClick={() => {
@@ -176,12 +180,15 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         {category.kind === 'traits' && category.entityNode && <User aria-hidden className="h-4 w-4 shrink-0" />}
         <span className="min-w-0 flex-1 break-words">
           {category.name}
-          {category.kind === 'traits' && category.entityNode && !!category.entityId && playerIds.includes(category.entityId) && youMark}
+          {category.kind === 'traits' && category.entityNode && !!category.entityId && playerIds.includes(category.entityId) && youMarkOf(isCurrent)}
         </span>
         {shown.length > 0 && (
           <span
             aria-label={`${selected} of ${shown.length} selected`}
-            className={cn('shrink-0 text-meta font-normal', selected ? 'text-primary' : 'text-muted-foreground')}
+            className={cn(
+              'shrink-0 text-meta font-normal',
+              isCurrent ? 'text-primary-foreground' : selected ? 'text-primary' : 'text-muted-foreground',
+            )}
           >
             {selected}/{shown.length}
           </span>
