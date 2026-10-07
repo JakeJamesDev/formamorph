@@ -596,6 +596,8 @@ const WorldEditorInner = ({
     }
     const itemId = step.item ? readTourRecord(worldId)?.items[step.item] : undefined;
     if (step.tab && itemId) select(step.tab, itemId);
+    // Mobile's pushed detail covers the list's +, so a step that points at it goes back to the list.
+    else if (step.tab && isMobile && step.anchor === 'list-add') select(step.tab, null);
     if (step.tab === 'locations' && step.item) {
       setLocationTab(LOCATION_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'details');
     }
@@ -608,7 +610,7 @@ const WorldEditorInner = ({
     }
     if (step.tab === 'dictionary' && step.item) setEntryTab('details');
     deferReveal(() => focusTourField(step.anchor));
-  }, [deferReveal, worldId, clearSearch, select]);
+  }, [deferReveal, worldId, clearSearch, select, isMobile]);
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
@@ -802,11 +804,8 @@ const WorldEditorInner = ({
     : activeTab === 'placeholders' ? placeholdersEditor.ownerId
     : undefined;
 
-  // Contextual footer actions. The whole world is the only thing still exported by a button of its own;
-  // an entity's or a book's Export is one item in the selected-content split button below.
-  const exportContext =
-    activeTab === 'overview' ? { label: 'Export World', disabled: false, onClick: () => { exportCurrentWorld(); } } : null;
-  // What the selected-content split button acts on, on the two tabs that have one.
+  // What the selected-content split button acts on, on the two tabs that have one. Its menu holds the
+  // entity's or the book's Export.
   const selectedLinkable =
     activeTab === 'entities' ? (selectedEntityGroup ? null : selectedEntity)
     // A book, not an entry's book: the button acts on the open book itself.
@@ -937,10 +936,11 @@ const WorldEditorInner = ({
             do something — so the heading is read out but not drawn. */}
         <CardTitle className="sr-only">World Editor</CardTitle>
       </div>
-      <span className="ml-auto" />
-      {findButton}
-      {benchButton}
       {modeSelect}
+      {/* Search and the Bench sit at the far right, in thumb reach. */}
+      <span className="ml-auto" />
+      {benchButton}
+      {findButton}
     </div>
   );
   const optimizeLabel = optimizeProgress === null ? 'Optimize Images'
@@ -991,8 +991,10 @@ const WorldEditorInner = ({
       </Button>
     </Tip>
   );
+  // Enabled only when there is something to save; that is the one save-state signal on either layout.
+  const saveProps = { onClick: saveWorld, disabled: !isWorldDirty, 'data-tour-anchor': 'save' };
   const saveButton = (
-    <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty} data-tour-anchor="save">
+    <Button size="sm" {...saveProps}>
       <Save className="h-4 w-4 mr-2" />
       Save
     </Button>
@@ -1057,6 +1059,8 @@ const WorldEditorInner = ({
   const addSearchBar = listEditorParts
     && listEditorParts.toolbar('', { after: locationViewToggle, target: listToolbarTarget(activeTab) });
   const bodyGap = addSearchBar ? 'mt-4' : undefined;
+  // Mobile's pushed detail covers the row too, so the detail gets the full height.
+  const mobileListRow = !listEditorParts?.showDetail && addSearchBar;
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   // The tab's own actions, on the two tabs that act on a selected item.
@@ -1072,29 +1076,17 @@ const WorldEditorInner = ({
   );
   // Desktop's world actions live in the app bar, so its footer draws only on a tab with actions of its own.
   const desktopFooter = tabActions && <div className="p-3 border-t flex flex-wrap gap-2">{tabActions}</div>;
-  // Mobile has no app bar, so its footer keeps the world actions within thumb reach.
+  // Mobile has no app bar, so its footer keeps the world actions within thumb reach. On a wrap they stay right.
   const mobileFooter = (
-    <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
-      <div className="flex flex-wrap gap-2">
-        {tabActions || (exportContext && (
-          <Button variant="outline" size="sm" onClick={exportContext.onClick} disabled={exportContext.disabled}>
-            <ActionIcon.export className="h-4 w-4 mr-2 shrink-0" />
-            <span className="truncate max-w-[14rem]">{exportContext.label}</span>
+    <div className="p-3 border-t flex flex-wrap items-center gap-2">
+      {tabActions}
+      <div className="ml-auto flex items-center gap-2">
+        {worldActions}
+        <Tip tip="Save">
+          <Button size="icon" {...saveProps}>
+            <Save className="h-4 w-4" />
           </Button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        {/* Advanced-only: an oversized upload is already offered Optimize/Downscale as it lands, so what
-            this adds is the bulk pass over a world that is already large. */}
-        {advanced && (
-          <Tip tip="Downscale oversized images to conserve file size" labelsChild={false}>
-            <Button variant="outline" size="sm" onClick={optimizeImages} disabled={optimizeProgress !== null}>
-              {optimizeIcon}
-              {optimizeLabel}
-            </Button>
-          </Tip>
-        )}
-        {saveButton}
+        </Tip>
       </div>
     </div>
   );
@@ -1156,7 +1148,7 @@ const WorldEditorInner = ({
                   onOpenChange={setSectionsOpen}
                 />
                 <CardContent className="flex-grow flex flex-col overflow-hidden p-2">
-                  {addSearchBar}
+                  {mobileListRow}
                   {tabPanels(!listEditorParts ? (
                     // Overview isn't master-detail — stack its two forms.
                     <ScrollArea landingRoom className="flex-grow min-h-0">
@@ -1165,7 +1157,7 @@ const WorldEditorInner = ({
                     </ScrollArea>
                   ) : (
                     <ListDetail
-                      className={bodyGap}
+                      className={mobileListRow ? bodyGap : undefined}
                       showDetail={listEditorParts.showDetail}
                       onBack={listEditorParts.onBack}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
