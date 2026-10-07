@@ -22,12 +22,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The World Editor and Community Creations keep the back arrow in the same place on every screen.** Every header now shares one back button, one height and one side spacing.
     - **In the World Editor, the side rail sits inside the list.** It shows only icons when the list is narrow, and stays in place but unavailable while the Test Bench fills the list.
     - **In Community Creations, the side rail sits below a full-width header.** The sort select, the order toggle and refresh now end the header row.
-    - **On desktop, the World Editor puts Save, Export World and the mode select in one bar above both panes.** It shows Saved or Unsaved changes beside the title, with Find and the Test Bench in its center. The bar has no help button.
-    - **On mobile, the World Editor's header holds Find, the Test Bench and the mode select, with no help button.** The Sections list splits its groups with lines, in the same order as the desktop rail. Morphie and the guide answer questions about each tab.
-    - **On mobile, Community Creations picks its section from a Sections bar under a one-row header.** The header holds back, search and a Filters icon with a count of active filters. Refresh moves into the Filters panel, beside sort.
-    - **On desktop, the World Editor's bar names the world you're editing, and no longer says Saved or Unsaved changes.** A long name cuts off with "…" and shows in full on hover. Save is on only while you have changes.
-    - **On desktop, the World Editor's bar has a Search World field: type to search the whole world.** It shows the match count, and the arrows, Enter and Shift+Enter step through the matches. **Ctrl+F** focuses it and Escape clears it. The Test Bench moves beside Save.
+    - **On desktop, one World Editor bar above both panes holds the world's name, Search World, the mode select and Save.** A long name cuts off with "…" and shows in full on hover. Export World, the Test Bench and Save end the bar, and it has no help button.
+    - **On desktop, type in the World Editor's Search World field to search the whole world.** It shows the match count, and the arrows, Enter and Shift+Enter step through the matches. **Ctrl+F** focuses it and Escape clears it.
     - **On desktop, the World Editor's Search World field expands into Find and Replace over the bar.** Select its expand button or press **Ctrl+H**. **Match case** and **Match whole word** stay on when you collapse it, and an icon in the field shows each one.
+    - **On mobile, the World Editor's header holds the mode select, the Test Bench and Search, with no help button.** Search and the Test Bench sit at the right. The Sections list splits its groups with lines, in the same order as the desktop rail. Morphie and the guide answer questions about each tab.
+    - **On mobile, Community Creations picks its section from a Sections bar under a one-row header.** The header holds back, search and a Filters icon with a count of active filters. Refresh moves into the Filters panel, beside sort.
   - **Settings swaps its Simple/Advanced switch for a mode select that says what each mode shows.**
 
 ### Minor Changes
@@ -40,7 +39,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A crash in one World Editor panel shows a card there, and the rest of the editor keeps working.** Your unsaved edits stay. **Try Again** remounts the panel, and **View Details** opens the error with Copy and Report Bug.
   - **The World Editor's list boxes now read Filter, such as Filter Stats and Filter Entities.** Typing still narrows the list, and the **+** button still adds the typed name.
   - **On Entities and Dictionary, the + menu now holds Add From Library and Import.** The footer's Add Entity and Add Dictionary buttons are gone. The + is a menu in Simple mode too.
-  - **On mobile, the World Editor's footer now fits on one row, and a selected item's detail fills the full height.** Save is an icon in the bottom-right corner, next to the world actions. Overview shows Export World once. Search and the Test Bench sit at the right of the header.
+  - **On mobile, the World Editor's footer now fits on one row, and a selected item's detail fills the full height.** Save is an icon in the bottom-right corner, next to the world actions. Overview shows Export World once.
 - **🛠️ Developer tooling**
   - **CI splits the test suite across four parallel runners, so a check takes about 5 minutes, not 20.** A tag push runs the checks once, through the Release workflow. A **Build Android APK** run skips them.
 
@@ -52,12 +51,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Map shows travel arrows from your location, and from the one you hover on a desktop.** Arrows draw on the Map again. The Map renders only the boxes in view.
   - **The desktop app recovers from a crashed or frozen window, and Android gives the app more memory.** The desktop app shows a message, then reloads. When the window hangs, you can wait or reload.
   - **A failed world save always shows an error, and full storage shows the space left with an Export World button.** Saves never hang. Save & Exit in play and the Authoring Tour show the same message. Linked library items change only after the world saves.
-  - **Editor lists on large worlds redraw only the rows that changed.** Typing in a name and dragging a row in the Entities, Locations, Traits and Placeholders lists stay responsive when a world has hundreds of rows.
+  - **Editor lists on large worlds draw only the rows on screen and redraw only the rows that change.** Typing a name and dragging a row in the Entities, Locations, Traits and Placeholders lists stay responsive with hundreds of rows. A drag starts without a pause and still scrolls to any row. The lists look and work as before.
   - **Dragging a location on the Locations Canvas checks drop targets faster on large worlds.** The canvas no longer rechecks every location's ancestry on each pointer move, and group frames redraw only when the drop target changes.
   - **The World Editor uses far less memory on large worlds while you edit and save.** It no longer keeps extra copies of the world to track unsaved edits. Saving a large world also finishes faster.
   - **The location and persona pickers stay quick while you type in a large world.** The Connect To, Starting Location and Starts On lists redraw only the items that changed. They look and work as before.
   - **Importing a large world and publishing one no longer freeze the app.** The Main Menu reads and upgrades the world file in the background, and Publish builds its upload there too. Messages stay the same.
-  - **Long editor lists on large worlds draw only the rows on screen, so a drag starts without a pause.** The Entities, Locations, Traits and Placeholders lists look and work as before, and a drag still scrolls to any row.
   - **Opening and typing in the World Editor stay responsive on large worlds.** The Test Bench checks the world in the background, and its badge shows a count once the first check ends.
   - **On the Mascot tab of Formaquestion Settings, a dragged overlay stays inside its layer and drops in place.** It no longer jumps back to its old slot and slides to the new one.
   - **The Test Bench checks pin conflicts quickly on placeholders pinned from hundreds of sources.** The check and the conflict note under each pin read a placeholder's pins once. They report the same conflicts and winners.
