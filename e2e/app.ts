@@ -136,6 +136,16 @@ export async function openWorldEditor(page: Page): Promise<void> {
   await page.getByRole('checkbox', { name: "Use this world's narration prompt" }).waitFor();
 }
 
+/** Pick a World Editor section. Below the split layout the tabs fold into the Sections bar, so open it first. */
+export async function openEditorSection(page: Page, name: string): Promise<void> {
+  const bar = page.locator('button[aria-controls="world-editor-sections"]');
+  const folding = await bar.isVisible();
+  if (folding && (await bar.getAttribute('aria-expanded')) !== 'true') await bar.click();
+  await page.getByRole('tablist', { name: 'Editor Sections' }).getByRole('tab', { name, exact: true }).click();
+  // The pick folds the bar, which slides the list up; a box read before the fold ends is stale.
+  if (folding) await page.waitForFunction(() => document.getElementById('world-editor-sections')?.getBoundingClientRect().height === 0);
+}
+
 /**
  * Sign in through the footer's account button, the way a player does.
  *

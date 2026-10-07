@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { openApp } from './app';
+import { openApp, openEditorSection } from './app';
 import { IN_TAB_PANEL, ROW, editorGrip, editorRow, rowIndents, rowLabels } from './dragSampling';
 
 /**
@@ -37,7 +37,7 @@ async function openLongTree(page: Page): Promise<void> {
     });
     await dev.editWorld(id);
   }, COUNT);
-  await page.getByRole('tab', { name: 'Entities' }).first().click();
+  await openEditorSection(page, 'Entities');
   await expect(editorRow(page, ROOT, 'Row 0')).toBeVisible();
 }
 

@@ -43,12 +43,13 @@ test('displaced entry rows slide, not snap, in both drag directions', async ({ p
   await page.getByText(BOOK, { exact: true }).click();
   // Mobile's ListDetail pushes the book's detail pane over the tree and parallaxes the rows off-screen;
   // pop back so the tree is front and interactable. Desktop shows both panes and renders no back button.
-  const back = page.locator(IN_DIALOG).getByRole('button', { name: 'Dictionary', exact: true });
+  const back = page.locator(IN_DIALOG).getByRole('button', { name: 'Back to Dictionary', exact: true });
   if (await back.isVisible()) {
     await back.click();
     await page.waitForTimeout(250); // the list pane slides back over 200ms
   }
-  await expect(grip(page, 'Entry 3')).toBeVisible();
+  // In the viewport, not only visible: a parallaxed-off grip counts as visible, and a press there lands outside the dialog.
+  await expect(grip(page, 'Entry 3')).toBeInViewport();
 
   // Down: Entry 1 over Entry 2 → Entry 2 slides up through intermediate positions. Mid-drag, no row
   // may sit in the :hover state — the tree's hit-testing goes dark so rows don't light under the cursor.
