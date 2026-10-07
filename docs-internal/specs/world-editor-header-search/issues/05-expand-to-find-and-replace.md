@@ -1,6 +1,6 @@
 # 05: Expand To Find And Replace
 
-Status: ready-for-human
+Status: done
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
