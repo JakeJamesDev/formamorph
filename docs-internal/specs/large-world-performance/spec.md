@@ -62,6 +62,10 @@ The canvas draws 23,100 Implicit Navigation edges (every sibling pair, both dire
 | Q24 | Test seams as listed under Testing Decisions. No new seams. |
 | Q25 | Pin load joins this effort as tickets 17 and 18. On the pin world (`--pins 1`: one placeholder pinned 551 times, sources pinning 200 each), the pin-conflict check made each rules pass 16 s at 1x and the pinned placeholder never opened. |
 | Q26 | Ticket 17 lands the conflict fix with `pinTarget` recorded as a miss. The pins section's Select pickers mount their items only while open or focused, with no visible change (Q13's "go further on a miss"), in ticket 19. Any change to the visible conflict-note text needs a user ruling. |
+| Q27 | One closing harness pass on main at 6x gives the effort's final numbers (see Final Results). |
+| Q28 | Canvas node drag is ruled on the closing numbers: it meets Q1 there (frames p95 83 ms, worst block 229 ms), so no follow-up. |
+| Q29 | Accepted miss: a trait's Pins tab with 200 pins blocks 1.3–1.7 s at 6x. Windowing or batched mounting would change how the tab fills in. |
+| Q30 | The World Editor not opening on mobile in e2e (pre-existing, found by ticket 12) is a separate bug task, not this effort. |
 
 ## User Stories
 
@@ -228,6 +232,36 @@ Tickets live in `issues/`. Blocking edges are on each ticket.
 - A persistent-storage request (Q21).
 - Visual or behavior changes to pickers, trees or fields.
 - Turning the harness into a gate (Q7).
+
+## Final Results
+
+Closing pass (Q27), 2026-10-06, production build of main at `1a9f1e30`, 6x CPU, quiet machine.
+
+**Bench world (126 MB).** Every step meets Q1, and the heap meets Q8.
+
+| Step | Baseline | Final |
+|---|---|---|
+| Open: worst block | 2.0 s | 0.69 s |
+| Typing 26 keys into Name: worst block / latency p95 | 21–22 s / — | 0.26 s / 232 ms |
+| Tree drag: frames p95 / worst block | 367 ms / 1.65 s | 50 ms / 0.11 s |
+| Canvas open: worst block / edges / DOM nodes | 23.3 s / 23,100 / 117k | 0.34 s / 150 / 1.7k |
+| Canvas node drag: frames p95 / worst block | — / 0.5 s | 83 ms / 0.23 s |
+| Save: wall / worst block | 11.1 s / 2.7 s | 1.1 s / 0.79 s |
+| Picker: typing latency p95 / Connect To open | — | 120 ms / 0.43 s |
+| Main Menu import: worst block | — | 0.78 s |
+| Heap: Main Menu / after open / save peak | 70 MB / 823 MB / 1.5 GB+ | 71 MB / 216 MB / 370 MB |
+
+**Pin world (same world plus 1,151 pins).**
+
+| Step | Final | Bar |
+|---|---|---|
+| Open: worst block | 0.91 s | Met |
+| Location Pins tab, 201 pins: worst block / typing p95 | 0.77 s / 416 ms | Met |
+| Trait Pins tab, 200 pins: worst block / typing p95 | 1.7 s / 552 ms | Accepted miss (Q29) |
+| "Mood", 551 pins: open | 24 s, one 22 s block, 291k DOM nodes | Accepted miss (Q26, notes kept as they are) |
+
+- The pin steps ran in the order `pinTarget`, `pinSourceTrait`, `pinSourceLocation`. The trait step's 3.4 s worst block over the whole step came right after "Mood" was opened.
+- The bare `idb` probe's get-then-put still blocks 1.2 s, but `storeWorld` no longer takes that shape (ticket 05). Bare put: 0.79 s.
 
 ## Further Notes
 
