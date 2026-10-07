@@ -15,7 +15,7 @@ The field is built on a `FieldWithTrailing` primitive extracted from the Find ba
 
 The feedback list search migrates onto the field first. Its tests stay green and gain a case for focus return after clear.
 
-The Design System gains a **Search Field** pattern, and the showcase gains a `SearchFieldReference` with a dev route. The Find bar section's two "Clear search" mentions update to **Clear Search** (Q6).
+The Design System gains a **Search Field** pattern, and the showcase gains a `SearchFieldReference` with a dev route. The Find bar section's "Clear search" mentions are ticket 03's to rename (Q6 revised).
 
 Changelog fragment: the lead for the effort, under Minor, Added, player. It is the effort's only entry (Q13).
 

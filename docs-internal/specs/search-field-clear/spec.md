@@ -13,7 +13,7 @@ Search, find, and filter boxes across the app have no way to empty themselves in
 
 Every search, find, and filter text box ends with a clear X while it holds text. Selecting the X empties the box, applies the empty search at once, and puts the cursor back in the box. Every such box also starts with a search icon. The X and the icon look the same everywhere.
 
-The World Editor's docked **Search World** field is the one box that keeps its own form: its existing **Clear Search** button already clears, collapses, and returns focus.
+The World Editor's docked **Search World** field gets the X in both its collapsed and expanded forms. Its row-end button is a close: it folds the bar and empties the query, and is named **Close Search**.
 
 ## User Stories
 
@@ -44,15 +44,17 @@ The World Editor's docked **Search World** field is the one box that keeps its o
 
 ## Implementation Decisions
 
-- **Q1 Scope.** All sixteen live search, find, and filter boxes get the X. The docked **Search World** field is excluded. Its close button already clears, collapses, and returns focus.
+- **Q1 Scope.** All seventeen live search, find, and filter boxes get the X, the docked **Search World** field included. (Revised by Q14: the exclusion rested on the row-end button's label, not on a clear-text control.)
 - **Q2 Build.** A new shared `SearchField` component owns the wrapper, the leading icon, the input, and the X. It builds on a `FieldWithTrailing` primitive extracted from the Find bar: a relative wrapper with a focus-within ring that hosts trailing cells. The base `Input` stays a bare input element. Around forty call sites size `Input` directly through its class list, so a wrapper on `Input` would break flex and grid sizing.
 - **Q3 Visibility.** The X renders only while the value is non-empty. No slot is reserved when the box is empty.
 - **Q4 Submit fields.** On the submit-based Manage Users and Audit Log searches, the X empties the box and runs the empty search at once, so the list shows unfiltered.
 - **Q5 Icon.** Every search field shows the leading search icon. Five boxes that have none today gain it: the editor list toolbars, Memory Manager, Add From Library, Find a Group, and the drill picker.
-- **Q6 Label.** The X's accessible name is **Clear Search** in AP title case. The Find bar's existing docked button renames from "Clear search" to match, with its tests and its Design System lines.
+- **Q6 Label.** The X's accessible name is **Clear Search** in AP title case. The Find bar's row-end button is a close, not a clear: it renames from "Clear search" to **Close Search** when docked and from "Close find" to **Close Find** when floating, with its tests, its Design System lines, and the World Editor docs. (Revised with Q14.)
 - **Q7 Slot order.** Where a box has other trailing controls (match toggles, counter, previous and next, mode swap), the X is the innermost cell, right after the text. Fixed controls keep the edge. The input's right padding grows by one cell while the X shows.
 - **Q8 Focus and Escape.** Clearing returns focus to the input. Escape is not bound by the component. Dialog close and Find bar collapse keep Escape. The Guide search keeps swallowing it.
 - **Q12 Native Escape clear.** Chromium empties a non-empty `type="search"` input on Escape by default, and hiding the cancel pseudo-element does not stop it. `SearchField` calls `preventDefault` on Escape so the native clear never runs and only the host behavior fires (Radix listens on document capture, so a dialog still closes). The feedback search loses its Escape-clears behavior; the X is the clear. The Guide no longer needs its own Escape handler.
+- **Q14 Docked boxes.** The collapsed app-bar field and the expanded bar's Find box both get the inner X. In the collapsed field it sits before the options badge and the counter; in the expanded bar, before the match toggles. The expanded bar is one JSX block shared with the floating bar, forked on `docked` for labels and behavior.
+- **Q15 Replace box.** Its X is named **Clear Replace**, shows in both layouts, and only in text mode. The placeholder picker gets none.
 - **Q13 Changelog.** Tickets 02 to 05 write no fragment. Ticket 01's lead covers the effort. A fragment always lands as its own entry, so a shared lead cannot be folded.
 - **Q9 cmdk pickers.** In the command-palette pickers the X is mouse-only with `tabIndex -1`. The Command root handles Enter by selecting the highlighted item, and a focusable X would turn Enter into a selection. Backspace already clears for keyboard users. The breadcrumb picker's input is uncontrolled, so its X reads the search through cmdk's command-state hook.
 - **Q10 Process.** Spec plus tickets at this folder.
@@ -68,14 +70,14 @@ The World Editor's docked **Search World** field is the one box that keeps its o
 
 - A good test drives the component the way a user does: type, see the X, select it, see the empty value, the callback, and the focus. It never reads internal state or class names, except for the one assertion that the native cancel button is hidden.
 - **Seam one: `SearchField`.** One test file covers the shared behavior once: X absent when empty, present with text, `onClear` default and override, refocus after clear, the **Clear Search** name, the searchbox role, the size variant.
-- **Seam two: one host test per surface** that the X clears the host's own state. Community: chips survive, typed text goes. Find a Location: the active row resets. Drill picker: the blocked note goes. Manage Users and Audit Log: the unfiltered list loads. Find bar: the floating X clears without collapsing, and the docked button's new name. cmdk: Enter still selects while the X shows.
+- **Seam two: one host test per surface** that the X clears the host's own state. Community: chips survive, typed text goes. Find a Location: the active row resets. Drill picker: the blocked note goes. Manage Users and Audit Log: the unfiltered list loads. Find bar: the inner X clears without collapsing in both layouts, and the row-end button's new names. cmdk: Enter still selects while the X shows.
 - **Prior art.** The feedback search tests, the World Editor find-expand tests, the Find bar reference tests, the multi-select tests, and the design-system reference tests for the showcase entry.
 - The feedback search input's focus return after clear is untested today. Add that case in the migration.
 - A guard must bite: for the cmdk Enter case, prove the test fails with a focusable X before shipping the mouse-only one.
 
 ## Out of Scope
 
-- The docked **Search World** field's layout and behavior, beyond renaming its clear button.
+- The docked **Search World** field's collapse and focus-return behavior.
 - Binding Escape to clear.
 - A reserved X slot or a disabled X on empty fields.
 - Text fields that are not search, find, or filter boxes.
@@ -84,6 +86,6 @@ The World Editor's docked **Search World** field is the one box that keeps its o
 
 ## Further Notes
 
-- The inventory found sixteen live boxes plus the excluded docked field. Five share one editor list toolbar, five share one command input, and the rest are single boxes.
+- The inventory found seventeen live boxes. Five share one editor list toolbar, five share one command input, and the rest are single boxes.
 - Visual change from Q5 lands on five boxes. Check both themes on the showcase reference.
 - One changelog entry covers the effort, under Minor → Added → 👤, written by ticket 01 (Q13).
