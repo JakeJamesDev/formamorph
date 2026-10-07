@@ -15,6 +15,7 @@ import { FORMAQUESTION_SETTINGS_TABS } from '@/components/formaquestion/formaque
 import { SETTINGS_ENDPOINT_TABS, SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { TOOL_EDIT_TABS } from '@/components/modals/toolsView';
 import { DICTIONARY_BOOK_PANEL_TABS } from '@/views/dictionaryBookPanelTabs';
+import { PLACEHOLDER_PANEL_TABS } from '@/views/placeholderPanelTabs';
 import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 import { ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
@@ -97,6 +98,7 @@ const ENTRIES: [string, string][] = [
   ...tabsOf('worldEditorTrait', TRAIT_PANEL_TABS),
   ...tabsOf('worldEditorEntry', DICTIONARY_PANEL_TABS),
   ...tabsOf('worldEditorBook', DICTIONARY_BOOK_PANEL_TABS),
+  ...tabsOf('worldEditorPlaceholder', PLACEHOLDER_PANEL_TABS),
   ...tabsOf('worldEditorBench', BENCH_TABS),
   ...tabsOf('worldEditorTour', TOUR_STEPS.map((step) => ({ value: step.id, label: step.title }))),
   ...tabsOf('entityEditor', ENTITY_EDITOR_TABS),

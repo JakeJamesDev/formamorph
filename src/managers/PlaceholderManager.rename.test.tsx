@@ -57,7 +57,7 @@ const Harness = () => {
   store.rerender = () => setTick((n) => n + 1);
   return (
     <CodeRenameProvider>
-      <PlaceholderManager placeholder={scoped()} />
+      <PlaceholderManager tab="details" onTabChange={() => {}} placeholder={scoped()} />
       <button type="button">elsewhere</button>
     </CodeRenameProvider>
   );
