@@ -124,3 +124,35 @@ it('confirms local replacements and restores focus when the bar closes', async (
   expect(screen.queryByRole('search', { name: 'Find and replace in world' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Find' })).toHaveFocus();
 });
+
+it('docks Search World in a sample app bar and expands it into Find and Replace', async () => {
+  const user = userEvent.setup();
+  renderReference();
+  await user.click(screen.getByRole('radio', { name: 'Docked' }));
+  expect(screen.queryByRole('search', { name: 'Find and replace in world' })).not.toBeInTheDocument();
+
+  const field = screen.getByRole('textbox', { name: 'Search World' });
+  expect(field).not.toHaveFocus();
+  await user.type(field, 'harbor');
+  await waitFor(() => expect(screen.getByText('1 / 5')).toBeInTheDocument());
+
+  await user.click(screen.getByRole('button', { name: 'Show options and replace' }));
+  expect(screen.getByRole('textbox', { name: 'Search World' })).toHaveFocus();
+  await user.click(screen.getByRole('button', { name: 'Match case' }));
+  await waitFor(() => expect(screen.getByText('1 / 4')).toBeInTheDocument());
+  await user.type(screen.getByRole('textbox', { name: 'Replace with' }), 'haven');
+  await user.click(screen.getByRole('button', { name: 'Replace' }));
+  expect((screen.getByRole('textbox', { name: 'World Introduction' }) as HTMLTextAreaElement).value)
+    .toContain('haven entrance');
+
+  await user.click(screen.getByRole('button', { name: 'Collapse to search' }));
+  expect(screen.getByRole('textbox', { name: 'Search World' })).toHaveFocus();
+  expect(screen.queryByRole('textbox', { name: 'Replace with' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Show match options' }));
+  expect(screen.getByRole('button', { name: 'Match case' })).toHaveAttribute('aria-pressed', 'true');
+
+  await user.click(screen.getByRole('button', { name: 'Clear search' }));
+  expect(screen.getByRole('textbox', { name: 'Search World' })).toHaveValue('');
+  expect(screen.getByRole('textbox', { name: 'Search World' })).toHaveFocus();
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('The reference has no selected match.'));
+});

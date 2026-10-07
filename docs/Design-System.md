@@ -264,7 +264,7 @@ The live Community cards reference uses the production card and shell with neutr
 
 **Purpose:** Search and replace across a structured editor without taking over the editing workspace.
 
-**Density:** Compact. The floating bar keeps its search, options, counter, navigation, and close actions on one row. Replace expands beneath search without changing the surrounding editor layout.
+**Density:** Compact. The bar has two layouts. The floating bar keeps its search, options, counter, navigation, and close actions on one row, and replace expands beneath search. The docked field holds search, counter, navigation, and an expand button in one 32px row in an app bar. Neither layout changes the surrounding editor layout.
 
 ### Composition
 
@@ -276,6 +276,14 @@ The live Community cards reference uses the production card and shell with neutr
 - Show the current tab, item, and field as a compact breadcrumb when room permits. The editor itself remains the visible source of truth for replacement results.
 - Confirm Replace All before changing text. Keep the result notice factual and based on the completed action.
 
+**Docked layout** (the World Editor's desktop app bar):
+
+- The field holds a search icon, the input, the counter, Previous Match and Next Match as cells, and **Show options and replace** as the last cell. It searches as you type.
+- An option that is on shows as its icon in the field, in a tinted button before the counter. Selecting it expands the bar.
+- Expanding grows the full bar over the header from the field's position: 36rem wide, centered on the field, with its search input where the field was. The field's slot keeps its width and height, so the header never reflows.
+- The expanded bar always shows the replace row and the current-field breadcrumb. Its disclosure is **Collapse to search**, and its close action is **Clear search**.
+- The query and the options carry across expand and collapse.
+
 ### Production mapping
 
 | Need | Component |
@@ -283,16 +291,24 @@ The live Community cards reference uses the production card and shell with neutr
 | Search, options, navigation, replacement, and confirmation | `EditorFindBar` in [`EditorFindBar.tsx`](../src/components/editor/EditorFindBar.tsx) |
 | Search targets, matching, text splices, and grouped writes | [`worldSearch.ts`](../src/lib/worldSearch.ts) |
 | Field and Chip reveal in the authored editor | [`editorFieldFocus.ts`](../src/lib/editorFieldFocus.ts) |
-| Production host and keyboard shortcuts | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
+| Production host, keyboard shortcuts, and expanded state | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
+| The docked field's app bar | `SurfaceAppBar` in [`SurfaceAppBar.tsx`](../src/components/SurfaceAppBar.tsx) |
 | Isolated interactive reference | `FindBarReference` in [`FindBarReference.tsx`](../src/components/design-system/FindBarReference.tsx) |
 
 ### Keyboard and focus behavior
 
-On mobile, the production editor opens Find with Ctrl+F and Find and Replace with Ctrl+H. On desktop, the World Editor's app bar holds the docked **Search World** field instead (see Surface App Bar): both shortcuts focus it, and Escape clears it. The search input receives focus when the floating bar opens. Enter moves to the next match, Shift+Enter moves to the previous match, and Escape closes the bar. Expanding Replace and selecting navigation actions leave focus on the action that ran. A host must return focus to a stable opener when the bar closes; the live reference demonstrates that behavior.
+On mobile, the production editor opens Find with Ctrl+F and Find and Replace with Ctrl+H. The search input receives focus when the floating bar opens. Enter moves to the next match, Shift+Enter moves to the previous match, and Escape closes the bar. Expanding Replace and selecting navigation actions leave focus on the action that ran. A host must return focus to a stable opener when the bar closes; the live reference demonstrates that behavior.
+
+On desktop, the World Editor's app bar holds the docked **Search World** field (see Surface App Bar). It never takes focus when it mounts.
+
+- Ctrl+F focuses the field. Ctrl+H focuses it and expands it. Ctrl+F while expanded focuses the expanded field and leaves it expanded.
+- Expanding and collapsing move focus to the field of the layout now shown.
+- Escape and **Clear search** clear the search, collapse the bar, and drop the match marker. Focus returns to the control the author was in before Ctrl+F or Ctrl+H. When the author clicked or tabbed into the search instead, focus stays in the cleared field.
+- The recorded control is dropped when focus leaves the search. The Replace All confirmation and the placeholder picker count as part of the search.
 
 ### Responsive behavior
 
-At desktop widths, the floating bar shows the counter and current-field breadcrumb; the World Editor uses it only on mobile. At mobile widths, it uses the same controls and grouping, moves the counter beneath the main row, hides the breadcrumb, and stays inside the editor width. The editor context stacks its section list above the local fields without horizontal page overflow. Long queries and document values remain constrained by their inputs.
+At desktop widths, the floating bar shows the counter and current-field breadcrumb; the World Editor uses it only on mobile. The docked layout is desktop only. The expanded bar never grows wider than the window, less 2rem. At mobile widths, it uses the same controls and grouping, moves the counter beneath the main row, hides the breadcrumb, and stays inside the editor width. The editor context stacks its section list above the local fields without horizontal page overflow. Long queries and document values remain constrained by their inputs.
 
 ### State reference
 
@@ -305,8 +321,11 @@ At desktop widths, the floating bar shows the counter and current-field breadcru
 | Boundary | Previous from the first match wraps to the last; Next from the last wraps to the first. |
 | Replace | The disclosure adds the joined replacement row; Replace changes one result and Replace All requires confirmation. |
 | Focus | Search receives opening focus; disclosure and navigation retain action focus; closing returns focus to the reference opener. |
+| Docked | The field sits in the app bar with its counter, step cells, and expand cell. |
+| Docked, options on | The field shows an icon for each option that is on; selecting it expands the bar. |
+| Docked, expanded | The full bar covers the header from the field's slot, with the replace row and breadcrumb showing. |
 
-The live Find reference uses the production bar and matching code against local component state. Search, navigation, option changes, and replacements update a realistic sample document without using authored-world storage or the clipboard.
+The live Find reference uses the production bar and matching code against local component state. Search, navigation, option changes, and replacements update a realistic sample document without using authored-world storage or the clipboard. Its **Reference Layout** control switches between the floating bar and the docked field in a sample app bar. In the docked layout, **Find** acts as Ctrl+F and **Find and Replace** acts as Ctrl+H.
 
 ### Writing review
 
@@ -965,6 +984,7 @@ The bar is desktop-only. On mobile the surface keeps its card header, and its fo
 | Long name | The name truncates with "…" before the center group. Hover shows the full name. |
 | Narrow window | When the end column needs more than a third of the bar, the field narrows and moves off center. It never overlaps the controls beside it. |
 | Searching | The field shows the match count, and the arrows step through the matches. Escape clears it. |
+| Search expanded | The full Find and Replace bar covers the row from the field's slot. The other controls do not move. |
 | Unsaved changes | Save is enabled. No text says so. |
 | Saved | Save is disabled. No text says so. |
 | Simple | Export World as one icon button. |

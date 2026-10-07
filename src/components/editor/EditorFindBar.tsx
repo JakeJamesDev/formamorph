@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { CaseSensitive, ChevronDown, ChevronRight, ChevronUp, Crosshair, Plus, Replace, ReplaceAll, Search, Type, WholeWord, X } from 'lucide-react';
+import { CaseSensitive, ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp, Crosshair, Plus, Replace, ReplaceAll, Search, Type, WholeWord, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,7 +27,8 @@ import type { Placeholder, PlaceholderGroup } from '@/types';
 /**
  * The World Editor's find & replace bar, in one of two layouts. Floating is mobile's strip over the editor
  * content, opened from the header magnifier or Ctrl+F (Ctrl+H opens it with the replace row showing). Docked
- * is desktop's Search World field in the app bar, always mounted and live as you type.
+ * is desktop's Search World field in the app bar, always mounted and live as you type; expanded, the full bar
+ * grows over the header from the field's slot.
  *
  * Replacement has two modes. Text splices a string; Placeholder splices a freshly minted chip token, and
  * skips fields that don't render chips rather than leaving a raw token showing as literal text.
@@ -42,6 +43,9 @@ interface EditorFindBarProps {
   onActiveChange?: (active: boolean) => void;
   /** Docked: focus left the search. */
   onLeave?: () => void;
+  /** Docked: the full bar, with match options and the replace row, shows in place of the field. */
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   /** Docked: attributes for the field's frame, such as a Take Me There target. */
   fieldAttributes?: Readonly<Record<string, string>>;
   targets: SearchTarget[];
@@ -136,11 +140,10 @@ function ModeSwap({ onClick, label, last, children }: {
 }
 
 /** A cell at the docked field's right edge that steps through the matches. */
-function StepCell({ onClick, disabled, label, last, children }: {
+function StepCell({ onClick, disabled, label, children }: {
   onClick: () => void;
   disabled: boolean;
   label: string;
-  last?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -149,7 +152,7 @@ function StepCell({ onClick, disabled, label, last, children }: {
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={cn(FIELD_CELL, 'h-full shrink-0', last && 'rounded-r-md', FIELD_CELL_IDLE, 'disabled:pointer-events-none disabled:opacity-50')}
+      className={cn(FIELD_CELL, 'h-full shrink-0', FIELD_CELL_IDLE, 'disabled:pointer-events-none disabled:opacity-50')}
     >
       {children}
     </button>
@@ -157,7 +160,7 @@ function StepCell({ onClick, disabled, label, last, children }: {
 }
 
 export default function EditorFindBar({
-  layout = 'floating', focusSignal, onActiveChange, onLeave, fieldAttributes,
+  layout = 'floating', focusSignal, onActiveChange, onLeave, expanded = false, onExpandedChange, fieldAttributes,
   targets, placeholders, placementLetters, placeholderOwners, placeholderGroups, allowPlaceholderReplace, startWithReplace = false, onNavigate, onAddPlaceholder, onClose,
 }: EditorFindBarProps) {
   const docked = layout === 'docked';
@@ -179,6 +182,15 @@ export default function EditorFindBar({
   // Floating opens on request, so it takes focus; docked mounts with the editor, so it waits to be asked.
   useEffect(() => { if (!docked) searchRef.current?.focus(); }, [docked]);
   useEffect(() => { if (docked && focusSignal) searchRef.current?.focus(); }, [docked, focusSignal]);
+  // A swap unmounts the focused control, so focus follows to the shown field unless the host moved it away.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const shownExpanded = useRef(expanded);
+  useEffect(() => {
+    if (!docked || shownExpanded.current === expanded) return;
+    shownExpanded.current = expanded;
+    const focused = document.activeElement;
+    if (!focused || focused === document.body || rootRef.current?.contains(focused)) searchRef.current?.focus();
+  }, [docked, expanded]);
   const active = docked && query !== '';
   // The cleanup reports the end too, so an unmount never leaves the host collecting for an empty field.
   useEffect(() => {
@@ -318,13 +330,23 @@ export default function EditorFindBar({
     setChipId(placeholder.id);
   };
 
-  // Docked, Escape empties the field rather than removing it; the emptied query takes the marker with it.
+  // Docked, Escape and Clear search empty the field, which drops the marker; the host folds the bar back.
   const close = () => {
     if (docked) { setQuery(''); setDebounced(''); }
     onClose();
   };
+  const replaceOpen = docked || showReplace;
+
+  // The Replace All confirmation is portaled out of the bar, but focus in it is still in the search.
+  const leaveCheck = (event: React.FocusEvent<HTMLDivElement>) => {
+    const next = event.relatedTarget;
+    if (next instanceof Element && (event.currentTarget.contains(next) || next.closest('[data-editor-find-layer]'))) return;
+    onLeave?.();
+  };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
+    // A key in the portaled confirmation is that dialog's own.
+    if (!event.currentTarget.contains(event.target as Node)) return;
     if (event.key === 'Escape') { event.preventDefault(); close(); }
     // Docked, Enter steps only from the field; on a step cell it presses that cell.
     if (event.key === 'Enter' && (!docked || event.target === searchRef.current)) {
@@ -333,76 +355,27 @@ export default function EditorFindBar({
     }
   };
 
-  if (docked) {
-    return (
-      <div
-        className="w-[26rem] max-w-full"
-        data-editor-find-skip
-        onKeyDown={onKeyDown}
-        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onLeave?.(); }}
-        role="search"
-      >
-        {/* One row in the field's frame, so the text keeps whatever the counter and cells leave in a narrow bar. */}
-        <div
-          {...fieldAttributes}
-          className="group relative flex h-8 items-center rounded-md border border-input bg-background"
-        >
-          <Search aria-hidden className="ml-2.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
-            ref={searchRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search World"
-            placeholder="Search World"
-            className="h-full min-w-0 flex-1 bg-transparent px-2 text-meta outline-none placeholder:text-muted-foreground"
-          />
-          {/* Always mounted, so the live region exists before its first count. */}
-          <span className={cn('shrink-0 text-meta', counter && 'px-2', matches.length ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
-            {counter}
-          </span>
-          <StepCell onClick={() => step(-1)} disabled={!matches.length} label="Previous match">
-            <ChevronUp className="h-4 w-4" />
-          </StepCell>
-          <StepCell onClick={() => step(1)} disabled={!matches.length} label="Next match" last>
-            <ChevronDown className="h-4 w-4" />
-          </StepCell>
-          <span aria-hidden className="pointer-events-none absolute -inset-px rounded-md ring-ring ring-inset group-focus-within:ring-2" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      // Left, not right: the detail pane holds most of what a search finds, and it is the right-hand half.
-      // Inset equally on both edges, so the bar's corner sits exactly on the panel's corner beneath it.
-      className="absolute left-4 top-4 z-20 w-[min(30rem,calc(100%-2rem))] rounded-md border bg-popover p-2 shadow-lg"
-      data-editor-find-skip
-      onKeyDown={onKeyDown}
-      role="search"
-      aria-label="Find and replace in world"
-    >
-      {/* Both rows share one grid, so the two editboxes are the same width however wide their trailing
-          buttons are: the middle column carries both, and the last column sizes to whichever row needs more.
-          The replace row simply leaves the disclosure cell empty rather than being padded to line up. */}
+  // One grid for both rows keeps the two editboxes the same width, whatever their trailing buttons need.
+  const fullBar = (
+    <>
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1 gap-y-2">
         <Button
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0"
-          onClick={() => setShowReplace((v) => !v)}
-          aria-label={showReplace ? 'Hide replace' : 'Show replace'}
-          aria-expanded={showReplace}
+          onClick={() => (docked ? onExpandedChange?.(false) : setShowReplace((v) => !v))}
+          aria-label={docked ? 'Collapse to search' : showReplace ? 'Hide replace' : 'Show replace'}
+          aria-expanded={replaceOpen}
         >
-          {showReplace ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          {replaceOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
         <FieldWithTrailing>
           <Input
             ref={searchRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Find"
-            placeholder="Find"
+            aria-label={docked ? 'Search World' : 'Find'}
+            placeholder={docked ? 'Search World' : 'Find'}
             className="h-8 pr-[4.25rem] focus-visible:ring-0"
           />
           {/* One bordered control split in two rather than a ToggleGroup: the group owns its items' pressed
@@ -433,12 +406,12 @@ export default function EditorFindBar({
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => step(1)} disabled={!matches.length} aria-label="Next match">
             <ChevronDown className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose} aria-label="Close find">
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={close} aria-label={docked ? 'Clear search' : 'Close find'}>
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        {showReplace && (
+        {replaceOpen && (
           <>
             <span aria-hidden />
             <FieldWithTrailing>
@@ -530,28 +503,123 @@ export default function EditorFindBar({
         </div>
       )}
       {notice && <p className="mt-1 pl-8 text-muted-foreground">{notice}</p>}
+    </>
+  );
 
-      <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Replace All</AlertDialogTitle>
-            <AlertDialogDescription>
-              {(() => {
-                const eligible = matches.filter((m) => insertFor(m.target) !== null);
-                const fields = new Set(eligible.map((m) => m.target)).size;
-                const skipped = matches.length - eligible.length;
-                return `Replace ${eligible.length} match${eligible.length === 1 ? '' : 'es'} across ${fields} field${fields === 1 ? '' : 's'}?`
-                  + (skipped ? ` ${skipped} in fields that can't hold ${missingChip} will be skipped.` : '')
-                  + ' Discard Changes is the only way back.';
-              })()}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={runReplaceAll}>Replace All</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+  const confirmDialog = (
+    <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
+      <AlertDialogContent data-editor-find-layer>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Replace All</AlertDialogTitle>
+          <AlertDialogDescription>
+            {(() => {
+              const eligible = matches.filter((m) => insertFor(m.target) !== null);
+              const fields = new Set(eligible.map((m) => m.target)).size;
+              const skipped = matches.length - eligible.length;
+              return `Replace ${eligible.length} match${eligible.length === 1 ? '' : 'es'} across ${fields} field${fields === 1 ? '' : 's'}?`
+                + (skipped ? ` ${skipped} in fields that can't hold ${missingChip} will be skipped.` : '')
+                + ' Discard Changes is the only way back.';
+            })()}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={runReplaceAll}>Replace All</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  if (docked) {
+    const optionsOn = matchCase || wholeWord;
+    const expand = () => onExpandedChange?.(true);
+    return (
+      <div
+        ref={rootRef}
+        className="relative w-[26rem] max-w-full"
+        data-editor-find-skip
+        onKeyDown={onKeyDown}
+        onBlur={leaveCheck}
+        role="search"
+      >
+        {expanded ? (
+          <>
+            {/* The slot keeps the field's size, so the header never reflows while the bar covers it. */}
+            <div aria-hidden className="h-8" />
+            {/* Offset by its padding and border, so its field sits where the docked one was. */}
+            <div {...fieldAttributes} className="absolute -top-[9px] left-1/2 z-30 w-[36rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-md border bg-popover p-2 shadow-lg">
+              {fullBar}
+            </div>
+          </>
+        ) : (
+          // One row in the field's frame, so the text keeps whatever the counter and cells leave in a narrow bar.
+          <div
+            {...fieldAttributes}
+            className="group relative flex h-8 items-center rounded-md border border-input bg-background"
+          >
+            <Search aria-hidden className="ml-2.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search World"
+              placeholder="Search World"
+              className="h-full min-w-0 flex-1 bg-transparent px-2 text-meta outline-none placeholder:text-muted-foreground"
+            />
+            {/* An option left on shows here, so a collapsed search never filters silently. */}
+            {optionsOn && (
+              <Tip tip="Show match options">
+                <button
+                  type="button"
+                  onClick={expand}
+                  className="mr-1 flex h-6 shrink-0 items-center gap-0.5 rounded bg-primary/15 px-1 text-primary hover:bg-primary/25"
+                >
+                  {matchCase && <CaseSensitive aria-hidden className="h-4 w-4" />}
+                  {wholeWord && <WholeWord aria-hidden className="h-4 w-4" />}
+                </button>
+              </Tip>
+            )}
+            {/* Always mounted, so the live region exists before its first count. */}
+            <span className={cn('shrink-0 text-meta', counter && 'px-2', matches.length ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
+              {counter}
+            </span>
+            <StepCell onClick={() => step(-1)} disabled={!matches.length} label="Previous match">
+              <ChevronUp className="h-4 w-4" />
+            </StepCell>
+            <StepCell onClick={() => step(1)} disabled={!matches.length} label="Next match">
+              <ChevronDown className="h-4 w-4" />
+            </StepCell>
+            <Tip tip="Show options and replace (Ctrl+H)">
+              <button
+                type="button"
+                onClick={expand}
+                aria-label="Show options and replace"
+                aria-expanded={false}
+                className={cn(FIELD_CELL, 'h-full shrink-0 rounded-r-md', FIELD_CELL_IDLE)}
+              >
+                <ChevronsUpDown className="h-4 w-4" />
+              </button>
+            </Tip>
+            <span aria-hidden className="pointer-events-none absolute -inset-px rounded-md ring-ring ring-inset group-focus-within:ring-2" />
+          </div>
+        )}
+        {confirmDialog}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      // Left, not right: the detail pane holds most of what a search finds, and it is the right-hand half.
+      // Inset equally on both edges, so the bar's corner sits exactly on the panel's corner beneath it.
+      className="absolute left-4 top-4 z-20 w-[min(30rem,calc(100%-2rem))] rounded-md border bg-popover p-2 shadow-lg"
+      data-editor-find-skip
+      onKeyDown={onKeyDown}
+      role="search"
+      aria-label="Find and replace in world"
+    >
+      {fullBar}
+      {confirmDialog}
     </div>
   );
 }

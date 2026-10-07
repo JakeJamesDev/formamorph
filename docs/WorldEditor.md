@@ -15,8 +15,8 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 | Where | What |
 | --- | --- |
 | Left | The back arrow, **World Editor**, and the world's name |
-| Center | **Find and replace** and the Test Bench |
-| Right | The mode select, **Export World**, and **Save** |
+| Center | The **Search World** box |
+| Right | The mode select, **Export World**, the Test Bench, and **Save** |
 
 In Simple mode, **Export World** is an icon. In Advanced mode, **More world actions** holds **Export World** and **Optimize Images**. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
@@ -50,10 +50,10 @@ The app remembers your pick for every world. You can't switch while the Authorin
 <!-- keywords: search, ctrl+f, rename everywhere, change all, swap a word, bulk rename, substitute, ctrl+h, mass edit, fix typo everywhere, global rename -->
 <!-- route: worldEditor#find-button -->
 
-1. Select the magnifier button in the header, or press **Ctrl+F**. Press **Ctrl+H** to open it with the replace row.
-2. Type in the **Find** box. Select **Match case** or **Match whole word** to narrow the search.
-3. Select **Next match** or **Previous match** to go through the results. The editor opens each one on its tab.
-4. To replace, open the replace row and type in the **Replace** box.
+1. On desktop, type in the **Search World** box at the top of the editor, or press **Ctrl+F** to go to it. On mobile, select the magnifier button in the header.
+2. Select **Next match** or **Previous match** to go through the results. The editor opens each one on its tab.
+3. To narrow the search or to replace, select **Show options and replace** at the end of the box, or press **Ctrl+H**. On mobile, open the replace row.
+4. Select **Match case** or **Match whole word** to narrow the search. Type the new text in the **Replace** box.
 5. Select **Replace** for this match, or **Replace all** for every match.
 
 ## How to Restart the Authoring Tour
@@ -100,9 +100,11 @@ Switching to Simple mode doesn't remove anything. The hidden fields keep their v
 ## Find and Replace
 <!-- keywords: swap text for chip, keyboard shortcuts, skip to next result, turn word into variable, undo a swap, confirm bulk change, shift+enter -->
 
-The find bar searches the whole world, on every tab the current mode shows. It matches chips by their label, name or values.
+A search covers the whole world, on every tab the current mode shows. It matches chips by their label, name or values.
 
-- **Enter** goes to the next match. **Shift+Enter** goes to the previous one. **Esc** closes the bar.
+- **Enter** goes to the next match. **Shift+Enter** goes to the previous one. **Esc** clears the search, or closes the bar on mobile.
+- On desktop, **Show options and replace** opens the full bar over the top of the editor. **Collapse to search** folds it back and keeps your search. **Clear search** clears it.
+- **Match case** and **Match whole word** stay on when you fold the bar back. An icon in the box shows each one that's on. Select it to open the options.
 - **Replace all** asks first, and says how many matches and fields it changes.
 - A chip can't be replaced as text. Change it from its pop-out.
 - A field that can't hold a chip is skipped when you replace text with a placeholder.
