@@ -109,12 +109,17 @@ export type RequirementBearer =
   | { kind: 'you' }
   | { kind: 'entity'; id: string; name?: string };
 
-/** One way to unlock a gated trait: a trait is active, any trait below a group is active, or the player plays
- *  as a world entity. `name` is the target's name when it was stored, so an unresolved one still reads. */
+/** One Condition of a gate: a trait is active, any trait below a group is active, or the player plays as a
+ *  world entity. `name` is the target's name when it was stored, so an unresolved one still reads. */
 export type TraitRequirement =
   | { kind: 'trait'; id: string; name?: string; bearer?: RequirementBearer }
   | { kind: 'group'; id: string; name?: string; bearer?: RequirementBearer }
   | { kind: 'playingAs'; id: string; name?: string };
+
+/** One Requirement Row: it holds when every Condition in it holds. Never empty. */
+export interface TraitRequirementRow {
+  all: TraitRequirement[];
+}
 
 /** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
 export interface TraitGroup {
@@ -170,7 +175,7 @@ export interface TraitLink {
 /** The fields a link may override on a trait its original brings. Name and descriptions stay the original's. */
 export interface TraitLinkFields {
   isDefault: boolean;
-  requires: TraitRequirement[];
+  requires: TraitRequirementRow[];
   placeholderPins: PlaceholderPin[];
   playerToggle: boolean;
   statChanges: StatChange[];
@@ -201,8 +206,8 @@ export interface Trait {
   statToggles?: TraitStatToggle[];
   /** Placeholders held at a fixed value while this trait is active. */
   placeholderPins?: PlaceholderPin[];
-  /** Any one of these unlocks the trait. Absent or empty = always available. */
-  requires?: TraitRequirement[];
+  /** Any one row that holds unlocks the trait. Absent or empty = always available. */
+  requires?: TraitRequirementRow[];
   /** Absent = Optional. Always On is active exactly while its gate holds, and the player never switches it.
    *  Hidden acts as Always On. Both ignore `isDefault` and `playerToggle`. */
   mode?: TraitMode;

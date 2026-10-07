@@ -3,6 +3,7 @@ import {
   SELF_ENTITY, adoptOwnedTraits, bindOwnedTraits, comparableOwnedTraits, portableOwnedTraits, type TraitWorld,
 } from './portableTraits';
 import { gateStates } from './traitGates';
+import { conditionsOf } from './requirementRows';
 import { traitOwners } from './ownedTraits';
 import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 
@@ -15,8 +16,9 @@ const ash = (requires: TraitRequirement[] = []): Entity => ({
   traitGroups: [group('g-bond', 'Bond')],
   traits: [
     trait('t-tamed', { name: 'Tamed', groupId: 'g-bond' }),
-    trait('t-pack', { name: 'Pack Leader', requires: [{ kind: 'trait', id: 't-tamed' }, { kind: 'group', id: 'g-bond' }] }),
-    trait('t-oath', { name: 'Oath', requires }),
+    trait('t-pack', { name: 'Pack Leader', requires: [{ all: [{ kind: 'trait', id: 't-tamed' }] }, { all: [{ kind: 'group', id: 'g-bond' }] }] }),
+    // Each entry is a row of its own, so the Oath opens through any one of them.
+    trait('t-oath', { name: 'Oath', requires: requires.map((r) => ({ all: [r] })) }),
   ],
 });
 
@@ -33,13 +35,13 @@ const OUTWARD: TraitRequirement[] = [
   { kind: 'playingAs', id: 'ash' },
 ];
 
-const oathOf = (e: Pick<Entity, 'traits'>) => e.traits!.find((t) => t.name === 'Oath')!.requires;
+const oathOf = (e: Pick<Entity, 'traits'>) => conditionsOf(e.traits!.find((t) => t.name === 'Oath')!.requires);
 
 describe('portableOwnedTraits', () => {
   it('keeps inward requirements by id and names every outward one, playing-as included', () => {
     const out = portableOwnedTraits(ash(OUTWARD), origin);
     expect(out.traits!.find((t) => t.id === 't-pack')!.requires).toEqual([
-      { kind: 'trait', id: 't-tamed' }, { kind: 'group', id: 'g-bond' },
+      { all: [{ kind: 'trait', id: 't-tamed' }] }, { all: [{ kind: 'group', id: 'g-bond' }] },
     ]);
     expect(oathOf(out)).toEqual([
       { kind: 'trait', id: 'w-paladin', name: 'Paladin' },
@@ -89,7 +91,7 @@ describe('bindOwnedTraits', () => {
   it('keeps inward requirements on the entity itself', () => {
     const bound = bindOwnedTraits(carried(), target());
     expect(bound.traits!.find((t) => t.id === 't-pack')!.requires).toEqual([
-      { kind: 'trait', id: 't-tamed' }, { kind: 'group', id: 'g-bond' },
+      { all: [{ kind: 'trait', id: 't-tamed' }] }, { all: [{ kind: 'group', id: 'g-bond' }] },
     ]);
   });
 
@@ -109,7 +111,7 @@ describe('bindOwnedTraits', () => {
       owners: traitOwners({ traits: [], traitGroups: [], entities: [bound] }), active: {}, entities: [], persona: { source: 'none' },
     }).get(bound.id)!.get('t-oath')!;
     expect(gate.unlocked).toBe(false);
-    expect(gate.requirements.map((r) => r.text).slice(0, 3)).toEqual(['Paladin', 'any Class', 'playing as Sir Aldric']);
+    expect(gate.rows.flatMap((row) => row.conditions).map((c) => c.text).slice(0, 3)).toEqual(['Paladin', 'any Class', 'playing as Sir Aldric']);
   });
 
   it('leaves a requirement whose name two targets carry unresolved', () => {
@@ -161,7 +163,7 @@ describe('adoptOwnedTraits', () => {
     const bond = adopted.traitGroups![0];
     expect(tamed.groupId).toBe(bond.id);
     expect(adopted.traits!.find((t) => t.name === 'Pack Leader')!.requires).toEqual([
-      { kind: 'trait', id: tamed.id }, { kind: 'group', id: bond.id },
+      { all: [{ kind: 'trait', id: tamed.id }] }, { all: [{ kind: 'group', id: bond.id }] },
     ]);
     expect(oathOf(adopted)![3]).toEqual({ kind: 'playingAs', id: 'copy', name: 'Ash' });
   });
@@ -210,9 +212,9 @@ const smiteOverrides = { playerToggle: { value: true, blueprint: false } };
 const mira = (): Entity => ({
   id: 'mira', name: 'Mira', persona: true,
   traits: [trait('t-vow', { name: 'Vow', requires: [
-    { kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } },
-    { kind: 'trait', id: 'w-smite', bearer: { kind: 'you' } },
-    { kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'mira' } },
+    { all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } }] },
+    { all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'you' } }] },
+    { all: [{ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'mira' } }] },
   ] })],
   traitLinks: [
     {
@@ -224,7 +226,7 @@ const mira = (): Entity => ({
 });
 
 const linkOf = (e: Pick<Entity, 'traitLinks'>, id: string) => e.traitLinks?.find((l) => l.id === id);
-const vowOf = (e: Pick<Entity, 'traits'>) => e.traits!.find((t) => t.id === 't-vow')!.requires!;
+const vowOf = (e: Pick<Entity, 'traits'>) => conditionsOf(e.traits!.find((t) => t.id === 't-vow')!.requires);
 
 describe('portableOwnedTraits with links', () => {
   it("names each link's original, and each child its per-link data keys", () => {

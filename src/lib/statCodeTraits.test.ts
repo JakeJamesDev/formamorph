@@ -32,7 +32,7 @@ describe('savedTraits', () => {
 describe('sandboxTraits under gates', () => {
   // A code switch-on of a locked trait leaves it acquired and off; the sandbox entry keeps its three fields.
   const paladin: Trait = { id: 'paladin', name: 'Paladin', statChanges: [] };
-  const plate: Trait = { id: 'plate', name: 'Plate Armor', statChanges: [], requires: [{ kind: 'trait', id: 'paladin' }] };
+  const plate: Trait = { id: 'plate', name: 'Plate Armor', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'paladin' }] }] };
   const world = { traits: [paladin, plate], groups: [] };
 
   it('reads a locked trait code switched on as acquired and not enabled', () => {
@@ -51,7 +51,7 @@ describe('applyCodeTraitSwitches on a bearer’s own trait', () => {
   const calm: Trait = { id: 'calm', name: 'Calm', groupId: 'g', statChanges: [] };
   const angry: Trait = { id: 'angry', name: 'Angry', groupId: 'g', statChanges: [] };
   const sworn: Trait = { id: 'sworn', name: 'Sworn', mode: 'alwaysOn', statChanges: [] };
-  const fury: Trait = { id: 'fury', name: 'Fury', statChanges: [], requires: [{ kind: 'trait', id: 'angry' }] };
+  const fury: Trait = { id: 'fury', name: 'Fury', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'angry' }] }] };
   const mira = { id: 'mira', name: 'Mira', traits: [calm, angry, sworn, fury], groups: [group] };
   const world: TraitWorld = {
     traits: [], groups: [], entities: [{ id: 'mira', name: 'Mira', persona: true }], persona: { source: 'world', entityId: 'mira' },

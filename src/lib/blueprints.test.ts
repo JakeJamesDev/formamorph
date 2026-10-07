@@ -49,7 +49,7 @@ describe('withOverride / withoutOverride', () => {
 
 describe('trait links', () => {
   const paladin = trait('paladin', {
-    isDefault: true, playerToggle: false, requires: [{ kind: 'trait', id: 'brave' }],
+    isDefault: true, playerToggle: false, requires: [{ all: [{ kind: 'trait', id: 'brave' }] }],
     placeholderPins: [{ placeholderId: 'garb', value: 'tabard', valueId: 'v-tabard' }],
     statChanges: [{ statId: 'hp', value: 2, type: 'max' }],
   });
@@ -153,11 +153,11 @@ describe('trait links', () => {
   });
 
   it('marks an override stale once the original\'s field changed after it was written', () => {
-    const l = setLinkOverride(link('l1', 'classes'), paladin, 'requires', [{ kind: 'trait', id: 'calm' }]);
+    const l = setLinkOverride(link('l1', 'classes'), paladin, 'requires', [{ all: [{ kind: 'trait', id: 'calm' }] }]);
     expect(linkTraitState(paladin, l).stale).toEqual([]);
-    const moved = { ...paladin, requires: [{ kind: 'trait' as const, id: 'brave' }, { kind: 'trait' as const, id: 'bold' }] };
+    const moved = { ...paladin, requires: [{ all: [{ kind: 'trait' as const, id: 'brave' }] }, { all: [{ kind: 'trait' as const, id: 'bold' }] }] };
     expect(linkTraitState(moved, l).stale).toEqual(['requires']);
-    expect(effectiveLinkTrait(moved, l).requires).toEqual([{ kind: 'trait', id: 'calm' }]);
+    expect(effectiveLinkTrait(moved, l).requires).toEqual([{ all: [{ kind: 'trait', id: 'calm' }] }]);
   });
 });
 

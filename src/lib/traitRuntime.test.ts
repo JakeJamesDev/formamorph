@@ -428,11 +428,11 @@ describe('gates in play', () => {
   const armor: TraitGroup = { id: 'armor', name: 'Armor', parentId: null, maxPicks: 1 };
   const paladin = trait('paladin', [{ statId: 'h', value: 10, type: 'starting' }], { playerToggle: true });
   const plate = trait('plate', [{ statId: 'h', value: 20, type: 'max' }, { statId: 'h', value: 15, type: 'starting' }], {
-    playerToggle: true, groupId: 'armor', requires: [{ kind: 'trait', id: 'paladin' }],
+    playerToggle: true, groupId: 'armor', requires: [{ all: [{ kind: 'trait', id: 'paladin' }] }],
   });
   const robes = trait('robes', [], { playerToggle: true, groupId: 'armor' });
-  const aura = trait('aura', [{ statId: 'h', value: 5, type: 'starting' }], { playerToggle: true, requires: [{ kind: 'trait', id: 'plate' }] });
-  const royal = trait('royal', [{ statId: 'h', value: -8, type: 'starting' }], { requires: [{ kind: 'playingAs', id: 'aldric' }] });
+  const aura = trait('aura', [{ statId: 'h', value: 5, type: 'starting' }], { playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'plate' }] }] });
+  const royal = trait('royal', [{ statId: 'h', value: -8, type: 'starting' }], { requires: [{ all: [{ kind: 'playingAs', id: 'aldric' }] }] });
   const traits = [paladin, plate, robes, aura, royal];
   const aldric = { id: 'aldric', name: 'Sir Aldric', persona: true };
   const gated = (persona: PersonaRef = { source: 'none' }): TraitWorld =>
@@ -614,7 +614,7 @@ describe('Always On traits in play', () => {
   // The Cursed Ring brings the Curse, which the player can never switch; Sworn is fixed in the max-one Oath group.
   const ring = trait('ring', [], { playerToggle: true });
   const curse = trait('curse', [{ statId: 'h', value: -10, type: 'starting' }], {
-    mode: 'alwaysOn', playerToggle: true, requires: [{ kind: 'trait', id: 'ring' }],
+    mode: 'alwaysOn', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'ring' }] }],
   });
   const oath: TraitGroup = { id: 'oath', name: 'Oath', parentId: null, maxPicks: 1 };
   const sworn = trait('sworn', [], { mode: 'alwaysOn', groupId: 'oath' });
@@ -675,7 +675,7 @@ describe('Always On traits in play', () => {
   });
 
   it('brings an entity’s curse in that entity’s lists, and refuses the player a switch of it', () => {
-    const ashTraits = [trait('ring', [], { playerToggle: true }), trait('curse', [], { mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'ring' }] })];
+    const ashTraits = [trait('ring', [], { playerToggle: true }), trait('curse', [], { mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'ring' }] }] })];
     const owned: TraitWorld = {
       traits: [], groups: [], entities: [{ id: 'ash', name: 'Ash' }],
       bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'ash', name: 'Ash', traits: ashTraits, groups: [] }],
@@ -699,7 +699,7 @@ describe('Hidden traits in play', () => {
   // The Cursed Ring brings a Hidden curse: its stats move, but no log line or banner names it.
   const ring = trait('ring', [], { playerToggle: true });
   const curse = trait('curse', [{ statId: 'h', value: -10, type: 'starting' }], {
-    mode: 'hidden', requires: [{ kind: 'trait', id: 'ring' }],
+    mode: 'hidden', requires: [{ all: [{ kind: 'trait', id: 'ring' }] }],
   });
   const w = world([ring, curse]);
   const name = (t: Trait) => t.name;
@@ -740,13 +740,13 @@ describe('owned traits in play', () => {
   // (Ash: Tamed). Tamed and Wild share Ash's exclusive Bond group. Gruff is Ash's but not switchable.
   const paladin = trait('paladin', [], { name: 'Paladin', playerToggle: true });
   const tamer = trait('tamer', [{ statId: 'h', value: 10, type: 'starting' }], {
-    name: 'Beast Tamer', playerToggle: true, requires: [{ kind: 'trait', id: 'tamed', bearer: { kind: 'entity', id: 'ash' } }],
+    name: 'Beast Tamer', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'tamed', bearer: { kind: 'entity', id: 'ash' } }] }],
   });
   const bond: TraitGroup = { id: 'bond', name: 'Bond', parentId: null, maxPicks: 1 };
   const ashTraits = [
     trait('tamed', [], { name: 'Tamed', playerToggle: true, groupId: 'bond' }),
     trait('wild', [], { name: 'Wild', playerToggle: true, groupId: 'bond' }),
-    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }),
+    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }] }),
     trait('gruff', [], { name: 'Gruff' }),
   ];
   const ash = { id: 'ash', name: 'Ash', traits: ashTraits, groups: [bond] };
@@ -888,7 +888,7 @@ describe('linked stat traits follow whoever the player plays', () => {
   it('reverses a root trait the new persona is not offered, because its gate names that persona', () => {
     // Squire (+4 starting on h) requires Albus: Paladin. Playing Albus, the player bearer no longer holds it.
     const squire = trait('squire', [{ statId: 'h', value: 4, type: 'starting' }], {
-      name: 'Squire', requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'albus' } }],
+      name: 'Squire', requires: [{ all: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'albus' } }] }],
     });
     const withSquire = (persona: PersonaRef, held: Trait[]): TraitWorld => {
       const base = linked(persona);

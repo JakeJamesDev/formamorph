@@ -16,7 +16,7 @@ const off = (blueprint: boolean) => ({ isDefault: { value: false, blueprint } })
 // Classes (Paladin, Wizard, Schools (Fire)), Brave at the root.
 const world = {
   traits: [
-    trait('paladin', { name: 'Paladin', groupId: 'classes', order: 0, isDefault: true, requires: [{ kind: 'trait', id: 'wizard' }] }),
+    trait('paladin', { name: 'Paladin', groupId: 'classes', order: 0, isDefault: true, requires: [{ all: [{ kind: 'trait', id: 'wizard' }] }] }),
     trait('wizard', { groupId: 'classes', order: 1 }),
     trait('fire', { groupId: 'schools' }),
     trait('brave', { groupId: null, statChanges: [{ statId: 's', value: 1, type: 'min' }] }),
@@ -82,7 +82,7 @@ describe('linkedTraits', () => {
     const l = link('l1', 'paladin', 'trait', {
       overrides: {
         paladin: {
-          requires: { value: [], blueprint: [{ kind: 'trait', id: 'wizard' }] },
+          requires: { value: [], blueprint: [{ all: [{ kind: 'trait', id: 'wizard' }] }] },
           playerToggle: { value: true, blueprint: false },
           statChanges: { value: [{ statId: 's', value: 2, type: 'max' }], blueprint: [] },
         },
@@ -172,7 +172,7 @@ describe('editLinkTrait', () => {
       paladin: { requires: { value: [], blueprint: paladin.requires }, playerToggle: { value: true, blueprint: false } },
     });
     expect(out.traitLinks?.[1]).toBe(ash.traitLinks![1]);
-    expect(world.traits[0].requires).toEqual([{ kind: 'trait', id: 'wizard' }]);
+    expect(world.traits[0].requires).toEqual([{ all: [{ kind: 'trait', id: 'wizard' }] }]);
     expect(editLinkTrait(world, ash, 'l-ash', 'pack', paladin)).toBe(ash);
   });
 });
@@ -235,7 +235,7 @@ describe('detachLink', () => {
     const byName = (n: string) => traits.find((t) => t.name === n)!;
     expect(byName('fire').groupId).toBe(schools.id);
     expect(byName('Paladin')).toMatchObject({ groupId: root.id, isDefault: false });
-    expect(byName('Paladin').requires).toEqual([{ kind: 'trait', id: byName('wizard').id }]);
+    expect(byName('Paladin').requires).toEqual([{ all: [{ kind: 'trait', id: byName('wizard').id }] }]);
     const ids = [...groups, ...traits].map((x) => x.id);
     expect(ids.some((id) => ['classes', 'schools', 'paladin', 'wizard', 'fire'].includes(id))).toBe(false);
   });

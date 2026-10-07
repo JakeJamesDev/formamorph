@@ -17,12 +17,12 @@ const stat = (over: Partial<PlayerStat>): PlayerStat => ({
 const mood: TraitGroup = { id: 'mood', name: 'Mood', parentId: null };
 // The world trait is Always On and gated on a trait the player lacks; the gifted one is player-toggled in a group.
 const edge: Trait = { id: 'edge', name: 'Edge', statChanges: [] };
-const oath: Trait = { id: 'oath', name: 'Oath', mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'edge' }], statChanges: [] };
+const oath: Trait = { id: 'oath', name: 'Oath', mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'edge' }] }], statChanges: [] };
 const gifted: Trait = { id: 'gifted', name: 'Gifted', groupId: 'mood', playerToggle: true, statChanges: [] };
 const calm: Trait = { id: 'calm', name: 'Calm', statChanges: [] };
-const sworn: Trait = { id: 'sworn', name: 'Sworn', requires: [{ kind: 'trait', id: 'calm' }], statChanges: [] };
+const sworn: Trait = { id: 'sworn', name: 'Sworn', requires: [{ all: [{ kind: 'trait', id: 'calm' }] }], statChanges: [] };
 const mira: Entity = { id: 'mira', name: 'Mira', persona: true, type: 'Knight', pronouns: 'she/her', traits: [calm] };
-const rook: Entity = { id: 'rook', name: 'Rook', traits: [calm, sworn].map((t) => ({ ...t, id: `rook-${t.id}`, requires: t.requires?.map((r) => ({ ...r, id: `rook-${r.id}` })) })) };
+const rook: Entity = { id: 'rook', name: 'Rook', traits: [calm, sworn].map((t) => ({ ...t, id: `rook-${t.id}`, requires: t.requires?.map((row) => ({ all: row.all.map((r) => ({ ...r, id: `rook-${r.id}` })) })) })) };
 const pip: Entity = { id: 'pip', name: 'Pip' };
 const asMira: PersonaRef = { source: 'world', entityId: 'mira' };
 

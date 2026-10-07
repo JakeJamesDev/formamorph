@@ -26,10 +26,10 @@ const world = (
 
 const unlocked = (input: GateInput, id: string, owner = WORLD_OWNER) => gateOf(gateStates(input), owner, id)?.unlocked;
 const reason = (input: GateInput, id: string, owner = WORLD_OWNER) =>
-  gateOf(gateStates(input), owner, id)?.requirements.map((r) => r.text);
+  gateOf(gateStates(input), owner, id)?.rows.flatMap((row) => row.conditions).map((c) => c.text);
 
 describe('gate states', () => {
-  const classes = [T('Paladin'), T('Knight'), T('Plate Armor', { requires: [trait('Paladin'), trait('Knight')] })];
+  const classes = [T('Paladin'), T('Knight'), T('Plate Armor', { requires: [{ all: [trait('Paladin')] }, { all: [trait('Knight')] }] })];
 
   it('keeps a trait with no requirements unlocked', () => {
     expect(unlocked(world([T('Rogue')]), 'Rogue')).toBe(true);
@@ -47,7 +47,7 @@ describe('gate states', () => {
   });
 
   it('reports each owner’s gates under that owner', () => {
-    const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [T('Loyal', { requires: [trait('Tamed')] })] };
+    const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [T('Loyal', { requires: [{ all: [trait('Tamed')] }] })] };
     const states = gateStates(world([T('Brave')], [], [], { owners: [world([T('Brave')]).owners[0], wolf] }));
     expect([...states.keys()]).toEqual([WORLD_OWNER, 'wolf']);
     expect(gateOf(states, 'wolf', 'Loyal')?.unlocked).toBe(false);
@@ -55,9 +55,9 @@ describe('gate states', () => {
   });
 
   it('flags a requirement on a Hidden trait, in the owner’s tree or only in the originals', () => {
-    const traits = [T('Bond', { mode: 'hidden' }), T('Rite', { requires: [trait('Bond'), trait('Omen'), trait('Knight')] }), T('Knight')];
+    const traits = [T('Bond', { mode: 'hidden' }), T('Rite', { requires: [{ all: [trait('Bond')] }, { all: [trait('Omen')] }, { all: [trait('Knight')] }] }), T('Knight')];
     const input = world(traits, [], [], { originals: { traits: [T('Omen', { mode: 'hidden' })], groups: [] } });
-    expect(gateOf(gateStates(input), WORLD_OWNER, 'Rite')?.requirements.map((r) => [r.text, r.hidden])).toEqual([
+    expect(gateOf(gateStates(input), WORLD_OWNER, 'Rite')?.rows.flatMap((row) => row.conditions).map((c) => [c.text, c.hidden])).toEqual([
       ['Bond', true], ['Omen', true], ['Knight', false],
     ]);
   });
@@ -69,13 +69,88 @@ describe('gate states', () => {
   });
 });
 
+describe('requirement rows', () => {
+  const ref = (traitId: string) => ({ ownerId: WORLD_OWNER, traitId });
+  // Plate: Knight and Heavy. Banner: Knight and Heavy, or Merc.
+  const plate = T('Plate', { requires: [{ all: [trait('Knight'), trait('Heavy')] }] });
+  const banner = T('Banner', { requires: [{ all: [trait('Knight'), trait('Heavy')] }, { all: [trait('Merc')] }] });
+  const traits = [T('Knight'), T('Heavy'), T('Merc'), plate, banner];
+
+  it('holds a row only when every Condition in it holds', () => {
+    expect(unlocked(world(traits, [], ['Knight']), 'Plate')).toBe(false);
+    expect(unlocked(world(traits, [], ['Heavy']), 'Plate')).toBe(false);
+    expect(unlocked(world(traits, [], ['Knight', 'Heavy']), 'Plate')).toBe(true);
+  });
+
+  it('holds a gate when any one row holds', () => {
+    expect(unlocked(world(traits, [], ['Merc']), 'Banner')).toBe(true);
+    expect(unlocked(world(traits, [], ['Knight']), 'Banner')).toBe(false);
+  });
+
+  it('reports each row and each Condition in it, in authored order', () => {
+    const state = gateOf(gateStates(world(traits, [], ['Knight', 'Merc'])), WORLD_OWNER, 'Banner')!;
+    expect(state.rows.map((row) => [row.holds, row.conditions.map((c) => [c.text, c.holds])])).toEqual([
+      [false, [['Knight', true], ['Heavy', false]]],
+      [true, [['Merc', true]]],
+    ]);
+    expect(gateOf(gateStates(world(traits)), WORLD_OWNER, 'Knight')).toEqual({ unlocked: true, rows: [] });
+  });
+
+  it('settles a pick off when its row loses one Condition, and brings it back through the cascade-off list', () => {
+    const on = world(traits, [], ['Knight', 'Heavy', 'Plate']);
+    expect(settle(on).active[WORLD_OWNER]).toEqual(['Knight', 'Heavy', 'Plate']);
+    const dropped = switchTrait(on, WORLD_OWNER, 'Heavy')!;
+    expect(dropped.active[WORLD_OWNER]).toEqual(['Knight']);
+    expect(dropped.turnedOff).toEqual([ref('Plate')]);
+    const back = switchTrait(world(traits, [], dropped.active[WORLD_OWNER]), WORLD_OWNER, 'Heavy', dropped.cascadeOff)!;
+    expect(back.active[WORLD_OWNER]).toEqual(['Knight', 'Heavy', 'Plate']);
+    expect(back.returned).toEqual([ref('Plate')]);
+  });
+
+  it('refuses to switch on a trait whose every row has a Condition unmet', () => {
+    expect(switchTrait(world(traits, [], ['Knight']), WORLD_OWNER, 'Plate')).toBeNull();
+    expect(switchTrait(world(traits, [], ['Knight', 'Heavy']), WORLD_OWNER, 'Plate')).not.toBeNull();
+  });
+
+  it('starts a gated default only when every Condition of a row starts too', () => {
+    const defaults = (heavy: boolean) => world([
+      T('Knight', { isDefault: true }), T('Heavy', { isDefault: heavy }),
+      T('Plate', { isDefault: true, requires: [{ all: [trait('Knight'), trait('Heavy')] }] }),
+    ]);
+    expect(settleDefaults(defaults(false)).active[WORLD_OWNER]).toEqual(['Knight']);
+    expect(settleDefaults(defaults(true)).active[WORLD_OWNER]).toEqual(['Knight', 'Heavy', 'Plate']);
+  });
+
+  it('finds a trait never unlockable when its only row loops back, and unlockable through a second row', () => {
+    const loop = [
+      T('Knight'), T('Oath', { requires: [{ all: [trait('Plate')] }] }),
+      T('Plate', { requires: [{ all: [trait('Knight'), trait('Oath')] }] }),
+    ];
+    expect(neverUnlockable(world(loop))).toEqual([[ref('Oath'), ref('Plate')]]);
+    const second = loop.map((t) => (t.id === 'Plate' ? { ...t, requires: [...t.requires!, { all: [trait('Knight')] }] } : t));
+    expect(neverUnlockable(world(second))).toEqual([]);
+  });
+
+  it('opens Automatic traits together only through every Condition of a row', () => {
+    // Knight and Rogue are max-one rivals, so a row needing both never opens.
+    const groups = [G('Class', { maxPicks: 1 }), G('Auto', { maxPicks: 1 })];
+    const auto = (rows: Trait['requires']) => world([
+      T('Knight', { groupId: 'Class' }), T('Rogue', { groupId: 'Class' }), T('Heavy'), T('Merc'),
+      T('Vigil', { groupId: 'Auto', mode: 'alwaysOn', requires: rows }),
+      T('Watch', { groupId: 'Auto', mode: 'alwaysOn', requires: [{ all: [trait('Merc')] }] }),
+    ], groups);
+    expect(alwaysOnOverMax(auto([{ all: [trait('Knight'), trait('Rogue')] }]))).toEqual([]);
+    expect(alwaysOnOverMax(auto([{ all: [trait('Knight'), trait('Heavy')] }])).map((o) => o.traitIds)).toEqual([['Vigil', 'Watch']]);
+  });
+});
+
 describe('requirement kinds', () => {
   const groups = [G('Class'), G('Hybrid', { parentId: 'Class' })];
   const traits = [
     T('Mage', { groupId: 'Class' }),
     T('Spellblade', { groupId: 'Hybrid' }),
     T('Loose'),
-    T('Cant', { requires: [{ kind: 'group', id: 'Class' }] }),
+    T('Cant', { requires: [{ all: [{ kind: 'group', id: 'Class' }] }] }),
   ];
 
   it('holds a group requirement when any trait below the group is active, however deep', () => {
@@ -99,7 +174,7 @@ describe('requirement kinds', () => {
   });
 
   it('holds playing-as only while the persona is that world entity', () => {
-    const royal = [T('Royal Plate', { requires: [{ kind: 'playingAs', id: 'aldric' }] })];
+    const royal = [T('Royal Plate', { requires: [{ all: [{ kind: 'playingAs', id: 'aldric' }] }] })];
     const entities = [{ id: 'aldric', name: 'Sir Aldric', persona: true }];
     const as = (persona: PersonaRef) => world(royal, [], [], { entities, persona });
     expect(unlocked(as({ source: 'none' }), 'Royal Plate')).toBe(false);
@@ -111,31 +186,31 @@ describe('requirement kinds', () => {
   it('never holds an unresolved requirement, and names it by its stored name or its kind', () => {
     const gated = [T('Guild Mark', {
       requires: [
-        { kind: 'trait', id: 'gone', name: 'Thief' },
-        { kind: 'group', id: 'gone-group', name: 'Guilds' },
-        { kind: 'playingAs', id: 'gone-entity', name: 'Mara' },
-        { kind: 'trait', id: 'gone-2' },
-        { kind: 'group', id: 'gone-group-2' },
-        { kind: 'playingAs', id: 'gone-entity-2' },
+        { all: [{ kind: 'trait', id: 'gone', name: 'Thief' }] },
+        { all: [{ kind: 'group', id: 'gone-group', name: 'Guilds' }] },
+        { all: [{ kind: 'playingAs', id: 'gone-entity', name: 'Mara' }] },
+        { all: [{ kind: 'trait', id: 'gone-2' }] },
+        { all: [{ kind: 'group', id: 'gone-group-2' }] },
+        { all: [{ kind: 'playingAs', id: 'gone-entity-2' }] },
       ],
     })];
     const input = world(gated, [], ['gone', 'gone-2'], { persona: { source: 'world', entityId: 'gone-entity' } });
     const state = gateOf(gateStates(input), WORLD_OWNER, 'Guild Mark')!;
     expect(state.unlocked).toBe(false);
-    expect(state.requirements.map((r) => r.text)).toEqual([
+    expect(state.rows.flatMap((row) => row.conditions).map((c) => c.text)).toEqual([
       'Thief', 'any Guilds', 'playing as Mara',
       'a missing trait', 'any trait in a missing group', 'playing as a missing persona',
     ]);
-    expect(state.requirements.every((r) => r.unresolved)).toBe(true);
+    expect(state.rows.every((row) => row.conditions.every((c) => c.unresolved))).toBe(true);
   });
 });
 
 describe('requirements per bearer', () => {
   // The world's Smite requires Paladin. Albus links Paladin and Smite, so both owners hold both ids.
   const paladin = T('Paladin');
-  const smite = T('Smite', { requires: [trait('Paladin')] });
+  const smite = T('Smite', { requires: [{ all: [trait('Paladin')] }] });
   const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [], traits: [paladin, smite] };
-  const mira: GateOwner = { id: 'mira', name: 'Mira', groups: [], traits: [T('Squire', { requires: [you('Paladin')] })] };
+  const mira: GateOwner = { id: 'mira', name: 'Mira', groups: [], traits: [T('Squire', { requires: [{ all: [you('Paladin')] }] })] };
   const entities = [{ id: 'albus', name: 'Albus', persona: true }, { id: 'mira', name: 'Mira' }];
   const input = (active: GateInput['active'], persona: PersonaRef = { source: 'none' }): GateInput => ({
     owners: [{ id: WORLD_OWNER, name: '', traits: [paladin, smite], groups: [] }, albus, mira],
@@ -145,7 +220,7 @@ describe('requirements per bearer', () => {
   it('never opens a gate through an active id the owner does not hold, so a dormant pick opens nothing', () => {
     // Under Albus, the player's list still carries a Custom Persona pick the world owner no longer holds.
     const dormant = input({ [WORLD_OWNER]: ['Halfling'], albus: [] }, { source: 'world', entityId: 'albus' });
-    const lucky = T('Lucky Step', { requires: [trait('Halfling')] });
+    const lucky = T('Lucky Step', { requires: [{ all: [trait('Halfling')] }] });
     const withLucky: GateInput = {
       ...dormant,
       owners: dormant.owners.map((o) => (o.id === 'albus' ? { ...o, traits: [...o.traits, lucky] } : o)),
@@ -167,7 +242,7 @@ describe('requirements per bearer', () => {
   });
 
   it('holds a named requirement through the named entity, wherever the trait sits', () => {
-    const gated: GateOwner = { ...mira, traits: [T('Squire', { requires: [on('albus', 'Paladin')] })] };
+    const gated: GateOwner = { ...mira, traits: [T('Squire', { requires: [{ all: [on('albus', 'Paladin')] }] })] };
     const owners = [input({}).owners[0], albus, gated];
     expect(unlocked({ ...input({ albus: ['Paladin'] }), owners }, 'Squire', 'mira')).toBe(true);
     expect(unlocked({ ...input({ [WORLD_OWNER]: ['Paladin'], mira: ['Paladin'] }), owners }, 'Squire', 'mira')).toBe(false);
@@ -197,12 +272,12 @@ describe('requirements per bearer', () => {
   });
 
   it('names the target from the originals when no present bearer holds it, and a gone bearer by its stored name', () => {
-    const squire = T('Squire', { requires: [you('Cleric'), { kind: 'trait', id: 'Paladin', bearer: { kind: 'entity', id: 'gone', name: 'Old Albus' } }] });
+    const squire = T('Squire', { requires: [{ all: [you('Cleric')] }, { all: [{ kind: 'trait', id: 'Paladin', bearer: { kind: 'entity', id: 'gone', name: 'Old Albus' } }] }] });
     const owners = [input({}).owners[0], { ...mira, traits: [squire] }];
     const state = gateOf(gateStates({ ...input({}), owners, originals: { traits: [T('Cleric')], groups: [] } }), 'mira', 'Squire')!;
-    expect(state.requirements).toEqual([
-      { text: 'You: Cleric', holds: false, unresolved: false, hidden: false },
-      { text: 'Old Albus: Paladin', holds: false, unresolved: true, hidden: false },
+    expect(state.rows).toEqual([
+      { holds: false, conditions: [{ text: 'You: Cleric', holds: false, unresolved: false, hidden: false }] },
+      { holds: false, conditions: [{ text: 'Old Albus: Paladin', holds: false, unresolved: true, hidden: false }] },
     ]);
     expect(reason({ ...input({}), owners }, 'Squire', 'mira')?.[0]).toBe('You: a missing trait');
   });
@@ -213,7 +288,7 @@ describe('requirements per bearer', () => {
     const owners: GateOwner[] = [
       { id: WORLD_OWNER, name: '', traits: [], groups: [] },
       { id: 'albus', name: 'Albus', groups: [classes], traits: [knight] },
-      { id: 'mira', name: 'Mira', groups: [], traits: [T('Squire', { requires: [{ kind: 'group', id: 'Classes', bearer: { kind: 'entity', id: 'albus' } }] })] },
+      { id: 'mira', name: 'Mira', groups: [], traits: [T('Squire', { requires: [{ all: [{ kind: 'group', id: 'Classes', bearer: { kind: 'entity', id: 'albus' } }] }] })] },
     ];
     const at = (active: GateInput['active']) => ({ ...input(active), owners });
     expect(unlocked(at({ albus: ['Knight'] }), 'Squire', 'mira')).toBe(true);
@@ -226,7 +301,7 @@ describe('settle', () => {
   const ids = (refs: { traitId: string }[]) => refs.map((r) => r.traitId);
 
   it('keeps every proposed trait whose gate holds', () => {
-    const traits = [T('Knight'), T('Plate Armor', { requires: [trait('Knight')] })];
+    const traits = [T('Knight'), T('Plate Armor', { requires: [{ all: [trait('Knight')] }] })];
     const result = settle(world(traits, [], ['Knight', 'Plate Armor']));
     expect(result.active[WORLD_OWNER]).toEqual(['Knight', 'Plate Armor']);
     expect(result.turnedOff).toEqual([]);
@@ -235,9 +310,9 @@ describe('settle', () => {
   it('turns off a chain, dependents before their prerequisites', () => {
     // Tamed ← Pack Leader ← Beast Tamer, proposed with Tamed already dropped.
     const traits = [
-      T('Beast Tamer', { requires: [trait('Pack Leader')] }),
+      T('Beast Tamer', { requires: [{ all: [trait('Pack Leader')] }] }),
       T('Tamed'),
-      T('Pack Leader', { requires: [trait('Tamed')] }),
+      T('Pack Leader', { requires: [{ all: [trait('Tamed')] }] }),
       T('Spare'),
     ];
     const result = settle(world(traits, [], ['Pack Leader', 'Beast Tamer', 'Spare']));
@@ -247,8 +322,8 @@ describe('settle', () => {
 
   it('orders the turned-off list the same way whatever order the traits are authored in', () => {
     const traits = [
-      T('Pack Leader', { requires: [trait('Tamed')] }),
-      T('Beast Tamer', { requires: [trait('Pack Leader')] }),
+      T('Pack Leader', { requires: [{ all: [trait('Tamed')] }] }),
+      T('Beast Tamer', { requires: [{ all: [trait('Pack Leader')] }] }),
       T('Tamed'),
     ];
     const result = settle(world(traits, [], ['Pack Leader', 'Beast Tamer']));
@@ -256,7 +331,7 @@ describe('settle', () => {
   });
 
   it('never lets two traits that require only each other hold each other up', () => {
-    const traits = [T('Sun', { requires: [trait('Moon')] }), T('Moon', { requires: [trait('Sun')] })];
+    const traits = [T('Sun', { requires: [{ all: [trait('Moon')] }] }), T('Moon', { requires: [{ all: [trait('Sun')] }] })];
     const result = settle(world(traits, [], ['Sun', 'Moon']));
     expect(result.active[WORLD_OWNER]).toEqual([]);
     expect(ids(result.turnedOff).sort()).toEqual(['Moon', 'Sun']);
@@ -265,15 +340,15 @@ describe('settle', () => {
   it('keeps a mutual pair once a third trait opens one of them', () => {
     const traits = [
       T('Root'),
-      T('Sun', { requires: [trait('Moon'), trait('Root')] }),
-      T('Moon', { requires: [trait('Sun')] }),
+      T('Sun', { requires: [{ all: [trait('Moon')] }, { all: [trait('Root')] }] }),
+      T('Moon', { requires: [{ all: [trait('Sun')] }] }),
     ];
     expect(settle(world(traits, [], ['Root', 'Sun', 'Moon'])).active[WORLD_OWNER]).toEqual(['Root', 'Sun', 'Moon']);
   });
 
   it('settles each owner against its own set and reports each trait with its owner', () => {
     const paladin = T('Paladin');
-    const loyal = T('Loyal', { requires: [trait('Paladin')] });
+    const loyal = T('Loyal', { requires: [{ all: [trait('Paladin')] }] });
     const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [paladin, loyal] };
     const input = (active: GateInput['active']): GateInput => ({
       owners: [{ id: WORLD_OWNER, name: '', traits: [paladin, loyal, T('Rogue')], groups: [] }, wolf],
@@ -292,7 +367,7 @@ describe('settle', () => {
 
   it('cascades a named requirement off when the named bearer drops the target', () => {
     const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [T('Tamed')] };
-    const tamer = T('Beast Tamer', { requires: [on('wolf', 'Tamed')] });
+    const tamer = T('Beast Tamer', { requires: [{ all: [on('wolf', 'Tamed')] }] });
     const input = (active: GateInput['active']): GateInput => ({
       owners: [{ id: WORLD_OWNER, name: '', traits: [tamer], groups: [] }, wolf], active, entities: [], persona: { source: 'none' },
     });
@@ -301,7 +376,7 @@ describe('settle', () => {
   });
 
   it('turns off a playing-as trait when the persona changes away', () => {
-    const traits = [T('Royal Plate', { requires: [{ kind: 'playingAs', id: 'aldric' }] })];
+    const traits = [T('Royal Plate', { requires: [{ all: [{ kind: 'playingAs', id: 'aldric' }] }] })];
     const entities = [{ id: 'aldric', name: 'Sir Aldric', persona: true }];
     const as = (persona: PersonaRef) => settle(world(traits, [], ['Royal Plate'], { entities, persona }));
     expect(as({ source: 'world', entityId: 'aldric' }).turnedOff).toEqual([]);
@@ -310,7 +385,7 @@ describe('settle', () => {
 
   it('turns off a You trait when the persona changes away from the bearer that met it', () => {
     const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [], traits: [T('Paladin')] };
-    const squire = T('Squire', { requires: [you('Paladin')] });
+    const squire = T('Squire', { requires: [{ all: [you('Paladin')] }] });
     const mira: GateOwner = { id: 'mira', name: 'Mira', groups: [], traits: [squire] };
     const as = (persona: PersonaRef) => settle({
       owners: [{ id: WORLD_OWNER, name: '', traits: [], groups: [] }, albus, mira],
@@ -322,7 +397,7 @@ describe('settle', () => {
   });
 
   it('turns off a trait whose only requirement is unresolved', () => {
-    const traits = [T('Guild Mark', { requires: [{ kind: 'trait', id: 'gone', name: 'Thief' }] })];
+    const traits = [T('Guild Mark', { requires: [{ all: [{ kind: 'trait', id: 'gone', name: 'Thief' }] }] })];
     expect(ids(settle(world(traits, [], ['Guild Mark', 'gone'])).turnedOff)).toEqual(['Guild Mark']);
   });
 
@@ -334,8 +409,8 @@ describe('settle', () => {
 describe('return after a cascade', () => {
   const traits = [
     T('Tamed'),
-    T('Pack Leader', { requires: [trait('Tamed')] }),
-    T('Beast Tamer', { requires: [trait('Pack Leader')] }),
+    T('Pack Leader', { requires: [{ all: [trait('Tamed')] }] }),
+    T('Beast Tamer', { requires: [{ all: [trait('Pack Leader')] }] }),
   ];
 
   it('switches cascade-off traits back on, chain and all, once their gate holds again', () => {
@@ -379,7 +454,7 @@ describe('return after a cascade', () => {
     const groups = [G('Stance', { maxPicks: 1 })];
     const stances = [
       T('Knight'),
-      T('Shield Wall', { groupId: 'Stance', requires: [trait('Knight')] }),
+      T('Shield Wall', { groupId: 'Stance', requires: [{ all: [trait('Knight')] }] }),
       T('Charge', { groupId: 'Stance' }),
     ];
     const result = settle(world(stances, groups, ['Knight', 'Charge']), { [WORLD_OWNER]: ['Shield Wall'] });
@@ -392,8 +467,8 @@ describe('return after a cascade', () => {
     const groups = [G('Stance', { maxPicks: 1 })];
     const stances = [
       T('Knight'),
-      T('Shield Wall', { groupId: 'Stance', order: 0, requires: [trait('Knight')] }),
-      T('Guard', { groupId: 'Stance', order: 1, requires: [trait('Knight')] }),
+      T('Shield Wall', { groupId: 'Stance', order: 0, requires: [{ all: [trait('Knight')] }] }),
+      T('Guard', { groupId: 'Stance', order: 1, requires: [{ all: [trait('Knight')] }] }),
     ];
     const result = settle(world(stances, groups, ['Knight']), { [WORLD_OWNER]: ['Guard', 'Shield Wall'] });
     expect(result.active[WORLD_OWNER]).toEqual(['Knight', 'Shield Wall']);
@@ -407,8 +482,8 @@ describe('switching a trait', () => {
     T('Paladin', { groupId: 'Class' }),
     T('Knight', { groupId: 'Class' }),
     T('Rogue', { groupId: 'Class' }),
-    T('Plate Armor', { requires: [trait('Paladin'), trait('Knight')] }),
-    T('Shield', { requires: [trait('Plate Armor')] }),
+    T('Plate Armor', { requires: [{ all: [trait('Paladin')] }, { all: [trait('Knight')] }] }),
+    T('Shield', { requires: [{ all: [trait('Plate Armor')] }] }),
   ];
   const input = (active: string[]) => world(traits, groups, active);
 
@@ -441,7 +516,7 @@ describe('switching a trait', () => {
 
   it('refuses a switch in the owner whose copy is locked, and allows it in the owner whose copy is open', () => {
     const paladin = T('Paladin');
-    const smite = T('Smite', { requires: [trait('Paladin')] });
+    const smite = T('Smite', { requires: [{ all: [trait('Paladin')] }] });
     const two: GateInput = {
       owners: [{ id: WORLD_OWNER, name: '', traits: [paladin, smite], groups: [] }, { id: 'albus', name: 'Albus', groups: [], traits: [paladin, smite] }],
       active: { [WORLD_OWNER]: [], albus: ['Paladin'] }, entities: [], persona: { source: 'none' },
@@ -454,8 +529,8 @@ describe('switching a trait', () => {
     const armor = [G('Armor', { maxPicks: 1 })];
     const pieces = [
       T('Chain Mail', { groupId: 'Armor' }),
-      T('Heavy Plate', { groupId: 'Armor', requires: [trait('Chain Mail')] }),
-      T('Any Armor', { groupId: 'Armor', requires: [{ kind: 'group', id: 'Armor' }] }),
+      T('Heavy Plate', { groupId: 'Armor', requires: [{ all: [trait('Chain Mail')] }] }),
+      T('Any Armor', { groupId: 'Armor', requires: [{ all: [{ kind: 'group', id: 'Armor' }] }] }),
     ];
     const picked = world(pieces, armor, ['Chain Mail']);
     expect(unlocked(picked, 'Heavy Plate')).toBe(false);
@@ -543,7 +618,7 @@ describe('a switch-off below the minimum', () => {
 
 describe('a short group after a cascade', () => {
   const groups = [G('Oath', { minPicks: 1 })];
-  const traits = [T('Knight'), T('Vow', { groupId: 'Oath', requires: [trait('Knight')] }), T('Pledge', { groupId: 'Oath', requires: [trait('Knight')] })];
+  const traits = [T('Knight'), T('Vow', { groupId: 'Oath', requires: [{ all: [trait('Knight')] }] }), T('Pledge', { groupId: 'Oath', requires: [{ all: [trait('Knight')] }] })];
 
   it('lets a cascade drop the group below its minimum', () => {
     const result = switchTrait(world(traits, groups, ['Knight', 'Vow']), WORLD_OWNER, 'Knight')!;
@@ -596,18 +671,18 @@ describe('default selection', () => {
     settleDefaults(world(traits, groups)).active[WORLD_OWNER];
 
   it('keeps a gated default whose requirement is also a default', () => {
-    expect(defaults([T('Knight', { isDefault: true }), T('Plate', { isDefault: true, requires: [trait('Knight')] })]))
+    expect(defaults([T('Knight', { isDefault: true }), T('Plate', { isDefault: true, requires: [{ all: [trait('Knight')] }] })]))
       .toEqual(['Knight', 'Plate']);
   });
 
   it('starts a gated default unselected when its requirement is not a default', () => {
-    expect(defaults([T('Knight'), T('Plate', { isDefault: true, requires: [trait('Knight')] })])).toEqual([]);
+    expect(defaults([T('Knight'), T('Plate', { isDefault: true, requires: [{ all: [trait('Knight')] }] })])).toEqual([]);
   });
 
   it('starts two defaults that require only each other unselected', () => {
     expect(defaults([
-      T('Sun', { isDefault: true, requires: [trait('Moon')] }),
-      T('Moon', { isDefault: true, requires: [trait('Sun')] }),
+      T('Sun', { isDefault: true, requires: [{ all: [trait('Moon')] }] }),
+      T('Moon', { isDefault: true, requires: [{ all: [trait('Sun')] }] }),
     ])).toEqual([]);
   });
 
@@ -616,7 +691,7 @@ describe('default selection', () => {
     expect(defaults([
       T('Paladin', { groupId: 'Class', isDefault: true, order: 0 }),
       T('Knight', { groupId: 'Class', isDefault: true, order: 1 }),
-      T('Lance', { isDefault: true, requires: [trait('Knight')] }),
+      T('Lance', { isDefault: true, requires: [{ all: [trait('Knight')] }] }),
     ], groups)).toEqual(['Paladin']);
   });
 
@@ -640,42 +715,42 @@ describe('never-unlockable sets', () => {
 
   it('passes a loop that a third trait opens', () => {
     expect(sets([
-      T('A', { requires: [trait('B'), trait('C')] }),
-      T('B', { requires: [trait('A')] }),
+      T('A', { requires: [{ all: [trait('B')] }, { all: [trait('C')] }] }),
+      T('B', { requires: [{ all: [trait('A')] }] }),
       T('C'),
     ])).toEqual([]);
   });
 
   it('reports a loop with no open root, and each separate loop as its own set', () => {
     expect(sets([
-      T('A', { requires: [trait('B')] }),
-      T('B', { requires: [trait('A')] }),
-      T('X', { requires: [trait('Y')] }),
-      T('Y', { requires: [trait('X')] }),
+      T('A', { requires: [{ all: [trait('B')] }] }),
+      T('B', { requires: [{ all: [trait('A')] }] }),
+      T('X', { requires: [{ all: [trait('Y')] }] }),
+      T('Y', { requires: [{ all: [trait('X')] }] }),
       T('Free'),
     ])).toEqual([['A', 'B'], ['X', 'Y']]);
   });
 
   it('puts a trait that hangs off a closed loop in the loop\'s set', () => {
     expect(sets([
-      T('A', { requires: [trait('B')] }),
-      T('B', { requires: [trait('A')] }),
-      T('Tail', { requires: [trait('B')] }),
+      T('A', { requires: [{ all: [trait('B')] }] }),
+      T('B', { requires: [{ all: [trait('A')] }] }),
+      T('Tail', { requires: [{ all: [trait('B')] }] }),
     ])).toEqual([['A', 'B', 'Tail']]);
   });
 
   it('opens through a group only when the group holds an unlockable trait', () => {
     const groups = [G('Class')];
-    expect(sets([T('Mage', { groupId: 'Class' }), T('Cant', { requires: [{ kind: 'group', id: 'Class' }] })], groups))
+    expect(sets([T('Mage', { groupId: 'Class' }), T('Cant', { requires: [{ all: [{ kind: 'group', id: 'Class' }] }] })], groups))
       .toEqual([]);
     expect(sets([
-      T('Mage', { groupId: 'Class', requires: [trait('Cant')] }),
-      T('Cant', { requires: [{ kind: 'group', id: 'Class' }] }),
+      T('Mage', { groupId: 'Class', requires: [{ all: [trait('Cant')] }] }),
+      T('Cant', { requires: [{ all: [{ kind: 'group', id: 'Class' }] }] }),
     ], groups)).toEqual([['Cant', 'Mage']]);
   });
 
   it('opens through playing as a world persona, never through an entity no one can play', () => {
-    const royal = [T('Royal Plate', { requires: [{ kind: 'playingAs', id: 'aldric' }] })];
+    const royal = [T('Royal Plate', { requires: [{ all: [{ kind: 'playingAs', id: 'aldric' }] }] })];
     expect(sets(royal, [], { entities: [{ id: 'aldric', name: 'Sir Aldric', persona: true }] })).toEqual([]);
     expect(sets(royal, [], { entities: [{ id: 'aldric', name: 'Sir Aldric' }] })).toEqual([['Royal Plate']]);
     expect(sets(royal)).toEqual([['Royal Plate']]);
@@ -683,7 +758,7 @@ describe('never-unlockable sets', () => {
 
   it('reports a linked trait stuck on the bearer that lacks its requirement, and open on the one that has it', () => {
     // Smite requires Faithful. The player has Faithful at the root; Albus links Smite alone.
-    const smite = T('Smite', { requires: [trait('Faithful')] });
+    const smite = T('Smite', { requires: [{ all: [trait('Faithful')] }] });
     const input: Omit<GateInput, 'active'> = {
       owners: [
         { id: WORLD_OWNER, name: '', traits: [T('Faithful'), smite], groups: [] },
@@ -693,7 +768,7 @@ describe('never-unlockable sets', () => {
     };
     expect(neverUnlockable(input)).toEqual([[{ ownerId: 'albus', traitId: 'Smite' }]]);
     // A named requirement opens through the named bearer, and a You requirement through the player.
-    const named = { ...input, owners: [input.owners[0], { ...input.owners[1], traits: [T('Smite', { requires: [you('Faithful')] })] }] };
+    const named = { ...input, owners: [input.owners[0], { ...input.owners[1], traits: [T('Smite', { requires: [{ all: [you('Faithful')] }] })] }] };
     expect(neverUnlockable(named)).toEqual([]);
   });
 });
@@ -782,7 +857,7 @@ describe('Always On traits', () => {
   const AO = (id: string, extra: Partial<Trait> = {}): Trait => T(id, { mode: 'alwaysOn', ...extra });
   // A curse is an Always On trait that requires the cursed item.
   const gear = [G('Gear', { maxPicks: 2 })];
-  const curse = [T('Cursed Ring', { groupId: 'Gear' }), T('Lantern', { groupId: 'Gear' }), AO('Curse', { requires: [trait('Cursed Ring')] })];
+  const curse = [T('Cursed Ring', { groupId: 'Gear' }), T('Lantern', { groupId: 'Gear' }), AO('Curse', { requires: [{ all: [trait('Cursed Ring')] }] })];
 
   it('turns an ungated Always On trait on without a pick, and reports it as it joins', () => {
     const result = settle(world([AO('Scarred'), T('Brave')], [], ['Brave']));
@@ -811,7 +886,7 @@ describe('Always On traits', () => {
   });
 
   it('lets an Always On trait open the traits that require it', () => {
-    const traits = [...curse, T('Dark Pact', { requires: [trait('Curse')] })];
+    const traits = [...curse, T('Dark Pact', { requires: [{ all: [trait('Curse')] }] })];
     const result = settle(world(traits, gear, ['Cursed Ring', 'Dark Pact']));
     expect(result.active[WORLD_OWNER]).toEqual(['Cursed Ring', 'Dark Pact', 'Curse']);
   });
@@ -842,13 +917,13 @@ describe('Always On traits', () => {
     const traits = [AO('Sworn', { groupId: 'Oath' }), T('Free', { groupId: 'Oath' })];
     expect(switchTrait(world(traits, groups, ['Sworn']), WORLD_OWNER, 'Free')).toBeNull();
     // A dormant Always On sibling blocks nothing.
-    const gated = [AO('Sworn', { groupId: 'Oath', requires: [trait('Vow')] }), T('Free', { groupId: 'Oath' }), T('Vow')];
+    const gated = [AO('Sworn', { groupId: 'Oath', requires: [{ all: [trait('Vow')] }] }), T('Free', { groupId: 'Oath' }), T('Vow')];
     expect(switchTrait(world(gated, groups), WORLD_OWNER, 'Free')?.active[WORLD_OWNER]).toEqual(['Free']);
   });
 
   it('joins a full group over its max and retires nothing (Q29)', () => {
     const groups = [G('Oath', { maxPicks: 1 })];
-    const traits = [AO('Sworn', { groupId: 'Oath', requires: [trait('Vow')] }), T('Free', { groupId: 'Oath' }), T('Vow')];
+    const traits = [AO('Sworn', { groupId: 'Oath', requires: [{ all: [trait('Vow')] }] }), T('Free', { groupId: 'Oath' }), T('Vow')];
     const result = switchTrait(world(traits, groups, ['Free']), WORLD_OWNER, 'Vow')!;
     expect(result.active[WORLD_OWNER]).toEqual(['Free', 'Vow', 'Sworn']);
     expect(result.turnedOff).toEqual([]);
@@ -891,7 +966,7 @@ describe('Always On traits', () => {
     it('stays quiet when only rival picks open the curses, since one selection never holds both', () => {
       const traits = [
         T('Sword', { groupId: 'Weapon' }), T('Axe', { groupId: 'Weapon' }),
-        AO('Weak', { groupId: 'Curses', requires: [trait('Sword')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Axe')] }),
+        AO('Weak', { groupId: 'Curses', requires: [{ all: [trait('Sword')] }] }), AO('Slow', { groupId: 'Curses', requires: [{ all: [trait('Axe')] }] }),
       ];
       expect(over(traits, [...curses, ...weapons])).toEqual([]);
     });
@@ -899,7 +974,7 @@ describe('Always On traits', () => {
     it('reports curses that one selection can open together', () => {
       const traits = [
         T('Sword', { groupId: 'Weapon' }), T('Ring'),
-        AO('Weak', { groupId: 'Curses', requires: [trait('Sword')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Ring')] }),
+        AO('Weak', { groupId: 'Curses', requires: [{ all: [trait('Sword')] }] }), AO('Slow', { groupId: 'Curses', requires: [{ all: [trait('Ring')] }] }),
       ];
       expect(over(traits, [...curses, ...weapons])).toEqual([`${WORLD_OWNER}/Curses: Weak, Slow`]);
     });
@@ -907,8 +982,8 @@ describe('Always On traits', () => {
     it('follows a chain down to rival roots', () => {
       const traits = [
         T('Sword', { groupId: 'Weapon' }), T('Axe', { groupId: 'Weapon' }),
-        T('Blade Oath', { requires: [trait('Sword')] }),
-        AO('Weak', { groupId: 'Curses', requires: [trait('Blade Oath')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Axe')] }),
+        T('Blade Oath', { requires: [{ all: [trait('Sword')] }] }),
+        AO('Weak', { groupId: 'Curses', requires: [{ all: [trait('Blade Oath')] }] }), AO('Slow', { groupId: 'Curses', requires: [{ all: [trait('Axe')] }] }),
       ];
       expect(over(traits, [...curses, ...weapons])).toEqual([]);
     });
@@ -917,8 +992,8 @@ describe('Always On traits', () => {
       // Slow's Pact opens through Slow itself or through the Axe, which Weak's Sword rules out.
       const traits = [
         T('Sword', { groupId: 'Weapon' }), T('Axe', { groupId: 'Weapon' }),
-        T('Pact', { requires: [trait('Slow'), trait('Axe')] }),
-        AO('Weak', { groupId: 'Curses', requires: [trait('Sword')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Pact')] }),
+        T('Pact', { requires: [{ all: [trait('Slow')] }, { all: [trait('Axe')] }] }),
+        AO('Weak', { groupId: 'Curses', requires: [{ all: [trait('Sword')] }] }), AO('Slow', { groupId: 'Curses', requires: [{ all: [trait('Pact')] }] }),
       ];
       expect(over(traits, [...curses, ...weapons])).toEqual([]);
     });
@@ -926,8 +1001,8 @@ describe('Always On traits', () => {
     it('never counts a trait that can never unlock, or a loop that only opens itself', () => {
       const traits = [
         AO('Weak', { groupId: 'Curses' }),
-        AO('Slow', { groupId: 'Curses', requires: [trait('Sun')] }),
-        T('Sun', { requires: [trait('Moon')] }), T('Moon', { requires: [trait('Sun')] }),
+        AO('Slow', { groupId: 'Curses', requires: [{ all: [trait('Sun')] }] }),
+        T('Sun', { requires: [{ all: [trait('Moon')] }] }), T('Moon', { requires: [{ all: [trait('Sun')] }] }),
       ];
       expect(over(traits, curses)).toEqual([]);
     });
@@ -944,7 +1019,7 @@ describe('Always On traits', () => {
     const defaults = (traits: Trait[], groups: TraitGroup[] = []) => settleDefaults(world(traits, groups)).active[WORLD_OWNER];
 
     it('includes active Always On traits and ignores their Default field', () => {
-      expect(defaults([AO('Scarred'), AO('Cursed', { isDefault: true, requires: [trait('Ring')] }), T('Ring')]))
+      expect(defaults([AO('Scarred'), AO('Cursed', { isDefault: true, requires: [{ all: [trait('Ring')] }] }), T('Ring')]))
         .toEqual(['Scarred']);
     });
 
@@ -961,13 +1036,13 @@ describe('Always On traits', () => {
       const groups = [G('Mark', { maxPicks: 1 })];
       expect(defaults([
         T('Brand', { groupId: 'Mark', isDefault: true }),
-        AO('Curse', { groupId: 'Mark', requires: [trait('Ring')] }),
+        AO('Curse', { groupId: 'Mark', requires: [{ all: [trait('Ring')] }] }),
         T('Ring', { isDefault: true }),
       ], groups)).toEqual(['Curse', 'Ring']);
     });
 
     it('brings the Always On trait a default opens', () => {
-      expect(defaults([T('Cursed Ring', { isDefault: true }), AO('Curse', { requires: [trait('Cursed Ring')] })]))
+      expect(defaults([T('Cursed Ring', { isDefault: true }), AO('Curse', { requires: [{ all: [trait('Cursed Ring')] }] })]))
         .toEqual(['Cursed Ring', 'Curse']);
     });
   });

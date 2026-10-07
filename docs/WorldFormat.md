@@ -234,13 +234,24 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `isDefault` | | Boolean | The trait starts selected |
 | `playerToggle` | | Boolean | The player can switch the trait on and off during the game |
 | `mode` | | `"alwaysOn"` \| `"hidden"` | Absent = Optional: the player picks. `"alwaysOn"` is active while its requirements hold, and the player can't switch it. `"hidden"` acts as `"alwaysOn"`, and the player never sees it. Both ignore `isDefault` and `playerToggle` |
-| `requires` | | [Requirement](#trait-requirements)[] | Any one of these makes the trait available. Absent or empty = always available |
+| `requires` | | [Requirement row](#trait-requirements)[] | Any one row that holds makes the trait available. Absent or empty = always available |
 | `statToggles` | | `{ "statId", "enabled" }`[] | Stats switched on or off while the trait is active |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
 
 See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave during the game.
 
 ### Trait Requirements
+
+`requires` is a list of rows. Each row is `{ "all": [ … ] }`: a list of requirements. A row holds when every requirement in it holds. A row is never empty.
+
+```json
+"requires": [
+  { "all": [{ "kind": "trait", "id": "knight" }, { "kind": "trait", "id": "heavy-build" }] },
+  { "all": [{ "kind": "trait", "id": "mercenary" }] }
+]
+```
+
+> 🔁 Older files store `requires` as a flat list of requirements. The app reads each one as a row of its own.
 
 Each requirement has a `kind`:
 

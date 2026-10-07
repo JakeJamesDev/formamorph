@@ -28,7 +28,7 @@ import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
 import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import type {
-  Entity, FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitStatToggle,
+  Entity, FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 
 /** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
@@ -182,7 +182,7 @@ const TraitManager = ({
   const pins = editingTrait.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
 
-  const setRequires = (next: TraitRequirement[]) => apply({ requires: next.length ? next : undefined });
+  const setRequires = (next: TraitRequirementRow[]) => apply({ requires: next.length ? next : undefined });
   const openRequirement = (r: TraitRequirement) => {
     if (r.kind === 'playingAs') onOpenEntity?.(r.id);
     else onOpenTrait(r.id);

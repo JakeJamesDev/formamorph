@@ -119,9 +119,11 @@ describe('SetupTraitList outside the setup dialog', () => {
 
 describe('SetupTraitList gates', () => {
   const req = (text: string, holds: boolean, hidden = false) => ({ text, holds, unresolved: false, hidden });
+  /** Each Condition as a row of its own. */
+  const oneEach = (...conditions: ReturnType<typeof req>[]) => conditions.map((c) => ({ holds: c.holds, conditions: [c] }));
   const gates = new Map([['world', new Map([
-    ['dockhand', { unlocked: false, requirements: [req('Paladin', false), req('Knight', false)] }],
-    ['scholar', { unlocked: true, requirements: [req('Mage', true), req('any Class', false)] }],
+    ['dockhand', { unlocked: false, rows: oneEach(req('Paladin', false), req('Knight', false)) }],
+    ['scholar', { unlocked: true, rows: oneEach(req('Mage', true), req('any Class', false)) }],
   ])]]);
 
   it('keeps a locked trait in place, disabled, and says what it requires', () => {
@@ -194,8 +196,8 @@ describe('SetupTraitList gates', () => {
 
     it('leaves a Hidden requirement out of the gate line', () => {
       const hiddenGates = new Map([['world', new Map([
-        ['dockhand', { unlocked: false, requirements: [req('Secret Bond', false, true), req('Knight', false)] }],
-        ['scholar', { unlocked: true, requirements: [req('Secret Bond', true, true), req('Mage', true)] }],
+        ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true), req('Knight', false)) }],
+        ['scholar', { unlocked: true, rows: oneEach(req('Secret Bond', true, true), req('Mage', true)) }],
       ])]]);
       view({ gates: hiddenGates, picks: null });
       expect(screen.getByText('Requires Knight')).toBeInTheDocument();
@@ -205,7 +207,7 @@ describe('SetupTraitList gates', () => {
 
     it('reads a bare "Locked" when every requirement is Hidden', () => {
       const hiddenGates = new Map([['world', new Map([
-        ['dockhand', { unlocked: false, requirements: [req('Secret Bond', false, true)] }],
+        ['dockhand', { unlocked: false, rows: oneEach(req('Secret Bond', false, true)) }],
       ])]]);
       view({ gates: hiddenGates, picks: null });
       expect(screen.getByText('Locked')).toBeInTheDocument();

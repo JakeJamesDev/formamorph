@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **A trait's Requires field in the World Editor takes rows: a row unlocks the trait when all its requirements hold.** **And** adds a requirement to a row, and **Or Another Way** adds a row. The lock line reads the same rule. Existing worlds and character cards open with one requirement per row.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

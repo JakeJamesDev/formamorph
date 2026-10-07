@@ -1,9 +1,8 @@
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import { ChevronLeft, Plus, X } from 'lucide-react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Hint } from '@/components/ui/typography';
 import {
   BreadcrumbPicker, BreadcrumbPickerList, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
 } from '@/components/ui/breadcrumb-picker';
@@ -11,49 +10,64 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
   WORLD_OWNER, bearerKey, bearerOf, gateOf, gateStates, ownerHolding, requirementOptions, sameRequirement, withBearer,
-  type RequirementBearerOption, type RequirementOption,
+  type ConditionState, type RequirementBearerOption, type RequirementOption,
 } from '@/lib/traitGates';
 import { cn } from '@/lib/utils';
-import type { Trait, TraitRequirement } from '@/types';
+import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
+
+/** Where the open picker adds: a row's index for **And**, or `new` for a row of its own. */
+type AddTarget = number | 'new';
 
 /**
- * The trait panel's Requires field: the trait's requirements as chips joined by "or", and a searchable picker
- * that adds one. Picking a target opens a second page for the bearer: the same bearer, You, or an entity that
- * bears it. Off-world the target is added for the same bearer at once. A chip opens its target, unless
- * `opens` says the host has nowhere to open it, when it reads as plain text; a chip whose target is gone
- * reads red under its stored name. `bearerId` names the bearer whose gate the chips read, for a link whose
- * requirements differ from its original's; without it, the first bearer holding the trait.
+ * The trait panel's Requires field: the trait's Requirement Rows, each a bordered line of chips joined by
+ * "and", the rows joined by "or". **And** adds a Condition to its row, **Or Another Way** adds a row, and
+ * removing a row's last chip removes the row (Q6). Picking a target opens a second page for the bearer: the
+ * same bearer, You, or an entity that bears it. Off-world the target is added for the same bearer at once. A
+ * chip opens its target, unless `opens` says the host has nowhere to open it, when it reads as plain text; a
+ * chip whose target is gone reads red under its stored name. `bearerId` names the bearer whose gate the chips
+ * read, for a link whose rows differ from its original's; without it, the first bearer holding the trait.
  */
 export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true, bearerId, labelAside }: {
   trait: Trait;
-  onChange: (requires: TraitRequirement[]) => void;
+  onChange: (requires: TraitRequirementRow[]) => void;
   onOpen: (requirement: TraitRequirement) => void;
   opens?: (requirement: TraitRequirement) => boolean;
   bearerId?: string;
   labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
-  const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<AddTarget | null>(null);
   const [picked, setPicked] = useState<RequirementOption | null>(null);
   const labelId = useId();
-  const requires = trait.requires ?? [];
+  const rows = trait.requires ?? [];
 
   const { states, options } = useMemo(() => {
     const gates = gateStates(gateInput);
     const holder = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
     const gate = (bearerId !== undefined ? gateOf(gates, bearerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
-    return { states: gate?.requirements ?? [], options: requirementOptions(gateInput, trait.id) };
+    return { states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id) };
   }, [gateInput, trait.id, bearerId]);
 
-  const listed = (requirement: TraitRequirement) => requires.some((r) => sameRequirement(r, requirement));
-  const changeOpen = (next: boolean) => {
-    setOpen(next);
-    if (!next) setPicked(null);
+  // **And** never repeats a Condition in its row; a new row never repeats a one-chip row.
+  const taken = target === null ? []
+    : target === 'new' ? rows.filter((r) => r.all.length === 1).map((r) => r.all[0])
+    : rows[target]?.all ?? [];
+  const listed = (requirement: TraitRequirement) => taken.some((r) => sameRequirement(r, requirement));
+  const changeTarget = (next: AddTarget | null) => {
+    setTarget(next);
+    if (next === null) setPicked(null);
   };
   const add = (requirement: TraitRequirement) => {
-    onChange([...requires, requirement]);
-    changeOpen(false);
+    onChange(typeof target === 'number'
+      ? rows.map((row, i) => (i === target ? { all: [...row.all, requirement] } : row))
+      : [...rows, { all: [requirement] }]);
+    changeTarget(null);
   };
+  const removeCondition = (rowIndex: number, index: number) => onChange(rows.flatMap((row, i) => {
+    if (i !== rowIndex) return [row];
+    const all = row.all.filter((_, j) => j !== index);
+    return all.length ? [{ all }] : [];
+  }));
   // A playing-as row and an off-world row add at once; any other target asks which bearer first.
   const pick = (option: RequirementOption) => {
     if (option.requirement.kind === 'playingAs' || offWorld) add(option.requirement);
@@ -112,66 +126,97 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
     </div>
   );
 
+  const chip = (requirement: TraitRequirement, state: ConditionState | undefined, remove: () => void) => {
+    const text = state?.text ?? '';
+    const plain = labelPlaceholders(text, placeholders);
+    const unresolved = !!state?.unresolved;
+    return (
+      <span
+        data-unresolved={unresolved || undefined}
+        className={cn(
+          'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
+          unresolved && 'border-destructive text-destructive',
+        )}
+      >
+        {unresolved || !opens(requirement) ? (
+          <span className="min-w-0 truncate">{plain}</span>
+        ) : (
+          <button
+            type="button"
+            className="min-w-0 truncate rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            onClick={() => onOpen(requirement)}
+          >
+            <PlaceholderText text={text} placeholders={placeholders} />
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label={`Remove ${plain}`}
+          className="shrink-0 rounded-full p-0.5 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          onClick={remove}
+        >
+          <X className="h-3 w-3" aria-hidden />
+        </button>
+      </span>
+    );
+  };
+  const picker = (key: AddTarget, trigger: ReactElement) => (
+    <BreadcrumbPicker
+      sections={sections}
+      onPick={pick}
+      open={target === key}
+      onOpenChange={(next) => changeTarget(next ? key : null)}
+      closeOnPick={false}
+      searchPlaceholder={offWorld ? 'Search traits and groups' : 'Search traits, groups, and personas'}
+      renderText={renderText}
+      plainText={plainText}
+      page={(target === key && bearerPage) || undefined}
+      trigger={trigger}
+    />
+  );
+
   return (
     <div className="space-y-2" role="group" aria-labelledby={labelId}>
       <div className="flex items-center gap-2"><Label id={labelId}>Requires</Label>{labelAside}</div>
-      <Hint>Available when any one of these holds</Hint>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {requires.map((requirement, i) => {
-          const state = states[i];
-          const text = state?.text ?? '';
-          const plain = labelPlaceholders(text, placeholders);
-          const unresolved = !!state?.unresolved;
-          return (
-            <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearerOf(requirement))}:${i}`} className="inline-flex items-center gap-1.5">
-              {i > 0 && <span className="text-meta text-muted-foreground">or</span>}
-              <span
-                data-unresolved={unresolved || undefined}
-                className={cn(
-                  'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
-                  unresolved && 'border-destructive text-destructive',
-                )}
-              >
-                {unresolved || !opens(requirement) ? (
-                  <span className="min-w-0 truncate">{plain}</span>
-                ) : (
+      {rows.length > 0 && (
+        <div>
+          {rows.map((row, i) => {
+            const rowText = labelPlaceholders(states[i]?.conditions.map((c) => c.text).join(' and ') ?? '', placeholders);
+            return (
+              // Rows have no ids; an index key remounts nothing that holds state.
+              <div key={i}>
+                {i > 0 && <div className="py-1 text-center text-meta text-muted-foreground">or</div>}
+                <div data-requirement-row="" className="flex flex-wrap items-center gap-1.5 rounded-md border p-1.5">
+                  {row.all.map((requirement, j) => (
+                    <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearerOf(requirement))}:${j}`} className="inline-flex max-w-full items-center gap-1.5">
+                      {j > 0 && <span className="text-meta text-muted-foreground">and</span>}
+                      {chip(requirement, states[i]?.conditions[j], () => removeCondition(i, j))}
+                    </span>
+                  ))}
+                  {picker(i, (
+                    <Button type="button" size="xs" variant="ghost" className="h-7 gap-1">
+                      <Plus className="h-3.5 w-3.5" aria-hidden />And
+                    </Button>
+                  ))}
                   <button
                     type="button"
-                    className="min-w-0 truncate rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                    onClick={() => onOpen(requirement)}
+                    aria-label={`Remove row ${rowText}`}
+                    className="ml-auto shrink-0 rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    onClick={() => onChange(rows.filter((_, k) => k !== i))}
                   >
-                    <PlaceholderText text={text} placeholders={placeholders} />
+                    <X className="h-3.5 w-3.5" aria-hidden />
                   </button>
-                )}
-                <button
-                  type="button"
-                  aria-label={`Remove ${plain}`}
-                  className="shrink-0 rounded-full p-0.5 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                  onClick={() => onChange(requires.filter((_, j) => j !== i))}
-                >
-                  <X className="h-3 w-3" aria-hidden />
-                </button>
-              </span>
-            </span>
-          );
-        })}
-        <BreadcrumbPicker
-          sections={sections}
-          onPick={pick}
-          open={open}
-          onOpenChange={changeOpen}
-          closeOnPick={false}
-          searchPlaceholder={offWorld ? 'Search traits and groups' : 'Search traits, groups, and personas'}
-          renderText={renderText}
-          plainText={plainText}
-          page={bearerPage}
-          trigger={(
-            <Button type="button" size="sm" variant="outline" className="h-7 gap-1">
-              <Plus className="h-3.5 w-3.5" aria-hidden />Add Requirement
-            </Button>
-          )}
-        />
-      </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {picker('new', (
+        <Button type="button" size="sm" variant="outline" className="h-7 gap-1">
+          <Plus className="h-3.5 w-3.5" aria-hidden />{rows.length ? 'Or Another Way' : 'Add Requirement'}
+        </Button>
+      ))}
     </div>
   );
 }

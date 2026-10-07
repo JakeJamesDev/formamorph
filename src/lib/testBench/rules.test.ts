@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
-  TraitRequirement, WorldOverview,
+  TraitRequirement, TraitRequirementRow, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -1623,7 +1623,7 @@ describe('trait group rules', () => {
     const w = base({
       traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, minPicks: 1 }],
       traits: [
-        trait({ id: 't1', name: 'Origin 1', groupId: 'g1', isDefault: true, requires: [{ kind: 'trait', id: 'key' }] }),
+        trait({ id: 't1', name: 'Origin 1', groupId: 'g1', isDefault: true, requires: [{ all: [{ kind: 'trait', id: 'key' }] }] }),
         trait({ id: 't2', name: 'Origin 2', groupId: 'g1' }),
         trait({ id: 'key', name: 'Key' }),
       ],
@@ -1636,8 +1636,8 @@ describe('trait group rules', () => {
       traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, minPicks: min }],
       traits: [
         trait({ id: 't1', name: 'Origin 1', groupId: 'g1', isDefault: true }),
-        trait({ id: 't2', name: 'Origin 2', groupId: 'g1', requires: [{ kind: 'trait', id: 'loop' }] }),
-        trait({ id: 'loop', name: 'Loop', requires: [{ kind: 'trait', id: 't2' }] }),
+        trait({ id: 't2', name: 'Origin 2', groupId: 'g1', requires: [{ all: [{ kind: 'trait', id: 'loop' }] }] }),
+        trait({ id: 'loop', name: 'Loop', requires: [{ all: [{ kind: 'trait', id: 't2' }] }] }),
       ],
     });
     const found = only(stuck(2), 'trait-group-min-unreachable');
@@ -1680,8 +1680,9 @@ describe('trait group rules', () => {
 
 describe('trait gate rules', () => {
   const needs = (id: string, ...requires: TraitRequirement[]): TraitRequirement[] => [{ kind: 'trait', id }, ...requires];
+  // Each entry is a row of its own: any one opens the trait.
   const gated = (id: string, requires: TraitRequirement[], over: Partial<Trait> = {}): Trait =>
-    trait({ id, name: id.toUpperCase(), requires, ...over });
+    trait({ id, name: id.toUpperCase(), requires: requires.map((r) => ({ all: [r] })), ...over });
   const ash: Entity = { ...resident, id: 'ash', name: 'Ash', persona: true };
   const gates = (traits: Trait[], over: Partial<RuleWorld> = {}) => base({ traits, ...over });
   const ids = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => i.id));
@@ -1873,7 +1874,7 @@ describe('trait gate rules', () => {
 });
 
 describe('trait link rules', () => {
-  const needs = (id: string): TraitRequirement[] => [{ kind: 'trait', id }];
+  const needs = (id: string): TraitRequirementRow[] => [{ all: [{ kind: 'trait', id }] }];
   const link = (id: string, originalId: string, kind: TraitLink['kind'], extra: Partial<TraitLink> = {}): TraitLink =>
     ({ id, originalId, kind, originalName: originalId, groupId: null, ...extra });
   // Root: Faithful. Blueprints: Smite (requires Faithful), and Classes holding Paladin and Wizard.
@@ -1919,7 +1920,7 @@ describe('trait link rules', () => {
     });
 
     it('leaves an owned trait behind a deleted target to the unresolved rule', () => {
-      const vow = trait({ id: 'vow', name: 'Vow', requires: [{ kind: 'trait', id: 'gone', name: 'Tamed' }] });
+      const vow = trait({ id: 'vow', name: 'Vow', requires: [{ all: [{ kind: 'trait', id: 'gone', name: 'Tamed' }] }] });
       const found = runRules(linked([albus({ traits: [vow] })])).filter((f) => f.section === 'traits');
       expect(found.map((f) => [f.ruleId, f.message])).toEqual([['trait-requirement-unresolved', '“Vow” requires “Tamed”, which this world no longer has']]);
       expect(opened(found)).toEqual([['vow']]);
@@ -1961,15 +1962,15 @@ describe('trait link rules', () => {
     });
 
     it('names each bearer when a set spans two', () => {
-      const oath = trait({ id: 'oath', name: 'Oath', requires: [{ kind: 'trait', id: 'smite', bearer: { kind: 'entity', id: 'albus' } }] });
+      const oath = trait({ id: 'oath', name: 'Oath', requires: [{ all: [{ kind: 'trait', id: 'smite', bearer: { kind: 'entity', id: 'albus' } }] }] });
       const found = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] }), albus({ id: 'bree', name: 'Bree', traits: [oath] })], {
-        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] } : t))],
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] }] } : t))],
       }), rule);
       expect(found.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Bree” can never unlock — no pick or persona can meet their requirements']);
       expect(opened(found)).toEqual([['l-smite', 'oath']]);
       // Two entities that share a name are still two bearers.
       const twin = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] }), albus({ id: 'bree', traits: [oath] })], {
-        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] } : t))],
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] }] } : t))],
       }), rule);
       expect(twin.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Albus” can never unlock — no pick or persona can meet their requirements']);
     });
@@ -2034,7 +2035,7 @@ describe('trait link rules', () => {
         traitGroups: [{ id: 'g', name: 'Vows', parentId: null, minPicks: 2 }],
         traits: [
           trait({ id: 'v1', name: 'Vow 1', groupId: 'g' }),
-          trait({ id: 'v2', name: 'Vow 2', groupId: 'g', requires: [{ kind: 'trait', id: 'paladin-own', bearer: { kind: 'entity', id: 'ash' } }] }),
+          trait({ id: 'v2', name: 'Vow 2', groupId: 'g', requires: [{ all: [{ kind: 'trait', id: 'paladin-own', bearer: { kind: 'entity', id: 'ash' } }] }] }),
         ],
       });
       expect(only(w, 'trait-group-min-unreachable')).toEqual([]);

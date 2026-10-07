@@ -37,7 +37,7 @@ const wolf: Entity = {
     { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [] },
     {
       id: 't-oath', name: 'Oath', statChanges: [],
-      requires: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }, { kind: 'playingAs', id: SELF_ENTITY, name: 'Wolf' }],
+      requires: [{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }, { all: [{ kind: 'playingAs', id: SELF_ENTITY, name: 'Wolf' }] }],
     },
   ],
 };
@@ -73,7 +73,7 @@ describe('the library entity Traits tab', () => {
     expect(chip).not.toBeNull();
     // "Playing as" the entity itself points inside it, so it reads resolved.
     expect(screen.getByRole('button', { name: 'playing as Wolf' }).closest('[data-unresolved]')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
     expect(screen.getByRole('option', { name: /Tamed/ })).toBeInTheDocument();
     expect(screen.getByText('Any Trait in a Group')).toBeInTheDocument();
     expect(screen.queryByText('Playing As')).not.toBeInTheDocument();
@@ -208,7 +208,7 @@ describe("the library entity Traits tab's links", () => {
   const world: LibraryEditorWorld = {
     traits: [
       { id: 'n-paladin', name: 'Paladin', groupId: 'n-class', statChanges: [], placeholderPins: [{ placeholderId: 'p-garb', value: 'plate' }] },
-      { id: 'n-wizard', name: 'Wizard', groupId: 'n-class', statChanges: [], requires: [{ kind: 'trait', id: 'n-paladin' }] },
+      { id: 'n-wizard', name: 'Wizard', groupId: 'n-class', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'n-paladin' }] }] },
     ],
     traitGroups: [
       { id: 'n-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },

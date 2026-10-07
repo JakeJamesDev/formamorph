@@ -142,7 +142,7 @@ describe('trait movement records across a save/load round trip', () => {
 describe('the cascade-off list across a save/load round trip', () => {
   // Hale requires Sworn; switching Sworn off cascades Hale off.
   const sworn: Trait = { id: 's', name: 'Sworn', statChanges: [], playerToggle: true };
-  const hale: Trait = { ...trait, requires: [{ kind: 'trait', id: 's' }] };
+  const hale: Trait = { ...trait, requires: [{ all: [{ kind: 'trait', id: 's' }] }] };
   const world = { traits: [sworn, hale], groups: [] };
   const fresh: TraitRuntimeState = { stats: seedStatBases([{ ...startStat, value: 50 }]), traits: [], disabledTraitIds: [], appliedValues: {} };
 

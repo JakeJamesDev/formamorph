@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
   BlueprintOverride, Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, StatChange, Trait, TraitGroup,
-  TraitLink, TraitLinkOverrides, TraitRequirement, TraitStatToggle,
+  TraitLink, TraitLinkOverrides, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
@@ -185,6 +185,15 @@ function cardRequirement(raw: unknown): TraitRequirement[] {
   return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardBearer(raw.bearer) }];
 }
 
+/** The card's Requirement Rows. A bare Condition reads as a row of its own; a row left with no Condition is
+ *  dropped. */
+function cardRows(raw: unknown[]): TraitRequirementRow[] {
+  return raw.flatMap((entry) => {
+    const all = isRecord(entry) && Array.isArray(entry.all) ? entry.all.flatMap(cardRequirement) : cardRequirement(entry);
+    return all.length ? [{ all }] : [];
+  });
+}
+
 /** The record's entries that `read` accepts; absent when none is left. */
 function recordOf<V>(raw: unknown, read: (v: unknown) => V | undefined): Record<string, V> | undefined {
   if (!isRecord(raw)) return undefined;
@@ -223,7 +232,7 @@ function cardOverride<V>(raw: unknown, read: (v: unknown) => V | undefined): Blu
 const cardBoolean = (v: unknown) => (typeof v === 'boolean' ? v : undefined);
 const cardMode = (v: unknown) => (v === 'optional' || v === 'alwaysOn' || v === 'hidden' ? v : undefined);
 const cardList = <T>(read: (raw: unknown[]) => T[]) => (v: unknown) => (Array.isArray(v) ? read(v) : undefined);
-const cardRequirements = cardList((v) => v.flatMap(cardRequirement));
+const cardRequirements = cardList(cardRows);
 
 /** A link's overrides on one trait, each field read in its own shape; undefined when none reads. */
 function cardLinkOverrides(raw: unknown): TraitLinkOverrides | undefined {
@@ -263,7 +272,7 @@ function cardLink(raw: unknown): TraitLink[] {
 /** The card's owned traits, groups and links. Stat effects are read as stored; a stat id the world lacks does nothing. */
 function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'> {
   const traits: Trait[] = (Array.isArray(obj.traits) ? obj.traits : []).filter(hasIdAndName).map((t) => {
-    const requires = Array.isArray(t.requires) ? t.requires.flatMap(cardRequirement) : [];
+    const requires = Array.isArray(t.requires) ? cardRows(t.requires) : [];
     const pins = cardPins(t.placeholderPins);
     const statToggles = cardStatToggles(t.statToggles);
     return {

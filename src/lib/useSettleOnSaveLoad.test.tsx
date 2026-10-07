@@ -19,7 +19,7 @@ const nameOf = (t: Trait) => t.name;
 const sworn: Trait = { id: 'sworn', name: 'Sworn', mode: 'alwaysOn', statChanges: [{ statId: 'h', value: 10, type: 'starting' }] };
 const ring: Trait = { id: 'ring', name: 'Ring', statChanges: [], playerToggle: true };
 const ward: Trait = {
-  id: 'ward', name: 'Ward', playerToggle: true, requires: [{ kind: 'trait', id: 'ring' }],
+  id: 'ward', name: 'Ward', playerToggle: true, requires: [{ all: [{ kind: 'trait', id: 'ring' }] }],
   statChanges: [{ statId: 'h', value: 20, type: 'starting' }],
 };
 

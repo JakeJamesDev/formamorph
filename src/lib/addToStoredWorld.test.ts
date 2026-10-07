@@ -100,16 +100,16 @@ describe('addCopyToStoredWorld', () => {
     await storeWorld({ traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }] });
     const content: Entity = {
       id: 'lib-content', name: 'Ash',
-      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }],
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }] }],
     };
 
     await addCopyToStoredWorld('w-1', content, source, empty);
     await addCopyToStoredWorld('w-1', content, source, empty);
     const [first, second] = (await storedWorld()).entities!;
 
-    expect(first.traits![0]).toMatchObject({ id: 't-oath', requires: [{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }] });
+    expect(first.traits![0]).toMatchObject({ id: 't-oath', requires: [{ all: [{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }] }] });
     expect(second.traits![0].id).not.toBe('t-oath');
-    expect(second.traits![0].requires).toEqual([{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }]);
+    expect(second.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }] }]);
   });
 
   it('gives the copy its own id, so importing the same component twice leaves two copies', async () => {

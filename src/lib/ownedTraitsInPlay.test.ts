@@ -341,10 +341,10 @@ describe('the library entities in play', () => {
   const world = { traits: [trait('w-paladin', [], { name: 'Paladin' })], traitGroups: [], entities: [] };
   const persona: Entity = {
     id: 'lib-wren', name: 'Wren', persona: true,
-    traits: [trait('t-oath', [], { requires: [{ kind: 'trait', id: 'elsewhere', name: 'Paladin' }] })],
+    traits: [trait('t-oath', [], { requires: [{ all: [{ kind: 'trait', id: 'elsewhere', name: 'Paladin' }] }] })],
   };
   const added: Entity = {
-    id: 'copy-moss', name: 'Moss', traits: [trait('t-calm', [], { requires: [{ kind: 'trait', id: 'x', name: 'Paladin' }] })],
+    id: 'copy-moss', name: 'Moss', traits: [trait('t-calm', [], { requires: [{ all: [{ kind: 'trait', id: 'x', name: 'Paladin' }] }] })],
   };
 
   it('lists the library persona, then the characters added at Enter World, never a character met in play', () => {
@@ -357,8 +357,8 @@ describe('the library entities in play', () => {
 
   it("binds the library persona's and the added characters' requirements to the world by name", () => {
     const [wren, moss] = inPlayLibrary(world, persona, [added]);
-    expect(wren.traits![0].requires).toEqual([{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }]);
-    expect(moss.traits![0].requires).toEqual([{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }]);
+    expect(wren.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }]);
+    expect(moss.traits![0].requires).toEqual([{ all: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }]);
     expect(inPlayLibrary(world, null)).toEqual([]);
   });
 });

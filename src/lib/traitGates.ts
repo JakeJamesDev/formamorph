@@ -5,6 +5,7 @@ import type { PersonaRef, RequirementBearer, Trait, TraitGroup, TraitRequirement
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
+import { conditionsOf, rowsHold } from './requirementRows';
 
 /** The owner id of the world's own traits, and the player bearer's key. */
 export const WORLD_OWNER = 'world';
@@ -44,7 +45,8 @@ export interface GateInput {
   originals?: { traits: readonly Trait[]; groups: readonly TraitGroup[] };
 }
 
-export interface RequirementState {
+/** One Condition's state against the active sets. */
+export interface ConditionState {
   text: string;
   holds: boolean;
   unresolved: boolean;
@@ -52,11 +54,20 @@ export interface RequirementState {
   hidden: boolean;
 }
 
+/** One Requirement Row's state: it holds when every Condition in it holds. */
+export interface RowState {
+  holds: boolean;
+  conditions: ConditionState[];
+}
+
 export interface GateState {
   unlocked: boolean;
-  /** Every requirement in authored order. Empty for an ungated trait. */
-  requirements: RequirementState[];
+  /** Every row in authored order. Empty for an ungated trait. */
+  rows: RowState[];
 }
+
+/** Every Condition's state across the gate's rows, in authored order. */
+export const gateConditions = (gate: GateState): ConditionState[] => gate.rows.flatMap((row) => row.conditions);
 
 /** Owner id → trait id → that owner's gate on the trait. */
 export type GateStates = ReadonlyMap<string, ReadonlyMap<string, GateState>>;
@@ -176,7 +187,7 @@ const activeSets = (input: GateInput): ActiveIn => {
   return (ownerId, id) => sets.get(ownerId)?.has(id) ?? false;
 };
 
-/** Whether `req` holds for `trait` against `activeIn`. An exclusive sibling of the trait never counts. */
+/** Whether one Condition holds for `trait` against `activeIn`. An exclusive sibling of the trait never counts. */
 function requirementHolds(req: TraitRequirement, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.persona.source === 'world' && idx.persona.entityId === req.id;
   const set = idx.bearerSet(req.bearer, trait.owner);
@@ -221,12 +232,15 @@ export function gateStates(input: GateInput): GateStates {
   for (const { owner, traits } of idx.owners.values()) {
     const states = new Map<string, GateState>();
     for (const trait of traits.values()) {
-      const requirements = (trait.item.requires ?? []).map((req) => {
-        const { text, unresolved } = requirementText(req, idx);
-        const hidden = req.kind === 'trait' && idx.hiddenTraits.has(req.id);
-        return { text, unresolved, hidden, holds: !unresolved && requirementHolds(req, trait, activeIn, idx) };
+      const rows = (trait.item.requires ?? []).map((row): RowState => {
+        const conditions = row.all.map((req): ConditionState => {
+          const { text, unresolved } = requirementText(req, idx);
+          const hidden = req.kind === 'trait' && idx.hiddenTraits.has(req.id);
+          return { text, unresolved, hidden, holds: !unresolved && requirementHolds(req, trait, activeIn, idx) };
+        });
+        return { holds: conditions.every((c) => c.holds), conditions };
       });
-      states.set(trait.item.id, { unlocked: requirements.length === 0 || requirements.some((r) => r.holds), requirements });
+      states.set(trait.item.id, { unlocked: rows.length === 0 || rows.some((r) => r.holds), rows });
     }
     out.set(owner.id, states);
   }
@@ -269,7 +283,7 @@ function metBy(req: TraitRequirement, from: GateOwner, p: Located<Trait>, idx: I
 function cascadeOrder(off: Located<Trait>[], idx: Index, rank: ReadonlyMap<string, number>): Located<Trait>[] {
   const ordered = byRank(off, rank);
   const prerequisites = new Map(ordered.map((d) => [keyOf(d), ordered.filter((p) =>
-    p !== d && (d.item.requires ?? []).some((req) => metBy(req, d.owner, p, idx)))]));
+    p !== d && conditionsOf(d.item.requires).some((req) => metBy(req, d.owner, p, idx)))]));
   const dependents = new Map(ordered.map((p) => [keyOf(p), 0]));
   for (const list of prerequisites.values()) for (const p of list) dependents.set(keyOf(p), dependents.get(keyOf(p))! + 1);
   const out: Located<Trait>[] = [];
@@ -321,10 +335,7 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
   const kept = new Set<string>();
   const activeIn: ActiveIn = (ownerId, id) => kept.has(key(ownerId, id));
   const returned: Located<Trait>[] = [];
-  const opens = (t: Located<Trait>) => {
-    const reqs = t.item.requires ?? [];
-    return reqs.length === 0 || reqs.some((req) => requirementHolds(req, t, activeIn, idx));
-  };
+  const opens = (t: Located<Trait>) => rowsHold(t.item.requires, (req) => requirementHolds(req, t, activeIn, idx));
   for (let joined = true; joined;) {
     joined = false;
     for (const t of proposed) {
@@ -478,7 +489,7 @@ export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
 
 /**
  * The traits no selection can ever unlock for their owner, grouped into sets of traits that require one
- * another. A trait is unlockable when a chain of its requirements reaches a trait with none in a set it
+ * another. A trait is unlockable when some row's every Condition chains to a trait with no rows in a set it
  * reads, a world persona, or a group holding such a trait. So "A requires B or C, B requires A" passes,
  * because C opens A. The player set follows the input's persona; a "playing as" opens for any persona.
  */
@@ -495,8 +506,7 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
     grew = false;
     for (const t of all) {
       if (open.has(keyOf(t))) continue;
-      const reqs = t.item.requires ?? [];
-      if (reqs.length > 0 && !reqs.some(canHold(t))) continue;
+      if (!rowsHold(t.item.requires, canHold(t))) continue;
       open.add(keyOf(t));
       grew = true;
     }
@@ -508,7 +518,7 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
   const find = (k: string): string => (root.get(k) === k ? k : find(root.get(k)!));
   for (const d of stuck) {
     for (const p of stuck) {
-      if (p !== d && (d.item.requires ?? []).some((req) => metBy(req, d.owner, p, idx))) root.set(find(keyOf(d)), find(keyOf(p)));
+      if (p !== d && conditionsOf(d.item.requires).some((req) => metBy(req, d.owner, p, idx))) root.set(find(keyOf(d)), find(keyOf(p)));
     }
   }
   const sets = new Map<string, GateTraitRef[]>();
@@ -576,7 +586,7 @@ function* combinations<T>(items: readonly T[], size: number, from = 0): Generato
 }
 
 /** Whether one selection opens every trait in `targets`: a backtracking search that opens each gate through
- *  some requirement, prerequisites first, and never picks two max-one rivals. */
+ *  every Condition of some row, prerequisites first, and never picks two max-one rivals. */
 function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet<string>, budget: { left: number }): boolean {
   const picked = new Set<string>();
   const pending = new Set<string>();
@@ -603,12 +613,14 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
       picked.delete(k);
       return false;
     };
-    const reqs = t.item.requires ?? [];
-    const ok = reqs.length === 0
+    // Each Condition of a row opens in turn before the next; the trait itself joins after the last.
+    const meet = (req: TraitRequirement, then: () => boolean) => (req.kind === 'playingAs'
+      ? idx.persona.source === 'world' && idx.persona.entityId === req.id && then()
+      : satisfiers(req, t).some((s) => open(s, then)));
+    const rows = t.item.requires ?? [];
+    const ok = rows.length === 0
       ? finish()
-      : reqs.some((req) => (req.kind === 'playingAs'
-        ? idx.persona.source === 'world' && idx.persona.entityId === req.id && finish()
-        : satisfiers(req, t).some((s) => open(s, finish))));
+      : rows.some((row) => row.all.reduceRight<() => boolean>((then, req) => () => meet(req, then), finish)());
     pending.delete(k);
     return ok;
   };

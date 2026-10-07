@@ -592,7 +592,7 @@ describe('Begin and group minimums', () => {
   it('leaves out a page with no row the player sees, and still holds Begin for its short group', () => {
     const omens = { id: 'omens', name: 'Omens', parentId: null, order: 2, minPicks: 1 };
     const unseen: Trait[] = [
-      { id: 'sign', name: 'Sign', groupId: 'omens', order: 0, mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'outsider' }], statChanges: [] },
+      { id: 'sign', name: 'Sign', groupId: 'omens', order: 0, mode: 'alwaysOn', requires: [{ all: [{ kind: 'trait', id: 'outsider' }] }], statChanges: [] },
       { id: 'veil', name: 'Veil', groupId: 'practice', order: 1, mode: 'hidden', statChanges: [] },
     ];
     render(<Harness traitGroups={[...groups, omens]} traits={[...traits, ...unseen]} />);
@@ -991,7 +991,7 @@ describe('EnterWorldWorkspace cast pages', () => {
   const ash: Entity = {
     id: 'ash', name: 'Ash', persona: true, images: ['data:image/png;base64,ash'], playerDescription: 'A grey wolf.',
     traitPlacement: { groupId: 'origin', order: 1 },
-    traits: [owned('tamed', { isDefault: true }), owned('guard', { requires: [{ kind: 'playingAs', id: 'ash' }] })],
+    traits: [owned('tamed', { isDefault: true }), owned('guard', { requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }] })],
   };
   const bob: Entity = { id: 'bob', name: 'Bob', persona: true, traits: [owned('gruff')] };
   const castWorld: EntryTraitWorld = { traits, traitGroups: groups, entities: [ash, bob], library: [] };

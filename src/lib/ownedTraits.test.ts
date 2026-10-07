@@ -14,7 +14,7 @@ const ash = (extra: Partial<Entity> = {}): Entity => ({
   traits: [
     trait('t-tamed', { name: 'Tamed', groupId: 'g-bond' }),
     trait('t-wild', { name: 'Wild', groupId: 'g-bond' }),
-    trait('t-pack', { name: 'Pack Leader', requires: [{ kind: 'trait', id: 't-tamed' }] }),
+    trait('t-pack', { name: 'Pack Leader', requires: [{ all: [{ kind: 'trait', id: 't-tamed' }] }] }),
   ],
   ...extra,
 });
@@ -67,28 +67,28 @@ describe('owned trait edits', () => {
 
 describe('remintOwnedTraits', () => {
   it('gives every owned trait and group a fresh id, keeping the tree and inward requirements', () => {
-    const source = ash({ traits: [...ash().traits!, trait('t-oath', { requires: [{ kind: 'trait', id: 't-paladin' }] })] });
+    const source = ash({ traits: [...ash().traits!, trait('t-oath', { requires: [{ all: [{ kind: 'trait', id: 't-paladin' }] }] })] });
     const copy = remintOwnedTraits(source);
     const ids = [...copy.traits!.map((t) => t.id), ...copy.traitGroups!.map((g) => g.id)];
     expect(ids.some((id) => ['t-tamed', 't-wild', 't-pack', 't-oath', 'g-bond'].includes(id))).toBe(false);
 
     const byName = (name: string) => copy.traits!.find((t) => t.name === name)!;
     expect(byName('Tamed').groupId).toBe(copy.traitGroups![0].id);
-    expect(byName('Pack Leader').requires).toEqual([{ kind: 'trait', id: byName('Tamed').id }]);
+    expect(byName('Pack Leader').requires).toEqual([{ all: [{ kind: 'trait', id: byName('Tamed').id }] }]);
     // A requirement pointing out of the entity keeps its target.
-    expect(byName('t-oath').requires).toEqual([{ kind: 'trait', id: 't-paladin' }]);
+    expect(byName('t-oath').requires).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
   });
 
   it('remaps an inward group requirement too', () => {
-    const source = ash({ traits: [trait('t-x', { requires: [{ kind: 'group', id: 'g-bond' }] })] });
+    const source = ash({ traits: [trait('t-x', { requires: [{ all: [{ kind: 'group', id: 'g-bond' }] }] })] });
     const copy = remintOwnedTraits(source);
-    expect(copy.traits![0].requires).toEqual([{ kind: 'group', id: copy.traitGroups![0].id }]);
+    expect(copy.traits![0].requires).toEqual([{ all: [{ kind: 'group', id: copy.traitGroups![0].id }] }]);
   });
 
   it('points a "playing as" the source requirement at the copy, and leaves other personas alone', () => {
-    const source = ash({ traits: [trait('t-self', { requires: [{ kind: 'playingAs', id: 'ash' }, { kind: 'playingAs', id: 'aldric' }] })] });
+    const source = ash({ traits: [trait('t-self', { requires: [{ all: [{ kind: 'playingAs', id: 'ash' }] }, { all: [{ kind: 'playingAs', id: 'aldric' }] }] })] });
     const copy = remintOwnedTraits({ ...source, id: 'ash-copy' }, new Map([['ash', 'ash-copy']]));
-    expect(copy.traits![0].requires).toEqual([{ kind: 'playingAs', id: 'ash-copy' }, { kind: 'playingAs', id: 'aldric' }]);
+    expect(copy.traits![0].requires).toEqual([{ all: [{ kind: 'playingAs', id: 'ash-copy' }] }, { all: [{ kind: 'playingAs', id: 'aldric' }] }]);
   });
 
   it('leaves an entity that owns nothing as it is', () => {
@@ -102,7 +102,7 @@ describe('traitOwners', () => {
     { id: 'g-allies', name: 'Allies', parentId: null },
     { id: 'g-companions', name: 'Companions', parentId: 'g-allies' },
   ];
-  const keeper = trait('t-keeper', { name: 'Keeper', requires: [{ kind: 'group', id: 'g-allies' }] });
+  const keeper = trait('t-keeper', { name: 'Keeper', requires: [{ all: [{ kind: 'group', id: 'g-allies' }] }] });
   // Playing Ash, so Ash's active traits are the player's own and can meet the world's group requirement.
   const unlocked = (entity: Entity) => gateOf(gateStates({
     owners: traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),

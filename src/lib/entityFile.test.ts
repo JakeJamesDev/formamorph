@@ -342,9 +342,8 @@ describe('a character card’s owned traits', () => {
       {
         id: 't-oath', name: 'Oath', statChanges: [],
         requires: [
-          { kind: 'trait', id: 't-tamed' },
-          { kind: 'trait', id: 'w-paladin' },
-          { kind: 'playingAs', id: 'ash' },
+          { all: [{ kind: 'trait', id: 't-tamed' }, { kind: 'trait', id: 'w-paladin' }] },
+          { all: [{ kind: 'playingAs', id: 'ash' }] },
         ],
       },
     ],
@@ -358,9 +357,8 @@ describe('a character card’s owned traits', () => {
     expect(parsed.traits!.map((t) => t.id)).toEqual(['t-tamed', 't-oath']);
     expect(parsed.traits![0].isDefault).toBe(true);
     expect(parsed.traits![1].requires).toEqual([
-      { kind: 'trait', id: 't-tamed' },
-      { kind: 'trait', id: 'w-paladin', name: 'Paladin' },
-      { kind: 'playingAs', id: SELF_ENTITY, name: 'Ash' },
+      { all: [{ kind: 'trait', id: 't-tamed' }, { kind: 'trait', id: 'w-paladin', name: 'Paladin' }] },
+      { all: [{ kind: 'playingAs', id: SELF_ENTITY, name: 'Ash' }] },
     ]);
   });
 
@@ -369,10 +367,23 @@ describe('a character card’s owned traits', () => {
     const world = { traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }], traitGroups: [], entities: [] };
     const adopted = adoptOwnedTraits(parsed, world);
     expect(adopted.traits![1].requires).toEqual([
-      { kind: 'trait', id: 't-tamed' },
-      { kind: 'trait', id: 'n-paladin', name: 'Paladin' },
-      { kind: 'playingAs', id: parsed.id, name: 'Ash' },
+      { all: [{ kind: 'trait', id: 't-tamed' }, { kind: 'trait', id: 'n-paladin', name: 'Paladin' }] },
+      { all: [{ kind: 'playingAs', id: parsed.id, name: 'Ash' }] },
     ]);
+  });
+
+  it('reads a card that stores the flat list as one row per entry, on owned traits and link overrides', () => {
+    const paladin = { kind: 'trait', id: 'w-paladin', name: 'Paladin' };
+    const parsed = parseEntityCardData({
+      formamorphKind: 'entity', name: 'Old',
+      traits: [{ id: 'o', name: 'Oath', statChanges: [], requires: [paladin, { kind: 'playingAs', id: 'ash' }] }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { requires: { value: [paladin], blueprint: [] } } },
+      }],
+    });
+    expect(parsed.traits![0].requires).toEqual([{ all: [paladin] }, { all: [{ kind: 'playingAs', id: 'ash' }] }]);
+    expect(parsed.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [paladin] }], blueprint: [] });
   });
 
   it('reads stat effects as stored (Q9) and drops junk rows', () => {
@@ -384,13 +395,14 @@ describe('a character card’s owned traits', () => {
           statChanges: [{ statId: 's', value: 5, type: 'min' }, { statId: 7, value: 1 }],
           statToggles: [{ statId: 's', enabled: true }, { statId: 's' }],
         },
-        { id: 7, name: 'B' }, 'junk', { id: 'c', name: 'C', requires: [{ kind: 'weird', id: 'x' }, { kind: 'group', id: 'g' }] },
+        { id: 7, name: 'B' }, 'junk',
+        { id: 'c', name: 'C', requires: [{ kind: 'weird', id: 'x' }, { all: [{ kind: 'weird' }] }, { all: [null, { kind: 'group', id: 'g' }] }] },
       ],
       traitGroups: [{ id: 'g', name: 'G', parentId: 5 }, null],
     });
     expect(parsed.traits).toEqual([
       { id: 'a', name: 'A', statChanges: [{ statId: 's', value: 5, type: 'min' }], statToggles: [{ statId: 's', enabled: true }] },
-      { id: 'c', name: 'C', statChanges: [], requires: [{ kind: 'group', id: 'g' }] },
+      { id: 'c', name: 'C', statChanges: [], requires: [{ all: [{ kind: 'group', id: 'g' }] }] },
     ]);
     expect(parsed.traitGroups).toEqual([{ id: 'g', name: 'G', parentId: null }]);
   });

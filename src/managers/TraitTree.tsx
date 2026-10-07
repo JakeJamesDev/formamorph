@@ -21,7 +21,7 @@ import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { PLAYER_BEARER } from '@/lib/bearers';
-import { gateOf, gateStates, type GateState } from '@/lib/traitGates';
+import { gateConditions, gateOf, gateStates, type GateState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
@@ -29,18 +29,20 @@ import type { Placeholder } from '@/types';
 // Red on the primary fill is unreadable, so a selected row drops the tint for the row's own color.
 const UNRESOLVED = 'text-destructive [[data-editor-row-selected]_&]:text-current';
 
-/** A gated row's lock and count, with the full rule as its tip. Red when a requirement points at nothing. */
+/** A gated tree row's lock and Condition count, with the full rule as its tip. Red when a Condition points at
+ *  nothing. */
 const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof labelPlaceholders>[1]) => {
-  if (!gate?.requirements.length) return {};
-  const unresolved = gate.requirements.some((r) => r.unresolved);
+  if (!gate?.rows.length) return {};
+  const conditions = gateConditions(gate);
+  const unresolved = conditions.some((c) => c.unresolved);
   return {
     unresolved,
     meta: (
       <span className={cn('inline-flex items-center gap-1', unresolved && UNRESOLVED)}>
-        <Lock className="h-3.5 w-3.5" aria-hidden />{gate.requirements.length}
+        <Lock className="h-3.5 w-3.5" aria-hidden />{conditions.length}
       </span>
     ),
-    // The editor's gate input holds nothing active, so every gated row reads locked: "Requires A or B".
+    // The editor's gate input holds nothing active, so every gated row reads locked: "Requires A and B, or C".
     metaTitle: labelPlaceholders(gateLine(gate, { revealHidden: true }) ?? '', placeholders),
   };
 };
@@ -226,8 +228,8 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       const linkRow = tree.linkRows.get(node.id);
       const entity = tree.entityNodes.get(node.id);
       const gate = gateOfRow(node, linkRow);
-      const gateKey = gate?.requirements.length
-        ? `${gate.requirements.some((r) => r.unresolved)}|${gateLine(gate, { revealHidden: true })}`
+      const gateKey = gate?.rows.length
+        ? `${gateConditions(gate).some((c) => c.unresolved)}|${gateLine(gate, { revealHidden: true })}`
         : '';
       return [
         linkRow, entity, tree.ownerOf.get(node.id), gateKey,
