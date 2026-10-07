@@ -45,9 +45,12 @@ describe('the AI Context search box', () => {
     const box = await screen.findByPlaceholderText('Search (space-separated terms)…');
 
     expect(screen.queryByRole('button', { name: 'Clear Search' })).toBeNull();
+    // Whitespace is text too: the X shows before any term parses.
+    fireEvent.change(box, { target: { value: '   ' } });
+    expect(screen.getByRole('button', { name: 'Clear Search' })).toBeInTheDocument();
     fireEvent.change(box, { target: { value: 'harbor' } });
     const counter = screen.getByText('0 of 0');
-    expect(screen.getByRole('button', { name: 'Clear Search' }).compareDocumentPosition(counter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(counter.compareDocumentPosition(screen.getByRole('button', { name: 'Clear Search' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const buttons = screen.getAllByRole('button', { name: /^(Clear Search|Previous match|Next match)$/ });
     expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Clear Search', 'Previous match', 'Next match']);
 

@@ -9,7 +9,7 @@ Recommended model rationale: the Find bar is dense, has two layouts, pinned focu
 
 ## What to build
 
-Every Find bar text box gets an inner clear X as the innermost trailing cell (Q7). The Find box, floating and docked expanded, and the collapsed docked **Search World** field get **Clear Search** (Q14). In the collapsed field the X sits before the options badge and the counter; in the expanded bar, before the match toggles. The Replace box gets **Clear Replace** in both layouts, in text mode only; the placeholder picker gets none (Q15). Clearing empties the box and returns focus to it; it does not collapse the bar or change the expanded state. The debounced query and marker follow the empty value as they do for typing.
+Every Find bar text box gets an inner clear X as the innermost trailing cell (Q7). The Find box, floating and docked expanded, and the collapsed docked **Search World** field get **Clear Search** (Q14). In the collapsed field the X follows the options badge and the counter and precedes the match navigation (Q7 revised at review); in the expanded bar, before the match toggles. The Replace box gets **Clear Replace** in both layouts, in text mode only; the placeholder picker gets none (Q15). Clearing empties the box and returns focus to it; it does not collapse the bar or change the expanded state. The debounced query and marker follow the empty value as they do for typing.
 
 The row-end button is a close, not a clear. It renames to **Close Search** when docked and **Close Find** when floating (Q6 revised), with its tests, the Design System Find bar lines, and the World Editor docs.
 

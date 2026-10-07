@@ -575,7 +575,6 @@ export default function EditorFindBar({
               placeholder="Search World"
               className="h-full min-w-0 flex-1 bg-transparent px-2 text-meta outline-none placeholder:text-muted-foreground"
             />
-            {findClearable && <ClearSearchButton size="sm" onClick={clearFind} className="mr-1" />}
             {/* An option left on shows here, so a collapsed search never filters silently. */}
             {optionsOn && (
               <Tip tip="Show match options">
@@ -593,6 +592,8 @@ export default function EditorFindBar({
             <span className={cn('shrink-0 text-meta', counter && 'px-2', matches.length ? 'text-muted-foreground' : 'text-destructive')} aria-live="polite">
               {counter}
             </span>
+            {/* After the counter, whose width changes with the count, so the X keeps one position. */}
+            {findClearable && <ClearSearchButton size="sm" onClick={clearFind} className="mr-1" />}
             <StepCell onClick={() => step(-1)} disabled={!matches.length} label="Previous match">
               <ChevronUp className="h-4 w-4" />
             </StepCell>
