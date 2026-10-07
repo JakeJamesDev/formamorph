@@ -411,6 +411,21 @@ describe('EnterWorldWorkspace', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable Traveler Notes from Library' })).toBeChecked();
   });
 
+  it('shows every addition again when the X clears the search, keeping hidden selections', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Include Mara Vale' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search Library Additions' }), 'cartographer');
+    expect(screen.queryByText('Mara Vale')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    expect(screen.getByRole('searchbox', { name: 'Search Library Additions' })).toHaveValue('');
+    expect(screen.getByRole('checkbox', { name: 'Include Mara Vale' })).toBeChecked();
+  });
+
   it('orders world and library dictionaries together without changing enablement', async () => {
     const user = userEvent.setup();
     render(<Harness />);

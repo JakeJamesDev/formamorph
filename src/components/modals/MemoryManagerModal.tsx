@@ -5,7 +5,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { buildMemoryLedger, matchesMemoryFilter, MEMORY_FILTER_LABELS, MEMORY_FILTER_COUNT_LABELS, type MemoryRow, type MemoryFilter } from '@/lib/memoryView';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -203,11 +203,12 @@ export const MemoryManagerModal = ({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Input
+          <SearchField
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={setQuery}
             placeholder="Search memories…"
-            className="h-8 flex-grow min-w-[140px] text-meta"
+            size="sm"
+            className="flex-grow min-w-[140px]"
           />
           <Button size="sm" variant="outline" className="h-8" onClick={() => { setAdding(true); setEditingId(null); setDraft(''); }}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Memory

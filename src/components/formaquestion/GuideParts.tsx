@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { ArrowLeft, ChevronDown, Search, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, type LucideIcon } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Hint, Meta } from '@/components/ui/typography';
 import type { DocSection, DocsContentsPage } from '@/lib/docs/docsIndex';
@@ -18,7 +18,7 @@ import { FOCUS_RING, readerComponents } from './readerLinks';
 /** The most sections one search shows. */
 const RESULT_LIMIT = 20;
 
-export function SearchField({ value, onChange, takesFocus = true, className }: {
+export function GuideSearchField({ value, onChange, takesFocus = true, className }: {
   value: string;
   onChange: (text: string) => void;
   /** The cursor goes here when the window opens. False where the question field is on show too. */
@@ -26,18 +26,13 @@ export function SearchField({ value, onChange, takesFocus = true, className }: {
   className?: string;
 }) {
   return (
-    <div className={cn('relative', className)} {...targetAttribute('formaquestion.search', 'search-field')}>
-      <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
+    <div className={className} {...targetAttribute('formaquestion.search', 'search-field')}>
+      <SearchField
         data-fq-autofocus={takesFocus ? '' : undefined}
-        type="search"
         aria-label="Search the Guide"
         placeholder="Search the Guide"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        // Escape belongs to the dialog behind the window. Here it must not clear the field.
-        onKeyDown={(event) => { if (event.key === 'Escape') event.preventDefault(); }}
-        className="pl-9"
+        onChange={onChange}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { CompactSelectionRow } from '@/components/ui/compact-selection-row';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SearchField } from '@/components/ui/search-field';
 import { FieldError } from '@/components/ui/typography';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
 
@@ -43,7 +44,7 @@ export function LibraryGroupPicker({ name, groups, currentGroupId, initialPanel 
         <DialogTitle className="shrink-0 pr-6">{panel === 'picker' ? 'Add To Group' : 'Create New Group'}</DialogTitle>
         <DialogDescription className="shrink-0 break-words [overflow-wrap:anywhere]">{name}</DialogDescription>
         {panel === 'picker' ? <>
-          <Input ref={input} className="shrink-0" aria-label="Find a Group" placeholder="Find a Group" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <SearchField ref={input} className="shrink-0" aria-label="Find a Group" placeholder="Find a Group" value={query} onChange={setQuery} />
           <ScrollArea className="h-64 min-h-8 shrink rounded-md border border-border p-1" type="always">
             <div aria-label="Groups" role="group">
               {matches.map((group) => (

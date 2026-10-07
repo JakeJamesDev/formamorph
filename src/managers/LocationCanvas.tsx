@@ -11,7 +11,7 @@ import '@xyflow/react/dist/base.css';
 import {
   AlertTriangle, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
   AlignVerticalDistributeCenter, ArrowLeft, ArrowLeftRight, ArrowRight, CornerDownRight, Grid2x2,
-  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Pencil, Redo2, Search, Spline, SquareCheck, Star, Trash2,
+  LayoutGrid, Magnet, Maximize2, Minimize2, Minus, Pencil, Redo2, Spline, SquareCheck, Star, Trash2,
   Undo2, X,
 } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -23,7 +23,7 @@ import { CONNECTION_STYLES, isConnectionStyle, type ConnectionStyle } from '@/li
 import { useDevRoute } from '@/lib/devRouter';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { Separator } from '@/components/ui/separator';
 import {
   ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
@@ -459,22 +459,19 @@ const LocationSearch = ({ find, onPick }: {
     // Below the toolbar on a window too narrow to hold both across: the tools span the top edge there, and a
     // box sitting under them is a box that cannot be typed into.
     <Panel position="top-left" className="!m-2 w-64 max-sm:!mt-16">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setActive(0); }}
-          onKeyDown={onKeyDown}
-          placeholder="Find a Location"
-          aria-label="Find a Location"
-          role="combobox"
-          aria-expanded={matches.length > 0}
-          aria-controls={listId}
-          aria-activedescendant={matches.length ? `${listId}-${at}` : undefined}
-          autoComplete="off"
-          className="bg-card pl-8"
-        />
-      </div>
+      <SearchField
+        value={query}
+        onChange={(next) => { setQuery(next); setActive(0); }}
+        onKeyDown={onKeyDown}
+        placeholder="Find a Location"
+        aria-label="Find a Location"
+        role="combobox"
+        aria-expanded={matches.length > 0}
+        aria-controls={listId}
+        aria-activedescendant={matches.length ? `${listId}-${at}` : undefined}
+        autoComplete="off"
+        inputClassName="bg-card"
+      />
       {!!query.trim() && (
         <ul
           id={listId}

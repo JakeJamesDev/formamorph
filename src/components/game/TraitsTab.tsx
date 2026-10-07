@@ -8,9 +8,9 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronDown, Lock, Search } from 'lucide-react';
+import { ChevronDown, Lock } from 'lucide-react';
 import { EntityIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
@@ -242,16 +242,15 @@ export const TraitsTab = ({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="relative mb-2 flex-shrink-0">
-        <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => patch({ query: e.target.value })}
-          aria-label="Filter traits"
-          placeholder="Filter traits…"
-          className="h-8 pl-7 text-label"
-        />
-      </div>
+      <SearchField
+        value={query}
+        onChange={(next) => patch({ query: next })}
+        aria-label="Filter traits"
+        placeholder="Filter traits…"
+        size="sm"
+        className="mb-2 flex-shrink-0"
+        inputClassName="text-label"
+      />
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-2 pb-2">
           {active.length > 0 && (

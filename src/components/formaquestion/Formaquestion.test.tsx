@@ -133,6 +133,17 @@ describe('opening and closing', () => {
     expect(escape.defaultPrevented).toBe(true);
   });
 
+  it('clears the Guide search with the X and keeps the cursor in the box', async () => {
+    await openSearch();
+    const field = screen.getByRole('searchbox', { name: 'Search the Guide' });
+    fireEvent.change(field, { target: { value: 'stat' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    expect(field).toHaveValue('');
+    expect(field).toHaveFocus();
+  });
+
   it('keeps the cursor in the window when a press removes the control it was on', async () => {
     render(<Formaquestion loadIndex={loadFixture} />);
     await userEvent.click(helpTab()!);

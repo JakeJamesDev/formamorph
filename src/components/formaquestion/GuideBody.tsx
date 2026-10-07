@@ -11,7 +11,7 @@ import { AskPanel } from './AskParts';
 import {
   FORMAQUESTION_TABS, isSearchable, openSectionChange, type FormaquestionTab, type GuideView, type GuideViewChange,
 } from './formaquestionTabs';
-import { BackRow, ContentsList, Reader, SearchField, SearchResults } from './GuideParts';
+import { BackRow, ContentsList, GuideSearchField, Reader, SearchResults } from './GuideParts';
 import { SurfaceHelpRow } from './SurfaceHelpRow';
 import type { HelpChat } from './useHelpChat';
 
@@ -69,7 +69,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
     return (
       <div className="flex h-full min-h-0" data-fq-layout="wide">
         <div className="flex min-h-0 w-56 shrink-0 flex-col border-r">
-          <SearchField value={view.query} onChange={setQuery} takesFocus={showsReader} className="m-2 shrink-0" />
+          <GuideSearchField value={view.query} onChange={setQuery} takesFocus={showsReader} className="m-2 shrink-0" />
           {helpRowUnlessSearching}
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'rail' }}>
             {isSearchable(view.query)
@@ -111,7 +111,7 @@ export function GuideBody({ guide, failed, onRetry, view, onViewChange, wide, ch
       </div>
       <TabsContent value="ask" className={TAB_PANEL}>{ask}</TabsContent>
       <TabsContent value="search" className={TAB_PANEL}>
-        <SearchField value={view.query} onChange={setQuery} className="m-3 mb-1 shrink-0" />
+        <GuideSearchField value={view.query} onChange={setQuery} className="m-3 mb-1 shrink-0" />
         {helpRowUnlessSearching}
         <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'data-fq-scroll': 'results' }}>
           <SearchResults guide={guide} query={view.query} onOpen={openSection} />

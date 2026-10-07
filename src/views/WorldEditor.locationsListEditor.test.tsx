@@ -139,7 +139,8 @@ describe('the Locations tab', () => {
     /** The toolbar's controls in DOM order: the +, the search box, then each view button by its name. */
     const toolbarOrder = () => {
       const box = screen.getByPlaceholderText('Filter Locations');
-      return [...box.parentElement!.querySelectorAll<HTMLElement>('button, input')].map((el) =>
+      const row = screen.getByRole('button', { name: 'Add to Locations' }).parentElement!;
+      return [...row.querySelectorAll<HTMLElement>('button, input')].map((el) =>
         el === box ? 'search' : el.getAttribute('aria-label') ?? el.textContent);
     };
     const viewButtons = () => ['List', 'Canvas'].map((name) => screen.getByRole('radio', { name }));

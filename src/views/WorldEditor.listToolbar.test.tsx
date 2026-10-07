@@ -205,6 +205,20 @@ describe('search results', () => {
     expect(screen.getByText('No entities match “zzz”.')).toBeInTheDocument();
   });
 
+  it('lists every row again when the X clears the search', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openTab(/Entities/);
+    const box = searchBox('Entities');
+    type(box, 'wick');
+    expect(screen.queryByText(/Ash the/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    expect(box).toHaveValue('');
+    expect(screen.getByText('Odd Wick')).toBeInTheDocument();
+    expect(screen.getByText(/Ash the/)).toBeInTheDocument();
+  });
+
   it('matches the placeholder behind a chip by its name and by its value', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Entities/);

@@ -24,7 +24,7 @@ describe('main menu context menu reference', () => {
     renderReference();
     window.location.hash = '#dev?modal=designSystem&tab=context-menu&subtab=picker';
     fireEvent(window, new Event('hashchange'));
-    expect(screen.getByRole('textbox', { name: 'Find a Group' })).toHaveFocus();
+    expect(screen.getByRole('searchbox', { name: 'Find a Group' })).toHaveFocus();
     window.location.hash = '#dev?modal=designSystem&tab=context-menu&subtab=create';
     fireEvent(window, new Event('hashchange'));
     expect(screen.getByRole('textbox', { name: 'Group Name' })).toHaveFocus();

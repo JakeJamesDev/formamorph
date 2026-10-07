@@ -86,7 +86,7 @@ describe('library group flow', () => {
     render(<LibraryFlow />);
     const dialog = await openPicker(user);
     expect(within(dialog).getByText('The Lantern District')).toBeInTheDocument();
-    const search = screen.getByRole('textbox', { name: 'Find a Group' });
+    const search = screen.getByRole('searchbox', { name: 'Find a Group' });
     expect(search).toHaveFocus();
     await user.type(search, '  FAVOR  ');
     const matches = within(screen.getByRole('group', { name: 'Groups' })).getAllByRole('button');
@@ -98,6 +98,23 @@ describe('library group flow', () => {
     expect(saved.groups.g1.members).toEqual(['resident1']);
     expect(saved.groups.g3.name).toBe('Favorites');
     expect(screen.getByRole('button', { name: 'World Tile' })).toHaveFocus();
+  });
+
+  it('lists every group again when the X clears the search, and keeps the cursor in the box', async () => {
+    seed();
+    const user = userEvent.setup();
+    render(<LibraryFlow />);
+    await openPicker(user);
+    const search = screen.getByRole('searchbox', { name: 'Find a Group' });
+    await user.type(search, 'missing');
+    expect(screen.getByRole('status')).toHaveTextContent('The search found no groups.');
+
+    await user.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    expect(search).toHaveValue('');
+    expect(search).toHaveFocus();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Groups' })).getAllByRole('button').length).toBeGreaterThan(0);
   });
 
   it('keeps the current assignment selected and performs no write when chosen again', async () => {
@@ -121,7 +138,7 @@ describe('library group flow', () => {
     const user = userEvent.setup();
     render(<LibraryFlow />);
     await openPicker(user);
-    await user.type(screen.getByRole('textbox', { name: 'Find a Group' }), 'missing');
+    await user.type(screen.getByRole('searchbox', { name: 'Find a Group' }), 'missing');
     expect(screen.getByRole('status')).toHaveTextContent('The search found no groups.');
     if (action === 'Escape') await user.keyboard('{Escape}');
     else await user.click(screen.getByRole('button', { name: action }));

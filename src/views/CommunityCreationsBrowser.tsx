@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, X, SlidersHorizontal, ChevronDown,
+  RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, X, SlidersHorizontal, ChevronDown,
   ShieldAlert, Trophy,
   type LucideIcon,
 } from "lucide-react";
@@ -71,7 +71,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
 import { cardLayoutFor, thumbAspectFor } from "@/lib/thumbAspect";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
@@ -890,26 +890,25 @@ const CommunityCreationsBrowser = ({
       nav={tutorialNav}
       align="start"
     >
-    <div className="relative flex-grow min-w-[200px]">
-      <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      {/* `author:`/`tag:`/`status:`/`model:` typed here become filter chips — see the hook's applySearchInput.
-          Enter finishes the token under the cursor, a space finishes it as you keep typing. */}
-      <Input
-        // The prefix hint is desktop-only: on mobile it outruns the field and hides the word "Search".
-        placeholder={isMobile
-          ? `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}…`
-          : `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}… or type author:, tag:, ${browseTab === 'prompt' ? 'model:, ' : ''}status:`}
-        className="pl-8"
-        value={searchQuery}
-        onChange={(e) => { dismissIfShowing('community-search-prefixes'); applySearchInput(e.target.value); }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            applySearchInput(e.currentTarget.value, true);
-          }
-        }}
-      />
-    </div>
+    {/* `author:`/`tag:`/`status:`/`model:` typed here become filter chips — see the hook's applySearchInput.
+        Enter finishes the token under the cursor, a space finishes it as you keep typing. The X clears the
+        typed text only; the chips stay. */}
+    <SearchField
+      // The prefix hint is desktop-only: on mobile it outruns the field and hides the word "Search".
+      placeholder={isMobile
+        ? `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}…`
+        : `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}… or type author:, tag:, ${browseTab === 'prompt' ? 'model:, ' : ''}status:`}
+      className="flex-grow min-w-[200px]"
+      value={searchQuery}
+      onChange={(next) => { dismissIfShowing('community-search-prefixes'); applySearchInput(next); }}
+      onClear={() => applySearchInput('')}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+          e.preventDefault();
+          applySearchInput(e.currentTarget.value, true);
+        }
+      }}
+    />
     </TutorialPopover>
   );
 

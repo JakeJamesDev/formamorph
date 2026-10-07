@@ -121,6 +121,21 @@ describe('narrowing the log', () => {
     await waitFor(() => expect(lastQuery()).toMatchObject({ search: 'trouble' }));
   });
 
+  it('shows the unfiltered log when the X clears a submitted search, with no second submit', async () => {
+    stubLog([entry()]);
+
+    render(<AuditLogTab active />);
+    await findEntryLine();
+    fireEvent.change(screen.getByLabelText('Search the log'), { target: { value: 'trouble' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await waitFor(() => expect(lastQuery()).toMatchObject({ search: 'trouble' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    await waitFor(() => expect(lastQuery()).toMatchObject({ search: '' }));
+    expect(screen.getByLabelText('Search the log')).toHaveValue('');
+  });
+
   it('goes back to the first page when the search changes', async () => {
     // A filter change would otherwise land on whatever page the previous list was showing.
     stubLog([entry()], 60);
