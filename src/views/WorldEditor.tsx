@@ -40,10 +40,11 @@ import { NavRail } from '@/components/NavRail';
 import { useElementSize } from '@/lib/useElementSize';
 import { BackButton } from '@/components/BackButton';
 import { SurfaceAppBar } from '@/components/SurfaceAppBar';
+import { TruncatedText } from '@/components/TruncatedText';
 import { Separator } from '@/components/ui/separator';
 import { ModeSelect } from '@/components/ui/mode-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Save, ImageDown, Loader2, Search, MoreHorizontal } from "lucide-react";
+import { Save, ImageDown, Loader2, Search, MoreHorizontal, ChevronRight } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -157,7 +158,7 @@ const WorldEditorInner = ({
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     setLocations, setEntities, setDictionaries,
-    isWorldDirty, isWorldStored, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
+    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -996,9 +997,13 @@ const WorldEditorInner = ({
       Save
     </Button>
   );
-  // A world with no stored copy has nothing to call saved, so it shows no state at all.
-  const saveState = isWorldStored && (
-    <span className="ml-2 shrink-0 text-meta text-muted-foreground">{isWorldDirty ? 'Unsaved changes' : 'Saved'}</span>
+  // Save's enabled state is the only save signal; the bar names the world being edited.
+  const worldName = worldOverview.name.trim();
+  const worldTitle = worldName && (
+    <>
+      <ChevronRight aria-hidden className="mx-1 h-3 w-3 shrink-0 text-muted-foreground" />
+      <TruncatedText text={worldName} className="text-body text-muted-foreground" />
+    </>
   );
   const appBar = (
     <SurfaceAppBar
@@ -1006,7 +1011,7 @@ const WorldEditorInner = ({
         <>
           {showBackButton && <BackButton onClick={requestClose} />}
           <CardTitle className={cn('shrink-0', showBackButton && 'ml-1')}>World Editor</CardTitle>
-          {saveState}
+          {worldTitle}
         </>
       )}
       center={<>{findButton}{benchButton}</>}

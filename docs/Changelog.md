@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **On desktop, the World Editor puts Save, Export World and the mode select in one bar above both panes.** It shows Saved or Unsaved changes beside the title, with Find and the Test Bench in its center. The bar has no help button.
     - **On mobile, the World Editor's header holds Find, the Test Bench and the mode select, with no help button.** The Sections list splits its groups with lines, in the same order as the desktop rail. Morphie and the guide answer questions about each tab.
     - **On mobile, Community Creations picks its section from a Sections bar under a one-row header.** The header holds back, search and a Filters icon with a count of active filters. Refresh moves into the Filters panel, beside sort.
+    - **On desktop, the World Editor's bar names the world you're editing, and no longer says Saved or Unsaved changes.** A long name cuts off with "…" and shows in full on hover. Save is on only while you have changes.
   - **Settings swaps its Simple/Advanced switch for a mode select that says what each mode shows.**
 
 ### Minor Changes
