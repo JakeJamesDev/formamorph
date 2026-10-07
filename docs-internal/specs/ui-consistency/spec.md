@@ -1,8 +1,8 @@
 # UI Consistency
 
-Status: ready-for-agent
+Status: done
 Spec session: ui-consistency — spec
-Status note: Opened 2026-10-06 from the user's notes. Rulings Q1–Q14 settled the same day from rendered before/after sheets; six tickets in `issues/`. Item 3 (first-hover flicker) is parked.
+Status note: Closed 2026-10-06. Tickets 01–06 done; last landing 562b25a9, review fold-ins 75f9df32 and 4dcebb6b (Q15). Item 3 (first-hover flicker) stays parked. Closed without gates.
 
 ## Problem Statement
 
