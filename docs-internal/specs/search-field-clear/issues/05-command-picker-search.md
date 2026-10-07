@@ -11,7 +11,7 @@ Recommended model rationale: cmdk owns Enter and arrow handling on its root, one
 
 The shared command input used by the multi-select, breadcrumb picker, trait requirements, variable menu, and stat code templates gains the **Clear Search** X inside its input wrapper. The X is mouse-only with `tabIndex -1` so Enter keeps selecting the highlighted item (Q9). For the uncontrolled breadcrumb picker the X reads the search through cmdk's command-state hook and clears it through the input.
 
-Changelog: folds into ticket 01's lead.
+Changelog: none; 01's lead covers it (Q13).
 
 ## Acceptance criteria
 

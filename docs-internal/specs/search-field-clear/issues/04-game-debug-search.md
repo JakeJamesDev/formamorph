@@ -11,7 +11,7 @@ Recommended model rationale: one box with an existing right-aligned control grou
 
 The game debug panel's search box gains the **Clear Search** X as the first cell of its existing right-aligned group, before the "N of M" counter and the previous and next controls (Q7). Clearing empties the box, resets the hit position, and focuses the box.
 
-Changelog: folds into ticket 01's lead.
+Changelog: none; 01's lead covers it (Q13).
 
 ## Acceptance criteria
 
