@@ -262,13 +262,13 @@ function TestLine({ value, onChange, samples, scan }: TestLineInput & { scan?: T
 }
 
 /**
- * The Authoring Tour's In Play pane: the current step's item as the player sees it and as each prompt reads it.
+ * The Authoring Tour's In Game pane: the current step's item as the player sees it and as each prompt reads it.
  * `field` names the step's field, as its captions say it.
  */
 export function InPlayPane({ slice, field, testLine }: { slice: InPlaySlice; field: string; testLine?: TestLineInput }) {
   return (
     <section aria-labelledby="in-play-title" className="flex h-full flex-col">
-      <h2 id="in-play-title" className="flex-shrink-0 border-b px-3 py-2 text-heading font-semibold">In Play</h2>
+      <h2 id="in-play-title" className="flex-shrink-0 border-b px-3 py-2 text-heading font-semibold">In Game</h2>
       <ScrollArea className="min-h-0 flex-grow">
         <div className="space-y-4 p-3">
           <PlayerSees surface={slice.playerSees} hidden={slice.playerHidden} field={field} />
@@ -281,7 +281,7 @@ export function InPlayPane({ slice, field, testLine }: { slice: InPlaySlice; fie
 }
 
 /**
- * In Play for the open world's current tour step, recomputed on every edit. The test line follows the tour
+ * In Game for the open world's current tour step, recomputed on every edit. The test line follows the tour
  * entry's first keyword until the author edits it; `testLineEdit` is that edit, held by the editor.
  */
 export function TourInPlay({ worldId, step, testLineEdit, onTestLineEdit }: {

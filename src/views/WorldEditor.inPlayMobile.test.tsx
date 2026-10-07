@@ -8,7 +8,7 @@ import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import type { World } from '@/types';
 
 /**
- * In Play on mobile, driven through the real editor: Show Effect on the step note opens the desktop pane's slice
+ * In Game on mobile, driven through the real editor: Show Effect on the step note opens the desktop pane's slice
  * in a bottom sheet. The note hides while the sheet is open, and the sheet is never open with the Bench's sheet.
  */
 
@@ -59,10 +59,10 @@ const toAiDescription = async () => {
 const showEffect = (note: HTMLElement) => within(note).queryByRole('button', { name: 'Show Effect' });
 /** Matched by its title element: its accessible name is empty under another sheet's `aria-hidden`. */
 const effectSheet = () => screen.queryAllByRole('dialog', { hidden: true }).find(
-  (d) => document.getElementById(d.getAttribute('aria-labelledby') ?? '')?.textContent === 'In Play',
+  (d) => document.getElementById(d.getAttribute('aria-labelledby') ?? '')?.textContent === 'In Game',
 ) ?? null;
 const benchSheet = () => screen.getByRole('dialog', { name: 'Test Bench' });
-const inPlay = () => within(effectSheet()!).getByRole('region', { name: 'In Play' });
+const inPlay = () => within(effectSheet()!).getByRole('region', { name: 'In Game' });
 const playerSees = () => within(inPlay()).getByRole('region', { name: 'Player Sees' });
 const narration = () => within(inPlay()).getByRole('region', { name: 'Narration Prompt Reads' });
 const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((m) => m.textContent);
@@ -82,7 +82,7 @@ afterEach(() => {
   restoreViewport = () => {};
 });
 
-describe('In Play on mobile', () => {
+describe('In Game on mobile', () => {
   it('offers Show Effect in place of the docked pane', async () => {
     restoreViewport = asMobile();
     const note = await startTour();
@@ -155,7 +155,7 @@ describe('In Play on mobile', () => {
   });
 });
 
-describe('In Play on desktop', () => {
+describe('In Game on desktop', () => {
   it('docks the pane and offers no Show Effect', async () => {
     const note = await startTour();
     expect(dockedInPlay()).not.toBeNull();

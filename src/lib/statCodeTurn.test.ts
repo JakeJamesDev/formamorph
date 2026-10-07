@@ -886,7 +886,7 @@ describe('runStatCodeTurn traits', () => {
     expect(out.traits?.log).toEqual(['Trait switched on: Timid (by S0)']);
   });
 
-  it.each([[false], [true]])('acquires an unacquired trait on switch-on, Player Can Toggle In-Game %s', async (playerToggle) => {
+  it.each([[false], [true]])('acquires an unacquired trait on switch-on, Player Can Toggle In Game %s', async (playerToggle) => {
     const out = await run(['traits.Cursed.enabled = true;'], held({ world: { ...world, traits: [brave, timid, { ...cursed, playerToggle }] } }));
     expect(out.traits?.acquired.map((t) => t.id)).toEqual(['brave', 'timid', 'cursed']);
     expect(health(out).max).toBe(150);

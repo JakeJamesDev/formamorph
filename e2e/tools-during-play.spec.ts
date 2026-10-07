@@ -1,7 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { gotoDev, openApp, openPromptEditor } from './app';
 
-/** A Tool defined in Settings reaches the model during play: its call runs, its result reaches the next
+/** A Tool defined in Settings reaches the model during the game: its call runs, its result reaches the next
  *  round, and the narration lands. */
 
 const TOOL_NAME = 'read_ledger';
@@ -73,7 +73,7 @@ async function act(page: Page, action: string) {
 
 const toolMessages = (body: WireBody) => body.messages.filter((m) => m.role === 'tool');
 
-test('a Tool defined in Settings is called during play, and AI Context shows its round', async ({ page }) => {
+test('a Tool defined in Settings is called during the game, and AI Context shows its round', async ({ page }) => {
   page.on('pageerror', (error) => console.error(error.message));
   const server = await mockServer(page);
   await openApp(page, { ...SETTINGS, FORMAMORPH_showSilentRequests: true });

@@ -1417,7 +1417,7 @@ const statAiLockFrozen: Rule = {
         const item = namedItem(stat.id, stat.name, world);
         return finding(
           statAiLockFrozen,
-          `${quote(item.name)} is locked against the AI in both directions and has no code, regen or trait change to move it — its value never changes during play`,
+          `${quote(item.name)} is locked against the AI in both directions and has no code, regen or trait change to move it — its value never changes during the game`,
           [item],
         );
       });

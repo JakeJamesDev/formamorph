@@ -325,4 +325,4 @@ Saves, the Authoring Tour, and stored data. To back up your worlds, saves, libra
 
 - [🔌 Connect Your Own AI](Connect-Your-Own-AI): set up a text endpoint or the desktop engine
 - [🧠 Story Memory](Memory): what the Memory and Time settings do to a story
-- [🎭 Entities in Play](Entities): the entities the story invents, and their descriptions
+- [🎭 Entities in Game](Entities): the entities the story invents, and their descriptions

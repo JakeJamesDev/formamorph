@@ -4,7 +4,7 @@ import { EntityCardBody, EntityDescription } from './EntityCard';
 import type { Entity } from '@/types';
 
 /**
- * The entity card body renders from the entity alone. In Play shows it inside the World Editor, where no
+ * The entity card body renders from the entity alone. In Game shows it inside the World Editor, where no
  * game is running and no game state exists to read.
  */
 

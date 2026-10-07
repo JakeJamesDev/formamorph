@@ -11,7 +11,7 @@ import type { World } from '@/types';
 
 /**
  * The Authoring Tour's Locations steps, driven through the real editor: the add steps and the tour items
- * they record, each field step with its In Play slice, and the recovery after a tour location is deleted.
+ * they record, each field step with its In Game slice, and the recovery after a tour location is deleted.
  */
 
 vi.mock('@/lib/authoringTour/tourImages', () => ({
@@ -66,7 +66,7 @@ const stepNote = () => screen.getAllByRole('dialog').find((d) => within(d).query
 const noteButton = (name: string) => within(stepNote()).queryByRole('button', { name });
 const addButton = () => screen.getByRole('button', { name: 'Add to Locations' });
 
-const inPlay = () => screen.getByRole('region', { name: 'In Play' });
+const inPlay = () => screen.getByRole('region', { name: 'In Game' });
 const playerSees = () => within(inPlay()).getByRole('region', { name: 'Player Sees' });
 const reader = (prompt: string) => within(inPlay()).queryByRole('region', { name: `${prompt} Reads` });
 const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((m) => m.textContent);
@@ -226,7 +226,7 @@ describe('Authoring Tour — add steps', () => {
     });
     // The first tour location keeps its own text.
     expect(ctx().locations.filter((l) => l.name === 'The Tidewell')).toHaveLength(1);
-    // In Play stands at the new place.
+    // In Game stands at the new place.
     expect(within(playerSees()).getByRole('button', { name: 'Current Location: The Salt Lantern' })).toBeInTheDocument();
     expect(marks(reader('Narration Prompt')!)).toEqual(['The Salt Lantern']);
   });
@@ -324,7 +324,7 @@ describe('Authoring Tour — completion', () => {
   });
 });
 
-describe('In Play — Locations', () => {
+describe('In Game — Locations', () => {
   it('Background Image: opens the Media tab, and the picture sits behind the Location tab', async () => {
     const { ctx } = await resumeAt('location-image');
     expect(screen.getByRole('tab', { name: 'Media' })).toHaveAttribute('aria-selected', 'true');

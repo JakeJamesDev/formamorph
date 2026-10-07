@@ -222,7 +222,7 @@ export async function runTestCode(
   const keep = missing ? droppedFilter(missing) : KEEP_DROPPED;
   const dropped = [
     ...droppedLine('Unknown placeholder paths.', outcome.unknownPlaceholders?.filter(keep.placeholder)),
-    ...droppedLine('Placeholders of owners not in play.', outcome.unknownOwnerPlaceholders?.filter(keep.placeholder)),
+    ...droppedLine('Placeholders of owners not in the game.', outcome.unknownOwnerPlaceholders?.filter(keep.placeholder)),
     ...droppedLine('Unknown trait names.', outcome.unknownTraits?.filter(keep.trait(null))),
     ...droppedLine('acquired is read-only.', outcome.acquiredWrites),
     ...droppedLine('Unknown entity names.', outcome.unknownEntities?.filter(keep.entity)),

@@ -232,13 +232,13 @@ A trait describes the player or an entity. The player picks traits before play. 
 | `groupId` | | String \| `null` | The [group's](#trait-groups) `id`. Absent or `null` = the top level |
 | `order` | | Number | The order among items in the same group |
 | `isDefault` | | Boolean | The trait starts selected |
-| `playerToggle` | | Boolean | The player can switch the trait on and off during play |
+| `playerToggle` | | Boolean | The player can switch the trait on and off during the game |
 | `mode` | | `"alwaysOn"` \| `"hidden"` | Absent = Optional: the player picks. `"alwaysOn"` is active while its requirements hold, and the player can't switch it. `"hidden"` acts as `"alwaysOn"`, and the player never sees it. Both ignore `isDefault` and `playerToggle` |
 | `requires` | | [Requirement](#trait-requirements)[] | Any one of these makes the trait available. Absent or empty = always available |
 | `statToggles` | | `{ "statId", "enabled" }`[] | Stats switched on or off while the trait is active |
 | `placeholderPins` | | [Pin](#placeholder-pins)[] | Placeholder values pinned while the trait is active |
 
-See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave in play.
+See [World Editor: Traits](World-Editor-Traits) for how modes, requirements and pick counts behave during the game.
 
 ### Trait Requirements
 

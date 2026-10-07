@@ -532,7 +532,7 @@ const WorldEditorInner = ({
     requestedTab: initialBenchTab,
     requestKey,
     navigateToItem: navigateToBenchItem,
-    // The tour's In Play pane holds the Bench's desktop slot while the tour runs.
+    // The tour's In Game pane holds the Bench's desktop slot while the tour runs.
     panelSuspended: touring && !isMobile,
   });
   const benchPanel = <PanelErrorBoundary><TestBench {...bench.panelProps} /></PanelErrorBoundary>;
@@ -656,7 +656,7 @@ const WorldEditorInner = ({
   useSurfaceTab('worldEditor', activeTab);
   useSurfaceTab('worldEditorLocations', activeTab === 'locations' ? locationView : null);
   useSurfaceTab('worldEditorTour', tour.running ? tour.step?.id : null);
-  // In Play joins the list and detail panels while the tour runs, and the three split the width evenly.
+  // In Game joins the list and detail panels while the tour runs, and the three split the width evenly.
   const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
   const tourPanelOpen = !!tour.step && !!worldId && !isMobile;
   useEffect(() => {
@@ -670,7 +670,7 @@ const WorldEditorInner = ({
     testLineEdit: testLineEdit !== null && testLineEdit.worldId === worldId ? testLineEdit.text : null,
     onTestLineEdit: (text: string) => setTestLineEdit({ worldId, text }),
   };
-  // Mobile's In Play sheet. It closes for good when the Bench opens, so the two sheets are never open together.
+  // Mobile's In Game sheet. It closes for good when the Bench opens, so the two sheets are never open together.
   const [effectOpen, setEffectOpen] = useState(false);
   const effectShown = effectOpen && isMobile && !!tour.step && !bench.open;
   if (effectOpen && !effectShown) setEffectOpen(false);
@@ -1332,7 +1332,7 @@ const WorldEditorInner = ({
               if (tour.step && !bench.open) focusTourField(tour.step.anchor);
             }}
           >
-            <DrawerTitle className="sr-only">In Play</DrawerTitle>
+            <DrawerTitle className="sr-only">In Game</DrawerTitle>
             <div className="min-h-0 flex-grow">
               <TourInPlay worldId={worldId} step={tour.step} {...tourTestLine} />
             </div>

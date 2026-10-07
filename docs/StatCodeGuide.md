@@ -76,7 +76,7 @@ Stat code runs in a sandbox on every turn (see [When Your Code Runs](#when-your-
 
 1. Each stat has two optional JavaScript boxes: **Before the AI** and **After the AI**
 2. On every turn, each box runs in a safe environment at its own point in the turn
-3. Each box reads every stat, the story clock, the world's placeholders and traits, and the entities and dictionaries in play
+3. Each box reads every stat, the story clock, the world's placeholders and traits, and the entities and dictionaries in the game
 4. `return <number>` sets the stat's value, clamped to its range. Writes to `self`, `placeholders`, `traits`, `persona`, `entities` and `dictionaries` apply after the run
 5. A script that throws or times out changes nothing
 
@@ -335,11 +335,11 @@ A write to an unknown placeholder name is ignored. **Test Code** and the Test Be
 | `mode` | `'optional'`, `'alwaysOn'` or `'hidden'`. Read-only |
 | `available` | True when the trait's requirements hold for its bearer now. Read-only |
 | `group` | The code name of the trait's group, or `''` when it has none. Read-only |
-| `playerToggle` | True when the player can switch the trait in play. Read-only |
+| `playerToggle` | True when the player can switch the trait during the game. Read-only |
 
 `enabled` and `acquired` read the player's state only. An entity that holds the same trait does not change them. Use `mode`, `available` and `group` to see why a switch had no effect.
 
-Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Always On or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can switch a trait the player cannot toggle.
+Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Always On or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In Game**, so a script can switch a trait the player cannot toggle.
 
 ```javascript
 // Cursed while Sanity is on the floor.
@@ -380,7 +380,7 @@ When the player plays no entity, `persona` is an empty entry. Its `name` is `''`
 ### Entities
 <!-- keywords: companion status, is someone nearby, does character exist, invented ones missing, duplicate names, npc, npc traits, companion traits, another character's trait, side character -->
 
-`entities` holds every entity in play by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
+`entities` holds every entity in the game by its code name: the world's cast, the played persona, and the library entities the player added at **Enter World**. A name with a space needs brackets: `entities["Old Mira"]`. Each entry has:
 
 | Member | What it is |
 | --- | --- |
@@ -407,18 +407,18 @@ if (entities.Mira.inScene) self.value += 1;
 
 - `persona` is the played persona's entry, so `persona === entities[persona.name]` when the persona entity has a code name. A persona entity with no code name still plays as `persona`, but it isn't in `entities`.
 - An entity's `traits` lists only that entity's own set. A name outside it reads as a blank entry: `enabled` and `acquired` are false, and a switch through it is ignored and reported.
-- An entity the narrator invents in play is not listed. Neither is a persona-only entity the player didn't pick, the **Custom Persona** entity under a world persona, or an entity with no code name.
+- An entity the narrator invents during the game is not listed. Neither is a persona-only entity the player didn't pick, the **Custom Persona** entity under a world persona, or an entity with no code name.
 - Of two entities that share a code name, the later one is the entry. The played persona always keeps its own name.
 - An entity's descriptions, aliases, locations and media are not in the entry.
 
-A name no entity in play has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch through it is ignored and reported. Check `entities.Mira.name` to test whether Mira is in play.
+A name no entity in the game has reads as a blank entry. Its `name` and `id` are `''`, and every trait reads as off. A switch through it is ignored and reported. Check `entities.Mira.name` to test whether Mira is in the game.
 
 **Test Code** lists every authored entity, with no trait chosen. A switch it makes is reported and never applied.
 
 ### Dictionaries
 <!-- keywords: book variables, disabled book, lore owned values -->
 
-`dictionaries` holds every dictionary in play by its code name. Each entry has:
+`dictionaries` holds every dictionary in the game by its code name. Each entry has:
 
 | Member | What it is |
 | --- | --- |
@@ -433,7 +433,7 @@ dictionaries.Weather.placeholders.Sky.pin(self.value < 20 ? 'storm' : 'clear');
 
 - The list holds the world's dictionaries that the player left on at **Enter World**, then the library dictionaries the player picked there. Of two that share a code name, the later one is the entry.
 - A dictionary the player turned off reads as an unknown dictionary.
-- A name no dictionary in play has reads as a blank entry. Its `name` and `id` are `''`, and every placeholder under it reads as blank. A pin through it is ignored.
+- A name no dictionary in the game has reads as a blank entry. Its `name` and `id` are `''`, and every placeholder under it reads as blank. A pin through it is ignored.
 - The editor warns on a dictionary name it doesn't know, because a library dictionary can bring more.
 
 ### Order of Effects

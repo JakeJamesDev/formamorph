@@ -10,7 +10,7 @@ import type { World } from '@/types';
 
 /**
  * The Authoring Tour's Entities steps, driven through the real editor: the add step, each field step with its
- * In Play slice, and the roster before and after the entity has a location.
+ * In Game slice, and the roster before and after the entity has a location.
  */
 
 vi.mock('@/lib/authoringTour/tourImages', () => ({
@@ -66,7 +66,7 @@ const clickAdd = () => {
   }
 };
 
-const inPlay = () => screen.getByRole('region', { name: 'In Play' });
+const inPlay = () => screen.getByRole('region', { name: 'In Game' });
 const playerSees = () => within(inPlay()).getByRole('region', { name: 'Player Sees' });
 const narration = () => within(inPlay()).getByRole('region', { name: 'Narration Prompt Reads' });
 const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((m) => m.textContent);
@@ -224,7 +224,7 @@ describe('Authoring Tour — Entities steps', () => {
   });
 });
 
-describe('In Play — Entities', () => {
+describe('In Game — Entities', () => {
   it('Image: the picture lands on the entity card', async () => {
     const { ctx } = await resumeAt('entity-image');
     expect(noteButton('Next')).toBeDisabled();

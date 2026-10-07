@@ -28,7 +28,7 @@
     { "id": "entities-b1", "page": "Entities", "question": "a side character I don't want keeps showing up, how do I get rid of them?", "section": "Entities#how-to-remove-a-cast-member", "otherSections": ["Entities#removing-one"] },
     { "id": "entities-b2", "page": "Entities", "question": "how do I check which characters are around me right now?", "section": "Entities#how-to-see-who-is-in-the-scene" },
     { "id": "personas-b1", "page": "Personas", "question": "how do I use the same character of mine in every story without choosing it each time?", "section": "Personas#how-to-set-a-default-persona", "otherSections": ["Library#the-card-menu"] },
-    { "id": "personas-b2", "page": "Personas", "question": "can I switch who I'm playing as in the middle of a story?", "section": "Personas#how-to-change-persona-during-play", "otherSections": ["Personas#change-it-in-game"] },
+    { "id": "personas-b2", "page": "Personas", "question": "can I switch who I'm playing as in the middle of a story?", "section": "Personas#how-to-change-persona-in-game", "otherSections": ["Personas#change-it-in-game"] },
     { "id": "community-b1", "page": "Community-Creations", "question": "how do I get stuff other people made?", "section": "Community-Creations#how-to-download-a-world" },
     { "id": "community-b2", "page": "Community-Creations", "question": "I fixed some things in the one I uploaded, how do I put up the new version?", "section": "Community-Creations#how-to-update-a-listing", "otherSections": ["Community-Creations#publishing"] },
     { "id": "community-b3", "page": "Community-Creations", "question": "someone posted something offensive, how do I flag it?", "section": "Community-Creations#how-to-report-a-listing" },

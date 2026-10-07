@@ -4,7 +4,7 @@ import { WorldCardFace } from './WorldCardFace';
 import type { WorldRecord } from '@/components/WorldDetails';
 
 /**
- * The library card's face renders from a world record alone. In Play shows it inside the World Editor,
+ * The library card's face renders from a world record alone. In Game shows it inside the World Editor,
  * where there is no library board to drag on and no game running.
  */
 

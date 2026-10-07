@@ -180,7 +180,7 @@ describe('runStatCodeTurn owner placeholders', () => {
     expect(out.pinWrites).toEqual({});
     // Rook is in play with no placeholders, so its miss is the world's; Ghost and Nope are no owner at all.
     expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/the world does not have: Rook › Hair$/));
-    expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in play: Ghost › Hair, Nope › Sky$/));
+    expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in the game: Ghost › Hair, Nope › Sky$/));
   });
 
   it('leaves an authored dictionary turned off at Enter World out of dictionaries, and reports a pin through it', async () => {
@@ -199,7 +199,7 @@ describe('runStatCodeTurn owner placeholders', () => {
     });
     expect(valueOf(out)).toBe(1);
     expect(out.pinWrites).toEqual({ 'later-sky': 'storm' });
-    expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in play: Lore › Mood$/));
+    expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in the game: Lore › Mood$/));
   });
 
   it('lists every authored dictionary when the run has no Enter World set', async () => {
@@ -226,7 +226,7 @@ describe('runStatCodeTurn owner placeholders', () => {
       played({ source: 'none' }));
     expect(valueOf(out)).toBe(1);
     expect(out.pinWrites).toEqual({});
-    expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in play: persona › Eyes$/));
+    expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/owners not in the game: persona › Eyes$/));
   });
 
   it('drops and reports a write to an owner entry’s read-only fields', async () => {

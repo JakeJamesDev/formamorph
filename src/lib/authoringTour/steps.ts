@@ -101,11 +101,11 @@ export interface TourStep {
   replay?: (api: TourEditApi, world: TourWorld, items: TourItems) => void;
   /** Runs each time the step becomes current. */
   onReach?: () => void;
-  /** What In Play shows for this step. */
+  /** What In Game shows for this step. */
   inPlay: InPlaySpec;
 }
 
-/** The In Play slice of a step that points at no field, such as an ending step. */
+/** The In Game slice of a step that points at no field, such as an ending step. */
 export const NO_IN_PLAY: InPlaySpec = { sees: 'none', readers: [] };
 
 /** Whether the author chose `name`: the untouched name the editor gave does not count. */
@@ -229,7 +229,7 @@ export function tourConnection(world: TourWorld, items: TourItems): Connection |
     || (c.a === secondLocation && c.b === location));
 }
 
-/** Where the tour Connection's in-play lens stands: the start of its one leg when one-way, else the first
+/** Where the tour Connection’s in-game lens stands: the start of its one leg when one-way, else the first
  *  tour location. */
 export function tourConnectionStart(world: TourWorld, items: TourItems): string | null {
   const connection = tourConnection(world, items);
@@ -799,7 +799,7 @@ const DICTIONARY_STEPS: readonly TourStep[] = [
     anchor: 'dictionary-value',
     item: 'entry',
     title: 'Value',
-    body: 'Write what the AI learns when a message has a keyword. Change the test line in the In Play pane to try it.',
+    body: 'Write what the AI learns when a message has a keyword. Change the test line in the In Game pane to try it.',
     isComplete: (world, items) => hasValue((tourEntry(world, items)?.value ?? '').trim()),
     useExample: (api, world, items) => patchEntry(api, world, items, { value: DROWNED_BELL.value }),
     inPlay: {

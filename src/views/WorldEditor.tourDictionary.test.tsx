@@ -9,7 +9,7 @@ import type { World } from '@/types';
 
 /**
  * The Authoring Tour's Dictionary steps, driven through the real editor: the entry the tour adds to the
- * Default book, and In Play's test line, which fires the entry through the Activation Tester's scan.
+ * Default book, and In Game's test line, which fires the entry through the Activation Tester's scan.
  */
 
 vi.mock('@/lib/authoringTour/tourImages', () => ({
@@ -58,7 +58,7 @@ const stepNumber = () => Number(/(\d+) \//.exec(within(tourBar()).getByText(/^Au
 const stepNote = () => screen.getAllByRole('dialog').find((d) => within(d).queryByText(`${stepNumber()} / ${TOTAL}`))!;
 const noteButton = (name: string) => within(stepNote()).queryByRole('button', { name });
 
-const inPlay = () => screen.getByRole('region', { name: 'In Play' });
+const inPlay = () => screen.getByRole('region', { name: 'In Game' });
 const playerSees = () => within(inPlay()).getByRole('region', { name: 'Player Sees' });
 const narration = () => within(inPlay()).getByRole('region', { name: 'Narration Prompt Reads' });
 const testLine = () => within(inPlay()).getByRole<HTMLInputElement>('textbox', { name: 'Test Line' });

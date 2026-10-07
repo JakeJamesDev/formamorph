@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { EntityListRow } from './EntityListRow';
 
 /**
- * The entity list row renders from its label alone. In Play shows it inside the World Editor, where no
+ * The entity list row renders from its label alone. In Game shows it inside the World Editor, where no
  * game is running and no game state exists to read.
  */
 

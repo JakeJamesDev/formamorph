@@ -145,7 +145,7 @@ The category has a search box and two lists.
 
 | List | What it holds | Starts |
 |---|---|---|
-| **Entities** | Entities from your library. Each one you include joins the game at your starting location. See [Entities in Play](Entities). | Excluded |
+| **Entities** | Entities from your library. Each one you include joins the game at your starting location. See [Entities in Game](Entities). | Excluded |
 | **Dictionaries** | The world's own dictionaries, then the ones in your library | The world's on as the author set them; yours off |
 
 Select a row to read it in the details pane. A dictionary row's tag says where it comes from: **World** for one bundled with the world, **Library** for one of yours, **Linked** for the world's copy of a library dictionary.
@@ -191,5 +191,5 @@ The first time you open Formamorph, a short animation spells out the name, then 
 
 - [🎮 How to Play](How-to-Play): what you do once the story starts
 - [🪪 Personas](Personas): who you are in the story
-- [🎭 Entities in Play](Entities): the cast, Library Additions and how a game opens
+- [🎭 Entities in Game](Entities): the cast, Library Additions and how a game opens
 - [🎬 World Editor: Openings](World-Editor-Openings): how authors write openings

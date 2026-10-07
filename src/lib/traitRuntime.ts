@@ -30,7 +30,7 @@ export type AppliedTraitValues = Record<string, Record<string, number>>;
 /** The gameplay slice trait operations read and rewrite. */
 export interface TraitRuntimeState {
   stats: PlayerStat[];
-  /** The player's traits — chosen at creation or acquired in play. Switched-off ones stay listed. */
+  /** The player's traits — chosen at creation or acquired during the game. Switched-off ones stay listed. */
   traits: Trait[];
   disabledTraitIds: string[];
   appliedValues: AppliedTraitValues;
@@ -366,7 +366,7 @@ export function applyPlayedStatTraits(state: TraitRuntimeState, world: TraitWorl
 }
 
 /**
- * The stat side of a persona switch in play: every stat trait in force under the old persona and not the
+ * The stat side of a persona switch during the game: every stat trait in force under the old persona and not the
  * new one reverses through its record, then every one in force only under the new persona applies, each
  * logged as a switch. That covers the old persona's links and the Custom Persona picks a world persona
  * leaves dormant. The lists themselves do not move, so a return to a persona the playthrough still holds
@@ -706,7 +706,7 @@ export function switchPlayerTrait(
 
 /**
  * Apply stat code's trait switches in order, each through the player's own switch and a settle. Code ignores
- * Player Can Toggle In-Game, so a switch-on of a trait the player lacks acquires it. Code never switches an
+ * Player Can Toggle In Game, so a switch-on of a trait the player lacks acquires it. Code never switches an
  * Always On trait. Code does not ignore gates: a switch-on of a locked trait retires no sibling, and the
  * settle turns it off again. A switch to the state a trait already holds does nothing: switching an off trait
  * off again would reverse its record a second time. It does take a cascade-off trait off its list, so the trait stays off.

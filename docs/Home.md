@@ -29,7 +29,7 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | ❓ **[Formaquestion](Formaquestion)** | The help window in the app — the **Help** tab and F1, asking a question, searching this guide, reading a page, moving the window, and changing its settings |
 | 💾 **[Saves and Backup](Saves-and-Backup)** | Save, load, Autosave, save files, Backup & Restore of your worlds, saves, library entities and library dictionaries, where your data lives, and app updates |
 | 🧠 **[Story Memory](Memory)** | How a long story is remembered, and how to pin, edit or write its memories yourself |
-| 🎭 **[Entities in Play](Entities)** | Who the story tracks as present — including the entities it invents mid-scene, and how to remove one it got wrong |
+| 🎭 **[Entities in Game](Entities)** | Who the story tracks as present — including the entities it invents mid-scene, and how to remove one it got wrong |
 | 🪪 **[Personas](Personas)** | Who you are in the story — making a persona, picking one at Enter World, changing it in game, and the SillyTavern import |
 | 🌐 **[Community Creations](Community-Creations)** | Downloading, Likes, comments and follows, publishing each kind, contests, Reports, and your account |
 | ⚙️ **[Settings](Settings)** | Every setting in the Display, Output, Endpoints and Data tabs, and the Simple and Advanced modes |

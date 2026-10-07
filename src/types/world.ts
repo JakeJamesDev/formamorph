@@ -50,7 +50,7 @@ export interface Stat {
   /** Optional JS run after the AI's asks and regen land. */
   code?: string;
   /** Body-mesh morph target names this stat drives; the value maps linearly across [min, authored max],
-   *  so a max raised in play pushes the influence past 1. */
+   *  so a max raised during the game pushes the influence past 1. */
   morphBindings?: string[];
   /** `false` starts the stat inert — hidden from the player and the AI, regen and code paused — until a
    *  trait switches it on. Absent = enabled. */
@@ -195,7 +195,7 @@ export interface Trait {
   isDefault?: boolean;
   /** Sibling order among items sharing the same parent/group. */
   order?: number;
-  /** The player may switch this trait on and off during play, not only at game start. */
+  /** The player may switch this trait on and off during the game, not only at game start. */
   playerToggle?: boolean;
   /** Stats forced on or off while this trait is active. */
   statToggles?: TraitStatToggle[];
@@ -234,7 +234,7 @@ export interface Entity {
    *  its locations that is a starting location. Read only for a world entity with the Persona mark. */
   startingLocationId?: string;
   type?: string;
-  /** Shown to the player in-game. */
+  /** Shown to the player in game. */
   playerDescription?: string;
   /** Full description sent to the AI. */
   aiDescription?: string;
@@ -320,7 +320,7 @@ export interface EntityGroup {
 export interface GameLocation {
   id: string;
   name: string;
-  /** Shown to the player in-game. */
+  /** Shown to the player in game. */
   playerDescription?: string;
   /** Full description sent to the AI. */
   aiDescription?: string;

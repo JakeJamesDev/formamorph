@@ -5,7 +5,7 @@ import { useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
 import type { AuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
 
 /** The current tour step's note, beside its field. Hidden while the field is off screen or covered.
- *  `onShowEffect` adds Show Effect, which opens In Play on mobile. */
+ *  `onShowEffect` adds Show Effect, which opens In Game on mobile. */
 export function TourStepNote({ tour, onShowEffect }: { tour: AuthoringTour; onShowEffect?: () => void }) {
   const onTop = useTutorialScreenOnTop('worldEditor');
   const anchor = useTourAnchor(tour.step?.anchor ?? null);
@@ -17,7 +17,7 @@ export function TourStepNote({ tour, onShowEffect }: { tour: AuthoringTour; onSh
       title={step?.title ?? ''}
       body={step?.body}
       anchor={anchor}
-      // The note keeps to the pane its field is in, so it never covers In Play beside it.
+      // The note keeps to the pane its field is in, so it never covers In Game beside it.
       within={anchor?.closest('[data-panel-id]') ?? null}
       side="bottom"
       align="start"

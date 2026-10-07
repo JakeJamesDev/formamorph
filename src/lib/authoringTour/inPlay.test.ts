@@ -3,7 +3,7 @@ import { defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game
 import { computeInPlay, headedBlock, type TourPromptTemplates } from './inPlay';
 import { TOUR_STEPS, type TourWorld } from './steps';
 
-/** In Play's readers take each chip, and its Header, from the active preset's own templates. */
+/** In Game's readers take each chip, and its Header, from the active preset's own templates. */
 
 const WORLD_TEXT = 'Brinewell is a quiet fishing village.';
 

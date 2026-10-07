@@ -209,9 +209,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   onWorldsRestored?: () => void;
   /** Starts the Authoring Tour on a new world. Only the main menu supplies it, so a running game hides the row. */
   onStartAuthoringTour?: () => void;
-  /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
+  /** Live variable values for the prompt-editor Preview tab. Supplied only in game; absent → no Preview. */
   previewValues?: Record<string, string>;
-  /** The open world as a Tool Snapshot, for Try It. Supplied only in-game; absent, Try It uses the sample world. */
+  /** The open world as a Tool Snapshot, for Try It. Supplied only in game; absent, Try It uses the sample world. */
   toolWorld?: () => ToolSnapshot;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
   initialTab?: SettingsTabId;
@@ -281,7 +281,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // may have deleted a world since it last rendered.
   const [deletedDefaultCount, setDeletedDefaultCount] = useState(0);
   useEffect(() => { if (isOpen) setDeletedDefaultCount(readDeletedDefaultWorlds().size); }, [isOpen]);
-  // Same reasoning for the linked-image cache: it grows during play, so re-measure on open rather than once.
+  // Same reasoning for the linked-image cache: it grows during the game, so re-measure on open rather than once.
   const [cachedBytes, setCachedBytes] = useState(0);
   const seenTutorialCount = useSeenTutorialCount();
   // The read outlives a quick close, so the cleanup drops the late answer rather than writing to a gone modal.

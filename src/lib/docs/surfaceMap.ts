@@ -97,7 +97,7 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   // The group picker ledger opens the library's production Groups dialogs.
   ...Object.fromEntries(tabsOf('designSystemGroupPicker').map((id) => [id, THE_GROUP_DIALOGS])),
 
-  'gameViewer.entities': { page: 'Entities', anchor: '-entities-in-play' },
+  'gameViewer.entities': { page: 'Entities', anchor: '-entities-in-game' },
   'gameViewer.notes': { page: 'How-to-Play', anchor: 'notes' },
   'gameViewer.memory': { page: 'Memory', anchor: 'the-memory-tab' },
   'gameViewer.logs': { page: 'How-to-Play', anchor: 'logs' },

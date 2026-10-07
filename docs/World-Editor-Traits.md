@@ -134,7 +134,7 @@ Only **Optional** traits show the two checkboxes below. **Always On** and **Hidd
 | Checkbox | What it does |
 |---|---|
 | **Enabled by Default** | Selects the trait when a new game starts. The player can still clear it. |
-| **Player Can Toggle In-Game** | The player can turn the trait on or off from the **Traits** tab during play |
+| **Player Can Toggle In Game** | The player can turn the trait on or off from the **Traits** tab during the game |
 
 ### Curses
 
@@ -209,7 +209,7 @@ Groups organize the list. A trait group also has text of its own:
 
 Only traits placed directly in the group count. A subgroup sets its own count. An **Always On** trait counts toward its group's minimum and maximum.
 
-A group with a maximum of one shows radio buttons. In **Up to One**, pick another trait, and the first one clears. Select the picked trait to clear it, so "none of these" is always possible. In play, a trait the player can toggle works the same way: turn one on, and the others in its group turn off. An **Always On** sibling can't clear, so the switch is refused.
+A group with a maximum of one shows radio buttons. In **Up to One**, pick another trait, and the first one clears. Select the picked trait to clear it, so "none of these" is always possible. During the game, a trait the player can toggle works the same way: turn one on, and the others in its group turn off. An **Always On** sibling can't clear, so the switch is refused.
 
 On the setup screen:
 
@@ -217,12 +217,12 @@ On the setup screen:
 - **Start game** stays disabled until every group meets its minimum. In a world with a 3D model, the button reads **Continue to Avatar**. **Quick Start** never blocks, and it leaves the gap in place.
 - At a maximum above one, the unchecked rows disable. Uncheck one to pick another.
 
-In play:
+During the game:
 
 - The game refuses a switch-off that drops a group below its minimum.
 - A trait that leaves because its requirements stop holding can drop a group below its minimum. The game doesn't ask for a replacement. The trait returns when its requirements hold again.
 - An **Always On** trait whose requirements start to hold joins its group even when the group is full. The group runs over its maximum until the player drops a pick.
-- **Exactly** N with N above one can't change in play. To allow swaps, set a range with **Custom**.
+- **Exactly** N with N above one can't change during the game. To allow swaps, set a range with **Custom**.
 
 > 💡 **Give an Exactly One group a default.** Check **Enabled by Default** on one trait, so a new game starts with a valid answer. With two defaults in an **Up to One** group, the first in the list wins.
 
@@ -290,7 +290,7 @@ Select a link to edit it. The link's **Details** tab starts with **Linked from**
 | **Requires** | Replaces the original's whole list |
 | **Placeholder Pins** | Replaces the original's whole list |
 | **Mode** | Makes the trait Optional, Always On or Hidden for this entity. One bearer can have a trait innately, and another can pick it. |
-| **Player Can Toggle In-Game** | Locks or opens the trait for this entity |
+| **Player Can Toggle In Game** | Locks or opens the trait for this entity |
 | **Stat Changes** | Replaces the original's whole list |
 
 **Stat Availability** stays read-only on a link. Change it on the original.
@@ -360,7 +360,7 @@ Set the mark on the entity's **Profile** tab. **Custom Persona** is the fourth c
 - **Drag a top-level trait onto it to make the trait the persona's.** The trait leaves the top level, so a player with a world persona no longer gets it.
 - **Its traits can change stats.** They apply when the player has no world persona.
 - **The picks carry over.** A player who switches between **None** and a library persona keeps their Custom Persona picks.
-- **In play, its traits have their own heading.** The setup screen and the in-game **Traits** tab show them under the entity's name, marked **You**. Under **None**, the heading takes the name the player entered.
+- **During the game, its traits have their own heading.** The setup screen and the in-game **Traits** tab show them under the entity's name, marked **You**. Under **None**, the heading takes the name the player entered.
 - **It stays at the top level** of the **Traits** tab, in the order you set.
 
 > 💡 With Advanced mode off, links, Blueprints and the Custom Persona entity still show when they hold something, and you can still edit them. Only making new ones needs Advanced mode.
@@ -426,6 +426,6 @@ A world where the player and some entities have a class. The steps run on the **
 3. **Pin a blueprint from each class.** In the Placeholders tab, add a Blueprints group with *Class Garb*. *Paladin* pins *Class Garb* to *silvered plate*. Albus gets his own copy of *Class Garb* by itself.
 4. **Mark a Custom Persona entity and link Classes to it.** A player with no world persona now picks a class too.
 
-In play, a player who picks *Wizard* never unlocks Albus's *Smite*, and Albus's garb never changes the player's description.
+During the game, a player who picks *Wizard* never unlocks Albus's *Smite*, and Albus's garb never changes the player's description.
 
 The bundled world **Emberwatch** is the full version of this example. Open it in the World Editor with Advanced mode on, and read **How this world is built** in its readme.

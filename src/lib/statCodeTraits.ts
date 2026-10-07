@@ -10,7 +10,7 @@ import { WORLD_OWNER, type GateStates } from './traitGates';
 
 /** Every Bearer's trait state, the authored world code switches it against, and who is in play and in the scene. */
 export interface StatCodeBearers {
-  /** The player's list, chosen at creation or acquired in play. Switched-off ones stay listed. */
+  /** The player's list, chosen at creation or acquired during the game. Switched-off ones stay listed. */
   acquired: readonly Trait[];
   disabledTraitIds: readonly string[];
   appliedValues: AppliedTraitValues;

@@ -77,7 +77,7 @@ export const PLAYER_NAME: BuiltinPlaceholder = {
   searchTerms: ['user'],
   accent: placeholderAccent(USER_TOKEN),
   visible: ({ offered }) => offered,
-  hint: 'Shows your persona’s name in play. With no persona, it reads “you” in an opening and “the player” elsewhere.',
+  hint: 'Shows your persona’s name during the game. With no persona, it reads “you” in an opening and “the player” elsewhere.',
   resolve: ({ before, suffix }, { name, kind = 'opening' }) => {
     const persona = name?.trim();
     if (persona) return persona + (suffix ?? '');

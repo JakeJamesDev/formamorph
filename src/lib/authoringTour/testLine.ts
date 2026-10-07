@@ -1,6 +1,6 @@
 /**
- * The Dictionary steps' test line: a player message In Play scans for the tour entry's keywords. The scan is
- * the Activation Tester's own, so an entry fires here exactly when it would fire in play.
+ * The Dictionary steps' test line: a player message In Game scans for the tour entry's keywords. The scan is
+ * the Activation Tester's own, so an entry fires here exactly when it would fire during the game.
  */
 import { parseKeywords } from '@/lib/dictionaryUtils';
 import { buildTriggerReport, describeNearMiss, type NearMiss } from '@/lib/testBench/triggers';

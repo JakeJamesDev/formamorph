@@ -5,7 +5,7 @@ import { groupPickState } from '@/lib/traitGates';
 import type { Stat, Trait, TraitGroup } from '@/types';
 
 /**
- * The setup screen's trait list renders from the world's traits alone. In Play shows it inside the World
+ * The setup screen's trait list renders from the world's traits alone. In Game shows it inside the World
  * Editor, outside the full-screen setup dialog and with no game running.
  */
 
