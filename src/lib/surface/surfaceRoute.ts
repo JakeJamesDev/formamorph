@@ -117,6 +117,7 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
   worldEditorTrait: { ancestor: 'worldEditor.traits' },
   worldEditorEntry: { ancestor: 'worldEditor.dictionary' },
   worldEditorBook: { ancestor: 'worldEditor.dictionary' },
+  worldEditorPlaceholder: { ancestor: 'worldEditor.placeholders' },
   entityEditor: { ancestor: 'entityEditor' },
   entityEditorEntity: { ancestor: 'entityEditor' },
   dictionaryEditor: { ancestor: 'dictionaryEditor' },

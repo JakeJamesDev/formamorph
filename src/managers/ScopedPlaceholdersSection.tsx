@@ -29,7 +29,7 @@ interface ScopedSelection {
 const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlaceholder }: ScopedSelection & { home: PlaceholderHome & { ownerId: string } }) => {
   const { placeholders, lists, owners } = usePlaceholderStore();
   const letters = useGameDataOptional()?.placementLetters;
-  const { detail, footer } = usePlaceholderDetail({ selectedId, onSelect: onOpenWorldPlaceholder });
+  const { detail, footer, fills } = usePlaceholderDetail({ selectedId, onSelect: onOpenWorldPlaceholder });
   // A duplicate lands in its source's list, so a shared row's duplicate opens on the top-level tab (Q39).
   const openDuplicate = (rowId: string, sourceId: string) => {
     if (lists && placeholderList(lists, home).some((p) => p.id === sourceId)) onSelect(rowId);
@@ -46,6 +46,7 @@ const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlace
     tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} openDuplicate={openDuplicate} />,
     detail,
     footer,
+    fills,
     addLabel: `Add Placeholder to ${ownerName}`,
     onSelect,
   });

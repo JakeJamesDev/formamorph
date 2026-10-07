@@ -180,6 +180,8 @@ export const SURFACE_MAP: Partial<Record<SurfaceId, Required<DocTarget>>> = {
   'worldEditorEntry.matching': { page: 'World-Editor-Dictionary', anchor: 'matching' },
   'worldEditorBook.details': { page: 'World-Editor-Dictionary', anchor: 'books' },
   'worldEditorBook.placeholders': ENTITY_OWNED_PLACEHOLDERS,
+  'worldEditorPlaceholder.details': { page: 'World-Editor-Placeholders', anchor: 'the-panel' },
+  'worldEditorPlaceholder.pins': { page: 'World-Editor-Placeholders', anchor: 'pins' },
 
   'entityEditor.entity': { page: 'World-Editor-Entities', anchor: 'in-the-library' },
   'entityEditor.traits': { page: 'World-Editor-Entities', anchor: 'in-the-library' },

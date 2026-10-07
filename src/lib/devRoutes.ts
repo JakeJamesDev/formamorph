@@ -169,6 +169,9 @@ export const DEV_MODAL_TABS = {
   // (`#dev?modal=worldEditor&tab=dictionary&subtab=placeholders`). It lands on the book panel, so pair it
   // with a book to select. `placeholders` is Advanced only.
   worldEditorBook: ['details', 'placeholders'],
+  // The placeholder panel's own tabs, in any host that opens one (`#dev?modal=worldEditor&tab=placeholders&subtab=pins`).
+  // It lands on the panel, so pair it with a placeholder to select. `pins` needs Advanced mode and a world.
+  worldEditorPlaceholder: ['details', 'pins'],
   // The World Editor's Test Bench: `bench=…` opens the full panel — at whichever placement is remembered —
   // on the instrument it names (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed,
   // since an unbuilt tab renders

@@ -54,7 +54,7 @@ To pin from a location, use the location's **Pins** tab the same way. To pin fro
 To see or add every pin aimed at one placeholder:
 
 1. Select the placeholder.
-2. Under **Placeholder Pins** at the bottom of the panel, select **Add Pin**.
+2. Open its **Pins** tab, and select **Add Pin**.
 3. Pick the kind of source: **Stat Descriptor**, **Location**, **Trait** or **Placeholder Value**.
 4. Pick the source, then type or pick the value in the new row.
 
@@ -73,6 +73,7 @@ To change the value for every copy, select **Edit Blueprint** in the footer and 
 
 ## The Panel
 <!-- keywords: sample output, try a roll, list style -->
+<!-- route: worldEditorPlaceholder.details -->
 
 | Control | What it does |
 |---|---|
@@ -80,7 +81,7 @@ To change the value for every copy, select **Edit Blueprint** in the footer and 
 | **Kind** | **Wildcard** or **Object**. The line under it says what the placeholder resolves to. |
 | **Preview** | Shows a sample roll. It shows when the placeholder has a value. |
 | **Values** | The list of values. **Chips** and **Multiline** pick how you edit them. |
-| **Placeholder Pins** | Every pin aimed at this placeholder. **Advanced mode only.** |
+| **Pins** tab | Every pin aimed at this placeholder. **Advanced mode only.** |
 
 In the **Chips** style, type a value and press Enter. In the **Multiline** style, select **Add Value**. Multiline suits long values and values with line breaks.
 
@@ -169,6 +170,7 @@ Type the typed form in any prose field, and it becomes the chip. In trait text t
 
 ## Pins
 <!-- keywords: precedence, ranking of sources, temporary, returns afterwards, script can set, where set from, four kinds, gathered in one list -->
+<!-- route: worldEditorPlaceholder.pins -->
 
 A pin keeps a placeholder at one value while a condition is true. The playthrough keeps its own roll, and the roll shows again when the pin ends. Four things can pin a placeholder:
 
@@ -181,7 +183,7 @@ A pin keeps a placeholder at one value while a condition is true. The playthroug
 
 When two sources pin the same placeholder, the higher row in this table wins. [Stat code](StatCodeGuide) can also pin and unpin a placeholder, and a code pin wins over all four.
 
-The **Placeholder Pins** list at the bottom of a placeholder's panel gathers every pin aimed at it. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in.
+The placeholder's **Pins** tab gathers every pin aimed at it. A change there is a change on the source. **Add Pin** picks the kind of source, then the source, and adds an empty pin there for you to fill in.
 
 ## Where chips work
 <!-- keywords: which fields, supported places, cant insert, shows raw text, not replaced, listing blurb, menu order, allowed boxes -->

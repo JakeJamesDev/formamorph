@@ -35,6 +35,8 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useRenameField } from '@/lib/useCodeRename';
 import { useEditorMode } from '@/lib/editorMode';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
+import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
+import { placeholderPanelTabsFor, type PlaceholderPanelTab } from '@/views/placeholderPanelTabs';
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
@@ -93,13 +95,16 @@ const sameValues = (a: string[], b: string[]) => a.length === b.length && a.ever
  * name, the kind and the values belong to the original and are locked; only the draw weights are the row's
  * own, and they are written as an override on the holder rather than onto the original.
  */
-const PlaceholderManager = ({ placeholder, rowId, share }: {
+const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
   placeholder: Placeholder;
   /** The tree row this panel opens on — the chain of placeholder ids that reached it. What a nested value's
    *  effective chance is read against; absent, the placeholder reads as top level. */
   rowId?: string;
   /** Where this row's draw weights live, when the row is a shared one — see `sharedWeightSite`. */
   share?: { ownerId: string; key: string };
+  /** The open tab, held by the host so it carries from one row to the next. */
+  tab: PlaceholderPanelTab;
+  onTabChange: (tab: PlaceholderPanelTab) => void;
 }) => {
   const { placeholders, updatePlaceholder } = usePlaceholderStore();
   const { draft: editing, apply } = useEditingDraft(placeholder, updatePlaceholder);
@@ -351,205 +356,216 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   );
 
   return (
-    <div className="space-y-4">
-      {locked && (
-        <ListDetailFirstRow align="center">
-          <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
-            Shared row. The name, the kind and the values come from the original.{' '}
-            {kind === 'object'
-              ? "An Object applies every value and never draws, so there's nothing to weigh here."
-              : 'The draw weights are this row’s own. Benching a value here changes nothing anywhere else.'}
-          </p>
-        </ListDetailFirstRow>
-      )}
-      <div className="space-y-2">
-        {locked ? nameInput : <ListDetailFirstRow>{nameInput}</ListDetailFirstRow>}
-        {shadowsMember && (
-          <p role="status" className="text-meta text-warning">
-            Every placeholder has a <code>{editing.name}</code> of its own, so stat code can’t reach this part
-            by name. Rename it to reach it from code.
-          </p>
+    <PanelTabs
+      tabs={placeholderPanelTabsFor(advanced, !!world)}
+      value={tab}
+      onValueChange={onTabChange}
+      stripLabel="Placeholder Fields"
+      surfaceTabs="worldEditorPlaceholder"
+    >
+      <PanelTabContent value="details">
+        {locked && (
+          <ListDetailFirstRow align="center">
+            <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
+              Shared row. The name, the kind and the values come from the original.{' '}
+              {kind === 'object'
+                ? "An Object applies every value and never draws, so there's nothing to weigh here."
+                : 'The draw weights are this row’s own. Benching a value here changes nothing anywhere else.'}
+            </p>
+          </ListDetailFirstRow>
         )}
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label>Kind</Label>
-          <HintInfo>{KIND_INFO}</HintInfo>
+        <div className="space-y-2">
+          {locked ? nameInput : <ListDetailFirstRow>{nameInput}</ListDetailFirstRow>}
+          {shadowsMember && (
+            <p role="status" className="text-meta text-warning">
+              Every placeholder has a <code>{editing.name}</code> of its own, so stat code can’t reach this part
+              by name. Rename it to reach it from code.
+            </p>
+          )}
         </div>
-        <ToggleGroup
-          type="single"
-          value={kind}
-          disabled={locked}
-          // Clicking the item already on clears a single ToggleGroup's value. A placeholder is always one
-          // kind or the other, so an empty result is ignored rather than written back.
-          onValueChange={(v) => {
-            if (!v) return;
-            apply({ roll: v === 'wildcard' });
-            // An Object has no eye to turn the numbers back off and no chip to close the pop-out from.
-            if (v === 'object') { setOpenValue(null); setShowChances(false); }
-          }}
-          aria-label="Placeholder kind"
-          className="h-8"
-        >
-          <ToggleGroupItem value="wildcard" className="h-6 px-2 text-helper">Wildcard</ToggleGroupItem>
-          <ToggleGroupItem value="object" className="h-6 px-2 text-helper">Object</ToggleGroupItem>
-        </ToggleGroup>
-        <p className="text-helper text-muted-foreground">{state}</p>
-      </div>
-      {/* One sample of what this placeholder produces, nested chips and all, without placing it anywhere.
-          Only where there is something to draw from — an empty placeholder would sample nothing. */}
-      {count > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Tip tip="Preview a sample of this placeholder" labelsChild={false}>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-helper"
-                onClick={() => setSample(drawPlaceholderSpans(editing, placeholders, effective))}
-              >
-                <Dices className="mr-1 h-3.5 w-3.5" aria-hidden />
-                Preview
-              </Button>
-            </Tip>
-            {sample !== null && (
-              <p
-                role="status"
-                aria-label="Sample preview"
-                className="min-w-0 flex-1 whitespace-pre-wrap break-words rounded-md border bg-muted/30 px-2 py-1 text-label"
-              >
-                {/* Each direct chip's run reads in its placeholder's tint, the same mark the Preview pane
-                    paints, so the field says which placeholder produced which words. */}
-                {sample.length
-                  ? sample.map((span, i) =>
-                    span.placeholderId ? (
-                      <Tip key={i} tip={spanName(span.placeholderId)} labelsChild={false}>
-                        <mark className={TINT_MARK_CLASS} style={tintMarkStyle(placeholderAccent(span.placeholderId))}>
-                          {span.text}
-                        </mark>
-                      </Tip>
-                    ) : (
-                      <span key={i}>{span.text}</span>
-                    ))
-                  : <span className="text-muted-foreground">(nothing)</span>}
-              </p>
-            )}
+            <Label>Kind</Label>
+            <HintInfo>{KIND_INFO}</HintInfo>
           </div>
+          <ToggleGroup
+            type="single"
+            value={kind}
+            disabled={locked}
+            // Clicking the item already on clears a single ToggleGroup's value. A placeholder is always one
+            // kind or the other, so an empty result is ignored rather than written back.
+            onValueChange={(v) => {
+              if (!v) return;
+              apply({ roll: v === 'wildcard' });
+              // An Object has no eye to turn the numbers back off and no chip to close the pop-out from.
+              if (v === 'object') { setOpenValue(null); setShowChances(false); }
+            }}
+            aria-label="Placeholder kind"
+            className="h-8"
+          >
+            <ToggleGroupItem value="wildcard" className="h-6 px-2 text-helper">Wildcard</ToggleGroupItem>
+            <ToggleGroupItem value="object" className="h-6 px-2 text-helper">Object</ToggleGroupItem>
+          </ToggleGroup>
+          <p className="text-helper text-muted-foreground">{state}</p>
         </div>
-      )}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Label>Values</Label>
-          {/* Chips carry their chance in color always; the eye adds the number. Chips only: the multiline
-              boxes carry a chance apiece, so there is nothing left to reveal. */}
-          {style === 'chips' && weighable && (
-            <Tip tip={showChances ? 'Hide roll chances' : 'Show roll chances'}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                aria-pressed={showChances}
-                onClick={() => setShowChances((s) => !s)}
-              >
-                {showChances ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </Button>
-            </Tip>
-          )}
-          <div className="ml-auto flex items-center gap-1">
-            {!locked && style === 'multiline' && boxes.length > 1 && (
-              <CollapseAllButton anyOpen={collapse.anyOpen} noun="values" onClick={collapse.toggleAll} />
-            )}
-            {/* A shared row edits no text, so the two text editors have nothing to choose between. */}
-            {!locked && (
-            <ToggleGroup
-              type="single"
-              value={style}
-              // A single ToggleGroup clears its value when the active item is clicked again; one of the two
-              // styles is always in force, so an empty result is ignored rather than applied.
-              onValueChange={(v) => { if (v) pickStyle(v as ValueStyle); }}
-              aria-label="Value editor style"
-              className="h-8"
-            >
-              <ToggleGroupItem value="chips" className="h-6 px-2 text-helper">Chips</ToggleGroupItem>
-              <ToggleGroupItem value="multiline" className="h-6 px-2 text-helper">Multiline</ToggleGroupItem>
-            </ToggleGroup>
-            )}
+        {/* One sample of what this placeholder produces, nested chips and all, without placing it anywhere.
+            Only where there is something to draw from — an empty placeholder would sample nothing. */}
+        {count > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Tip tip="Preview a sample of this placeholder" labelsChild={false}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-helper"
+                  onClick={() => setSample(drawPlaceholderSpans(editing, placeholders, effective))}
+                >
+                  <Dices className="mr-1 h-3.5 w-3.5" aria-hidden />
+                  Preview
+                </Button>
+              </Tip>
+              {sample !== null && (
+                <p
+                  role="status"
+                  aria-label="Sample preview"
+                  className="min-w-0 flex-1 whitespace-pre-wrap break-words rounded-md border bg-muted/30 px-2 py-1 text-label"
+                >
+                  {/* Each direct chip's run reads in its placeholder's tint, the same mark the Preview pane
+                      paints, so the field says which placeholder produced which words. */}
+                  {sample.length
+                    ? sample.map((span, i) =>
+                      span.placeholderId ? (
+                        <Tip key={i} tip={spanName(span.placeholderId)} labelsChild={false}>
+                          <mark className={TINT_MARK_CLASS} style={tintMarkStyle(placeholderAccent(span.placeholderId))}>
+                            {span.text}
+                          </mark>
+                        </Tip>
+                      ) : (
+                        <span key={i}>{span.text}</span>
+                      ))
+                    : <span className="text-muted-foreground">(nothing)</span>}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-        {locked ? (
-        <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
-          <PopoverAnchor virtualRef={anchor} />
-          <SharedValues
-            values={editing.values}
-            line={valueLine}
-            style={chipStyle}
-            suffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
-            register={(v, el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
-            onOpen={weighable ? (v) => {
-              anchor.current = chipEls.current.get(v) ?? null;
-              setOpenValue((prev) => (prev === v ? null : v));
-            } : undefined}
-          />
-          {weightPopover}
-        </Popover>
-        ) : style === 'multiline' ? (
-          <MultilineValues
-            boxes={boxes}
-            isOpen={collapse.isOpen}
-            placeholders={placeholders}
-            ownerId={placeholder.id}
-            line={valueLine}
-            weight={weighable ? weightOf : undefined}
-            chance={pct}
-            aside={advanced ? valuePins : undefined}
-            onToggleCollapsed={collapse.toggle}
-            onText={(id, text) => writeBoxes(boxes.map((b) => (b.id === id ? { ...b, text } : b)))}
-            onWeight={setWeight}
-            onRemove={(id) => writeBoxes(boxes.filter((b) => b.id !== id))}
-            onAdd={() => writeBoxes([...boxes, { id: randomUUID(), text: '' }])}
-          />
-        ) : (
-        <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
-          <PopoverAnchor virtualRef={anchor} />
-          <KeywordChips
-            keywords={editing.values.map((v) => v.text)}
-            onChange={setValues}
-            placeholders={placeholders}
-            ownerId={placeholder.id}
-            // A value that is only a chip is a part of this placeholder, so it reads as the part it names
-            // rather than as what that part will become.
-            lonePlaceholderAsPath
-            placeholder="e.g. Red, then Enter for each"
-            // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
-            // re-opened it and the only way out was clicking somewhere else entirely.
-            onChipClick={weighable ? (v) => {
-              anchor.current = chipEls.current.get(v) ?? null;
-              setOpenValue((prev) => (prev === v ? null : v));
-            } : undefined}
-            chipSuffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
-            chipStyle={chipStyle}
-            // Every chip gets the same wrapper whether or not it is the open one, so its DOM node survives
-            // the click that opens the pop-out.
-            renderChip={(chip, v) => (
-              <span
-                className="inline-flex"
-                ref={(el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
-              >
-                {chip}
-              </span>
-            )}
-            chipAside={advanced ? valuePins : undefined}
-          />
-          {weightPopover}
-        </Popover>
         )}
-      </div>
-      {/* Every pin aimed at this placeholder, gathered from its four sources. The library's editors have no
-          world to gather from, so they show none. */}
-      {advanced && world && <PlaceholderPinsSection world={world} placeholder={editing} />}
-    </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label>Values</Label>
+            {/* Chips carry their chance in color always; the eye adds the number. Chips only: the multiline
+                boxes carry a chance apiece, so there is nothing left to reveal. */}
+            {style === 'chips' && weighable && (
+              <Tip tip={showChances ? 'Hide roll chances' : 'Show roll chances'}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  aria-pressed={showChances}
+                  onClick={() => setShowChances((s) => !s)}
+                >
+                  {showChances ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </Button>
+              </Tip>
+            )}
+            <div className="ml-auto flex items-center gap-1">
+              {!locked && style === 'multiline' && boxes.length > 1 && (
+                <CollapseAllButton anyOpen={collapse.anyOpen} noun="values" onClick={collapse.toggleAll} />
+              )}
+              {/* A shared row edits no text, so the two text editors have nothing to choose between. */}
+              {!locked && (
+              <ToggleGroup
+                type="single"
+                value={style}
+                // A single ToggleGroup clears its value when the active item is clicked again; one of the two
+                // styles is always in force, so an empty result is ignored rather than applied.
+                onValueChange={(v) => { if (v) pickStyle(v as ValueStyle); }}
+                aria-label="Value editor style"
+                className="h-8"
+              >
+                <ToggleGroupItem value="chips" className="h-6 px-2 text-helper">Chips</ToggleGroupItem>
+                <ToggleGroupItem value="multiline" className="h-6 px-2 text-helper">Multiline</ToggleGroupItem>
+              </ToggleGroup>
+              )}
+            </div>
+          </div>
+          {locked ? (
+          <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
+            <PopoverAnchor virtualRef={anchor} />
+            <SharedValues
+              values={editing.values}
+              line={valueLine}
+              style={chipStyle}
+              suffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
+              register={(v, el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
+              onOpen={weighable ? (v) => {
+                anchor.current = chipEls.current.get(v) ?? null;
+                setOpenValue((prev) => (prev === v ? null : v));
+              } : undefined}
+            />
+            {weightPopover}
+          </Popover>
+          ) : style === 'multiline' ? (
+            <MultilineValues
+              boxes={boxes}
+              isOpen={collapse.isOpen}
+              placeholders={placeholders}
+              ownerId={placeholder.id}
+              line={valueLine}
+              weight={weighable ? weightOf : undefined}
+              chance={pct}
+              aside={advanced ? valuePins : undefined}
+              onToggleCollapsed={collapse.toggle}
+              onText={(id, text) => writeBoxes(boxes.map((b) => (b.id === id ? { ...b, text } : b)))}
+              onWeight={setWeight}
+              onRemove={(id) => writeBoxes(boxes.filter((b) => b.id !== id))}
+              onAdd={() => writeBoxes([...boxes, { id: randomUUID(), text: '' }])}
+            />
+          ) : (
+          <Popover open={openValue !== null} onOpenChange={(o) => !o && setOpenValue(null)}>
+            <PopoverAnchor virtualRef={anchor} />
+            <KeywordChips
+              keywords={editing.values.map((v) => v.text)}
+              onChange={setValues}
+              placeholders={placeholders}
+              ownerId={placeholder.id}
+              // A value that is only a chip is a part of this placeholder, so it reads as the part it names
+              // rather than as what that part will become.
+              lonePlaceholderAsPath
+              placeholder="e.g. Red, then Enter for each"
+              // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
+              // re-opened it and the only way out was clicking somewhere else entirely.
+              onChipClick={weighable ? (v) => {
+                anchor.current = chipEls.current.get(v) ?? null;
+                setOpenValue((prev) => (prev === v ? null : v));
+              } : undefined}
+              chipSuffix={showChances ? (v) => `(${chipPct(v)})` : undefined}
+              chipStyle={chipStyle}
+              // Every chip gets the same wrapper whether or not it is the open one, so its DOM node survives
+              // the click that opens the pop-out.
+              renderChip={(chip, v) => (
+                <span
+                  className="inline-flex"
+                  ref={(el) => { if (el) chipEls.current.set(v, el); else chipEls.current.delete(v); }}
+                >
+                  {chip}
+                </span>
+              )}
+              chipAside={advanced ? valuePins : undefined}
+            />
+            {weightPopover}
+          </Popover>
+          )}
+        </div>
+      </PanelTabContent>
+      {/* Every pin aimed at this placeholder, gathered from its four sources. */}
+      {world && (
+        <PanelTabContent value="pins">
+          <PlaceholderPinsSection world={world} placeholder={editing} />
+        </PanelTabContent>
+      )}
+    </PanelTabs>
   );
 };
 

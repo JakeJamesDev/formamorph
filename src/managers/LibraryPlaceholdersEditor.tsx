@@ -24,7 +24,7 @@ const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints, detailHeader 
   const { placeholders } = usePlaceholderStore();
   const letters = usePlacementLetters();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { detail, footer } = usePlaceholderDetail({ selectedId, onSelect: setSelectedId, ownerName, carriedBlueprints });
+  const { detail, footer, fills } = usePlaceholderDetail({ selectedId, onSelect: setSelectedId, ownerName, carriedBlueprints });
   const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect: setSelectedId });
   const nodes = useMemo(
     (): PlaceholderRowNode[] => placeholderRows(placeholders, placeholders).map((row) => ({ ...row, kind: 'placeholder', home: { kind: 'world' } })),
@@ -38,6 +38,7 @@ const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints, detailHeader 
     tree: <PlaceholderList selectedId={selectedId} onSelect={setSelectedId} />,
     detail,
     footer,
+    fills,
     addLabel: 'Add Placeholder',
     onSelect: setSelectedId,
   });

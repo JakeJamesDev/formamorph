@@ -29,7 +29,7 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
   const { placementLetters, placeholderOwners, placeholderGroups, addPlaceholder, addPlaceholderGroup } = useGameData();
   const { placeholders, lists } = usePlaceholderStore();
   const { advanced } = useEditorMode();
-  const { detail, footer, ownerId } = usePlaceholderDetail({ selectedId, onSelect, onOpenOwner });
+  const { detail, footer, ownerId, fills } = usePlaceholderDetail({ selectedId, onSelect, onOpenOwner });
   const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
 
   const nodes = useMemo(() => (lists ? placeholderTreeNodes(lists) : []), [lists]);
@@ -61,6 +61,8 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
     noun: 'placeholders',
     detail: (id) => id && detail,
     footer: () => footer,
+    // The tabbed panel keeps its strip above a body that scrolls itself.
+    fills: (id) => id === selectedId && fills,
     add: advanced ? {
       label: 'Add to Placeholders',
       menuClassName: 'w-56',
