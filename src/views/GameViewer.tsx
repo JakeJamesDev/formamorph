@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import { bearerPins, inPlayBearers, inPlayLibrary } from '@/lib/ownedTraitsInPlay';
 import { libraryBooksInPlay } from '@/lib/dictionarySelection';
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSettingsOpenRequest } from "@/lib/useSettingsOpenRequest";
@@ -40,7 +40,9 @@ import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
-import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
+import type { TTSModalHandle, TTSProgress } from "../components/game/TTSModal";
+// Loaded on first TTS open: kokoro-js initializes espeak at module evaluation, so it stays out of startup.
+const TTSModal = lazy(() => import("../components/game/TTSModal"));
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
@@ -817,6 +819,11 @@ const GameViewer = ({
   }, [initialCharacterData, setCharacterData]);
 
   const [isTTSModalOpen, setIsTTSModalOpen] = useState(false);
+  // Latches on the first open and stays set: the loaded model lives in the modal's state.
+  const [ttsRequested, setTtsRequested] = useState(false);
+  useEffect(() => {
+    if (isTTSModalOpen) setTtsRequested(true);
+  }, [isTTSModalOpen]);
   const [ttsLoaded, setTtsLoaded] = useState(false);
   const [ttsGenerating, setTtsGenerating] = useState(false);
   const [ttsProgress, setTtsProgress] = useState<TTSProgress | null>(null);
@@ -5376,12 +5383,16 @@ const GameViewer = ({
         onCancel={() => setShowPotatoPCDialog(false)}
       />
 
-      <TTSModal
-        ref={ttsModalRef}
-        isOpen={isTTSModalOpen}
-        onOpenChange={setIsTTSModalOpen}
-        onLoadedChange={setTtsLoaded}
-      />
+      {ttsRequested && (
+        <Suspense fallback={null}>
+          <TTSModal
+            ref={ttsModalRef}
+            isOpen={isTTSModalOpen}
+            onOpenChange={setIsTTSModalOpen}
+            onLoadedChange={setTtsLoaded}
+          />
+        </Suspense>
+      )}
 
       <FeedbackDialog open={showBugReport} onOpenChange={setShowBugReport} />
 

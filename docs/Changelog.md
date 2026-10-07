@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.1** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **Safari and iOS open the app without an error toast on every load.** The text-to-speech engine now loads when you first open Text to Speech, not at startup, so every browser starts faster. Text to Speech also works in Safari 26 and in older Android web views.
+
 ---
 
 <details>

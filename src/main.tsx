@@ -1,3 +1,5 @@
+// First import: it must evaluate before any dependency that iterates a ReadableStream at module load.
+import './lib/polyfills/readableStreamAsyncIterator'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './fonts'
