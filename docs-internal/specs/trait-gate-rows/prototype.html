@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — Trait Availability tab</title>
+<!--
+  PROTOTYPE. Throwaway. Answers two questions:
+    1. Which gate model should Requires adopt? (?gate= rows | tree | excludes | sentence)
+    2. Should Mode + the two checkboxes become a three-row rule? (?top= current | rule)
+  Keys: ← → cycle the gate model, ↑ ↓ cycle the top layout, D toggles dark.
+-->
+<style>
+  :root {
+    --background: 0 0% 100%; --foreground: 222.2 84% 4.9%;
+    --card: 210 40% 97%; --popover: 0 0% 100%;
+    --primary: 180 47.4% 75%; --primary-foreground: 180 47.4% 11.2%;
+    --secondary: 210 40% 96.1%; --muted: 210 40% 96.1%; --muted-foreground: 215.4 16.3% 46.9%;
+    --destructive: 0 84.2% 60.2%; --success: 142 71% 40%; --warning: 45 93% 50%;
+    --border: 214.3 31.8% 91.4%; --ring: 222.2 84% 4.9%; --radius: 0.5rem;
+  }
+  :root.dark {
+    --background: 222.2 84% 4.9%; --foreground: 210 40% 98%;
+    --card: 222 40% 9%; --popover: 222.2 84% 4.9%;
+    --primary: 180 40% 85%; --primary-foreground: 180 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%; --muted: 217.2 32.6% 17.5%; --muted-foreground: 215 20.2% 65.1%;
+    --destructive: 0 72% 58%; --border: 217.2 32.6% 17.5%; --ring: 212.7 26.8% 83.9%;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+  .stage { display: grid; grid-template-columns: 1fr 440px; min-height: 100vh; }
+  .tree { border-right: 1px solid hsl(var(--border)); padding: 16px; color: hsl(var(--muted-foreground)); }
+  .tree h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .tree ul { list-style: none; margin: 0; padding-left: 14px; }
+  .tree li { padding: 3px 0; }
+  .tree .sel { color: hsl(var(--foreground)); font-weight: 600; }
+  .tree .lock { font-size: 11px; margin-left: 6px; opacity: .8; }
+  .panel { padding: 16px 16px 120px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid hsl(var(--border)); margin-bottom: 16px; }
+  .tabs span { padding: 6px 10px; font-size: 13px; color: hsl(var(--muted-foreground)); border-bottom: 2px solid transparent; }
+  .tabs .on { color: hsl(var(--foreground)); border-color: hsl(var(--foreground)); }
+  .field { margin-bottom: 18px; }
+  .label { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .hint { font-size: 12px; color: hsl(var(--muted-foreground)); }
+  .row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  .row .label { margin: 0; width: 92px; flex: none; }
+  .seg { display: inline-flex; border: 1px solid hsl(var(--border)); border-radius: var(--radius); overflow: hidden; background: hsl(var(--muted)); padding: 2px; gap: 2px; }
+  .seg button { border: 0; background: transparent; color: hsl(var(--muted-foreground)); padding: 4px 10px; font-size: 13px; border-radius: calc(var(--radius) - 2px); cursor: pointer; }
+  .seg button.on { background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .seg button:disabled { opacity: .4; cursor: default; }
+  label.cb { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
+  label.cb input { width: 15px; height: 15px; margin: 0; }
+  .chipline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid hsl(var(--border)); background: hsl(var(--secondary)); border-radius: 999px; padding: 2px 4px 2px 10px; font-size: 13px; }
+  .chip.not { border-style: dashed; }
+  .chip .neg { font-size: 11px; font-weight: 600; color: hsl(var(--destructive)); margin-right: 2px; }
+  .chip .name:hover { text-decoration: underline; cursor: pointer; }
+  .chip .bear { color: hsl(var(--muted-foreground)); }
+  .chip button { border: 0; background: transparent; color: inherit; cursor: pointer; width: 20px; height: 20px; border-radius: 999px; font-size: 12px; line-height: 1; padding: 0; }
+  .chip button:hover { background: hsl(var(--muted)); }
+  .chip button.flip { font-size: 10px; font-weight: 700; opacity: .6; }
+  .chip button.flip:hover { opacity: 1; }
+  .join { font-size: 11px; color: hsl(var(--muted-foreground)); text-transform: lowercase; }
+  .btn { border: 1px solid hsl(var(--border)); background: hsl(var(--background)); color: hsl(var(--foreground)); border-radius: var(--radius); padding: 4px 10px; font-size: 12px; cursor: pointer; height: 28px; }
+  .btn.sm { height: 24px; padding: 2px 8px; font-size: 12px; }
+  .btn.ghost { border-color: transparent; color: hsl(var(--muted-foreground)); }
+  .btn:hover { background: hsl(var(--muted)); }
+  .orrow { border: 1px solid hsl(var(--border)); border-radius: var(--radius); padding: 8px; margin-bottom: 6px; }
+  .orsep { text-align: center; font-size: 11px; color: hsl(var(--muted-foreground)); margin: 2px 0 6px; }
+  .node { border: 1px solid hsl(var(--border)); border-radius: var(--radius); padding: 8px; margin-top: 6px; }
+  .node .head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .node .node { margin-left: 14px; }
+  .reads { margin-top: 24px; border-top: 1px dashed hsl(var(--border)); padding-top: 12px; }
+  .reads h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); }
+  .reads .line { font-size: 13px; margin-bottom: 10px; }
+  .reads .ok { color: hsl(var(--success)); }
+  .reads .no { color: hsl(var(--destructive)); }
+  .try { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .try label { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+  .sentence { font-size: 14px; line-height: 2.1; }
+  .sentence .chip { vertical-align: middle; }
+  .pop { position: absolute; z-index: 20; width: 300px; background: hsl(var(--popover)); border: 1px solid hsl(var(--border)); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+  .pop input { width: 100%; border: 0; border-bottom: 1px solid hsl(var(--border)); background: transparent; color: inherit; padding: 8px 10px; font: inherit; outline: none; }
+  .pop .sec { font-size: 11px; color: hsl(var(--muted-foreground)); padding: 6px 10px 2px; text-transform: uppercase; letter-spacing: .04em; }
+  .pop .opt { padding: 5px 10px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+  .pop .opt:hover { background: hsl(var(--muted)); }
+  .pop .opt .crumb { color: hsl(var(--muted-foreground)); font-size: 11px; }
+  .pop .opt.dis { opacity: .4; pointer-events: none; }
+  .bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; background: #111; color: #fff; border-radius: 999px; padding: 8px 14px; font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.35); z-index: 50; }
+  .bar b { color: #ffd466; }
+  .bar button { background: #333; color: #fff; border: 0; border-radius: 999px; width: 24px; height: 24px; cursor: pointer; }
+  .bar .grp { display: flex; gap: 6px; align-items: center; }
+  .note { font-size: 12px; color: hsl(var(--warning)); margin-top: 6px; }
+  .reset { font-size: 11px; color: hsl(var(--muted-foreground)); text-decoration: underline; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="tree">
+    <h3>Traits</h3>
+    <ul id="tree"></ul>
+    <p class="hint" style="margin-top:24px">PROTOTYPE. The editor pane on the right is the trait panel. Everything is in memory.</p>
+  </aside>
+  <main class="panel">
+    <div class="tabs"><span>Details</span><span class="on">Availability</span><span>Stats</span><span>Pins</span></div>
+    <div id="top"></div>
+    <div id="gate"></div>
+    <div class="reads">
+      <h4>Player reads</h4>
+      <div class="line" id="playerLine"></div>
+      <h4>Try the active set</h4>
+      <div class="try" id="try"></div>
+      <div class="line" id="verdict" style="margin-top:8px"></div>
+    </div>
+  </main>
+</div>
+<div class="bar">
+  <div class="grp"><button id="gPrev">←</button><span>Gate: <b id="gName"></b></span><button id="gNext">→</button></div>
+  <span style="opacity:.4">|</span>
+  <div class="grp"><button id="tPrev">↑</button><span>Top: <b id="tName"></b></span><button id="tNext">↓</button></div>
+  <span style="opacity:.4">|</span>
+  <button id="dark" title="D">◐</button>
+</div>
+
+<script>
+// ---------- sample world ----------
+const WORLD = {
+  groups: [{ id: 'g-class', name: 'Class' }, { id: 'g-weap', name: 'Weapons' }],
+  traits: [
+    { id: 'paladin', name: 'Paladin', group: 'g-class' },
+    { id: 'knight', name: 'Knight', group: 'g-class' },
+    { id: 'merc', name: 'Mercenary', group: 'g-class' },
+    { id: 'plate', name: 'Plate Armor', group: 'g-weap', editing: true },
+    { id: 'blade', name: 'Cursed Blade', group: 'g-weap' },
+    { id: 'tamed', name: 'Tamed', owner: 'Ash' },
+  ],
+  personas: [{ id: 'aldric', name: 'Sir Aldric' }],
+};
+const targets = () => [
+  ...WORLD.traits.filter((t) => !t.editing).map((t) => ({ kind: 'trait', id: t.id, label: t.owner ? `${t.owner}: ${t.name}` : t.name, crumb: t.owner ? `${t.owner}` : `World › ${WORLD.groups.find((g) => g.id === t.group).name}` })),
+  ...WORLD.groups.map((g) => ({ kind: 'group', id: g.id, label: `any ${g.name}`, crumb: 'World' })),
+  ...WORLD.personas.map((p) => ({ kind: 'playingAs', id: p.id, label: `playing as ${p.name}`, crumb: 'Persona' })),
+];
+const labelOf = (leaf) => targets().find((t) => t.kind === leaf.kind && t.id === leaf.id)?.label ?? '?';
+
+// Active set used by "Try the active set".
+const active = { paladin: false, knight: true, merc: false, tamed: false, aldric: false };
+const holds = (leaf) => {
+  let v;
+  if (leaf.kind === 'trait') v = !!active[leaf.id];
+  else if (leaf.kind === 'group') v = WORLD.traits.some((t) => t.group === leaf.id && active[t.id]);
+  else v = !!active[leaf.id];
+  return leaf.not ? !v : v;
+};
+
+// ---------- gate models, each holds its own structure ----------
+const leaf = (kind, id, not) => ({ kind, id, not: !!not });
+const models = {
+  rows: {
+    name: 'A — Rows (and-chips, or-joined, per-chip not)',
+    data: { rows: [{ all: [leaf('trait', 'knight'), leaf('trait', 'paladin', true)] }, { all: [leaf('trait', 'merc')] }] },
+    eval() { const r = this.data.rows; return r.length === 0 || r.some((row) => row.all.every(holds)); },
+    text() {
+      const r = this.data.rows; if (!r.length) return '';
+      return r.map((row) => row.all.map(leafText).join(' and ')).join(', or ');
+    },
+    render(el) {
+      const r = this.data.rows;
+      el.innerHTML = `<div class="field"><div class="label">Requires <span class="reset">Reset</span></div><div id="rows"></div></div>`;
+      const host = el.querySelector('#rows');
+      r.forEach((row, i) => {
+        if (i > 0) host.insertAdjacentHTML('beforeend', `<div class="orsep">or</div>`);
+        const box = document.createElement('div'); box.className = 'orrow';
+        const line = document.createElement('div'); line.className = 'chipline';
+        row.all.forEach((lf, j) => {
+          if (j > 0) line.insertAdjacentHTML('beforeend', `<span class="join">and</span>`);
+          line.appendChild(chipEl(lf, () => { lf.not = !lf.not; draw(); }, () => { row.all.splice(j, 1); if (!row.all.length) r.splice(i, 1); draw(); }));
+        });
+        const add = button('+ And', 'btn sm ghost', (e) => openPicker(e.target, (t) => { row.all.push(leaf(t.kind, t.id)); draw(); }, row.all));
+        line.appendChild(add);
+        const rm = button('×', 'btn sm ghost', () => { r.splice(i, 1); draw(); }); rm.title = 'Remove this way';
+        rm.style.marginLeft = 'auto';
+        line.appendChild(rm);
+        box.appendChild(line); host.appendChild(box);
+      });
+      host.appendChild(button(r.length ? '+ Or Another Way' : '+ Add Requirement', 'btn', (e) => openPicker(e.target, (t) => { r.push({ all: [leaf(t.kind, t.id)] }); draw(); }, [])));
+    },
+  },
+  tree: {
+    name: 'B — Nested any / all / not tree',
+    data: { op: 'any', items: [{ op: 'all', items: [leaf('trait', 'knight'), leaf('trait', 'paladin', true)] }, leaf('trait', 'merc')] },
+    eval() { const ev = (n) => n.op ? (n.items.length === 0 ? true : n.op === 'any' ? n.items.some(ev) : n.items.every(ev)) : holds(n); return this.data.items.length === 0 || ev(this.data); },
+    text() {
+      const tx = (n, top) => {
+        if (!n.op) return leafText(n);
+        const s = n.items.map((c) => tx(c, false)).join(n.op === 'any' ? ' or ' : ' and ');
+        return top || n.items.length < 2 ? s : `(${s})`;
+      };
+      return this.data.items.length ? tx(this.data, true) : '';
+    },
+    render(el) {
+      el.innerHTML = `<div class="field"><div class="label">Requires <span class="reset">Reset</span></div><div id="root"></div></div>`;
+      const build = (node, parent, onRemove) => {
+        const box = document.createElement('div'); box.className = 'node';
+        const head = document.createElement('div'); head.className = 'head';
+        const seg = document.createElement('div'); seg.className = 'seg';
+        ['any', 'all'].forEach((op) => { const b = button(op === 'any' ? 'Any of' : 'All of', op === node.op ? 'on' : '', () => { node.op = op; draw(); }); seg.appendChild(b); });
+        head.appendChild(seg);
+        head.appendChild(button('+ Condition', 'btn sm ghost', (e) => openPicker(e.target, (t) => { node.items.push(leaf(t.kind, t.id)); draw(); }, node.items.filter((i) => !i.op))));
+        head.appendChild(button('+ Group', 'btn sm ghost', () => { node.items.push({ op: node.op === 'any' ? 'all' : 'any', items: [] }); draw(); }));
+        if (onRemove) { const rm = button('×', 'btn sm ghost', onRemove); rm.style.marginLeft = 'auto'; head.appendChild(rm); }
+        box.appendChild(head);
+        const line = document.createElement('div'); line.className = 'chipline';
+        node.items.filter((i) => !i.op).forEach((lf) => line.appendChild(chipEl(lf, () => { lf.not = !lf.not; draw(); }, () => { node.items.splice(node.items.indexOf(lf), 1); draw(); })));
+        if (!node.items.length) line.innerHTML = `<span class="hint">Empty group. Always holds.</span>`;
+        box.appendChild(line);
+        node.items.filter((i) => i.op).forEach((child) => box.appendChild(build(child, node, () => { node.items.splice(node.items.indexOf(child), 1); draw(); })));
+        return box;
+      };
+      el.querySelector('#root').appendChild(build(this.data, null, null));
+    },
+  },
+  excludes: {
+    name: 'C — Or-list plus Excludes list',
+    data: { any: [leaf('trait', 'knight'), leaf('trait', 'merc')], none: [leaf('trait', 'paladin')] },
+    eval() { const { any, none } = this.data; return (any.length === 0 || any.some(holds)) && !none.some(holds); },
+    text() {
+      const { any, none } = this.data; const parts = [];
+      if (any.length) parts.push(any.map(leafText).join(' or '));
+      if (none.length) parts.push(`not ${none.map(leafText).join(' or ')}`);
+      return parts.join(', and ');
+    },
+    render(el) {
+      el.innerHTML = `
+        <div class="field"><div class="label">Requires <span class="reset">Reset</span></div><div class="hint" style="margin-bottom:6px">Available when any one of these holds</div><div class="chipline" id="any"></div></div>
+        <div class="field"><div class="label">Excludes</div><div class="hint" style="margin-bottom:6px">Locked while any one of these holds</div><div class="chipline" id="none"></div></div>
+        <div class="note">Cannot say "Knight and not Paladin, or Mercenary" (Mercenary is also locked by Paladin here). No AND.</div>`;
+      ['any', 'none'].forEach((k) => {
+        const list = this.data[k]; const line = el.querySelector('#' + k);
+        list.forEach((lf, j) => { if (j > 0) line.insertAdjacentHTML('beforeend', `<span class="join">or</span>`); line.appendChild(chipEl(lf, null, () => { list.splice(j, 1); draw(); })); });
+        line.appendChild(button(k === 'any' ? '+ Add Requirement' : '+ Add Exclusion', 'btn', (e) => openPicker(e.target, (t) => { list.push(leaf(t.kind, t.id)); draw(); }, list)));
+      });
+    },
+  },
+  sentence: {
+    name: 'D — Sentence builder (same data as A)',
+    get data() { return models.rows.data; },
+    eval() { return models.rows.eval(); },
+    text() { return models.rows.text(); },
+    render(el) {
+      const r = this.data.rows;
+      el.innerHTML = `<div class="field"><div class="label">Available when <span class="reset">Reset</span></div><div class="sentence" id="s"></div></div>`;
+      const s = el.querySelector('#s');
+      if (!r.length) s.append('always. ');
+      r.forEach((row, i) => {
+        if (i > 0) s.insertAdjacentHTML('beforeend', `<br><span class="join">or when </span>`);
+        row.all.forEach((lf, j) => {
+          if (j > 0) s.insertAdjacentHTML('beforeend', ` <span class="join">and</span> `);
+          s.appendChild(chipEl(lf, () => { lf.not = !lf.not; draw(); }, () => { row.all.splice(j, 1); if (!row.all.length) r.splice(i, 1); draw(); }));
+        });
+        s.append(' ');
+        s.appendChild(button('and…', 'btn sm ghost', (e) => openPicker(e.target, (t) => { row.all.push(leaf(t.kind, t.id)); draw(); }, row.all)));
+      });
+      s.insertAdjacentHTML('beforeend', '<br>');
+      s.appendChild(button(r.length ? 'or when…' : 'only when…', 'btn sm', (e) => openPicker(e.target, (t) => { r.push({ all: [leaf(t.kind, t.id)] }); draw(); }, [])));
+    },
+  },
+};
+const gateOrder = ['rows', 'tree', 'excludes', 'sentence'];
+
+function leafText(lf) { return (lf.not ? 'not ' : '') + labelOf(lf); }
+
+function chipEl(lf, onFlip, onRemove) {
+  const c = document.createElement('span'); c.className = 'chip' + (lf.not ? ' not' : '');
+  if (lf.not) c.insertAdjacentHTML('beforeend', `<span class="neg">NOT</span>`);
+  c.insertAdjacentHTML('beforeend', `<span class="name">${labelOf(lf)}</span>`);
+  if (onFlip) { const f = button(lf.not ? '¬' : '¬', 'flip', onFlip); f.title = lf.not ? 'Require it instead' : 'Require it to be off'; c.appendChild(f); }
+  const x = button('✕', '', onRemove); x.title = 'Remove'; c.appendChild(x);
+  return c;
+}
+function button(text, cls, onClick) { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text; b.onclick = onClick; return b; }
+
+// ---------- picker ----------
+let pop = null;
+function openPicker(anchor, onPick, taken) {
+  closePicker();
+  pop = document.createElement('div'); pop.className = 'pop';
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.min(r.left, window.innerWidth - 310) + 'px'; pop.style.top = (r.bottom + 4 + window.scrollY) + 'px';
+  pop.innerHTML = `<input placeholder="Search traits, groups, and personas" autofocus><div id="list"></div>`;
+  const list = pop.querySelector('#list'); const input = pop.querySelector('input');
+  const fill = (q) => {
+    list.innerHTML = '';
+    const secs = [['Traits', 'trait'], ['Any Trait in a Group', 'group'], ['Playing As', 'playingAs']];
+    secs.forEach(([h, kind]) => {
+      const opts = targets().filter((t) => t.kind === kind && t.label.toLowerCase().includes(q));
+      if (!opts.length) return;
+      list.insertAdjacentHTML('beforeend', `<div class="sec">${h}</div>`);
+      opts.forEach((t) => {
+        const o = document.createElement('div'); o.className = 'opt' + (taken.some((l) => l.kind === t.kind && l.id === t.id) ? ' dis' : '');
+        o.innerHTML = `<span>${t.label}</span><span class="crumb">${t.crumb}</span>`;
+        o.onclick = () => { onPick(t); closePicker(); };
+        list.appendChild(o);
+      });
+    });
+  };
+  fill(''); input.oninput = () => fill(input.value.toLowerCase());
+  document.body.appendChild(pop); input.focus();
+  setTimeout(() => document.addEventListener('mousedown', outside), 0);
+}
+function outside(e) { if (pop && !pop.contains(e.target)) closePicker(); }
+function closePicker() { if (pop) { pop.remove(); pop = null; document.removeEventListener('mousedown', outside); } }
+
+// ---------- top section ----------
+const topState = { mode: 'optional', isDefault: false, toggle: true };
+const tops = {
+  current: {
+    name: 'Current (Mode + two checkboxes)',
+    render(el) {
+      const hints = { optional: 'Lets the player choose it', alwaysOn: 'Turns on whenever its requirements hold, and the player can’t switch it', hidden: 'Acts as Always On, but the player never sees it. The AI does.' };
+      el.innerHTML = `<div class="field"><div class="label">Mode <span class="reset">Reset</span></div><div class="seg" id="mode"></div><div class="hint" style="margin-top:6px">${hints[topState.mode]}</div></div>`;
+      const seg = el.querySelector('#mode');
+      [['optional', 'Optional'], ['alwaysOn', 'Always On'], ['hidden', 'Hidden']].forEach(([v, l]) => seg.appendChild(button(l, v === topState.mode ? 'on' : '', () => { topState.mode = v; draw(); })));
+      if (topState.mode === 'optional') {
+        el.insertAdjacentHTML('beforeend', `
+          <label class="cb"><input type="checkbox" id="def" ${topState.isDefault ? 'checked' : ''}> Enabled by Default <span class="hint">Selected when a new game starts</span></label>
+          <label class="cb"><input type="checkbox" id="tog" ${topState.toggle ? 'checked' : ''}> Player Can Toggle In-Game <span class="hint">The player can turn it on or off from the Traits tab during play</span></label>`);
+        el.querySelector('#def').onchange = (e) => { topState.isDefault = e.target.checked; };
+        el.querySelector('#tog').onchange = (e) => { topState.toggle = e.target.checked; };
+      }
+    },
+  },
+  rule: {
+    name: 'Rule rows (Who picks it / Starts / In play)',
+    render(el) {
+      const auto = topState.mode !== 'optional';
+      el.innerHTML = `<div class="field">
+        <div class="row"><div class="label">Who picks it</div><div class="seg" id="who"></div></div>
+        <div class="row"><div class="label">Starts</div><div class="seg" id="start"></div><span class="hint" id="startHint"></span></div>
+        <div class="row"><div class="label">In play</div><div class="seg" id="play"></div><span class="hint" id="playHint"></span></div>
+        <div class="hint" id="ruleHint" style="margin-top:4px"></div></div>`;
+      const who = el.querySelector('#who');
+      [['optional', 'Player'], ['alwaysOn', 'Automatic'], ['hidden', 'Hidden']].forEach(([v, l]) => who.appendChild(button(l, v === topState.mode ? 'on' : '', () => { topState.mode = v; draw(); })));
+      const start = el.querySelector('#start');
+      [[false, 'Off'], [true, 'On']].forEach(([v, l]) => { const b = button(l, v === topState.isDefault ? 'on' : '', () => { topState.isDefault = v; draw(); }); b.disabled = auto; start.appendChild(b); });
+      const play = el.querySelector('#play');
+      [[false, 'Fixed'], [true, 'Toggleable']].forEach(([v, l]) => { const b = button(l, v === topState.toggle ? 'on' : '', () => { topState.toggle = v; draw(); }); b.disabled = auto; play.appendChild(b); });
+      el.querySelector('#ruleHint').textContent = topState.mode === 'optional'
+        ? `The player picks it at game start${topState.isDefault ? ', already on' : ''}${topState.toggle ? ', and can switch it during play' : ''}.`
+        : topState.mode === 'alwaysOn' ? 'On whenever its requirements hold. The player never switches it.' : 'On whenever its requirements hold. The player never sees it. The AI does.';
+    },
+  },
+};
+const topOrder = ['current', 'rule'];
+
+// ---------- state + draw ----------
+const params = new URLSearchParams(location.search);
+let gate = gateOrder.includes(params.get('gate')) ? params.get('gate') : 'rows';
+let topSel = topOrder.includes(params.get('top')) ? params.get('top') : 'current';
+if (params.get('dark') === '1') document.documentElement.classList.add('dark');
+
+function draw() {
+  closePicker();
+  const m = models[gate];
+  tops[topSel].render(document.getElementById('top'));
+  m.render(document.getElementById('gate'));
+  const t = m.text();
+  const ok = m.eval();
+  document.getElementById('playerLine').innerHTML = t ? (ok ? `<span class="ok">Unlocked</span> · locked would read: “Requires ${t}”` : `<span class="no">Requires ${t}</span>`) : '<span class="hint">No requirements. Always available.</span>';
+  const tryEl = document.getElementById('try'); tryEl.innerHTML = '';
+  [['paladin', 'Paladin'], ['knight', 'Knight'], ['merc', 'Mercenary'], ['tamed', 'Ash: Tamed'], ['aldric', 'playing as Sir Aldric']].forEach(([id, l]) => {
+    const lab = document.createElement('label'); lab.innerHTML = `<input type="checkbox" ${active[id] ? 'checked' : ''}> ${l}`;
+    lab.querySelector('input').onchange = (e) => { active[id] = e.target.checked; draw(); };
+    tryEl.appendChild(lab);
+  });
+  document.getElementById('verdict').innerHTML = `Plate Armor is <b class="${ok ? 'ok' : 'no'}">${ok ? 'available' : 'locked'}</b> for this set.`;
+  // tree
+  const tree = document.getElementById('tree'); tree.innerHTML = '';
+  WORLD.groups.forEach((g) => {
+    const li = document.createElement('li'); li.innerHTML = `📁 ${g.name}<ul></ul>`;
+    WORLD.traits.filter((x) => x.group === g.id).forEach((x) => li.querySelector('ul').insertAdjacentHTML('beforeend', `<li class="${x.editing ? 'sel' : ''}">${x.name}${x.editing && t ? `<span class="lock">🔒 ${t}</span>` : ''}</li>`));
+    tree.appendChild(li);
+  });
+  tree.insertAdjacentHTML('beforeend', `<li>🐺 Ash<ul><li>Tamed</li></ul></li>`);
+  document.getElementById('gName').textContent = m.name;
+  document.getElementById('tName').textContent = tops[topSel].name;
+  const q = new URLSearchParams({ gate, top: topSel, dark: document.documentElement.classList.contains('dark') ? '1' : '0' });
+  history.replaceState(null, '', '?' + q);
+}
+const cycle = (arr, cur, d) => arr[(arr.indexOf(cur) + d + arr.length) % arr.length];
+document.getElementById('gPrev').onclick = () => { gate = cycle(gateOrder, gate, -1); draw(); };
+document.getElementById('gNext').onclick = () => { gate = cycle(gateOrder, gate, 1); draw(); };
+document.getElementById('tPrev').onclick = () => { topSel = cycle(topOrder, topSel, -1); draw(); };
+document.getElementById('tNext').onclick = () => { topSel = cycle(topOrder, topSel, 1); draw(); };
+document.getElementById('dark').onclick = () => { document.documentElement.classList.toggle('dark'); draw(); };
+document.addEventListener('keydown', (e) => {
+  if (/INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === 'ArrowLeft') document.getElementById('gPrev').click();
+  if (e.key === 'ArrowRight') document.getElementById('gNext').click();
+  if (e.key === 'ArrowUp') document.getElementById('tPrev').click();
+  if (e.key === 'ArrowDown') document.getElementById('tNext').click();
+  if (e.key.toLowerCase() === 'd') document.getElementById('dark').click();
+});
+draw();
+</script>
+</body>
+</html>
