@@ -258,7 +258,7 @@ A requirement that names an entity describes a relationship to someone else. Whe
 An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.
 
 - **Add one from the Traits tab.** In Advanced mode, select **+**, then **Add Trait to Entity**, and pick the entity. **Add Group to Entity** adds a group the same way.
-- **Or add one in the entity's editor**, in its **Traits** tab, in Advanced mode. Type a name in the search box, select **+**, then **Add Trait to <entity>** or **Add Group to <entity>**.
+- **Or add one in the entity's editor**, in its **Traits** tab, in Advanced mode. Type a name in the **Filter Traits** box, select **+**, then **Add Trait to <entity>** or **Add Group to <entity>**.
 
 The entity's **Traits** tab is the **Traits** tab for that entity alone. It shows the entity's traits, groups and links in the same tree, with the same row buttons. Select a row to edit it in place; the **Traits** back row returns to the list. Drag rows, links included, to reorder and nest them inside the entity. A **Requires** chip opens its target when the entity holds it; a world trait or a persona reads as plain text there. To link a trait or move one to another entity, use the **Traits** tab.
 

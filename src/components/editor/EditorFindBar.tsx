@@ -525,6 +525,7 @@ export default function EditorFindBar({
         onKeyDown={onKeyDown}
         onBlur={leaveCheck}
         role="search"
+        aria-label="Search World"
       >
         {expanded ? (
           <>

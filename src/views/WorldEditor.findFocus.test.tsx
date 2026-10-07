@@ -136,7 +136,7 @@ describe('Search World (desktop)', () => {
     expect(document.activeElement).toBe(field);
   });
 
-  it('treats Ctrl+H as Ctrl+F, focusing the field and recording the earlier field', async () => {
+  it('focuses the field on Ctrl+H and records the earlier field', async () => {
     setup();
     const field = await focusWorldName();
     pressShortcut(true);

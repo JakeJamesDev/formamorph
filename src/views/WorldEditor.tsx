@@ -901,7 +901,7 @@ const WorldEditorInner = ({
     worldOverview: getWorldData().worldOverview, stats, entities, locations, traits, dictionaries, placeholders,
   });
   const findButton = (
-    <Tip tip="Find and replace (Ctrl+F)" labelsChild={false}>
+    <Tip tip="Find and replace" labelsChild={false}>
       <Button
         variant="ghost"
         size="icon"

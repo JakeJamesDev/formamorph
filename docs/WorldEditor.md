@@ -20,7 +20,7 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 
 In Simple mode, **Export World** is an icon. In Advanced mode, **More world actions** holds **Export World** and **Optimize Images**. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, the header holds the back arrow, **Find and replace**, the Test Bench and the mode select. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Stats, Entities, Locations and Traits, then Dictionary and Placeholders. The footer holds **Export World**, **Optimize Images** in Advanced mode, and **Save**.
+On mobile, the header holds the back arrow and the mode select, then the Test Bench and **Find and replace** at the right. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Stats, Entities, Locations and Traits, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Export World** (or **More world actions** in Advanced mode) and the **Save** icon.
 
 Each tab has its own page.
 
