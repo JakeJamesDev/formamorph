@@ -43,7 +43,7 @@ import { SurfaceAppBar } from '@/components/SurfaceAppBar';
 import { Separator } from '@/components/ui/separator';
 import { ModeSelect } from '@/components/ui/mode-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Save, ImageDown, BookPlus, UserPlus, Loader2, Search, MoreHorizontal } from "lucide-react";
+import { Save, ImageDown, Loader2, Search, MoreHorizontal } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -103,7 +103,6 @@ import { APP_VERSION } from '@/lib/version';
 import type { Entity, Dictionary, World, FocusFieldHint } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SelectedContentActions } from '@/components/ContentLinkStatus';
-import { SplitButton } from '@/components/ui/split-button';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { Tip } from '@/components/ui/tooltip';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
@@ -750,6 +749,7 @@ const WorldEditorInner = ({
     onPlaceholderIdChange: setEntityPlaceholderId,
     onOpenWorldPlaceholder: openWorldPlaceholder,
     focusField: findField,
+    library: { onAddFromLibrary: () => setShowAddEntity(true), onImport: () => linking.openImportFile('entity') },
   });
   const entitiesParts = useListEditor(entitiesEditor.adapter, {
     selectedId: selections.entities ?? null, onSelect: selectEntity, search,
@@ -780,6 +780,7 @@ const WorldEditorInner = ({
     entryTab: shownEntryTab,
     onEntryTabChange: setEntryTab,
     focusField: findField,
+    library: { onAddFromLibrary: () => setShowAddDictionary(true), onImport: () => linking.openImportFile('dictionary') },
   });
   const dictionaryParts = useListEditor(dictionaryEditor.adapter, {
     selectedId: selections.dictionary ?? null, onSelect: selectDictionaryItem, search,
@@ -810,10 +811,7 @@ const WorldEditorInner = ({
     // A book, not an entry's book: the button acts on the open book itself.
     : activeTab === 'dictionary' ? (dictionaryEditor.book?.id === selections.dictionary ? dictionaryEditor.book : undefined)
     : null;
-  // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
-  const showImport = activeTab === 'entities' || activeTab === 'dictionary';
-  const importDisabled = false;
-  const importLabel = activeTab === 'entities' ? 'Add Entity' : 'Add Dictionary';
+  const hasSelectedContent = activeTab === 'entities' || activeTab === 'dictionary';
 
   // A list that owns its slot (the Locations canvas) opts out of the list pane's scroller and of the
   // click-to-deselect that empties the detail panel.
@@ -1057,38 +1055,21 @@ const WorldEditorInner = ({
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   // The tab's own actions, on the two tabs that act on a selected item.
-  const tabActions = showImport && (
-    <>
-      {/* Export moves into this button's menu: what an author does with the selected entity or book is one
-          control, and saving it to the library is the everyday half of it. */}
-      <SelectedContentActions
-        disabled={!selectedLinkable}
-        {...(selectedLinkable
-          ? linking.controlFor(selectedLinkable, advanced)
-          : { faceLabel: 'Save to Library', faceTip: 'Select an entity or a dictionary first', onFace: () => {}, menu: [] })}
-      />
-      {/* The face opens the library picker; the chevron holds the file route into the same review. */}
-      <SplitButton
-        icon={activeTab === "dictionary"
-          ? <BookPlus className="h-4 w-4 mr-2 shrink-0" />
-          : <UserPlus className="h-4 w-4 mr-2 shrink-0" />}
-        label={importLabel}
-        onClick={() => { if (activeTab === "dictionary") setShowAddDictionary(true); else setShowAddEntity(true); }}
-        disabled={importDisabled}
-        menuLabel="More add options"
-        menu={[{
-          label: activeTab === "dictionary" ? 'Import Dictionary…' : 'Import Entity…',
-          onClick: () => linking.openImportFile(activeTab === "dictionary" ? 'dictionary' : 'entity'),
-        }]}
-      />
-    </>
+  const tabActions = hasSelectedContent && (
+    // Export moves into this button's menu: what an author does with the selected entity or book is one
+    // control, and saving it to the library is the everyday half of it.
+    <SelectedContentActions
+      disabled={!selectedLinkable}
+      {...(selectedLinkable
+        ? linking.controlFor(selectedLinkable, advanced)
+        : { faceLabel: 'Save to Library', faceTip: 'Select an entity or a dictionary first', onFace: () => {}, menu: [] })}
+    />
   );
   // Desktop's world actions live in the app bar, so its footer draws only on a tab with actions of its own.
   const desktopFooter = tabActions && <div className="p-3 border-t flex flex-wrap gap-2">{tabActions}</div>;
   // Mobile has no app bar, so its footer keeps the world actions within thumb reach.
   const mobileFooter = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
-      {/* Wraps: two split buttons are wider than a phone, and each one has to stay joined. */}
       <div className="flex flex-wrap gap-2">
         {tabActions || (exportContext && (
           <Button variant="outline" size="sm" onClick={exportContext.onClick} disabled={exportContext.disabled}>

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { BookPlus } from 'lucide-react';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
+import { ListMenuRow } from '@/components/ListToolbar';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { useGameData } from '@/contexts/GameDataContext';
 import { randomUUID } from '@/lib/uuid';
@@ -10,6 +12,7 @@ import { focusFieldForItem } from '@/views/findFocus';
 import DictionaryBookManager from './DictionaryBookManager';
 import DictionaryManager from './DictionaryManager';
 import DictionaryTree from './DictionaryTree';
+import { LibraryAddRows, type LibraryAddRoutes } from './LibraryAddRows';
 import { dictionarySearchRows, useDictionaryActions, useDictionaryCollapse } from './useDictionaryActions';
 
 /**
@@ -20,7 +23,7 @@ import { dictionarySearchRows, useDictionaryActions, useDictionaryCollapse } fro
  */
 export function useWorldDictionaryAdapter({
   selectedId, onSelect, bookTab, onBookTabChange, bookPlaceholderId, onBookPlaceholderIdChange,
-  onOpenWorldPlaceholder, entryTab, onEntryTabChange, focusField,
+  onOpenWorldPlaceholder, entryTab, onEntryTabChange, focusField, library,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -32,6 +35,8 @@ export function useWorldDictionaryAdapter({
   entryTab: DictionaryPanelTab;
   onEntryTabChange: (tab: DictionaryPanelTab) => void;
   focusField: FocusFieldHint | null;
+  /** The + menu's library and file routes; the host owns the picker and the import. */
+  library: LibraryAddRoutes;
 }): { adapter: ListEditorAdapter; dialog: ReactNode; book: Dictionary | undefined } {
   const { placeholders, placementLetters, placeholderOwners } = useGameData();
   const { dictionaries, addDictionary } = useDictionaryStore();
@@ -91,7 +96,15 @@ export function useWorldDictionaryAdapter({
     detail,
     // Both panels keep their tab strip above a body that scrolls itself.
     fills: () => true,
-    add: { label: 'Add to Dictionary', onAdd: addBook },
+    add: {
+      label: 'Add to Dictionary',
+      menu: (
+        <>
+          <ListMenuRow icon={<BookPlus className="h-4 w-4" />} label="Add Dictionary" onAdd={addBook} />
+          <LibraryAddRows noun="Dictionary" routes={library} />
+        </>
+      ),
+    },
     placeholder: 'Filter Dictionaries',
     holds: (id) => { const { book, entry } = lookup(id); return !!(book ?? entry); },
     // The tree draws its own empty hint.

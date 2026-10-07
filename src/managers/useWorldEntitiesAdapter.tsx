@@ -15,6 +15,7 @@ import { focusFieldForItem } from '@/views/findFocus';
 import EntityGroupManager from './EntityGroupManager';
 import EntityManager from './EntityManager';
 import EntityTree from './EntityTree';
+import { LibraryAddRows, type LibraryAddRoutes } from './LibraryAddRows';
 import { useRemoveEntity } from './useRemoveEntity';
 
 /**
@@ -24,7 +25,7 @@ import { useRemoveEntity } from './useRemoveEntity';
  */
 export function useWorldEntitiesAdapter({
   selectedId, onSelect, tab, onTabChange, traitId, onTraitIdChange, placeholderId, onPlaceholderIdChange,
-  onOpenWorldPlaceholder, focusField,
+  onOpenWorldPlaceholder, focusField, library,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -36,6 +37,8 @@ export function useWorldEntitiesAdapter({
   onPlaceholderIdChange: (id: string | null) => void;
   onOpenWorldPlaceholder: (id: string) => void;
   focusField: FocusFieldHint | null;
+  /** The + menu's library and file routes; the host owns the picker and the import. */
+  library: LibraryAddRoutes;
 }): { adapter: ListEditorAdapter; dialog: ReactNode } {
   const {
     entities, entityGroups, placeholders, placementLetters, placeholderOwners, addEntity, addEntityGroup, setEntities,
@@ -115,15 +118,16 @@ export function useWorldEntitiesAdapter({
     // The tabbed entity panel keeps its strip above a body that scrolls itself.
     fills: (id) => !!shown(id).entity,
     onReorder,
-    add: advanced ? {
+    add: {
       label: 'Add to Entities',
       menu: (
         <>
-          <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={handleAddGroup} />
+          {advanced && <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={handleAddGroup} />}
           <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label="Add Entity" onAdd={handleAddEntity} />
+          <LibraryAddRows noun="Entity" routes={library} />
         </>
       ),
-    } : { label: 'Add to Entities', onAdd: handleAddEntity },
+    },
     placeholder: 'Filter Entities',
     holds: (id) => { const { group, entity } = shown(id); return !!(group ?? entity); },
     // The tree draws its own empty hint.

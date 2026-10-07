@@ -57,6 +57,14 @@ const stepNumber = () => Number(/(\d+) \//.exec(within(tourBar()).getByText(/^Au
 const stepNote = () => screen.getAllByRole('dialog').find((d) => within(d).queryByText(`${stepNumber()} / ${TOTAL}`))!;
 const noteButton = (name: string) => within(stepNote()).queryByRole('button', { name });
 const addButton = () => screen.getByRole('button', { name: /^Add to (Locations|Entities)$/ });
+/** Presses the + the step points at. On Entities it opens a menu, and Add Entity is the row that adds. */
+const clickAdd = () => {
+  const plus = addButton();
+  fireEvent.click(plus);
+  if (plus.getAttribute('aria-label') === 'Add to Entities') {
+    fireEvent.click(screen.getByRole('button', { name: 'Add Entity' }));
+  }
+};
 
 const inPlay = () => screen.getByRole('region', { name: 'In Play' });
 const playerSees = () => within(inPlay()).getByRole('region', { name: 'Player Sees' });
@@ -92,7 +100,7 @@ const next = async () => {
 /** Moves to `id` the way an author in a hurry does: Add on an add step, then Use Example, then Next. */
 const walkTo = async (id: string) => {
   while (TOUR_STEPS[stepNumber() - 1].id !== id) {
-    if (TOUR_STEPS[stepNumber() - 1].add) fireEvent.click(addButton());
+    if (TOUR_STEPS[stepNumber() - 1].add) clickAdd();
     // The one step with no example asks for the author's own click.
     if (TOUR_STEPS[stepNumber() - 1].id === 'location-starting') {
       fireEvent.click(screen.getByRole('checkbox', { name: 'Starting Location' }));
@@ -156,11 +164,12 @@ describe('Authoring Tour — Entities steps', () => {
 
   it('waits for a new entity, then records and selects it', async () => {
     const { ctx } = await resumeAt('add-entity');
+    expect(within(stepNote()).getByText('Select Add Entity in the + menu to add an entity for players to meet')).toBeInTheDocument();
     // The harness world's own entity was there before the step, so it is not the tour's.
     expect(noteButton('Next')).toBeDisabled();
     expect(noteButton('Use Example')).toBeNull();
 
-    fireEvent.click(addButton());
+    clickAdd();
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     const added = ctx().entities.find((e) => e.id !== 'resident')!;
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('New Entity'));
@@ -173,7 +182,7 @@ describe('Authoring Tour — Entities steps', () => {
 
   it('keeps Next disabled on the name Add gives until the author changes it', async () => {
     const { ctx } = await resumeAt('add-entity');
-    fireEvent.click(addButton());
+    clickAdd();
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     await next();
     const added = () => ctx().entities.find((e) => e.id !== 'resident')!;

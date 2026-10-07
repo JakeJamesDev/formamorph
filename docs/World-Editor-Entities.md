@@ -19,14 +19,14 @@ The default prompt introduces entities as "Characters and things that **may** ap
 
 1. Open the **Entities** tab.
 2. Type the entity's name in the **Filter Entities** box.
-3. Select the **+** button (**Add to Entities**). In Advanced mode, the button opens a menu: select **Add Entity**.
+3. Select the **+** button (**Add to Entities**), then select **Add Entity**.
 4. The new entity opens in the panel. On the **Profile** tab, pick one or more places in **Locations**.
 5. On the **Descriptions** tab, write the **AI-Facing Description**.
 6. Select **Save**.
 
 > 💡 With the box empty, the new entity is named "New Entity". Rename it in **Name**.
 
-To add a copy of an entity from your library, select **Add Entity** at the bottom of the editor.
+To add a copy of an entity from your library, select the **+** button, then **Add From Library…**.
 
 ## How to Import a SillyTavern Card
 <!-- keywords: character, tavern, png, chub, st, bring in, load character, character card, janitor, v2 card, tavernai, bot file, convert card, risu, upload card, lorebook comes along -->
@@ -36,10 +36,10 @@ To add a copy of an entity from your library, select **Add Entity** at the botto
 2. Select **Import Entity**.
 3. Pick the card's `.png` or `.json` file.
 4. The card joins your library as an entity. The card image becomes the entity's image. Its lorebook, if it has one, joins your library as a dictionary.
-5. In the World Editor, open the **Entities** tab and select **Add Entity** at the bottom of the editor.
+5. In the World Editor, open the **Entities** tab, select the **+** button, then select **Add From Library…**.
 6. Select the entity, then select **Add Entity** in the window.
 
-You can also import a card directly into a world. On the **Entities** tab, select the arrow beside **Add Entity**, then **Import Entity…**. Pick the file, keep or clear **Link through my library**, and select **Add Entity**. This route doesn't bring in the card's lorebook.
+You can also import a card directly into a world. On the **Entities** tab, select the **+** button, then **Import Entity…**. Pick the file, keep or clear **Link through my library**, and select **Add Entity**. This route doesn't bring in the card's lorebook.
 
 See [SillyTavern cards](#sillytavern-cards) for what each part of the card becomes.
 

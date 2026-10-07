@@ -127,6 +127,12 @@ export const openEditorTab = (name: RegExp) => {
   fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Editor Sections' })).getByRole('tab', { name }));
 };
 
+/** Open a list's + menu on Entities or Dictionary and pick Add From Library…, which opens the picker. */
+export const openAddFromLibrary = (kind: 'dictionary' | 'entity') => {
+  fireEvent.click(screen.getByRole('button', { name: kind === 'dictionary' ? 'Add to Dictionary' : 'Add to Entities' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add From Library…' }));
+};
+
 /** The editor's mode select, in the desktop app bar or the mobile header. */
 export const editorModeSelect = () => screen.getByRole('combobox', { name: 'Editor mode' });
 

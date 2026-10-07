@@ -105,11 +105,12 @@ describe('World Editor app bar (desktop)', () => {
     renderWorldEditorBench(WORLD, 'simple', { initialTab: 'overview' });
     expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Export World' })).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: 'Add Entity' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save to Library' })).toBeNull();
 
     openEditorTab(/^Entities$/);
-    expect(button('Add Entity')).toBeInTheDocument();
     expect(button('Save to Library')).toBeInTheDocument();
+    // The adds live in the + menu, not the footer.
+    expect(screen.queryByRole('button', { name: 'Add Entity' })).toBeNull();
     // The bar's Save and Export World are the only ones: the footer adds neither.
     expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Export World' })).toHaveLength(1);
