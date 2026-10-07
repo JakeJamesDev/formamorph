@@ -7,8 +7,9 @@ import type { SelectOption } from './SelectOptions';
 const OPTIONS: SelectOption[] = ['Amber', 'Basalt', 'Cinder', 'Dune', 'Ember'].map((label) => ({ value: label.toLowerCase(), label }));
 
 // Inside a form, Radix mirrors every mounted item as an option of a hidden native select: the one place a
-// closed picker's items show in the document.
-const mounted = () => Array.from(document.querySelectorAll('select[aria-hidden] option')).map((o) => o.textContent);
+// closed picker's items show in the document. The blank option is Radix's own placeholder, not an item.
+const mounted = () => Array.from(document.querySelectorAll<HTMLOptionElement>('select[aria-hidden] option'))
+  .filter((o) => o.value !== '').map((o) => o.textContent);
 
 const renderPicker = (over: Partial<Parameters<typeof OnDemandSelect>[0]> = {}) => {
   const onValueChange = vi.fn();

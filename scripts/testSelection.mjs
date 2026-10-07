@@ -85,6 +85,7 @@ export const PATH_TRIGGERS = {
   'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
   'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
+  'package-lock.json': ['src/components/ui/radixSingleCopy.test.ts'],
 };
 
 const REQUIRE_CALL = /\brequire\(\s*([^)]*?)\s*\)/g;
