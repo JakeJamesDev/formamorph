@@ -345,7 +345,8 @@ The new description states the reference purpose. Action labels use the producti
 - ⌨️ **Escape.** Escape never clears the field. The field blocks the browser's own Escape clear, so only the host acts: a dialog still closes, and a host that collapses on Escape still does.
 - 🚫 **Native cancel.** The browser's own cancel button never shows, so a box never has two X's.
 - 🧱 **Other trailing cells.** When a host adds its own controls along the right edge, the X is the innermost cell, right after the text. Fixed controls keep the edge.
-- ♿ **Accessible name.** The X is **Clear Search** everywhere. The input keeps the `searchbox` role.
+- ♿ **Accessible name.** The X is **Clear Search** everywhere. The input keeps the `searchbox` role. A picker's command input keeps its `combobox` role.
+- 🖱️ **Pickers.** In a command picker the X is mouse-only and stays out of the Tab order. The picker selects the highlighted item on Enter, so a focused X would pick instead of clear. Backspace clears from the keyboard.
 
 ### Production mapping
 
@@ -355,6 +356,7 @@ The new description states the reference purpose. Action labels use the producti
 | The X alone, for hosts with their own trailing cells | `ClearSearchButton` in [`search-field.tsx`](../src/components/ui/search-field.tsx) |
 | A field frame with one focus ring around its trailing cells. Give its input `focus-visible:ring-0`. | `FieldWithTrailing` in [`field-with-trailing.tsx`](../src/components/ui/field-with-trailing.tsx) |
 | Production host | `FeedbackSearchInput` in [`FeedbackSearchInput.tsx`](../src/components/menu/FeedbackSearchInput.tsx) |
+| The search in a command picker (multi-select, Breadcrumb Picker) | `CommandInput` in [`command.tsx`](../src/components/ui/command.tsx) |
 | Isolated reference | `SearchFieldReference` in [`SearchFieldReference.tsx`](../src/components/design-system/SearchFieldReference.tsx) |
 
 | Prop | Use |

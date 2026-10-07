@@ -1,9 +1,10 @@
 import * as React from "react"
-import { Command as CommandPrimitive } from "cmdk"
+import { Command as CommandPrimitive, useCommandState } from "cmdk"
 import { Search } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { ClearSearchButton } from "@/components/ui/search-field"
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -36,22 +37,44 @@ const CommandDialog = ({
   );
 }
 
+/** Sets an input's value the way typing does, so React's onChange and cmdk's search both see it. */
+const setNativeValue = (input: HTMLInputElement, value: string) => {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value)
+  input.dispatchEvent(new Event("input", { bubbles: true }))
+}
+
 const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(({ className, ...props }, ref) => (
-  // eslint-disable-next-line react/no-unknown-property -- cmdk requires this data attribute for styling
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-    <CommandPrimitive.Input
-      ref={ref}
-      className={cn(
-        "flex h-11 w-full rounded-md bg-transparent py-3 text-label outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
-        className
-      )}
-      {...props} />
-  </div>
-))
+>(({ className, ...props }, ref) => {
+  const inner = React.useRef<HTMLInputElement>(null)
+  React.useImperativeHandle(ref, () => inner.current!)
+  // The store holds the search for controlled and uncontrolled inputs alike.
+  const search = useCommandState((state) => state.search)
+
+  const clear = () => {
+    const input = inner.current
+    if (!input) return
+    setNativeValue(input, "")
+    input.focus()
+  }
+
+  return (
+    // eslint-disable-next-line react/no-unknown-property -- cmdk requires this data attribute for styling
+    <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+      <CommandPrimitive.Input
+        ref={inner}
+        className={cn(
+          "flex h-11 w-full rounded-md bg-transparent py-3 text-label outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        {...props} />
+      {/* Mouse-only: the Command root picks the highlighted item on Enter, whatever holds focus. */}
+      {search !== "" && <ClearSearchButton tabIndex={-1} onClick={clear} className="-mr-1.5 ml-1" />}
+    </div>
+  )
+})
 
 CommandInput.displayName = CommandPrimitive.Input.displayName
 
