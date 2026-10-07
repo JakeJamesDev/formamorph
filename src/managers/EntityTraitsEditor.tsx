@@ -179,7 +179,6 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
     footer: () => (linkRow && !linkRow.unbound ? <LinkFooter bearer={bearer} row={linkRow} /> : undefined),
     add: {
       label: `Add to ${entityName}`,
-      menuClassName: 'w-56',
       menu: (
         <>
           <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label={<>Add Group to {nameChips}</>} onAdd={(typed) => add(typed, addOwnedGroup)} />

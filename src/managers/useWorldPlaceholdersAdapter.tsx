@@ -65,7 +65,6 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
     fills: (id) => id === selectedId && fills,
     add: advanced ? {
       label: 'Add to Placeholders',
-      menuClassName: 'w-56',
       menu: (
         <>
           <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={handleAddGroup} />

@@ -36,7 +36,7 @@ export function ListMenuRow({ icon, label, onAdd }: { icon?: ReactNode; label: R
 /** One add action, or a menu of them. Either way the action receives the trimmed search text. */
 export type ListAddSlot =
   | { label: string; onAdd: (typed: string) => void }
-  | { label: string; menu: ReactNode; menuClassName?: string };
+  | { label: string; menu: ReactNode };
 
 /**
  * The search box and + control above an editor list. The search text filters the list and names the next
@@ -64,7 +64,7 @@ export function ListSearchToolbar({ search, add, placeholder, className, childre
             <ListAddButton label={add.label} data-tour-anchor="list-add" />
           </PopoverTrigger>
           {/* Inline, so a host modal's scroll lock lets the wheel reach a drill-in's list. */}
-          <PopoverContent portal={false} side="bottom" align="start" className={cn('w-max min-w-44 max-w-72 overflow-hidden p-1', add.menuClassName)}>
+          <PopoverContent portal={false} side="bottom" align="start" className="w-max max-w-72 overflow-hidden p-1">
             <ListAddContext.Provider value={api}>{add.menu}</ListAddContext.Provider>
           </PopoverContent>
         </Popover>
