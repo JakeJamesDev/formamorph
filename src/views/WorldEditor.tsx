@@ -832,17 +832,8 @@ const WorldEditorInner = ({
       {dictionaryEditor.dialog}
     </>
   );
-  // A different item opens a fresh panel, so the card clears with the selection.
-  const detailContent = (
-    <PanelErrorBoundary resetKey={`${activeTab}:${selections[activeTab] ?? ''}`}>
-    <ChipInsertTargetProvider>
+  const detailBody = (
     <div className={cn("p-3 [--panel-gutter:theme(spacing.3)]", detailFills && "flex flex-1 min-h-0 flex-col")}>
-      {/* One palette for the whole panel, the Placeholders tab included: a value is a chip field like any
-          other, and the palette leaves out whatever would loop back into the value being edited. Over an
-          entity's or book's panel its own scoped placeholders come first and read bare. */}
-      {advanced && (
-        <PlaceholderPaletteBar placeholders={placeholders} scopeId={paletteScopeId} className="-mx-3 -mt-3 mb-3 px-3" />
-      )}
       {activeTab === "overview" && (
         <WorldDetailsManager
           focusField={findField}
@@ -852,9 +843,33 @@ const WorldEditorInner = ({
       )}
       {listEditorParts?.detail}
     </div>
-    </ChipInsertTargetProvider>
-    </PanelErrorBoundary>
   );
+  // One palette for the whole panel, the Placeholders tab included: a value is a chip field like any other,
+  // and the palette leaves out whatever would loop back into the value being edited. Over an entity's or
+  // book's panel its own scoped placeholders come first and read bare. `frozen` puts it above the body's
+  // scroller, as the panel's top edge; `capped` rounds it to the card's corners.
+  const detailPanel = ({ frozen, capped = false }: { frozen: boolean; capped?: boolean }) => {
+    const palette = advanced && (
+      <PlaceholderPaletteBar
+        placeholders={placeholders}
+        scopeId={paletteScopeId}
+        className={cn('mx-0 mb-0 shrink-0 px-3', capped && 'rounded-t-[calc(var(--radius)-1px)]')}
+      />
+    );
+    return (
+      // A different item opens a fresh panel, so the card clears with the selection.
+      <PanelErrorBoundary resetKey={`${activeTab}:${selections[activeTab] ?? ''}`}>
+      <ChipInsertTargetProvider>
+        {frozen ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            {palette}
+            {detailFills ? detailBody : <ScrollArea landingRoom className="min-h-0 flex-1">{detailBody}</ScrollArea>}
+          </div>
+        ) : <>{palette}{detailBody}</>}
+      </ChipInsertTargetProvider>
+      </PanelErrorBoundary>
+    );
+  };
 
   // Shared chrome — reused by the desktop resizable split and the mobile single-panel layout.
   // Only meaningful in Simple mode, where something in this world is out of sight.
@@ -1160,7 +1175,7 @@ const WorldEditorInner = ({
                     // Overview isn't master-detail — stack its two forms.
                     <ScrollArea landingRoom className="flex-grow min-h-0">
                       {listContent}
-                      {detailContent}
+                      {detailPanel({ frozen: false })}
                     </ScrollArea>
                   ) : (
                     <ListDetail
@@ -1169,9 +1184,9 @@ const WorldEditorInner = ({
                       onBack={listEditorParts.onBack}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
                       scrollList={!listOwnsSlot}
-                      scrollDetail={!detailFills}
+                      scrollDetail={false}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
-                      detail={detailContent}
+                      detail={detailPanel({ frozen: true })}
                       detailFooter={detailFooter}
                     />
                   ))}
@@ -1239,9 +1254,7 @@ const WorldEditorInner = ({
               <div className="h-full p-3">
                 <Card className="h-full flex flex-col">
                   <CardContent className="flex-1 min-h-0 p-0">
-                    {detailFills
-                      ? <div data-detail-fill className="h-full flex flex-col">{detailContent}</div>
-                      : <ScrollArea landingRoom className="h-full">{detailContent}</ScrollArea>}
+                    <div data-detail-fill className="h-full flex flex-col">{detailPanel({ frozen: true, capped: true })}</div>
                   </CardContent>
                   {detailFooter}
                 </Card>
