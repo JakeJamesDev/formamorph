@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, clickFlask, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, clickFlask, openEditorTab, renderWorldEditorBench, searchWorldField } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -159,11 +159,10 @@ describe('one selection per tab', () => {
     openEditorTab(/Traits/);
     clickTreeRow('Paladin');
 
-    fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
-    fireEvent.change(await screen.findByLabelText('Find'), { target: { value: 'Damp' } });
+    fireEvent.change(searchWorldField(), { target: { value: 'Damp' } });
     await waitFor(() => expect(screen.getByRole('tab', { name: /Stats/, selected: true })).toBeInTheDocument());
     expect(shownName()).toBe('Damp');
-    fireEvent.click(screen.getByRole('button', { name: 'Close find' }));
+    fireEvent.keyDown(searchWorldField(), { key: 'Escape' });
 
     openEditorTab(/Traits/);
     expect(shownName()).toBe('Paladin');

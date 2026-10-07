@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, onTestFinished } from 'vitest';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { NEW_STAT_NAME } from '@/lib/blankWorld';
 import type { Stat } from '@/types';
 
@@ -36,7 +36,8 @@ const texts = (stat: Stat) => stat.descriptors.map((d) => d.description);
 
 /** Open the Stats tab and add a stat with its Add button, which also selects it. */
 const addStat = async () => {
-  fireEvent.mouseDown(await screen.findByRole('tab', { name: /Stats/ }));
+  // The rail or, on mobile, the Sections bar; either one may still be mounting.
+  await waitFor(() => openEditorTab(/Stats/));
   fireEvent.click(await screen.findByRole('button', { name: 'Add to Stats' }));
   await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent(NEW_STAT_NAME));
 };
@@ -50,7 +51,7 @@ const selectName = () => {
   document.getSelection()!.setBaseAndExtent(text, 0, text, text.length);
 };
 
-/** Open Find with the replace row and wait for the bar to take focus. */
+/** Open Find with the replace row and wait for the bar to take focus. Mobile's floating bar holds the row. */
 const openReplace = async () => {
   fireEvent.keyDown(window, { key: 'h', ctrlKey: true });
   await screen.findByRole('search', { name: 'Find and replace in world' });
@@ -108,6 +109,7 @@ describe('World Editor — default descriptors follow a stat rename', () => {
   });
 
   it('follows a rename made with the find bar\'s Replace on the name', async () => {
+    onTestFinished(asMobile());
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     await addStat();
 

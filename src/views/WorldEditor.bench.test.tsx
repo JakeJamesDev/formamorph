@@ -166,7 +166,7 @@ describe('WorldEditor — where the full Bench sits', () => {
     expect(railTabs().find((tab) => tab.getAttribute('aria-selected') === 'true')).toHaveTextContent('Entities');
     expect(screen.queryByPlaceholderText('Filter Entities')).toBeNull();
     // The Bench replaced the list, not the editor: its header and footer are still reachable mid-triage.
-    expect(screen.getByRole('button', { name: 'Find and replace' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Search World' })).toBeInTheDocument();
 
     // And the detail panel beside it is what a finding's item opens into.
     fireEvent.click(await screen.findByRole('button', { name: 'Maren' }));

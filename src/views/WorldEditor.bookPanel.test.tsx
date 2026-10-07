@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench, pickEditorMode } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, panelTabLayout, renderWorldEditorBench, pickEditorMode, searchWorldField } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -116,9 +116,7 @@ describe('the World Editor dictionary book panel tabs', () => {
     selectBook('Fen Lore');
     openPanelTab('Placeholders');
 
-    fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
-    await screen.findByRole('search', { name: 'Find and replace in world' });
-    fireEvent.change(screen.getByLabelText('Find'), { target: { value: 'Marsh sayings' } });
+    fireEvent.change(searchWorldField(), { target: { value: 'Marsh sayings' } });
 
     await waitFor(() => expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true'));
     await waitFor(() => expect(document.querySelector('.editor-find-target')).not.toBeNull());

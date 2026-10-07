@@ -63,9 +63,9 @@ describe('World Editor Take Me There landing', () => {
     expect(document.activeElement).toBe(screen.getByPlaceholderText('Filter Stats'));
   });
 
-  it('focuses the Find button when the request names it', async () => {
+  it('focuses Search World when the request names Find', async () => {
     renderWorldEditorBench(WORLD, 'advanced', requestFor('worldEditor', 'find-button'));
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Find and replace' })));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search World' })));
   });
 
   it('focuses the mode select when the request names the mode control', async () => {

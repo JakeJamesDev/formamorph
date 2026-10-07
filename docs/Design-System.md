@@ -288,11 +288,11 @@ The live Community cards reference uses the production card and shell with neutr
 
 ### Keyboard and focus behavior
 
-The production editor opens Find with Ctrl+F and Find and Replace with Ctrl+H. The search input receives focus when the bar opens. Enter moves to the next match, Shift+Enter moves to the previous match, and Escape closes the bar. Expanding Replace and selecting navigation actions leave focus on the action that ran. A host must return focus to a stable opener when the bar closes; the live reference demonstrates that behavior.
+On mobile, the production editor opens Find with Ctrl+F and Find and Replace with Ctrl+H. On desktop, the World Editor's app bar holds the docked **Search World** field instead (see Surface App Bar): both shortcuts focus it, and Escape clears it. The search input receives focus when the floating bar opens. Enter moves to the next match, Shift+Enter moves to the previous match, and Escape closes the bar. Expanding Replace and selecting navigation actions leave focus on the action that ran. A host must return focus to a stable opener when the bar closes; the live reference demonstrates that behavior.
 
 ### Responsive behavior
 
-At desktop widths, the bar shows the counter and current-field breadcrumb in the floating surface. At mobile widths, it uses the same controls and grouping, moves the counter beneath the main row, hides the breadcrumb, and stays inside the editor width. The editor context stacks its section list above the local fields without horizontal page overflow. Long queries and document values remain constrained by their inputs.
+At desktop widths, the floating bar shows the counter and current-field breadcrumb; the World Editor uses it only on mobile. At mobile widths, it uses the same controls and grouping, moves the counter beneath the main row, hides the breadcrumb, and stays inside the editor width. The editor context stacks its section list above the local fields without horizontal page overflow. Long queries and document values remain constrained by their inputs.
 
 ### State reference
 
@@ -922,8 +922,9 @@ The live reference draws the World Editor's registry as the rail beside sample p
 **Rule:**
 
 - The bar spans the window above the surface's panels. Anything that belongs to the bar, such as the Authoring Tour bar, sits under it.
-- Left to right: back, the title, then the surface's subject; the tools; the mode; the surface actions; the primary action last.
-- The tools sit on the window's center line. The two side columns share the leftover width equally, so the center group stays centered whatever the sides hold.
+- Left to right: back, the title, then the surface's subject; the search field; the mode; the surface actions; the primary action last.
+- The search field sits on the window's center line when space allows, and never overlaps the side columns. The bar splits into three equal columns, and the field is at most 26rem wide.
+- The end column always fits its controls. When it needs more than a third of the bar, the field narrows to a floor of 10rem and moves off center.
 - A plain line splits the mode from the actions after it.
 - The bar shows no save-state text. The primary action's enabled state is the only save signal.
 - The subject follows the title after a 12px muted chevron, in the body role, muted. A blank subject shows the title alone, with no chevron. A long subject truncates with "…" before the center group, and a cut-off one shows its full text in the shared tooltip.
@@ -933,7 +934,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 
 ### Composition
 
-- The World Editor reads: back, **World Editor**, a chevron, the world's name; Find and the Test Bench; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; Save.
+- The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; the Test Bench; Save.
 - The title is the surface's name. The world is the surface's subject, so its name follows the title. No tab's open item ever does.
 - Optimize Images shows its progress in its own menu row while it runs.
 - Tour anchors, tutorial notes and Take Me There targets ride the controls they always named.
@@ -942,11 +943,12 @@ The live reference draws the World Editor's registry as the rail beside sample p
 
 | Need | Component |
 | --- | --- |
-| The row and its three columns | `SurfaceAppBar` in [`SurfaceAppBar.tsx`](../src/components/SurfaceAppBar.tsx) |
+| The row and its three grid columns | `SurfaceAppBar` in [`SurfaceAppBar.tsx`](../src/components/SurfaceAppBar.tsx) |
 | The line between groups | `Separator` with `orientation="vertical"` in [`separator.tsx`](../src/components/ui/separator.tsx) |
 | Back | `BackButton` in [`BackButton.tsx`](../src/components/BackButton.tsx) |
 | The mode | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx) |
 | The cut-off tooltip on the subject | `TruncatedText` in [`TruncatedText.tsx`](../src/components/TruncatedText.tsx) |
+| The search field | `EditorFindBar` with `layout="docked"` in [`EditorFindBar.tsx`](../src/components/editor/EditorFindBar.tsx) |
 | The World Editor's bar | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
 | Isolated reference | [`SurfaceAppBarReference.tsx`](../src/components/design-system/SurfaceAppBarReference.tsx) |
 
@@ -961,6 +963,8 @@ The bar is desktop-only. On mobile the surface keeps its card header, and its fo
 | Named world | A chevron and the trimmed name in the body role, muted. |
 | Blank name | The title alone, with no chevron. |
 | Long name | The name truncates with "…" before the center group. Hover shows the full name. |
+| Narrow window | When the end column needs more than a third of the bar, the field narrows and moves off center. It never overlaps the controls beside it. |
+| Searching | The field shows the match count, and the arrows step through the matches. Escape clears it. |
 | Unsaved changes | Save is enabled. No text says so. |
 | Saved | Save is disabled. No text says so. |
 | Simple | Export World as one icon button. |
