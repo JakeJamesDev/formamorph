@@ -18,7 +18,7 @@ The default prompt introduces entities as "Characters and things that **may** ap
 <!-- route: worldEditor.entities#list-toolbar -->
 
 1. Open the **Entities** tab.
-2. Type the entity's name in the **Search or add new entities** box.
+2. Type the entity's name in the **Filter Entities** box.
 3. Select the **+** button (**Add to Entities**). In Advanced mode, the button opens a menu: select **Add Entity**.
 4. The new entity opens in the panel. On the **Profile** tab, pick one or more places in **Locations**.
 5. On the **Descriptions** tab, write the **AI-Facing Description**.

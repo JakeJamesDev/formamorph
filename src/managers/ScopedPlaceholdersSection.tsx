@@ -49,6 +49,7 @@ const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlace
     fills,
     addLabel: `Add Placeholder to ${ownerName}`,
     onSelect,
+    placeholder: 'Filter Placeholders',
   });
   if (!lists) return null;
   return (

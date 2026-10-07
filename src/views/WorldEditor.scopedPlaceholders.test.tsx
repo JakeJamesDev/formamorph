@@ -89,7 +89,7 @@ const openBookPlaceholders = (name: string) => {
 const panel = (strip: string) =>
   screen.getByRole('tablist', { name: strip }).parentElement!.closest('[dir][data-orientation]') as HTMLElement;
 
-const searchBox = (strip: string) => within(panel(strip)).getByPlaceholderText('Search or add new placeholders');
+const searchBox = (strip: string) => within(panel(strip)).getByPlaceholderText('Filter Placeholders');
 const search = (strip: string, term: string) => fireEvent.change(searchBox(strip), { target: { value: term } });
 /** The flat search list's rows, by the label each one shows. */
 const searchRows = (strip: string) => within(panel(strip)).queryAllByRole('button', { name: /^Select / })
@@ -100,7 +100,7 @@ const treeRow = (strip: string, name: string) => within(panel(strip)).getByText(
 const backArrow = () => screen.queryByRole('button', { name: 'Back to Placeholders' });
 /** Whether an open pane's field holds `text`, apart from a search box that may hold it too. */
 const paneShows = (text: string) => screen.queryAllByDisplayValue(text)
-  .some((el) => el.getAttribute('placeholder') !== 'Search or add new placeholders');
+  .some((el) => el.getAttribute('placeholder') !== 'Filter Placeholders');
 
 const ENTITY = 'Entity Fields';
 const BOOK = 'Dictionary Fields';

@@ -164,7 +164,7 @@ The player-facing readonly twin of the Locations Canvas, shown during play — s
 _Avoid_: canvas (authoring term), world map
 
 **List Editor**:
-The one editor shell every authoring list runs on: a search box with the **+** control, the tree (or a flat list of matches while a search is typed), and the selected item's detail. Each list plugs in what it shows and how it adds. A panel or modal shows the detail beside the list or pushed over it.
+The one editor shell every authoring list runs on: a filter box with the **+** control (a search box in the Entity Editor and Dictionary Editor modals), the tree (or a flat list of matches while a search is typed), and the selected item's detail. Each list plugs in what it shows and how it adds. A panel or modal shows the detail beside the list or pushed over it.
 _Avoid_: list-detail (that is only the layout), master-detail, list manager
 
 **Report**:

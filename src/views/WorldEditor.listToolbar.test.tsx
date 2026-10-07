@@ -40,7 +40,7 @@ const WORLD: World = benchEditorWorld({
 } as Partial<World>);
 
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
-const searchBox = (tab: string) => screen.getByPlaceholderText(`Search or add new ${tab}`) as HTMLInputElement;
+const searchBox = (tab: string) => screen.getByPlaceholderText(`Filter ${tab}`) as HTMLInputElement;
 const type = (box: HTMLInputElement, value: string) => fireEvent.change(box, { target: { value } });
 const addButton = (tab: string) => screen.getByRole('button', { name: `Add to ${tab}` });
 const menuButton = (name: string) => screen.getByRole('button', { name });
@@ -52,7 +52,7 @@ describe('the search text names the next add', () => {
   it('names a trait from the + button and clears the box', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     openTab(/Traits/);
-    const box = searchBox('traits');
+    const box = searchBox('Traits');
     type(box, '  Ember  ');
     fireEvent.click(addButton('Traits'));
     expect(ctx().traits.map((t) => t.name)).toContain('Ember');
@@ -62,7 +62,7 @@ describe('the search text names the next add', () => {
   it('hands the trimmed text to a + menu row and clears the box', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
-    const box = searchBox('traits');
+    const box = searchBox('Traits');
     type(box, ' Rites ');
     fireEvent.click(addButton('Traits'));
     fireEvent.click(menuButton('Add Group'));
@@ -74,7 +74,7 @@ describe('the search text names the next add', () => {
   it('names an owned trait picked through the drill-in', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
-    const box = searchBox('traits');
+    const box = searchBox('Traits');
     type(box, 'Keen');
     fireEvent.click(addButton('Traits'));
     fireEvent.click(menuButton('Add Trait to Entity'));
@@ -86,7 +86,7 @@ describe('the search text names the next add', () => {
   it('Add Blueprints Group ignores the text and still clears the box', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
-    const box = searchBox('traits');
+    const box = searchBox('Traits');
     type(box, 'Not a name');
     fireEvent.click(addButton('Traits'));
     fireEvent.click(menuButton('Add Blueprints Group'));
@@ -97,7 +97,7 @@ describe('the search text names the next add', () => {
   it('names an entity from the + button in Basic', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     openTab(/Entities/);
-    type(searchBox('entities'), 'Mira');
+    type(searchBox('Entities'), 'Mira');
     fireEvent.click(addButton('Entities'));
     expect(ctx().entities.map((e) => e.name)).toContain('Mira');
   });
@@ -108,7 +108,7 @@ describe('boxes that only name', () => {
   it('names a new dictionary from the search text', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Dictionary/);
-    const box = searchBox('dictionaries');
+    const box = searchBox('Dictionaries');
     type(box, 'Bestiary');
     expect(screen.queryByText('Fen Lore')).toBeNull();
     fireEvent.click(addButton('Dictionary'));
@@ -119,7 +119,7 @@ describe('boxes that only name', () => {
   it('names a new placeholder and leaves the list unfiltered', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Placeholders/);
-    const box = searchBox('placeholders');
+    const box = searchBox('Placeholders');
     type(box, 'Eyes');
     expect(screen.getAllByText('Hue').length).toBeGreaterThan(0);
     fireEvent.click(addButton('Placeholders'));
@@ -133,7 +133,7 @@ describe('search results', () => {
   it('lists the rows whose label matches and says when none do', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Entities/);
-    const box = searchBox('entities');
+    const box = searchBox('Entities');
     type(box, 'wick');
     expect(screen.getByText('Odd Wick')).toBeInTheDocument();
     expect(screen.queryByText(/Ash the/)).toBeNull();
@@ -144,7 +144,7 @@ describe('search results', () => {
   it('matches the placeholder behind a chip by its name and by its value', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Entities/);
-    const box = searchBox('entities');
+    const box = searchBox('Entities');
     type(box, 'hue');
     expect(screen.getByText(/Ash the/)).toBeInTheDocument();
     expect(screen.queryByText('Odd Wick')).toBeNull();

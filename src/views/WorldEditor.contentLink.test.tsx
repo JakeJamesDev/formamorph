@@ -134,7 +134,7 @@ describe('World Editor shows what a copy follows', () => {
   it('keeps the marker on a searched entity row', () => {
     renderWorldEditorBench(LINKED_WORLD, 'advanced');
     openTab(/Entities/);
-    fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: 'Wren' } });
+    fireEvent.change(screen.getByPlaceholderText('Filter Entities'), { target: { value: 'Wren' } });
     expect(screen.getAllByLabelText('Linked')).toHaveLength(1);
   });
 

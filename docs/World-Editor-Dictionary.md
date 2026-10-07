@@ -18,7 +18,7 @@ A dictionary entry uses no context until a keyword matches. Mention the Gloamwat
 <!-- route: worldEditor.dictionary#list-toolbar -->
 
 1. Open the **Dictionary** tab.
-2. If the world has no book yet, type a name in the **Search or add new dictionaries** box and select the **+** button (**Add to Dictionary**).
+2. If the world has no book yet, type a name in the **Filter Dictionaries** box and select the **+** button (**Add to Dictionary**).
 3. On the book's row, select **Add entry**. The new entry opens in the panel.
 4. In **Trigger Keywords**, type a keyword and press Enter. Repeat for each keyword.
 5. Write the text the AI gets in **Value**.

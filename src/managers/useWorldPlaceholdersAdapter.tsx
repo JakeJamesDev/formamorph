@@ -76,7 +76,7 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
         </>
       ),
     } : { label: 'Add to Placeholders', onAdd: handleAddPlaceholder },
-    placeholder: 'Search or add new placeholders',
+    placeholder: 'Filter Placeholders',
     // What the detail router resolves: a drawn row or folder, an owner, or a bare placeholder id.
     holds: (id) => {
       if (nodeIds.has(id) || placeholders.some((p) => p.id === id)) return true;

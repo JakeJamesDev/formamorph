@@ -79,7 +79,7 @@ describe('World Editor — deleting a location', () => {
   it('does the same when deleted from the filtered list', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     await openLocations();
-    fireEvent.change(screen.getByPlaceholderText('Search or add new locations'), { target: { value: 'Veil' } });
+    fireEvent.change(screen.getByPlaceholderText('Filter Locations'), { target: { value: 'Veil' } });
 
     deleteRow('The Veilwood');
 

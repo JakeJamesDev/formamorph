@@ -57,7 +57,7 @@ const WORLD: World = benchEditorWorld({
 } as Partial<World>);
 
 const searchTraits = (term: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search or add new traits'), { target: { value: term } });
+  fireEvent.change(screen.getByPlaceholderText('Filter Traits'), { target: { value: term } });
 
 /** The flat search list's rows, by the label each one shows. */
 const searchRows = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));

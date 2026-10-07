@@ -92,7 +92,7 @@ export function useWorldDictionaryAdapter({
     // Both panels keep their tab strip above a body that scrolls itself.
     fills: () => true,
     add: { label: 'Add to Dictionary', onAdd: addBook },
-    placeholder: 'Search or add new dictionaries',
+    placeholder: 'Filter Dictionaries',
     holds: (id) => { const { book, entry } = lookup(id); return !!(book ?? entry); },
     // The tree draws its own empty hint.
     isEmpty: false,

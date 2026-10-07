@@ -77,7 +77,7 @@ const openMirror = (name: string) => {
   selectEntity(name);
   fireEvent.mouseDown(entityFieldsTab('Traits'));
 };
-const searchBox = () => screen.getByPlaceholderText('Search or add new traits');
+const searchBox = () => screen.getByPlaceholderText('Filter Traits');
 const openAddMenu = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Add to ${name}` }));
 /** The mirror's draggable rows, in order: the entity panel's own, apart from the entity tree's rows beside it. */
 const mirrorRows = () => {

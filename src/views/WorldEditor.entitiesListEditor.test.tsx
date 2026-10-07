@@ -35,7 +35,7 @@ const WORLD: World = benchEditorWorld({
 } as Partial<World>);
 
 const search = (term: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search or add new entities'), { target: { value: term } });
+  fireEvent.change(screen.getByPlaceholderText('Filter Entities'), { target: { value: term } });
 
 const row = (name: string) => screen.getByRole('button', { name: `Select ${name}` }).parentElement as HTMLElement;
 

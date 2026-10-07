@@ -124,7 +124,7 @@ export function useWorldEntitiesAdapter({
         </>
       ),
     } : { label: 'Add to Entities', onAdd: handleAddEntity },
-    placeholder: 'Search or add new entities',
+    placeholder: 'Filter Entities',
     holds: (id) => { const { group, entity } = shown(id); return !!(group ?? entity); },
     // The tree draws its own empty hint.
     isEmpty: false,

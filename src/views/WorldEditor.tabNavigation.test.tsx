@@ -87,7 +87,7 @@ describe('World Editor rail (desktop)', () => {
     // jsdom gives the resize handles zero-size boxes that claim every pointerdown, so the click is a mouseDown.
     fireEvent.mouseDown(within(editorTabs()).getByRole('tab', { name: 'Stats' }));
     expect(within(editorTabs()).getByRole('tab', { selected: true })).toHaveTextContent('Stats');
-    expect(screen.getByPlaceholderText('Search or add new stats')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Filter Stats')).toBeInTheDocument();
   });
 
   it('starts expanded and remembers a collapse on this device', () => {
@@ -158,7 +158,7 @@ describe('World Editor Sections bar (mobile)', () => {
     expect(sections()).toHaveAttribute('aria-expanded', 'false');
     expect(sections()).toHaveTextContent('Entities');
     expect(sections()).toHaveFocus();
-    expect(screen.getByPlaceholderText('Search or add new entities')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Filter Entities')).toBeInTheDocument();
   });
 
   it('fills the selected row with the primary color, with no edge bar, and hovers with the accent fill', () => {

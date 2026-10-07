@@ -18,7 +18,7 @@ A trait is a fact about the player that doesn't change. Stats change all the tim
 <!-- route: worldEditor.traits#list-toolbar -->
 
 1. Open the **Traits** tab.
-2. To name the trait as you add it, type the name in the search box.
+2. To name the trait as you add it, type the name in the **Filter Traits** box.
 3. Select **+**. In Advanced mode, select **Add Trait** in the menu. The new trait opens on its **Details** tab.
 4. Type the **Name**.
 5. Write one line in **AI-Facing Description**. Write a fact about the person, such as *"Flinches at open water"*, not a game rule.
