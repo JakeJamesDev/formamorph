@@ -124,9 +124,9 @@ Memories under the **Recent** line are still fresh enough that the story has the
   },
   // For a player mid-story wondering who a name in their scene list is.
   'game.entities': {
-    title: 'Entities in Play',
+    title: 'Entities in Game',
     wikiPage: 'Entities',
-    wikiAnchor: '-entities-in-play',
+    wikiAnchor: '-entities-in-game',
     body: `Who the story counts as being here with you right now. The list changes as the scene does. Your persona always heads the list, marked **(You)**.
 
 Most of these are entities the world's author wrote. Some you added from your library under **Library Additions** at Enter World. Some the story **invented on the spot**: ask a shopkeeper for directions and it may answer with a name nobody wrote down. Those are remembered from the moment they're named, so the story can keep them consistent and offer you things to do with them.
@@ -279,7 +279,7 @@ placeholders.Hair.Shade.pin('ash');
 entities["Old Molly"].placeholders["Eye Color"].pin('green');
 \`\`\`
 
-**Traits.** \`traits\` holds every trait in the world's own trait list by name, Blueprint items included. A trait an entity owns is not in it. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Both read the player's state only. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores **Player Can Toggle In-Game**, so it can switch a trait the player can't toggle. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
+**Traits.** \`traits\` holds every trait in the world's own trait list by name, Blueprint items included. A trait an entity owns is not in it. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Both read the player's state only. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores **Player Can Toggle In Game**, so it can switch a trait the player can't toggle. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
 
 \`\`\`js
 traits.Cursed.enabled = self.value <= 0;

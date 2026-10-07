@@ -58,7 +58,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | Term | Meaning |
 |---|---|
 | [Entity](World-Editor-Entities) | Anything in a world the narrator can name: a person, a creature, a plant or an object |
-| [Story-Invented Entity](Entities#entities-the-story-invents) | An entity the story names during play that no author wrote. It joins the scene for that playthrough. |
+| [Story-Invented Entity](Entities#entities-the-story-invents) | An entity the story names during the game that no author wrote. It joins the scene for that playthrough. |
 | [Memory](Memory) | What the story keeps from older turns. Recent turns go to the AI word for word; older ones go as short memories. |
 | [Memory Summaries](Memory#memory-settings) | The setting that condenses older turns into memories |
 | [Let Go](Memory#why-memory-exists) | A memory the story judged not worth sending. It stays in the list, struck through. |
@@ -130,7 +130,7 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [World Editor](WorldEditor) | Where you build and change a world |
 | [Simple and Advanced](WorldEditor#editor-modes) | The two modes of the World Editor and of Settings. Simple hides fields; it never removes them. |
 | [Authoring Tour](WorldEditor#the-authoring-tour) | A guided run in which you build a new world one field at a time |
-| [In Play](WorldEditor#the-authoring-tour) | The Authoring Tour's pane. It shows where a field appears in play and what each prompt reads from it. |
+| [In Game](WorldEditor#the-authoring-tour) | The Authoring Tour's pane. It shows where a field appears in the game and what each prompt reads from it. |
 | [AI-Facing, Player-Facing](World-Editor-Entities#descriptions-and-summaries) | The AI reads only the AI-Facing fields. The player reads only the Player-Facing ones. |
 | [Location](World-Editor-Locations) | A place in the story. The player is always in one location. |
 | [Sub-Location](World-Editor-Locations#nesting-is-the-ais-map-not-the-players) | A location nested inside another. Nesting decides where the story can move the player. |

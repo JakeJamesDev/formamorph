@@ -4,7 +4,7 @@ import { LocationTabBody } from './LocationTabBody';
 import type { Connection, GameLocation } from '@/types';
 
 /**
- * The Location tab's body renders from the world's locations alone. In Play shows it inside the World
+ * The Location tab's body renders from the world's locations alone. In Game shows it inside the World
  * Editor, where no game is running and no game state exists to read.
  */
 

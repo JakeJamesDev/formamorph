@@ -4,7 +4,7 @@ import { StatRow } from './StatRow';
 import type { PlayerStat } from '@/types';
 
 /**
- * The stat row renders from the stat alone. In Play shows it inside the World Editor, where no game is
+ * The stat row renders from the stat alone. In Game shows it inside the World Editor, where no game is
  * running and no game state exists to read.
  */
 

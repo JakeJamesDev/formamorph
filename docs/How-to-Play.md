@@ -218,7 +218,7 @@ No actions show while the AI writes a turn.
 
 | Tab | What it is |
 |---|---|
-| **Entities** | Who the story counts as present. See [Entities in Play](Entities). |
+| **Entities** | Who the story counts as present. See [Entities in Game](Entities). |
 | **Notes** | Your standing notes for the AI. See [Notes](#notes). |
 | **Memory** | What the story remembers. See [Story Memory](Memory#the-memory-tab). |
 | **Logs** | A record of what changed. See [Logs](#logs). |
@@ -358,7 +358,7 @@ After either button, the card doesn't show again for that world on this device. 
 ## Related
 
 - [🚪 Starting a Game](Starting-a-Game): everything before page one
-- [🎭 Entities in Play](Entities): the cast, and how a game opens
+- [🎭 Entities in Game](Entities): the cast, and how a game opens
 - [🧠 Story Memory](Memory): what the story remembers
 - [🪪 Personas](Personas): who you are in the story
 - [🔌 Connect Your Own AI](Connect-Your-Own-AI): moving past the Demo AI

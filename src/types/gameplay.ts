@@ -24,7 +24,7 @@ export type CodeBounds = { min?: number; max?: number; regen?: number };
 /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. */
 export type CascadeOffTraitIds = Record<string, string[]>;
 
-/** One entity's owned traits in play: the ids chosen, and the chosen ones switched off. */
+/** One entity's owned traits during the game: the ids chosen, and the chosen ones switched off. */
 export interface OwnedTraitState {
   chosen: string[];
   /** Absent ⇒ none. */
@@ -191,7 +191,7 @@ export interface AvatarListingContent {
 export interface GameState {
   playerStats: PlayerStat[];
   playerTraits: Trait[];
-  /** Ids of chosen traits the player has switched off during play. They stay in `playerTraits` so the
+  /** Ids of chosen traits the player has switched off during the game. They stay in `playerTraits` so the
    *  switch can go back on; everything trait-driven reads the difference. Absent ⇒ all active. */
   disabledTraitIds?: string[];
   /** What each trait's last switch actually moved, trait id → stat id → delta. The next switch of that trait

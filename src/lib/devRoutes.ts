@@ -20,7 +20,7 @@ export const DEV_PANE_MODALS = ['customCode', 'eventForm', 'podium', 'sentMessag
 export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
 
 /** Modals the router can open via `#dev?modal=…`. `settings` opens from MainMenu or GameViewer; `menu`,
- *  `worldEditor` and `community` open from MainMenu; `entity`/`export` are in-game (GameViewer).
+ *  `worldEditor` and `community` open from MainMenu; `entity`/`export` are in game (GameViewer).
  *  `worldEditor` is an in-place modal on MainMenu (not a top-level view). `intro` replays the first-run
  *  welcome overlay on MainMenu. `localModel` is intentionally absent — it lives inside
  *  Settings→LocalModelPanel, reached via `modal=settings` + its tab, not its own name. `avatar` opens
@@ -35,9 +35,9 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  in-game (GameViewer) and opens on an empty ledger before any turn has been summarized. `profile` opens
  *  the account dialog (Messages/Manage), `feedbackHub` the reader's side of bugs and suggestions, and
  *  `adminPanel` the admin tools (Users/Broadcasts). All three need a signed-in session, and `adminPanel`
- *  an admin one, so they open empty otherwise rather than failing. `location` is in-game (GameViewer) and
+ *  an admin one, so they open empty otherwise rather than failing. `location` is in game (GameViewer) and
  *  opens the Change Location dialog on whichever of its two views was used last, so pair it with `fixture=…`
- *  to have a world worth traveling in. `editText` is in-game (GameViewer) and
+ *  to have a world worth traveling in. `editText` is in game (GameViewer) and
  *  opens the narration editor on the current page's text — empty before any turn, which is enough to reach
  *  its full-screen toggle, the one editor that grows in place instead of raising a window. `changelog` opens
  *  MainMenu's What's New popout on a canned sample (`devChangelogSample.ts`) rather than the live GitHub
@@ -48,7 +48,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  (`devPublishSample.ts`) and a canned running contest, so the dialog and the contest opt-in inside it are
  *  reachable on a profile with nothing published and no event really running. `worldPrompts` opens
  *  MainMenu's read-only Custom Prompts viewer; with no world selected it renders a canned sample
- *  override, so it's reachable on an empty library. `aiContext` is in-game (GameViewer) and opens the
+ *  override, so it's reachable on an empty library. `aiContext` is in game (GameViewer) and opens the
  *  AI Context inspector — empty before any turn, so pair it with `fixture=…` for real captured turns.
  *  `ageGate` raises the community age attestation on demand, so its copy stays checkable on a profile
  *  that has already accepted it. `likers` opens Community Creations, its first listing's details, and the
@@ -81,10 +81,10 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  Importing from it does write: the character lands in the library, and a world you tick gets a copy.
  *  `replaceSource` opens the World Editor and raises the Bench's Replace From Library picker over a canned
  *  missing copy, because in the app it opens only from an Issues row whose source is gone. Replace
- *  closes it and writes nothing. `demoAI` is in-game (GameViewer) and opens the Demo AI dialog whatever the
+ *  closes it and writes nothing. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
   narration endpoint and the seen-key say, so it is reachable on a build that overrides the default endpoint.
- *  `persona` is in-game (GameViewer) and opens the right panel's Change Persona picker. On mobile that panel
- *  mounts only on the Status tab, so open that tab first. `likePrompt` is in-game (GameViewer) and shows the
+ *  `persona` is in game (GameViewer) and opens the right panel's Change Persona picker. On mobile that panel
+ *  mounts only on the Status tab, so open that tab first. `likePrompt` is in game (GameViewer) and shows the
  *  once-only like card on a canned listing, because a dev world was never downloaded from one and the card's
  *  answer comes from the server. Its Like press reaches the real route and fails there, which is the point
  *  at which a live listing is needed. `errorDetails` raises a canned ComfyUI rejection toast

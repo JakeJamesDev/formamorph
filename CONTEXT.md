@@ -172,7 +172,7 @@ The visual node-graph surface for authoring locations — containment as nested 
 _Avoid_: node graph, map view
 
 **Map**:
-The player-facing readonly twin of the Locations Canvas, shown during play — same layout and arrows, no editing. Clicking a location travels there.
+The player-facing readonly twin of the Locations Canvas, shown during the game — same layout and arrows, no editing. Clicking a location travels there.
 _Avoid_: canvas (authoring term), world map
 
 **List Editor**:
@@ -212,12 +212,12 @@ The Test Bench instrument where an author pastes prose and sees what would fire 
 _Avoid_: matcher preview, dry run
 
 **Authoring Tour**:
-A guided run through the World Editor's Simple tabs in which a new author builds a new world one field at a time, seeing each field's effect in the In Play pane.
+A guided run through the World Editor's Simple tabs in which a new author builds a new world one field at a time, seeing each field's effect in the In Game pane.
 _Avoid_: tutorial world, walkthrough, world-building tutorial
 
-**In Play**:
-The Authoring Tour's pane for one field: the player surface it appears on and the text each AI prompt reads from it, with the author's own text marked. Shows computation only, never model output.
-_Avoid_: effect preview, preview pane
+**In Game**:
+The Authoring Tour's pane for one field: the player surface it appears on and the text each AI prompt reads from it, with the author's own text marked. Shows computation only, never model output. Also the one term for "after the game has started": label form In Game, adjective in-game (hyphen only before a noun), prose "in game" or "during the game".
+_Avoid_: In Play, in-play, during play, effect preview, preview pane
 
 **Turn Pipeline**:
 The module that runs one full turn — plan, AI requests, commit computation — behind one seam; React state stays outside it.
@@ -278,7 +278,7 @@ The write side of the same list: the editing operations the placeholder widgets 
 _Avoid_: placeholder context, editor state
 
 **Acquired**:
-A trait the player has — chosen at creation or picked up in play. A trait the player switched off is still Acquired.
+A trait the player has — chosen at creation or picked up during the game. A trait the player switched off is still Acquired.
 _Avoid_: held
 
 **Link**:

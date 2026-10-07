@@ -25,7 +25,7 @@ An AI model can only hold so much text at once. A story that runs 50 turns doesn
 <!-- keywords: change, fix, rewrite, summary, correct, wrong, remember, inaccurate recap, misremembered, alter, amend, pencil, revert, modify history, search for one -->
 <!-- route: memoryManager -->
 
-1. During play, open the side panel's **Memory** tab.
+1. During the game, open the side panel's **Memory** tab.
 2. Select **Manage Memories**. The **Memories** dialog opens.
 3. Find the memory. Type in **Search memories…**, or select a filter chip.
 4. Select the pencil button, **Edit This Memory**.
@@ -77,7 +77,7 @@ To bring back one deleted memory instead, select the **Deleted** filter chip, th
 3. Open the **Output** tab.
 4. In the **Memory** section, turn off **Memory Summaries**.
 
-During play, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
+During the game, the **How to Play** help has the same **Memory Summaries** checkbox on its **Memory & Notes** tab, in every mode.
 
 ## How to Date Each Memory
 <!-- keywords: time, timestamp, day, calendar, clock, when it happened, how long ago, time passing, hours, chronology, time of day, elapsed, story date -->
@@ -93,7 +93,7 @@ During play, the **How to Play** help has the same **Memory Summaries** checkbox
 <!-- keywords: ledger, crossed out, faded lines, filters, list in sidebar, recent divider, greyed out, icons meaning -->
 <!-- route: gameViewer.memory -->
 
-Open the side panel's **Memory** tab during play to see the whole ledger. Faded, struck-through lines are the ones the story let go.
+Open the side panel's **Memory** tab during the game to see the whole ledger. Faded, struck-through lines are the ones the story let go.
 
 | Control | What It Does |
 |---|---|

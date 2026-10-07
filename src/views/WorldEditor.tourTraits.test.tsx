@@ -10,7 +10,7 @@ import type { Stat, Trait, World } from '@/types';
 
 /**
  * The Authoring Tour's Traits steps, driven through the real editor: the add step and its tour trait, the
- * three field steps, and In Play's setup screen, traits block and settled stat row.
+ * three field steps, and In Game's setup screen, traits block and settled stat row.
  */
 
 vi.mock('@/lib/authoringTour/tourImages', () => ({
@@ -63,7 +63,7 @@ const addButton = () => screen.getByRole('button', { name: 'Add to Traits' });
 /** In Simple mode, the Traits tab's + makes the trait in one click. */
 const clickAddTrait = () => fireEvent.click(addButton());
 
-const inPlay = () => screen.getByRole('region', { name: 'In Play' });
+const inPlay = () => screen.getByRole('region', { name: 'In Game' });
 const playerSees = () => within(inPlay()).queryByRole('region', { name: 'Player Sees' });
 const reader = (prompt: string) => within(inPlay()).queryByRole('region', { name: `${prompt} Reads` });
 const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((m) => m.textContent);
@@ -211,7 +211,7 @@ describe('Authoring Tour — Traits steps', () => {
   });
 });
 
-describe('In Play — Traits', () => {
+describe('In Game — Traits', () => {
   it('Add: shows nothing until there is a trait', async () => {
     await resumeAt('add-trait');
     expect(playerSees()).toBeNull();

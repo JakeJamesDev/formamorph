@@ -138,11 +138,11 @@ export function playthroughPlaceholderSet({ runtimeDictionaries, ...set }: Omit<
 /** Each result field that lists dropped writes, and how the turn's warning describes it. */
 const RESULT_WARNINGS = {
   unknownPlaceholders: 'wrote placeholders the world does not have',
-  unknownOwnerPlaceholders: 'wrote placeholders of owners not in play',
+  unknownOwnerPlaceholders: 'wrote placeholders of owners not in the game',
   unknownTraits: 'switched traits the world does not have',
   acquiredWrites: 'wrote acquired on',
   readOnlyWrites: 'wrote read-only fields',
-  unknownEntities: 'switched traits of entities not in play',
+  unknownEntities: 'switched traits of entities not in the game',
 } as const satisfies Partial<Record<keyof StatCodeResult, string>>;
 
 /** Each entity row field that lists dropped writes, and how the warning describes it for `whose` traits. */

@@ -11,7 +11,7 @@ import type { Stat, World } from '@/types';
 
 /**
  * The Authoring Tour's Stats steps, driven through the real editor: the add step and its tour stat, the two
- * field steps, and In Play's two readers of one stat.
+ * field steps, and In Game's two readers of one stat.
  */
 
 vi.mock('@/lib/authoringTour/tourImages', () => ({
@@ -60,7 +60,7 @@ const stepNote = () => screen.getAllByRole('dialog').find((d) => within(d).query
 const noteButton = (name: string) => within(stepNote()).queryByRole('button', { name });
 const addButton = () => screen.getByRole('button', { name: 'Add to Stats' });
 
-const inPlay = () => screen.getByRole('region', { name: 'In Play' });
+const inPlay = () => screen.getByRole('region', { name: 'In Game' });
 const playerSees = () => within(inPlay()).queryByRole('region', { name: 'Player Sees' });
 const reader = (prompt: string) => within(inPlay()).queryByRole('region', { name: `${prompt} Reads` });
 const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((m) => m.textContent);
@@ -224,7 +224,7 @@ describe('Authoring Tour — Stats steps', () => {
   });
 });
 
-describe('In Play — Stats', () => {
+describe('In Game — Stats', () => {
   it('Add: shows nothing until there is a stat', async () => {
     await resumeAt('add-stat');
     expect(playerSees()).toBeNull();

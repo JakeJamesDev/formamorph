@@ -16,7 +16,7 @@ const ENTITY_SHAPE = '{ id, name, aliases, type, pronouns, description, summary,
 
 /** The members of `world`. */
 export const WORLD_MEMBERS: readonly SurfaceEntry[] = [
-  { name: 'entities', detail: `${ENTITY_SHAPE}[]`, info: 'Every entity. In play, this includes the characters the playthrough discovered. Each one’s placeholders maps its own placeholder names to their values.' },
+  { name: 'entities', detail: `${ENTITY_SHAPE}[]`, info: 'Every entity. During the game, this includes the characters the playthrough discovered. Each one’s placeholders maps its own placeholder names to their values.' },
   { name: 'locations', detail: '{ id, name, description, summary }[]', info: 'Every location.' },
   { name: 'dictionary', detail: '{ id, name, keys, value, placeholders }[]', info: 'Every enabled dictionary entry. Each one’s placeholders maps its book’s placeholder names to their values.' },
 ];

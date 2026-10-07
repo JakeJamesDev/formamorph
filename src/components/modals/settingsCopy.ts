@@ -262,7 +262,7 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
     description: 'Writes a description for each character the story invents',
     info: `Adds a written description to each character the story invents, so you can open it like any authored character. Those characters already appear in the **Characters** panel on their own.
 
-Runs one extra request the first time a new character is named. Remove any you don't want from the **Characters** panel during play.`,
+Runs one extra request the first time a new character is named. Remove any you don't want from the **Characters** panel during the game.`,
   },
   characterDiaries: {
     label: 'Character Diaries',

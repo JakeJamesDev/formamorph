@@ -260,7 +260,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
                 </SelectContent>
               </Select>
               <p className="min-w-0 truncate text-meta text-muted-foreground">
-                one of {data.startPool} possible starts, picked at random in play
+                one of {data.startPool} possible starts, picked at random when the game starts
               </p>
             </div>
           ) : (

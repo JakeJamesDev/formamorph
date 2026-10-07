@@ -99,19 +99,19 @@ describe('LinkedTraitManager', () => {
     expect(seen.entities[0].traitLinks![0].overrides).toEqual({ paladin: { playerToggle: { value: true, blueprint: false } } });
     expect(seen.entities[1]).toBe(mira);
     expect(updateTrait).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Reset Player Can Toggle In-Game' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset Player Can Toggle In Game' })).toBeInTheDocument();
   });
 
   it('resets one field to the blueprint and keeps the other overrides', () => {
     const seen = renderLink([ashLinks({
       paladin: { isDefault: { value: false, blueprint: true }, playerToggle: { value: true, blueprint: false } },
     })]);
-    fireEvent.click(screen.getByRole('button', { name: 'Reset Player Can Toggle In-Game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Player Can Toggle In Game' }));
 
     expect(seen.entities[0].traitLinks![0].overrides).toEqual({ paladin: { isDefault: { value: false, blueprint: true } } });
     expect(screen.getByRole('checkbox', { name: /Player Can Toggle/ })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: /Enabled by Default/ })).not.toBeChecked();
-    expect(screen.queryByRole('button', { name: 'Reset Player Can Toggle In-Game' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reset Player Can Toggle In Game' })).toBeNull();
   });
 
   it('marks an override "Blueprint changed" only when the blueprint moved since the override was made', () => {

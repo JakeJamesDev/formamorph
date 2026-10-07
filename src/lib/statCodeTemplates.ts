@@ -325,7 +325,7 @@ return base + (active ? {{bonus:number=10}} : 0);`,
     id: 'builtin-entity-trait-penalty',
     timing: 'after',
     name: 'Penalty From Entity Trait',
-    description: 'Follow another stat, with a penalty while one entity has a trait on. An entity that isn’t in play adds no penalty.',
+    description: 'Follow another stat, with a penalty while one entity has a trait on. An entity that isn’t in the game adds no penalty.',
     code: `const base = stats[{{base:stat}}].value;
 const active = entities[{{entity:entity}}].traits[{{trait:trait(entity)}}].enabled;
 return base - (active ? {{penalty:number=10}} : 0);`,

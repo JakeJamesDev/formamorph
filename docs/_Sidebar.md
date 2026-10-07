@@ -12,7 +12,7 @@
 - [❓ Formaquestion](Formaquestion)
 - [💾 Saves and Backup](Saves-and-Backup)
 - [🧠 Story Memory](Memory)
-- [🎭 Entities in Play](Entities)
+- [🎭 Entities in Game](Entities)
 - [🪪 Personas](Personas)
 - [🌐 Community Creations](Community-Creations)
 - [⚙️ Settings](Settings)

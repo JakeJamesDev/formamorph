@@ -292,14 +292,14 @@ const TraitManager = ({
               <Hint as="span">{link?.defaultHint ?? 'Selected when a new game starts'}</Hint>
             </label>
           </LabelRow>
-          <LabelRow reset={resetControl('playerToggle', 'Player Can Toggle In-Game')}>
+          <LabelRow reset={resetControl('playerToggle', 'Player Can Toggle In Game')}>
             <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox
                 checked={!!editingTrait.playerToggle}
                 onCheckedChange={(c) => handleChange('playerToggle', c === true)}
               />
-              <span>Player Can Toggle In-Game</span>
-              <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
+              <span>Player Can Toggle In Game</span>
+              <Hint as="span">The player can turn it on or off from the Traits tab during the game</Hint>
             </label>
           </LabelRow>
         </>

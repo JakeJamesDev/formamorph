@@ -43,9 +43,9 @@ export const SANDBOX_GLOBALS: readonly SurfaceEntry[] = [
   { name: 'clock', detail: shapeOf(CLOCK_MEMBERS), info: 'The story clock. Read-only.' },
   { name: 'placeholders', detail: 'object', info: 'The world’s own placeholders by name. An entity’s or a dictionary’s are on its entry. Use placeholders["Two Words"] for a name with a space.' },
   { name: 'traits', detail: 'object', info: 'Every trait in the world by name. Use traits["Two Words"] for a name with a space.' },
-  { name: 'entities', detail: 'object', info: 'Every entity in play by name, with its own traits and placeholders. Use entities["Two Words"] for a name with a space.' },
+  { name: 'entities', detail: 'object', info: 'Every entity in the game by name, with its own traits and placeholders. Use entities["Two Words"] for a name with a space.' },
   { name: 'persona', detail: 'object', info: 'The entity the player plays, with its own traits and placeholders. Empty when the player plays no entity.' },
-  { name: 'dictionaries', detail: 'object', info: 'Every dictionary in play by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
+  { name: 'dictionaries', detail: 'object', info: 'Every dictionary in the game by name, with its own placeholders. A dictionary the player turned off isn’t listed. Use dictionaries["Two Words"] for a name with a space.' },
   { name: 'console', detail: 'object', info: 'Only console.log — output shows up in the browser console.' },
 ];
 
@@ -131,7 +131,7 @@ export const TRAIT_ENTRY_FIELDS: readonly SurfaceEntry[] = [
   { name: 'mode', detail: 'string', info: '"optional", "alwaysOn" or "hidden". Read-only.' },
   { name: 'available', detail: 'boolean', info: 'True when the trait’s requirements hold for its owner now. Read-only.' },
   { name: 'group', detail: 'string', info: 'The code name of the trait’s group. Empty when it has none. Read-only.' },
-  { name: 'playerToggle', detail: 'boolean', info: 'True when the player can switch the trait during play. Read-only.' },
+  { name: 'playerToggle', detail: 'boolean', info: 'True when the player can switch the trait during the game. Read-only.' },
 ];
 
 /** The one field on a trait entry that a write reaches. */

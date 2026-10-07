@@ -115,14 +115,14 @@ In Advanced mode, the replace row can put a placeholder chip in place of text. S
 To undo a replace, exit without saving. That also drops your other changes since the last save.
 
 ## The Authoring Tour
-<!-- keywords: wizard, guided setup, use example button, next button stuck, end early, first world helper, in play pane, resume lesson -->
+<!-- keywords: wizard, guided setup, use example button, next button stuck, end early, first world helper, in game pane, resume lesson -->
 <!-- route: worldEditorTour.world-name -->
 
 The Authoring Tour builds a new world with you, one field at a time. It runs in Simple mode.
 
 The tour first shows as an offer: **Take the Authoring Tour?** Select **Start Tour** or **No Thanks**.
 
-Each step points at one field. Fill it, or select **Use Example**, then select **Next**. **Next** waits until the field has a value. On desktop, the **In Play** pane shows where the field appears in play and what each prompt reads from it.
+Each step points at one field. Fill it, or select **Use Example**, then select **Next**. **Next** waits until the field has a value. On desktop, the **In Game** pane shows where the field appears in the game and what each prompt reads from it.
 
 The tour goes through the tabs in order: **Overview**, **Locations**, **Entities**, **Stats**, **Traits** and **Dictionary**. Its last steps show the mode control and the Test Bench. Then select **Finish**, or **Play** to enter your world.
 

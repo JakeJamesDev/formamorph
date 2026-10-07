@@ -1,5 +1,5 @@
 /**
- * In Play: the tour item a step builds, as the player sees it and as each prompt reads it, with the step's
+ * In Game: the tour item a step builds, as the player sees it and as each prompt reads it, with the step's
  * own field marked where it lands. Reader text comes from the Test Bench's AI Context builders, so it is the
  * block a real turn sends.
  */
@@ -23,7 +23,7 @@ import {
 } from './steps';
 import { readTestLine, type TestLineScan } from './testLine';
 
-/** The AI requests In Play can name, as the pane titles them. */
+/** The AI requests In Game can name, as the pane titles them. */
 export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt' | 'Stat Updates Prompt';
 
 /** Each request's template in the active prompt preset. A reader takes its chip, and its Header, from here. */
@@ -115,7 +115,7 @@ export interface ReaderSpec {
   authorText?: (world: TourWorld, items: TourItems) => string;
 }
 
-/** A step's In Play slice, as the registry declares it. */
+/** A step's In Game slice, as the registry declares it. */
 export interface InPlaySpec {
   sees: SurfaceKind;
   /** Players never see the step's field. The surface still shows the item they do see. */
@@ -145,7 +145,7 @@ export function findMarks(text: string, needle: string): MarkSpan[] {
   return marks;
 }
 
-/** The step reads through In Play's test line, so the pane shows one. */
+/** The step reads through In Game's test line, so the pane shows one. */
 export const usesTestLine = (spec: InPlaySpec): boolean => spec.readers.some((r) => r.reads === 'testLine');
 
 /** The library card's record for the open world, read the way the stored library reads it. */
@@ -278,7 +278,7 @@ export function headedBlock(chip: string, body: string): string {
   return `${frame.pre}${body}${frame.post}`.replace(/^\n+/, '').replace(/\n+$/, '');
 }
 
-/** One step's In Play slice: the surface the player sees, and each prompt's read with the step's field marked. */
+/** One step's In Game slice: the surface the player sees, and each prompt's read with the step's field marked. */
 export function computeInPlay(
   spec: InPlaySpec,
   world: TourWorld,

@@ -47,10 +47,10 @@ These entries preserve established concepts. Noun admission is assessed under ru
 | Term | Meaning and boundary | Evidence / classification |
 | --- | --- | --- |
 | Formamorph | Product name; keep this spelling. | Named application; rule 1.5 category 19 |
-| world | Authored game definition, distinct from progress during play. | World types; category 19 application data concept |
+| world | Authored game definition, distinct from progress during the game. | World types; category 19 application data concept |
 | save | Stored gameplay progress; noun use is separate from the verb. | Gameplay types and settings copy; category 19 data concept |
 | Autosave | Named automatic-save feature/slot. Preserve `Auto` when quoting the displayed tag. | `autosave` in settings copy; category 19 |
-| narration | Story text presented during play. | Settings copy; category 19 application output |
+| narration | Story text presented during the game. | Settings copy; category 19 application output |
 | memory summary / Memory Summaries | Condensed earlier turns used as context; the plural title names the setting. Do not replace with internal `memoryDigests`. | `memorySummaries` in settings copy; category 19 |
 | entity, location, stat, trait | Distinct authored domain concepts, with their definitions in the world types. An entity can be a person, a creature, an object, or a fixture; never write "character" for it. | Category 19 application entities; not interchangeable synonyms |
 | dictionary, entry | A dictionary is a set of entries. An entry holds Trigger Keywords and a Value. | World types; category 19 |

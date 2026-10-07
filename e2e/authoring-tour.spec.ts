@@ -21,7 +21,7 @@ async function mockModel(page: Page) {
 
 const editor = (page: Page) => page.getByRole('dialog', { name: 'World Editor' });
 const stepNote = (page: Page, step: TourStep) => page.getByRole('dialog', { name: step.title, exact: true });
-const inPlay = (page: Page) => page.getByRole('region', { name: 'In Play' });
+const inPlay = (page: Page) => page.getByRole('region', { name: 'In Game' });
 
 const nextFrame = (page: Page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(done)));
 
@@ -32,8 +32,8 @@ const fieldValues = (page: Page) => editor(page).locator('input, textarea, [cont
   ).trim()).filter(Boolean));
 
 /**
- * True when In Play marks, in full, a value a Use Example wrote. Any step's value, not only this one's: the
- * Locations step marks the entity's name. Reads a few frames, in case In Play commits after the field.
+ * True when In Game marks, in full, a value a Use Example wrote. Any step's value, not only this one's: the
+ * Locations step marks the entity's name. Reads a few frames, in case In Game commits after the field.
  */
 async function marksExampleText(page: Page, written: ReadonlySet<string>): Promise<boolean> {
   for (let frame = 0; frame < 5; frame += 1) {
@@ -45,7 +45,7 @@ async function marksExampleText(page: Page, written: ReadonlySet<string>): Promi
 }
 
 test('a new author walks the whole tour by its examples and plays the world', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === 'mobile', 'In Play sits behind Show Effect on mobile; this walk reads it beside the editor');
+  test.skip(testInfo.project.name === 'mobile', 'In Game sits behind Show Effect on mobile; this walk reads it beside the editor');
   // A first-time author: the offer and the save note unseen, and the editor in its first-run Simple mode.
   const unseen = new Set([AUTHORING_TOUR_OFFER_ID, AUTHORING_TOUR_SAVE_NOTE_ID]);
   await mockModel(page);

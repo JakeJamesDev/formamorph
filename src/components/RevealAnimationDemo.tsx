@@ -47,7 +47,7 @@ const COPY = {
     title: 'Narration reveal',
     srDescription: 'Preview the narration reveal and tune its animation.',
     noEffects: 'No effects — narration types in with the smooth character crawl (paced by the model’s speed, so it isn’t previewable here).',
-    speed: 'In game the pace follows the model’s tokens/sec, but never goes faster than these floors.',
+    speed: 'In game, the pace follows the model’s tokens/sec, but never goes faster than these floors.',
     resetDescription: 'Reset all narration reveal settings to their defaults?',
   },
   answer: {

@@ -383,7 +383,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
           <div className="flex items-center gap-3 rounded-md border border-border p-3">
             <CheckCircle2 className="h-5 w-5 text-success" />
             <div className="text-helper text-muted-foreground">
-              Everything runs locally — no account, no internet needed during play.
+              Everything runs locally — no account, no internet needed during the game.
             </div>
           </div>
         ) : blocker === 'unknownModel' ? (
