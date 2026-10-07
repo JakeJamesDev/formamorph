@@ -1,6 +1,7 @@
 # World Editor Header Search
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-07. Tickets 01-06 landed; last landing 2d6a1474, review fixes 4a22da38. Closed without gates.
 Spec session: world-editor-header-search — spec
 
 Prototype: branch `prototype/editor-header-search`, final commit `0251aaf2`. Launch entry `proto-editor-header-search` (port 5251), `?variant=B`. Variant B (Grow In Place) won over A (Drop Panel) and C (Header Strip). Where this spec and the prototype differ, this spec wins: Escape focus, the mobile Overview footer, lazy search targets and the removed unsaved dot were ruled after the prototype.
@@ -92,6 +93,7 @@ The World Editor's header and footer spend space badly, most of all on phones.
 
 - **One find bar component, two layouts.** The existing find bar gains a docked layout for the desktop app bar. Matching, replace, placeholder replace, confirmation and notices are shared. The floating layout stays for mobile. The docked layout takes `expanded` with a change callback and a focus signal for Ctrl+F. It keeps its own query and option state across expand and collapse.
 - **Expanded state lives in the World Editor.** Ctrl+H sets it, the field's expand and collapse buttons change it, and Escape and Clear search reset it.
+- **Ctrl+H between tickets 04 and 05.** Until the expand lands, desktop Ctrl+H acts as Ctrl+F, and replace is reachable only on mobile. Main is unreleased, so no player sees that gap. No floating-bar stopgap on desktop. (Ruled 2026-10-07 for ticket 04; superseded when ticket 05 landed, where Ctrl+H expands.)
 - **Find open state is mobile only.** On desktop, Ctrl+F and Ctrl+H never set it, so a window resized from desktop to mobile does not mount the floating bar.
 - **Search targets are collected only while the docked query has text.** An empty field collects nothing and costs nothing on world edits. Mobile keeps collecting while its bar is open.
 - **Focus rules.**
@@ -101,9 +103,10 @@ The World Editor's header and footer spend space badly, most of all on phones.
   - Escape and Clear search return focus to that control when it is still connected. Otherwise focus stays in the cleared field.
   - The recorded control is dropped when Escape or Clear search runs, and when focus leaves the search (the field and the expanded bar).
   - These rules replace the floating bar's fallback to the editor root on desktop. Mobile keeps that fallback.
+- **Narrow desktop widths.** The Surface App Bar becomes a three-column grid: equal columns that never shrink the end group below its content. The search field shrinks to a floor of about 10rem, stays centered at 1024px and wider, and moves off center only when space runs out; nothing overlaps. The world name still truncates. The Design System's center-line rule changes to "on the center line when space allows, never overlapping the sides". Only the World Editor and its isolated reference use the bar; Community Creations has its own header. (User ruling 2026-10-07 for ticket 04; landed in `0665ba96` as three equal columns, field 10–26rem.)
 - **The overlay keeps its slot.** The expanded bar is positioned over the header, 36rem wide and centered on the field. The field's slot keeps its height and width.
 - **Accessible names.**
-  - The field: "Search World", the same as its placeholder.
+  - The field: "Search World", the same as its placeholder. The expanded bar's search input carries the same name, since the query carries across (landed in ticket 05).
   - The expand button: "Show options and replace", with the tooltip "Show options and replace (Ctrl+H)".
   - The option icon: "Show match options".
   - The expanded bar's collapse button: "Collapse to search".
@@ -111,7 +114,7 @@ The World Editor's header and footer spend space badly, most of all on phones.
   - The existing names stay: "Previous match", "Next match", "Match case", "Match whole word". The mobile Save icon's name is "Save".
   - The copy sweep reviews these names against the Writing Guide.
 - **List adds move into the + menu.** The Entities and Dictionary list adapters take extra + menu rows from the World Editor host, because the library picker and the file import are host state. Both adapters always return a menu, in Simple mode too.
-- **Filter wording.** The six World Editor list adapters change their box text to "Filter <plural of what the list holds>". The Entity Editor and Dictionary Editor modals keep "Search or add new …"; they have no header search.
+- **Filter wording.** The six World Editor list adapters change their box text to "Filter <plural of what the list holds>". The Entity Editor and Dictionary Editor modals keep "Search or add new …"; they have no header search. Lists nested inside World Editor panels also read "Filter …": the Traits mirror on the Entities tab reads "Filter Traits" (keeping entity-traits-mirror Q25), and the scoped Placeholders section reads "Filter Placeholders". Their shared editors take the text from the host and keep the modals' wording as the default. (Ruled 2026-10-07 for ticket 01.)
 - **Header title.** The save-state text is removed. The world name comes from the overview's name, trimmed; a blank name renders nothing. The chevron is the same icon the find bar's match location uses. A cut-off name shows its full text in the shared tooltip on hover.
 - **Mobile footer.** The world actions control is the same one desktop uses. The Overview export action leaves the mobile footer, because the world actions already hold Export World. On a wrap, the world actions and Save stay right-aligned. Save has no unsaved dot. Its enabled state is the only signal, as on desktop.
 - **Authoring Tour.** The `add-entity` step body changes to tell the author to select **Add Entity** in the + menu. The `list-add`, `save` and `test-bench` anchors move with their controls.
@@ -142,7 +145,7 @@ The World Editor's header and footer spend space badly, most of all on phones.
   - the header shows the world name and no save-state text, and a blank name shows no separator;
   - on mobile, the detail hides the + and filter row, the footer holds the world actions and Save, and Overview shows Export World once.
 - `EditorFindBar.test.tsx` keeps the floating layout's cases and gains docked cases only where the World Editor cannot reach them.
-- Prior art: `WorldEditor.appBar.test.tsx`, `WorldEditor.headerRow.test.tsx`, `WorldEditor.listToolbar.test.tsx`, `WorldEditor.findFocus.test.tsx`, `WorldEditor.inPlayMobile.test.tsx`, `WorldEditor.tourEntities.test.tsx`.
+- Prior art: `WorldEditor.appBar.test.tsx`, `WorldEditor.headerRow.test.tsx`, `WorldEditor.listToolbar.test.tsx`, `WorldEditor.findFocus.test.tsx`, `WorldEditor.inPlayMobile.test.tsx`, `WorldEditor.tourEntities.test.tsx`. The effort added `WorldEditor.findExpand.test.tsx` (the expanded bar) and `WorldEditor.mobileFooter.test.tsx` (the phone footer and detail).
 - Tests that change with the behavior:
   - The save-state cases in `WorldEditor.appBar.test.tsx` are removed, because the save-state text is removed. This removes a behavior, not an assertion on a kept behavior.
   - `WorldEditor.headerRow.test.tsx` asserts the new mobile order.
