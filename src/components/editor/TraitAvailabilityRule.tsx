@@ -68,6 +68,7 @@ export function TraitAvailabilityRule({ trait, onChange, reset }: {
           onChange={(v) => onChange({ isDefault: v === 'on' })}
           options={STARTS_OPTIONS}
           ariaLabel="Starts"
+          slots={MODE_OPTIONS.length}
           disabled={automatic}
         />
       ))}
@@ -77,6 +78,7 @@ export function TraitAvailabilityRule({ trait, onChange, reset }: {
           onChange={(v) => onChange({ playerToggle: v === 'toggleable' })}
           options={IN_GAME_OPTIONS}
           ariaLabel="In Game"
+          slots={MODE_OPTIONS.length}
           disabled={automatic}
         />
       ))}

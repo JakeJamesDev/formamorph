@@ -112,6 +112,13 @@ const choice = (groupName: string, label: string) => within(group(groupName)).ge
 const lastWrite = () => store.writes[store.writes.length - 1];
 
 describe('the availability rule', () => {
+  it('sizes the two-option rows to the three-option row, so every segment is as wide', () => {
+    renderManager('availability');
+    expect(group('Mode').style.width).toBe('');
+    expect(group('Starts').style.width).toBe(`${(2 / 3) * 100}%`);
+    expect(group('In Game').style.width).toBe(`${(2 / 3) * 100}%`);
+  });
+
   it('reads as Mode, Starts and In Game rows, each bound to its stored field', async () => {
     const user = userEvent.setup();
     renderManager('availability');

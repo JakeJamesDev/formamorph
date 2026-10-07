@@ -144,13 +144,18 @@ export function RecommendedMark() {
   );
 }
 
-/** A segmented option control that becomes a dropdown below `sm`. */
-export function OptionSwitcher<T extends string>({ value, onChange, options, ariaLabel, disabled }: {
+/**
+ * A segmented option control that becomes a dropdown below `sm`. `slots` sizes the control as if it had that
+ * many options, so a two-option row beside a three-option row keeps its segments the same width and leaves the
+ * last slot empty.
+ */
+export function OptionSwitcher<T extends string>({ value, onChange, options, ariaLabel, disabled, slots }: {
   value: T;
   onChange: (v: T) => void;
   options: readonly { value: T; label: string; recommended?: true }[];
   ariaLabel?: string;
   disabled?: boolean;
+  slots?: number;
 }) {
   const choose = (nextValue: string) => {
     const option = options.find(({ value: optionValue }) => optionValue === nextValue);
@@ -173,7 +178,10 @@ export function OptionSwitcher<T extends string>({ value, onChange, options, ari
           disabled={disabled}
           onValueChange={(nextValue) => { if (nextValue) choose(nextValue); }}
           className="grid w-full"
-          style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+          style={{
+            gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`,
+            ...(slots && slots > options.length ? { width: `${(options.length / slots) * 100}%` } : {}),
+          }}
         >
           {options.map((o) => (
             <ToggleGroupItem key={o.value} value={o.value}>
