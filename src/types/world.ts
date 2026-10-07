@@ -110,11 +110,12 @@ export type RequirementBearer =
   | { kind: 'entity'; id: string; name?: string };
 
 /** One Condition of a gate: a trait is active, any trait below a group is active, or the player plays as a
- *  world entity. `name` is the target's name when it was stored, so an unresolved one still reads. */
+ *  world entity. `name` is the target's name when it was stored, so an unresolved one still reads. `not`
+ *  flips it: the Condition holds while its target is off. */
 export type TraitRequirement =
-  | { kind: 'trait'; id: string; name?: string; bearer?: RequirementBearer }
-  | { kind: 'group'; id: string; name?: string; bearer?: RequirementBearer }
-  | { kind: 'playingAs'; id: string; name?: string };
+  | { kind: 'trait'; id: string; name?: string; bearer?: RequirementBearer; not?: true }
+  | { kind: 'group'; id: string; name?: string; bearer?: RequirementBearer; not?: true }
+  | { kind: 'playingAs'; id: string; name?: string; not?: true };
 
 /** One Requirement Row: it holds when every Condition in it holds. Never empty. */
 export interface TraitRequirementRow {

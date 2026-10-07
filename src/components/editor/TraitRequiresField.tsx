@@ -1,15 +1,17 @@
 import { useId, useMemo, useState, type ReactElement, type ReactNode } from 'react';
-import { ChevronLeft, Plus, X } from 'lucide-react';
+import { Ban, ChevronLeft, Plus, X } from 'lucide-react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Tip } from '@/components/ui/tooltip';
 import {
   BreadcrumbPicker, BreadcrumbPickerList, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
 } from '@/components/ui/breadcrumb-picker';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  WORLD_OWNER, bearerKey, bearerOf, gateOf, gateStates, ownerHolding, requirementOptions, sameRequirement, withBearer,
+  WORLD_OWNER, bearerKey, bearerOf, conditionTexts, flipped, gateOf, gateStates, ownerHolding, requirementOptions,
+  sameRequirement, withBearer,
   type ConditionState, type RequirementBearerOption, type RequirementOption,
 } from '@/lib/traitGates';
 import { soleBearerRequirement } from '@/lib/requirementBearers';
@@ -25,9 +27,9 @@ type AddTarget = number | 'new';
  * removing a row's last chip removes the row (Q6). Picking a target opens a second page for the bearer: the
  * same bearer, You, or an entity that bears it. Off-world, or when only one bearer can hold the target, it
  * is added at once. A chip opens its target, unless `opens` says the host has nowhere to open it, when it
- * reads as plain text; a chip whose target is gone reads red under its stored name. `bearerId` names the
- * bearer whose gate the chips read, for a link whose rows differ from its original's; without it, the first
- * bearer holding the trait.
+ * reads as plain text; a chip whose target is gone reads red under its stored name. Each chip flips between
+ * plain and Not; a Not chip shows a NOT mark and a dashed border. `bearerId` names the bearer whose gate the
+ * chips read, for a link whose rows differ from its original's; without it, the first bearer holding the trait.
  */
 export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true, bearerId, labelAside }: {
   trait: Trait;
@@ -43,11 +45,14 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
   const labelId = useId();
   const rows = trait.requires ?? [];
 
-  const { states, options, gateOwnerId } = useMemo(() => {
+  const { states, options, gateOwnerId, textOf } = useMemo(() => {
     const gates = gateStates(gateInput);
     const holder = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
     const gate = (bearerId !== undefined ? gateOf(gates, bearerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
-    return { states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id), gateOwnerId: bearerId ?? holder };
+    return {
+      states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id), gateOwnerId: bearerId ?? holder,
+      textOf: conditionTexts(gateInput),
+    };
   }, [gateInput, trait.id, bearerId]);
 
   // **And** never repeats a Condition in its row; a new row never repeats a one-chip row.
@@ -70,6 +75,15 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
     const all = row.all.filter((_, j) => j !== index);
     return all.length ? [{ all }] : [];
   }));
+  // A flip never repeats a Condition in its row, nor turns a one-chip row into a copy of another.
+  const canFlip = (rowIndex: number, index: number) => {
+    const row = rows[rowIndex];
+    const next = flipped(row.all[index]);
+    if (row.all.some((other) => sameRequirement(other, next))) return false;
+    return row.all.length > 1 || !rows.some((r, k) => k !== rowIndex && r.all.length === 1 && sameRequirement(r.all[0], next));
+  };
+  const flipCondition = (rowIndex: number, index: number) => onChange(rows.map((row, i) =>
+    (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? flipped(req) : req)) } : row)));
   // What a playing-as row, an off-world row and a target with one possible bearer add at once; any other
   // target asks which bearer first.
   const atOnce = (option: RequirementOption) =>
@@ -136,34 +150,51 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
     </div>
   );
 
-  const chip = (requirement: TraitRequirement, state: ConditionState | undefined, remove: () => void) => {
-    const text = state?.text ?? '';
-    const plain = labelPlaceholders(text, placeholders);
+  const chip = (requirement: TraitRequirement, state: ConditionState | undefined, edit: { remove: () => void; flip: () => void; canFlip: boolean }) => {
+    // The rule reads "not Paladin"; a Not chip shows its target, "Paladin", behind the NOT mark.
+    const ruleLabel = labelPlaceholders(state?.text ?? '', placeholders);
+    const targetText = requirement.not ? textOf(flipped(requirement)) : state?.text ?? '';
+    const targetLabel = labelPlaceholders(targetText, placeholders);
     const unresolved = !!state?.unresolved;
+    const mark = requirement.not && <><span className="text-meta font-semibold tracking-wide">NOT</span>{' '}</>;
     return (
       <span
         data-unresolved={unresolved || undefined}
+        data-not={requirement.not || undefined}
         className={cn(
           'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
+          requirement.not && 'border-dashed',
           unresolved && 'border-destructive text-destructive',
         )}
       >
         {unresolved || !opens(requirement) ? (
-          <span className="min-w-0 truncate">{plain}</span>
+          <span className="min-w-0 truncate">{mark}{targetLabel}</span>
         ) : (
           <button
             type="button"
             className="min-w-0 truncate rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             onClick={() => onOpen(requirement)}
           >
-            <PlaceholderText text={text} placeholders={placeholders} />
+            {mark}<PlaceholderText text={targetText} placeholders={placeholders} />
           </button>
         )}
+        <Tip tip={requirement.not ? 'Require it instead' : 'Require it to be off'}>
+          <button
+            type="button"
+            aria-label={requirement.not ? `Require ${targetLabel} instead` : `Require ${targetLabel} to be off`}
+            aria-pressed={!!requirement.not}
+            disabled={!edit.canFlip}
+            className="shrink-0 rounded-full p-0.5 hover:bg-muted disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            onClick={edit.flip}
+          >
+            <Ban className="h-3 w-3" aria-hidden />
+          </button>
+        </Tip>
         <button
           type="button"
-          aria-label={`Remove ${plain}`}
+          aria-label={`Remove ${ruleLabel}`}
           className="shrink-0 rounded-full p-0.5 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-          onClick={remove}
+          onClick={edit.remove}
         >
           <X className="h-3 w-3" aria-hidden />
         </button>
@@ -200,7 +231,11 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
                   {row.all.map((requirement, j) => (
                     <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearerOf(requirement))}:${j}`} className="inline-flex max-w-full items-center gap-1.5">
                       {j > 0 && <span className="text-meta text-muted-foreground">and</span>}
-                      {chip(requirement, states[i]?.conditions[j], () => removeCondition(i, j))}
+                      {chip(requirement, states[i]?.conditions[j], {
+                        remove: () => removeCondition(i, j),
+                        flip: () => flipCondition(i, j),
+                        canFlip: canFlip(i, j),
+                      })}
                     </span>
                   ))}
                   {picker(i, (

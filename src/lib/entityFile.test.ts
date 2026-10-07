@@ -414,3 +414,25 @@ describe('a character card’s owned traits', () => {
     expect(parsed).not.toHaveProperty('traitGroups');
   });
 });
+
+describe('Not Conditions on a character card', () => {
+  it('carries the Not flag on owned traits and link overrides, and drops a flag that is not true', () => {
+    const not = { kind: 'trait', id: 'w-paladin', name: 'Paladin', not: true } as const;
+    const parsed = parseEntityCardData(JSON.parse(JSON.stringify({
+      formamorphKind: 'entity', name: 'Rebel',
+      traits: [{
+        id: 'o', name: 'Oath', statChanges: [],
+        requires: [{ all: [not, { kind: 'playingAs', id: 'ash', not: true }] }, { all: [{ kind: 'group', id: 'g', not: 'yes' }] }],
+      }],
+      traitLinks: [{
+        id: 'l', originalId: 'smite', kind: 'trait', originalName: 'Smite', groupId: null,
+        overrides: { smite: { requires: { value: [{ all: [not] }], blueprint: [] } } },
+      }],
+    })));
+    expect(parsed.traits![0].requires).toEqual([
+      { all: [not, { kind: 'playingAs', id: 'ash', not: true }] },
+      { all: [{ kind: 'group', id: 'g' }] },
+    ]);
+    expect(parsed.traitLinks![0].overrides!.smite.requires).toEqual({ value: [{ all: [not] }], blueprint: [] });
+  });
+});

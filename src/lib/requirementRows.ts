@@ -11,6 +11,9 @@ export const mapConditions = (
   rows: readonly TraitRequirementRow[], map: (req: TraitRequirement) => TraitRequirement,
 ): TraitRequirementRow[] => rows.map((row) => ({ all: row.all.map(map) }));
 
+/** The Not flag to spread into a Condition: present only when `not` is exactly true. */
+export const notFlag = (not: unknown): { not?: true } => (not === true ? { not: true } : {});
+
 /** Whether a gate of `rows` holds: it has no rows, or every Condition of some row holds. */
 export const rowsHold = (rows: readonly TraitRequirementRow[] | undefined, holds: (req: TraitRequirement) => boolean): boolean =>
   !rows?.length || rows.some((row) => row.all.every(holds));

@@ -374,3 +374,27 @@ describe('comparableOwnedTraits with links', () => {
     expect(comparableOwnedTraits(changed)).not.toEqual(comparableOwnedTraits(carried));
   });
 });
+
+describe('Not Conditions on owned traits', () => {
+  const NOT: TraitRequirement[] = [
+    { kind: 'trait', id: 'w-paladin', not: true },
+    { kind: 'playingAs', id: 'ash', not: true },
+    { kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash' }, not: true },
+  ];
+
+  it('keeps the Not flag through the card form and the bind', () => {
+    const out = portableOwnedTraits(ash(NOT), origin);
+    expect(oathOf(out).map((r) => r.not)).toEqual([true, true, true]);
+    const world = { ...origin, traits: [trait('n-paladin', { name: 'Paladin' })] };
+    expect(oathOf(bindOwnedTraits({ ...ash(), ...out }, world)).map((r) => [r.id, r.not])).toEqual([
+      ['n-paladin', true], ['ash', true], ['t-tamed', true],
+    ]);
+  });
+
+  it('tells a Not Condition apart from a plain one on the same target', () => {
+    for (const req of NOT) {
+      const { not: _, ...plain } = req;
+      expect(comparableOwnedTraits(ash([req]))).not.toEqual(comparableOwnedTraits(ash([plain as TraitRequirement])));
+    }
+  });
+});

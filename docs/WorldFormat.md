@@ -263,6 +263,8 @@ Each requirement has a `kind`:
 
 - `name` is optional. It holds the target's name, so a requirement still reads when the target is gone.
 - `bearer` is optional. Absent = the trait's own bearer. `{ "kind": "you" }` checks the player. `{ "kind": "entity", "id": "<entity id>", "name": "…" }` checks that entity.
+- `not` is optional. `true` flips the requirement: it holds while its target is off. `{ "kind": "trait", "id": "paladin", "not": true }` holds while the bearer doesn't have Paladin.
+- A requirement whose target is gone never holds, with or without `not`.
 
 ### Trait Groups
 
