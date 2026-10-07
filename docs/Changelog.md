@@ -63,6 +63,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Each world element type now shows the same icon on every screen.** Traits, entities, stats, worlds, Blueprints, Personas and Avatars no longer change icon between the editor, the game panels and the library.
   - **A picked choice in Chat stays filled, and a hovered choice shows only a light tint.** Keyboard focus looks like hover with a ring.
   - **A placeholder's Placeholder Pins section opens quickly with dozens of pins.** Each pin's source list loads when you open or focus it. The lists look and work as before.
+  - **Right-click menus inside a window, like the Locations Canvas menu, now highlight the row you hover.** The arrow keys move through the rows again.
 
 ---
 

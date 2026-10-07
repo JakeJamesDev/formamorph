@@ -97,6 +97,19 @@ if (typeof Element !== 'undefined' && typeof Element.prototype.hasPointerCapture
   Element.prototype.releasePointerCapture = () => {};
 }
 
+// A browser's computed style is live; jsdom's is a snapshot. Radix Presence holds one from mount and reads the
+// exit animation from it on close, so a snapshot shows no exit and every sheet would skip its closing state.
+if (typeof window !== 'undefined') {
+  const snapshot = window.getComputedStyle.bind(window);
+  window.getComputedStyle = (element, pseudo) => new Proxy(snapshot(element, pseudo), {
+    get: (_stale, key) => {
+      const fresh = snapshot(element, pseudo);
+      const value: unknown = Reflect.get(fresh, key);
+      return typeof value === 'function' ? value.bind(fresh) : value;
+    },
+  });
+}
+
 // jsdom has no object-URL store. The upload path makes one to show the file being converted without handing
 // an <img> the multi-megabyte data URL, so without these the whole flow throws.
 if (typeof URL.createObjectURL === 'undefined') {
