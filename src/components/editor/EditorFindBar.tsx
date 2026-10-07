@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { CaseSensitive, ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp, Crosshair, Plus, Replace, ReplaceAll, Search, Type, WholeWord, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FieldWithTrailing } from '@/components/ui/field-with-trailing';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -64,23 +65,6 @@ interface EditorFindBarProps {
   onNavigate: (match: SearchMatch | null) => void;
   onAddPlaceholder: (placeholder: Placeholder) => void;
   onClose: () => void;
-}
-
-/**
- * An editbox with its own controls parked along its right edge, sharing the field's frame — the image-URL
- * widget's arrangement. The field draws no focus ring of its own; the overlay below paints one across the
- * whole widget, so it reads as one control rather than stopping at a divider.
- */
-function FieldWithTrailing({ children }: { children: ReactNode }) {
-  return (
-    <div className="group relative min-w-0">
-      {children}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-md ring-ring ring-inset group-focus-within:ring-2"
-      />
-    </div>
-  );
 }
 
 /** A tab's caption, for the breadcrumb — the value a target carries is the tab's id, not its name. */
