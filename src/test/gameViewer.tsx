@@ -31,7 +31,7 @@ function WithWorld({ world, children }: { world: World; children: ReactNode }) {
 
 /**
  * Render the real game view under the real app providers, in `App.tsx`'s order, on a loaded world.
- * The calling file mocks what jsdom cannot run: `@/views/VRMViewer`, `kokoro-js`, and the toast module.
+ * The calling file mocks what jsdom cannot run: `@/views/VRMViewer` and the toast module.
  */
 export function renderGameViewer(
   world: World,
