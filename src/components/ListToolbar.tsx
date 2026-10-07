@@ -64,7 +64,7 @@ export function ListSearchToolbar({ search, add, placeholder, className, childre
             <ListAddButton label={add.label} data-tour-anchor="list-add" />
           </PopoverTrigger>
           {/* Inline, so a host modal's scroll lock lets the wheel reach a drill-in's list. */}
-          <PopoverContent portal={false} side="bottom" align="start" className={cn('w-44 overflow-hidden p-1', add.menuClassName)}>
+          <PopoverContent portal={false} side="bottom" align="start" className={cn('w-max min-w-44 max-w-72 overflow-hidden p-1', add.menuClassName)}>
             <ListAddContext.Provider value={api}>{add.menu}</ListAddContext.Provider>
           </PopoverContent>
         </Popover>
