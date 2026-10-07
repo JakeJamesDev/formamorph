@@ -1030,12 +1030,12 @@ On a touch screen, a long press opens the card's menu, and a long press on a cho
 | State | Treatment |
 | --- | --- |
 | Default | Card on `bg-card` with a border. Rows on the panel with a divider between them. Plate controls hidden. |
-| Hover | A row takes a light primary tint. The plate shows its controls. |
-| Selected | A staged choice, or the choice taken on a past page, takes the primary fill. Its quoted text inherits the fill's foreground for contrast. |
+| Hover | A row takes a light primary tint. A Chat bubble takes a solid border and the tint. The plate shows its controls. |
+| Selected | A staged choice, or the choice taken on a past page, takes the primary fill. Hover keeps the fill. Its quoted text inherits the fill's foreground for contrast. |
 | Disabled | Past-page rows are disabled and dimmed, except the choice taken. An action whose job cannot start is disabled in the row and in the menu. **Previous image** and **Next image** disable at the ends. |
 | Busy | The action whose own job runs shows a spinner in place of its icon. |
 | Live | The turn streams, so the card has no action row and no menu actions. |
-| Focus | Rows, icons, and plate controls use the shared inset focus ring. On a selected row the ring takes the primary foreground. |
+| Focus | Rows, icons, and plate controls use the shared inset focus ring. On a selected row the ring takes the primary foreground. A focused Chat bubble looks hovered plus its ring, so it never reads as staged. |
 | Empty | No image: no plate. No actions: no row. No choices and no choices action: no block. |
 | Destructive | **Rewind to Here** is the last menu section and opens the existing confirm. |
 

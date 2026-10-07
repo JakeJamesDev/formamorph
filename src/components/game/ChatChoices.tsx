@@ -4,15 +4,17 @@ import { CONTINUE_CHOICE, choiceRuns } from '@/lib/choices';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
 import { BubbleActionButton, BubbleMenu } from './BubbleMenu';
 
-// Unsent player bubbles: dashed and light until hover, focus, or selection fill them (without the dialogue color).
+// Unsent player bubbles: dashed and light. Hover and focus tint them; only the staged choice takes the fill.
 const BUBBLE = [
   'ml-auto block w-fit max-w-[85%] rounded-2xl rounded-br-sm border border-dashed border-primary/60 bg-primary/10',
   'px-3 py-2 text-left text-foreground transition-colors',
-  'hover:border-solid hover:bg-primary hover:text-primary-foreground',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-foreground',
-  'focus-visible:border-solid focus-visible:bg-primary focus-visible:text-primary-foreground',
+  'hover:border-solid hover:bg-primary/25',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+  'focus-visible:border-solid focus-visible:bg-primary/25',
+  // Staged wins over hover and focus, and the ring takes the fill's foreground.
   'data-[selected]:border-solid data-[selected]:bg-primary data-[selected]:text-primary-foreground',
-  '[&:is(:hover,:focus-visible,[data-selected])_.dialogue-quote]:!text-inherit',
+  'data-[selected]:hover:bg-primary data-[selected]:focus-visible:bg-primary data-[selected]:focus-visible:ring-primary-foreground',
+  '[&[data-selected]_.dialogue-quote]:!text-inherit',
   'disabled:pointer-events-none disabled:opacity-50',
 ].join(' ');
 
