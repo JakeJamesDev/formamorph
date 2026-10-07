@@ -24,7 +24,7 @@ type TraitRequirementRow = { all: TraitRequirement[] };
 
 - [ ] `Trait.requires` and the link override field are rows. `migrateWorld` wraps each flat entry in its own row on world traits, entity-owned traits and link overrides, leaves rows alone, and is idempotent (Q17).
 - [ ] The character card codec reads the flat list and rows, and writes rows (Q18).
-- [ ] Owned-trait import, portable traits, link id remaps, blueprints and the persona-boundary bearer drop all work per row. A row emptied at the persona boundary is dropped; a trait emptied that way has no gate (Q23).
+- [ ] Owned-trait import, portable traits, link id remaps, blueprints and the persona-boundary bearer drop all work per row. At the persona boundary a self-named Condition drops its whole row as closed; a trait with every row dropped is not offered, as today (Q23, ruling A).
 - [ ] The gate module reads rows: a Condition holds as today, a row holds when every Condition holds, a gate holds with no rows or some row. Gate state is per row with per-Condition text, holds, unresolved and hidden flags. `settle`, `switchTrait` and `settleDefaults` behave as before for one-chip rows.
 - [ ] The player line and the tree summary read rows joined by "or" and Conditions by "and" (Q11 without Not). The hidden rule applies per row (Q12).
 - [ ] The Requires field renders rows: chips joined by "and" inside a bordered row, a dim "or" between rows, **And** per row, **Or Another Way** below, **Add Requirement** when there are no rows, a row remove control; removing a row's last chip removes the row (Q6). Chips still open their target and read red when unresolved. The hint line is removed (Q21).
