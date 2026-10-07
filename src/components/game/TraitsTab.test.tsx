@@ -148,7 +148,7 @@ describe('the traits tab filter', () => {
     T('t-quick', 'Quick Study', { groupId: 'g-mind' }),
   ];
   const filter = (text: string) =>
-    fireEvent.change(screen.getByRole('textbox', { name: 'Filter traits' }), { target: { value: text } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter traits' }), { target: { value: text } });
 
   it('hides the traits and whole sections that do not match', () => {
     renderTraits(TRAITS, GROUPS, ['t-strong', 't-quick']);
@@ -201,6 +201,18 @@ describe('the traits tab filter', () => {
     expect(shown()).toEqual([]);
     expect(screen.getByText(/No traits match/)).toBeInTheDocument();
   });
+
+  it('shows the full list again when the X clears the filter', () => {
+    renderTraits(TRAITS, GROUPS, ['t-strong', 't-quick']);
+    const before = shown();
+    filter('strong');
+    expect(shown()).not.toEqual(before);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    expect(screen.getByRole('searchbox', { name: 'Filter traits' })).toHaveValue('');
+    expect(shown()).toEqual(before);
+  });
 });
 
 describe('the traits tab keeps how the player left it', () => {
@@ -213,16 +225,16 @@ describe('the traits tab keeps how the player left it', () => {
   /** Leave the tab, then come back — the panel is unmounted in between, as Radix does it. */
   const leaveAndReturn = (view: ReturnType<typeof renderTraits>) => {
     act(() => { view.gameplay().setActiveTab('stats'); });
-    expect(screen.queryByRole('textbox', { name: 'Filter traits' })).toBeNull();
+    expect(screen.queryByRole('searchbox', { name: 'Filter traits' })).toBeNull();
     act(() => { view.gameplay().setActiveTab('traits'); });
   };
 
   it('still holds the filter text after a look at another tab', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-strong']);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Filter traits' }), { target: { value: 'quick' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter traits' }), { target: { value: 'quick' } });
     leaveAndReturn(view);
 
-    expect(screen.getByRole('textbox', { name: 'Filter traits' })).toHaveValue('quick');
+    expect(screen.getByRole('searchbox', { name: 'Filter traits' })).toHaveValue('quick');
     expect(shown()).toEqual(['Switch on Quick Study']);
   });
 

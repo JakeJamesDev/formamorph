@@ -336,6 +336,22 @@ describe('DrillPicker — an owned target', () => {
     expect(owners()).toContain('isWhite:molly');
   });
 
+  it('drops the refusal and the filter text together when the X clears the filter', async () => {
+    const user = userEvent.setup();
+    render(<OwnedHarness />);
+    await openPicker(user, 'Hair');
+    await toRoot(user);
+    await user.type(within(picker()).getByLabelText('Filter Placeholders'), 'Mol');
+    const owned = within(picker()).getAllByTestId('drill-picker-row').find((row) => row.textContent?.includes('owned'))!;
+    await user.click(owned);
+    expect(screen.getByTestId('drill-picker-owned')).toBeInTheDocument();
+
+    await user.click(within(picker()).getByRole('button', { name: 'Clear Search' }));
+
+    expect(screen.queryByTestId('drill-picker-owned')).not.toBeInTheDocument();
+    expect(within(picker()).getByLabelText('Filter Placeholders')).toHaveValue('');
+  });
+
   it('still takes a drill step into the owner, which is how an owned row is meant to be reached', async () => {
     const user = userEvent.setup();
     render(<OwnedHarness />);

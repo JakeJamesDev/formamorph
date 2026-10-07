@@ -401,6 +401,24 @@ describe('reloading the table', () => {
   });
 });
 
+describe('the search box', () => {
+  it('shows the unfiltered table when the X clears a submitted search, with no second submit', async () => {
+    stubFetch([userRow({ username: 'alice' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+    const box = screen.getByRole('searchbox');
+    fireEvent.change(box, { target: { value: 'ali' } });
+    fireEvent.keyDown(box, { key: 'Enter' });
+    await waitFor(() => expect(lastQuery().get('search')).toBe('ali'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    await waitFor(() => expect(lastQuery().get('search')).toBe(''));
+    expect(box).toHaveValue('');
+  });
+});
+
 describe('sorting', () => {
   it('asks the server rather than reordering the page in hand', async () => {
     // The table is paged: sorting the ten rows on screen would sort ten rows out of however many.

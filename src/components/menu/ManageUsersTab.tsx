@@ -1,8 +1,8 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Link2, Mail, RotateCcw, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Link2, Mail, RotateCcw } from "lucide-react";
+import { SearchField } from "@/components/ui/search-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -396,20 +396,18 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       <div className="py-4 w-full min-w-0">
           {/* Search controls */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-grow">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                className="pl-8"
-                value={userSearchQuery}
-                onChange={(e) => setUserSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    runSearch();
-                  }
-                }}
-              />
-            </div>
+            <SearchField
+              placeholder="Search users..."
+              className="flex-grow"
+              value={userSearchQuery}
+              onChange={setUserSearchQuery}
+              onClear={() => { setUserSearchQuery(''); runSearch(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  runSearch();
+                }
+              }}
+            />
 
             <Button
               variant="outline"

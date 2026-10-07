@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toastError } from "@/lib/linkToast";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RoleBadge } from "@/components/RoleBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -83,9 +83,10 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
             className="flex items-center gap-2"
             onSubmit={(e) => { e.preventDefault(); setSearch(searchInput.trim()); }}
           >
-            <Input
+            <SearchField
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              onChange={setSearchInput}
+              onClear={() => { setSearchInput(''); setSearch(''); }}
               placeholder="Who or what"
               aria-label="Search the log"
               className="w-40"

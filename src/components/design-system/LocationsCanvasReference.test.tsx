@@ -46,6 +46,24 @@ it('keeps canvas preferences and history local across fullscreen edits and remou
   second.unmount();
 });
 
+it('clears the Find a Location text and its result list with the X, and keeps the cursor in the box', async () => {
+  const user = userEvent.setup();
+  render(<TooltipProvider><LocationsCanvasReference /></TooltipProvider>);
+  await user.click(screen.getByRole('button', { name: 'Edit Full Screen' }));
+  const box = await screen.findByRole('combobox', { name: 'Find a Location' });
+  await user.type(box, 'room');
+  await user.keyboard('{ArrowDown}');
+  expect(screen.getByRole('listbox', { name: 'Matching Locations' })).toBeInTheDocument();
+  expect(box.getAttribute('aria-activedescendant')).toMatch(/-1$/);
+
+  await user.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+  expect(box).toHaveValue('');
+  expect(box).toHaveFocus();
+  expect(screen.queryByRole('listbox', { name: 'Matching Locations' })).not.toBeInTheDocument();
+  expect(box).not.toHaveAttribute('aria-activedescendant');
+});
+
 it('opens the canvas menu with titled sets, and Escape closes it and hands focus back to the canvas', async () => {
   const user = userEvent.setup();
   const { container } = render(<TooltipProvider><LocationsCanvasReference /></TooltipProvider>);

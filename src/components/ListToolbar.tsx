@@ -1,7 +1,7 @@
 import { forwardRef, useState, type ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 import { Button, type ButtonProps } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MENU_ROW } from '@/components/menuRow';
 import { ListAddContext, useListAdd, type ListAddApi, type ListSearch } from '@/components/listToolbarHooks';
@@ -72,11 +72,13 @@ export function ListSearchToolbar({ search, add, placeholder, className, childre
         <ListAddButton label={add.label} data-tour-anchor="list-add" onClick={() => api.add(add.onAdd)} />
       )}
       {children}
-      <Input
+      <SearchField
         data-editor-find-skip
         placeholder={placeholder}
         value={search.term}
-        onChange={(e) => search.setTerm(e.target.value)}
+        onChange={search.setTerm}
+        onClear={search.clear}
+        className="flex-1"
       />
       {after}
     </ListToolbar>

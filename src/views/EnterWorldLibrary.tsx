@@ -3,14 +3,14 @@ import { closestCorners, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ArrowDown, ArrowLeft, ArrowUp, Search } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp } from 'lucide-react';
 import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Meta } from '@/components/ui/typography';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CONTENT_LINK_LABELS } from '@/lib/contentLink';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
@@ -455,18 +455,13 @@ export default function EnterWorldLibrary(props: EnterWorldLibraryProps) {
         )}
       >
         <div className="shrink-0 pb-3">
-          <div className="relative">
-            <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchRef}
-              type="search"
-              aria-label="Search Library Additions"
-              placeholder="Search additions"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="pl-9"
-            />
-          </div>
+          <SearchField
+            ref={searchRef}
+            aria-label="Search Library Additions"
+            placeholder="Search additions"
+            value={query}
+            onChange={setQuery}
+          />
         </div>
         <ScrollArea type="always" className="min-h-0 flex-1">
           <div className="space-y-6">
