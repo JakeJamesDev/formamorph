@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { GameLocation, Placeholder, Trait } from '@/types';
@@ -107,30 +107,86 @@ describe('the section help buttons', () => {
   });
 });
 
-describe('the mode control', () => {
-  it('writes Always On and hides the Default and Player Can Toggle fields, and Optional brings them back', async () => {
+const group = (name: string) => screen.getByRole('radiogroup', { name });
+const choice = (groupName: string, label: string) => within(group(groupName)).getByRole('radio', { name: label });
+const lastWrite = () => store.writes[store.writes.length - 1];
+
+describe('the availability rule', () => {
+  it('reads as Mode, Starts and In Game rows, each bound to its stored field', async () => {
     const user = userEvent.setup();
     renderManager('availability');
-    expect(screen.getByRole('checkbox', { name: /Enabled by Default/ })).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: 'Always On' }));
-    expect(store.writes[store.writes.length - 1].mode).toBe('alwaysOn');
-    expect(screen.queryByRole('checkbox', { name: /Enabled by Default/ })).toBeNull();
-    expect(screen.queryByRole('checkbox', { name: /Player Can Toggle/ })).toBeNull();
-    await user.click(screen.getByRole('radio', { name: 'Optional' }));
-    expect(store.writes[store.writes.length - 1].mode).toBeUndefined();
-    expect(screen.getByRole('checkbox', { name: /Player Can Toggle/ })).toBeInTheDocument();
+    expect(within(group('Mode')).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Optional', 'Automatic', 'Hidden']);
+    expect(within(group('Starts')).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Off', 'On']);
+    expect(within(group('In Game')).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Fixed', 'Toggleable']);
+    expect(choice('Mode', 'Optional')).toBeChecked();
+    expect(choice('Starts', 'Off')).toBeChecked();
+    expect(choice('In Game', 'Fixed')).toBeChecked();
+
+    await user.click(choice('Starts', 'On'));
+    expect(lastWrite().isDefault).toBe(true);
+    await user.click(choice('In Game', 'Toggleable'));
+    expect(lastWrite().playerToggle).toBe(true);
+    expect(choice('Starts', 'On')).toBeChecked();
+    await user.click(choice('Starts', 'Off'));
+    expect(lastWrite().isDefault).toBe(false);
   });
 
-  it('writes Hidden, selects it, and hides the Default and Player Can Toggle fields', async () => {
+  it('writes Automatic as the stored always-on mode, and Optional clears it', async () => {
     const user = userEvent.setup();
     renderManager('availability');
-    await user.click(screen.getByRole('radio', { name: 'Hidden' }));
-    expect(store.writes[store.writes.length - 1].mode).toBe('hidden');
-    expect(screen.getByRole('radio', { name: 'Hidden' })).toBeChecked();
-    expect(screen.queryByRole('checkbox', { name: /Enabled by Default/ })).toBeNull();
-    expect(screen.queryByRole('checkbox', { name: /Player Can Toggle/ })).toBeNull();
-    await user.click(screen.getByRole('radio', { name: 'Always On' }));
-    expect(store.writes[store.writes.length - 1].mode).toBe('alwaysOn');
+    await user.click(choice('Mode', 'Automatic'));
+    expect(lastWrite().mode).toBe('alwaysOn');
+    expect(choice('Mode', 'Automatic')).toBeChecked();
+    await user.click(choice('Mode', 'Optional'));
+    expect(lastWrite().mode).toBeUndefined();
+    expect(screen.queryByText(/Always On/)).toBeNull();
+  });
+
+  it('writes Hidden and selects it', async () => {
+    const user = userEvent.setup();
+    renderManager('availability');
+    await user.click(choice('Mode', 'Hidden'));
+    expect(lastWrite().mode).toBe('hidden');
+    expect(choice('Mode', 'Hidden')).toBeChecked();
+  });
+
+  it('disables Starts and In Game under Automatic and Hidden without adding or removing a row', async () => {
+    const user = userEvent.setup();
+    store.trait = { ...sedgeBorn, isDefault: true, playerToggle: true } as Trait;
+    renderManager('availability');
+    const rows = () => screen.getAllByRole('radiogroup').map((g) => g.getAttribute('aria-label'));
+    const before = rows();
+    for (const mode of ['Automatic', 'Hidden']) {
+      await user.click(choice('Mode', mode));
+      for (const field of ['Starts', 'In Game']) {
+        for (const radio of within(group(field)).getAllByRole('radio')) expect(radio).toBeDisabled();
+      }
+      expect(rows()).toEqual(before);
+      // The stored values ride along unchanged.
+      expect(choice('Starts', 'On')).toBeChecked();
+      expect(choice('In Game', 'Toggleable')).toBeChecked();
+    }
+    await user.click(choice('Mode', 'Optional'));
+    for (const radio of [...within(group('Starts')).getAllByRole('radio'), ...within(group('In Game')).getAllByRole('radio')]) {
+      expect(radio).toBeEnabled();
+    }
+  });
+
+  it('states the rule the rows make under each Mode', async () => {
+    const user = userEvent.setup();
+    renderManager('availability');
+    const optional = (start: string, switching: string) =>
+      `Lets the player pick it at game start. It starts ${start}. The player ${switching} switch it during the game.`;
+    expect(screen.getByText(optional('off', "can't"))).toBeInTheDocument();
+    await user.click(choice('Starts', 'On'));
+    expect(screen.getByText(optional('on', "can't"))).toBeInTheDocument();
+    await user.click(choice('In Game', 'Toggleable'));
+    expect(screen.getByText(optional('on', 'can'))).toBeInTheDocument();
+
+    await user.click(choice('Mode', 'Automatic'));
+    expect(screen.getByText('Turns on whenever its requirements hold. The player never switches it.')).toBeInTheDocument();
+    await user.click(choice('Mode', 'Hidden'));
+    expect(screen.getByText('Turns on whenever its requirements hold. The player never sees it. The AI does.')).toBeInTheDocument();
   });
 });
 

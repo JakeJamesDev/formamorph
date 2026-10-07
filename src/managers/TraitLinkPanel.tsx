@@ -36,7 +36,7 @@ export function LinkNotice({ children }: { children: ReactNode }) {
   );
 }
 
-/** The Enabled by Default hint on a link: the Custom Persona entity's links are the player's. */
+/** The hint under a linked group's Enabled by Default list: the Custom Persona entity's links are the player's. */
 const defaultHintFor = (bearer: Entity) =>
   (bearer.customPersona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts');
 
@@ -65,7 +65,6 @@ export function LinkedTraitManager({ bearer, link, original, ...panel }: {
     stale,
     write: (next) => editEntity(bearer.id, (e) => editLinkTrait(originals, e, link.id, original.id, next)),
     reset: (field) => editEntity(bearer.id, (e) => resetLinkField(e, link.id, original.id, field)),
-    defaultHint: defaultHintFor(bearer),
   };
   return (
     <TraitManager

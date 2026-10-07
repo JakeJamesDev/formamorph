@@ -5,7 +5,6 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2 } from "lucide-react";
 import { EntityIcon } from '@/lib/elementIcons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,11 +14,11 @@ import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/Plac
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
 import { TraitRequiresField } from '@/components/editor/TraitRequiresField';
+import { TraitAvailabilityRule } from '@/components/editor/TraitAvailabilityRule';
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { isAlwaysOn, traitConflicts, type TraitConflict } from '@/lib/traitEffects';
-import { OptionSwitcher } from '@/components/SettingsRows';
+import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
 import { canOwnStatTraits, hasStatEffects } from '@/lib/traitTree';
 import { useEditorMode } from '@/lib/editorMode';
@@ -39,14 +38,7 @@ export interface TraitLinkEdit {
   stale: readonly (keyof TraitLinkFields)[];
   write: (next: Trait) => void;
   reset: (field: keyof TraitLinkFields) => void;
-  defaultHint: string;
 }
-
-const MODE_OPTIONS = [
-  { value: 'optional', label: 'Optional', hint: 'Lets the player choose it' },
-  { value: 'alwaysOn', label: 'Always On', hint: 'Turns on whenever its requirements hold, and the player can’t switch it' },
-  { value: 'hidden', label: 'Hidden', hint: 'Acts as Always On, but the player never sees it. The AI does.' },
-] as const;
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -264,46 +256,9 @@ const TraitManager = ({
     </>
   );
 
-  const alwaysOn = isAlwaysOn(editingTrait);
-  const mode = editingTrait.mode ?? 'optional';
   const availabilityPanel = (
     <>
-      <div className="space-y-2">
-        <LabelRow reset={resetControl('mode', 'Mode')}>
-          <Label>Mode</Label>
-        </LabelRow>
-        <OptionSwitcher
-          value={mode}
-          onChange={(v) => apply({ mode: v === 'optional' ? undefined : v })}
-          options={MODE_OPTIONS}
-          ariaLabel="Mode"
-        />
-        <Hint>{MODE_OPTIONS.find((o) => o.value === mode)?.hint}</Hint>
-      </div>
-      {!alwaysOn && (
-        <>
-          <LabelRow reset={resetControl('isDefault', 'Enabled by Default')}>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={!!editingTrait.isDefault}
-                onCheckedChange={(c) => handleChange('isDefault', c === true)}
-              />
-              <span>Enabled by Default</span>
-              <Hint as="span">{link?.defaultHint ?? 'Selected when a new game starts'}</Hint>
-            </label>
-          </LabelRow>
-          <LabelRow reset={resetControl('playerToggle', 'Player Can Toggle In Game')}>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <Checkbox
-                checked={!!editingTrait.playerToggle}
-                onCheckedChange={(c) => handleChange('playerToggle', c === true)}
-              />
-              <span>Player Can Toggle In Game</span>
-              <Hint as="span">The player can turn it on or off from the Traits tab during the game</Hint>
-            </label>
-          </LabelRow>
-        </>
-      )}
+      <TraitAvailabilityRule trait={editingTrait} onChange={apply} reset={resetControl} />
       <TraitRequiresField
         trait={editingTrait}
         onChange={setRequires}

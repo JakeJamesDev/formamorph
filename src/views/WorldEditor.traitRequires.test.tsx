@@ -78,9 +78,9 @@ describe('the Requires field', () => {
     expect(within(list).getByRole('option', { name: /^playing as Sir Aldric/ })).toBeInTheDocument();
     expect(within(list).queryByRole('option', { name: /Odd Wick/ })).toBeNull();
 
-    // A target asks which bearer next; the same bearer is the plain requirement.
+    // Only You can hold a world trait, so the plain requirement is added with no bearer page.
     fireEvent.click(paladin);
-    fireEvent.click(screen.getByRole('option', { name: /^Same Bearer/ }));
+    expect(screen.queryByRole('option', { name: /^Same Bearer/ })).toBeNull();
     expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
     expect(within(requiresField()).getByRole('button', { name: 'Paladin' })).toBeInTheDocument();
   });
@@ -90,10 +90,8 @@ describe('the Requires field', () => {
     selectTrait('Plate Armor');
     fireEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
     const list = await screen.findByRole('listbox');
-    // A one-chip row already listed stays in place; its bearer reads disabled on the next page.
-    fireEvent.click(within(list).getByRole('option', { name: /^Paladin/ }));
-    expect(screen.getByRole('option', { name: /^Same Bearer/ })).toHaveAttribute('aria-disabled', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Back to targets' }));
+    // A one-chip row already listed stays in place and reads disabled.
+    expect(within(list).getByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
     const search = screen.getByPlaceholderText('Search traits, groups, and personas');
     // The search reads what a row shows, never the requirement key behind it.
     fireEvent.change(search, { target: { value: 'trait' } });
@@ -101,10 +99,44 @@ describe('the Requires field', () => {
     fireEvent.change(search, { target: { value: 'any cl' } });
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['any ClassWorld']);
     fireEvent.click(screen.getByRole('option', { name: /any Class/ }));
-    fireEvent.click(screen.getByRole('option', { name: /^Same Bearer/ }));
 
     expect(traitRequires(ctx, 't-plate')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }, { all: [{ kind: 'group', id: 'g-class' }] }]);
     expect(within(requiresField()).getByText('or')).toBeInTheDocument();
+  });
+
+  it('asks which bearer when an entity also bears the target, and adds for the one picked', async () => {
+    const world = benchEditorWorld({
+      ...WORLD,
+      entities: [
+        ...WORLD.entities,
+        {
+          id: 'ash', name: 'Ash', playerDescription: 'A wolf.', aiDescription: 'A wolf.', locations: ['harbor'],
+          traits: [{ id: 't-tamed', name: 'Tamed', statChanges: [] }],
+        },
+      ],
+    } as Partial<World>);
+    const { ctx } = renderWorldEditorBench(world, 'advanced');
+    selectTrait('Lamp-Lit');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Tamed/ }));
+
+    const page = screen.getAllByRole('option').map((o) => o.textContent);
+    expect(page).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
+    fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
+    expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
+  });
+
+  it('reads a target already listed for You as listed, so a world trait cannot take it twice', async () => {
+    const world = benchEditorWorld({
+      ...WORLD,
+      traits: WORLD.traits.map((t) => (t.id === 't-plate'
+        ? { ...t, requires: [{ all: [{ kind: 'trait', id: 't-paladin', bearer: { kind: 'you' } }] }] }
+        : t)),
+    } as Partial<World>);
+    renderWorldEditorBench(world, 'advanced');
+    selectTrait('Plate Armor');
+    fireEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
+    expect(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('removes a requirement, and leaves the field absent once the last one goes', () => {
