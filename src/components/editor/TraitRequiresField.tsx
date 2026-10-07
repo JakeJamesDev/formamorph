@@ -12,6 +12,7 @@ import {
   WORLD_OWNER, bearerKey, bearerOf, gateOf, gateStates, ownerHolding, requirementOptions, sameRequirement, withBearer,
   type ConditionState, type RequirementBearerOption, type RequirementOption,
 } from '@/lib/traitGates';
+import { soleBearerRequirement } from '@/lib/requirementBearers';
 import { cn } from '@/lib/utils';
 import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
 
@@ -22,10 +23,11 @@ type AddTarget = number | 'new';
  * The trait panel's Requires field: the trait's Requirement Rows, each a bordered line of chips joined by
  * "and", the rows joined by "or". **And** adds a Condition to its row, **Or Another Way** adds a row, and
  * removing a row's last chip removes the row (Q6). Picking a target opens a second page for the bearer: the
- * same bearer, You, or an entity that bears it. Off-world the target is added for the same bearer at once. A
- * chip opens its target, unless `opens` says the host has nowhere to open it, when it reads as plain text; a
- * chip whose target is gone reads red under its stored name. `bearerId` names the bearer whose gate the chips
- * read, for a link whose rows differ from its original's; without it, the first bearer holding the trait.
+ * same bearer, You, or an entity that bears it. Off-world, or when only one bearer can hold the target, it
+ * is added at once. A chip opens its target, unless `opens` says the host has nowhere to open it, when it
+ * reads as plain text; a chip whose target is gone reads red under its stored name. `bearerId` names the
+ * bearer whose gate the chips read, for a link whose rows differ from its original's; without it, the first
+ * bearer holding the trait.
  */
 export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true, bearerId, labelAside }: {
   trait: Trait;
@@ -41,11 +43,11 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
   const labelId = useId();
   const rows = trait.requires ?? [];
 
-  const { states, options } = useMemo(() => {
+  const { states, options, gateOwnerId } = useMemo(() => {
     const gates = gateStates(gateInput);
     const holder = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
     const gate = (bearerId !== undefined ? gateOf(gates, bearerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
-    return { states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id) };
+    return { states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id), gateOwnerId: bearerId ?? holder };
   }, [gateInput, trait.id, bearerId]);
 
   // **And** never repeats a Condition in its row; a new row never repeats a one-chip row.
@@ -68,14 +70,22 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
     const all = row.all.filter((_, j) => j !== index);
     return all.length ? [{ all }] : [];
   }));
-  // A playing-as row and an off-world row add at once; any other target asks which bearer first.
+  // What a playing-as row, an off-world row and a target with one possible bearer add at once; any other
+  // target asks which bearer first.
+  const atOnce = (option: RequirementOption) =>
+    (option.requirement.kind === 'playingAs' || offWorld ? option.requirement : soleBearerRequirement(option, gateOwnerId));
   const pick = (option: RequirementOption) => {
-    if (option.requirement.kind === 'playingAs' || offWorld) add(option.requirement);
+    const requirement = atOnce(option);
+    if (requirement) add(requirement);
     else setPicked(option);
   };
   /** Every way the row could be added is already listed, so the row has nothing left to add. */
-  const exhausted = (option: RequirementOption) =>
-    listed(option.requirement) && option.bearers.every((b) => listed(withBearer(option.requirement, b.bearer)));
+  const exhausted = (option: RequirementOption) => {
+    const requirement = atOnce(option);
+    // A world trait reads You as its own bearer, so the plain and the You forms are one requirement.
+    if (requirement) return [requirement, ...option.bearers.map((b) => withBearer(requirement, b.bearer))].some(listed);
+    return listed(option.requirement) && option.bearers.every((b) => listed(withBearer(option.requirement, b.bearer)));
+  };
 
   const renderText = (text: string) => <PlaceholderText text={text} placeholders={placeholders} />;
   const plainText = (text: string) => labelPlaceholders(text, placeholders);

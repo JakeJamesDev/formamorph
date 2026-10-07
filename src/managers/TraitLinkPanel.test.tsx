@@ -88,30 +88,53 @@ describe('LinkedFromLine', () => {
   });
 });
 
+/** One option of a segmented row on the Availability tab. */
+const radio = (row: string, label: string) => within(screen.getByRole('radiogroup', { name: row })).getByRole('radio', { name: label });
+
 describe('LinkedTraitManager', () => {
   it("writes an edit as this link's override; the original and another bearer's link stay as they were", () => {
     const updateTrait = vi.fn();
     const seen = renderLink([ashLinks(), mira], { updateTrait });
     expect(screen.queryByRole('button', { name: /^Reset/ })).toBeNull();
-    fireEvent.click(screen.getByRole('checkbox', { name: /Player Can Toggle/ }));
+    fireEvent.click(radio('In Game', 'Toggleable'));
 
-    expect(screen.getByRole('checkbox', { name: /Player Can Toggle/ })).toBeChecked();
+    expect(radio('In Game', 'Toggleable')).toBeChecked();
     expect(seen.entities[0].traitLinks![0].overrides).toEqual({ paladin: { playerToggle: { value: true, blueprint: false } } });
     expect(seen.entities[1]).toBe(mira);
     expect(updateTrait).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Reset Player Can Toggle In Game' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset In Game' })).toBeInTheDocument();
   });
 
   it('resets one field to the blueprint and keeps the other overrides', () => {
     const seen = renderLink([ashLinks({
       paladin: { isDefault: { value: false, blueprint: true }, playerToggle: { value: true, blueprint: false } },
     })]);
-    fireEvent.click(screen.getByRole('button', { name: 'Reset Player Can Toggle In Game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset In Game' }));
 
     expect(seen.entities[0].traitLinks![0].overrides).toEqual({ paladin: { isDefault: { value: false, blueprint: true } } });
-    expect(screen.getByRole('checkbox', { name: /Player Can Toggle/ })).not.toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /Enabled by Default/ })).not.toBeChecked();
-    expect(screen.queryByRole('button', { name: 'Reset Player Can Toggle In Game' })).toBeNull();
+    expect(radio('In Game', 'Fixed')).toBeChecked();
+    expect(radio('Starts', 'Off')).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Reset In Game' })).toBeNull();
+  });
+
+  it("shows Automatic on an overridden Mode, with a Reset that puts the blueprint's Optional back", () => {
+    const seen = renderLink([ashLinks({ paladin: { mode: { value: 'alwaysOn', blueprint: 'optional' } } })]);
+    expect(radio('Mode', 'Automatic')).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Reset Starts' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Mode' }));
+
+    expect(seen.entities[0].traitLinks![0]).not.toHaveProperty('overrides');
+    expect(radio('Mode', 'Optional')).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Reset Mode' })).toBeNull();
+  });
+
+  it('keeps the Reset on a Starts override while Automatic disables the row', () => {
+    renderLink([ashLinks({
+      paladin: { mode: { value: 'alwaysOn', blueprint: 'optional' }, isDefault: { value: true, blueprint: false } },
+    })]);
+    expect(radio('Starts', 'On')).toBeDisabled();
+    expect(radio('Starts', 'On')).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Reset Starts' })).toBeInTheDocument();
   });
 
   it('marks an override "Blueprint changed" only when the blueprint moved since the override was made', () => {
@@ -121,7 +144,7 @@ describe('LinkedTraitManager', () => {
     // Paladin is on by default now; the default-on override was made while it was off.
     expect(screen.getAllByText('Blueprint changed')).toHaveLength(1);
     const marker = screen.getByText('Blueprint changed');
-    expect(within(marker.parentElement!).getByRole('button', { name: 'Reset Enabled by Default' })).toBeInTheDocument();
+    expect(within(marker.parentElement!).getByRole('button', { name: 'Reset Starts' })).toBeInTheDocument();
   });
 
   it('keeps the name and both descriptions read-only on a link', () => {

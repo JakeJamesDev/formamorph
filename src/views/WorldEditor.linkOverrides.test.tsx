@@ -49,7 +49,7 @@ describe('a selected link in the Traits tab', () => {
     openEditorTab(/Traits/);
     fireEvent.click(within(linkRow('Albus')).getByText('Paladin'));
     openTraitFieldsTab('Availability');
-    fireEvent.click(screen.getByRole('checkbox', { name: /Player Can Toggle/ }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'In Game' })).getByRole('radio', { name: 'Toggleable' }));
 
     const [albus, mira] = ctx().entities;
     expect(albus.traitLinks![0].overrides).toEqual({ 't-paladin': { playerToggle: { value: true, blueprint: false } } });

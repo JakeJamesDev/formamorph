@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **A trait's Requires field in the World Editor takes rows: a row unlocks the trait when all its requirements hold.** **And** adds a requirement to a row, and **Or Another Way** adds a row. The lock line reads the same rule. Existing worlds and character cards open with one requirement per row.
+  - **The trait Availability tab shows Mode, Starts and In Game as three rows with one rule sentence.** **Automatic** is the new name of Always On. Starts and In Game dim under Automatic and Hidden. **Requires** adds a world trait at once when only You can hold it.
 
 #### 🔧 Fixed
 

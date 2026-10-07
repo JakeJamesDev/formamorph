@@ -60,9 +60,8 @@ const panelLabels = () =>
     .filter((el) => !el.closest('[role="tablist"]'))
     .map((el) => el.textContent);
 
-/** The checkbox captions the panel shows, which are spans rather than labeled fields. */
-const panelSwitches = () =>
-  screen.getAllByText(/^(Enabled by Default|Player Can Toggle In Game)$/).map((el) => el.textContent);
+/** The segmented rows the panel shows, in document order. */
+const panelRows = () => screen.getAllByRole('radiogroup').map((el) => el.getAttribute('aria-label'));
 
 /** The trait panel's own strip. The editor's top-level strip carries a Stats tab of its own, so every read
  *  and click here is taken from the named strip rather than by tab name. */
@@ -97,15 +96,15 @@ describe('the World Editor trait panel tabs', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
-    expect(screen.queryByText('Enabled by Default')).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Starts' })).toBeNull();
   });
 
-  it('puts both switches and Requires on Availability, and nothing else', () => {
+  it('puts the Mode, Starts and In Game rows and Requires on Availability, and nothing else', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Sedge-Born');
     openPanelTab('Availability');
     expect(panelLabels()).toEqual(['Requires']);
-    expect(panelSwitches()).toEqual(['Enabled by Default', 'Player Can Toggle In Game']);
+    expect(panelRows()).toEqual(['Mode', 'Starts', 'In Game']);
   });
 
   it('puts both stat sections whole on Stats, each with its Add button', () => {

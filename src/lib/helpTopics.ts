@@ -279,7 +279,7 @@ placeholders.Hair.Shade.pin('ash');
 entities["Old Molly"].placeholders["Eye Color"].pin('green');
 \`\`\`
 
-**Traits.** \`traits\` holds every trait in the world's own trait list by name, Blueprint items included. A trait an entity owns is not in it. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Both read the player's state only. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores **Player Can Toggle In Game**, so it can switch a trait the player can't toggle. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
+**Traits.** \`traits\` holds every trait in the world's own trait list by name, Blueprint items included. A trait an entity owns is not in it. Each entry has \`enabled\`, true when the player has the trait and it is on, and \`acquired\`, true when the player has the trait. Both read the player's state only. Set \`enabled\` to switch the trait on or off after the run, with the same effect as the player's checkbox, exclusive siblings included. Enabling a trait the player never took acquires it. Code ignores the **In Game** row, so it can switch a trait set to Fixed. A trait name with a placeholder chip reads in code as that placeholder's name, so a trait named \`{{Beast}} Fury\` is \`traits["Beast Fury"]\` in every playthrough.
 
 \`\`\`js
 traits.Cursed.enabled = self.value <= 0;

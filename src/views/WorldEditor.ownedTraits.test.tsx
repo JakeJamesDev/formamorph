@@ -235,7 +235,7 @@ describe('an owned trait\'s panel', () => {
     openTab(/Traits/);
     fireEvent.click(treeRow('Tamed')!);
     openTraitFieldsTab('Availability');
-    act(() => { fireEvent.click(screen.getByRole('checkbox', { name: /Enabled by Default/ })); });
+    act(() => { fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Starts' })).getByRole('radio', { name: 'On' })); });
     expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')?.isDefault).toBe(true);
     expect(ctx().traits.map((t) => t.id)).toEqual(['t-paladin', 't-tamer']);
   });

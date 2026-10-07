@@ -214,13 +214,13 @@ describe('TraitRequiresField rows', () => {
   it('adds a Condition to its own row with And, and a new row with Or Another Way', async () => {
     render(<Harness trait={smite([{ all: [paladin] }, { all: [wizard] }])} />);
     fireEvent.click(screen.getAllByRole('button', { name: 'And' })[1]);
+    // Only You can hold a world trait, so Brave adds with no bearer page.
     fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
-    fireEvent.click(option(/^Same Bearer/));
     expect(rowTexts()).toEqual(['PaladinAnd', 'WizardandBraveAnd']);
 
     openPicker();
+    // Only You can hold a world trait, so Brave adds with no bearer page.
     fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
-    fireEvent.click(option(/^Same Bearer/));
     expect(rowTexts()).toEqual(['PaladinAnd', 'WizardandBraveAnd', 'BraveAnd']);
   });
 

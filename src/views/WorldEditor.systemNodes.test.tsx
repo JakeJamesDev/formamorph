@@ -141,8 +141,7 @@ describe('removing a system node', () => {
       .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
     fireEvent.click(within(link).getByText('Paladin'));
     openTraitFieldsTab('Availability');
-    expect(screen.getByText('Selected when a new game starts')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('checkbox', { name: /Enabled by Default/ }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Starts' })).getByRole('radio', { name: 'On' }));
     expect(marked(ctx).traitLinks?.[0].overrides).toEqual({ 't-paladin': { isDefault: { value: true, blueprint: false } } });
   });
 });

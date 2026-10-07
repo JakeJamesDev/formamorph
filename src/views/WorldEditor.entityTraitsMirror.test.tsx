@@ -222,7 +222,7 @@ describe('the entity Traits tab as a mirror', () => {
     expect(within(line).queryByRole('button')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit Blueprint' })).toBeNull();
     openTraitFieldsTab('Availability');
-    fireEvent.click(screen.getByRole('checkbox', { name: /Enabled by Default/ }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Starts' })).getByRole('radio', { name: 'On' }));
     expect(entity(ctx, 'ash').traitLinks![0].overrides).toEqual({ 't-tamer': { isDefault: { value: true, blueprint: false } } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset to Blueprint' }));
     expect(entity(ctx, 'ash').traitLinks![0]).not.toHaveProperty('overrides');
