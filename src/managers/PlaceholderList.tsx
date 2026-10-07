@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Link2, ArrowUpFromLine, BookOpen, CornerDownRight, Folder, LayoutTemplate, User } from 'lucide-react';
+import { Link2, ArrowUpFromLine, CornerDownRight } from 'lucide-react';
+import { BlueprintIcon, DictionaryIcon, EntityIcon, GroupIcon } from '@/lib/elementIcons';
 import { removePlaceholderGroup } from '@/lib/placeholderGroups';
 import { blueprintMoveRefusal, copyName, type BlueprintRefusal } from '@/lib/placeholderBlueprints';
 import { allPlaceholders, placeholderList, withPlaceholderList } from '@/lib/placeholderHomes';
@@ -118,7 +119,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
         return {
           lead: 'chevron',
           collapseLabels: ['Expand group', 'Collapse group'],
-          icon: <LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden />,
+          icon: <BlueprintIcon className="h-4 w-4 shrink-0" aria-hidden />,
           label: node.group.name,
           labelClass: 'font-medium',
           removeTitle: 'Remove Blueprints',
@@ -136,7 +137,7 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
         return {
           lead: 'chevron',
           collapseLabels: ['Expand group', 'Collapse group'],
-          icon: <Folder className="h-4 w-4 shrink-0" />,
+          icon: <GroupIcon className="h-4 w-4 shrink-0" />,
           label: node.group.name,
           labelClass: 'font-medium',
           remove: () => {
@@ -154,8 +155,8 @@ const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
           lead: 'chevron',
           collapseLabels: [`Expand ${node.owner.name}`, `Collapse ${node.owner.name}`],
           icon: node.owner.kind === 'entity'
-            ? <User className="h-4 w-4 shrink-0" />
-            : <BookOpen className="h-4 w-4 shrink-0" />,
+            ? <EntityIcon className="h-4 w-4 shrink-0" />
+            : <DictionaryIcon className="h-4 w-4 shrink-0" />,
           label: <PlaceholderText text={node.owner.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
           fixed: true,

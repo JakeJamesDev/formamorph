@@ -1,4 +1,4 @@
-import { BookOpen, User } from 'lucide-react';
+import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { PlaceholderOwnerRef } from '@/lib/placeholderHomes';
 import { cn } from '@/lib/utils';
@@ -10,7 +10,7 @@ const OWNER_LABEL: Record<PlaceholderOwnerRef['kind'], string> = { entity: 'Enti
 /** The mark that says which kind of owner a name belongs to — on a section's heading, and on the closed
  *  trigger of a picker that settled on one of that owner's placeholders. */
 export const OwnerIcon = ({ kind, className }: { kind: PlaceholderOwnerRef['kind']; className?: string }) => {
-  const Icon = kind === 'entity' ? User : BookOpen;
+  const Icon = kind === 'entity' ? EntityIcon : DictionaryIcon;
   return <Icon role="img" aria-label={OWNER_LABEL[kind]} className={cn('h-3 w-3 shrink-0', className)} />;
 };
 

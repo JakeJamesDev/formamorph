@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { ChevronRight, FilePlus, FolderPlus, LayoutTemplate } from 'lucide-react';
+import { ChevronRight, FilePlus, FolderPlus } from 'lucide-react';
+import { BlueprintIcon } from '@/lib/elementIcons';
 import { ListMenuRow } from '@/components/ListToolbar';
 import { useListAdd } from '@/components/listToolbarHooks';
 import { MENU_ROW } from '@/components/menuRow';
@@ -58,7 +59,7 @@ export function TraitsAddMenu({
           {advanced && drillRow(<FolderPlus className="h-4 w-4" />, 'group')}
           {advanced && drillRow(<FilePlus className="h-4 w-4" />, 'trait')}
           {advanced && !hasBlueprints
-            && <ListMenuRow icon={<LayoutTemplate className="h-4 w-4" />} label="Add Blueprints Group" onAdd={onAddBlueprints} />}
+            && <ListMenuRow icon={<BlueprintIcon className="h-4 w-4" />} label="Add Blueprints Group" onAdd={onAddBlueprints} />}
         </>
       )}
     </DrillSlide>

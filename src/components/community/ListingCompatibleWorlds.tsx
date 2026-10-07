@@ -1,4 +1,4 @@
-import { Globe } from 'lucide-react';
+import { WorldIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 import { KIND_LABELS, type CatalogKind } from '@/lib/catalogKinds';
 import {
@@ -71,7 +71,7 @@ export function ListingCompatibleWorlds({ groups, kind, onOpenWorld }: ListingCo
   return (
     <div className="col-span-2 rounded-md border p-3">
       <div className="flex items-start gap-2">
-        <Globe className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <WorldIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <div className="min-w-0">
           <h3 className="text-label font-medium">Compatible Worlds</h3>
           <Meta as="p">

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { LayoutTemplate } from "lucide-react";
+import { SquareFunction } from "lucide-react";
 import { migrateStatCodeRoutes } from "@/lib/statCodeRoutes";
 import { analysisOptionsOf, runTestCode } from "@/lib/statCodeTestRun";
 import type { CodeEntityNames, CodePlaceholders, CodeTraitPlace } from "@/lib/statCodeAnalysis";
@@ -162,7 +162,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
             {testing ? "Testing..." : "Test Code"}
           </Button>
           <Button variant="outline" onClick={() => setTemplatesOpen(true)} aria-label={`Templates ${label}`}>
-            <LayoutTemplate className="h-4 w-4 mr-1" />
+            <SquareFunction className="h-4 w-4 mr-1" />
             Templates
           </Button>
         </div>

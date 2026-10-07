@@ -1,4 +1,5 @@
-import { BookOpen, ExternalLink, User } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { PlaceholderOwnerRef } from '@/lib/placeholderHomes';
@@ -20,7 +21,7 @@ const PlaceholderOwnerPanel = ({ owner, placeholders, onOpen }: {
     <div className="space-y-3">
       <ListDetailFirstRow align="center">
         <div className="flex items-center gap-2 text-label font-medium">
-          {owner.kind === 'entity' ? <User className="h-4 w-4 shrink-0" /> : <BookOpen className="h-4 w-4 shrink-0" />}
+          {owner.kind === 'entity' ? <EntityIcon className="h-4 w-4 shrink-0" /> : <DictionaryIcon className="h-4 w-4 shrink-0" />}
           <PlaceholderText text={owner.name} placeholders={placeholders} />
         </div>
       </ListDetailFirstRow>

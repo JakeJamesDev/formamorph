@@ -75,6 +75,7 @@ const FILES = [
   'src/lib/avatarCrop.ts',
   'src/lib/catalogKinds.ts',
   'src/lib/deletionCancellation.ts',
+  'src/lib/elementIcons.ts',
   'src/lib/errorDetails.ts',
   'src/lib/letterMask.ts',
   'src/lib/likeCount.ts',

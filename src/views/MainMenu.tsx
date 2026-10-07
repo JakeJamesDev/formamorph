@@ -7,6 +7,7 @@ import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
+import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
@@ -18,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, BookOpen, ChevronLast, MoreHorizontal, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
 import { DefaultPersonaBadge, DefaultPersonaMenuItem } from '@/components/library/DefaultPersona';
 import { AvatarThumbnailMenuItems } from '@/components/library/AvatarThumbnail';
 import { useAvatarThumbnails } from '@/lib/useAvatarThumbnails';
@@ -179,10 +180,10 @@ const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
 /** The library's card-type tabs, with their icon + label, so the top switcher and the mobile bottom bar
  *  render from one source and can't drift. */
 const CARD_TABS: { value: MainMenuCardTab; label: string; Icon: LucideIcon }[] = [
-  { value: 'worlds', label: 'Worlds', Icon: Earth },
-  { value: 'entities', label: 'Entities', Icon: User },
-  { value: 'dictionaries', label: 'Dictionaries', Icon: BookOpen },
-  { value: 'models', label: 'Avatars', Icon: PersonStanding },
+  { value: 'worlds', label: 'Worlds', Icon: ELEMENT_ICONS.world },
+  { value: 'entities', label: 'Entities', Icon: ELEMENT_ICONS.entity },
+  { value: 'dictionaries', label: 'Dictionaries', Icon: ELEMENT_ICONS.dictionary },
+  { value: 'models', label: 'Avatars', Icon: ELEMENT_ICONS.avatar },
 ];
 
 /** The Import button's Take Me There target on each tab. */

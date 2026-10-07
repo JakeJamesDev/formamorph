@@ -32,6 +32,7 @@ export const ALWAYS_RUN = {
   'src/lib/bundledFingerprint.test.ts': 'scans src/defaultworlds and reads the shipped avatars',
   'src/lib/codeHighlight.test.ts': 'reads src/index.css',
   'src/lib/docs/bundledDocsIndex.test.ts': 'scans src for the Docs Index loader',
+  'src/lib/elementIcons.test.ts': 'scans every src file for direct lucide-react imports',
   'src/lib/formaquestion/helpSettings.test.ts': 'reads helpSession.ts, which it does not import',
   'src/lib/helpTopics.test.ts': 'checks that each help topic page exists in docs/',
   'src/lib/personaReaders.test.ts': 'scans src/components/game sources',

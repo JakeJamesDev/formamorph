@@ -1,5 +1,5 @@
 import React, { forwardRef, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Globe } from 'lucide-react';
+import { WorldIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -102,7 +102,7 @@ export function OverlayTitle({ name, className, onOpen }: { name: string; classN
 interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Makes the name a real button that calls this, so the card opens from the keyboard. The frame's own click stays. */
   onOpen?: () => void;
-  /** The thumbnail node (an `img`, a `CachedThumbnail` or an entity's Morph art); a `Globe` fills the area when absent. */
+  /** The thumbnail node (an `img`, a `CachedThumbnail` or an entity's Morph art); the world icon fills the area when absent. */
   thumbnail?: ReactNode;
   /** Absolutely-positioned overlay over the thumbnail (e.g. a download button / progress bar). */
   thumbnailOverlay?: ReactNode;
@@ -125,7 +125,7 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * The shared visual shell for a world card — frame, thumbnail area (with a `Globe` fallback) carrying the
+ * The shared visual shell for a world card — frame, thumbnail area (with a world-icon fallback) carrying the
  * title and author over a scrim, and the description beneath — composed by both the local
  * `SortableWorldCard` (detailed layout) and the community `RemoteWorldCard`. Card-specific bits (drag vs.
  * download/hide, counts, tags, footer actions) are passed via slots/`children`, so the shared layout
@@ -155,7 +155,7 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
         {thumbnailOverlay}
         {loading ? <Skeleton className="w-full h-full rounded-none" /> : thumbnail ?? (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <Globe className="h-12 w-12" />
+            <WorldIcon className="h-12 w-12" />
           </div>
         )}
         {/* The name and author live on the art, matching the grid tiles, so the text block stays short.

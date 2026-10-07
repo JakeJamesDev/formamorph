@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
-import { Folder, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
+import { Link2, Lock, Unlink } from 'lucide-react';
+import { BlueprintIcon, EntityIcon, GroupIcon } from '@/lib/elementIcons';
 import {
   getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, entityRootTraitTree, linkRowRemovable,
   getEntityRootDropProjection, applyEntityRootDrop,
@@ -269,7 +270,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         return {
           lead: 'chevron',
           collapseLabels: ['Expand entity', 'Collapse entity'],
-          icon: <User className="h-4 w-4 shrink-0" aria-hidden />,
+          icon: <EntityIcon className="h-4 w-4 shrink-0" aria-hidden />,
           label: <PlaceholderText text={entity.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
           meta: entity.customPersona ? 'Custom Persona' : entity.persona ? 'Playable' : 'Entity',
@@ -282,7 +283,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         return {
           lead: 'chevron',
           collapseLabels: ['Expand group', 'Collapse group'],
-          icon: <LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden />,
+          icon: <BlueprintIcon className="h-4 w-4 shrink-0" aria-hidden />,
           label: <PlaceholderText text={node.group.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
           removeTitle: 'Remove Blueprints',
@@ -293,7 +294,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         // Only groups collapse; traits get no leading slot (matching the original layout).
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
-        icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined,
+        icon: isGroup ? <GroupIcon className="h-4 w-4 shrink-0" /> : undefined,
         label: <PlaceholderText text={isGroup ? node.group?.name ?? '' : node.leaf?.name ?? ''} placeholders={placeholders} />,
         labelClass: isGroup ? 'font-medium' : unresolved ? UNRESOLVED : undefined,
         meta,

@@ -1,12 +1,13 @@
 /** The dictionary entry panel's own tabs, in order. Single source of truth: `DictionaryManager`'s
  *  `PanelTabsList` renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorEntry`) is
  *  guarded against it in `devRouter.test.ts`. */
-import { BookOpen, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 
+import { ELEMENT_ICONS } from '@/lib/elementIcons';
 import { tabForField } from './findFocus';
 
 export const DICTIONARY_PANEL_TABS = [
-  { value: 'details', label: 'Details', icon: BookOpen },
+  { value: 'details', label: 'Details', icon: ELEMENT_ICONS.dictionary },
   { value: 'matching', label: 'Matching', icon: Filter, advancedOnly: true },
 ] as const;
 

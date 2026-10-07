@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
-import { FilePlus, FolderPlus, LayoutTemplate } from 'lucide-react';
+import { FilePlus, FolderPlus } from 'lucide-react';
+import { BlueprintIcon } from '@/lib/elementIcons';
 import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { ListMenuRow } from '@/components/ListToolbar';
 import { useGameData } from '@/contexts/GameDataContext';
@@ -68,7 +69,7 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
           <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={handleAddGroup} />
           <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label="Add Placeholder" onAdd={handleAddPlaceholder} />
           {!blueprintsPlaceholderGroup(placeholderGroups) && (
-            <ListMenuRow icon={<LayoutTemplate className="h-4 w-4" />} label="Add Blueprints Group" onAdd={handleAddBlueprints} />
+            <ListMenuRow icon={<BlueprintIcon className="h-4 w-4" />} label="Add Blueprints Group" onAdd={handleAddBlueprints} />
           )}
         </>
       ),

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Folder, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { GroupIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
 import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from '@/components/WorldCardShell';
@@ -118,7 +119,7 @@ export function LibraryGroupTile({
           data-folder-title
           className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8 flex items-end gap-2', TITLE_SCRIM)}
         >
-          <Folder className="h-5 w-5 shrink-0 text-white" />
+          <GroupIcon className="h-5 w-5 shrink-0 text-white" />
           <OverlayTitle name={group.name} className="min-w-0 flex-1" />
           <span className="shrink-0 text-meta text-white/70">{group.members.length}</span>
         </div>

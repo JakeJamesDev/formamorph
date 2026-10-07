@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
+import { Columns2, RectangleVertical, Pencil, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
+import { WorldIcon } from '@/lib/elementIcons';
 import { ActionIcon } from "@/lib/actionIcons";
 import { THUMB_FRAME, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -460,7 +461,7 @@ export function RemoteWorldDetailsModal({
           <EntityPlaceholderArt id={String(world._id || world.id)} name={world.name ?? ''} className="absolute inset-0" />
         ) : (
           <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-            <Globe className="h-16 w-16" />
+            <WorldIcon className="h-16 w-16" />
           </div>
         )}
       </div>

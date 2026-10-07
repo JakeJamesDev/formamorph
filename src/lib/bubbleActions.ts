@@ -1,4 +1,5 @@
-import { ChartColumn, Copy, Dices, Headphones, ImagePlus, ListRestart, Pencil, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
+import { Copy, Dices, Headphones, ImagePlus, ListRestart, Pencil, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
+import { StatIcon } from '@/lib/elementIcons';
 
 /** One action on a Chat bubble. The icon row and the bubble menu both render the same list. */
 export interface BubbleAction {
@@ -55,7 +56,7 @@ export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): Bubb
     actions.push({ key: 'regenerate', label: 'Re-generate Narration', icon: RefreshCw, section: 'generate', disabled: busy, run: h.regenerate });
     if (state.canRegenStats) {
       // A running scene render holds the graphics card, and the re-roll keeps the turn its picture belongs to.
-      actions.push({ key: 'stats', label: 'Re-generate Stats', icon: ChartColumn, section: 'generate', disabled: sceneBlocked, menuOnly: true, run: h.regenerateStats });
+      actions.push({ key: 'stats', label: 'Re-generate Stats', icon: StatIcon, section: 'generate', disabled: sceneBlocked, menuOnly: true, run: h.regenerateStats });
     }
   }
   if (state.sceneImagesAvailable) {

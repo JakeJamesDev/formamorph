@@ -1,5 +1,5 @@
 import { useGameData } from '@/contexts/GameDataContext';
-import { Folder } from 'lucide-react';
+import { GroupIcon } from '@/lib/elementIcons';
 import {
   buildEntityTree, flattenEntityTree, removeChildrenOf, getEntityDropProjection, applyEntityDrop,
   duplicateEntityNode, type FlatEntityNode,
@@ -39,7 +39,7 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
         // Only groups collapse; entities get no leading slot (matching the flat list layout).
         lead: isGroup ? 'chevron' : 'none',
         collapseLabels: ['Expand group', 'Collapse group'],
-        icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : <ContentLinkIcon link={node.leaf?.link} />,
+        icon: isGroup ? <GroupIcon className="h-4 w-4 shrink-0" /> : <ContentLinkIcon link={node.leaf?.link} />,
         label: <PlaceholderText text={isGroup ? node.group?.name ?? '' : node.leaf?.name ?? ''} placeholders={placeholders} />,
         labelClass: isGroup ? 'font-medium' : undefined,
         remove: () => { if (isGroup) removeEntityGroup(node.id); else askRemoveEntity(node.id); },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Check, User } from 'lucide-react';
+import { Check } from 'lucide-react';
+import { DictionaryIcon, EntityIcon } from '@/lib/elementIcons';
 import { Button } from '@/components/ui/button';
 import { NavDisclosure } from '@/components/NavDisclosure';
 import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
@@ -177,7 +178,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           categoryNavigationButton.current?.focus();
         }}
       >
-        {category.kind === 'traits' && category.entityNode && <User aria-hidden className="h-4 w-4 shrink-0" />}
+        {category.kind === 'traits' && category.entityNode && <EntityIcon aria-hidden className="h-4 w-4 shrink-0" />}
         <span className="min-w-0 flex-1 break-words">
           {category.name}
           {category.kind === 'traits' && category.entityNode && !!category.entityId && playerIds.includes(category.entityId) && youMarkOf(isCurrent)}
@@ -307,7 +308,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               aria-label="Read Introduction"
               onClick={props.onIntroduction}
             >
-              <BookOpen aria-hidden className="h-4 w-4 shrink-0" />
+              <DictionaryIcon aria-hidden className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">Introduction</span>
             </Button>
           )}

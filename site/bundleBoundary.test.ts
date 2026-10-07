@@ -152,7 +152,8 @@ describe('the site entry stays out of the game bundle', () => {
     // even when nothing it pulls is named. Raise the ceiling deliberately, having looked at what moved.
     // 57: the Patreon section and the leaves it reads (its service, `supporterFlair`, `useMountedRef`, the checkbox).
     // 58: the Supporter badge on the profile page.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(58);
+    // 59: `elementIcons`, a lucide-only leaf that `catalogKinds` reads for its kind icons.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(59);
   });
 
   it('reaches the shielded layer helper through the dialog wrappers, and nothing behind it', () => {

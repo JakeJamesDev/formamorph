@@ -1,4 +1,6 @@
-import { BookOpen, Braces, ChartColumn, Globe, MapPin, ToggleRight, Users, type LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+import { ELEMENT_ICONS } from '@/lib/elementIcons';
 
 /** The World Editor's tab groups, in Sections bar order. A group with no tab in the current mode draws nothing. */
 export const WORLD_EDITOR_TAB_GROUPS = [
@@ -22,13 +24,13 @@ export interface WorldEditorTab {
  *  render from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditor`) is guarded against it in
  *  `devRouter.test.ts`. */
 export const WORLD_EDITOR_TABS = [
-  { value: 'overview', label: 'Overview', icon: Globe },
-  { value: 'stats', label: 'Stats', group: 'content', icon: ChartColumn },
-  { value: 'entities', label: 'Entities', group: 'content', icon: Users },
-  { value: 'locations', label: 'Locations', group: 'content', icon: MapPin },
-  { value: 'traits', label: 'Traits', group: 'content', icon: ToggleRight },
-  { value: 'dictionary', label: 'Dictionary', group: 'vocabulary', icon: BookOpen },
-  { value: 'placeholders', label: 'Placeholders', group: 'vocabulary', icon: Braces, advancedOnly: true },
+  { value: 'overview', label: 'Overview', icon: ELEMENT_ICONS.world },
+  { value: 'stats', label: 'Stats', group: 'content', icon: ELEMENT_ICONS.stat },
+  { value: 'entities', label: 'Entities', group: 'content', icon: ELEMENT_ICONS.entities },
+  { value: 'locations', label: 'Locations', group: 'content', icon: ELEMENT_ICONS.location },
+  { value: 'traits', label: 'Traits', group: 'content', icon: ELEMENT_ICONS.trait },
+  { value: 'dictionary', label: 'Dictionary', group: 'vocabulary', icon: ELEMENT_ICONS.dictionary },
+  { value: 'placeholders', label: 'Placeholders', group: 'vocabulary', icon: ELEMENT_ICONS.placeholder, advancedOnly: true },
 ] as const satisfies readonly WorldEditorTab[];
 
 /** The tabs one editor mode shows. Simple drops the `advancedOnly` ones. */
