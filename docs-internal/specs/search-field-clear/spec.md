@@ -1,6 +1,7 @@
 # Search Field Clear
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-07. Tickets 01-05 done; last landing 7ae5fac8. Closed without gates.
 Spec session: search-field-clear — spec
 
 Rulings from the grill session are Q-numbered. A settled ruling reopens on new evidence, never on a new opinion.
