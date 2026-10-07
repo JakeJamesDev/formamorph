@@ -48,7 +48,8 @@ describe('PlaceholderPinsSection on the pin world', () => {
       await user.keyboard('{Escape}');
       await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
     }
-  });
+    // Four open pickers mount about 2,200 items: 1.5 s alone, past 5 s beside the full suite.
+  }, 20_000);
 
   // 24 ms alone, up to 63 ms beside other test files; mounting every item while closed takes 1,600 ms.
   it('mounts 20 pin rows in under 200 ms warm', () => {

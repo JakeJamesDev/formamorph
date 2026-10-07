@@ -12,6 +12,18 @@ _Avoid_: fetch helper, completion client
 The complete, plain-value description of one AI call — prompt, messages, resolved endpoint, sampler, reasoning preferences — built from a settings snapshot; everything the AI Stream needs, nothing live.
 _Avoid_: request options, config
 
+**Request Transport**:
+The module that carries one AI request from spec to final text, outside React: resolves the endpoint, offers Tools, runs the AI Stream and its tool rounds, strips reasoning, records parity, and classifies failures. Reports what it sees through one sink; it never touches the screen.
+_Avoid_: request adapter (the Turn Pipeline's slot the transport fills), makeAIRequest, AI client
+
+**Narration Stream**:
+The module between the Request Transport and the screen that turns streamed narration into sentence events — opened, display text, each completed sentence once and in order, retract, finished, canceled. The reveal, read-aloud, the scene list and history persistence each listen to it.
+_Avoid_: sentence splitter, narration sink, reveal feed
+
+**Background Pass Queue**:
+The module that runs the silent passes a turn leaves behind — discover, digest, diary, milestone — while no turn and no scene render is running. It keeps two dependencies: a milestone waits for every due digest, and a new character's diary waits for that character's discover; a name that will never become an entity gets no diary. Independent passes run together when Concurrent Requests is on, and one at a time, in that order, when it is off. A pass that fails is set aside for the rest of the idle window. A running pass finishes when a new turn starts; leaving the game or loading a save cancels it. A memory or character regenerate waits behind it and holds it while it runs.
+_Avoid_: drainer, idle loop, background worker (the embedding batch is not one of these)
+
 **Tool**:
 A function the AI may call during a request to get information it does not have, such as an entity's full entry. Defined once in settings, enabled per prompt preset, and offered only to the prompts it names, and only on endpoints known to support tools. Read-only: a Tool never changes the world or the playthrough. A Formaquestion Tool is the same shape in a second list, switched per device for the help request.
 _Avoid_: function (wire-format word), instrument (a Test Bench part)
