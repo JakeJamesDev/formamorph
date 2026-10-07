@@ -164,7 +164,7 @@ describe('WorldEditor — where the full Bench sits', () => {
     // The rail stays drawn so the layout holds, with every tab disabled and the editor's tab kept.
     railTabs().forEach((tab) => expect(tab).toBeDisabled());
     expect(railTabs().find((tab) => tab.getAttribute('aria-selected') === 'true')).toHaveTextContent('Entities');
-    expect(screen.queryByPlaceholderText('Search or add new entities')).toBeNull();
+    expect(screen.queryByPlaceholderText('Filter Entities')).toBeNull();
     // The Bench replaced the list, not the editor: its header and footer are still reachable mid-triage.
     expect(screen.getByRole('button', { name: 'Find and replace' })).toBeInTheDocument();
 

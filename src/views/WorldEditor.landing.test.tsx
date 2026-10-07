@@ -60,7 +60,7 @@ describe('World Editor Take Me There landing', () => {
   it('focuses the search box when the request names a tab toolbar', async () => {
     renderWorldEditorBench(WORLD, 'advanced', requestFor('worldEditor.stats', 'list-toolbar'));
     await waitFor(() => expect(scrolled).toContain(rowOf(STATS_BAR)));
-    expect(document.activeElement).toBe(screen.getByPlaceholderText('Search or add new stats'));
+    expect(document.activeElement).toBe(screen.getByPlaceholderText('Filter Stats'));
   });
 
   it('focuses the Find button when the request names it', async () => {

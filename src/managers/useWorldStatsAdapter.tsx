@@ -82,7 +82,7 @@ export function useWorldStatsAdapter({ onSelect, search, tab, onTabChange, focus
     fills: (id) => !!shown(id),
     onReorder,
     add: { label: 'Add to Stats', onAdd: handleAdd },
-    placeholder: 'Search or add new stats',
+    placeholder: 'Filter Stats',
     holds: (id) => stats.some((s) => s.id === id),
     isEmpty: stats.length === 0,
     emptyHint: <EmptyListHint noun="stats" />,

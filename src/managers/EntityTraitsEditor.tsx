@@ -27,7 +27,7 @@ export type EntityTraitStore = TraitStore & { entityRoot: EntityRoot };
  * group or Link panel beside or over the list. The caller holds the selection. While a search is typed the
  * list is flat: matching traits and Links, never groups.
  */
-const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity, ownerLine = true, emptyHint, detailHeader }: {
+const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity, ownerLine = true, emptyHint, detailHeader, placeholder = 'Search or add new traits' }: {
   store: EntityTraitStore;
   layout: ListEditorLayout;
   selectedId: string | null;
@@ -39,6 +39,8 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
   emptyHint: ReactNode;
   /** Tops the detail pane: a host's placeholder palette. */
   detailHeader?: ReactNode;
+  /** The list box's text: a host under the World Editor's header search reads "Filter …". */
+  placeholder?: string;
 }) => {
   const { bearer, world } = store.entityRoot;
   const { placeholders, traits, traitGroups } = store;
@@ -185,7 +187,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
         </>
       ),
     },
-    placeholder: 'Search or add new traits',
+    placeholder,
     holds: (id) => ownsItem(id) || tree.linkRows.has(id),
     isEmpty: !(traits.length || traitGroups.length || bearer.traitLinks?.length),
     emptyHint,

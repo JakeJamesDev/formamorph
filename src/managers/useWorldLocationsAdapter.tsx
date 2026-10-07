@@ -94,7 +94,7 @@ export function useWorldLocationsAdapter({ selectedId, onSelect, search, view, t
     fills: (id) => !!shown(id),
     onReorder,
     add: { label: 'Add to Locations', onAdd: handleAdd },
-    placeholder: 'Search or add new locations',
+    placeholder: 'Filter Locations',
     holds: (id) => locations.some((l) => l.id === id),
     isEmpty: locations.length === 0,
     emptyHint: <EmptyListHint noun="locations" />,

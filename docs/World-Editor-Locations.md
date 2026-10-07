@@ -16,7 +16,7 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 <!-- route: worldEditor.locations#list-toolbar -->
 
 1. Open the **Locations** tab.
-2. Type the location's name in the **Search or add new locations** box.
+2. Type the location's name in the **Filter Locations** box.
 3. Select the **+** button (**Add to Locations**). The new location opens in the panel.
 4. On the **Details** tab, write the **AI-Facing Description**.
 5. Select **Save**.
@@ -29,13 +29,13 @@ Without a fixed place, the narrator loses track of the scene. The tavern becomes
 
 **In the list:**
 
-1. Select **List** beside the search box.
+1. Select **List** beside the filter box.
 2. Drag the location by its handle onto the row above it.
 3. Move it to the right while you drag. The indent shows that it is now a sub-location.
 
 **On the canvas:**
 
-1. Select **Canvas** beside the search box.
+1. Select **Canvas** beside the filter box.
 2. Drag the location's box into the box of its new parent. To nest into a location that has no sub-locations yet, hold the drag over it for a moment.
 3. To move a location back to the top level, drop it on **Top Level**.
 
@@ -101,7 +101,7 @@ When the AI's answer doesn't match a connected place, the game discards it and o
 <!-- keywords: graph view, node editor, visual diagram, fullscreen, tidy layout, boxes overlap, unreachable marker, right-click menu, flowchart -->
 <!-- route: worldEditorLocations.list -->
 
-The **Locations** tab has two views. Switch between them with the **List** and **Canvas** icon buttons to the right of the search box.
+The **Locations** tab has two views. Switch between them with the **List** and **Canvas** icon buttons to the right of the filter box.
 
 | View | Use it to |
 |---|---|

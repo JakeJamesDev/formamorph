@@ -239,7 +239,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
         />
       ),
     } : { label: 'Add to Traits', onAdd: handleAddTrait },
-    placeholder: 'Search or add new traits',
+    placeholder: 'Filter Traits',
     holds: (id) => traits.some((t) => t.id === id) || traitGroups.some((g) => g.id === id) || !!findOwnedItem(entities, id)
       || tree.entityNodes.has(id) || tree.linkRows.has(id),
     // The tree draws its own empty hint.

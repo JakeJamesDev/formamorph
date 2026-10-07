@@ -18,7 +18,7 @@ Placeholders let a world change without a rewrite. Write *"the {{Eye Color}} str
 <!-- route: worldEditor.placeholders#list-toolbar -->
 
 1. Switch the World Editor to Advanced mode, and open the **Placeholders** tab.
-2. Type the name in the search box, such as *Eye Color*.
+2. Type the name in the **Filter Placeholders** box, such as *Eye Color*.
 3. Select **+**, then **Add Placeholder**. The new placeholder opens.
 4. Under **Values**, type a value and press Enter. Repeat for each value.
 5. Leave **Kind** on **Wildcard** to pick one value at random, or select **Object** to show all values. A placeholder with one value is a Variable. Use it for one fact that you edit in one place.

@@ -18,7 +18,7 @@ The narrator's prompt tells it to let stats change how an action turns out. A lo
 <!-- route: worldEditor.stats#list-toolbar -->
 
 1. Open the **Stats** tab.
-2. Type the stat's name in the **Search or add new stats** box.
+2. Type the stat's name in the **Filter Stats** box.
 3. Select the **+** button (**Add to Stats**). The new stat opens in the panel.
 4. Set **Min**, **Max** and **Initial Value**.
 5. Write its **Description**.

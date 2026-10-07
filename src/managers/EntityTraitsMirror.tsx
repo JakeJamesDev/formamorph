@@ -57,6 +57,7 @@ const EntityTraitsMirror = ({ entity, selectedId, onSelect }: {
       selectedId={selectedId}
       onSelect={onSelect}
       ownerLine={false}
+      placeholder="Filter Traits"
       emptyHint={<Hint className="p-2">Add a trait to give this entity a node on the <strong>Traits</strong> tab</Hint>}
     />
   );

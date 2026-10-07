@@ -58,7 +58,7 @@ const WORLD: World = benchEditorWorld({
 } as Partial<World>);
 
 const searchPlaceholders = (term: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search or add new placeholders'), { target: { value: term } });
+  fireEvent.change(screen.getByPlaceholderText('Filter Placeholders'), { target: { value: term } });
 
 /** The flat search list's rows, by the label each one shows. */
 const searchRows = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));
@@ -67,7 +67,7 @@ const searchRow = (label: string) => screen.getByRole('button', { name: `Select 
 
 /** Whether an open pane's field holds `text`, apart from the search box that may hold it too. */
 const paneShows = (text: string) => screen.queryAllByDisplayValue(text)
-  .some((el) => el.getAttribute('placeholder') !== 'Search or add new placeholders');
+  .some((el) => el.getAttribute('placeholder') !== 'Filter Placeholders');
 
 const openTab = () => {
   const bench = renderWorldEditorBench(WORLD, 'advanced');

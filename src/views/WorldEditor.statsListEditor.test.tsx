@@ -30,7 +30,7 @@ const WORLD: World = benchEditorWorld({
 } as Partial<World>);
 
 const searchStats = (term: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search or add new stats'), { target: { value: term } });
+  fireEvent.change(screen.getByPlaceholderText('Filter Stats'), { target: { value: term } });
 
 const rows = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));
 

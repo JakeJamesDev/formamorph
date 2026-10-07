@@ -39,7 +39,7 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-const box = () => screen.getByPlaceholderText('Search or add new dictionaries') as HTMLInputElement;
+const box = () => screen.getByPlaceholderText('Filter Dictionaries') as HTMLInputElement;
 const search = (term: string) => fireEvent.change(box(), { target: { value: term } });
 /** The tree's fold buttons, one per book in order: Fen Lore, then Harbor Lore. */
 const folds = (name: 'Collapse dictionary' | 'Expand dictionary') => screen.getAllByRole('button', { name });

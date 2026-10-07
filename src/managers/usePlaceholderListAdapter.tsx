@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
  * prefix, the router's detail and footer, and an add named from the search text. It holds every drawn row
  * and the bare id of each placeholder in it, so a shared row's link still opens its original.
  */
-export function usePlaceholderListAdapter({ nodes, lists, rowRules, names, tree, detail, footer, fills, addLabel, onSelect }: {
+export function usePlaceholderListAdapter({ nodes, lists, rowRules, names, tree, detail, footer, fills, addLabel, onSelect, placeholder = 'Search or add new placeholders' }: {
   nodes: readonly PlaceholderRowNode[];
   lists: PlaceholderHomesWorld;
   rowRules: (node: PlaceholderRowNode) => PlaceholderRowRules;
@@ -26,6 +26,8 @@ export function usePlaceholderListAdapter({ nodes, lists, rowRules, names, tree,
   fills: boolean;
   addLabel: string;
   onSelect: (id: string) => void;
+  /** The list box's text: a host under the World Editor's header search reads "Filter …". */
+  placeholder?: string;
 }): ListEditorAdapter {
   const { addPlaceholder } = usePlaceholderStore();
   const heldIds = useMemo(() => new Set(nodes.flatMap((n) => [n.id, n.placeholder.id])), [nodes]);
@@ -49,7 +51,7 @@ export function usePlaceholderListAdapter({ nodes, lists, rowRules, names, tree,
         onSelect(p.id);
       },
     },
-    placeholder: 'Search or add new placeholders',
+    placeholder,
     holds: (id) => heldIds.has(id),
     // The tree draws its own empty hint.
     isEmpty: false,

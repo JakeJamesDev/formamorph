@@ -32,7 +32,7 @@ const WORLD: World = benchEditorWorld({
 } as Partial<World>);
 
 const searchLocations = (term: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search or add new locations'), { target: { value: term } });
+  fireEvent.change(screen.getByPlaceholderText('Filter Locations'), { target: { value: term } });
 
 /** The flat search list's rows, by the label each one shows. */
 const searchRows = () => screen.queryAllByRole('button', { name: /^Select / }).map((b) => b.getAttribute('aria-label')!.slice('Select '.length));
@@ -138,7 +138,7 @@ describe('the Locations tab', () => {
   describe('the view switch', () => {
     /** The toolbar's controls in DOM order: the +, the search box, then each view button by its name. */
     const toolbarOrder = () => {
-      const box = screen.getByPlaceholderText('Search or add new locations');
+      const box = screen.getByPlaceholderText('Filter Locations');
       return [...box.parentElement!.querySelectorAll<HTMLElement>('button, input')].map((el) =>
         el === box ? 'search' : el.getAttribute('aria-label') ?? el.textContent);
     };
@@ -183,7 +183,7 @@ describe('the Locations tab', () => {
       renderWorldEditorBench(WORLD, 'advanced');
       openEditorTab(/Locations/);
 
-      const box = screen.getByPlaceholderText('Search or add new locations');
+      const box = screen.getByPlaceholderText('Filter Locations');
       let row: HTMLElement = screen.getByRole('radio', { name: 'Canvas' });
       while (!row.contains(box)) row = row.parentElement!;
       expect(row.querySelector('[role="tablist"]')).toBeNull();
