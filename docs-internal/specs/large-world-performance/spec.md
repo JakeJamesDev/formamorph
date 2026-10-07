@@ -1,8 +1,8 @@
 # Large-World Performance and Crash Safeguards — Spec
 
-Status: ready-for-agent
+Status: done
 Spec session: large-world-performance — spec
-Status note: (2026-10-06) Grilled; rulings Q1–Q24 below. Ticket 01 (diagnosis) can revise the Q1/Q8 bar.
+Status note: (2026-10-06) Tickets 01–19 done; last landing a19ea9f0. Closed without gates.
 
 ## Problem Statement
 
