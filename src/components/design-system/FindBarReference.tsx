@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw, Search } from 'lucide-react';
 import EditorFindBar from '@/components/editor/EditorFindBar';
+import { SurfaceAppBar } from '@/components/SurfaceAppBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Meta } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 import type { SearchMatch, SearchRecord, SearchTarget } from '@/lib/worldSearch';
@@ -50,8 +52,13 @@ const SAMPLE_FIELDS: readonly SampleField[] = [
 
 const cloneSample = () => SAMPLE_FIELDS.map((field) => ({ ...field }));
 
+type Layout = 'floating' | 'docked';
+
 export function FindBarReference() {
   const [fields, setFields] = useState<SampleField[]>(cloneSample);
+  const [layout, setLayout] = useState<Layout>('floating');
+  const [expanded, setExpanded] = useState(false);
+  const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState(true);
   const [session, setSession] = useState(0);
   const [startWithReplace, setStartWithReplace] = useState(false);
@@ -90,6 +97,12 @@ export function FindBarReference() {
   }, [open]);
 
   const openFind = (withReplace: boolean) => {
+    if (layout === 'docked') {
+      // The shortcuts' docked behavior: Ctrl+F focuses the field, and Ctrl+H also expands it.
+      if (withReplace) setExpanded(true);
+      setFocusSignal((current) => current + 1);
+      return;
+    }
     setStartWithReplace(withReplace);
     setSession((current) => current + 1);
     setOpen(true);
@@ -101,6 +114,17 @@ export function FindBarReference() {
     setOpen(false);
     setCurrentFieldId(null);
     setActivity('The Find bar is closed.');
+  };
+
+  // The emptied field reports that no match is selected, so the status follows on its own.
+  const clearSearch = () => setExpanded(false);
+
+  const changeLayout = (next: Layout) => {
+    setLayout(next);
+    setExpanded(false);
+    setOpen(next === 'floating');
+    setCurrentFieldId(null);
+    setActivity('The reference has no selected match.');
   };
 
   const navigate = (match: SearchMatch | null) => {
@@ -122,8 +146,18 @@ export function FindBarReference() {
         <CardDescription>Search and replace text in a local World Editor sample.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3">
+        <ToggleGroup
+          type="single"
+          value={layout}
+          onValueChange={(value) => { if (value) changeLayout(value as Layout); }}
+          aria-label="Reference Layout"
+          className="justify-self-start"
+        >
+          <ToggleGroupItem value="floating">Floating</ToggleGroupItem>
+          <ToggleGroupItem value="docked">Docked</ToggleGroupItem>
+        </ToggleGroup>
         <div className="flex flex-wrap items-center gap-2">
-          <Button ref={findTriggerRef} type="button" size="sm" onClick={() => openFind(false)} disabled={open}>
+          <Button ref={findTriggerRef} type="button" size="sm" onClick={() => openFind(false)} disabled={layout === 'floating' && open}>
             <Search className="mr-2 h-4 w-4" /> Find
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => openFind(true)}>
@@ -136,7 +170,29 @@ export function FindBarReference() {
         </div>
 
         <div className="relative min-h-[34rem] overflow-hidden rounded-md border bg-background shadow-sm">
-          {open && (
+          {layout === 'docked' && (
+            <div className="border-b">
+              <SurfaceAppBar
+                start={<span className="text-heading">World Editor</span>}
+                center={(
+                  <EditorFindBar
+                    layout="docked"
+                    focusSignal={focusSignal}
+                    expanded={expanded}
+                    onExpandedChange={setExpanded}
+                    targets={targets}
+                    placeholders={[]}
+                    placementLetters={new Map()}
+                    allowPlaceholderReplace={false}
+                    onNavigate={navigate}
+                    onAddPlaceholder={() => {}}
+                    onClose={clearSearch}
+                  />
+                )}
+              />
+            </div>
+          )}
+          {layout === 'floating' && open && (
             <EditorFindBar
               key={session}
               targets={targets}
@@ -150,7 +206,7 @@ export function FindBarReference() {
             />
           )}
 
-          <div className={cn('grid min-h-[34rem] sm:grid-cols-[11rem_minmax(0,1fr)]', open && 'pt-28 sm:pt-32')}>
+          <div className={cn('grid min-h-[34rem] sm:grid-cols-[11rem_minmax(0,1fr)]', layout === 'floating' && open && 'pt-28 sm:pt-32')}>
             <aside className="border-b bg-muted/30 p-3 sm:border-b-0 sm:border-r" aria-label="World Editor sections">
               <Meta className="mb-2 uppercase tracking-wider">World Editor</Meta>
               <ul className="grid gap-1 text-label">

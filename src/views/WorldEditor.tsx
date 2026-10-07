@@ -358,9 +358,13 @@ const WorldEditorInner = ({
   // Mobile's floating bar. Desktop's docked field is always there, so the shortcuts never open this.
   const [findOpen, setFindOpen] = useState(false);
   const [findWithReplace, setFindWithReplace] = useState(false);
-  // Desktop: the docked field holds text, and each Ctrl+F focuses it.
+  // Desktop: the docked field holds text, each Ctrl+F focuses it, and Ctrl+H also expands it.
   const [dockedSearching, setDockedSearching] = useState(false);
   const [dockedFocusSignal, setDockedFocusSignal] = useState(0);
+  const [dockedExpanded, setDockedExpanded] = useState(false);
+  useEffect(() => {
+    if (import.meta.env.DEV && devRoute?.find === 'expanded') setDockedExpanded(true);
+  }, [devRoute?.find]);
   const dockedSearchRef = useRef<HTMLDivElement>(null);
   // Overview's fields sit in the list pane and every other tab's in the detail pane, so the hit lookup
   // spans the whole editor and skips the two boxes that aren't world text (the find bar, the list filter).
@@ -373,6 +377,7 @@ const WorldEditorInner = ({
     if (!isMobile) {
       // A shortcut pressed inside the search keeps the control recorded before it.
       if (!dockedSearchRef.current?.contains(active)) findOpenerRef.current = control;
+      if (withReplace) setDockedExpanded(true);
       setDockedFocusSignal((n) => n + 1);
       return;
     }
@@ -384,6 +389,7 @@ const WorldEditorInner = ({
   const endDockedSearch = useCallback(() => {
     clearEditorMatch();
     setFindField(null);
+    setDockedExpanded(false);
     const opener = findOpenerRef.current;
     findOpenerRef.current = null;
     // Otherwise focus stays in the emptied field.
@@ -1043,6 +1049,8 @@ const WorldEditorInner = ({
             focusSignal={dockedFocusSignal}
             onActiveChange={setDockedSearching}
             onLeave={dropFindOpener}
+            expanded={dockedExpanded}
+            onExpandedChange={setDockedExpanded}
             fieldAttributes={targetAttribute('worldEditor', 'find-button')}
             targets={searchTargets}
             placeholders={placeholders}

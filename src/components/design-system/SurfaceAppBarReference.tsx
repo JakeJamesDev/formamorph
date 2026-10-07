@@ -23,6 +23,7 @@ const NO_PLACEHOLDERS: Placeholder[] = [];
 export function SurfaceAppBarReference() {
   const [mode, setMode] = useState<EditorMode>('simple');
   const [action, setAction] = useState('No action yet.');
+  const [searchExpanded, setSearchExpanded] = useState(false);
   return (
     <Card role="region" aria-labelledby="surface-app-bar-title">
       <CardHeader>
@@ -54,7 +55,9 @@ export function SurfaceAppBarReference() {
                   allowPlaceholderReplace={false}
                   onNavigate={() => {}}
                   onAddPlaceholder={() => {}}
-                  onClose={() => setAction('Clear search.')}
+                  expanded={searchExpanded}
+                  onExpandedChange={setSearchExpanded}
+                  onClose={() => { setSearchExpanded(false); setAction('Clear search.'); }}
                 />
               )}
               end={(
