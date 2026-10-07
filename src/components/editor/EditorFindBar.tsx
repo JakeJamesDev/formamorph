@@ -3,6 +3,7 @@ import { CaseSensitive, ChevronDown, ChevronRight, ChevronsUpDown, ChevronUp, Cr
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldWithTrailing } from '@/components/ui/field-with-trailing';
+import { ClearSearchButton } from '@/components/ui/search-field';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -161,6 +162,7 @@ export default function EditorFindBar({
   const offerCodeRename = useCodeRenameOffer();
   const [notice, setNotice] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const replaceRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
   // Floating opens on request, so it takes focus; docked mounts with the editor, so it waits to be asked.
@@ -314,12 +316,18 @@ export default function EditorFindBar({
     setChipId(placeholder.id);
   };
 
-  // Docked, Escape and Clear search empty the field, which drops the marker; the host folds the bar back.
+  // Docked, Escape and Close Search empty the field, which drops the marker; the host folds the bar back.
   const close = () => {
     if (docked) { setQuery(''); setDebounced(''); }
     onClose();
   };
   const replaceOpen = docked || showReplace;
+  const findClearable = query !== '';
+  const clearFind = () => { setQuery(''); searchRef.current?.focus(); };
+  const replaceClearable = !placeholderMode && replaceText !== '';
+  const replacePadding = allowPlaceholderReplace
+    ? (replaceClearable ? 'pr-[4rem]' : 'pr-10')
+    : (replaceClearable && 'pr-7');
 
   // The Replace All confirmation is portaled out of the bar, but focus in it is still in the search.
   const leaveCheck = (event: React.FocusEvent<HTMLDivElement>) => {
@@ -360,8 +368,15 @@ export default function EditorFindBar({
             onChange={(e) => setQuery(e.target.value)}
             aria-label={docked ? 'Search World' : 'Find'}
             placeholder={docked ? 'Search World' : 'Find'}
-            className="h-8 pr-[4.25rem] focus-visible:ring-0"
+            className={cn('h-8 focus-visible:ring-0', findClearable ? 'pr-[6rem]' : 'pr-[4.25rem]')}
           />
+          {findClearable && (
+            <ClearSearchButton
+              size="sm"
+              onClick={clearFind}
+              className="absolute right-[4.25rem] top-1/2 -translate-y-1/2"
+            />
+          )}
           {/* One bordered control split in two rather than a ToggleGroup: the group owns its items' pressed
               state, so a pair driven by their own booleans rendered permanently unpressed. */}
           <div className="absolute inset-y-0 right-0 flex items-center" role="group" aria-label="Match options">
@@ -390,7 +405,7 @@ export default function EditorFindBar({
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => step(1)} disabled={!matches.length} aria-label="Next match">
             <ChevronDown className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={close} aria-label={docked ? 'Clear search' : 'Close find'}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={close} aria-label={docked ? 'Close Search' : 'Close Find'}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -428,11 +443,20 @@ export default function EditorFindBar({
                 />
               ) : (
                 <Input
+                  ref={replaceRef}
                   value={replaceText}
                   onChange={(e) => setReplaceText(e.target.value)}
                   aria-label="Replace with"
                   placeholder="Replace"
-                  className={cn('h-8 focus-visible:ring-0', allowPlaceholderReplace && 'pr-10')}
+                  className={cn('h-8 focus-visible:ring-0', replacePadding)}
+                />
+              )}
+              {replaceClearable && (
+                <ClearSearchButton
+                  size="sm"
+                  aria-label="Clear Replace"
+                  onClick={() => { setReplaceText(''); replaceRef.current?.focus(); }}
+                  className={cn('absolute top-1/2 -translate-y-1/2', allowPlaceholderReplace ? 'right-[2.25rem]' : 'right-1')}
                 />
               )}
               {/* Which kind of thing a replacement is, parked in the box it applies to. */}
@@ -551,6 +575,7 @@ export default function EditorFindBar({
               placeholder="Search World"
               className="h-full min-w-0 flex-1 bg-transparent px-2 text-meta outline-none placeholder:text-muted-foreground"
             />
+            {findClearable && <ClearSearchButton size="sm" onClick={clearFind} className="mr-1" />}
             {/* An option left on shows here, so a collapsed search never filters silently. */}
             {optionsOn && (
               <Tip tip="Show match options">

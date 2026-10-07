@@ -57,7 +57,7 @@ export function SurfaceAppBarReference() {
                   onAddPlaceholder={() => {}}
                   expanded={searchExpanded}
                   onExpandedChange={setSearchExpanded}
-                  onClose={() => { setSearchExpanded(false); setAction('Clear search.'); }}
+                  onClose={() => { setSearchExpanded(false); setAction('Close Search.'); }}
                 />
               )}
               end={(

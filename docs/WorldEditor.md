@@ -103,7 +103,8 @@ Switching to Simple mode doesn't remove anything. The hidden fields keep their v
 A search covers the whole world, on every tab the current mode shows. It matches chips by their label, name or values.
 
 - **Enter** goes to the next match. **Shift+Enter** goes to the previous one. **Esc** clears the search, or closes the bar on mobile.
-- On desktop, **Show options and replace** opens the full bar over the top of the editor. **Collapse to search** folds it back and keeps your search. **Clear search** clears it.
+- On desktop, **Show options and replace** opens the full bar over the top of the editor. **Collapse to search** folds it back and keeps your search. **Close Search** clears your search and folds the bar back.
+- Select the **X** button in a box to empty it and keep typing.
 - **Match case** and **Match whole word** stay on when you fold the bar back. An icon in the box shows each one that's on. Select it to open the options.
 - **Replace all** asks first, and says how many matches and fields it changes.
 - A chip can't be replaced as text. Change it from its pop-out.

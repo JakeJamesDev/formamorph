@@ -151,7 +151,7 @@ it('docks Search World in a sample app bar and expands it into Find and Replace'
   await user.click(screen.getByRole('button', { name: 'Show match options' }));
   expect(screen.getByRole('button', { name: 'Match case' })).toHaveAttribute('aria-pressed', 'true');
 
-  await user.click(screen.getByRole('button', { name: 'Clear search' }));
+  await user.click(screen.getByRole('button', { name: 'Close Search' }));
   expect(screen.getByRole('textbox', { name: 'Search World' })).toHaveValue('');
   expect(screen.getByRole('textbox', { name: 'Search World' })).toHaveFocus();
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('The reference has no selected match.'));

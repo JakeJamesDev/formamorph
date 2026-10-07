@@ -190,6 +190,6 @@ test('the Find reference exposes local search states and keyboard focus', async 
   await expect(reference.getByText('5 / 5')).toBeVisible();
   await expect(reference.getByRole('textbox', { name: 'Keeper Description' })).toHaveAttribute('data-find-current', 'true');
 
-  await reference.getByRole('button', { name: 'Close find' }).click();
+  await reference.getByRole('button', { name: 'Close Find' }).click();
   await expect(reference.getByRole('button', { name: 'Find', exact: true })).toBeFocused();
 });

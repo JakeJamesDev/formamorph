@@ -271,7 +271,7 @@ describe('Find (mobile)', () => {
     const field = await focusWorldName();
     await openFloating();
 
-    fireEvent.click(screen.getByLabelText('Close find'));
+    fireEvent.click(screen.getByLabelText('Close Find'));
 
     await floatingIsGone();
     expect(document.activeElement).toBe(field);

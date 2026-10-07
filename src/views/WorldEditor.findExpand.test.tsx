@@ -80,7 +80,7 @@ describe('Search World expanded (desktop)', () => {
     await screen.findByLabelText('World Name');
     await expand();
     expect(screen.getByRole('button', { name: 'Collapse to search' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close Search' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Match options' })).toBeInTheDocument();
     // The app bar's other controls stay mounted beside it.
     expect(screen.getByRole('combobox', { name: 'Editor mode' })).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe('Search World expanded (desktop)', () => {
     expect(screen.getByRole('button', { name: 'Show match options' }).querySelectorAll('svg')).toHaveLength(2);
   });
 
-  it('clears, collapses and returns focus to the earlier field on Clear search after Ctrl+H', async () => {
+  it('clears, collapses and returns focus to the earlier field on Close Search after Ctrl+H', async () => {
     setup();
     const field = await focusWorldName();
     pressShortcut(true);
@@ -164,7 +164,7 @@ describe('Search World expanded (desktop)', () => {
     fireEvent.change(searchWorldField(), { target: { value: 'fen' } });
     await waitFor(() => expect(counter()).toBe('1 / 2'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close Search' }));
 
     await waitFor(() => expect(isExpanded()).toBe(false));
     expect(document.activeElement).toBe(field);
@@ -172,14 +172,14 @@ describe('Search World expanded (desktop)', () => {
     expect(screen.queryByText(/^\d+ \/ \d+$/)).toBeNull();
   });
 
-  it('leaves focus in the cleared field on Clear search when the author expanded by hand', async () => {
+  it('leaves focus in the cleared field on Close Search when the author expanded by hand', async () => {
     setup();
     await focusWorldName();
     searchWorldField().focus();
     await expand();
     fireEvent.change(searchWorldField(), { target: { value: 'lamp' } });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close Search' }));
 
     await waitFor(() => expect(document.activeElement).toBe(searchWorldField()));
     expect(isExpanded()).toBe(false);
