@@ -12,20 +12,27 @@ export function pinSteps({ settle, traced, pct, profiled }) {
     await settle(page);
     const row = page.locator(`[role="tabpanel"] ${ROW}`).filter({ hasText: new RegExp(`^${label}$`) }).first();
     await row.scrollIntoViewIfNeeded({ timeout: 60_000 });
+    await page.evaluate(() => {
+      window.__openTasks = [];
+      new PerformanceObserver((list) => window.__openTasks.push(...list.getEntries().map((e) => e.duration))).observe({ type: 'longtask' });
+    });
     const t0 = Date.now();
     const select = async () => {
-      await row.click();
+      // A heavy record can hold the main thread past the default click timeout.
+      await row.click({ timeout: 180_000 });
       await ready().waitFor({ timeout: process.env.EDITOR_SPEED_PROFILE ? 60_000 : 180_000 });
     };
     await (process.env.EDITOR_SPEED_PROFILE ? profiled(cdp, `${label} open`, select) : select());
     const openMs = Date.now() - t0;
     await settle(page, 1500);
-    return { openMs, settledMs: Date.now() - t0 };
+    const openMaxBlockMs = Math.round(await page.evaluate(() => Math.max(0, ...window.__openTasks)));
+    return { openMs, settledMs: Date.now() - t0, openMaxBlockMs };
   };
 
   /** Type into the open record's Name field and read input-to-paint latency. */
   const typeName = async (page) => {
-    const field = page.getByRole('textbox', { name: 'Name', exact: true }).last();
+    // CSS, not a role query: on a record with hundreds of pins, naming every element outlasts the timeout.
+    const field = page.locator('label:text-is("Name") + input, [aria-label="Name"]').last();
     await field.click();
     await page.keyboard.press('End');
     await settle(page);
@@ -71,9 +78,11 @@ export function pinSteps({ settle, traced, pct, profiled }) {
   return {
     async pinTarget({ page, cdp }) {
       return traced(page, cdp, async () => {
-        const opened = await openRow(page, cdp, 'Placeholders', 'Mood', () => page.getByRole('button', { name: 'Add Pin' }));
+        const opened = await openRow(page, cdp, 'Placeholders', 'Mood', () => page.locator('button:has-text("Add Pin")').first());
         const dom = await domNodes(page);
-        return { ...opened, domNodes: dom, ...(await typeName(page)) };
+        // The open's numbers stand even when typing then times out.
+        const typed = await typeName(page).catch((e) => ({ typeError: String(e.message ?? e).split('\n').slice(0, 3).join(' | ') }));
+        return { ...opened, domNodes: dom, ...typed };
       });
     },
     pinSourceTrait: pinSource('Traits', 'Pin Heavy Trait'),

@@ -82,7 +82,7 @@ export const PATH_TRIGGERS = {
   // The proxy forks the host as a child process instead of importing it.
   'electron/llmEngineHost.cjs': ['electron/llmEngineProxy.cjs'],
   // The pin load test runs the generator as a child process.
-  'testing/editor-speed/genLargeWorld.mjs': ['src/lib/testBench/pinConflictLoad.test.ts'],
+  'testing/editor-speed/genLargeWorld.mjs': ['src/test/pinWorld.ts'],
   'public/default-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
   'build-assets/alternate-avatar.vrm': ['src/lib/avatarLicenseGate.bundledAvatars.test.ts'],
 };

@@ -28,7 +28,8 @@ npm run profile:editor-speed
 EDITOR_SPEED_WORLD=testing/editor-speed/.out/large-world-400e-300l-pins.json EDITOR_SPEED_ONLY=open,pinSourceTrait,pinSourceLocation,pinTarget npm run profile:editor-speed
 ```
 
-- `pinTarget` opens "Mood" on the Placeholders tab and types into its Name.
+- `pinTarget` opens "Mood" on the Placeholders tab and types into its Name. When typing times out, the step keeps the open's numbers and reports `typeError`.
+- Each pin step reports `openMaxBlockMs`, the longest main-thread block while the record opens.
 - `pinSourceTrait` and `pinSourceLocation` open the source, time its Pins tab, count pin rows, then type into Name.
 - The pin steps exist only when the world file name contains `-pins`. `EDITOR_SPEED_PROFILE=1` prints a CPU profile of each open.
 

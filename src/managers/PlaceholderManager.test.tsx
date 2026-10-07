@@ -49,25 +49,37 @@ vi.mock('@/contexts/GameDataContext', () => ({
   useGameDataOptional: () => gameData,
 }));
 // Radix Select never opens its listbox in jsdom, so the Pins section's source pickers stand in as native
-// selects — the options stay genuinely under test. The trigger's own aria-label names the select.
+// selects — the options stay genuinely under test. The trigger's own aria-label names the select and its
+// focus handlers ride on it; text the trigger shows in place of the picked item shows as the picked option.
 vi.mock('@/components/ui/select', async () => {
   const { Children, isValidElement } = await import('react');
-  const SelectTrigger = (_props: { 'aria-label'?: string; children?: React.ReactNode }) => null;
+  type TriggerProps = { 'aria-label'?: string; onFocus?: () => void; onBlur?: () => void; children?: React.ReactNode };
+  const SelectTrigger = (_props: TriggerProps) => null;
+  const SelectValue = (_props: { children?: React.ReactNode }) => null;
   return {
     Select: ({ value, onValueChange, children }: {
       value: string; onValueChange: (v: string) => void; children: React.ReactNode;
     }) => {
       const trigger = Children.toArray(children).find((c) => isValidElement(c) && c.type === SelectTrigger);
-      const label = (isValidElement<{ 'aria-label'?: string }>(trigger) && trigger.props['aria-label']) || 'Select placeholder';
+      const props: TriggerProps = isValidElement<TriggerProps>(trigger) ? trigger.props : {};
+      const shown = Children.toArray(props.children).find((c) => isValidElement(c) && c.type === SelectValue);
+      const display = isValidElement<{ children?: React.ReactNode }>(shown) ? shown.props.children : undefined;
       return (
-        <select aria-label={label} value={value} onChange={(e) => onValueChange(e.target.value)}>
+        <select
+          aria-label={props['aria-label'] || 'Select placeholder'}
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          onFocus={props.onFocus}
+          onBlur={props.onBlur}
+        >
           <option value="" />
+          {display !== undefined && value && <option value={value} hidden>{display}</option>}
           {children}
         </select>
       );
     },
     SelectTrigger,
-    SelectValue: () => null,
+    SelectValue,
     SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
       <option value={value}>{children}</option>
@@ -959,6 +971,12 @@ describe('PlaceholderManager — the Pins section', () => {
   const sources = () => screen.getAllByRole('combobox', { name: 'Pin Source' }) as HTMLSelectElement[];
   const values = () => screen.getAllByRole('textbox', { name: 'Pinned Value' }) as HTMLInputElement[];
   const location = (id: string) => world().locations.find((l) => l.id === id)!;
+  // A closed picker holds no list; the click focuses it, and focus mounts every option.
+  const opened = async (picker: HTMLElement) => {
+    await userEvent.click(picker);
+    return picker;
+  };
+  const openAndPick = async (picker: HTMLElement, option: string) => userEvent.selectOptions(await opened(picker), option);
 
   beforeEach(() => {
     siblings = [TOWN, REGION];
@@ -970,7 +988,7 @@ describe('PlaceholderManager — the Pins section', () => {
   it('lists every pin on this placeholder, strongest source first, each row naming its source', () => {
     render(<Host initial={base()} />);
     expect(values().map((v) => v.value)).toEqual(['Hollow', 'Marrow', 'Snowfall']);
-    expect(sources().map((s) => s.selectedOptions[0].textContent)).toEqual(['Hunger ≤ 20: Starving', 'Sworn', 'Region = Northern']);
+    expect(sources().map((s) => s.selectedOptions[0].textContent)).toEqual(['Hunger ≤ 20', 'Trait: Sworn', 'Region = Northern']);
     // Each row says who else claims the placeholder and which one the rules pick.
     expect(screen.getAllByText(/Also pinned by/).length).toBe(3);
   });
@@ -978,8 +996,8 @@ describe('PlaceholderManager — the Pins section', () => {
   it('adds a location pin — kind, then source — and the pin lands on that location', async () => {
     render(<Host initial={base()} />);
     await userEvent.click(screen.getByRole('button', { name: 'Add Pin' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Pin Kind' }), 'Location');
-    const picker = screen.getByRole('combobox', { name: 'New Pin Source' });
+    await openAndPick(screen.getByRole('combobox', { name: 'Pin Kind' }), 'Location');
+    const picker = await opened(screen.getByRole('combobox', { name: 'New Pin Source' }));
     expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'The Fen', 'The Moor']);
     await userEvent.selectOptions(picker, 'The Fen');
     expect(location('fen').placeholderPins).toEqual([{ placeholderId: 'town', value: '' }]);
@@ -999,10 +1017,10 @@ describe('PlaceholderManager — the Pins section', () => {
   it('re-aims a pin at another source of the same kind, carrying the pin across', async () => {
     const pin = { placeholderId: 'town', value: 'Fen Town', valueId: phValueId('Fen Town') };
     render(<Host initial={{ ...base(), locations: [{ ...fen, placeholderPins: [pin] }, moor] }} />);
-    await userEvent.selectOptions(sources()[1], 'The Moor');
+    await openAndPick(sources()[1], 'The Moor');
     expect(location('fen').placeholderPins).toBeUndefined();
     expect(location('moor').placeholderPins).toEqual([pin]);
-    expect(sources()[1].selectedOptions[0].textContent).toBe('The Moor');
+    expect(sources()[1].selectedOptions[0].textContent).toBe('Location: The Moor');
   });
 
   it('removes a pin from its source', async () => {
@@ -1015,8 +1033,8 @@ describe('PlaceholderManager — the Pins section', () => {
   it('offers a value picker that leaves this placeholder’s own values out', async () => {
     render(<Host initial={base()} />);
     await userEvent.click(screen.getByRole('button', { name: 'Add Pin' }));
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Pin Kind' }), 'Placeholder Value');
-    const picker = screen.getByRole('combobox', { name: 'New Pin Source' });
+    await openAndPick(screen.getByRole('combobox', { name: 'Pin Kind' }), 'Placeholder Value');
+    const picker = await opened(screen.getByRole('combobox', { name: 'New Pin Source' }));
     expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'Region = Northern', 'Region = Southern']);
   });
 
@@ -1030,10 +1048,10 @@ describe('PlaceholderManager — the Pins section', () => {
     siblings = initial.placeholders;
     render(<Host initial={initial} placeholder={garb} />);
     await userEvent.click(screen.getByRole('button', { name: 'Add Pin' }));
-    const kinds = screen.getByRole('combobox', { name: 'Pin Kind' });
+    const kinds = await opened(screen.getByRole('combobox', { name: 'Pin Kind' }));
     expect(within(kinds).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'Trait', 'Placeholder Value']);
     await userEvent.selectOptions(kinds, 'Placeholder Value');
-    const picker = screen.getByRole('combobox', { name: 'New Pin Source' });
+    const picker = await opened(screen.getByRole('combobox', { name: 'New Pin Source' }));
     expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'Plate = gilt']);
   });
 

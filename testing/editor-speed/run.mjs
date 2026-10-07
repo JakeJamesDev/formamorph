@@ -613,7 +613,10 @@ async function runThrottle(browser, base, rate) {
       results[name] = await step({ page, cdp, rate });
     } catch (e) {
       results[name] = { error: String(e.message ?? e).split('\n')[0] };
-      if (process.env.EDITOR_SPEED_SHOT) await page.screenshot({ path: path.join(HERE, '.out', `fail-${name}.png`) });
+      if (process.env.EDITOR_SPEED_SHOT) {
+        console.error(String(e.stack ?? e));
+        await page.screenshot({ path: path.join(HERE, '.out', `fail-${name}.png`) });
+      }
     }
     results[name].heapMb = await heapMb(cdp).catch(() => null);
     console.log(rate + 'x', name, JSON.stringify(results[name]));

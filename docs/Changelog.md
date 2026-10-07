@@ -61,6 +61,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A list row's delete button now turns red on hover.** It applies to World Editor lists, library lists and Formaquestion Mascot lists. A selected row shows a red chip.
   - **Each world element type now shows the same icon on every screen.** Traits, entities, stats, worlds, Blueprints, Personas and Avatars no longer change icon between the editor, the game panels and the library.
   - **A picked choice in Chat stays filled, and a hovered choice shows only a light tint.** Keyboard focus looks like hover with a ring.
+  - **A placeholder's Placeholder Pins section opens quickly with dozens of pins.** Each pin's source list loads when you open or focus it. The lists look and work as before.
 
 ---
 
