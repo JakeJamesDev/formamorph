@@ -107,6 +107,7 @@ The prototype that settled the shape is `prototype.html` beside this spec (varia
 | Q22 | Rows are the whole override field on a link, as `requires` is today. Reset puts back the original's rows. |
 | Q23 | A requirement that names the played entity as bearer is dropped from its row at the persona boundary, as today. A row emptied that way is dropped. A trait emptied that way has no gate. |
 | Q24 | **In Game** is the one term for "after the game has started". Label form In Game; adjective form in-game, hyphenated only before a noun; prose "in game" or "during the game". In Play, In-Game and during play are retired everywhere, including the Authoring Tour pane and the Entities wiki page. Ticket 01 is the sweep. |
+| Q25 | "In the game" and "in the scene" are two terms and never swap. In the game is the whole playthrough, every turn from Enter World on; the stat-code roster strings and the "owners not in the game" warnings mean this. In the scene is a selection of narration turns at a location; entity presence is its own system. `CONTEXT.md` gains a **Scene** entry. Ticket 06 checks the Traits and StatCodeGuide pages against both. |
 
 **Schema (world export shape).**
 

@@ -243,6 +243,10 @@ _Avoid_: user text, prompt segment
 A stretch of a message the app assembled rather than the player writing — injected world data, condensed memories, a recalled scene, an earlier turn, the typed action. Muted beneath the Authored Runs, each explained in the player's own words.
 _Avoid_: filler, scaffolding
 
+**Scene**:
+A selection of narration turns that happen at one location, or a similar stretch of the story. "In the scene" means inside that stretch. It is not the playthrough: "in the game" is every turn from Enter World on, and the stat-code roster means that whole set. Entity presence is its own system and is neither.
+_Avoid_: in the scene (for the roster or the playthrough), in the game (for a stretch of turns)
+
 **Chip Scene**:
 The plain-value snapshot of one moment that chip values are built from: the world overview, the stats and traits in force, the persona, the location with its neighbors and connections, the roster with who is present and who is in scene, the lore entries, the notes, the time, and the placeholder resolution. Play supplies a live one, the editor an authored one, the Settings preview a sample one.
 _Avoid_: context, view, snapshot (unqualified)
