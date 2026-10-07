@@ -270,6 +270,7 @@ The live Community cards reference uses the production card and shell with neutr
 
 - Place the bar over the upper-left of a bounded editor workspace. Keep enough document context visible to show which field receives the current match.
 - Join Match Case and Match Whole Word to the search input. Their pressed fills show option state without adding separate labels to the row.
+- While a box holds text, show its clear X as the innermost cell, before the match toggles, the mode swap, or the docked field's badge and counter. Find's X is **Clear Search**; the text Replace box's X is **Clear Replace**. Clearing keeps the bar open and its layout as it is.
 - Keep Previous Match, Next Match, and Close Find as separate actions. Do not combine navigation into one split control.
 - Put replacement in an expandable second row. Align its input with search and keep Replace and Replace All together at the row end.
 - Show the match position and total beside navigation at desktop widths. Move the counter below the controls on narrow screens so the search input keeps useful width.
@@ -281,7 +282,7 @@ The live Community cards reference uses the production card and shell with neutr
 - The field holds a search icon, the input, the counter, Previous Match and Next Match as cells, and **Show options and replace** as the last cell. It searches as you type.
 - An option that is on shows as its icon in the field, in a tinted button before the counter. Selecting it expands the bar.
 - Expanding grows the full bar over the header from the field's position: 36rem wide, centered on the field, with its search input where the field was. The field's slot keeps its width and height, so the header never reflows.
-- The expanded bar always shows the replace row and the current-field breadcrumb. Its disclosure is **Collapse to search**, and its close action is **Clear Search**.
+- The expanded bar always shows the replace row and the current-field breadcrumb. Its disclosure is **Collapse to search**, and its close action is **Close Search**.
 - The query and the options carry across expand and collapse.
 
 ### Production mapping
@@ -303,7 +304,7 @@ On desktop, the World Editor's app bar holds the docked **Search World** field (
 
 - Ctrl+F focuses the field. Ctrl+H focuses it and expands it. Ctrl+F while expanded focuses the expanded field and leaves it expanded.
 - Expanding and collapsing move focus to the field of the layout now shown.
-- Escape and **Clear Search** clear the search, collapse the bar, and drop the match marker. Focus returns to the control the author was in before Ctrl+F or Ctrl+H. When the author clicked or tabbed into the search instead, focus stays in the cleared field.
+- Escape and **Close Search** clear the search, collapse the bar, and drop the match marker. Focus returns to the control the author was in before Ctrl+F or Ctrl+H. When the author clicked or tabbed into the search instead, focus stays in the cleared field.
 - The recorded control is dropped when focus leaves the search. The Replace All confirmation and the placeholder picker count as part of the search.
 
 ### Responsive behavior
