@@ -52,6 +52,8 @@ The World Editor's docked **Search World** field is the one box that keeps its o
 - **Q6 Label.** The X's accessible name is **Clear Search** in AP title case. The Find bar's existing docked button renames from "Clear search" to match, with its tests and its Design System lines.
 - **Q7 Slot order.** Where a box has other trailing controls (match toggles, counter, previous and next, mode swap), the X is the innermost cell, right after the text. Fixed controls keep the edge. The input's right padding grows by one cell while the X shows.
 - **Q8 Focus and Escape.** Clearing returns focus to the input. Escape is not bound by the component. Dialog close and Find bar collapse keep Escape. The Guide search keeps swallowing it.
+- **Q12 Native Escape clear.** Chromium empties a non-empty `type="search"` input on Escape by default, and hiding the cancel pseudo-element does not stop it. `SearchField` calls `preventDefault` on Escape so the native clear never runs and only the host behavior fires (Radix listens on document capture, so a dialog still closes). The feedback search loses its Escape-clears behavior; the X is the clear. The Guide no longer needs its own Escape handler.
+- **Q13 Changelog.** Tickets 02 to 05 write no fragment. Ticket 01's lead covers the effort. A fragment always lands as its own entry, so a shared lead cannot be folded.
 - **Q9 cmdk pickers.** In the command-palette pickers the X is mouse-only with `tabIndex -1`. The Command root handles Enter by selecting the highlighted item, and a focusable X would turn Enter into a selection. Backspace already clears for keyboard users. The breadcrumb picker's input is uncontrolled, so its X reads the search through cmdk's command-state hook.
 - **Q10 Process.** Spec plus tickets at this folder.
 - **Q11 Docs.** A **Search Field** pattern in the Design System and a `SearchFieldReference` on the showcase, with a dev route.
@@ -84,4 +86,4 @@ The World Editor's docked **Search World** field is the one box that keeps its o
 
 - The inventory found sixteen live boxes plus the excluded docked field. Five share one editor list toolbar, five share one command input, and the rest are single boxes.
 - Visual change from Q5 lands on five boxes. Check both themes on the showcase reference.
-- One changelog entry covers the effort, under Minor → Added → 👤.
+- One changelog entry covers the effort, under Minor → Added → 👤, written by ticket 01 (Q13).

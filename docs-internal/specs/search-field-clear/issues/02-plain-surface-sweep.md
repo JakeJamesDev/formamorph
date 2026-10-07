@@ -13,7 +13,7 @@ Every plain search, find, and filter box moves onto `SearchField`: the editor li
 
 Boxes with no icon today gain one (Q5). Hosts with side state pass their own `onClear`: Community clears the typed text through its existing apply path and keeps its filter chips; Find a Location resets the active row; the drill picker drops its blocked note; the list toolbar calls its search model's clear. Manage Users and Audit Log run the empty search at once on clear (Q4). The Guide search keeps swallowing Escape (Q8).
 
-Changelog: folds into ticket 01's lead.
+Changelog: none; 01's lead covers it (Q13).
 
 ## Acceptance criteria
 

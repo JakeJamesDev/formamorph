@@ -13,7 +13,7 @@ The floating Find box and the Replace box each gain the **Clear Search** X as th
 
 The docked **Search World** field is unchanged except that its existing close button renames from "Clear search" to **Clear Search** (Q6), with its tests.
 
-Changelog: folds into ticket 01's lead.
+Changelog: none; 01's lead covers it (Q13).
 
 ## Acceptance criteria
 
