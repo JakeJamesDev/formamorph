@@ -71,6 +71,8 @@ describe('Search World expanded (desktop)', () => {
     const button = await screen.findByRole('button', { name: 'Show options and replace' });
     expect(button).toHaveAttribute('aria-expanded', 'false');
     expect(isExpanded()).toBe(false);
+    await userEvent.hover(button);
+    expect(await screen.findByText('Show options and replace (Ctrl+H)')).toBeVisible();
   });
 
   it('expands from the button into the bar with the replace row and focuses its field', async () => {
