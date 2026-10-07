@@ -53,6 +53,37 @@ describe('Chat choices', () => {
     expect(bubble.className).toBe(within(block).getByRole('button', { name: 'Leave' }).className);
   });
 
+  // jsdom does not evaluate Tailwind, so these assert the state classes; the rendered check is the preview.
+  it('tints a hovered or focused choice, and the staged one keeps the fill', async () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: chat });
+    const leave = await screen.findByRole('button', { name: 'Leave' });
+    const wait = screen.getByRole('button', { name: 'Wait' });
+    fireEvent.click(leave);
+    const tokens = (el: HTMLElement) => el.className.split(/\s+/);
+    expect(leave.hasAttribute('data-selected')).toBe(true);
+    expect(wait.hasAttribute('data-selected')).toBe(false);
+    // Hover and focus take the light tint, never the full fill.
+    expect(tokens(wait)).toContain('hover:bg-primary/25');
+    expect(tokens(wait)).toContain('focus-visible:bg-primary/25');
+    expect(tokens(wait)).toContain('focus-visible:ring-primary');
+    expect(tokens(wait)).not.toContain('hover:bg-primary');
+    expect(tokens(wait)).not.toContain('hover:text-primary-foreground');
+    expect(tokens(wait)).not.toContain('focus-visible:bg-primary');
+    expect(tokens(wait)).not.toContain('focus-visible:text-primary-foreground');
+    // The staged choice keeps the fill under hover and focus, with the fill's ring.
+    expect(tokens(leave)).toContain('data-[selected]:bg-primary');
+    expect(tokens(leave)).toContain('data-[selected]:hover:bg-primary');
+    expect(tokens(leave)).toContain('data-[selected]:focus-visible:bg-primary');
+    expect(tokens(leave)).toContain('data-[selected]:focus-visible:ring-primary-foreground');
+  });
+
+  it('gives quoted text the surrounding color on a staged choice only', async () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: chat });
+    const leave = await screen.findByRole('button', { name: 'Leave' });
+    expect(leave.className.split(/\s+/)).toContain('[&[data-selected]_.dialogue-quote]:!text-inherit');
+    expect(leave.className).not.toMatch(/(hover|focus-visible)[^\s]*dialogue-quote/);
+  });
+
   it('disables the choices while a reply streams', async () => {
     renderMiddlePanel({}, { turns: TURNS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
     const leave = await screen.findByRole('button', { name: 'Leave' });

@@ -60,6 +60,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The selected section in the World Editor and Community Creations side menus now stands out from the hovered one.** The selected section takes the primary color. Hover keeps the softer accent color. Enter World categories and the mobile Sections bar match.
   - **A list row's delete button now turns red on hover.** It applies to World Editor lists, library lists and Formaquestion Mascot lists. A selected row shows a red chip.
   - **Each world element type now shows the same icon on every screen.** Traits, entities, stats, worlds, Blueprints, Personas and Avatars no longer change icon between the editor, the game panels and the library.
+  - **A picked choice in Chat stays filled, and a hovered choice shows only a light tint.** Keyboard focus looks like hover with a ring.
 
 ---
 
