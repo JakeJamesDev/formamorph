@@ -189,6 +189,14 @@ describe('the search input', () => {
     expect(onSearch).not.toHaveBeenCalled();
   });
 
+  it('returns focus to the box after a clear', () => {
+    render(<FeedbackSearchInput value="Thread 1" onSearch={() => {}} label="Search Reports" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    expect(screen.getByRole('searchbox')).toHaveFocus();
+  });
+
   it('takes a search set from outside as its text', () => {
     const { rerender } = render(<FeedbackSearchInput value="Thread 1" onSearch={() => {}} label="Search Reports" />);
 

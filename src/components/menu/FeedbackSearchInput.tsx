@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { SearchField } from "@/components/ui/search-field";
 import { cn } from "@/lib/utils";
 
 /** How long typing must pause before the list searches. */
@@ -25,7 +23,6 @@ export function FeedbackSearchInput({ value, onSearch, label, className }: Feedb
   const [text, setText] = useState(value);
   const lastSent = useRef(value);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const cancel = () => {
     if (timer.current !== null) clearTimeout(timer.current);
@@ -59,36 +56,15 @@ export function FeedbackSearchInput({ value, onSearch, label, className }: Feedb
     timer.current = setTimeout(() => apply(next), FEEDBACK_SEARCH_DELAY_MS);
   };
 
-  const clear = () => {
-    change('');
-    inputRef.current?.focus();
-  };
-
   return (
-    <div className={cn('relative flex-1 min-w-[12rem]', className)}>
-      <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        ref={inputRef}
-        type="search"
-        aria-label={label}
-        placeholder={label}
-        maxLength={FEEDBACK_SEARCH_MAX}
-        value={text}
-        onChange={(event) => change(event.target.value)}
-        onKeyDown={(event) => { if (event.key === 'Enter') apply(text); }}
-        className="pl-9 pr-9 [&::-webkit-search-cancel-button]:appearance-none"
-      />
-      {text && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 border-transparent"
-          aria-label="Clear Search"
-          onClick={clear}
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </Button>
-      )}
-    </div>
+    <SearchField
+      aria-label={label}
+      placeholder={label}
+      maxLength={FEEDBACK_SEARCH_MAX}
+      value={text}
+      onChange={change}
+      onKeyDown={(event) => { if (event.key === 'Enter') apply(text); }}
+      className={cn('flex-1 min-w-[12rem]', className)}
+    />
   );
 }

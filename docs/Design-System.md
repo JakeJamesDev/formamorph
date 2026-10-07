@@ -281,7 +281,7 @@ The live Community cards reference uses the production card and shell with neutr
 - The field holds a search icon, the input, the counter, Previous Match and Next Match as cells, and **Show options and replace** as the last cell. It searches as you type.
 - An option that is on shows as its icon in the field, in a tinted button before the counter. Selecting it expands the bar.
 - Expanding grows the full bar over the header from the field's position: 36rem wide, centered on the field, with its search input where the field was. The field's slot keeps its width and height, so the header never reflows.
-- The expanded bar always shows the replace row and the current-field breadcrumb. Its disclosure is **Collapse to search**, and its close action is **Clear search**.
+- The expanded bar always shows the replace row and the current-field breadcrumb. Its disclosure is **Collapse to search**, and its close action is **Clear Search**.
 - The query and the options carry across expand and collapse.
 
 ### Production mapping
@@ -303,7 +303,7 @@ On desktop, the World Editor's app bar holds the docked **Search World** field (
 
 - Ctrl+F focuses the field. Ctrl+H focuses it and expands it. Ctrl+F while expanded focuses the expanded field and leaves it expanded.
 - Expanding and collapsing move focus to the field of the layout now shown.
-- Escape and **Clear search** clear the search, collapse the bar, and drop the match marker. Focus returns to the control the author was in before Ctrl+F or Ctrl+H. When the author clicked or tabbed into the search instead, focus stays in the cleared field.
+- Escape and **Clear Search** clear the search, collapse the bar, and drop the match marker. Focus returns to the control the author was in before Ctrl+F or Ctrl+H. When the author clicked or tabbed into the search instead, focus stays in the cleared field.
 - The recorded control is dropped when focus leaves the search. The Replace All confirmation and the placeholder picker count as part of the search.
 
 ### Responsive behavior
@@ -330,6 +330,54 @@ The live Find reference uses the production bar and matching code against local 
 ### Writing review
 
 The new description states the reference purpose. Action labels use the production Find and Replace terminology, and dynamic status text reports the selected field or the completed local action. Sample names and prose are authored content and keep their own voice. Accessible names receive the same role review as visible controls. Standalone label-fragment grammar remains unverified under the Writing Guide, and reuse here does not certify the existing production Find, replacement, confirmation, or notice copy as fully ASD-STE100 compliant.
+
+## Pattern: Search Field
+
+**Purpose:** Give every search, find, and filter box the same look and the same one-step clear.
+
+**Density:** Matches the input it replaces. The default field is 40px high. The `sm` field is 32px high, for compact rows.
+
+### Composition
+
+- 🔎 **Icon first.** A search icon sits at the start of every search field. It tells a search box from a text field.
+- ✖️ **Clear Search X.** The X shows only while the box holds text. An empty box keeps no slot for it, so a narrow field keeps its width for text.
+- ↩️ **Clear.** Selecting the X empties the box, applies the empty search at once, and returns the cursor to the box.
+- ⌨️ **Escape.** Escape never clears the field. The field blocks the browser's own Escape clear, so only the host acts: a dialog still closes, and a host that collapses on Escape still does.
+- 🚫 **Native cancel.** The browser's own cancel button never shows, so a box never has two X's.
+- 🧱 **Other trailing cells.** When a host adds its own controls along the right edge, the X is the innermost cell, right after the text. Fixed controls keep the edge.
+- ♿ **Accessible name.** The X is **Clear Search** everywhere. The input keeps the `searchbox` role.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Icon, input, X, and clear behavior | `SearchField` in [`search-field.tsx`](../src/components/ui/search-field.tsx) |
+| The X alone, for hosts with their own trailing cells | `ClearSearchButton` in [`search-field.tsx`](../src/components/ui/search-field.tsx) |
+| A field frame with one focus ring around its trailing cells. Give its input `focus-visible:ring-0`. | `FieldWithTrailing` in [`field-with-trailing.tsx`](../src/components/ui/field-with-trailing.tsx) |
+| Production host | `FeedbackSearchInput` in [`FeedbackSearchInput.tsx`](../src/components/menu/FeedbackSearchInput.tsx) |
+| Isolated reference | `SearchFieldReference` in [`SearchFieldReference.tsx`](../src/components/design-system/SearchFieldReference.tsx) |
+
+| Prop | Use |
+| --- | --- |
+| `className` | Styles the wrapper: width, flex, and placement. |
+| `inputClassName` | Styles the input itself. |
+| `size` | `default` or `sm`. Sets the field height and scales the icon and the X. |
+| `onClear` | Replaces the default `onChange('')`. Use it when a clear must also reset side state, such as a selected row. |
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Empty | The icon and the placeholder show. No X. |
+| Text | The X shows at the right edge. The input's right padding grows by one cell. |
+| Cleared | The box is empty, the list is unfiltered, and focus is in the box. |
+| Compact | The `sm` height, with a smaller icon and X. |
+
+Open `#dev?modal=designSystem&tab=search-field` for both heights in both themes.
+
+### Writing review
+
+**Clear Search** follows AP title case. The placeholder repeats the field's accessible name, such as **Search Places**.
 
 ## Pattern: Code Template Selection and Detail
 
@@ -1342,7 +1390,7 @@ A pattern that is not built gets its composition and its reference here when its
 | Rows, Filters button, popover, Reset | `StaffFilterRow` and `UserFilterRow` in [`FeedbackFilterRow.tsx`](../src/components/menu/FeedbackFilterRow.tsx) |
 | Filter state, badge count, Reset | `useFeedbackFilters` in [`useFeedbackFilters.ts`](../src/components/menu/useFeedbackFilters.ts) |
 | Defaults per viewer and branch | `staffFilterDefaults` and `userFilterDefaults` in [`feedbackPresentation.ts`](../src/lib/feedbackPresentation.ts) |
-| Search bar | [`FeedbackSearchInput.tsx`](../src/components/menu/FeedbackSearchInput.tsx) |
+| Search bar | [`FeedbackSearchInput.tsx`](../src/components/menu/FeedbackSearchInput.tsx), on the shared Search Field |
 | Production hosts | [`FeedbackQueueTab.tsx`](../src/components/menu/FeedbackQueueTab.tsx) and [`MyFeedbackTab.tsx`](../src/components/menu/MyFeedbackTab.tsx) |
 | Isolated reference | [`FeedbackFilterRowReference.tsx`](../src/components/design-system/FeedbackFilterRowReference.tsx) |
 

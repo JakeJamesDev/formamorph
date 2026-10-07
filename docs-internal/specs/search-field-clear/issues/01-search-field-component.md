@@ -1,7 +1,6 @@
 # 01: Search Field Component
 
-Status: in-progress
-Base: b86de44d
+Status: ready-for-human
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

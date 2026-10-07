@@ -40,6 +40,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's list boxes now read Filter, such as Filter Stats and Filter Entities.** Typing still narrows the list, and the **+** button still adds the typed name.
   - **On Entities and Dictionary, the + menu now holds Add From Library and Import.** The footer's Add Entity and Add Dictionary buttons are gone. The + is a menu in Simple mode too.
   - **On mobile, the World Editor's footer now fits on one row, and a selected item's detail fills the full height.** Save is an icon in the bottom-right corner, next to the world actions. Overview shows Export World once.
+  - **Search boxes now show a Clear Search X while they hold text.** Select the X to empty the box and show the full list again. The cursor goes back into the box.
 - **🛠️ Developer tooling**
   - **CI splits the test suite across four parallel runners, so a check takes about 5 minutes, not 20.** A tag push runs the checks once, through the Release workflow. A **Build Android APK** run skips them.
 

@@ -37,6 +37,7 @@ import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { CommunityCardReference } from '@/components/design-system/CommunityCardReference';
 import { FindBarReference } from '@/components/design-system/FindBarReference';
+import { SearchFieldReference } from '@/components/design-system/SearchFieldReference';
 import { CodeTemplatesReference } from '@/components/design-system/CodeTemplatesReference';
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
 import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
@@ -290,6 +291,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Find',
     description: 'Compact editor search and replacement',
     Component: FindBarReference,
+  },
+  {
+    id: 'search-field',
+    label: 'Search Field',
+    description: 'Search icon, text box, and a Clear Search X',
+    Component: SearchFieldReference,
   },
   {
     id: 'code-templates',
