@@ -360,14 +360,26 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 		const prevIsOpen = React.useRef(isPopoverOpen);
 		const prevSearchValue = React.useRef(searchValue);
 
+		// Each live region clears 100 ms after an announce; unmount cancels the pending clear.
+		const politeTimer = React.useRef<ReturnType<typeof setTimeout>>();
+		const assertiveTimer = React.useRef<ReturnType<typeof setTimeout>>();
+		React.useEffect(
+			() => () => {
+				clearTimeout(politeTimer.current);
+				clearTimeout(assertiveTimer.current);
+			},
+			[]
+		);
 		const announce = React.useCallback(
 			(message: string, priority: "polite" | "assertive" = "polite") => {
 				if (priority === "assertive") {
 					setAssertiveMessage(message);
-					setTimeout(() => setAssertiveMessage(""), 100);
+					clearTimeout(assertiveTimer.current);
+					assertiveTimer.current = setTimeout(() => setAssertiveMessage(""), 100);
 				} else {
 					setPoliteMessage(message);
-					setTimeout(() => setPoliteMessage(""), 100);
+					clearTimeout(politeTimer.current);
+					politeTimer.current = setTimeout(() => setPoliteMessage(""), 100);
 				}
 			},
 			[]
