@@ -22,6 +22,6 @@ Changelog: none; 01's lead covers it (Q13).
 - [ ] Find a Location: clearing resets the highlighted row.
 - [ ] Drill picker: clearing drops the blocked note.
 - [ ] Manage Users and Audit Log: clearing shows the unfiltered list without a submit.
-- [ ] Guide search: Escape still does not clear.
+- [ ] Guide search: Escape still does not clear. Prove the Q12 guard outside a dialog: Radix Dialog already prevents default on Escape when it dismisses, so a test inside one cannot show the guard bites.
 - [ ] Each host has one test that the X clears its own state; no existing assertion is weakened.
 - [ ] Four gates green.
