@@ -104,9 +104,9 @@ export const bearerOf = (req: TraitRequirement): RequirementBearer | undefined =
 export const bearerKey = (bearer?: RequirementBearer): string =>
   (bearer === undefined ? 'same' : bearer.kind === 'you' ? 'you' : `entity:${bearer.id}`);
 
-/** Whether two requirements add the same gate: the same target under the same bearer. */
+/** Whether two requirements add the same gate: the same target under the same bearer, both plain or both Not. */
 export const sameRequirement = (a: TraitRequirement, b: TraitRequirement): boolean =>
-  a.kind === b.kind && a.id === b.id && bearerKey(bearerOf(a)) === bearerKey(bearerOf(b));
+  a.kind === b.kind && a.id === b.id && bearerKey(bearerOf(a)) === bearerKey(bearerOf(b)) && !a.not === !b.not;
 
 interface Located<T> { owner: GateOwner; item: T }
 
@@ -187,15 +187,27 @@ const activeSets = (input: GateInput): ActiveIn => {
   return (ownerId, id) => sets.get(ownerId)?.has(id) ?? false;
 };
 
-/** Whether one Condition holds for `trait` against `activeIn`. An exclusive sibling of the trait never counts. */
-function requirementHolds(req: TraitRequirement, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
+/** Whether a Condition's target is on for `trait`. The trait itself and its exclusive siblings in its own tree
+ *  never count (Q26); another bearer's copy of a sibling does. */
+function targetOn(req: TraitRequirement, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
   if (req.kind === 'playingAs') return idx.persona.source === 'world' && idx.persona.entityId === req.id;
   const set = idx.bearerSet(req.bearer, trait.owner);
   const rivals = idx.owners.get(trait.owner.id)?.rivals.get(trait.item.id);
-  const counts = (id: string) => !rivals?.has(id) && [...set].some((ownerId) => activeIn(ownerId, id));
+  const own = (id: string) => id === trait.item.id || !!rivals?.has(id);
+  const counts = (id: string) => [...set].some((ownerId) => !(ownerId === trait.owner.id && own(id)) && activeIn(ownerId, id));
   if (req.kind === 'trait') return counts(req.id);
   return idx.traitsBelow(set, req.id).some(counts);
 }
+
+/** Whether one Condition holds for `trait` against `activeIn`: its target is on, or off under Not. */
+function requirementHolds(req: TraitRequirement, trait: Located<Trait>, activeIn: ActiveIn, idx: Index): boolean {
+  return req.not ? !targetOn(req, trait, activeIn, idx) : targetOn(req, trait, activeIn, idx);
+}
+
+/** The Condition test for positive growth: every Not Condition on a target that exists holds, so growth stays
+ *  monotone and a Condition whose target is gone never holds (Q27). */
+const growthHolds = (trait: Located<Trait>, activeIn: ActiveIn, idx: Index) => (req: TraitRequirement): boolean =>
+  (req.not ? resolves(req, idx) : requirementHolds(req, trait, activeIn, idx));
 
 /** The bearer's name as the text reads it, or null when the named entity is gone. */
 function bearerName(bearer: RequirementBearer, idx: Index): string | null {
@@ -203,26 +215,49 @@ function bearerName(bearer: RequirementBearer, idx: Index): string | null {
   return idx.entities.get(bearer.id)?.name ?? idx.owners.get(bearer.id)?.owner.name ?? null;
 }
 
+/** Whether a Condition's target, and its named bearer, still exist. */
+function resolves(req: TraitRequirement, idx: Index): boolean {
+  if (req.kind === 'playingAs') return idx.entities.has(req.id);
+  const target = req.kind === 'trait' ? idx.traitNames.has(req.id) : idx.groupNames.has(req.id);
+  return target && (!req.bearer || bearerName(req.bearer, idx) !== null);
+}
+
+/** "Paladin", "not any Class", "Ash: not Tamed" (Q11). */
 function requirementText(req: TraitRequirement, idx: Index): { text: string; unresolved: boolean } {
+  const not = req.not ? 'not ' : '';
   if (req.kind === 'playingAs') {
     const entity = idx.entities.get(req.id);
     return entity
-      ? { text: `playing as ${entity.name}`, unresolved: false }
-      : { text: `playing as ${req.name ?? 'a missing persona'}`, unresolved: true };
+      ? { text: `${not}playing as ${entity.name}`, unresolved: false }
+      : { text: `${not}playing as ${req.name ?? 'a missing persona'}`, unresolved: true };
   }
-  const target = req.kind === 'trait'
+  const named = req.kind === 'trait'
     ? (idx.traitNames.has(req.id)
       ? { text: idx.traitNames.get(req.id)!, unresolved: false }
       : { text: req.name ?? 'a missing trait', unresolved: true })
     : (idx.groupNames.has(req.id)
       ? { text: `any ${idx.groupNames.get(req.id)}`, unresolved: false }
       : { text: req.name ? `any ${req.name}` : 'any trait in a missing group', unresolved: true });
+  const target = { ...named, text: `${not}${named.text}` };
   if (!req.bearer) return target;
   const name = bearerName(req.bearer, idx);
   return name
     ? { text: `${name}: ${target.text}`, unresolved: target.unresolved }
     : { text: `${req.bearer.kind === 'entity' && req.bearer.name ? req.bearer.name : 'a missing entity'}: ${target.text}`, unresolved: true };
 }
+
+/** A reader for any Condition's text against the input's names, as the gate line reads it. */
+export function conditionTexts(input: Omit<GateInput, 'active' | 'persona'>): (req: TraitRequirement) => string {
+  const idx = index({ ...input, active: {}, persona: { source: 'none' } });
+  return (req) => requirementText(req, idx).text;
+}
+
+/** `req` with its Not flag flipped. */
+export const flipped = (req: TraitRequirement): TraitRequirement => {
+  const { not, ...plain } = req;
+  // The rest of a union loses its discriminant link; `plain` keeps every field of `req`'s own kind.
+  return (not ? plain : { ...plain, not: true }) as TraitRequirement;
+};
 
 /** Each owner's gate on each of its traits, against the input's active sets. */
 export function gateStates(input: GateInput): GateStates {
@@ -271,9 +306,9 @@ function authoredRank(input: GateInput): Map<string, number> {
 const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap<string, number>): T[] =>
   [...items].sort((a, b) => (rank.get(keyOf(a)) ?? 0) - (rank.get(keyOf(b)) ?? 0));
 
-/** Whether `req` on `from` could be met by `p` being active. */
+/** Whether `req` on `from` could be met by `p` being active. A Not Condition is never met by a trait. */
 function metBy(req: TraitRequirement, from: GateOwner, p: Located<Trait>, idx: Index): boolean {
-  if (req.kind === 'playingAs') return false;
+  if (req.kind === 'playingAs' || req.not) return false;
   const set = idx.bearerSet(req.bearer, from);
   if (!set.has(p.owner.id)) return false;
   return req.kind === 'trait' ? req.id === p.item.id : idx.traitsBelow(set, req.id).includes(p.item.id);
@@ -319,6 +354,11 @@ function locate(idx: Index, lists: Readonly<Record<string, readonly string[]>>):
  *
  * Every Always On trait is proposed too, so it joins whenever its gate holds and is reported as returned
  * when no pick named it. It never waits on the cascade-off list: its mode alone brings it back.
+ *
+ * A Not Condition holds during growth. Once nothing joins, each kept trait is checked against the final set;
+ * the latest-proposed one that a Not now fails is left out, and growth reruns without it. A returner never
+ * turns off a pick or an Always On trait: it stays waiting instead. A left-out trait comes back once the set
+ * checks clean with it. A pick that turns off this way goes to the cascade-off list like any other.
  */
 export function settle(input: GateInput, cascadeOff: Readonly<Record<string, readonly string[]>> = {}): SettleResult {
   const idx = index(input);
@@ -332,28 +372,63 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
   const waiting = locate(idx, cascadeOff).filter((t) => !proposedKeys.has(keyOf(t)) && !isAlwaysOn(t.item));
   const candidates = byRank(waiting.filter((t) => !rivalIn(t, proposedKeys)), rank);
 
-  const kept = new Set<string>();
+  // Proposal order: picks, then Automatic traits, then cascade-off returners. A later one loses a tie (Q8).
+  const pool = [...proposed, ...automatic, ...candidates];
+  const excluded = new Set<string>();
+  let kept = new Set<string>();
+  let returned: Located<Trait>[] = [];
   const activeIn: ActiveIn = (ownerId, id) => kept.has(key(ownerId, id));
-  const returned: Located<Trait>[] = [];
+  const grows = (t: Located<Trait>) => rowsHold(t.item.requires, growthHolds(t, activeIn, idx));
   const opens = (t: Located<Trait>) => rowsHold(t.item.requires, (req) => requirementHolds(req, t, activeIn, idx));
-  for (let joined = true; joined;) {
-    joined = false;
-    for (const t of proposed) {
-      if (kept.has(keyOf(t)) || !opens(t)) continue;
+  const grow = () => {
+    kept = new Set();
+    returned = [];
+    const join = (t: Located<Trait>, from: 'pick' | 'automatic' | 'cascadeOff') => {
+      if (kept.has(keyOf(t)) || excluded.has(keyOf(t)) || (from === 'cascadeOff' && rivalIn(t, kept)) || !grows(t)) return false;
       kept.add(keyOf(t));
-      joined = true;
+      if (from !== 'pick') returned.push(t);
+      return true;
+    };
+    for (let joined = true; joined;) {
+      joined = false;
+      for (const t of proposed) joined = join(t, 'pick') || joined;
+      for (const t of automatic) joined = join(t, 'automatic') || joined;
+      for (const t of candidates) joined = join(t, 'cascadeOff') || joined;
     }
-    for (const t of automatic) {
-      if (kept.has(keyOf(t)) || !opens(t)) continue;
-      kept.add(keyOf(t));
-      returned.push(t);
-      joined = true;
+  };
+  const returners = new Set(candidates.map(keyOf));
+  const failing = () => pool.filter((t) => kept.has(keyOf(t)) && !opens(t));
+  // Least fixpoint with every Not holding, then the latest kept trait a Not now fails turns off, until none
+  // does (Q7, Q28). While only picks and Automatic traits fail, a kept returner goes first (Q30). Each pass
+  // excludes one more trait, so the loop ends.
+  for (;;) {
+    grow();
+    const failed = failing();
+    if (!failed.length) break;
+    const blamed = failed.some((t) => returners.has(keyOf(t))) ? failed
+      : pool.filter((t) => returners.has(keyOf(t)) && kept.has(keyOf(t)));
+    const off = blamed.length ? blamed : failed;
+    excluded.add(keyOf(off[off.length - 1]));
+  }
+  // Each excluded trait, in proposal order, comes back unless it breaks a trait already on, so settling again
+  // changes nothing (Q29). A newcomer that fails, the trait itself included, was off anyway and stays out; one
+  // that can't join yet leaves the list and joins once a later return opens it. Each newcomer pass excludes
+  // one more trait, so the inner loop ends.
+  for (const t of pool) {
+    if (!excluded.has(keyOf(t))) continue;
+    const before = new Set(kept);
+    const saved = [...excluded];
+    excluded.delete(keyOf(t));
+    for (;;) {
+      grow();
+      const newcomers = failing().filter((x) => !before.has(keyOf(x)));
+      if (!newcomers.length) break;
+      for (const x of newcomers) excluded.add(keyOf(x));
     }
-    for (const t of candidates) {
-      if (kept.has(keyOf(t)) || rivalIn(t, kept) || !opens(t)) continue;
-      kept.add(keyOf(t));
-      returned.push(t);
-      joined = true;
+    if (failing().length) {
+      excluded.clear();
+      for (const k of saved) excluded.add(k);
+      grow();
     }
   }
 
@@ -491,16 +566,17 @@ export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
  * The traits no selection can ever unlock for their owner, grouped into sets of traits that require one
  * another. A trait is unlockable when some row's every Condition chains to a trait with no rows in a set it
  * reads, a world persona, or a group holding such a trait. So "A requires B or C, B requires A" passes,
- * because C opens A. The player set follows the input's persona; a "playing as" opens for any persona.
+ * because C opens A. The player set follows the input's persona; a "playing as" opens for any persona. Every
+ * Not Condition counts as holding, so the check may under-report (Q15).
  */
 export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[][] {
   const idx = index({ ...input, active: {} });
   const personas = new Set(input.entities.filter((e) => e.persona).map((e) => e.id));
   const open = new Set<string>();
   const activeIn: ActiveIn = (ownerId, id) => open.has(key(ownerId, id));
-  const canHold = (trait: Located<Trait>) => (req: TraitRequirement) => (req.kind === 'playingAs'
+  const canHold = (trait: Located<Trait>) => (req: TraitRequirement) => (req.kind === 'playingAs' && !req.not
     ? personas.has(req.id)
-    : requirementHolds(req, trait, activeIn, idx));
+    : growthHolds(trait, activeIn, idx)(req));
   const all = [...idx.owners.values()].flatMap((o) => [...o.traits.values()]);
   for (let grew = true; grew;) {
     grew = false;
@@ -613,8 +689,9 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
       picked.delete(k);
       return false;
     };
-    // Each Condition of a row opens in turn before the next; the trait itself joins after the last.
-    const meet = (req: TraitRequirement, then: () => boolean) => (req.kind === 'playingAs'
+    // Each Condition of a row opens in turn before the next; the trait itself joins after the last. A Not
+    // Condition counts as met, as in `neverUnlockable`.
+    const meet = (req: TraitRequirement, then: () => boolean) => (req.not ? then() : req.kind === 'playingAs'
       ? idx.persona.source === 'world' && idx.persona.entityId === req.id && then()
       : satisfiers(req, t).some((s) => open(s, then)));
     const rows = t.item.requires ?? [];

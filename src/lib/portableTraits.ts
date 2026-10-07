@@ -5,7 +5,7 @@ import { linksInTreeOrder, originalOf } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
 import { worldBlueprints } from './placeholderBlueprints';
 import { blueprintItemIds, groupsBelow } from './traitTree';
-import { mapConditions } from './requirementRows';
+import { mapConditions, notFlag } from './requirementRows';
 
 /** Off-world, a "playing as" or a named bearer on the entity itself names it by this id, since each copy has
  *  its own id. */
@@ -250,11 +250,12 @@ function comparableLink(link: TraitLink): ComparableLink {
 export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink[] } => {
   const inside = ownIds(entity);
   const traits = withRequires(entity, (req) => {
-    if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY };
+    const not = notFlag(req.not);
+    if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY, ...not };
     const r = withBearer(req, (b) => comparableBearer(b, entity.id));
     const bearer = r.kind !== 'playingAs' && r.bearer ? { bearer: r.bearer } : {};
-    if ((r.kind !== 'playingAs' && inside.has(r.id)) || !r.name) return { kind: r.kind, id: r.id, ...bearer } as TraitRequirement;
-    return { kind: r.kind, id: '', name: r.name, ...bearer } as TraitRequirement;
+    if ((r.kind !== 'playingAs' && inside.has(r.id)) || !r.name) return { kind: r.kind, id: r.id, ...bearer, ...not } as TraitRequirement;
+    return { kind: r.kind, id: '', name: r.name, ...bearer, ...not } as TraitRequirement;
   });
   return {
     ...(traits ? { traits } : {}),

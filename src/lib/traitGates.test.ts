@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import {
-  WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, shownRefs, switchTrait,
+  WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, sameRequirement, settle, settleDefaults, shownRefs, switchTrait,
   underfills, withBearer, type GateInput, type GateOwner,
 } from './traitGates';
 
@@ -1044,6 +1044,290 @@ describe('Always On traits', () => {
     it('brings the Always On trait a default opens', () => {
       expect(defaults([T('Cursed Ring', { isDefault: true }), AO('Curse', { requires: [{ all: [trait('Cursed Ring')] }] })]))
         .toEqual(['Cursed Ring', 'Curse']);
+    });
+  });
+});
+
+describe('Not Conditions', () => {
+  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true });
+  const ref = (traitId: string, ownerId = WORLD_OWNER) => ({ ownerId, traitId });
+  const only = (...all: TraitRequirement[]) => [{ all }];
+
+  describe('holding', () => {
+    it('holds a Not trait Condition while the target is off', () => {
+      const traits = [T('Paladin'), T('Street Smarts', { requires: only(not(trait('Paladin'))) })];
+      expect(unlocked(world(traits), 'Street Smarts')).toBe(true);
+      expect(unlocked(world(traits, [], ['Paladin']), 'Street Smarts')).toBe(false);
+      expect(reason(world(traits), 'Street Smarts')).toEqual(['not Paladin']);
+    });
+
+    it('holds a Not group Condition only while no trait below the group is active', () => {
+      const groups = [G('Class'), G('Hybrid', { parentId: 'Class' })];
+      const traits = [T('Mage', { groupId: 'Class' }), T('Spellblade', { groupId: 'Hybrid' }), T('Loose'),
+        T('Drifter', { requires: only(not({ kind: 'group', id: 'Class' })) })];
+      expect(unlocked(world(traits, groups, ['Loose']), 'Drifter')).toBe(true);
+      expect(unlocked(world(traits, groups, ['Spellblade']), 'Drifter')).toBe(false);
+      expect(reason(world(traits, groups), 'Drifter')).toEqual(['not any Class']);
+    });
+
+    it('holds a Not playing-as Condition under every persona but that one', () => {
+      const traits = [T('Commoner', { requires: only(not({ kind: 'playingAs', id: 'aldric' })) })];
+      const entities = [{ id: 'aldric', name: 'Sir Aldric', persona: true }, { id: 'mara', name: 'Mara', persona: true }];
+      const as = (persona: PersonaRef) => world(traits, [], [], { entities, persona });
+      expect(unlocked(as({ source: 'none' }), 'Commoner')).toBe(true);
+      expect(unlocked(as({ source: 'world', entityId: 'mara' }), 'Commoner')).toBe(true);
+      expect(unlocked(as({ source: 'world', entityId: 'aldric' }), 'Commoner')).toBe(false);
+      expect(reason(as({ source: 'none' }), 'Commoner')).toEqual(['not playing as Sir Aldric']);
+    });
+
+    it('holds a Not Condition with a bearer through that bearer’s set alone', () => {
+      const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [], traits: [T('Tamed')] };
+      const traits = [T('Paladin'), T('Hunt', { requires: only(not(on('wolf', 'Tamed'))) }), T('Rebel', { requires: only(not(you('Paladin'))) })];
+      const at = (active: GateInput['active']) => world(traits, [], [], {
+        owners: [world(traits).owners[0], wolf], active, entities: [{ id: 'wolf', name: 'Ash' }],
+      });
+      expect(unlocked(at({ [WORLD_OWNER]: ['Tamed'] }), 'Hunt')).toBe(true);
+      expect(unlocked(at({ wolf: ['Tamed'] }), 'Hunt')).toBe(false);
+      expect(unlocked(at({ wolf: ['Paladin'] }), 'Rebel')).toBe(true);
+      expect(unlocked(at({ [WORLD_OWNER]: ['Paladin'] }), 'Rebel')).toBe(false);
+      expect(reason(at({}), 'Hunt')).toEqual(['Ash: not Tamed']);
+      expect(reason(at({}), 'Rebel')).toEqual(['You: not Paladin']);
+    });
+
+    it('counts an exclusive sibling as off for a Not Condition', () => {
+      const groups = [G('Stance', { maxPicks: 1 })];
+      const traits = [T('Guard', { groupId: 'Stance' }), T('Charge', { groupId: 'Stance', requires: only(not(trait('Guard'))) })];
+      expect(unlocked(world(traits, groups, ['Guard']), 'Charge')).toBe(true);
+      expect(switchTrait(world(traits, groups, ['Guard']), WORLD_OWNER, 'Charge')?.active[WORLD_OWNER]).toEqual(['Charge']);
+    });
+
+    it('skips exclusive siblings only in the trait’s own tree, never in another bearer’s', () => {
+      // Albus's Smite and Paladin are max-one siblings; the player's Paladin is another bearer's copy.
+      const classes = [G('Classes', { maxPicks: 1 })];
+      const at = (smite: TraitRequirement) => world([T('Paladin')], [], ['Paladin'], {
+        owners: [world([T('Paladin')]).owners[0], {
+          id: 'albus', name: 'Albus', groups: classes,
+          traits: [T('Paladin', { groupId: 'Classes' }), T('Smite', { groupId: 'Classes', requires: only(smite) })],
+        }],
+        entities: [{ id: 'albus', name: 'Albus' }],
+      });
+      expect(unlocked(at(you('Paladin')), 'Smite', 'albus')).toBe(true);
+      expect(unlocked(at(not(you('Paladin'))), 'Smite', 'albus')).toBe(false);
+    });
+
+    it('never counts a trait’s own activity toward its own gate (Q26)', () => {
+      const groups = [G('Class')];
+      const scout = T('Scout', { groupId: 'Class', requires: only(not({ kind: 'group', id: 'Class' })) });
+      const ranger = T('Ranger', { groupId: 'Class', requires: only({ kind: 'group', id: 'Class' }) });
+      const traits = [scout, ranger, T('Mage', { groupId: 'Class' })];
+      expect(unlocked(world(traits, groups, ['Scout']), 'Scout')).toBe(true);
+      expect(settle(world(traits, groups, ['Scout'])).active[WORLD_OWNER]).toEqual(['Scout']);
+      expect(unlocked(world(traits, groups, ['Ranger']), 'Ranger')).toBe(false);
+      expect(unlocked(world(traits, groups, ['Mage']), 'Scout')).toBe(false);
+    });
+
+    it('never holds a Not Condition whose target is gone (Q27)', () => {
+      const traits = [T('Rogue', { requires: only(not({ kind: 'trait', id: 'gone', name: 'Paladin' })) })];
+      const state = gateOf(gateStates(world(traits)), WORLD_OWNER, 'Rogue')!;
+      expect(state.unlocked).toBe(false);
+      expect(state.rows[0].conditions[0]).toMatchObject({ text: 'not Paladin', unresolved: true, holds: false });
+      expect(settle(world(traits, [], ['Rogue'])).active[WORLD_OWNER]).toEqual([]);
+    });
+
+    it('tells a Not Condition from a plain one on the same target', () => {
+      expect(sameRequirement(trait('Paladin'), not(trait('Paladin')))).toBe(false);
+      expect(sameRequirement(not(trait('Paladin')), not(trait('Paladin')))).toBe(true);
+    });
+  });
+
+  describe('exclusion', () => {
+    const traits = [T('Paladin'), T('Knight'), T('Street Smarts', { requires: only(not(trait('Paladin'))) })];
+
+    it('locks a trait the moment the player picks what it excludes', () => {
+      const picked = switchTrait(world(traits), WORLD_OWNER, 'Paladin')!;
+      expect(unlocked(world(traits, [], picked.active[WORLD_OWNER]), 'Street Smarts')).toBe(false);
+      expect(switchTrait(world(traits, [], picked.active[WORLD_OWNER]), WORLD_OWNER, 'Street Smarts')).toBeNull();
+    });
+
+    it('turns an active trait off when its excluded target is picked, and returns it when the pick is dropped', () => {
+      const picked = switchTrait(world(traits, [], ['Knight', 'Street Smarts']), WORLD_OWNER, 'Paladin')!;
+      expect(picked.active[WORLD_OWNER]).toEqual(['Knight', 'Paladin']);
+      expect(picked.turnedOff).toEqual([ref('Street Smarts')]);
+      expect(picked.cascadeOff[WORLD_OWNER]).toEqual(['Street Smarts']);
+      const other = switchTrait(world(traits, [], picked.active[WORLD_OWNER]), WORLD_OWNER, 'Knight', picked.cascadeOff)!;
+      expect(other.cascadeOff[WORLD_OWNER]).toEqual(['Street Smarts']);
+      const dropped = switchTrait(world(traits, [], picked.active[WORLD_OWNER]), WORLD_OWNER, 'Paladin', picked.cascadeOff)!;
+      expect(dropped.active[WORLD_OWNER]).toEqual(['Knight', 'Street Smarts']);
+      expect(dropped.returned).toEqual([ref('Street Smarts')]);
+      expect(dropped.cascadeOff[WORLD_OWNER]).toEqual([]);
+    });
+
+    it('turns off what the excluded trait held up, with it', () => {
+      const chain = [...traits, T('Alley Map', { requires: only(trait('Street Smarts')) })];
+      const picked = switchTrait(world(chain, [], ['Street Smarts', 'Alley Map']), WORLD_OWNER, 'Paladin')!;
+      expect(picked.active[WORLD_OWNER]).toEqual(['Paladin']);
+      expect(picked.turnedOff).toEqual([ref('Alley Map'), ref('Street Smarts')]);
+    });
+
+    it('keeps a trait open through another row when a Not row fails', () => {
+      const rows = [T('Paladin'), T('Merc'), T('Smarts', { requires: [{ all: [not(trait('Paladin'))] }, { all: [trait('Merc')] }] })];
+      expect(settle(world(rows, [], ['Smarts', 'Paladin', 'Merc'])).active[WORLD_OWNER]).toEqual(['Smarts', 'Paladin', 'Merc']);
+      expect(settle(world(rows, [], ['Smarts', 'Paladin'])).active[WORLD_OWNER]).toEqual(['Paladin']);
+    });
+
+    it('turns off the later of two traits that exclude each other, so the earlier pick wins (Q8)', () => {
+      const pair = [T('Sun', { requires: only(not(trait('Moon'))) }), T('Moon', { requires: only(not(trait('Sun'))) })];
+      expect(settle(world(pair, [], ['Sun', 'Moon']))).toMatchObject({ active: { [WORLD_OWNER]: ['Sun'] }, turnedOff: [ref('Moon')] });
+      expect(settle(world(pair, [], ['Moon', 'Sun']))).toMatchObject({ active: { [WORLD_OWNER]: ['Moon'] }, turnedOff: [ref('Sun')] });
+    });
+
+    it('keeps the earlier pick even when its gate opens after the later one’s', () => {
+      // Sun also needs Dawn, which comes last, so a plain growth pass would seat Moon first.
+      const pair = [
+        T('Sun', { requires: only(trait('Dawn'), not(trait('Moon'))) }),
+        T('Moon', { requires: only(not(trait('Sun'))) }),
+        T('Dawn'),
+      ];
+      expect(settle(world(pair, [], ['Sun', 'Moon', 'Dawn'])).active[WORLD_OWNER]).toEqual(['Sun', 'Dawn']);
+    });
+
+    it('keeps a dropped trait whose gate holds once a later drop clears it, so a second settle changes nothing (Q29)', () => {
+      const three = [
+        T('A', { requires: only(not(trait('B'))) }), T('B', { requires: only(not(trait('A'))) }), T('C', { requires: only(not(trait('B'))) }),
+      ];
+      const first = settle(world(three, [], ['A', 'B', 'C']));
+      expect(first).toMatchObject({ active: { [WORLD_OWNER]: ['A', 'C'] }, turnedOff: [ref('B')], cascadeOff: { [WORLD_OWNER]: ['B'] } });
+      const again = settle(world(three, [], first.active[WORLD_OWNER]), first.cascadeOff);
+      expect(again).toEqual({ active: first.active, turnedOff: [], returned: [], cascadeOff: first.cascadeOff });
+    });
+
+    it('never lets a trait that fails block another’s return (Q29)', () => {
+      // Shore comes back once Gull is out. Tide needs Shore but still fails on Net, so it stays off.
+      const traits = [
+        T('Wind'), T('Gull', { requires: only(not(trait('Wind'))) }), T('Net'),
+        T('Tide', { requires: only(trait('Shore'), not(trait('Net'))) }), T('Shore', { requires: only(not(trait('Gull'))) }),
+      ];
+      const result = settle(world(traits, [], ['Wind', 'Gull', 'Net', 'Tide', 'Shore']));
+      expect(result.active[WORLD_OWNER]).toEqual(['Wind', 'Net', 'Shore']);
+      expect(result.turnedOff.map((r) => r.traitId).sort()).toEqual(['Gull', 'Tide']);
+    });
+
+    it('never lets a returning trait turn off a pick; the returner keeps waiting (Q30)', () => {
+      const chain = [T('Oath'), T('Crown', { requires: only(trait('Oath')) }), T('Exile', { requires: only(not(trait('Crown'))) })];
+      const back = switchTrait(world(chain, [], ['Exile']), WORLD_OWNER, 'Oath', { [WORLD_OWNER]: ['Crown'] })!;
+      expect(back.active[WORLD_OWNER]).toEqual(['Exile', 'Oath']);
+      expect(back).toMatchObject({ turnedOff: [], returned: [], cascadeOff: { [WORLD_OWNER]: ['Crown'] } });
+    });
+
+    it('never lets a returning trait turn off an Automatic trait (Q30)', () => {
+      const chain = [T('Oath'), T('Crown', { requires: only(trait('Oath')) }), T('Vigil', { mode: 'alwaysOn', requires: only(not(trait('Crown'))) })];
+      const back = switchTrait(world(chain, [], ['Vigil']), WORLD_OWNER, 'Oath', { [WORLD_OWNER]: ['Crown'] })!;
+      expect(back.active[WORLD_OWNER]).toEqual(['Vigil', 'Oath']);
+      expect(back.cascadeOff[WORLD_OWNER]).toEqual(['Crown']);
+    });
+
+    it('locks a pick that excludes an active Automatic trait (Q30)', () => {
+      const traits = [T('Vigil', { mode: 'alwaysOn' }), T('Rebel', { requires: only(not(trait('Vigil'))) })];
+      const start = settle(world(traits));
+      expect(start.active[WORLD_OWNER]).toEqual(['Vigil']);
+      expect(unlocked(world(traits, [], start.active[WORLD_OWNER]), 'Rebel')).toBe(false);
+      expect(switchTrait(world(traits, [], start.active[WORLD_OWNER]), WORLD_OWNER, 'Rebel')).toBeNull();
+    });
+
+    it('settles any mix of plain and Not gates to a set that checks clean and settles to itself', () => {
+      let seed = 7;
+      const rand = (n: number) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+      const ids = ['A', 'B', 'C', 'D', 'E', 'F'];
+      for (let world_ = 0; world_ < 4000; world_++) {
+        const traits = ids.map((id) => T(id, {
+          ...(rand(5) === 0 ? { mode: 'alwaysOn' as const } : {}),
+          requires: Array.from({ length: rand(3) }, () => ({
+            all: Array.from({ length: 1 + rand(2) }, () => {
+              const target = trait(ids[rand(ids.length)]);
+              return rand(2) ? not(target) : target;
+            }),
+          })),
+        }));
+        const order = [...ids].sort(() => rand(3) - 1).slice(0, rand(ids.length + 1));
+        const waiting = ids.filter((id) => !order.includes(id) && rand(2));
+        const first = settle(world(traits, [], order), { [WORLD_OWNER]: waiting });
+        const on = first.active[WORLD_OWNER];
+        const clean = (ids: string[]) => {
+          const states = gateStates(world(traits, [], ids));
+          return ids.every((id) => gateOf(states, WORLD_OWNER, id)?.unlocked);
+        };
+        expect(clean(on), `${world_}: clean`).toBe(true);
+        // Nothing left off could join alone without breaking a gate.
+        const offered = [...order, ...waiting, ...traits.filter((t) => t.mode === 'alwaysOn').map((t) => t.id)];
+        for (const id of offered.filter((x) => !on.includes(x))) expect(clean([...on, id]), `${world_}: ${id} fits`).toBe(false);
+        expect(settle(world(traits, [], on), first.cascadeOff).active, `${world_}: again`).toEqual(first.active);
+      }
+    });
+
+    it('returns a trait an exclusion turned off once the excluding trait leaves for any reason', () => {
+      const chain = [T('Oath'), T('Paladin', { requires: only(trait('Oath')) }), T('Street Smarts', { requires: only(not(trait('Paladin'))) })];
+      const picked = switchTrait(world(chain, [], ['Oath', 'Street Smarts']), WORLD_OWNER, 'Paladin')!;
+      expect(picked.cascadeOff[WORLD_OWNER]).toEqual(['Street Smarts']);
+      const broken = switchTrait(world(chain, [], picked.active[WORLD_OWNER]), WORLD_OWNER, 'Oath', picked.cascadeOff)!;
+      expect(broken.active[WORLD_OWNER]).toEqual(['Street Smarts']);
+      expect(broken.turnedOff).toEqual([ref('Paladin')]);
+      expect(broken.returned).toEqual([ref('Street Smarts')]);
+    });
+  });
+
+  describe('Automatic unless X (Q10)', () => {
+    const traits = [T('Paladin'), T('Vigil', { mode: 'alwaysOn', requires: only(not(trait('Paladin'))) })];
+
+    it('follows its gate both ways and never waits on the cascade-off list', () => {
+      const start = settle(world(traits));
+      expect(start.active[WORLD_OWNER]).toEqual(['Vigil']);
+      const picked = switchTrait(world(traits, [], start.active[WORLD_OWNER]), WORLD_OWNER, 'Paladin')!;
+      expect(picked.active[WORLD_OWNER]).toEqual(['Paladin']);
+      expect(picked.turnedOff).toEqual([ref('Vigil')]);
+      expect(picked.cascadeOff[WORLD_OWNER]).toEqual([]);
+      const dropped = switchTrait(world(traits, [], picked.active[WORLD_OWNER]), WORLD_OWNER, 'Paladin', picked.cascadeOff)!;
+      expect(dropped.active[WORLD_OWNER]).toEqual(['Vigil']);
+      expect(dropped.returned).toEqual([ref('Vigil')]);
+    });
+  });
+
+  describe('defaults (Q16)', () => {
+    it('starts the later of two defaults that exclude each other unselected', () => {
+      const pair = [
+        T('Sun', { isDefault: true, requires: only(not(trait('Moon'))) }),
+        T('Moon', { isDefault: true, requires: only(not(trait('Sun'))) }),
+      ];
+      expect(settleDefaults(world(pair)).active[WORLD_OWNER]).toEqual(['Sun']);
+      expect(settleDefaults(world([...pair].reverse())).active[WORLD_OWNER]).toEqual(['Moon']);
+    });
+
+    it('starts a default that excludes another default unselected', () => {
+      expect(settleDefaults(world([
+        T('Street Smarts', { isDefault: true, requires: only(not(trait('Paladin'))) }),
+        T('Paladin', { isDefault: true }),
+      ])).active[WORLD_OWNER]).toEqual(['Paladin']);
+    });
+  });
+
+  describe('author checks', () => {
+    it('treats every Not Condition as holding when it looks for traits no selection can open (Q15)', () => {
+      expect(neverUnlockable(world([T('Paladin'), T('Rogue', { requires: only(trait('Paladin'), not(trait('Paladin'))) })]))).toEqual([]);
+    });
+
+    it('never joins two stuck sets through a Not Condition', () => {
+      expect(neverUnlockable(world([
+        T('Sun', { requires: only(trait('Moon')) }), T('Moon', { requires: only(trait('Sun')) }),
+        T('Ash', { requires: only(trait('Ember'), not(trait('Sun'))) }), T('Ember', { requires: only(trait('Ash')) }),
+      ]))).toEqual([[ref('Sun'), ref('Moon')], [ref('Ash'), ref('Ember')]]);
+    });
+
+    it('opens Automatic traits together through a Not Condition on a target no selection opens', () => {
+      const groups = [G('Auto', { maxPicks: 1 })];
+      expect(alwaysOnOverMax(world([
+        T('Paladin', { requires: only(trait('Ghost')) }), T('Ghost', { requires: only(trait('Paladin')) }),
+        T('Vigil', { groupId: 'Auto', mode: 'alwaysOn', requires: only(not(trait('Paladin'))) }),
+        T('Watch', { groupId: 'Auto', mode: 'alwaysOn' }),
+      ], groups)).map((o) => o.traitIds)).toEqual([['Vigil', 'Watch']]);
     });
   });
 });

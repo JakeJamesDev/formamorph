@@ -21,6 +21,7 @@ import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
 import { portableOwnedTraits, type TraitWorld } from './portableTraits';
 import { carriedBlueprints } from './blueprintTravel';
+import { notFlag } from './requirementRows';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -180,9 +181,10 @@ function cardBearer(raw: unknown): { bearer?: RequirementBearer } {
 
 function cardRequirement(raw: unknown): TraitRequirement[] {
   if (!isRecord(raw) || typeof raw.id !== 'string') return [];
-  if (raw.kind === 'playingAs') return [{ kind: raw.kind, id: raw.id, ...nameOf(raw) }];
+  const not = notFlag(raw.not);
+  if (raw.kind === 'playingAs') return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...not }];
   if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
-  return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardBearer(raw.bearer) }];
+  return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardBearer(raw.bearer), ...not }];
 }
 
 /** The card's Requirement Rows. A bare Condition reads as a row of its own; a row left with no Condition is
