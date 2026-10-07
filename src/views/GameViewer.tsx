@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { ClearSearchButton } from "@/components/ui/search-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pager } from "@/components/ui/pagination";
@@ -1044,6 +1045,7 @@ const GameViewer = ({
   // The overview ruler: one tick per hit currently on screen, as a fraction of the scrollable height.
   const [debugTicks, setDebugTicks] = useState<{ index: number; fraction: number }[]>([]);
   const debugViewportRef = useRef<HTMLDivElement>(null);
+  const debugSearchInputRef = useRef<HTMLInputElement>(null);
   const [collapsedDebug, setCollapsedDebug] = useState<Record<string | number, boolean>>({});
   // When on (default), the viewer hides turns that aren't part of the live context — re-generated,
   // rolled-back (pruned), and aborted ones — leaving only the pages the AI currently sees.
@@ -5079,6 +5081,11 @@ const GameViewer = ({
                 setCollapsedDebug(next);
               }
             };
+            // The search effect above resets the hit position when the text empties.
+            const clearSearch = () => {
+              setDebugSearch("");
+              debugSearchInputRef.current?.focus();
+            };
             return (
               <>
                 {/* The header row: the title beside the search field; pr-8 keeps it clear of the
@@ -5092,6 +5099,7 @@ const GameViewer = ({
                   <div className="relative min-w-0 flex-grow">
                     <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
+                      ref={debugSearchInputRef}
                       value={debugSearch}
                       onChange={(e) => setDebugSearch(e.target.value)}
                       onKeyDown={(e) => {
@@ -5100,10 +5108,11 @@ const GameViewer = ({
                         stepHit(e.shiftKey ? -1 : 1);
                       }}
                       placeholder="Search (space-separated terms)…"
-                      className={`pl-8 ${searchActive ? "pr-28" : ""}`}
+                      className={`pl-8 ${searchActive ? "pr-36" : ""}`}
                     />
                     {searchActive && (
                       <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+                        <ClearSearchButton size="sm" onClick={clearSearch} />
                         <span className="px-1 text-meta tabular-nums text-muted-foreground">
                           {hitTotal > 0 ? `${currentHit + 1} of ${hitTotal}` : "0 of 0"}
                         </span>
