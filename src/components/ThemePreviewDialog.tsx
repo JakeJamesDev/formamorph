@@ -35,6 +35,8 @@ import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext'
 import { useTheme } from './theme-provider';
 import { hslTripleToHex, hexToHslTriple } from '@/lib/hslColor';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
+import { DESTRUCTIVE_ROW_ACTION_HOVER } from '@/components/EditorRow';
+import { cn } from '@/lib/utils';
 
 /** The theme the preview seeds from; the live contexts unless a caller supplies its own. */
 export type ThemePreviewSource = Pick<ReturnType<typeof useSettings>, 'themeColor'> & Pick<ReturnType<typeof useTheme>, 'resolvedTheme'>;
@@ -249,7 +251,7 @@ function PreviewPanel() {
               <span className={`px-1 ${selected ? 'text-primary-foreground' : 'text-muted-foreground'}`}><GripVertical className="h-4 w-4" /></span>
               <span className="flex-grow text-label">{row}</span>
               <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}><Copy className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" className={selected ? 'text-primary-foreground' : 'text-muted-foreground'}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className={cn(selected ? 'text-primary-foreground' : 'text-muted-foreground', DESTRUCTIVE_ROW_ACTION_HOVER)}><X className="h-4 w-4" /></Button>
             </div>
           );
         })}

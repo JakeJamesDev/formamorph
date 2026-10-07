@@ -102,7 +102,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
         name: t.name,
         actions: [
           { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicate(t.id) },
-          { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => remove(t.id) },
+          { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => remove(t.id) },
         ],
       })),
       ...[...tree.linkRows.values()].filter((row) => row.root).map((row): ListEditorRow => ({
@@ -110,7 +110,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
         name: rowName(row.link.id),
         icon: <Link2 className="h-4 w-4 shrink-0" aria-label="Link" />,
         labelClass: row.unbound ? 'text-muted-foreground' : undefined,
-        actions: linkRowRemovable(row, world) ? [{ icon: <X className="h-4 w-4" />, title: 'Remove Link', onClick: () => removeLinkRow(row) }] : [],
+        actions: linkRowRemovable(row, world) ? [{ icon: <X className="h-4 w-4" />, destructive: true, title: 'Remove Link', onClick: () => removeLinkRow(row) }] : [],
       })),
     ];
   };

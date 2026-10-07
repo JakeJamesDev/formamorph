@@ -51,7 +51,7 @@ export function useWorldLocationsAdapter({ selectedId, onSelect, search, view, t
     sortable: true,
     actions: [
       { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => handleDuplicate(l.id) },
-      { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => { removeLocation(l.id); onSelect(null); } },
+      { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => { removeLocation(l.id); onSelect(null); } },
     ],
   }));
 

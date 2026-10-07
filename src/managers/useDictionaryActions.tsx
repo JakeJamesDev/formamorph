@@ -84,7 +84,7 @@ export function dictionarySearchRows(dictionaries: Dictionary[], actions: Dictio
       labelClass: 'font-medium',
       actions: [
         { icon: <FilePlus className="h-4 w-4" />, title: 'Add entry', onClick: () => actions.addEntry(book.id) },
-        { icon: <X className="h-4 w-4" />, title: 'Delete dictionary', onClick: () => actions.askRemoveBook(book.id) },
+        { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete dictionary', onClick: () => actions.askRemoveBook(book.id) },
       ],
     }] : []),
     ...book.entries.map((entry): ListEditorRow => ({
@@ -92,7 +92,7 @@ export function dictionarySearchRows(dictionaries: Dictionary[], actions: Dictio
       name: withBooks ? `${book.name}${OWNER_NAME_SEPARATOR}${dictionaryEntryLabel(entry)}` : dictionaryEntryLabel(entry),
       actions: [
         { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => actions.duplicateEntry(entry.id) },
-        { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => actions.removeEntry(entry.id) },
+        { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => actions.removeEntry(entry.id) },
       ],
     })),
   ]);

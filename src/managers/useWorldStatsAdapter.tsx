@@ -45,7 +45,7 @@ export function useWorldStatsAdapter({ onSelect, search, tab, onTabChange, focus
     sortable: true,
     actions: [
       { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => handleDuplicate(s.id) },
-      { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => { removeStat(s.id); onSelect(null); } },
+      { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => { removeStat(s.id); onSelect(null); } },
     ],
   }));
 

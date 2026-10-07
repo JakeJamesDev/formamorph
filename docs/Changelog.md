@@ -58,6 +58,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The selected tool in Settings and the selected code template now stand out from the hovered one.** Both lists fill the selected row with the primary color.
   - **Dialogs no longer open with an outline around the close button.** The ring still shows when you reach the button with the keyboard.
   - **The selected section in the World Editor and Community Creations side menus now stands out from the hovered one.** The selected section takes the primary color. Hover keeps the softer accent color. Enter World categories and the mobile Sections bar match.
+  - **A list row's delete button now turns red on hover.** It applies to World Editor lists, library lists and Formaquestion Mascot lists. A selected row shows a red chip.
 
 ---
 

@@ -232,7 +232,7 @@ function SortableOverlay({ id, index, image, urlOf, selected, readOnly, onSelect
       icon={<Thumb url={urlOf(image)} />}
       label={image.kind === 'bundled' ? image.name : MASCOT_COPY.storedOverlay}
       meta={image.kind === 'bundled' ? MASCOT_COPY.bundledOverlay : undefined}
-      actions={readOnly ? [] : [{ icon: <X className="h-4 w-4" />, title: MASCOT_COPY.removeOverlay, onClick: onRemove }]}
+      actions={readOnly ? [] : [{ icon: <X className="h-4 w-4" />, destructive: true, title: MASCOT_COPY.removeOverlay, onClick: onRemove }]}
     />
   );
 }
@@ -345,7 +345,7 @@ function SortableLayer({ layer, expanded, selected, urlOf, readOnly, onSelect, o
             </span>
           </span>
         }
-        actions={readOnly ? [] : [{ icon: <X className="h-4 w-4" />, title: MASCOT_COPY.removeLayer, onClick: onRemove }]}
+        actions={readOnly ? [] : [{ icon: <X className="h-4 w-4" />, destructive: true, title: MASCOT_COPY.removeLayer, onClick: onRemove }]}
       />
       {expanded && children}
     </div>

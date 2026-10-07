@@ -52,7 +52,7 @@ function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onR
       label={<PlaceholderText text={dictionaryEntryLabel(entry)} placeholders={placeholders} />}
       actions={[
         { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(entry.id) },
-        { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => onRemove(entry.id) },
+        { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => onRemove(entry.id) },
       ]}
     />
   );
@@ -223,7 +223,7 @@ function BookRow({ book, addEntryTourAnchor, collapsed, collapsedZones, selected
             icon: <FilePlus className="h-4 w-4" />, title: 'Add entry', onClick: () => onAddEntry(book.id),
             tourAnchor: addEntryTourAnchor,
           },
-          { icon: <X className="h-4 w-4" />, title: 'Delete dictionary', onClick: () => onDeleteBook(book.id) },
+          { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete dictionary', onClick: () => onDeleteBook(book.id) },
         ]}
       />
       {!collapsed && (

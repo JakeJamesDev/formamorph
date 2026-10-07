@@ -33,7 +33,7 @@ export function placeholderSearchRows(
     const actions: EditorRowAction[] = [];
     if (duplicate) actions.push({ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: duplicate });
     if (remove || removeBlocked) {
-      actions.push({ icon: <X className="h-4 w-4" />, title: 'Delete', onClick: remove ?? (() => {}), disabledReason: removeBlocked });
+      actions.push({ icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: remove ?? (() => {}), disabledReason: removeBlocked });
     }
     out.push({
       id: node.id,

@@ -120,7 +120,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
         sortable: true,
         actions: [
           { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicateWorldTrait(t.id) },
-          { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => { askRemoveWorldTrait(t.id, false); onSelect(null); } },
+          { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => { askRemoveWorldTrait(t.id, false); onSelect(null); } },
         ],
       })),
       ...entities.flatMap((entity) => [
@@ -129,7 +129,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
           name: under(entity.name, t.name),
           actions: [
             { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicateOwnedTrait(entity.id, t.id) },
-            { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => editEntity(entity.id, (e) => removeOwnedItem(e, t.id)) },
+            { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => editEntity(entity.id, (e) => removeOwnedItem(e, t.id)) },
           ],
         })),
         ...linkRows.filter((row) => row.entityId === entity.id).map((row): ListEditorRow => ({
@@ -137,7 +137,7 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
           name: under(entity.name, originalOf({ traits, traitGroups }, row.originalId)?.item.name ?? row.link.originalName),
           icon: <Link2 className="h-4 w-4 shrink-0" aria-label="Link" />,
           actions: [{
-            icon: <X className="h-4 w-4" />, title: 'Remove Link',
+            icon: <X className="h-4 w-4" />, destructive: true, title: 'Remove Link',
             onClick: () => editEntity(entity.id, (e) => removeLink(e, row.link.id)),
           }],
         })),

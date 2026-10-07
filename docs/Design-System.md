@@ -593,6 +593,7 @@ At desktop widths, an editor list can sit beside its detail controls, and the tw
 | State | Treatment |
 | --- | --- |
 | Selected | Editor rows use the production primary fill and keep their controls legible. Editing changes the selected local item. |
+| Delete hover | The X that deletes a row turns destructive on hover, as a fill chip with `destructive-foreground` text, so it reads on a selected row's primary fill too. Set `destructive` on the row action. A blocked or disabled delete and other actions, such as Duplicate, keep the neutral hover. The live Rich Lists reference shows both. |
 | Disabled | Busy save rows and their export actions retain production disabled behavior; do not remove metadata to simplify the state. |
 | Focus | Rows, grips, inputs, and icon actions keep visible shared focus. Keyboard selection reveals the active item in the bounded pane. |
 | Long content | Editor names truncate before actions; save names wrap above their metadata. Accessible names preserve the complete authored value. |

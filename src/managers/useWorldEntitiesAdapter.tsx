@@ -69,7 +69,7 @@ export function useWorldEntitiesAdapter({
     sortable: true,
     actions: [
       { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicate(e.id) },
-      { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => { askRemoveEntity(e.id); onSelect(null); } },
+      { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => { askRemoveEntity(e.id); onSelect(null); } },
     ],
   }));
 

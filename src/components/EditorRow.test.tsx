@@ -52,6 +52,56 @@ describe('EditorRow', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])('turns a destructive action red on hover with a fill chip (selected: %s)', (selected) => {
+    render(
+      <EditorRow
+        selected={selected}
+        onSelect={() => {}}
+        label="Vigor"
+        actions={[
+          { icon: <span>c</span>, title: 'Duplicate', onClick: () => {} },
+          { icon: <span>x</span>, title: 'Delete', destructive: true, onClick: () => {} },
+        ]}
+      />,
+    );
+    const del = screen.getByRole('button', { name: 'Delete' });
+    // The chip sets its own foreground, so the hovered X never reads as red ink on the primary fill.
+    expect(del.className).toContain('hover:bg-destructive-fill');
+    expect(del.className).toContain('hover:text-destructive-foreground');
+    expect(del.className).not.toContain('hover:bg-accent');
+    // Other actions keep the neutral ghost hover.
+    const dup = screen.getByRole('button', { name: 'Duplicate' });
+    expect(dup.className).toContain('hover:bg-accent');
+    expect(dup.className).not.toContain('destructive');
+  });
+
+  it('keeps the focus ring on a destructive action', () => {
+    render(
+      <EditorRow
+        selected
+        onSelect={() => {}}
+        label="Vigor"
+        actions={[{ icon: <span>x</span>, title: 'Delete', destructive: true, onClick: () => {} }]}
+      />,
+    );
+    const cls = screen.getByRole('button', { name: 'Delete' }).className;
+    expect(cls).toContain('focus-visible:ring-2');
+    // `--ring` is tuned for the page, so a focused X on its hover chip re-colors the ring to the chip's foreground.
+    expect(cls).toContain('hover:focus-visible:ring-destructive-foreground');
+  });
+
+  it.each([{ disabledReason: 'In use' }, { disabled: true }])('keeps an unavailable delete neutral on hover (%o)', (unavailable) => {
+    render(
+      <EditorRow
+        selected={false}
+        onSelect={() => {}}
+        label="Vigor"
+        actions={[{ icon: <span>x</span>, title: 'Delete', destructive: true, onClick: () => {}, ...unavailable }]}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Delete' }).className).not.toContain('hover:bg-destructive-fill');
+  });
+
   it('toggles the checkbox without also selecting the row', () => {
     const onSelect = vi.fn();
     const onChange = vi.fn();
