@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMountedRef } from './useMountedRef';
 import { probeEndpoint, type EndpointProbe } from './useAiReachable';
 import { endpointSignature } from './promptEndpoints';
 import { probeImageEndpoint } from './imageGen/probe';
@@ -84,6 +85,7 @@ export function useEndpointReachable(
   // (switching prompt tabs mid-probe) can't land on the current one.
   const currentSig = useRef(sig);
   currentSig.current = active ? sig : '';
+  const mounted = useMountedRef();
 
   useEffect(() => {
     if (!active) {
@@ -100,7 +102,7 @@ export function useEndpointReachable(
     setStatus(null);
     setChecking(true);
     probeShared(sig, provider, url, apiToken, model, false).then((result) => {
-      if (currentSig.current !== sig) return;
+      if (!mounted.current || currentSig.current !== sig) return;
       setStatus(result);
       setChecking(false);
     });
@@ -112,7 +114,7 @@ export function useEndpointReachable(
     if (!active) return;
     setChecking(true);
     probeShared(sig, provider, url, apiToken, model, true).then((result) => {
-      if (currentSig.current !== sig) return;
+      if (!mounted.current || currentSig.current !== sig) return;
       setStatus(result);
       setChecking(false);
     });
