@@ -1,29 +1,21 @@
 import { useState } from 'react';
-import { FlaskConical, Save, Search } from 'lucide-react';
+import { ChevronRight, FlaskConical, Save, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModeSelect } from '@/components/ui/mode-select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import { BackButton } from '@/components/BackButton';
 import { SurfaceAppBar } from '@/components/SurfaceAppBar';
+import { TruncatedText } from '@/components/TruncatedText';
 import { Separator } from '@/components/ui/separator';
 import { ActionIcon } from '@/lib/actionIcons';
 import { EDITOR_MODE_DESCRIPTIONS, type EditorMode } from '@/lib/editorMode';
 
-type SaveState = 'never' | 'saved' | 'unsaved';
-
-const SAVE_STATES: { value: SaveState; label: string }[] = [
-  { value: 'never', label: 'Never Stored' },
-  { value: 'saved', label: 'Saved' },
-  { value: 'unsaved', label: 'Unsaved Changes' },
-];
+const SAMPLE_WORLD_NAME = 'Sedge Landing';
 
 /** The World Editor's app bar over sample controls. Every control changes only this reference's own state. */
 export function SurfaceAppBarReference() {
   const [mode, setMode] = useState<EditorMode>('simple');
-  const [saveState, setSaveState] = useState<SaveState>('saved');
   const [action, setAction] = useState('No action yet.');
   return (
     <Card role="region" aria-labelledby="surface-app-bar-title">
@@ -35,19 +27,6 @@ export function SurfaceAppBarReference() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <RadioGroup
-          value={saveState}
-          onValueChange={(value) => setSaveState(value as SaveState)}
-          aria-label="Sample save state"
-          className="flex flex-wrap gap-x-6 gap-y-3"
-        >
-          {SAVE_STATES.map(({ value, label }) => (
-            <div key={value} className="flex items-center gap-2">
-              <RadioGroupItem id={`surface-app-bar-${value}`} value={value} />
-              <Label htmlFor={`surface-app-bar-${value}`} className="text-label">{label}</Label>
-            </div>
-          ))}
-        </RadioGroup>
         <div className="overflow-x-auto rounded-md border border-border">
           <div className="min-w-[44rem] border-b">
             <SurfaceAppBar
@@ -55,11 +34,8 @@ export function SurfaceAppBarReference() {
                 <>
                   <BackButton onClick={() => setAction('Back.')} />
                   <CardTitle className="ml-1 shrink-0">World Editor</CardTitle>
-                  {saveState !== 'never' && (
-                    <span className="ml-2 shrink-0 text-meta text-muted-foreground">
-                      {saveState === 'saved' ? 'Saved' : 'Unsaved changes'}
-                    </span>
-                  )}
+                  <ChevronRight aria-hidden className="mx-1 h-3 w-3 shrink-0 text-muted-foreground" />
+                  <TruncatedText text={SAMPLE_WORLD_NAME} className="text-body text-muted-foreground" />
                 </>
               )}
               center={(
@@ -90,7 +66,7 @@ export function SurfaceAppBarReference() {
                       <ActionIcon.export className="h-4 w-4" />
                     </Button>
                   </Tip>
-                  <Button size="sm" disabled={saveState !== 'unsaved'} onClick={() => { setSaveState('saved'); setAction('Save.'); }}>
+                  <Button size="sm" onClick={() => setAction('Save.')}>
                     <Save className="mr-2 h-4 w-4" />
                     Save
                   </Button>

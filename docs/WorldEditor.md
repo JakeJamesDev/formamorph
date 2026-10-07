@@ -14,7 +14,7 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 
 | Where | What |
 | --- | --- |
-| Left | The back arrow, **World Editor**, and **Saved** or **Unsaved changes** |
+| Left | The back arrow, **World Editor**, and the world's name |
 | Center | **Find and replace** and the Test Bench |
 | Right | The mode select, **Export World**, and **Save** |
 
@@ -132,7 +132,7 @@ The tour goes through the tabs in order: **Overview**, **Locations**, **Entities
 
 Your edits stay in the editor until you select **Save**. Nothing saves by itself, except the Authoring Tour's steps. A new world isn't stored until its first save.
 
-On desktop, the bar at the top says **Saved** or **Unsaved changes** beside the title. A new world shows neither until its first save.
+On desktop, **Save** in the bar at the top is on when you have changes to save and off when you don't.
 
 When you leave with unsaved changes, the **Unsaved changes** dialog asks what to do:
 

@@ -922,18 +922,19 @@ The live reference draws the World Editor's registry as the rail beside sample p
 **Rule:**
 
 - The bar spans the window above the surface's panels. Anything that belongs to the bar, such as the Authoring Tour bar, sits under it.
-- Left to right: back, the title, then a short status; the tools; the mode; the surface actions; the primary action last.
+- Left to right: back, the title, then the surface's subject; the tools; the mode; the surface actions; the primary action last.
 - The tools sit on the window's center line. The two side columns share the leftover width equally, so the center group stays centered whatever the sides hold.
 - A plain line splits the mode from the actions after it.
-- A status says only what is true. The World Editor shows "Saved" or "Unsaved changes", and nothing for a world that has never been stored.
+- The bar shows no save-state text. The primary action's enabled state is the only save signal.
+- The subject follows the title after a 12px muted chevron, in the body role, muted. A blank subject shows the title alone, with no chevron. A long subject truncates with "…" before the center group, and a cut-off one shows its full text in the shared tooltip.
 - A list card's footer under the bar holds only the open tab's own actions, and draws nothing on a tab with none.
 
 **Density:** Compact. The row uses the shared surface-header geometry: 12px sides, centered in 56px.
 
 ### Composition
 
-- The World Editor reads: back, **World Editor**, the save state; Find and the Test Bench; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; Save.
-- The title is the surface's name, never the open item's name.
+- The World Editor reads: back, **World Editor**, a chevron, the world's name; Find and the Test Bench; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; Save.
+- The title is the surface's name. The world is the surface's subject, so its name follows the title. No tab's open item ever does.
 - Optimize Images shows its progress in its own menu row while it runs.
 - Tour anchors, tutorial notes and Take Me There targets ride the controls they always named.
 
@@ -945,7 +946,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 | The line between groups | `Separator` with `orientation="vertical"` in [`separator.tsx`](../src/components/ui/separator.tsx) |
 | Back | `BackButton` in [`BackButton.tsx`](../src/components/BackButton.tsx) |
 | The mode | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx) |
-| Whether the world is stored | `isWorldStored` from `useGameData` in [`GameDataContext.tsx`](../src/contexts/GameDataContext.tsx) |
+| The cut-off tooltip on the subject | `TruncatedText` in [`TruncatedText.tsx`](../src/components/TruncatedText.tsx) |
 | The World Editor's bar | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
 | Isolated reference | [`SurfaceAppBarReference.tsx`](../src/components/design-system/SurfaceAppBarReference.tsx) |
 
@@ -957,20 +958,22 @@ The bar is desktop-only. On mobile the surface keeps its card header, and its fo
 
 | State | Treatment |
 | --- | --- |
-| Never stored | No save state. |
-| Saved | "Saved" in the meta role, muted. Save is disabled. |
-| Unsaved changes | "Unsaved changes" in the meta role, muted. Save is enabled. |
+| Named world | A chevron and the trimmed name in the body role, muted. |
+| Blank name | The title alone, with no chevron. |
+| Long name | The name truncates with "…" before the center group. Hover shows the full name. |
+| Unsaved changes | Save is enabled. No text says so. |
+| Saved | Save is disabled. No text says so. |
 | Simple | Export World as one icon button. |
 | Advanced | **More world actions** opens a menu with Export World and Optimize Images. |
 | Optimizing | The Optimize Images row shows a spinner and the count, and is disabled. |
 | Tour running | The Mode Select is disabled; its tooltip says to end the tour. |
 
-The live reference draws the World Editor's bar over sample controls, with a **Never Stored**, **Saved** and **Unsaved Changes** choice. Every control changes only the reference's own state, and it never reads or writes authored worlds, saves, library data, or storage.
+The live reference draws the World Editor's bar over sample controls and a sample world name. Every control changes only the reference's own state, and it never reads or writes authored worlds, saves, library data, or storage.
 
 ### Writing review
 
-- **Saved** and **Unsaved changes** are status text in sentence case, not labels.
-- **Unverified:** the reference's description and option labels have terminology review only; vocabulary and grammar evidence is not recorded.
+- The world's name is the author's text, shown as typed after trimming.
+- **Unverified:** the reference's description has terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Narration Turn
 

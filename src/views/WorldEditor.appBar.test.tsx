@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { downloadBlob } from '@/lib/downloadBlob';
 
-/** The World Editor's desktop app bar: its order, the world actions per mode, the save state, and the footer. */
+/** The World Editor's desktop app bar: its order, the world actions per mode, the world name, and the footer. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -29,6 +29,10 @@ const WORLD = benchEditorWorld({});
 
 const button = (name: string | RegExp) => screen.getByRole('button', { name });
 const saveState = () => screen.queryByText(/^(Saved|Unsaved changes)$/);
+/** The bar's start column: back, the title, the chevron and the world's name. */
+const barStart = () => screen.getByRole('heading', { name: 'World Editor' }).parentElement!;
+const barChevron = () => barStart().querySelector<HTMLElement>('.lucide-chevron-right');
+const barName = (name: string) => within(barStart()).getByText(name);
 /** Types a new world name over the current one. */
 const rename = (from: string, to: string) => fireEvent.change(screen.getByDisplayValue(from), { target: { value: to } });
 const save = async () => {
@@ -42,13 +46,13 @@ const inOrder = (elements: HTMLElement[]) => elements.every((el, i) => i === 0
 beforeEach(() => { localStorage.clear(); vi.mocked(downloadBlob).mockClear(); });
 
 describe('World Editor app bar (desktop)', () => {
-  it('reads back, title, save state, Find, Test Bench, the mode, the world actions and Save, with no ?', () => {
+  it('reads back, title, world name, Find, Test Bench, the mode, the world actions and Save, with no ?', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple', { initialTab: 'stats' });
     act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
     const order = [
       button('Back'),
       screen.getByRole('heading', { name: 'World Editor' }),
-      screen.getByText('Saved'),
+      barName('Sedge Landing'),
       button('Find and replace'),
       button(/^Test Bench/),
       screen.getByRole('combobox', { name: 'Editor mode' }),
@@ -79,26 +83,36 @@ describe('World Editor app bar (desktop)', () => {
     await waitFor(() => expect(menu).not.toBeInTheDocument());
   });
 
-  it('shows no save state for a world never stored, even with edits, then Saved, then Unsaved changes', async () => {
+  it('names the world after a chevron, trimmed, and follows a rename', () => {
     renderWorldEditorBench(WORLD, 'simple');
-    expect(saveState()).toBeNull();
-    rename('Sedge Landing', 'Brinewell');
-    expect(saveState()).toBeNull();
+    expect(barName('Sedge Landing')).toBeInTheDocument();
+    expect(barChevron()).not.toBeNull();
+    expect(inOrder([screen.getByRole('heading', { name: 'World Editor' }), barChevron()!, barName('Sedge Landing')])).toBe(true);
 
-    await save();
-    expect(saveState()).toHaveTextContent('Saved');
-    rename('Brinewell', 'Brinewell Reach');
-    expect(saveState()).toHaveTextContent('Unsaved changes');
+    rename('Sedge Landing', '  Brinewell  ');
+    expect(barName('Brinewell')).toBeInTheDocument();
   });
 
-  it('shows Saved at once for a world loaded from world storage, and keeps it through a discard', async () => {
+  it('shows the title alone, with no chevron, for a blank name', () => {
+    renderWorldEditorBench(WORLD, 'simple');
+    rename('Sedge Landing', '   ');
+    expect(barChevron()).toBeNull();
+    expect(barStart().textContent).toBe('World Editor');
+  });
+
+  it('shows no save-state text, and Save alone tracks whether the world has changes', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
-    expect(saveState()).toHaveTextContent('Saved');
+    expect(saveState()).toBeNull();
+    expect(button('Save')).toBeDisabled();
+
     rename('Sedge Landing', 'Brinewell');
-    expect(saveState()).toHaveTextContent('Unsaved changes');
-    act(() => { ctx().discardChanges(); });
-    expect(saveState()).toHaveTextContent('Saved');
+    expect(saveState()).toBeNull();
+    expect(button('Save')).toBeEnabled();
+
+    await save();
+    expect(saveState()).toBeNull();
+    expect(button('Save')).toBeDisabled();
   });
 
   it('draws no footer on Overview, and only the tab\'s own actions on Entities', () => {

@@ -394,7 +394,7 @@ describe('nav rail reference', () => {
 });
 
 describe('surface app bar reference', () => {
-  it('draws the bar in order and follows the sample save state, touching no storage', async () => {
+  it('draws the bar in order with a sample world name and its controls, touching no storage', async () => {
     const user = userEvent.setup();
     renderShowcase();
     await user.click(screen.getByRole('tab', { name: 'Surface App Bar' }));
@@ -403,6 +403,7 @@ describe('surface app bar reference', () => {
     const order = [
       within(region).getByRole('button', { name: 'Back' }),
       within(region).getByRole('heading', { name: 'World Editor' }),
+      within(region).getByText('Sedge Landing'),
       within(region).getByRole('button', { name: 'Find and replace' }),
       within(region).getByRole('button', { name: 'Test Bench' }),
       within(region).getByRole('combobox', { name: 'Sample editor mode' }),
@@ -412,13 +413,11 @@ describe('surface app bar reference', () => {
     order.slice(1).forEach((el, i) => {
       expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
-    expect(within(region).getByText('Saved', { selector: 'span' })).toBeInTheDocument();
+    expect(within(region).queryByText(/^(Saved|Unsaved changes)$/)).toBeNull();
+    expect(within(region).queryByRole('radiogroup')).toBeNull();
 
-    await user.click(within(region).getByRole('radio', { name: 'Never Stored' }));
-    expect(within(region).queryByText(/^(Saved|Unsaved changes)$/, { selector: 'span' })).toBeNull();
-    await user.click(within(region).getByRole('radio', { name: 'Unsaved Changes' }));
     await user.click(within(region).getByRole('button', { name: 'Save' }));
-    expect(within(region).getByText('Saved', { selector: 'span' })).toBeInTheDocument();
+    expect(within(region).getByText('Last action: Save.')).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
   });
 });
