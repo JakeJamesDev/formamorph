@@ -115,6 +115,7 @@ The prototype that settled the shape is `prototype.html` beside this spec (varia
 - `Trait.requires` becomes `TraitRequirementRow[]`, where a row is `{ all: TraitRequirement[] }`. Absent or empty means always available. `TraitLinkFields.requires` follows.
 - `migrateWorld` rewrites a `requires` whose entries carry `kind` into one row per entry. Entries that carry `all` are left alone. It runs on world traits, entity-owned traits, and link overrides.
 - The character card XMP codec accepts both forms on read and emits rows.
+- Library entities never pass through `migrateWorld`, so the single library read wraps flat lists into rows too. A 3.2.x library character with gated owned traits would otherwise break the adopt and link paths. (Found by ticket 02.)
 
 The shape, from the prototype:
 
