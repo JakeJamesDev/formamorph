@@ -74,7 +74,7 @@ export function SortableRow({
       metaTitle={meta?.title}
       actions={[
         { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => onDuplicate(item.id) },
-        { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => onRemove(item.id) },
+        { icon: <X className="h-4 w-4" />, destructive: true, title: 'Delete', onClick: () => onRemove(item.id) },
       ]}
     />
   );

@@ -139,8 +139,8 @@ function TreeRowBase<N extends { id: string; depth: number }>({
       actions: [
         ...(spec.actions ?? []).map((a, i) => ({ ...a, onClick: () => latest().actions?.[i]?.onClick() })),
         ...(spec.duplicate ? [{ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => latest().duplicate?.() }] : []),
-        ...(spec.remove ? [{ icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: () => latest().remove?.() }]
-          : spec.removeBlocked ? [{ icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: () => {}, disabledReason: spec.removeBlocked }]
+        ...(spec.remove ? [{ icon: <X className="h-4 w-4" />, destructive: true, title: spec.removeTitle ?? 'Delete', onClick: () => latest().remove?.() }]
+          : spec.removeBlocked ? [{ icon: <X className="h-4 w-4" />, destructive: true, title: spec.removeTitle ?? 'Delete', onClick: () => {}, disabledReason: spec.removeBlocked }]
           : []),
       ],
     };

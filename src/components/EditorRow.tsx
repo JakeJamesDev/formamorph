@@ -20,9 +20,16 @@ const EDITOR_ROW_PADDING = 'p-2 min-h-14';
  *  own metrics rather than with each list that happens to draw one. */
 const EDITOR_ROW_GAP = 'flex flex-col gap-1';
 
+/** Hover for a row action that deletes. A fill chip, not red ink, so it reads on a selected row's primary
+ *  fill as well as a plain one. */
+export const DESTRUCTIVE_ROW_ACTION_HOVER =
+  'hover:bg-destructive-fill hover:text-destructive-foreground hover:focus-visible:ring-destructive-foreground';
+
 /** One trailing icon button on a row (duplicate, delete, add-entry…). */
 export interface EditorRowAction {
   icon: ReactNode;
+  /** Deletes or removes the row: the hover turns destructive while the action is available. */
+  destructive?: boolean;
   /** Tooltip and accessible name. */
   title: string;
   onClick: () => void;
@@ -220,7 +227,12 @@ export function EditorRow({
           <Button
             variant="ghost"
             size="icon"
-            className={cn('shrink-0', chrome, action.disabledReason && 'cursor-not-allowed opacity-50')}
+            className={cn(
+              'shrink-0',
+              chrome,
+              action.destructive && !action.disabledReason && !action.disabled && DESTRUCTIVE_ROW_ACTION_HOVER,
+              action.disabledReason && 'cursor-not-allowed opacity-50',
+            )}
             onClick={(e) => { e.stopPropagation(); if (!action.disabledReason) action.onClick(); }}
             disabled={action.disabled}
             aria-disabled={action.disabledReason ? true : undefined}
