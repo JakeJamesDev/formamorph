@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, openAddFromLibrary, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { toastTexts } from '@/test/toastText';
 import { markHelpSeen } from '@/lib/helpSeenStore';
 import { openingsEnabled } from '@/lib/openings';
@@ -214,7 +214,7 @@ describe('Add from Library', () => {
     seedBooks();
     const { ctx } = renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(/Dictionary/);
-    clickButton(/Add Dictionary/);
+    openAddFromLibrary('dictionary');
     fireEvent.click(await screen.findByText('Fen Lore'));
     confirmPicker('Add Dictionary');
 
@@ -230,7 +230,7 @@ describe('Add from Library', () => {
     seedBooks();
     const { ctx } = renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(/Dictionary/);
-    clickButton(/Add Dictionary/);
+    openAddFromLibrary('dictionary');
     fireEvent.click(await screen.findByText('Fen Lore'));
     fireEvent.click(screen.getByText('Link to Library'));
     confirmPicker('Add Dictionary');
@@ -248,7 +248,7 @@ describe('Add from Library', () => {
     });
     renderWorldEditorBench(PLAIN_WORLD(), 'advanced');
     openTab(/Dictionary/);
-    clickButton(/Add Dictionary/);
+    openAddFromLibrary('dictionary');
 
     await waitFor(() => expect(screen.getAllByText('Fen Lore')).toHaveLength(2));
     expect(screen.getByText('You · Your library')).toBeTruthy();
@@ -662,7 +662,7 @@ describe('Adding an entity that brings openings', () => {
 
   const addFromLibrary = async () => {
     openTab(/Entities/);
-    clickButton(/Add Entity/);
+    openAddFromLibrary('entity');
     fireEvent.click(await screen.findByText('Tall Marn'));
     confirmPicker('Add Entity');
   };

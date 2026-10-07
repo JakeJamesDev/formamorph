@@ -322,7 +322,7 @@ This enables a per-hour drain (\`current + 2 * clock.deltaHours\`) or a stat tha
 
 **Who owns the item decides what an edit does.** If the library item is your own, an edit to the copy stays **Linked**. Saving the world writes the edit to the library item, and every other world holding a copy receives it the next time you open that world. If the item is another author's, the first edit makes the copy a **Local replacement**: your change is kept, and their updates still reach you for review.
 
-**How a copy becomes linked.** **Save to Library** links the copy it saved. **Add Entity** and **Add Dictionary** add a copy from your library and offer **Link to Library**, on by default. **Import Entity…** and **Import Dictionary…** offer the same choice for a file. An independent copy's menu holds **Link to Library Item…**. All of these make the same link.
+**How a copy becomes linked.** **Save to Library** links the copy it saved. **Add From Library…** in the **+** menu on **Entities** and **Dictionary** adds a copy from your library and offers **Link to Library**, on by default. **Import Entity…** and **Import Dictionary…** in the same menu offer the same choice for a file. An independent copy's menu holds **Link to Library Item…**. All of these make the same link.
 
 **The three link states.** A linked row carries a 🔗 marker in the list, and the footer button reads **Open in Library**. Point at either one to read the state and the name of what the copy follows.
 

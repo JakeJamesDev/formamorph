@@ -89,8 +89,8 @@ A **linked copy** follows a **library item**. When you save the library item, ev
 | Action | Result |
 |---|---|
 | **Save to Library** | Saves the copy as a library item and links the copy to it. |
-| **Add Entity**, **Add Dictionary** | Adds a copy of a library item. **Link to Library** is on by default. |
-| **Import Entity…**, **Import Dictionary…** | Adds a copy from a file, with the same **Link to Library** choice. |
+| **Add From Library…** | In the **+** menu on **Entities** and **Dictionary**. Adds a copy of a library item. **Link to Library** is on by default. |
+| **Import Entity…**, **Import Dictionary…** | In the same **+** menu. Adds a copy from a file, with the same **Link to Library** choice. |
 | **Link to Library Item…** | In an independent copy's menu. Links the copy to a library item you pick. |
 
 All four make the same link.

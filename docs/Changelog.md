@@ -36,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A placeholder's panel in the World Editor splits into Details and Pins tabs.** The Pins tab lists every pin aimed at the placeholder. It needs Advanced mode. The tab you pick stays open as you select other placeholders.
   - **A crash in one World Editor panel shows a card there, and the rest of the editor keeps working.** Your unsaved edits stay. **Try Again** remounts the panel, and **View Details** opens the error with Copy and Report Bug.
   - **The World Editor's list boxes now read Filter, such as Filter Stats and Filter Entities.** Typing still narrows the list, and the **+** button still adds the typed name.
+  - **On Entities and Dictionary, the + menu now holds Add From Library and Import.** The footer's Add Entity and Add Dictionary buttons are gone. The + is a menu in Simple mode too.
 - **🛠️ Developer tooling**
   - **CI splits the test suite across four parallel runners, so a check takes about 5 minutes, not 20.** A tag push runs the checks once, through the Release workflow. A **Build Android APK** run skips them.
 

@@ -18,7 +18,7 @@ A dictionary entry uses no context until a keyword matches. Mention the Gloamwat
 <!-- route: worldEditor.dictionary#list-toolbar -->
 
 1. Open the **Dictionary** tab.
-2. If the world has no book yet, type a name in the **Filter Dictionaries** box and select the **+** button (**Add to Dictionary**).
+2. If the world has no book yet, type a name in the **Filter Dictionaries** box and select the **+** button (**Add to Dictionary**), then select **Add Dictionary**.
 3. On the book's row, select **Add entry**. The new entry opens in the panel.
 4. In **Trigger Keywords**, type a keyword and press Enter. Repeat for each keyword.
 5. Write the text the AI gets in **Value**.
@@ -26,7 +26,7 @@ A dictionary entry uses no context until a keyword matches. Mention the Gloamwat
 
 > 💡 A comma doesn't split keywords. When a keyword holds commas, the field offers to split it.
 
-To add a dictionary from your library, select **Add Dictionary** at the bottom of the editor.
+To add a dictionary from your library, select the **+** button, then **Add From Library…**. **Import Dictionary…** in the same menu adds one from a file.
 
 ## What gets scanned
 <!-- keywords: not triggering, never fires, why didnt it activate, what text is checked, how far back, detection, ignored words -->

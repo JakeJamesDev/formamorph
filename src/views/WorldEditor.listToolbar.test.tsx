@@ -27,6 +27,12 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
+// The picker lists the local library; an empty one keeps these tests off IndexedDB.
+vi.mock('@/lib/librarySources', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/librarySources')>()),
+  libraryItems: vi.fn().mockResolvedValue([]),
+}));
+
 const HUE = encodePlaceholderToken({ id: 'ph-hue', mode: 'world', placementId: 'hue-1' });
 
 const WORLD: World = benchEditorWorld({
@@ -94,12 +100,69 @@ describe('the search text names the next add', () => {
     expect(box).toHaveValue('');
   });
 
-  it('names an entity from the + button in Basic', () => {
+  it('names an entity from the + menu in Basic', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     openTab(/Entities/);
     type(searchBox('Entities'), 'Mira');
     fireEvent.click(addButton('Entities'));
+    fireEvent.click(menuButton('Add Entity'));
     expect(ctx().entities.map((e) => e.name)).toContain('Mira');
+  });
+});
+
+describe('the + menu routes that leave the world', () => {
+  const MENUS = [
+    // The picker's title is the add row's name.
+    { tab: /Entities/, label: 'Entities', filter: 'Entities', add: 'Add Entity', file: 'Import Entity…' },
+    { tab: /Dictionary/, label: 'Dictionary', filter: 'Dictionaries', add: 'Add Dictionary', file: 'Import Dictionary…' },
+  ] as const;
+  /** The open + menu's row labels, found through its Add From Library… row. */
+  const rowNames = () => within(menuButton('Add From Library…').parentElement!).getAllByRole('button')
+    .map((b) => b.textContent?.trim());
+
+  describe.each(MENUS)('on $label', ({ tab, label, filter, add, file }) => {
+    it.each(['simple', 'advanced'] as const)('lists the add and both library rows in %s', (mode) => {
+      renderWorldEditorBench(WORLD, mode);
+      openTab(tab);
+      fireEvent.click(addButton(label));
+      const group = label === 'Entities' && mode === 'advanced' ? ['Add Group'] : [];
+      expect(rowNames()).toEqual([...group, add, 'Add From Library…', file]);
+    });
+
+    it('opens the library picker from Add From Library… and clears the typed text', async () => {
+      renderWorldEditorBench(WORLD, 'simple');
+      openTab(tab);
+      const box = searchBox(filter);
+      type(box, 'Mir');
+      fireEvent.click(addButton(label));
+      fireEvent.click(menuButton('Add From Library…'));
+      expect(await screen.findByRole('dialog', { name: add })).toBeInTheDocument();
+      expect(box).toHaveValue('');
+    });
+
+    it('opens the file chooser from the import row and clears the typed text', () => {
+      const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+      try {
+        renderWorldEditorBench(WORLD, 'simple');
+        openTab(tab);
+        const box = searchBox(filter);
+        type(box, 'Mir');
+        fireEvent.click(addButton(label));
+        fireEvent.click(menuButton(file));
+        expect(click.mock.contexts.some((input) => (input as HTMLInputElement).type === 'file')).toBe(true);
+        expect(box).toHaveValue('');
+      } finally {
+        click.mockRestore();
+      }
+    });
+  });
+
+  it('keeps Save to Library in the footer and leaves no Add button beside it', () => {
+    renderWorldEditorBench(WORLD, 'simple');
+    openTab(/Entities/);
+    expect(screen.getByRole('button', { name: 'Save to Library' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Entity' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'More add options' })).toBeNull();
   });
 });
 
@@ -112,6 +175,7 @@ describe('boxes that only name', () => {
     type(box, 'Bestiary');
     expect(screen.queryByText('Fen Lore')).toBeNull();
     fireEvent.click(addButton('Dictionary'));
+    fireEvent.click(menuButton('Add Dictionary'));
     expect(ctx().dictionaries.map((d) => d.name)).toContain('Bestiary');
     expect(box).toHaveValue('');
   });

@@ -501,7 +501,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     tab: 'entities',
     item: 'entity',
     title: 'Add an Entity',
-    body: 'Press the + button to add an entity for players to meet',
+    body: 'Select Add Entity in the + menu to add an entity for players to meet',
     add: addEntityItem,
   }),
   {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, openAddFromLibrary, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { Dictionary, Entity, World } from '@/types';
 
 /**
@@ -105,7 +105,6 @@ const worldWith = (over: Partial<World>): World => benchEditorWorld({
 });
 
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
-const clickButton = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const confirmPicker = (name: string) =>
   fireEvent.click(within(screen.getByRole('dialog', { name })).getByRole('button', { name }));
 /**
@@ -118,7 +117,7 @@ const connectControl = (role: string, name: string) => screen.getByRole(role, { 
 /** Open the library picker for one kind and confirm the one seeded item. */
 const addFromLibrary = async (kind: 'dictionary' | 'entity') => {
   openTab(kind === 'dictionary' ? /Dictionary/ : /Entities/);
-  clickButton(kind === 'dictionary' ? /Add Dictionary/ : /Add Entity/);
+  openAddFromLibrary(kind);
   fireEvent.click(await screen.findByText(kind === 'dictionary' ? 'Court Terms' : 'Marla'));
   confirmPicker(kind === 'dictionary' ? 'Add Dictionary' : 'Add Entity');
 };
