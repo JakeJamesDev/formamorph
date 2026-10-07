@@ -33,6 +33,7 @@ The same element looks or acts differently on different surfaces. Some surfaces 
 - **Q12 Chat choice bubbles:** hover takes a solid border, `bg-primary/25` and the foreground text color; only the staged choice (`data-selected`) takes the full primary fill. Keyboard focus follows hover, plus its ring, so focus never reads as staged. Rendered in `_coloraudit/chat-choices-before-after.png`.
 - **Q13 Canvas search results:** unchanged. The highlighted row is the arrow-key target, not a lasting selection, so it matches hover on purpose.
 - **Q14 Code Templates icon:** `SquareFunction`, picked from `_coloraudit/code-templates-icon-options.png`.
+- **Q15 Review fold-ins:** every Entities tab (Main Menu, Community Creations, profile) takes `Users`; single-entity art keeps `User`. The trait editor's Availability tab takes `ListChecks`, so no facet tab wears an element type's icon. Picked from `_coloraudit/availability-icon-options.png`.
 - **Q10 List-row X:** the X on a list row is an icon button that turns destructive red on hover, because it deletes.
 
 Items 1 and 2 are audited in [audit.md](audit.md). Item 3 is parked: Playwright frame sampling did not reproduce it.

@@ -45,7 +45,6 @@ const OTHER_MEANINGS: Record<string, { icons: string[]; meaning: string }> = {
   'components/prompt/CodeArea.tsx': { icons: ['Braces'], meaning: 'slot snippet menu' },
   'views/DesignSystemShowcase.tsx': { icons: ['BookOpen'], meaning: 'guide link' },
   'views/MainMenu.tsx': { icons: ['BookOpen', 'User'], meaning: 'View Prompts action, account button' },
-  'views/traitPanelTabs.ts': { icons: ['ToggleRight'], meaning: 'Availability facet' },
 };
 
 /** Icons an element type used to wear that no surface may import again. */
@@ -118,6 +117,8 @@ describe('element icon map', () => {
     expect(iconIn(ENTITY_PANEL_TABS, 'openings')).toBe(OpeningIcon);
     expect(iconIn(STAT_PANEL_TABS, 'details')).toBe(StatIcon);
     expect(iconIn(TRAIT_PANEL_TABS, 'stats')).toBe(StatIcon);
+    // A facet tab never wears an element type's icon.
+    expect(Object.values(ELEMENT_ICONS)).not.toContain(iconIn(TRAIT_PANEL_TABS, 'availability'));
   });
 
   it('names every icon the scan guards', () => {
