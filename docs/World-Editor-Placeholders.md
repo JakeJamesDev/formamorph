@@ -260,7 +260,7 @@ When an entity joins a world, each copy binds to a blueprint by id, then by uniq
 ## Blueprint Chips
 <!-- keywords: link icon on token, paste refused, cant use here, one text many npcs, holder own wording, fallback order, needs an owner -->
 
-A blueprint chip reads the bearer's own copy. It shows a link glyph. Write one *Paladin* description with a *Class Garb* chip, and each Paladin's text reads that Paladin's garb.
+A blueprint chip reads the bearer's own copy. It shows the Blueprint icon. Write one *Paladin* description with a *Class Garb* chip, and each Paladin's text reads that Paladin's garb.
 
 Blueprint chips work in the text of an original trait, and in the values of a blueprint or a copy. Every other field refuses them, because a blueprint chip needs a bearer. The refusal covers typing, paste, the palette strip, find and replace, and import.
 

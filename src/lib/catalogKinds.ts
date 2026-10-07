@@ -52,7 +52,7 @@ export const KIND_LABELS: Record<CatalogKind, { one: string; many: string }> = {
   prompt: { one: 'Prompt', many: 'Prompts' },
 };
 
-/** The icon each kind wears everywhere: the browser's sections, profile tabs, and a prompt's card art. */
+/** The icon one item of each kind wears, such as a prompt's card art. */
 export const KIND_ICONS: Record<CatalogKind, LucideIcon> = {
   world: ELEMENT_ICONS.world,
   entity: ELEMENT_ICONS.entity,
@@ -60,6 +60,9 @@ export const KIND_ICONS: Record<CatalogKind, LucideIcon> = {
   model: ELEMENT_ICONS.avatar,
   prompt: ScrollText,
 };
+
+/** The icon a tab or section listing many of a kind wears: the browser's sections and profile tabs. */
+export const KIND_TAB_ICONS: Record<CatalogKind, LucideIcon> = { ...KIND_ICONS, entity: ELEMENT_ICONS.entities };
 
 /** Whether a kind's listings carry cover art. A prompt shows its kind icon instead. */
 export const kindHasThumbnail = (kind: CatalogKind): boolean => kind !== 'prompt';

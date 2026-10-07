@@ -1,7 +1,7 @@
 import { BlueprintIcon } from '@/lib/elementIcons';
 import { cn } from '@/lib/utils';
 
-/** The link glyph a blueprint chip carries before its label: the chip reads each bearer's own copy. */
+/** The Blueprint icon a blueprint chip carries before its label: the chip reads each bearer's own copy. */
 const BlueprintMark = ({ className }: { className?: string }) => (
   <BlueprintIcon aria-hidden data-blueprint-mark="" className={cn('h-3 w-3 shrink-0', className)} />
 );

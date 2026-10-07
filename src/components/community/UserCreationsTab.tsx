@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { LikeButton } from "@/components/community/LikeButton";
-import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
+import { CATALOG_KINDS, KIND_TAB_ICONS, KIND_LABELS, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
 import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import UserService from "@/services/UserService";
 import { API_BASE_URL } from "@/lib/apiBase";
@@ -126,7 +126,7 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
           onValueChange={(v) => { if (v) setKind(v as CatalogKind); }}
         >
           {CATALOG_KINDS.map((k) => {
-            const Icon = KIND_ICONS[k];
+            const Icon = KIND_TAB_ICONS[k];
 
             return (
               <Fragment key={k}>
