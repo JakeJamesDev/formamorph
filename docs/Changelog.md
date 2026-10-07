@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.2.1 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.2.1** — the latest released version.
+> ✅ **3.0.0 – 3.2.2 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.2.2** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.1** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.2.2** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.2.2 — Released 2026-10-07</strong> — Safari and iOS load without an error — Text to Speech loads on first use, so every browser starts faster (click to expand)</summary>
 
 ### Minor Changes
 
@@ -19,7 +24,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Safari and iOS open the app without an error toast on every load.** The text-to-speech engine now loads when you first open Text to Speech, not at startup, so every browser starts faster. Text to Speech also works in Safari 26 and in older Android web views.
 
----
+</details>
+
 
 <details>
 <summary><strong>✅ 3.2.1 — Released 2026-10-07</strong> — Side rail and one app bar for the World Editor and Community Creations — large worlds open, edit and save fast — crash recovery screens — Clear Search on every search box — a long tail of fixes (click to expand)</summary>
