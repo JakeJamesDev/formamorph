@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -128,6 +128,49 @@ describe('BreadcrumbPicker search', () => {
     await user.click(trigger());
     expect(screen.getByText('Nothing to pick')).toBeInTheDocument();
     expect(screen.queryByText('No matches')).toBeNull();
+  });
+
+  it('clears the search with the Clear Search X, which shows only while the search holds text', async () => {
+    const user = userEvent.setup();
+    render(<Field />);
+    await user.click(trigger());
+    const search = screen.getByPlaceholderText('Search traits');
+    expect(screen.queryByRole('button', { name: 'Clear Search' })).toBeNull();
+
+    await user.type(search, 'brave');
+    expect(rows()).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: 'Clear Search' }));
+
+    expect(search).toHaveValue('');
+    expect(rows()).toHaveLength(6);
+    expect(search).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Clear Search' })).toBeNull();
+    // user-event keeps stale typed text across the native clear; fireEvent types as a browser does.
+    fireEvent.change(search, { target: { value: 'health' } });
+    expect(rows()).toEqual(['Health']);
+  });
+
+  it('picks the highlighted row on Enter while the Clear Search X shows', async () => {
+    const user = userEvent.setup();
+    const onPick = vi.fn();
+    render(<Field onPick={onPick} />);
+    await user.click(trigger());
+    await user.type(screen.getByPlaceholderText('Search traits'), 'storm');
+    expect(screen.getByRole('button', { name: 'Clear Search' })).toBeInTheDocument();
+    await user.keyboard('{Enter}');
+    expect(onPick).toHaveBeenCalledWith('Storm Touched');
+    expect(trigger()).toHaveTextContent('Storm Touched');
+  });
+
+  it('keeps the Clear Search X out of the Tab order, since Enter on it would pick a row', async () => {
+    const user = userEvent.setup();
+    render(<Field />);
+    await user.click(trigger());
+    const search = screen.getByPlaceholderText('Search traits');
+    await user.type(search, 'brave');
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Clear Search' })).not.toHaveFocus();
+    expect(search).toHaveFocus();
   });
 });
 
