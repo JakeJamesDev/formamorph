@@ -3,6 +3,7 @@ import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import { Tip } from '@/components/ui/tooltip';
 import { readStorageJson, writeStorageJson } from '@/lib/keyedStorage';
+import { NAV_IDLE, NAV_TAB_STATES } from '@/lib/navSelection';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 
@@ -21,7 +22,7 @@ export interface NavRailGroup {
 export interface NavRailProps {
   /** The groups in rail order. A group with no tabs draws nothing. */
   groups: readonly NavRailGroup[];
-  /** The active tab, which carries the accent bar. */
+  /** The active tab, which carries the edge bar. */
   value: string;
   label: string;
   /** Where this surface remembers expanded or collapsed. */
@@ -46,8 +47,8 @@ function readExpanded(key: string, fallback: boolean): boolean {
 // One layout in both states: the icon sits 11px in, which centers it in the collapsed rail, and the
 // label clips in its own box as the rail narrows.
 const ROW = cn(
-  'relative flex h-9 w-full shrink-0 items-center gap-3 rounded-md pl-[11px] pr-2 text-label text-muted-foreground transition-colors',
-  'hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+  'relative flex h-9 w-full shrink-0 items-center gap-3 rounded-md pl-[11px] pr-2 text-label transition-colors',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
   'disabled:opacity-50',
 );
 
@@ -85,13 +86,10 @@ export function NavRail({
                 <TabsPrimitive.Trigger
                   value={tab}
                   disabled={disabled}
-                  className={cn(
-                    ROW,
-                    'disabled:pointer-events-none data-[state=active]:bg-accent data-[state=active]:font-medium data-[state=active]:text-foreground',
-                  )}
+                  className={cn(ROW, NAV_TAB_STATES, 'disabled:pointer-events-none')}
                 >
                   {tab === value && (
-                    <span aria-hidden data-rail-accent className="absolute inset-y-1.5 -left-1.5 w-0.5 rounded-r bg-primary" />
+                    <span aria-hidden data-rail-accent className="absolute inset-y-1.5 -left-1.5 w-0.5 rounded-r bg-foreground" />
                   )}
                   <Icon aria-hidden className="h-[18px] w-[18px] shrink-0" />
                   <span className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-left" style={fade}>{name}</span>
@@ -110,7 +108,7 @@ export function NavRail({
             disabled={autoCollapsed}
             aria-label={expanded ? 'Collapse' : 'Expand'}
             aria-expanded={expanded}
-            className={ROW}
+            className={cn(ROW, NAV_IDLE)}
           >
             <ToggleIcon aria-hidden className="h-[18px] w-[18px] shrink-0" />
             {/* Seen only while expanded; it fades out rather than swapping text mid-fade. */}

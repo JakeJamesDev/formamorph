@@ -1,6 +1,7 @@
 import { Fragment, useRef } from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { NavDisclosure } from '@/components/NavDisclosure';
+import { NAV_TAB_STATES } from '@/lib/navSelection';
 import { cn } from '@/lib/utils';
 import type { NavRailGroup } from '@/components/NavRail';
 
@@ -48,9 +49,8 @@ export function EditorSectionsBar({ groups, label, bodyId, value, open, onOpenCh
                 onClick={pick}
                 className={cn(
                   'flex min-h-11 w-full min-w-0 items-center gap-2 rounded px-2 py-1 text-left text-label',
-                  'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                  'data-[state=active]:bg-muted data-[state=active]:font-semibold data-[state=active]:text-foreground',
+                  NAV_TAB_STATES,
                 )}
               >
                 <Icon aria-hidden className="h-4 w-4 shrink-0" />

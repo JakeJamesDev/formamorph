@@ -89,6 +89,17 @@ describe('NavRail', () => {
     expect(rail().querySelectorAll('[data-rail-accent]')).toHaveLength(1);
   });
 
+  it('fills the selected tab with the primary color and leaves hover to the accent fill', () => {
+    render(<Host initial="entities" />);
+    const selected = within(rail()).getByRole('tab', { selected: true });
+    expect(selected).toHaveClass('data-[state=active]:bg-primary', 'data-[state=active]:text-primary-foreground', 'data-[state=active]:font-medium');
+    expect(selected).toHaveClass('data-[state=active]:hover:bg-primary');
+    expect(selected).not.toHaveClass('data-[state=active]:bg-accent');
+    expect(selected.querySelector('[data-rail-accent]')).toHaveClass('bg-foreground');
+    const idle = within(rail()).getByRole('tab', { name: 'Stats' });
+    expect(idle).toHaveClass('hover:bg-accent', 'hover:text-foreground', 'text-muted-foreground');
+  });
+
   it('switches tabs on a click and moves along the rail with the arrow keys', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

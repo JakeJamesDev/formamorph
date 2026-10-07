@@ -161,6 +161,16 @@ describe('World Editor Sections bar (mobile)', () => {
     expect(screen.getByPlaceholderText('Search or add new entities')).toBeInTheDocument();
   });
 
+  it('fills the selected row with the primary color, with no edge bar, and hovers with the accent fill', () => {
+    renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'stats' });
+    fireEvent.click(sections());
+    const selected = within(editorTabs()).getByRole('tab', { selected: true });
+    expect(selected).toHaveClass('data-[state=active]:bg-primary', 'data-[state=active]:text-primary-foreground', 'data-[state=active]:font-medium');
+    expect(selected).not.toHaveClass('data-[state=active]:bg-muted', 'data-[state=active]:font-semibold');
+    expect(editorTabs().querySelector('[data-rail-accent]')).toBeNull();
+    expect(within(editorTabs()).getByRole('tab', { name: 'Entities' })).toHaveClass('hover:bg-accent', 'hover:text-foreground');
+  });
+
   it('draws no horizontal tab strip', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     fireEvent.click(sections());
