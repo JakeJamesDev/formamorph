@@ -111,6 +111,9 @@ The prototype that settled the shape is `prototype.html` beside this spec (varia
 | Q26 | A trait's own activity never counts toward its own gate, in either polarity. "Scout" in group Class with "not any Class" does not turn itself off, and a gate line never reads "Unlocked by any Class" from the trait itself. |
 | Q27 | An unresolved Condition never holds, plain or Not, so its row fails. A deleted target leaves dependents locked, never open (trait-gates story 17). |
 | Q28 | Settle order (Q7, Q8 made concrete): positive growth treats every Not Condition as holding; then a check against the final set turns off the latest-proposed failing trait, one per pass, and the pass reruns. Proposal order is the active list (pick order), then Automatic traits, then cascade-off returners. |
+| Q29 | Settle is idempotent. After the drop loop, each dropped trait is tried again in proposal order and kept when the whole set still checks clean. A, B, C with A "not B", B "not A", C "not B" settles to {A, C} in one call, and a second settle changes nothing. |
+| Q30 | A cascade-off returner never turns off a pick or an Automatic trait. When its return would make any kept trait fail, it stays on cascade-off. The player's deliberate state wins over an automatic return. A pick that excludes an active Automatic trait stays locked, because the Automatic trait's gate holds (Q10). |
+| Q31 | The exclusive-sibling skip in a Condition applies only inside the trait's own owner. "You: not Paladin" on an entity's linked trait reads the player's Paladin even when the entity's own group also holds a Paladin. (Correctness fix found by ticket 03.) |
 
 **Schema (world export shape).**
 
