@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
-import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
+import { CATALOG_KINDS, KIND_TAB_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, COMMUNITY_NAV_RAIL_KEY, type BrowseTab } from "@/lib/browseTabs";
 import { NavRail, type NavRailGroup } from "@/components/NavRail";
 import { listingId, listingRef, type ListingRef } from "@/lib/worldDependencies";
@@ -831,7 +831,7 @@ const CommunityCreationsBrowser = ({
   const kindSections: SwitcherSection[] = CATALOG_KINDS.map((kind) => ({
     key: kind,
     label: BROWSE_TAB_LABELS[kind].many,
-    icon: KIND_ICONS[kind],
+    icon: KIND_TAB_ICONS[kind],
   }));
   const sections: SwitcherSection[] = contests.length > 0
     ? [...kindSections, { key: 'contest', label: 'Contest', icon: Trophy }]

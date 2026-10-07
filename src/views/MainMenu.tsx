@@ -181,7 +181,7 @@ const AI_SETUP_SEEN_KEY = 'FORMAMORPH_aiSetupSeen';
  *  render from one source and can't drift. */
 const CARD_TABS: { value: MainMenuCardTab; label: string; Icon: LucideIcon }[] = [
   { value: 'worlds', label: 'Worlds', Icon: ELEMENT_ICONS.world },
-  { value: 'entities', label: 'Entities', Icon: ELEMENT_ICONS.entity },
+  { value: 'entities', label: 'Entities', Icon: ELEMENT_ICONS.entities },
   { value: 'dictionaries', label: 'Dictionaries', Icon: ELEMENT_ICONS.dictionary },
   { value: 'models', label: 'Avatars', Icon: ELEMENT_ICONS.avatar },
 ];

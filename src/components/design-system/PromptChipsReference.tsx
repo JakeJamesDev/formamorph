@@ -91,7 +91,7 @@ const BLUEPRINT_PLACEHOLDERS: Placeholder[] = [
   ] },
 ];
 
-/** A blueprint chip carries the link glyph. A world trait's text takes one; an entity's field refuses it. */
+/** A blueprint chip carries the Blueprint icon. A world trait's text takes one; an entity's field refuses it. */
 function BlueprintChipsReference({ readOnly }: { readOnly: boolean }) {
   const [trait, setTrait] = useState('Sworn in {{ph:reference-garb:world:reference-p1}} at {{ph:reference-town:world:reference-p2}}.');
   const [entity, setEntity] = useState('');

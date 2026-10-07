@@ -17,7 +17,7 @@ import {
   TraitIcon,
   WorldIcon,
 } from './elementIcons';
-import { KIND_ICONS } from './catalogKinds';
+import { KIND_ICONS, KIND_TAB_ICONS } from './catalogKinds';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
@@ -93,6 +93,11 @@ describe('element icon map', () => {
     expect(KIND_ICONS.entity).toBe(ELEMENT_ICONS.entity);
     expect(KIND_ICONS.dictionary).toBe(ELEMENT_ICONS.dictionary);
     expect(KIND_ICONS.model).toBe(ELEMENT_ICONS.avatar);
+  });
+
+  it('gives tabs that list many entities the plural icon', () => {
+    expect(KIND_TAB_ICONS.entity).toBe(ELEMENT_ICONS.entities);
+    expect(KIND_TAB_ICONS.world).toBe(KIND_ICONS.world);
   });
 
   it('feeds the World Editor tabs', () => {
