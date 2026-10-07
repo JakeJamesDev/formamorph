@@ -2,7 +2,7 @@
 
 Status: done
 Spec session: large-world-performance — spec
-Status note: (2026-10-06) Tickets 01–19 done; last landing a19ea9f0. Closed without gates.
+Status note: (2026-10-06) Tickets 01–19 done; last landing a19ea9f0. Closed red: Formaquestion ask, bubble, mascot, settings and sourcesFold tests time out under full-suite load and pass alone.
 
 ## Problem Statement
 
