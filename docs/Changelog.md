@@ -38,6 +38,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A crash in one World Editor panel shows a card there, and the rest of the editor keeps working.** Your unsaved edits stay. **Try Again** remounts the panel, and **View Details** opens the error with Copy and Report Bug.
   - **The World Editor's list boxes now read Filter, such as Filter Stats and Filter Entities.** Typing still narrows the list, and the **+** button still adds the typed name.
   - **On Entities and Dictionary, the + menu now holds Add From Library and Import.** The footer's Add Entity and Add Dictionary buttons are gone. The + is a menu in Simple mode too.
+  - **On mobile, the World Editor's footer now fits on one row, and a selected item's detail fills the full height.** Save is an icon in the bottom-right corner, next to the world actions. Overview shows Export World once. Search and the Test Bench sit at the right of the header.
 - **🛠️ Developer tooling**
   - **CI splits the test suite across four parallel runners, so a check takes about 5 minutes, not 20.** A tag push runs the checks once, through the Release workflow. A **Build Android APK** run skips them.
 

@@ -136,8 +136,9 @@ describe('World Editor footer (mobile)', () => {
   beforeEach(() => { undoMobile = asMobile(); });
   afterEach(() => undoMobile());
 
-  it('keeps Export World, Optimize Images in Advanced, and Save', () => {
+  it('keeps Export World and Optimize Images in the More world actions menu in Advanced, and Save', () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
+    fireEvent.click(button('More world actions'));
     expect(button('Export World')).toBeInTheDocument();
     expect(button('Optimize Images')).toBeInTheDocument();
     expect(button('Save')).toBeInTheDocument();

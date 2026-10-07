@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { asMobile, benchEditorWorld, editorModeSelect, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { rowOf } from '@/test/landing';
 
-/** The World Editor's mobile header row: back, Find, the Test Bench and the mode, and nothing in the list toolbar. */
+/** The World Editor's mobile header row: back, the mode, the Test Bench and Find, and nothing in the list toolbar. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -42,10 +42,10 @@ beforeEach(() => { localStorage.clear(); undoMobile = asMobile(); });
 afterEach(() => { undoMobile?.(); undoMobile = null; });
 
 describe('World Editor header row (mobile)', () => {
-  it('reads back, Find, Test Bench and the Mode Select, with no ? on any tab', async () => {
+  it('reads back, the Mode Select, Test Bench and Find, with no ? on any tab', async () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'stats' });
     await waitFor(() => expect(rowOf('worldEditor.stats#list-toolbar')).not.toBeNull());
-    const header = [button('Back'), button('Find and replace'), button(/^Test Bench/), editorModeSelect()];
+    const header = [button('Back'), editorModeSelect(), button(/^Test Bench/), button('Find and replace')];
     expect(inOrder(header)).toBe(true);
     expect(editorModeSelect()).toHaveTextContent('Advanced');
     expect(helpButtons()).toHaveLength(0);
@@ -71,9 +71,9 @@ describe('World Editor header row (mobile)', () => {
     expect(rows.every((row) => row.getAttribute('role') === 'tabpanel')).toBe(true);
   });
 
-  it('keeps Export World and Save in the footer in Simple, with no Optimize Images', () => {
+  it('keeps Export World once and Save in the footer in Simple, with no Optimize Images', () => {
     renderWorldEditorBench(WORLD, 'simple', { initialTab: 'overview' });
-    expect(button('Export World')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Export World' })).toHaveLength(1);
     expect(button('Save')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
   });
