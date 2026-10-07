@@ -225,7 +225,6 @@ export function useWorldTraitsAdapter({ selectedId, onSelect, navigate, tab, onT
     onReorder,
     add: advanced ? {
       label: 'Add to Traits',
-      menuClassName: 'w-56',
       menu: (
         <TraitsAddMenu
           advanced={advanced}
