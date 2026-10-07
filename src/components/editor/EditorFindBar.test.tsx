@@ -148,7 +148,11 @@ describe('EditorFindBar Clear Search', () => {
     const field = screen.getByRole('textbox', { name: 'Search World' });
     await user.type(field, 'ferry');
     await waitFor(() => expect(screen.getByText('1 / 1')).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Clear Search' }));
+    // The X follows the counter, whose width changes with the count.
+    const clear = screen.getByRole('button', { name: 'Clear Search' });
+    expect(screen.getByText('1 / 1').compareDocumentPosition(clear) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(clear.compareDocumentPosition(screen.getByRole('button', { name: 'Previous match' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(clear);
 
     expect(field).toHaveValue('');
     expect(field).toHaveFocus();

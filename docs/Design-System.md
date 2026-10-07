@@ -270,7 +270,7 @@ The live Community cards reference uses the production card and shell with neutr
 
 - Place the bar over the upper-left of a bounded editor workspace. Keep enough document context visible to show which field receives the current match.
 - Join Match Case and Match Whole Word to the search input. Their pressed fills show option state without adding separate labels to the row.
-- While a box holds text, show its clear X as the innermost cell, before the match toggles, the mode swap, or the docked field's badge and counter. Find's X is **Clear Search**; the text Replace box's X is **Clear Replace**. Clearing keeps the bar open and its layout as it is.
+- While a box holds text, show its clear X after any cell whose width changes with the text, and before fixed cells. In the floating bar it sits before the match toggles and the mode swap; in the docked field it follows the badge and the counter and precedes the match navigation. Find's X is **Clear Search**; the text Replace box's X is **Clear Replace**. Clearing keeps the bar open and its layout as it is.
 - Keep Previous Match, Next Match, and Close Find as separate actions. Do not combine navigation into one split control.
 - Put replacement in an expandable second row. Align its input with search and keep Replace and Replace All together at the row end.
 - Show the match position and total beside navigation at desktop widths. Move the counter below the controls on narrow screens so the search input keeps useful width.
@@ -345,7 +345,7 @@ The new description states the reference purpose. Action labels use the producti
 - ↩️ **Clear.** Selecting the X empties the box, applies the empty search at once, and returns the cursor to the box.
 - ⌨️ **Escape.** Escape never clears the field. The field blocks the browser's own Escape clear, so only the host acts: a dialog still closes, and a host that collapses on Escape still does.
 - 🚫 **Native cancel.** The browser's own cancel button never shows, so a box never has two X's.
-- 🧱 **Other trailing cells.** When a host adds its own controls along the right edge, the X is the innermost cell, right after the text. Fixed controls keep the edge.
+- 🧱 **Other trailing cells.** When a host adds its own controls along the right edge, the X follows any cell whose width changes with the text, such as a match counter, and precedes fixed cells. The X then keeps one position while the author types.
 - ♿ **Accessible name.** The X is **Clear Search** everywhere. The input keeps the `searchbox` role. A picker's command input keeps its `combobox` role.
 - 🖱️ **Pickers.** In a command picker the X is mouse-only and stays out of the Tab order. The picker selects the highlighted item on Enter, so a focused X would pick instead of clear. Backspace clears from the keyboard.
 

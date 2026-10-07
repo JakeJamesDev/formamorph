@@ -5108,14 +5108,15 @@ const GameViewer = ({
                         stepHit(e.shiftKey ? -1 : 1);
                       }}
                       placeholder="Search (space-separated terms)…"
-                      className={`pl-8 ${searchActive ? "pr-36" : ""}`}
+                      className={`pl-8 ${debugSearch !== "" ? "pr-36" : ""}`}
                     />
-                    {searchActive && (
+                    {/* Any text shows the group. The X follows the counter, whose width changes with the count. */}
+                    {debugSearch !== "" && (
                       <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-                        <ClearSearchButton size="sm" onClick={clearSearch} />
                         <span className="px-1 text-meta tabular-nums text-muted-foreground">
                           {hitTotal > 0 ? `${currentHit + 1} of ${hitTotal}` : "0 of 0"}
                         </span>
+                        <ClearSearchButton size="sm" onClick={clearSearch} />
                         <Tip tip="Previous match (Shift+Enter)">
                           <button
                             type="button"
