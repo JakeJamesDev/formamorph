@@ -21,6 +21,8 @@ Authors tune auto save in Settings.
 
 Rulings: Q8, Q16, Q21, Q25, Q26.
 
+Handoff from 04: the idle pause is the `AUTO_SAVE_IDLE_MS` constant in the auto save scheduler. This ticket turns it into the setting.
+
 ## Acceptance criteria
 
 - [ ] Settings shows the Auto Save toggle and the idle slider beside Authoring Tour.

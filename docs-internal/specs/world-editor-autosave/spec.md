@@ -102,6 +102,9 @@ Research behind the trigger model: Vim refreshes its swap file after 200 charact
 | Q26 | Settings shows the Auto Save toggle and the idle slider. The slider hides when Auto Save is off, per the settings off-state pattern. The Settings toggle and the Save-menu toggle are one preference. |
 | Q27 | The failure label is **Failed**. |
 | Q28 | No new color token. The Saved tint is `success` at 20%. Its label and icon use the normal text color, because green text on the tint measured 2.23:1 in light mode. |
+| Q29 | Auto save pauses while the Authoring Tour runs. The tour owns saving there, through its save on every Next. Auto save resumes when the tour ends. |
+| Q30 | A discrete write that merges into the History Step before it adds only its text units, not another 10. One History Step counts as one discrete action, so a burst on one field or record never reaches the threshold alone; the idle pause saves it. |
+| Q31 | A world in the library auto saves from its first edit, imported worlds included. A bundled default waits for one manual save, so a stray edit never marks it edited and cuts it off from bundled updates. A brand-new world waits for its first manual save (Q10). |
 
 ### Prototype
 
