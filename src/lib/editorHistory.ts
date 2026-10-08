@@ -134,10 +134,17 @@ export function diffSlice<S extends SliceName>(slice: S, prev: WorldSlices[S], n
   return edit as RecordEdit;
 }
 
-/** The overview fields whose values differ by reference. */
-export function changedFields(before: WorldOverview, after: WorldOverview): string[] {
-  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
-  return [...keys].filter((key) => fieldsOf(before)[key] !== fieldsOf(after)[key]);
+/** The fields of a record or the overview whose values differ by reference. */
+export function changedFields(before: object, after: object): string[] {
+  const [was, now] = [before as Record<string, unknown>, after as Record<string, unknown>];
+  const keys = new Set([...Object.keys(was), ...Object.keys(now)]);
+  return [...keys].filter((key) => was[key] !== now[key]);
+}
+
+/** A write's merge key: the record, and the field when the write changed exactly one. */
+export function writeKey(slice: SliceName, id: string | undefined, was: object | undefined, now: object): StepKey {
+  const fields = was ? changedFields(was, now) : [];
+  return fields.length === 1 ? { slice, id, field: fields[0] } : { slice, id };
 }
 
 const sameOrder = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);

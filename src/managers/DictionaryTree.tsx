@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
+import { useWorldHistoryMovesOptional } from '@/contexts/worldRecorder';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { VirtualRowList, VIRTUALIZE_AT } from '@/components/VirtualRowList';
@@ -284,6 +285,7 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false, collapse: h
   collapse?: DictionaryCollapse;
 }) => {
   const { dictionaries, setDictionaries, updateDictionary } = useDictionaryStore();
+  const worldHistory = useWorldHistoryMovesOptional();
   const ownCollapse = useDictionaryCollapse();
   const collapse = hostCollapse ?? ownCollapse;
   const actions = useDictionaryActions({ selectedId, onSelect, collapse });
@@ -349,6 +351,7 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false, collapse: h
   const entryHandlers = {
     onSelectEntry: onSelect,
     onToggleEntryEnabled: (entry: DictionaryEntry, enabled: boolean) => {
+      worldHistory?.keyNext({ slice: 'dictionaries', id: entry.id, field: 'enabled' });
       setDictionaries(dictionaries.map((b) => ({
         ...b, entries: b.entries.map((e) => (e.id === entry.id ? { ...e, enabled } : e)),
       })));

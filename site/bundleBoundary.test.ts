@@ -153,7 +153,14 @@ describe('the site entry stays out of the game bundle', () => {
     // 57: the Patreon section and the leaves it reads (its service, `supporterFlair`, `useMountedRef`, the checkbox).
     // 58: the Supporter badge on the profile page.
     // 59: `elementIcons`, a lucide-only leaf that `catalogKinds` reads for its kind icons.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(59);
+    // 60: `gesture-group`, the leaf the slider and color picker read to group a drag into one undo Step.
+    expect(reachableFromSite().size).toBeLessThanOrEqual(60);
+  });
+
+  it('reaches the gesture group helper through the slider and color picker, and nothing behind it', () => {
+    // The site provides no groups, so it must stay a leaf: the world's history belongs to the game.
+    expect(reachableFromSite().has('@/components/ui/gesture-group')).toBe(true);
+    expect(appImports(readFileSync(resolveApp('@/components/ui/gesture-group')!, 'utf-8'))).toEqual([]);
   });
 
   it('reaches the shielded layer helper through the dialog wrappers, and nothing behind it', () => {
