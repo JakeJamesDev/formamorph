@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   canRedo, canUndo, createHistory, diffSlice, jumpTo, record, WORLD_SLICES,
-  type EditorHistory, type SliceEdit, type SliceName, type WorldSlices,
+  type EditorHistory, type SliceEdit, type SliceName, type StepKey, type WorldSlices,
 } from '@/lib/editorHistory';
 
 /**
@@ -16,6 +16,8 @@ export interface WriteIntent {
   history?: boolean;
   /** A pass that follows the commit before it: joins that commit's Step, or stays unrecorded with it. */
   follow?: boolean;
+  /** What the write is about, so a run of writes to one record and field merges into one Step. */
+  key?: StepKey;
 }
 
 export type WorldSetters = { [S in SliceName]: (value: WorldSlices[S]) => void };
@@ -65,6 +67,8 @@ export interface WorldHistoryControls {
   redo(): void;
   /** Moves the world to a list position. 0 is the World opened head. */
   jump(position: number): void;
+  /** Keys the next write, which must follow in the same event. */
+  keyNext(key: StepKey): void;
 }
 
 /**
@@ -81,7 +85,7 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   useLayoutEffect(() => {
     const before = seen.current;
     seen.current = slices;
-    const { history: moved, follow } = intent.current;
+    const { history: moved, follow, key } = intent.current;
     intent.current = {};
     if (worldId !== openWorld.current) {
       openWorld.current = worldId;
@@ -97,7 +101,9 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
       .filter((edit): edit is SliceEdit => edit !== null);
     if (!edits.length) return;
     const at = follow ? last.current.tick : currentTick();
-    store.set(record(store.get(), edits, { tick: at }));
+    // A key whose slice did not change belongs to a write that bailed, so it never keys another one.
+    const keyed = !follow && key && edits.some((edit) => edit.slice === key.slice) ? key : undefined;
+    store.set(record(store.get(), edits, { tick: at, key: keyed }));
     last.current = { recorded: true, tick: at };
   }, [slices, worldId, store]);
 
@@ -117,14 +123,19 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const undo = useCallback(() => jump(store.get().cursor - 1), [jump, store]);
   const redo = useCallback(() => jump(store.get().cursor + 1), [jump, store]);
 
-  const controls = useMemo<WorldHistoryControls>(() => ({ store, undo, redo, jump }), [store, undo, redo, jump]);
+  const keyNext = useCallback((key: StepKey) => { intent.current = { ...intent.current, key }; }, []);
+
+  const controls = useMemo<WorldHistoryControls>(
+    () => ({ store, undo, redo, jump, keyNext }),
+    [store, undo, redo, jump, keyNext],
+  );
   return { intent, controls };
 }
 
 export const WorldHistoryContext = createContext<WorldHistoryControls | null>(null);
 
-/** Only the moves, which keep one identity, so a caller does not re-render when the history changes. */
-export function useWorldHistoryMoves(): Pick<WorldHistoryControls, 'undo' | 'redo' | 'jump'> {
+/** Only the moves and the key channel, which keep one identity, so a caller does not re-render when the history changes. */
+export function useWorldHistoryMoves(): Pick<WorldHistoryControls, 'undo' | 'redo' | 'jump' | 'keyNext'> {
   const controls = useContext(WorldHistoryContext);
   if (!controls) throw new Error('useWorldHistoryMoves must be used within a GameDataProvider');
   return controls;
@@ -134,7 +145,7 @@ export function useWorldHistoryMoves(): Pick<WorldHistoryControls, 'undo' | 'red
 export function useWorldHistory() {
   const controls = useContext(WorldHistoryContext);
   if (!controls) throw new Error('useWorldHistory must be used within a GameDataProvider');
-  const { store, undo, redo, jump } = controls;
+  const { store, undo, redo, jump, keyNext } = controls;
   const history = useSyncExternalStore(store.subscribe, store.get);
   return {
     canUndo: canUndo(history),
@@ -142,6 +153,6 @@ export function useWorldHistory() {
     steps: history.steps,
     cursor: history.cursor,
     saved: history.saved,
-    undo, redo, jump,
+    undo, redo, jump, keyNext,
   };
 }

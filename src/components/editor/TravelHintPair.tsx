@@ -43,8 +43,8 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
   /** The legs the record has, in display order. The first is the one a link copies from. */
   legs: TravelHintLeg[];
   idPrefix: string;
-  /** Receives every rewritten record. The merge key groups one box's keystrokes into one edit. */
-  onChange: (next: Connection, mergeKey?: string) => void;
+  /** Receives every rewritten record. `typedLeg` names the box a keystroke went into, so a run is one edit. */
+  onChange: (next: Connection, typedLeg?: LegKey) => void;
   focus?: TravelHintFocus | null;
 }) {
   const [records, setRecords] = useState<Record<string, LinkRecord>>({});
@@ -59,15 +59,15 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
   const linked = !!second && (record?.basis === connection ? record.linked : hintsLinked(connection));
   const firstHint = connection[first.key]?.hint ?? '';
 
-  const write = (next: Connection, state: Omit<LinkRecord, 'basis'>, mergeKey?: string) => {
+  const write = (next: Connection, state: Omit<LinkRecord, 'basis'>, typedLeg?: LegKey) => {
     setRecords((current) => ({ ...current, [next.id]: { ...state, basis: next } }));
-    onChange(next, mergeKey);
+    onChange(next, typedLeg);
   };
 
   const editHint = (leg: LegKey, text: string) => {
     const edited = withHint(connection, leg, text);
     const next = linked ? withLink(edited, first.key) : edited;
-    write(next, { linked, held: record?.held }, `hint:${connection.id}:${leg}`);
+    write(next, { linked, held: record?.held }, leg);
   };
 
   const toggle = () => {
