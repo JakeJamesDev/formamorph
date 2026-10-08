@@ -133,7 +133,8 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
         // them through state committed in a transition, which leaves finished text a render behind —
         // visible when paging history, where nothing follows to flush it.
         mode={animate ? 'streaming' : 'static'}
-        animated={animate ? { animation, sep: 'word', easing, ...(timing ?? getRevealTiming()) } : false}
+        // The sentence pacer owns catch-up, so narration lifts Streamdown's backlog cap; help sets its own.
+        animated={animate ? { animation, sep: 'word', easing, maxBacklogMs: Number.POSITIVE_INFINITY, ...(timing ?? getRevealTiming()) } : false}
         isAnimating={animate}
       >
         {text}
