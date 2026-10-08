@@ -21,6 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The trait Availability tab shows Mode, Starts and In Game as three rows with one rule sentence.** **Automatic** is the new name of Always On. Starts and In Game dim under Automatic and Hidden. **Requires** adds a world trait at once when only You can hold it.
   - **A trait requirement in the World Editor can require a trait to be off: flip its chip to Not.** The lock line reads "not Paladin". Picking an excluded trait turns the other off with the banner, and dropping the pick brings it back.
   - **Ctrl+S saves the world in the World Editor.** On a Mac, use Cmd+S. It works while you type in a field, and the **Save** tooltip shows it.
+  - **Test Bench in the World Editor flags trait requirements that loop through Not and rows that can never hold.** A loop such as "A requires B, B requires not A" is an error. "Paladin and not Paladin" is a warning. Two traits that exclude each other still pass.
 
 #### 🔧 Fixed
 

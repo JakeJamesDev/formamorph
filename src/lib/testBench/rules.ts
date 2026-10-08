@@ -50,13 +50,16 @@ import {
   type BearerWorld,
 } from '@/lib/bearers';
 import {
-  WORLD_OWNER, alwaysOnOverMax, gateConditions, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
+  WORLD_OWNER, alwaysOnOverMax, deadRows, gateOf, gateStates, groupPickState, neverUnlockable, sameRequirement, settleDefaults,
+  unstableCycles, type GateInput, type GateOwner, type GateState, type GateStates, type GateTraitRef,
 } from '@/lib/traitGates';
+import { ruleText, rowText } from '@/lib/traitGateLine';
+import { conditionsOf } from '@/lib/requirementRows';
 import { isAlwaysOn } from '@/lib/traitEffects';
 import { canOwnStatTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
-  Trait, TraitGroup, TraitLink, World,
+  Trait, TraitGroup, TraitLink, TraitRequirement, TraitRequirementRow, World,
 } from '@/types';
 
 /**
@@ -1829,14 +1832,33 @@ const traitGroupTooSmall: Rule = {
 /** The slices the bearer resolver reads. */
 export type BearerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities'>>;
 
-/** The world as the bearer resolver reads it. A trait whose id is in `open`, world or owned, loses its
- *  requirements. */
-export function bearerWorldOf(world: BearerSource, open: ReadonlySet<string> = new Set()): BearerWorld {
-  const opened = (t: Trait): Trait => (open.has(t.id) ? { ...t, requires: [] } : t);
+const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
+
+/** The gates a report opens: world and owned traits by id, and link requirement overrides by
+ *  `pairKey(link id, trait id)`. */
+interface OpenGates {
+  traits: ReadonlySet<string>;
+  links: ReadonlySet<string>;
+}
+
+const NONE_OPEN: OpenGates = { traits: new Set(), links: new Set() };
+
+/** The world as the bearer resolver reads it, with every gate in `open` emptied. */
+export function bearerWorldOf(world: BearerSource, open: OpenGates = NONE_OPEN): BearerWorld {
+  const opened = (t: Trait): Trait => (open.traits.has(t.id) ? { ...t, requires: [] } : t);
+  const openLink = (link: TraitLink): TraitLink => (link.overrides ? {
+    ...link,
+    overrides: Object.fromEntries(Object.entries(link.overrides).map(([id, o]) =>
+      [id, o.requires && open.links.has(pairKey(link.id, id)) ? { ...o, requires: { ...o.requires, value: [] } } : o])),
+  } : link);
   return {
     traits: (world.traits ?? []).map(opened),
     traitGroups: world.traitGroups ?? [],
-    entities: (world.entities ?? []).map((e) => ({ ...e, name: e.name ?? '', ...(e.traits ? { traits: e.traits.map(opened) } : {}) })),
+    entities: (world.entities ?? []).map((e) => ({
+      ...e, name: e.name ?? '',
+      ...(e.traits ? { traits: e.traits.map(opened) } : {}),
+      ...(e.traitLinks && open.links.size ? { traitLinks: e.traitLinks.map(openLink) } : {}),
+    })),
   };
 }
 
@@ -1849,27 +1871,52 @@ const personaChoices = (world: RuleWorld): PersonaRef[] => [
 /** A bearer as a finding names it: the entity, or null for the player's own root. */
 const bearerName = (bearer: Bearer | undefined): string | null => (bearer?.entity ? bearer.name : null);
 
-const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
+/** "“Smite”", or "“Smite” on “Albus”" for a trait an entity bears. Both names arrive quoted. */
+const onBearer = (trait: string, bearer: string | null): string => (bearer === null ? trait : `${trait} on ${bearer}`);
 
 /** A trait on one bearer, as a gate finding names it and opens it. */
-interface StuckTrait {
+interface GateTrait {
   ownerId: string;
   traitId: string;
   traitName: string;
   /** See {@link bearerName}. */
   bearer: string | null;
   link?: TraitLink;
-  /** Each requirement as its editor chip reads, quoted. */
-  requirements: string[];
+  /** The gate as its rows read, each Condition quoted: "“A” and “B”, or “C”". */
+  requirements: string;
+}
+
+/** One trait's gate as one bearer holds it in the editor. */
+interface HeldGate {
+  owner: GateOwner;
+  trait: Trait;
+  /** The link that brought the trait; absent for a world or owned trait. */
+  link?: TraitLink;
+  /** Each row's Conditions as their editor chips read, unquoted. */
+  rows: string[][];
+}
+
+/** A Condition whose target this world no longer has. */
+interface DeadCondition {
+  gate: HeldGate;
+  not: boolean;
+  /** Quoted. */
+  condition: string;
+  /** The row it sits in, quoted, when the row holds other Conditions too. */
+  row: string | null;
 }
 
 interface GateReport {
-  /** Trait id → each requirement as its editor chip reads, quoted. */
-  requirementTexts: Map<string, string[]>;
-  /** Trait id → the requirements whose target this world no longer has, quoted. World and owned traits. */
-  unresolved: Map<string, string[]>;
+  /** World trait id → its gate as its rows read, each Condition quoted. */
+  requirementTexts: Map<string, string>;
+  /** Every Condition whose target this world no longer has, one per Condition. */
+  unresolved: DeadCondition[];
+  /** Rows that can never hold, with the row quoted. */
+  deadRows: Array<{ gate: HeldGate; row: string }>;
   /** Never-unlockable sets across every bearer, with a trait behind a deleted target counted as openable. */
-  stuck: StuckTrait[][];
+  stuck: GateTrait[][];
+  /** Sets whose requirements loop through an odd number of Not Conditions, under any persona choice. */
+  unstable: GateTrait[][];
   /** Defaults that start unselected under every persona choice, outside the never-unlockable sets. */
   offDefaults: string[];
   /** Groups whose minimum a bearer can't meet, under every persona choice that holds the bearer. */
@@ -1900,51 +1947,107 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   let report = gateReportsByWorld.get(world);
   if (report) return report;
   const traits = world.traits ?? [];
-  const label = (text: string) => quote(labelOf(text, world));
+  const rowsOf = (gate: GateState | undefined): string[][] =>
+    (gate?.rows ?? []).map((row) => row.conditions.map((c) => labelOf(c.text, world)));
+  const quotedRules = (rows: string[][]) => ruleText(rows.map((row) => row.map(quote)));
 
-  const requirementTexts = new Map<string, string[]>();
-  const unresolved = new Map<string, string[]>();
-  for (const [ownerId, states] of gateStates(editorGateInput(bearerWorldOf(world)))) {
-    for (const [id, state] of states) {
-      const conditions = gateConditions(state);
-      if (ownerId === WORLD_OWNER) requirementTexts.set(id, conditions.map((c) => label(c.text)));
-      const dead = conditions.filter((c) => c.unresolved).map((c) => label(c.text));
-      if (dead.length && !unresolved.has(id)) unresolved.set(id, dead);
-    }
+  const plain = bearerWorldOf(world);
+  const editor = editorGateInput(plain);
+  const editorStates = gateStates(editor);
+  const linksOf = new Map(resolveBearers(plain, undefined).bearers.map((b) => [b.id, b.linkOf]));
+  const held: HeldGate[] = editor.owners.flatMap((owner) => owner.traits.map((trait) => {
+    const link = linksOf.get(owner.id)?.get(trait.id);
+    return { owner, trait, ...(link ? { link } : {}), rows: rowsOf(gateOf(editorStates, owner.id, trait.id)) };
+  }));
+  // A linked copy reports only what its original does not: a Condition or a row its link override adds.
+  const originals = new Map(editor.owners.find((o) => o.id === WORLD_OWNER)?.traits.map((t) => [t.id, t]) ?? []);
+  const inOriginal = (gate: HeldGate, req: TraitRequirement) =>
+    conditionsOf(originals.get(gate.trait.id)?.requires).some((o) => sameRequirement(o, req));
+
+  const requirementTexts = new Map<string, string>();
+  const unresolved: DeadCondition[] = [];
+  const openTraits = new Set<string>();
+  const openLinks = new Set<string>();
+  for (const gate of held) {
+    if (gate.owner.id === WORLD_OWNER) requirementTexts.set(gate.trait.id, quotedRules(gate.rows));
+    const rows = gate.trait.requires ?? [];
+    gateOf(editorStates, gate.owner.id, gate.trait.id)?.rows.forEach((row, i) => row.conditions.forEach((c, j) => {
+      if (!c.unresolved) return;
+      const req = rows[i].all[j];
+      if (gate.link) {
+        if (gate.link.overrides?.[gate.trait.id]?.requires) openLinks.add(pairKey(gate.link.id, gate.trait.id));
+        if (inOriginal(gate, req)) return;
+      } else {
+        openTraits.add(gate.trait.id);
+      }
+      unresolved.push({
+        gate, not: !!req.not, condition: quote(gate.rows[i][j]), row: row.conditions.length > 1 ? quote(rowText(gate.rows[i])) : null,
+      });
+    }));
   }
+  const heldAt = new Map(held.map((g) => [pairKey(g.owner.id, g.trait.id), g]));
+  const neverHolding = deadRows(editor);
+  const deadInWorld = new Set(neverHolding.filter((r) => r.ownerId === WORLD_OWNER).map((r) => pairKey(r.traitId, String(r.row))));
+  const sameRow = (a: TraitRequirementRow, b: TraitRequirementRow) =>
+    a.all.length === b.all.length && a.all.every((x) => b.all.some((y) => sameRequirement(x, y)));
+  const dead = neverHolding.flatMap((r) => {
+    const gate = heldAt.get(pairKey(r.ownerId, r.traitId))!;
+    const row = (gate.trait.requires ?? [])[r.row];
+    const original = originals.get(r.traitId)?.requires ?? [];
+    if (gate.link && original.some((o, i) => deadInWorld.has(pairKey(r.traitId, String(i))) && sameRow(o, row))) return [];
+    return [{ gate, row: quote(rowText(gate.rows[r.row])) }];
+  });
 
-  const openable = bearerWorldOf(world, new Set(unresolved.keys()));
+  // A pass over each persona choice: the bearers it holds and how a gate finding names their traits.
+  const passOver = (source: BearerWorld, persona: PersonaRef) => {
+    const { bearers, gate } = resolveBearers(source, persona);
+    const byId = new Map(bearers.map((b) => [b.id, b]));
+    let states: GateStates | undefined;
+    const named = (r: GateTraitRef): GateTrait => {
+      const bearer = byId.get(r.ownerId);
+      const link = bearer?.linkOf.get(r.traitId);
+      states ??= gateStates({ ...gate, active: {} });
+      return {
+        ownerId: r.ownerId,
+        traitId: r.traitId,
+        traitName: bearer?.traits.find((t) => t.id === r.traitId)?.name ?? '',
+        bearer: bearerName(bearer),
+        ...(link ? { link } : {}),
+        requirements: quotedRules(rowsOf(gateOf(states, r.ownerId, r.traitId))),
+      };
+    };
+    return { bearers: byId, gate, named };
+  };
+
+  const openable = bearerWorldOf(world, { traits: openTraits, links: openLinks });
   const passes = personaChoices(world).map((persona) => {
-    const { bearers, gate } = resolveBearers(openable, persona);
-    const holds = new Map(gate.owners.map((o) => [o.id, new Set(o.traits.map((t) => t.id))]));
-    const sets = neverUnlockable(gate);
-    return { bearers: new Map(bearers.map((b) => [b.id, b])), gate, holds, sets, stuck: new Set(sets.flat().map((r) => pairKey(r.ownerId, r.traitId))) };
+    const pass = passOver(openable, persona);
+    const holds = new Map(pass.gate.owners.map((o) => [o.id, new Set(o.traits.map((t) => t.id))]));
+    const sets = neverUnlockable(pass.gate);
+    return { ...pass, holds, sets, stuck: new Set(sets.flat().map((r) => pairKey(r.ownerId, r.traitId))) };
   });
   const stuckEverywhere = (ownerId: string, traitId: string) =>
     passes.every((p) => !p.holds.get(ownerId)?.has(traitId) || p.stuck.has(pairKey(ownerId, traitId)));
 
   const reported = new Set<string>();
-  const stuck = passes.flatMap((pass) => {
-    let states: ReturnType<typeof gateStates> | undefined;
-    return pass.sets.map((set) => set
-      .filter((r) => !reported.has(pairKey(r.ownerId, r.traitId)) && stuckEverywhere(r.ownerId, r.traitId))
-      .map((r): StuckTrait => {
-        reported.add(pairKey(r.ownerId, r.traitId));
-        const bearer = pass.bearers.get(r.ownerId);
-        const link = bearer?.linkOf.get(r.traitId);
-        states ??= gateStates({ ...pass.gate, active: {} });
-        const gate = gateOf(states, r.ownerId, r.traitId);
-        return {
-          ownerId: r.ownerId,
-          traitId: r.traitId,
-          traitName: bearer?.traits.find((t) => t.id === r.traitId)?.name ?? '',
-          bearer: bearerName(bearer),
-          ...(link ? { link } : {}),
-          requirements: gate ? gateConditions(gate).map((c) => label(c.text)) : [],
-        };
-      }))
-      .filter((set) => set.length > 0);
+  const stuck = passes.flatMap((pass) => pass.sets.map((set) => set
+    .filter((r) => !reported.has(pairKey(r.ownerId, r.traitId)) && stuckEverywhere(r.ownerId, r.traitId))
+    .map((r) => {
+      reported.add(pairKey(r.ownerId, r.traitId));
+      return pass.named(r);
+    }))
+    .filter((set) => set.length > 0));
+
+  // A loop that can't settle under one persona choice is a trap under that choice, so any pass reports it. It
+  // reads every row, a row behind a deleted target included. A loop inside a larger one, or an earlier equal
+  // one, stays quiet.
+  const loops = personaChoices(world).flatMap((persona) => {
+    const pass = passOver(plain, persona);
+    return unstableCycles(pass.gate).map((set) => ({ keys: set.map((r) => pairKey(r.ownerId, r.traitId)), traits: set.map(pass.named) }));
   });
+  const unstable = loops.filter((loop, i) => !loops.some((other, j) => j !== i
+    && (other.keys.length > loop.keys.length || (other.keys.length === loop.keys.length && j < i))
+    && loop.keys.every((k) => other.keys.includes(k)))).map((loop) => loop.traits);
 
   const input = editorGateInput(openable);
   const stuckIds = new Set([
@@ -1995,7 +2098,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     else if (defaults.length === runs && defaults[0].min <= (defaults[0].group.maxPicks ?? Infinity)) picks.push(defaults[0]);
   }
 
-  report = { requirementTexts, unresolved, stuck, offDefaults, picks };
+  report = { requirementTexts, unresolved, deadRows: dead, stuck, unstable, offDefaults, picks };
   gateReportsByWorld.set(world, report);
   return report;
 };
@@ -2012,46 +2115,84 @@ const uniqueItems = (items: FindingItem[]): FindingItem[] =>
   items.filter((item, i) => items.findIndex((other) => other.id === item.id) === i);
 
 /** A never-unlockable set as one line: the bearer's own words when one bearer holds the whole set. */
-function stuckMessage(set: StuckTrait[], world: RuleWorld): string {
+function stuckMessage(set: GateTrait[], world: RuleWorld): string {
   const name = (text: string) => quote(labelOf(text, world));
   const traits = listNames(set.map((t) => name(t.traitName)));
   const holders = new Set(set.map((t) => (t.bearer === null ? null : t.ownerId)));
   const holder = holders.size === 1 ? set[0].bearer : null;
   if (holder === null) {
-    const named = set.map((t) => (t.bearer === null ? name(t.traitName) : `${name(t.traitName)} on ${name(t.bearer)}`));
-    return `${listNames(named)} can never unlock — no pick or persona can meet ${set.length === 1 ? 'its' : 'their'} requirements`;
+    return `${onBearers(set, world)} can never unlock — no pick or persona can meet ${set.length === 1 ? 'its' : 'their'} requirements`;
   }
   const verb = set.every((t) => t.link) ? 'links' : 'has';
   if (set.length === 1) {
-    return `${name(holder)} ${verb} ${traits} but can never meet ${set[0].requirements.join(' or ')}, so it never unlocks`;
+    return `${name(holder)} ${verb} ${traits} but can never meet ${set[0].requirements}, so it never unlocks`;
   }
   return `${name(holder)} ${verb} ${traits}, which can never unlock — nothing ${name(holder)} can hold meets their requirements`;
 }
+
+/** Each trait of a gate finding by name, with its bearer when an entity bears it. */
+const onBearers = (set: GateTrait[], world: RuleWorld): string => {
+  const name = (text: string) => quote(labelOf(text, world));
+  return listNames(set.map((t) => onBearer(name(t.traitName), t.bearer === null ? null : name(t.bearer))));
+};
+
+/** The rows a gate finding opens: a trait a link brings opens the link. */
+const gateItems = (set: GateTrait[], world: RuleWorld): FindingItem[] =>
+  uniqueItems(set.map((t) => (t.link ? linkItem(t.link, t.traitName, world) : namedItem(t.traitId, t.traitName, world))));
 
 const traitRequirementNeverUnlockable: Rule = {
   id: 'trait-requirement-never-unlockable',
   severity: 'error',
   section: 'traits',
   summary: (count) => `${count} sets of traits can never unlock`,
-  check: (world) => gateReportOf(world).stuck.map((set) => finding(
-    traitRequirementNeverUnlockable,
-    stuckMessage(set, world),
-    uniqueItems(set.map((t) => (t.link ? linkItem(t.link, t.traitName, world) : namedItem(t.traitId, t.traitName, world)))),
-  )),
+  check: (world) => gateReportOf(world).stuck.map((set) => finding(traitRequirementNeverUnlockable, stuckMessage(set, world), gateItems(set, world))),
 };
+
+const traitRequirementUnstable: Rule = {
+  id: 'trait-requirement-unstable',
+  severity: 'error',
+  section: 'traits',
+  summary: (count) => `${count} sets of traits can never settle`,
+  check: (world) => gateReportOf(world).unstable.map((set) => {
+    return finding(
+      traitRequirementUnstable,
+      `${onBearers(set, world)} can never settle — their requirements loop through a Not`,
+      gateItems(set, world),
+    );
+  }),
+};
+
+/** The trait a held gate belongs to, as a finding names it, and the row it opens. */
+const heldItem = (gate: HeldGate, world: RuleWorld): FindingItem =>
+  (gate.link ? linkItem(gate.link, gate.trait.name, world) : namedItem(gate.trait.id, gate.trait.name, world));
 
 const traitRequirementUnresolved: Rule = {
   id: 'trait-requirement-unresolved',
   severity: 'error',
   section: 'traits',
-  summary: (count) => `${count} traits require something this world no longer has`,
-  check: (world) => [...gateReportOf(world).unresolved].map(([id, dead]) => {
-    const item = traitItem(id, world);
+  summary: (count) => `${count} requirements name something this world no longer has`,
+  check: (world) => gateReportOf(world).unresolved.map(({ gate, not, condition, row }) => {
+    const item = heldItem(gate, world);
+    const subject = onBearer(quote(item.name), gate.link ? quote(labelOf(gate.owner.name, world)) : null);
+    // The world lost a Not Condition's target, not the "not" the chip reads.
+    const gone = not ? 'which names something this world no longer has' : 'which this world no longer has';
     return finding(
       traitRequirementUnresolved,
-      `${quote(item.name)} requires ${listNames(dead)}, which this world no longer has`,
+      `${subject} requires ${condition}, ${gone}${row ? `, so ${row} never holds` : ''}`,
       [item],
     );
+  }),
+};
+
+const traitRequirementRowNeverHolds: Rule = {
+  id: 'trait-requirement-row-never-holds',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} requirement rows can never hold`,
+  check: (world) => gateReportOf(world).deadRows.map(({ gate, row }) => {
+    const item = heldItem(gate, world);
+    const subject = gate.link ? `${quote(labelOf(gate.owner.name, world))} links ${quote(item.name)} with` : `${quote(item.name)} has`;
+    return finding(traitRequirementRowNeverHolds, `${subject} a row that can never hold: ${row}`, [item]);
   }),
 };
 
@@ -2066,7 +2207,7 @@ const traitDefaultGated: Rule = {
       const item = traitItem(id, world);
       return finding(
         traitDefaultGated,
-        `${quote(item.name)} is marked default but starts unselected — no starting default or persona choice meets ${(requirementTexts.get(id) ?? []).join(' or ')}`,
+        `${quote(item.name)} is marked default but starts unselected — no starting default or persona choice meets ${requirementTexts.get(id) ?? ''}`,
         [item],
       );
     });
@@ -2964,7 +3105,8 @@ export const RULES: readonly Rule[] = [
   entityMissingPlayerDescription, entityMissingAiDescription, entityMissingBothDescriptions,
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupDefaultsOverMax, traitGroupAlwaysOnOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
-  traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnresolved, traitDefaultGated,
+  traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnstable, traitRequirementUnresolved,
+  traitRequirementRowNeverHolds, traitDefaultGated,
   traitLinkRedundant,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,

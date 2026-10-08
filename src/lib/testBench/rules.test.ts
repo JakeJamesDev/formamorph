@@ -1683,6 +1683,10 @@ describe('trait gate rules', () => {
   // Each entry is a row of its own: any one opens the trait.
   const gated = (id: string, requires: TraitRequirement[], over: Partial<Trait> = {}): Trait =>
     trait({ id, name: id.toUpperCase(), requires: requires.map((r) => ({ all: [r] })), ...over });
+  const rowed = (id: string, requires: TraitRequirementRow[], over: Partial<Trait> = {}): Trait =>
+    trait({ id, name: id.toUpperCase(), requires, ...over });
+  const ref = (id: string): TraitRequirement => ({ kind: 'trait', id });
+  const not = (req: TraitRequirement): TraitRequirement => ({ ...req, not: true });
   const ash: Entity = { ...resident, id: 'ash', name: 'Ash', persona: true };
   const gates = (traits: Trait[], over: Partial<RuleWorld> = {}) => base({ traits, ...over });
   const ids = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => i.id));
@@ -1750,6 +1754,136 @@ describe('trait gate rules', () => {
       expect(only(loop(needs('gone', { kind: 'trait', id: 'b' })), rule)).toEqual([]);
       expect(ids(only(loop(needs('b')), rule))).toEqual([['a', 'b']]);
     });
+
+    it('needs every Condition of a row, so one stuck Condition closes the row', () => {
+      const w = (more: TraitRequirementRow[]) => gates([
+        rowed('a', [{ all: [ref('b'), ref('c')] }, ...more]), gated('c', needs('a')), trait({ id: 'b', name: 'B' }), trait({ id: 'd', name: 'D' }),
+      ]);
+      expect(ids(only(w([]), rule))).toEqual([['a', 'c']]);
+      // A second row that holds opens the trait.
+      expect(only(w([{ all: [ref('d')] }]), rule)).toEqual([]);
+    });
+
+    it('counts every Not Condition as holding (Q15)', () => {
+      // Always On B keeps "not B" from ever holding; the check is optimistic and passes it.
+      const w = gates([rowed('a', [{ all: [not(ref('b'))] }]), trait({ id: 'b', name: 'B', mode: 'alwaysOn' })]);
+      expect(only(w, rule)).toEqual([]);
+    });
+  });
+
+  describe('unstable loops', () => {
+    const rule = 'trait-requirement-unstable';
+
+    it('flags a loop through one Not, naming every trait in it', () => {
+      const found = only(gates([gated('a', needs('b')), rowed('b', [{ all: [not(ref('a'))] }])]), rule);
+      expect(ids(found)).toEqual([['a', 'b']]);
+      expect(found[0].severity).toBe('error');
+      expect(found[0].message).toBe('“A” and “B” can never settle — their requirements loop through a Not');
+    });
+
+    it('flags a loop through three Nots', () => {
+      const w = gates([rowed('a', [{ all: [not(ref('b'))] }]), rowed('b', [{ all: [not(ref('c'))] }]), rowed('c', [{ all: [not(ref('a'))] }])]);
+      expect(ids(only(w, rule))).toEqual([['a', 'b', 'c']]);
+    });
+
+    it('flags a loop that closes through a Not on a group', () => {
+      const w = gates(
+        [gated('a', needs('b'), { groupId: 'g' }), rowed('b', [{ all: [not({ kind: 'group', id: 'g' })] }])],
+        { traitGroups: [{ id: 'g', name: 'Class', parentId: null }] },
+      );
+      expect(ids(only(w, rule))).toEqual([['a', 'b']]);
+    });
+
+    it('passes two traits that exclude each other, and a loop through two Nots (Q32)', () => {
+      expect(runRules(gates([rowed('a', [{ all: [not(ref('b'))] }]), rowed('b', [{ all: [not(ref('a'))] }])]))).toEqual([]);
+      const even = gates([rowed('a', [{ all: [not(ref('b'))] }]), gated('b', needs('c')), rowed('c', [{ all: [not(ref('a'))] }])]);
+      expect(runRules(even)).toEqual([]);
+    });
+
+    it('leaves a loop with no Not to the never-unlockable rule', () => {
+      expect(runRules(gates([gated('a', needs('b')), gated('b', needs('a'))])).map((f) => f.ruleId)).toEqual(['trait-requirement-never-unlockable']);
+    });
+
+    it('never reads an exclusive sibling in the trait’s own tree, so a pick-one pair is no loop', () => {
+      const w = gates(
+        [rowed('a', [{ all: [not(ref('b'))] }], { groupId: 'g' }), gated('b', needs('a'), { groupId: 'g' })],
+        { traitGroups: [{ id: 'g', name: 'Stance', parentId: null, maxPicks: 1 }] },
+      );
+      expect(only(w, rule)).toEqual([]);
+    });
+
+    it('flags a loop that crosses bearers', () => {
+      const ward = trait({ id: 'ward', name: 'Ward', requires: [{ all: [{ kind: 'trait', id: 'a', bearer: { kind: 'you' }, not: true }] }] });
+      const w = gates([gated('a', [{ kind: 'trait', id: 'ward', bearer: { kind: 'entity', id: 'bree' } }])], {
+        entities: [resident, { ...resident, id: 'bree', name: 'Bree', traits: [ward] }],
+      });
+      const found = only(w, rule);
+      expect(found.map((f) => f.message)).toEqual(['“A” and “Ward” on “Bree” can never settle — their requirements loop through a Not']);
+      expect(ids(found)).toEqual([['a', 'ward']]);
+    });
+
+    it('still flags a loop through a row whose other row names a deleted target', () => {
+      const w = gates([rowed('a', [{ all: [not(ref('b'))] }, { all: [{ kind: 'trait', id: 'gone', name: 'Tamed' }] }]), gated('b', needs('a'))]);
+      expect(ids(only(w, rule))).toEqual([['a', 'b']]);
+    });
+
+    it('reports a loop once when a persona choice grows it', () => {
+      // Played, Albus sits in Class and his Squire joins the loop through "not any Class".
+      const squire = trait({ id: 'squire', name: 'Squire', requires: [{ all: [ref('b')] }] });
+      const albus: Entity = { ...resident, id: 'albus', name: 'Albus', persona: true, traits: [squire], traitPlacement: { groupId: 'g', order: 0 } };
+      const w = gates([gated('a', needs('b'), { groupId: 'g' }), rowed('b', [{ all: [not({ kind: 'group', id: 'g' })] }])], {
+        traitGroups: [{ id: 'g', name: 'Class', parentId: null }], entities: [resident, albus],
+      });
+      expect(ids(only(w, rule))).toEqual([['a', 'squire', 'b']]);
+    });
+
+    it('never reads a trait’s own activity, so "not any Class" on a Class trait is no loop (Q26)', () => {
+      const w = gates(
+        [rowed('scout', [{ all: [not({ kind: 'group', id: 'g' })] }], { groupId: 'g' })],
+        { traitGroups: [{ id: 'g', name: 'Class', parentId: null }] },
+      );
+      expect(runRules(w)).toEqual([]);
+    });
+  });
+
+  describe('rows that never hold', () => {
+    const rule = 'trait-requirement-row-never-holds';
+    const paladin = trait({ id: 'paladin', name: 'Paladin', groupId: 'knights' });
+    const traitGroups = [{ id: 'class', name: 'Class', parentId: null }, { id: 'knights', name: 'Knights', parentId: 'class' }];
+
+    it('flags a row that names a target both plain and Not', () => {
+      const found = only(gates([rowed('a', [{ all: [ref('paladin'), not(ref('paladin'))] }]), paladin], { traitGroups }), rule);
+      expect(ids(found)).toEqual([['a']]);
+      expect(found[0].severity).toBe('warning');
+      expect(found[0].message).toBe('“A” has a row that can never hold: “Paladin and not Paladin”');
+    });
+
+    it('flags a trait plain and any group above it Not, under the same bearer (Q34)', () => {
+      const w = (group: string) => gates([rowed('a', [{ all: [ref('paladin'), not({ kind: 'group', id: group })] }]), paladin], { traitGroups });
+      expect(only(w('knights'), rule).map((f) => f.message)).toEqual(['“A” has a row that can never hold: “Paladin and not any Knights”']);
+      expect(only(w('class'), rule).map((f) => f.message)).toEqual(['“A” has a row that can never hold: “Paladin and not any Class”']);
+    });
+
+    it('flags "playing as" both plain and Not', () => {
+      const asAsh = { kind: 'playingAs' as const, id: 'ash' };
+      const found = only(gates([rowed('a', [{ all: [asAsh, not(asAsh)] }])], { entities: [resident, ash] }), rule);
+      expect(found.map((f) => f.message)).toEqual(['“A” has a row that can never hold: “playing as Ash and not playing as Ash”']);
+    });
+
+    it('flags a pair that names one bearer two ways', () => {
+      // On the player's own trait, "You:" reads the same set as no bearer.
+      const youNot = { ...ref('paladin'), bearer: { kind: 'you' as const }, not: true as const };
+      const found = only(gates([rowed('a', [{ all: [ref('paladin'), youNot] }]), paladin], { traitGroups }), rule);
+      expect(found.map((f) => f.message)).toEqual(['“A” has a row that can never hold: “Paladin and You: not Paladin”']);
+    });
+
+    it('passes the same pair under two bearers, or split across two rows', () => {
+      const ashPaladin = { ...ref('paladin'), bearer: { kind: 'entity' as const, id: 'ash' }, not: true as const };
+      const split = gates([rowed('a', [{ all: [ref('paladin')] }, { all: [not(ref('paladin'))] }]), paladin], { traitGroups });
+      expect(only(split, rule)).toEqual([]);
+      const bearers = gates([rowed('a', [{ all: [ref('paladin'), ashPaladin] }]), paladin], { traitGroups, entities: [resident, ash] });
+      expect(only(bearers, rule)).toEqual([]);
+    });
   });
 
   describe('unresolved requirements', () => {
@@ -1762,9 +1896,24 @@ describe('trait gate rules', () => {
         { kind: 'playingAs', id: 'z', name: 'Ash' },
       ])]);
       const found = only(w, rule);
-      expect(ids(found)).toEqual([['a']]);
+      expect(ids(found)).toEqual([['a'], ['a'], ['a']]);
       expect(found[0].severity).toBe('error');
-      expect(found[0].message).toBe('“A” requires “Tamed”, “any Bond” and “playing as Ash”, which this world no longer has');
+      expect(found.map((f) => f.message)).toEqual([
+        '“A” requires “Tamed”, which this world no longer has',
+        '“A” requires “any Bond”, which this world no longer has',
+        '“A” requires “playing as Ash”, which this world no longer has',
+      ]);
+    });
+
+    it('reports each dead Condition inside a row, and names the row it breaks', () => {
+      const w = gates([trait({
+        id: 'a', name: 'A',
+        requires: [{ all: [{ kind: 'trait', id: 'b' }, { kind: 'trait', id: 'x', name: 'Tamed' }, { kind: 'group', id: 'y', name: 'Bond', not: true }] }],
+      }), trait({ id: 'b', name: 'B' })]);
+      expect(only(w, rule).map((f) => f.message)).toEqual([
+        '“A” requires “Tamed”, which this world no longer has, so “B, Tamed, and not any Bond” never holds',
+        '“A” requires “not any Bond”, which names something this world no longer has, so “B, Tamed, and not any Bond” never holds',
+      ]);
     });
 
     it('reads a requirement with no stored name as its editor chip does', () => {
@@ -1811,6 +1960,19 @@ describe('trait gate rules', () => {
       const found = only(w([resident, { ...ash, persona: false }]), rule);
       expect(ids(found)).toEqual([['a']]);
       expect(found[0].message).toBe('“A” is marked default but starts unselected — no starting default or persona choice meets “B” or “playing as Ash”');
+    });
+
+    it('flags the later of two defaults that exclude each other, and reads its rows (Q16)', () => {
+      const w = gates([rowed('a', [{ all: [not(ref('b'))] }], def), rowed('b', [{ all: [not(ref('a'))] }, { all: [ref('c'), ref('d')] }], def),
+        trait({ id: 'c', name: 'C' }), trait({ id: 'd', name: 'D' })]);
+      const found = only(w, rule);
+      expect(ids(found)).toEqual([['b']]);
+      expect(found[0].message).toBe('“B” is marked default but starts unselected — no starting default or persona choice meets “not A”, or “C” and “D”');
+    });
+
+    it('flags a default that an earlier default excludes one way', () => {
+      const w = gates([trait({ id: 'a', name: 'A', ...def }), rowed('b', [{ all: [not(ref('a'))] }], def)]);
+      expect(only(w, rule).map((f) => f.message)).toEqual(['“B” is marked default but starts unselected — no starting default or persona choice meets “not A”']);
     });
 
     it('leaves a default in a never-unlockable set to the error rule', () => {
@@ -1973,6 +2135,107 @@ describe('trait link rules', () => {
         traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] }] } : t))],
       }), rule);
       expect(twin.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Albus” can never unlock — no pick or persona can meet their requirements']);
+    });
+  });
+
+  describe('rows and Not per bearer', () => {
+    const notTrait = (id: string): TraitRequirement => ({ kind: 'trait', id, not: true });
+    /** A link to Smite that overrides its rows. */
+    const smiteRows = (value: TraitRequirementRow[], extra: Partial<TraitLink> = {}) =>
+      link('l-smite', 'smite', 'trait', { overrides: { smite: { requires: { value, blueprint: needs('faithful') } } }, ...extra });
+    const run = (ruleId: string, entity: Entity, over: Partial<RuleWorld> = {}) => only(linked([entity], over), ruleId);
+
+    it('flags a loop through a Not that a linked trait closes, and opens the link', () => {
+      const oath = trait({ id: 'oath', name: 'Oath', requires: needs('smite') });
+      const found = run('trait-requirement-unstable', albus({ traits: [oath], traitLinks: [smiteRows([{ all: [notTrait('oath')] }])] }));
+      expect(found.map((f) => f.message)).toEqual(['“Oath” on “Albus” and “Smite” on “Albus” can never settle — their requirements loop through a Not']);
+      expect(opened(found)).toEqual([['oath', 'l-smite']]);
+      // The original's own rows hold no loop, so the world raises nothing.
+      expect(only(linked([]), 'trait-requirement-unstable')).toEqual([]);
+    });
+
+    it('flags a dead row a link override holds, and opens the link', () => {
+      const found = run('trait-requirement-row-never-holds', albus({ traitLinks: [smiteRows([{ all: [{ kind: 'trait', id: 'faithful' }, notTrait('faithful')] }])] }));
+      expect(found.map((f) => f.message)).toEqual(['“Albus” links “Smite” with a row that can never hold: “Faithful and not Faithful”']);
+      expect(opened(found)).toEqual([['l-smite']]);
+    });
+
+    it('reports a dead row of the original once, not again on each link', () => {
+      const dead = [{ all: [{ kind: 'trait' as const, id: 'faithful' }, notTrait('faithful')] }];
+      const w = linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] })], {
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: dead } : t))],
+      });
+      expect(opened(only(w, 'trait-requirement-row-never-holds'))).toEqual([['smite']]);
+    });
+
+    it('reports a dead Condition a link override adds on the link, naming the bearer', () => {
+      const tamed = { kind: 'trait' as const, id: 'gone', name: 'Tamed' };
+      const found = runRules(linked([albus({ traitLinks: [smiteRows([{ all: [tamed] }])] })])).filter((f) => f.section === 'traits');
+      expect(found.map((f) => [f.ruleId, f.message])).toEqual([['trait-requirement-unresolved', '“Smite” on “Albus” requires “Tamed”, which this world no longer has']]);
+      expect(opened(found)).toEqual([['l-smite']]);
+    });
+
+    it('reports a dead Condition of the original once, on the original', () => {
+      const tamed = { kind: 'trait' as const, id: 'gone', name: 'Tamed' };
+      const w = linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] }), albus({ id: 'bree', name: 'Bree', traitLinks: [link('b-smite', 'smite', 'trait')] })], {
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'faithful' }, tamed] }] } : t))],
+      });
+      const found = runRules(w).filter((f) => f.section === 'traits');
+      expect(found.map((f) => [f.ruleId, f.message])).toEqual([
+        ['trait-requirement-unresolved', '“Smite” requires “Tamed”, which this world no longer has, so “Faithful and Tamed” never holds'],
+      ]);
+      expect(opened(found)).toEqual([['smite']]);
+    });
+
+    it('reports a dead Condition or row an override copies from its original once, on the original', () => {
+      const tamed = { kind: 'trait' as const, id: 'gone', name: 'Tamed' };
+      const rows = [{ all: [tamed] }, { all: [{ kind: 'trait' as const, id: 'faithful' }, notTrait('faithful')] }];
+      const w = linked([albus({ traitLinks: [smiteRows([...rows, { all: [{ kind: 'trait', id: 'paladin' }] }])] })], {
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: rows } : t))],
+      });
+      const found = runRules(w).filter((f) => f.section === 'traits');
+      expect(found.map((f) => [f.ruleId, f.items.map((i) => i.id)])).toEqual([
+        ['trait-requirement-unresolved', ['smite']],
+        ['trait-requirement-row-never-holds', ['smite']],
+      ]);
+    });
+
+    it('flags a row an unchanged link brings that only its bearer’s tree closes', () => {
+      // Albus places Paladin in his own Order group, so "Paladin and not any Order" can't hold on him.
+      const smite = blueprinted.map((t) => (t.id === 'smite'
+        ? { ...t, requires: [{ all: [{ kind: 'trait' as const, id: 'paladin' }, { kind: 'group' as const, id: 'order', not: true as const }] }] } : t));
+      const w = linked([albus({
+        traitGroups: [{ id: 'order', name: 'Order', parentId: null }],
+        traitLinks: [link('l-paladin', 'paladin', 'trait', { groupId: 'order' }), link('l-smite', 'smite', 'trait')],
+      })], { traits: [faithful, ...smite] });
+      const found = only(w, 'trait-requirement-row-never-holds');
+      expect(found.map((f) => f.message)).toEqual(['“Albus” links “Smite” with a row that can never hold: “Paladin and not any Order”']);
+      expect(opened(found)).toEqual([['l-smite']]);
+    });
+
+    it('reads a link override’s rows when its bearer can never meet them', () => {
+      const found = run('trait-requirement-never-unlockable', albus({
+        traitLinks: [smiteRows([{ all: [{ kind: 'trait', id: 'faithful' }, { kind: 'trait', id: 'wizard' }] }, { all: [{ kind: 'trait', id: 'paladin' }] }])],
+      }));
+      expect(found.map((f) => f.message)).toEqual(['“Albus” links “Smite” but can never meet “Faithful” and “Wizard”, or “Paladin”, so it never unlocks']);
+      expect(opened(found)).toEqual([['l-smite']]);
+    });
+
+    it('counts a link override’s Not as holding on its bearer (Q15)', () => {
+      expect(run('trait-requirement-never-unlockable', albus({ traitLinks: [smiteRows([{ all: [notTrait('faithful')] }])] }))).toEqual([]);
+    });
+
+    it('flags a linked default that an earlier linked default excludes on its bearer (Q16)', () => {
+      const isDefault = { isDefault: { value: true, blueprint: false } };
+      const smite = blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ all: [notTrait('faithful')] }] } : t));
+      const w = linked([albus({
+        traitLinks: [
+          link('l-faithful', 'faithful', 'trait', { order: 0, overrides: { faithful: isDefault } }),
+          link('l-smite', 'smite', 'trait', { order: 1, overrides: { smite: isDefault } }),
+        ],
+      })], { traits: [faithful, ...smite] });
+      const found = only(w, 'trait-default-gated');
+      expect(found.map((f) => f.message)).toEqual(['“Smite” is marked default but starts unselected — no starting default or persona choice meets “not Faithful”']);
     });
   });
 
@@ -3704,6 +3967,8 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'trait-default-gated': 'simple',
   'trait-requirement-never-unlockable': 'simple',
   'trait-requirement-unresolved': 'simple',
+  'trait-requirement-unstable': 'simple',
+  'trait-requirement-row-never-holds': 'simple',
   // A link row's menu removes it in both modes.
   'trait-link-redundant': 'simple',
   'world-empty-system-prompt': 'simple',

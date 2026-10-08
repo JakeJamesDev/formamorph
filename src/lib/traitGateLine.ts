@@ -3,10 +3,13 @@ import type { GateState, RowState } from './traitGates';
 const OR = new Intl.ListFormat('en', { type: 'disjunction' });
 const AND = new Intl.ListFormat('en', { type: 'conjunction' });
 
+/** One row's Conditions joined by "and". */
+export const rowText = (row: readonly string[]): string => AND.format(row);
+
 /** Rows joined by "or", Conditions by "and". A comma closes an "and" row before the "or", so
  *  "A and B, or C" never reads as "A and (B or C)". */
-function ruleText(rows: readonly string[][]): string {
-  const texts = rows.map((row) => AND.format(row));
+export function ruleText(rows: readonly string[][]): string {
+  const texts = rows.map(rowText);
   if (texts.length === 1 || rows.every((row) => row.length === 1)) return OR.format(texts);
   return `${texts.slice(0, -1).join(', ')}, or ${texts[texts.length - 1]}`;
 }
