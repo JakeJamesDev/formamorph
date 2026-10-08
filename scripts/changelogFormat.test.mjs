@@ -49,6 +49,12 @@ describe('lintSection', () => {
     ].join('\n')))).toEqual([]);
   });
 
+  it('spares a single-child group under In Progress, where an effort grows ticket by ticket', () => {
+    const body = ['- **👤 User-facing**', '  - **Solo:**', '    - **Only child.** Detail.'].join('\n');
+    expect(lintSection(lines(body), { inProgress: true })).toEqual([]);
+    expect(lintSection(lines(body))).toHaveLength(1);
+  });
+
   it('rejects a group with a single child', () => {
     const problems = lintSection(lines([
       '- **👤 User-facing**',
@@ -131,7 +137,7 @@ describe('the shipped changelog', () => {
   it('has a well-formed In Progress section', () => {
     const bounds = inProgressBounds(src);
     expect(bounds).not.toBeNull();
-    expect(lintSection(src.slice(bounds[0], bounds[1]))).toEqual([]);
+    expect(lintSection(src.slice(bounds[0], bounds[1]), { inProgress: true })).toEqual([]);
   });
 
   it.each(['3.2.0', '3.1.0', '3.0.0'])('has a well-formed %s release section', (version) => {

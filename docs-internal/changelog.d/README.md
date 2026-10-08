@@ -18,7 +18,7 @@ Minor / Added / 👤 / Prompts
 - **Scope** is `Major` or `Minor`.
 - **Kind** is `Added`, `Removed` or `Fixed`.
 - **Audience** is `👤`, `🛠️` or `⚙️` (or `user`, `dev`, `backend`).
-- **Topic** is optional: the group header the entry sits under, without its colon. A missing group is created before the loose entries.
+- **Topic** is optional: the group header the entry sits under, without its colon. A missing group is created before the loose entries. Name it from the first ticket: a one-child group is fine under 🚧 In Progress, and close-spec folds a group that stayed alone back into a loose entry.
 
 ## One fragment, one new entry
 
