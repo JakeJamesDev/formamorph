@@ -28,6 +28,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor's Save button now has a menu with Export World, and Optimize Images is its own icon.** Select the arrow beside **Save** to export, even when Save is dim. In Advanced mode, the **Optimize Images** icon shows a spinner, and its tooltip shows progress. The **More world actions** menu is gone.
   - **The World Editor's Save button shows Saving…, then Saved, and fades back to a dim Save.** A failed save shows **Failed** in red until a save works; select it to try again. On mobile, the Save icon changes the same way.
 - **🛠️ Developer tooling**
+  - **Trailer:**
+    - **`marketing/trailer/` renders a 20-second proof trailer to wide and tall MP4s with one command.** It is a Remotion package with its own dependencies and scripts. `npm run render` checks each file's size, frame rate and length.
   - **The ticket test gate reruns files that failed only by timeout, alone, once.** A run starved by another session's gates is not a verdict. Any other failure stops the gate as before.
   - **The changelog lint lets a feature group hold one entry under In Progress.** The first ticket of an effort names the group. The release lint still needs two entries, and close-spec drops a header that stayed alone.
 
