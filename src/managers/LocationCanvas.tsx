@@ -48,6 +48,7 @@ import {
   canvasHistoryFor, historyShortcut, recordCanvasEdit, redoCanvasEdit, undoCanvasEdit,
   type CanvasHistory,
 } from '@/lib/editorHistory';
+import { isEditableTarget } from '@/lib/editableTarget';
 import { holderOf } from '@/lib/locationTree';
 import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
 import {
@@ -710,6 +711,8 @@ interface CanvasSession {
   historyRef: React.MutableRefObject<CanvasHistory>;
   selectedConnectionId: string | null;
   setSelectedConnectionId: (id: string | null) => void;
+  /** The World Editor reads Undo and Redo for the whole world, so the canvas leaves those chords alone. */
+  sharedChords: boolean;
 }
 
 type CanvasData = Pick<ReturnType<typeof useGameData>,
@@ -724,6 +727,7 @@ export interface LocationCanvasInputs {
     connectionStyle: ReturnType<typeof useCanvasConnectionStyle>;
   };
   historyRef: React.MutableRefObject<CanvasHistory>;
+  sharedChords?: boolean;
 }
 
 const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullscreen, data, preferences }: {
@@ -736,7 +740,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   const { locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners } = data;
   const {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
-    setSelectedConnectionId,
+    setSelectedConnectionId, sharedChords,
   } = session;
   const store = useStoreApi();
   const { fitView, setCenter, getInternalNode, getZoom } = useReactFlow();
@@ -1146,10 +1150,6 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
    * since the pane itself takes no focus. Typing into the Connection inspector is not the canvas's keyboard.
    */
   useEffect(() => {
-    const focusing = (target: EventTarget | null) => {
-      const el = target as HTMLElement | null;
-      return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
-    };
     // The toolbar's own picker walks its options with the arrows, so a press that lands there is the toolbar's
     // rather than the map's — stepping the selection under the author at the same time is two things per press.
     // Undo and the rest still answer: only the keys the chrome itself uses are handed over.
@@ -1162,7 +1162,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       activeRef.current = !!frameRef.current?.contains(target) || !!menuRef.current?.contains(target);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!activeRef.current || focusing(event.target)) return;
+      if (!activeRef.current || isEditableTarget(event.target)) return;
       // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
       // the selection the author is taking back to the pane with them.
       const travel = historyShortcut(event);
@@ -1172,6 +1172,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
         event.preventDefault();
         setSelection(() => true);
       } else if (travel) {
+        if (sharedChords) return;
         event.preventDefault();
         travelHistory(travel);
       } else if (event.ctrlKey || event.metaKey || event.altKey) {
@@ -1190,7 +1191,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       document.removeEventListener('pointerdown', trackPointer, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [setSelection, fullscreen, travelHistory, nudgeSelection, zoomToSelection]);
+  }, [setSelection, fullscreen, travelHistory, nudgeSelection, zoomToSelection, sharedChords]);
 
   /**
    * Composing a selection on a touch screen. Shift and Ctrl are what a mouse adds a location to a selection
@@ -1485,7 +1486,7 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & {
 
   const session: CanvasSession = {
     selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
-    setSelectedConnectionId,
+    setSelectedConnectionId, sharedChords: props.sharedChords ?? false,
   };
 
   // DEV dev-router: `#dev?…&subtab=canvas&fullscreen=1` lands on the big canvas in one call. Tree-shaken in prod.
@@ -1535,7 +1536,7 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
   const connectionStyle = useCanvasConnectionStyle();
   // The authored world's history survives switching between its canvas and list views.
   return <LocationCanvasWorkspace {...props} data={data}
-    preferences={{ snap, grid, connectionStyle }} historyRef={canvasHistoryFor(data.worldId)} />;
+    preferences={{ snap, grid, connectionStyle }} historyRef={canvasHistoryFor(data.worldId)} sharedChords />;
 };
 
 export default LocationCanvas;

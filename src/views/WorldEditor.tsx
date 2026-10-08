@@ -1,5 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type MutableRefObject, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useWorldHistoryMoves } from '@/contexts/worldRecorder';
+import { historyShortcut } from '@/lib/editorHistory';
+import { isEditableTarget } from '@/lib/editableTarget';
+import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
+import { HistoryPill } from '@/components/editor/HistoryPill';
 import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
@@ -625,6 +630,25 @@ const WorldEditorInner = ({
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
+  const historyMoves = useWorldHistoryMoves();
+  const touringRef = useRef(touring);
+  touringRef.current = touring;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const move = historyShortcut(event);
+      if (!move || event.isComposing || touringRef.current) return;
+      // A dialog opened over the editor owns the keyboard. The in-game host's dialog is the editor's own.
+      const dialog = surfaceRegistry.get().dialog;
+      if (dialog !== null && dialog !== 'worldEditor') return;
+      // A text field keeps its own undo.
+      if (isEditableTarget(event.target)) return;
+      event.preventDefault();
+      if (move === 'undo') historyMoves.undo(); else historyMoves.redo();
+    };
+    // Capture, like the save shortcut.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [historyMoves]);
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
@@ -1082,6 +1106,8 @@ const WorldEditorInner = ({
       )}
       end={(
         <>
+          <HistoryPill disabled={touring} />
+          <Separator orientation="vertical" className="mx-1 h-5" />
           {modeSelect}
           <Separator orientation="vertical" className="mx-1 h-5" />
           {worldActions}
