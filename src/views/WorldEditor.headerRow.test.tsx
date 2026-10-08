@@ -71,9 +71,10 @@ describe('World Editor header row (mobile)', () => {
     expect(rows.every((row) => row.getAttribute('role') === 'tabpanel')).toBe(true);
   });
 
-  it('keeps Export World once and Save in the footer in Simple, with no Optimize Images', () => {
+  it('keeps Save and its menu in the footer in Simple, with no Export World icon and no Optimize Images', () => {
     renderWorldEditorBench(WORLD, 'simple', { initialTab: 'overview' });
-    expect(screen.getAllByRole('button', { name: 'Export World' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull();
+    expect(button('Save options')).toBeInTheDocument();
     expect(button('Save')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
   });

@@ -423,9 +423,9 @@ describe('surface app bar reference', () => {
       within(region).getByText('Sedge Landing'),
       within(region).getByRole('textbox', { name: 'Search World' }),
       within(region).getByRole('combobox', { name: 'Sample editor mode' }),
-      within(region).getByRole('button', { name: 'Export World' }),
       within(region).getByRole('button', { name: 'Test Bench' }),
       within(region).getByRole('button', { name: 'Save' }),
+      within(region).getByRole('button', { name: 'Save options' }),
     ];
     order.slice(1).forEach((el, i) => {
       expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -435,6 +435,10 @@ describe('surface app bar reference', () => {
 
     await user.click(within(region).getByRole('button', { name: 'Save' }));
     expect(within(region).getByText('Last action: Save.')).toBeInTheDocument();
+
+    await user.click(within(region).getByRole('button', { name: 'Save options' }));
+    await user.click(await screen.findByRole('button', { name: 'Export World' }));
+    expect(within(region).getByText('Last action: Export World.')).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
   });
 });

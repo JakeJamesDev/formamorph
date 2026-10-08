@@ -16,11 +16,11 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 | --- | --- |
 | Left | The back arrow, **World Editor**, and the world's name |
 | Center | The **Search World** box |
-| Right | The **Undo**, **Redo** and **History** controls, the mode select, **Export World**, the Test Bench, and **Save** |
+| Right | The **Undo**, **Redo** and **History** controls, the mode select, **Optimize Images** (Advanced mode only), the Test Bench, and **Save** |
 
-In Simple mode, **Export World** is an icon. In Advanced mode, **More world actions** holds **Export World** and **Optimize Images**. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
+**Save** has an arrow beside it. Select the arrow to open a menu with **Export World**, in both modes. The arrow works when **Save** is dim. In Advanced mode, **Optimize Images** is an icon button. It shows a spinner while it runs, and its tooltip shows the progress. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Stats, Entities, Locations and Traits, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Export World** (or **More world actions** in Advanced mode) and the **Save** icon.
+On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Stats, Entities, Locations and Traits, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Optimize Images** (Advanced mode only) and the **Save** icon with its arrow. The arrow opens **Export World**.
 
 Each tab has its own page.
 

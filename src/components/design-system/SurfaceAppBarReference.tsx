@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ChevronRight, FlaskConical, Save } from 'lucide-react';
+import { ChevronRight, FlaskConical, ImageDown, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SplitButton } from '@/components/ui/split-button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModeSelect } from '@/components/ui/mode-select';
 import { Tip } from '@/components/ui/tooltip';
@@ -69,20 +70,36 @@ export function SurfaceAppBarReference() {
                     aria-label="Sample editor mode"
                   />
                   <Separator orientation="vertical" className="mx-1 h-5" />
-                  <Tip tip="Export World">
-                    <Button variant="ghost" size="icon" onClick={() => setAction('Export World.')}>
-                      <ActionIcon.export className="h-4 w-4" />
-                    </Button>
-                  </Tip>
+                  {mode === 'advanced' && (
+                    <Tip tip="Optimize Images: downscale oversized images to conserve file size">
+                      <Button
+                        variant="ghost" size="icon" aria-label="Optimize Images"
+                        onClick={() => setAction('Optimize Images.')}
+                      >
+                        <ImageDown className="h-4 w-4" />
+                      </Button>
+                    </Tip>
+                  )}
                   <Tip tip="Test Bench">
                     <Button variant="ghost" size="icon" onClick={() => setAction('Test Bench.')}>
                       <FlaskConical className="h-4 w-4" />
                     </Button>
                   </Tip>
-                  <Button size="sm" onClick={() => setAction('Save.')}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save
-                  </Button>
+                  <SplitButton
+                    variant="default"
+                    side="bottom"
+                    align="end"
+                    icon={<Save className="mr-2 h-4 w-4" />}
+                    label="Save"
+                    faceTip="Save (Ctrl+S)"
+                    menu={[{
+                      label: 'Export World',
+                      icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
+                      onClick: () => setAction('Export World.'),
+                    }]}
+                    menuLabel="Save options"
+                    onClick={() => setAction('Save.')}
+                  />
                 </>
               )}
             />
