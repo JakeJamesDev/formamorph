@@ -114,6 +114,10 @@ The prototype that settled the shape is `prototype.html` beside this spec (varia
 | Q29 | Settle is idempotent. After the drop loop, each dropped trait is tried again in proposal order and kept when the whole set still checks clean. A, B, C with A "not B", B "not A", C "not B" settles to {A, C} in one call, and a second settle changes nothing. |
 | Q30 | A cascade-off returner never turns off a pick or an Automatic trait. When its return would make any kept trait fail, it stays on cascade-off. The player's deliberate state wins over an automatic return. A pick that excludes an active Automatic trait stays locked, because the Automatic trait's gate holds (Q10). |
 | Q31 | The exclusive-sibling skip in a Condition applies only inside the trait's own owner. "You: not Paladin" on an entity's linked trait reads the player's Paladin even when the entity's own group also holds a Paladin. (Correctness fix found by ticket 03.) |
+| Q32 | `trait-requirement-unstable` fires only on a cycle with an odd number of Not edges. An even count, such as mutual exclusion "A: not B" and "B: not A", is a supported pattern that settles to the earlier pick (Q8, Q29) and never flips. Refines Q13 on ticket 04's evidence. |
+| Q33 | `trait-requirement-unresolved` reports one finding per dead Condition. A one-Condition row keeps today's text; a longer row names the row that never holds. A dead Condition that only a link override adds is reported on that link, with the bearer named, and opens the link. A world trait's dead Condition is reported once, not per linked copy. |
+| Q34 | In `trait-requirement-row-never-holds`, "its group" means any group above the trait in that bearer's tree, not only the direct one. On a linked trait the finding names the entity and opens the link. |
+| Q35 | Test Bench messages that print a gate use the gate line's form: Conditions quoted and joined by "and" inside a row, rows joined by "or". The default-gated message keeps its sentence; a Not cause reads inside it, such as "meets “not A”". No separate "excluded by" sentence. |
 
 **Schema (world export shape).**
 
