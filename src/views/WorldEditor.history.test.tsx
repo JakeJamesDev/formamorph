@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { useState, type ReactNode } from 'react';
 import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { SurfaceLayer, SurfaceReporterContext } from '@/components/ui/surface';
@@ -340,5 +340,29 @@ describe('the History popover (mobile)', () => {
     } finally {
       restore();
     }
+  });
+});
+
+/** A trait that toggles Damp, so removing Damp is the one defect in an otherwise clean world. */
+const TOGGLED_WORLD: World = benchEditorWorld({
+  ...WORLD,
+  traits: [{ id: 't-dry', name: 'Dry Boots', statChanges: [], statToggles: [{ statId: 's-damp', enabled: false }] }],
+} as Partial<World>);
+const flask = () => screen.getByRole('button', { name: /^Test Bench/ });
+/** Outlasts the pass debounce, so the badge has had its chance to move. */
+const settled = { timeout: 2000 };
+
+describe('the Test Bench after an undo', () => {
+  it('updates its findings after Ctrl+Z as it does after any edit', async () => {
+    renderWorldEditorBench(TOGGLED_WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench'), settled);
+
+    await removeStat('Damp');
+    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench, 1 new finding'), settled);
+
+    expect(await chord('z')).toBe(true);
+    expect(rows()).toEqual(['Warmth', 'Damp', 'Dread']);
+    await waitFor(() => expect(flask()).toHaveAccessibleName('Test Bench'), settled);
   });
 });

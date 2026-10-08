@@ -187,6 +187,14 @@ _Avoid_: action (an author's act, not the record of it), command, undo entry
 The app-bar control over the open world's Steps: a split pill (Undo, Redo, chevron) on desktop, one History icon on mobile. Its list holds the fixed **World opened** row, every Step, the Saved marker, and the undone Steps dimmed. A click on a row moves the world to that point.
 _Avoid_: undo stack (the stack is the data, the popover is the view), timeline
 
+**Saved marker**:
+The row in the History Popover after the Step the world was last saved at. Saving places it and clears nothing; undo past it makes the world dirty again.
+_Avoid_: save point, checkpoint
+
+**World opened**:
+The fixed head row of the History Popover. Not a Step: it does not count toward the cap, and selecting it restores the world as it was loaded.
+_Avoid_: baseline (the dirty check's term), initial state
+
 **Report**:
 A signed-in user's one-shot ticket flagging a Report Target to staff — a category plus optional details. Never public, never a conversation; it ends in exactly one Outcome.
 _Avoid_: flag, feedback (that's bug/suggestion)

@@ -33,3 +33,10 @@ The Locations Canvas's history module becomes the editor's history module. Nothi
 - [ ] Labels: "Add Stat Hunger", "Edit Stat Hunger: Description", "Remove Location Docks", "Edit World: Thumbnail", "Edit Placeholder Eyes" for a Copy inside an entity.
 - [ ] Every guard bites: the order test fails when restore ignores order; the precedence test fails when a key wins over an open group.
 - [ ] Gates green: `typecheck`, `lint`, `test`, `build`.
+
+## Comments
+
+Mutation evidence, 2026-10-08, at `fa936bda`:
+- Restore made to ignore the Step's earlier order and append returning records at the end: 6 of 45 red in the module tests (the three order-aware cases, two precedence cases that compare order, the World opened restore).
+- An open group made to fall through to the key and tick rules: 4 of 45 red (group across writes, group beats key, group past the Saved marker, nested group).
+- Both restored; module file diff empty; 87/87 green across the three history test files afterwards.
