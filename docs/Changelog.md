@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Availability tab shows Mode, Starts and In Game as three rows with one rule sentence.** **Automatic** is the new name of Always On. Starts and In Game dim under Automatic and Hidden. **Requires** adds a world trait at once when only You can hold it.
     - **Test Bench flags requirements that loop through Not and rows that can never hold.** A loop such as "A requires B, B requires not A" is an error. "Paladin and not Paladin" is a warning. Two traits that exclude each other still pass.
   - **Ctrl+S saves the world in the World Editor.** On a Mac, use Cmd+S. It works while you type in a field, and the **Save** tooltip shows it.
+  - **Ctrl+B and Ctrl+I make text bold or italic in fields with a formatting toolbar.** On a Mac, use Cmd+B and Cmd+I. Press the key again to remove the formatting. The **Bold** and **Italic** tooltips show the shortcut.
   - **The World Editor now has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.
 
 #### 🔧 Fixed

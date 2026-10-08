@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
   COMMAND_PRIORITY_LOW, HISTORY_MERGE_TAG, SELECTION_CHANGE_COMMAND,
-  UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND,
-  type NodeKey,
+  UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND, FORMAT_TEXT_COMMAND,
+  type NodeKey, type TextFormatType,
 } from 'lexical';
-import { mergeRegister } from '@lexical/utils';
+import { IS_APPLE, mergeRegister } from '@lexical/utils';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -62,12 +62,14 @@ interface ToolbarItem {
   title: string;
   /** A `flexible-marker-*` class, on the items whose icon alone can't say them apart. */
   swatch?: string;
+  /** The letter Lexical's Ctrl/⌘ shortcut for this action uses. */
+  shortcut?: string;
 }
 
 // Always visible: the formatting an author reaches for mid-sentence.
 const MARKDOWN_TOOLBAR: ToolbarItem[] = [
-  { action: 'bold', Icon: Bold, title: 'Bold' },
-  { action: 'italic', Icon: Italic, title: 'Italic' },
+  { action: 'bold', Icon: Bold, title: 'Bold', shortcut: 'B' },
+  { action: 'italic', Icon: Italic, title: 'Italic', shortcut: 'I' },
   { action: 'strike', Icon: Strikethrough, title: 'Strikethrough' },
   { action: 'code', Icon: Code, title: 'Inline code' },
   { action: 'quote', Icon: Quote, title: 'Blockquote' },
@@ -248,6 +250,8 @@ function SplitButton({ items, label, disabled, apply }: {
   );
 }
 
+const SHORTCUT_FORMATS: Partial<Record<TextFormatType, MarkdownAction>> = { bold: 'bold', italic: 'italic' };
+
 /** Markdown formatting toolbar. Reads the editor as a flat string, applies the pure transform, rebuilds,
  *  then restores the selection the transform asked for. Editing the tree directly (rather than routing
  *  through `onChange`) keeps ValueSyncPlugin's external-value path — and its scroll reset — out of it. */
@@ -259,12 +263,22 @@ function MarkdownToolbar({ parse, disabled }: { parse: ChipVocabulary['parse']; 
     editor.focus();
   };
 
+  // Lexical turns Ctrl/⌘+B and +I into FORMAT_TEXT_COMMAND, which PlainTextPlugin leaves unhandled.
+  useEffect(() => editor.registerCommand(FORMAT_TEXT_COMMAND, (format: TextFormatType) => {
+    const action = SHORTCUT_FORMATS[format];
+    if (disabled || !action) return false;
+    editor.update(() => $applyMarkdownAction(parse, action));
+    return true;
+  }, COMMAND_PRIORITY_LOW), [editor, parse, disabled]);
+
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {MARKDOWN_TOOLBAR.map(({ action, Icon, title }) => (
-        <Tip key={action} tip={title}>
+      {MARKDOWN_TOOLBAR.map(({ action, Icon, title, shortcut }) => (
+        <Tip key={action} tip={shortcut ? `${title} (${IS_APPLE ? '⌘' : 'Ctrl+'}${shortcut})` : title}>
           <button
             type="button" disabled={disabled}
+            aria-label={title}
+            aria-keyshortcuts={shortcut && `${IS_APPLE ? 'Meta' : 'Control'}+${shortcut}`}
             onMouseDown={(event) => { event.preventDefault(); apply(action); }}
             className={TOOLBAR_BTN}
           >
