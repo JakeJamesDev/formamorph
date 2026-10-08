@@ -44,7 +44,7 @@ export function SupporterBadge({ tier, since, beatKey, className }: SupporterBad
     <span
       tabIndex={0}
       className={cn(
-        'supporter-badge inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide',
+        'supporter-badge inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] leading-[14px] font-semibold tracking-wide',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         SUPPORTER_BADGE_STYLES[tier],
         className

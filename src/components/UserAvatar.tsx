@@ -73,5 +73,6 @@ export function UserAvatar({ username, avatarUrl, size = 'sm', supporter, classN
 
   if (!tier) return inner;
 
-  return <span className={cn(box, 'inline-block')}>{inner}</span>;
+  // Flex, not block: an inline face would sit on the parent's line-height and slide over the ring.
+  return <span className={cn(box, 'inline-flex')}>{inner}</span>;
 }

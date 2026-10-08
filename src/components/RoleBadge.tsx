@@ -21,7 +21,7 @@ export function RoleBadge({ role, className }: RoleBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        'inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] leading-[14px] font-semibold uppercase tracking-wide',
         ROLE_BADGE_STYLES[staffRole],
         className
       )}
