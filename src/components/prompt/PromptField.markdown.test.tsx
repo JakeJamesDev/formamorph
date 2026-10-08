@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PromptField from './PromptField';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 
@@ -15,7 +16,12 @@ vi.mock('@/components/game/MarkdownRenderer', () => ({
 // (jsdom can't drive a real Lexical selection). These cover the wiring the `markdown` prop turns on.
 function Harness({ markdown }: { markdown?: boolean }) {
   const [value, setValue] = useState('');
-  return <PromptField value={value} onChange={setValue} vocabulary={plainVocabulary()} markdown={markdown} />;
+  return (
+    <>
+      <PromptField value={value} onChange={setValue} vocabulary={plainVocabulary()} markdown={markdown} />
+      <output data-testid="stored">{value}</output>
+    </>
+  );
 }
 
 describe('PromptField (markdown wiring)', () => {
@@ -94,5 +100,36 @@ describe('PromptField (markdown wiring)', () => {
     render(<Harness markdown />);
     expect(screen.getAllByLabelText('Undo')).toHaveLength(1);
     expect(screen.getAllByLabelText('Redo')).toHaveLength(1);
+  });
+
+  it('wraps in markdown on Ctrl+B and Ctrl+I, and a second press unwraps', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Harness markdown />);
+    const stored = screen.getByTestId('stored');
+    await user.click(container.querySelector('[contenteditable="true"]')!);
+    await user.keyboard('{Control>}b{/Control}');
+    await waitFor(() => expect(stored.textContent).toBe('**bold text**'));
+    await user.keyboard('{Control>}b{/Control}');
+    await waitFor(() => expect(stored.textContent).toBe('bold text'));
+    await user.keyboard('{Control>}i{/Control}');
+    await waitFor(() => expect(stored.textContent).toBe('*bold text*'));
+  });
+
+  it('names the shortcut in the Bold tip and on the button', async () => {
+    const user = userEvent.setup();
+    render(<TooltipProvider><Harness markdown /></TooltipProvider>);
+    const bold = screen.getByRole('button', { name: 'Bold' });
+    expect(bold).toHaveAttribute('aria-keyshortcuts', 'Control+B');
+    await user.hover(bold);
+    expect(await screen.findByText('Bold (Ctrl+B)', { selector: 'div' })).toBeVisible();
+  });
+
+  it('leaves a plain prompt field unchanged on Ctrl+B', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Harness />);
+    await user.click(container.querySelector('[contenteditable="true"]')!);
+    await user.keyboard('{Control>}b{/Control}');
+    await act(async () => {});
+    expect(screen.getByTestId('stored').textContent).toBe('');
   });
 });
