@@ -5,7 +5,7 @@ Blocked by: 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
 
-Rationale: same timeline re-laid for the tall layout; the scene library already carries both layouts.
+Rationale: the same scene set on its own shot order; the scene library already carries both layouts.
 
 Parent: [Trailer spec](../spec.md)
 

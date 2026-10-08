@@ -41,7 +41,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q6 | The proof is 20 seconds: one title card, two UI frames with motion, one transition, rendered at both sizes. The pipeline is proven before the storyboard is written. |
 | Q7 | The trailer package uses React 19. `@remotion/transitions` 4.0.534 bundles a React DOM 19 copy and reads React 19 internals, so it fails to bundle against React 18 despite its declared peer range. The package is standalone (Q5), so the app stays on React 18. Ruled 2026-10-08 on ticket 01's evidence. |
 | Q8 | The storyboard lives at `docs-internal/specs/trailer/storyboard.md` and lands in ticket 03's commit. It holds its own capture table in the spec's field list (view, modal or tab, viewport, theme, scale, world, seed). Ticket 05 copies that table into ticket 02's capture list, so 02 and 03 never race on one file. The user approves the storyboard in the 03 session; its rulings come here as numbered Q-lines and fold into this spec. |
-| Q9 | The storyboard is approved (2026-10-08, ticket 03): wide cut 19 shots, 63.05 s (3,783 frames); tall cut 14 shots, 47.85 s (2,871 frames); frames 0 to 359 loop on a shared blurred library plate. |
+| Q9 | The storyboard is approved (2026-10-08, ticket 03): wide cut 19 shots, 63.05 s (3,783 frames); tall cut 14 shots, 47.80 s (2,868 frames); frames 0 to 359 loop on a shared blurred library plate. |
 | Q10 | Feature cut: Morphie help, contests and 3D avatars stay in the wide cut. Memory is cut. Scene images, character cards and ST import, themes, TTS and authoring tools are not in the trailer. |
 | Q11 | The end card's call-to-action line is "formamorph.ai". |
 | Q12 | Gameplay shots use the Drone world on the landing page's site-game fixture. |
@@ -62,7 +62,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 - Kinetic text follows the Design System's type roles and colors, rendered with Lexend. Copy is STE and passes the copy sweep.
 - A UI frame scene takes a captured PNG and a camera path (pan, zoom) in frames. Captured frames are committed as source assets, not generated at render time.
 - Transitions are shared components. The proof ships one.
-- Timing is in frames at 60 fps. The 16:9 and 9:16 compositions share one timeline.
+- Timing is in frames at 60 fps. Both compositions render from one scene set. The tall cut has its own shot order, derived from the wide one (storyboard §4).
 
 ### Points to check during build
 
@@ -70,7 +70,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 - Fonts load through Remotion's font loader, not a `<link>`, so renders never race the network.
 - The first 6 seconds must read as a loop on their own (microtrailer).
 - Both cuts render from one command. Rendered MP4s are gitignored; only source and captures are tracked.
-- Three shots need canned or frozen inputs to capture deterministically (storyboard §5): the help answer (live endpoint), community and contest listings (live server data), and the avatar's WebGL frame. Tickets 02 and 05 own this.
+- Three shots need canned or frozen inputs to capture deterministically (storyboard §5): the help answer (live endpoint), the community world grid (live server data; contest listings are already canned through the dev-router), and the avatar's WebGL frame. Tickets 02 and 05 own this.
 
 ## Testing Decisions
 
@@ -101,5 +101,5 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | 03 | Storyboard | 01 | Feature list, shot order, copy, timing for both cuts. Human ruling; the user cuts it down. |
 | 04 | Scene library | 01, 03 | Kinetic text card, frame camera, typed-prompt-then-narration, shared transitions, each with wide and tall layouts. |
 | 05 | Full 16:9 cut | 02, 04 | The Steam trailer at 1920x1080, 60 fps, Steam encode settings. First 6 s works as a loop. |
-| 06 | 9:16 cut | 05 | The social cut at 1080x1920 from the same timeline. |
+| 06 | 9:16 cut | 05 | The social cut at 1080x1920 from the same scene set, on its own shot order. |
 | 07 | Copy sweep and final renders | 05, 06 | Copy pass, final encodes, poster frame, check against the Steam spec. |
