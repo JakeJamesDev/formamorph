@@ -11,7 +11,10 @@
  * puts the equivalent token: plain operators read as punctuation, `typeof`/`new` read as keywords.
  */
 
-import type { ThemeRegistrationAny } from 'streamdown';
+import type { ThemeInput } from '@streamdown/code';
+
+/** A theme object, typed by the code plugin that reads it. */
+type ThemeRegistrationAny = Exclude<ThemeInput, string>;
 
 const v = (token: string) => `hsl(var(--code-${token}))`;
 

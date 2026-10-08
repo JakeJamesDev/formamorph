@@ -75,8 +75,9 @@ export const REVEAL_RANGES = {
   minStagger: { min: 0, max: 150, step: 5 },
 } as const;
 
-/** A word reveal's per-word fade length and the delay between words, in ms. */
-export interface RevealTiming { duration: number; stagger: number }
+/** A word reveal's per-word fade length and the delay between words, in ms. `maxBacklogMs` caps how far
+ *  ahead of now Streamdown schedules words; unset means no cap. */
+export interface RevealTiming { duration: number; stagger: number; maxBacklogMs?: number }
 
 /** Any effect enabled ⇒ animate the reveal; none ⇒ fall back to the smooth crawl. */
 export const revealActive = (s: RevealSpec): boolean => s.fade || s.move || s.scale || s.blur;

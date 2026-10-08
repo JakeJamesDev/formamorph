@@ -25,4 +25,22 @@ describe('the word timing of a reveal', () => {
     expect(secondWord(container).style.getPropertyValue('--sd-duration')).toBe('777ms');
     expect(secondWord(container).style.getPropertyValue('--sd-delay')).toBe('55ms');
   });
+
+  // Forty words at 40ms run 1560ms past now, well over Streamdown's default 320ms backlog cap.
+  const BURST = Array.from({ length: 40 }, (_, i) => `w${i}`).join(' ');
+  const lastDelay = (container: HTMLElement) =>
+    [...container.querySelectorAll<HTMLElement>('[data-sd-animate]')].at(-1)?.style.getPropertyValue('--sd-delay');
+
+  it("keeps narration's word gap through a burst, since the sentence pacer owns catch-up", () => {
+    setRevealTiming({ duration: 200, stagger: 40 });
+    const { container } = render(<MarkdownRenderer text={BURST} animate animation="reveal" />);
+    expect(lastDelay(container)).toBe('1560ms');
+  });
+
+  it("shortens the word gap to a given timing's backlog cap", () => {
+    const { container } = render(
+      <MarkdownRenderer text={BURST} animate animation="reveal" timing={{ duration: 200, stagger: 40, maxBacklogMs: 640 }} />,
+    );
+    expect(lastDelay(container)).toBe('640ms');
+  });
 });

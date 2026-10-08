@@ -73,13 +73,13 @@ describe('helpRevealSpec', () => {
 describe('helpRevealTiming', () => {
   it('runs at the default pace with no floors', () => {
     expect(helpRevealTiming({ ...DEFAULT_HELP_REVEAL, minDuration: 0, minStagger: 0 }))
-      .toEqual({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION });
+      .toEqual({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION, maxBacklogMs: 640 });
   });
 
   it('never runs faster than the floors', () => {
     expect(helpRevealTiming({ ...DEFAULT_HELP_REVEAL, minDuration: 900, minStagger: 120 }))
-      .toEqual({ stagger: 120, duration: 900 });
+      .toEqual({ stagger: 120, duration: 900, maxBacklogMs: 1920 });
     expect(helpRevealTiming({ ...DEFAULT_HELP_REVEAL, minDuration: 0, minStagger: 120 }))
-      .toEqual({ stagger: 120, duration: 480 });
+      .toEqual({ stagger: 120, duration: 480, maxBacklogMs: 1920 });
   });
 });

@@ -69,6 +69,12 @@ export function parseHelpReveal(stored: unknown): HelpReveal {
 export const helpRevealSpec = (reveal: HelpReveal, reduceMotion: boolean): RevealSpec =>
   reducedMotionSpec(reveal, reduceMotion);
 
-/** The word timing of an answer: the default pace, never faster than help's floors. */
-export const helpRevealTiming = (reveal: HelpReveal): RevealTiming =>
-  flooredTiming({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION }, reveal.minStagger, reveal.minDuration);
+/** Words an answer's reveal may run behind the stream before Streamdown shortens the gap. */
+const HELP_BACKLOG_WORDS = 16;
+
+/** The word timing of an answer: the default pace, never faster than help's floors. Help has no sentence
+ *  pacer, so a backlog cap keeps a fast answer from finishing far behind its text. */
+export const helpRevealTiming = (reveal: HelpReveal): RevealTiming => {
+  const timing = flooredTiming({ stagger: DEFAULT_STAGGER, duration: DEFAULT_DURATION }, reveal.minStagger, reveal.minDuration);
+  return { ...timing, maxBacklogMs: timing.stagger * HELP_BACKLOG_WORDS };
+};
