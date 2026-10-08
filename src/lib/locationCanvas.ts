@@ -6,6 +6,7 @@ import {
   connectionLegs, implicitNeighbors, isTwoWay, pairKey, parentIndex, reachableFromStarts,
 } from "./locationGraph";
 import { holderOf } from "./locationTree";
+import type { StepKey } from "./editorHistory";
 
 /**
  * The canvas's mapping layer: world data in, node and edge descriptions out. Everything the map means lives
@@ -653,8 +654,15 @@ export type CanvasIntent =
   | { kind: "update"; connection: Connection }
   | { kind: "remove"; connectionId: string };
 
-/** What an intent leaves the world's Connections as. Kept beside the intents themselves so the canvas's own
- *  undo records the same array the editor writes, rather than one built to look like it. */
+/** Keys a run of typing in one Travel Hint box, so the run is one Step. */
+export const hintKey = (connectionId: string, leg: LegKey): StepKey => ({ slice: "connections", id: connectionId, field: leg });
+
+/** Keys a run of keyboard nudges. The key names what is moving, so picking something else starts a new Step. */
+export const nudgeKey = (selectedIds: string[]): StepKey => ({
+  slice: "locations", id: selectedIds.join(","), field: "canvasPosition",
+});
+
+/** What an intent leaves the world's Connections as. */
 export function applyCanvasIntent(connections: Connection[], intent: CanvasIntent): Connection[] {
   if (intent.kind === "add") return [...connections, intent.connection];
   if (intent.kind === "update") {

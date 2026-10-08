@@ -34,8 +34,8 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, canvasFocus, CANVAS_GRID,
-  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, implicitCanvasEdges,
-  updateIntent, isStationaryClick, leafTarget,
+  connectIntent, connectionEnds, deleteIntent, directionIntent, directionOf, hintKey, implicitCanvasEdges,
+  nudgeKey, updateIntent, isStationaryClick, leafTarget,
   LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
   type CanvasDragSession, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
@@ -44,10 +44,9 @@ import { TravelHintPair, type TravelHintFocus } from '@/components/editor/Travel
 import {
   canvasMenuSections, type CanvasMenuItem, type CanvasMenuSection,
 } from '@/lib/canvasMenu';
-import {
-  canvasHistoryFor, historyShortcut, recordCanvasEdit, redoCanvasEdit, undoCanvasEdit,
-  type CanvasHistory,
-} from '@/lib/editorHistory';
+import { useWorldHistory } from '@/contexts/worldRecorder';
+import type { StepKey } from '@/lib/editorHistory';
+import { useCanvasCommits } from '@/managers/useCanvasCommits';
 import { isEditableTarget } from '@/lib/editableTarget';
 import { holderOf } from '@/lib/locationTree';
 import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
@@ -57,7 +56,7 @@ import {
 import { searchLocations, type LocationMatch } from '@/lib/locationSearch';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
-import type { Connection, GameLocation } from '@/types';
+import type { Connection, GameLocation, LegKey } from '@/types';
 import { CanvasControlButton, CanvasControls } from '@/components/CanvasControls';
 import { Tip } from '@/components/ui/tooltip';
 
@@ -271,7 +270,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
   /** The leg whose arrow was clicked last. */
   focus: TravelHintFocus | null;
   nameOf: (id: string) => string;
-  onIntent: (intent: CanvasIntent, mergeKey?: string) => void;
+  onIntent: (intent: CanvasIntent, typedLeg?: LegKey) => void;
   onClose: () => void;
 }) => {
   const [a, b] = connectionEnds(connection);
@@ -329,7 +328,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
           };
         })}
         idPrefix={`canvas-connection-${connection.id}`}
-        onChange={(next, mergeKey) => onIntent(updateIntent(next), mergeKey)}
+        onChange={(next, typedLeg) => onIntent(updateIntent(next), typedLeg)}
         focus={focus}
       />
     </Panel>
@@ -706,13 +705,8 @@ interface CanvasSession {
   reportSelection: (ids: string[]) => void;
   /** The author has their hand on this canvas: whatever it reports from here is theirs, not teardown's. */
   wake: () => void;
-  /** What Ctrl+Z walks back. A ref rather than state — nothing on the map is drawn from the stack, and the
-   *  trip to full screen has to carry it as it carries the selection. */
-  historyRef: React.MutableRefObject<CanvasHistory>;
   selectedConnectionId: string | null;
   setSelectedConnectionId: (id: string | null) => void;
-  /** The World Editor reads Undo and Redo for the whole world, so the canvas leaves those chords alone. */
-  sharedChords: boolean;
 }
 
 type CanvasData = Pick<ReturnType<typeof useGameData>,
@@ -726,8 +720,6 @@ export interface LocationCanvasInputs {
     grid: ReturnType<typeof useCanvasGridVisible>;
     connectionStyle: ReturnType<typeof useCanvasConnectionStyle>;
   };
-  historyRef: React.MutableRefObject<CanvasHistory>;
-  sharedChords?: boolean;
 }
 
 const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullscreen, data, preferences }: {
@@ -739,8 +731,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
 } & Pick<LocationCanvasInputs, 'data' | 'preferences'>) => {
   const { locations, setLocations, connections, setConnections, placeholders, placementLetters, placeholderOwners } = data;
   const {
-    selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
-    setSelectedConnectionId, sharedChords,
+    selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
   } = session;
   const store = useStoreApi();
   const { fitView, setCenter, getInternalNode, getZoom } = useReactFlow();
@@ -854,37 +845,14 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // exist, so the panel would close under the author's hand if it were pinned to an arrow's id.
   const selectedConnection = connections.find((c) => c.id === selectedConnectionId) ?? null;
 
-  // The stack itself is a ref — nothing on the map is drawn from it — but the chrome that offers it is, so
-  // what each side holds is mirrored here and read back after every edit and every step taken.
-  const [history, setHistory] = useState({ canUndo: false, canRedo: false });
-  const syncHistory = useCallback(() => {
-    const { past, future } = historyRef.current;
-    setHistory({ canUndo: past.length > 0, canRedo: future.length > 0 });
-  }, [historyRef]);
-  // The stack outlives this component: arriving at a canvas mid-session finds whatever the last one left.
-  useEffect(syncHistory, [syncHistory]);
+  // The world's history holds the canvas's edits with every other edit; the canvas only reads its moves.
+  const history = useWorldHistory();
+  const { commitLocations, commitConnections } = useCanvasCommits({ locations, setLocations, connections, setConnections });
 
-  // Every write the canvas makes goes through one of these two, which is what leaves the stack holding the map's
-  // whole edit history rather than the part of it someone remembered to record.
-  const commitLocations = useCallback((next: GameLocation[], mergeKey?: string) => {
-    historyRef.current = recordCanvasEdit(historyRef.current, {
-      slice: 'locations', before: locations, after: next, mergeKey,
-    });
-    syncHistory();
-    setLocations(next);
-  }, [locations, setLocations, historyRef, syncHistory]);
-
-  const commitConnections = useCallback((next: Connection[], mergeKey?: string) => {
-    historyRef.current = recordCanvasEdit(historyRef.current, {
-      slice: 'connections', before: connections, after: next, mergeKey,
-    });
-    syncHistory();
-    setConnections(next);
-  }, [connections, setConnections, historyRef, syncHistory]);
-
-  const applyIntent = useCallback((intent: CanvasIntent | null, mergeKey?: string) => {
+  const applyIntent = useCallback((intent: CanvasIntent | null, typedLeg?: LegKey) => {
     if (!intent) return;
-    commitConnections(applyCanvasIntent(connections, intent), mergeKey);
+    const key = typedLeg && intent.kind === 'update' ? hintKey(intent.connection.id, typedLeg) : undefined;
+    commitConnections(applyCanvasIntent(connections, intent), key);
     if (intent.kind === 'add') setSelectedConnectionId(intent.connection.id); // a fresh one opens for annotation
     else if (intent.kind === 'remove') setSelectedConnectionId(null);
   }, [connections, commitConnections, setSelectedConnectionId]);
@@ -1080,20 +1048,6 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     reportSelection(picked.map((n) => n.id));
   }, [reportSelection]);
 
-  /** Walking the map's own edits back and forward, against the world as it stands — which is what leaves an
-   *  edit made in the list panel in the meantime alone. Both surfaces read what is written here at once. */
-  const travelHistory = useCallback((direction: 'undo' | 'redo') => {
-    const world = { locations, connections };
-    const step = direction === 'undo'
-      ? undoCanvasEdit(historyRef.current, world)
-      : redoCanvasEdit(historyRef.current, world);
-    if (!step) return;
-    historyRef.current = step.history;
-    syncHistory();
-    if (step.restore.slice === 'locations') setLocations(step.restore.locations);
-    else setConnections(step.restore.connections);
-  }, [historyRef, locations, connections, setLocations, setConnections, syncHistory]);
-
   /**
    * Which box the toolbar's Auto Arrange lays out: the selected group itself where the author picked one, the
    * group holding whatever they picked otherwise, and every group at once when nothing is picked at all — the
@@ -1117,8 +1071,8 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   // Each of these is asked for on a selection that may turn out to have nothing to do — two boxes one of which
   // carries the other is one box to line up. A command that moved nothing is not a step to take back, so the
   // world it hands back untouched is left alone rather than pushed onto the stack as a press that does nothing.
-  const commitIfMoved = useCallback((next: GameLocation[], mergeKey?: string) => {
-    if (next !== locations) commitLocations(next, mergeKey);
+  const commitIfMoved = useCallback((next: GameLocation[], key?: StepKey) => {
+    if (next !== locations) commitLocations(next, key);
   }, [commitLocations, locations]);
 
   const alignSelection = useCallback((edge: AlignEdge) => {
@@ -1134,7 +1088,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
    * rather than one per press — keyed by what is being moved, so picking something else starts a fresh step.
    */
   const nudgeSelection = useCallback((delta: { x: number; y: number }) => {
-    commitIfMoved(nudgeLocations(locations, selectedIds, delta), `nudge:${selectedIds.join(',')}`);
+    commitIfMoved(nudgeLocations(locations, selectedIds, delta), nudgeKey(selectedIds));
   }, [commitIfMoved, locations, selectedIds]);
 
   /** The map framed on what the author is working on, or on the whole world when they are working on none of
@@ -1165,16 +1119,11 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       if (!activeRef.current || isEditableTarget(event.target)) return;
       // In full screen, Escape is the way out of the window — a keypress meaning "leave" must not also empty
       // the selection the author is taking back to the pane with them.
-      const travel = historyShortcut(event);
       const nudge = NUDGES[event.key];
       if (event.key === 'Escape') { if (!fullscreen) setSelection(() => false); }
       else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
         setSelection(() => true);
-      } else if (travel) {
-        if (sharedChords) return;
-        event.preventDefault();
-        travelHistory(travel);
       } else if (event.ctrlKey || event.metaKey || event.altKey) {
         // Every other chord belongs to the browser or the app around the map, not to the map.
       } else if (nudge && !inChrome(event.target)) {
@@ -1191,7 +1140,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       document.removeEventListener('pointerdown', trackPointer, true);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [setSelection, fullscreen, travelHistory, nudgeSelection, zoomToSelection, sharedChords]);
+  }, [setSelection, fullscreen, nudgeSelection, zoomToSelection]);
 
   /**
    * Composing a selection on a touch screen. Shift and Ctrl are what a mouse adds a location to a selection
@@ -1409,8 +1358,8 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
             setConnectionStyle={setConnectionStyle}
             canUndo={history.canUndo}
             canRedo={history.canRedo}
-            onUndo={() => travelHistory('undo')}
-            onRedo={() => travelHistory('redo')}
+            onUndo={history.undo}
+            onRedo={history.redo}
           />
         )}
         {fullscreen && <LocationSearch find={findLocations} onPick={revealLocation} />}
@@ -1438,10 +1387,10 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
       menuRef={menuRef}
       frameRef={frameRef}
       sections={canvasMenuSections(
-        { ...history, snap, gridVisible, connectionStyle },
+        { canUndo: history.canUndo, canRedo: history.canRedo, snap, gridVisible, connectionStyle },
         {
-          undo: () => travelHistory('undo'),
-          redo: () => travelHistory('redo'),
+          undo: history.undo,
+          redo: history.redo,
           setSnap,
           setGridVisible,
           setConnectionStyle,
@@ -1453,7 +1402,8 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   );
 };
 
-/** Embedded and fullscreen canvas with caller-owned data, preferences, and history. */
+/** Embedded and fullscreen canvas with caller-owned data and preferences. It records into the world history
+ *  above it, so a caller with a world of its own provides one. */
 export const LocationCanvasWorkspace = (props: LocationCanvasInputs & {
   selectedId: string | null; onSelect: (id: string) => void;
 }) => {
@@ -1461,7 +1411,6 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & {
   const morph = useMorphFullscreen(hostRef);
   const selectedIdsRef = useRef<string[]>(props.selectedId ? [props.selectedId] : []);
   const lastSyncedRef = useRef<string | null>(props.selectedId);
-  const { historyRef } = props;
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
 
   // Set while the canvas is moving between the pane and the window. The old one reports an empty selection as
@@ -1485,8 +1434,7 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & {
   );
 
   const session: CanvasSession = {
-    selectedIdsRef, lastSyncedRef, reportSelection, wake, historyRef, selectedConnectionId,
-    setSelectedConnectionId, sharedChords: props.sharedChords ?? false,
+    selectedIdsRef, lastSyncedRef, reportSelection, wake, selectedConnectionId, setSelectedConnectionId,
   };
 
   // DEV dev-router: `#dev?…&subtab=canvas&fullscreen=1` lands on the big canvas in one call. Tree-shaken in prod.
@@ -1534,9 +1482,7 @@ const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: strin
   const snap = useCanvasSnap();
   const grid = useCanvasGridVisible();
   const connectionStyle = useCanvasConnectionStyle();
-  // The authored world's history survives switching between its canvas and list views.
-  return <LocationCanvasWorkspace {...props} data={data}
-    preferences={{ snap, grid, connectionStyle }} historyRef={canvasHistoryFor(data.worldId)} sharedChords />;
+  return <LocationCanvasWorkspace {...props} data={data} preferences={{ snap, grid, connectionStyle }} />;
 };
 
 export default LocationCanvas;

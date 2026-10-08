@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  beginGroup, canRedo, canUndo, createHistory, diffSlice, endGroup, HISTORY_LIMIT, jumpTo, markSaved, record, redo,
-  undo, WORLD_SLICES,
+  beginGroup, canRedo, canUndo, createHistory, diffSlice, endGroup, HISTORY_LIMIT, historyShortcut, jumpTo, markSaved,
+  record, redo, undo, WORLD_SLICES,
   type EditorHistory, type RecordOptions, type SliceEdit, type WorldSlices,
 } from "./editorHistory";
 import { stepLabel } from "./editorHistoryLabels";
@@ -418,5 +418,25 @@ describe("labels", () => {
     const s = session();
     s.write({ stats: [...s.world.stats].reverse() });
     expect(only(s)).toBe("Reorder Stats");
+  });
+});
+
+describe("the undo and redo chords", () => {
+  const chord = (key: string, mods: { ctrl?: boolean; meta?: boolean; shift?: boolean } = {}) =>
+    historyShortcut({ key, ctrlKey: !!mods.ctrl, metaKey: !!mods.meta, shiftKey: !!mods.shift });
+
+  it("reads Ctrl+Z as undo and both redo chords as redo", () => {
+    expect(chord("z", { ctrl: true })).toBe("undo");
+    expect(chord("Z", { meta: true })).toBe("undo");
+    expect(chord("y", { ctrl: true })).toBe("redo");
+    expect(chord("z", { ctrl: true, shift: true })).toBe("redo");
+    expect(chord("Z", { meta: true, shift: true })).toBe("redo");
+  });
+
+  it("ignores the same keys without the modifier, and other chords", () => {
+    expect(chord("z")).toBeNull();
+    expect(chord("y")).toBeNull();
+    expect(chord("a", { ctrl: true })).toBeNull();
+    expect(chord("Escape", { ctrl: true })).toBeNull();
   });
 });

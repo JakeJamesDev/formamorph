@@ -64,6 +64,7 @@ export const FIELD_LABELS: Partial<Record<SliceName | "*", Record<string, string
     isStarting: "Starting Location",
     canvasPosition: "Position",
   },
+  connections: { aToB: "Travel Hint", bToA: "Travel Hint" },
   statUpdates: { prompt: "Prompt", stats: "Stats" },
   placeholders: { values: "Values", weights: "Weights" },
 };

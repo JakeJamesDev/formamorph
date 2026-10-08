@@ -8,7 +8,7 @@ The reference reuses the production `LocationCanvasWorkspace`, including its emb
 | --- | --- | --- |
 | Locations and Connections | `useGameData` and its authored-world setters | Cloned sample arrays and React state setters |
 | Placeholder labels | Authored-world placeholders, placement letters, and owners | Empty collections; sample names contain no placeholders |
-| Undo/redo | `canvasHistoryFor(worldId)` survives canvas/list switching | A ref owned by the mounted reference |
+| Undo/redo | The open world's history, shared with every editor tab | A history of its own, owned by the mounted reference |
 | Snap, grid, connection style | Existing localStorage-backed hooks | React state initialized from the same defaults |
 | Fullscreen and selection | Existing canvas session and morph hook | The same session and morph hook |
 
