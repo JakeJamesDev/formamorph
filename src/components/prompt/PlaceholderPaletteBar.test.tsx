@@ -365,7 +365,7 @@ describe('PlaceholderPaletteBar Built-in section', () => {
     mount('molly');
     const marked = [...document.querySelectorAll('[data-builtin-mark]')].map((el) => el.closest('button')?.textContent);
     expect(marked).toEqual(['Player Name', 'Character Name']);
-    expect(document.querySelector('[data-builtin-mark]')).toHaveClass('lucide-sparkles');
+    expect(document.querySelector('[data-builtin-mark]')).toHaveClass('lucide-pencil-sparkles');
   });
 
   it('dims a Built-in the claimed field refuses and inserts nothing on its click', async () => {
