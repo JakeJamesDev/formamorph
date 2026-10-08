@@ -46,6 +46,8 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q11 | The end card's call-to-action line is "formamorph.ai". |
 | Q12 | Gameplay shots use the Drone world on the landing page's site-game fixture. |
 | Q13 | The tall cut's two gameplay shots are native 540x960 (scale 2) mobile-layout recaptures, not crops of the wide capture. |
+| Q14 | The typed scene draws its own text in Design System type roles: a prompt line types in with a caret, then a narration line streams in word by word. Copy comes in as props; ticket 05 supplies it. An optional captured frame sits behind it under the frame camera. The drawn text is a stylized overlay and never imitates the real input over a PNG. Frame scenes take an optional caption through a copy block shared with kinetic text. |
+| Q15 | Ticket 05 copies the whole storyboard capture table into the capture list, tall rows included, and captures the 12 wide shots. Ticket 06 captures the tall rows. Ticket 05 splits the timeline: the wide composition plays the storyboard; the tall composition keeps the 20 s proof scenes until 06 replaces them, so one command still renders both. |
 
 ### Facts the design rests on
 
