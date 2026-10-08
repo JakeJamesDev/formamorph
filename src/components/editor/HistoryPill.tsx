@@ -1,25 +1,19 @@
-import { Redo2, Undo2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tip } from '@/components/ui/tooltip';
+import { useMemo } from 'react';
 import { useWorldHistory } from '@/contexts/worldRecorder';
+import { stepLabel } from '@/lib/editorHistoryLabels';
+import { useDevRoute } from '@/lib/devRouter';
+import { DEV_HISTORY_OPEN } from '@/lib/devRoutes';
+import { HistoryControls, type HistoryView } from './HistoryControls';
 
-const FACE = 'h-8 rounded-none border-y border-l px-2.5 first:rounded-l-md last:rounded-r-md last:border-r';
-
-/** The app bar's split control for the open world's history: one face per move, joined into one pill. */
-export function HistoryPill({ disabled = false }: { disabled?: boolean }) {
-  const { canUndo, canRedo, undo, redo } = useWorldHistory();
-  return (
-    <div className="flex items-center" role="group" aria-label="History">
-      <Tip tip="Undo (Ctrl+Z)" labelsChild={false}>
-        <Button variant="ghost" size="sm" className={FACE} onClick={undo} disabled={disabled || !canUndo} aria-label="Undo">
-          <Undo2 className="h-4 w-4" />
-        </Button>
-      </Tip>
-      <Tip tip="Redo (Ctrl+Y)" labelsChild={false}>
-        <Button variant="ghost" size="sm" className={FACE} onClick={redo} disabled={disabled || !canRedo} aria-label="Redo">
-          <Redo2 className="h-4 w-4" />
-        </Button>
-      </Tip>
-    </div>
+/** The app bar's history control over the open world: the split pill on desktop, one icon on mobile. */
+export function HistoryPill({ layout = 'pill', disabled = false }: { layout?: 'pill' | 'icon'; disabled?: boolean }) {
+  const { canUndo, canRedo, steps, cursor, saved, undo, redo, jump } = useWorldHistory();
+  const rows = useMemo(() => steps.map(stepLabel), [steps]);
+  const history = useMemo<HistoryView>(
+    () => ({ canUndo, canRedo, rows, cursor, saved, undo, redo, jump }),
+    [canUndo, canRedo, rows, cursor, saved, undo, redo, jump],
   );
+  // The dev route is null outside DEV builds.
+  const openRequest = useDevRoute()?.history === DEV_HISTORY_OPEN;
+  return <HistoryControls history={history} layout={layout} disabled={disabled} openRequest={openRequest} />;
 }

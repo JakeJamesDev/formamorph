@@ -47,6 +47,7 @@ import { PanelTabStripReference } from '@/components/design-system/PanelTabStrip
 import { SectionsBarReference } from '@/components/design-system/SectionsBarReference';
 import { NavRailReference } from '@/components/design-system/NavRailReference';
 import { SurfaceAppBarReference } from '@/components/design-system/SurfaceAppBarReference';
+import { HistoryControlsReference } from '@/components/design-system/HistoryControlsReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
 import { PromptChipsReference } from '@/components/design-system/PromptChipsReference';
 
@@ -351,6 +352,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Surface App Bar',
     description: 'A surface-wide top row with its tools on the center line',
     Component: SurfaceAppBarReference,
+  },
+  {
+    id: 'history-controls',
+    label: 'History Controls',
+    description: 'A split Undo, Redo and History pill, and its mobile icon',
+    Component: HistoryControlsReference,
   },
   {
     id: 'prompt-navigation',

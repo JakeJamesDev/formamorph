@@ -31,6 +31,8 @@ export interface DevRoute {
   tour?: string;
   /** `expanded` opens the World Editor's desktop search as the full Find and Replace bar. */
   find?: string;
+  /** `open` opens the World Editor's History popover (see `DEV_MODAL_TABS.worldEditorHistory`). */
+  history?: string;
   /** Canned world+save to boot mid-game (see `devFixtures.ts`). */
   fixture?: string;
   /** On-screen diagnostic overlay to pin over the app — `viewport` is the only one so far. */
@@ -58,6 +60,7 @@ function parseHash(hash: string): DevRoute | null {
   const bench = params.get('bench');
   const tour = params.get('tour');
   const find = params.get('find');
+  const history = params.get('history');
   const fixture = params.get('fixture');
   const probe = params.get('probe');
   const mode = params.get('mode');
@@ -75,6 +78,7 @@ function parseHash(hash: string): DevRoute | null {
   if (bench) route.bench = bench;
   if (tour) route.tour = tour;
   if (find) route.find = find;
+  if (history) route.history = history;
   if (fixture) route.fixture = fixture;
   return route;
 }
@@ -123,7 +127,7 @@ export function installDevRouter(): () => void {
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
   w.__fmDev = Object.assign(w.__fmDev ?? {}, {
     /** Jump to a screen/modal/tab in one call — sets the `#dev` hash the consumers react to. */
-    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string }) {
+    goto(view?: string, opts?: { modal?: string; tab?: string; subtab?: string; surface?: string; bench?: string; tour?: string; find?: string; history?: string; fixture?: string; probe?: string; mode?: string; fullscreen?: boolean; attach?: string }) {
       const params = new URLSearchParams();
       if (view) params.set('view', view);
       if (opts?.modal) params.set('modal', opts.modal);
@@ -133,6 +137,7 @@ export function installDevRouter(): () => void {
       if (opts?.bench) params.set('bench', opts.bench);
       if (opts?.tour) params.set('tour', opts.tour);
       if (opts?.find) params.set('find', opts.find);
+      if (opts?.history) params.set('history', opts.history);
       if (opts?.fullscreen) params.set('fullscreen', '1');
       if (opts?.mode) params.set('mode', opts.mode);
       if (opts?.fixture) params.set('fixture', opts.fixture);

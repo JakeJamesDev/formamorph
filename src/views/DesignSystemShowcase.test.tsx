@@ -393,6 +393,23 @@ describe('nav rail reference', () => {
   });
 });
 
+describe('history controls reference', () => {
+  it('shows the desktop pill and the mobile icon over one sample history, touching no storage', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    await user.click(screen.getByRole('tab', { name: 'History Controls' }));
+
+    const region = screen.getByRole('region', { name: 'History Controls' });
+    const pill = within(region).getByRole('group', { name: 'History' });
+    expect(within(pill).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Undo', 'Redo', 'History']);
+    expect(within(within(region).getByRole('region', { name: 'Mobile sample' })).getAllByRole('button', { name: 'History' })).toHaveLength(1);
+
+    await user.click(within(pill).getByRole('button', { name: 'History' }));
+    expect(within(region).getByRole('dialog', { name: 'History' })).toBeInTheDocument();
+    expect(localStorage).toHaveLength(0);
+  });
+});
+
 describe('surface app bar reference', () => {
   it('draws the bar in order with a sample world name and its controls, touching no storage', async () => {
     const user = userEvent.setup();

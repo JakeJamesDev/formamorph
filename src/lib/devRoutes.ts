@@ -101,6 +101,9 @@ export type DevModal = (typeof DEV_MODALS)[number];
 /** The `attach=…` value that stages sample attachments on the game view. */
 export const DEV_ATTACH_SAMPLE = 'sample';
 
+/** The `history=…` value that opens the World Editor's History popover. */
+export const DEV_HISTORY_OPEN = 'open';
+
 /** Coverage ledger: tabbed surface → the sub-tabs the router can target (via `tab=…`). Kept in lockstep
  *  with each surface's own exported tab list by `devRouter.test.ts`. Add a surface's tabs here when wired. */
 export const DEV_MODAL_TABS = {
@@ -177,6 +180,8 @@ export const DEV_MODAL_TABS = {
   // since an unbuilt tab renders
   // disabled and has nothing to land on, so adding one here is part of building it.
   worldEditorBench: ['issues', 'triggers', 'aiContext', 'opening'],
+  // The World Editor's History popover: `history=open` opens it (`#dev?modal=worldEditor&history=open`).
+  worldEditorHistory: [DEV_HISTORY_OPEN],
   // The World Editor's Authoring Tour: `tour=…` opens the editor on a new blank world with the tour at that
   // step, every earlier step already taken with its example (`#dev?modal=worldEditor&tour=location-name`).
   worldEditorTour: [

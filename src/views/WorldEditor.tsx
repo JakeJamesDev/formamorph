@@ -1004,8 +1004,9 @@ const WorldEditorInner = ({
         <CardTitle className="sr-only">World Editor</CardTitle>
       </div>
       {modeSelect}
-      {/* Search and the Bench sit at the far right, in thumb reach. */}
+      {/* History, the Bench and Search sit at the far right, in thumb reach. */}
       <span className="ml-auto" />
+      <HistoryPill layout="icon" disabled={touring} />
       {benchButton}
       {findButton}
     </div>

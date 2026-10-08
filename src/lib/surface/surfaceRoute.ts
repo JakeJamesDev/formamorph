@@ -110,6 +110,7 @@ const LEDGERS: Record<TabKey, LedgerRoute> = {
   worldEditor: { parent: 'worldEditor' },
   worldEditorBench: { parent: 'worldEditor' },
   worldEditorTour: { ancestor: 'worldEditor' },
+  worldEditorHistory: { ancestor: 'worldEditor' },
   worldEditorLocations: { ancestor: 'worldEditor.locations' },
   worldEditorLocation: { ancestor: 'worldEditor.locations' },
   worldEditorEntity: { ancestor: 'worldEditor.entities' },
