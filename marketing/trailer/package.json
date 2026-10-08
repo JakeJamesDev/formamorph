@@ -8,6 +8,8 @@
   "scripts": {
     "studio": "remotion studio",
     "render": "node scripts/render.mjs",
+    "capture": "node scripts/capture.mjs",
+    "capture:diff": "node scripts/capture.mjs --diff",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

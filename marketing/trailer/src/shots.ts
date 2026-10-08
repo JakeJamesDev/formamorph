@@ -1,11 +1,19 @@
 import { staticFile } from 'remotion';
+import captures from '../captures.json';
 import type { Size } from './layout';
 
-/** A captured UI screenshot and its pixel size, for the camera math. */
+/** A captured UI screenshot and its layout size in CSS pixels, for the camera math. */
 export type Shot = Size & { src: string };
 
-/** Captured UI shots in `public/shots/`. */
+/** A shot from the capture list. The PNG holds `scale` times the layout size in each direction. */
+const shot = (id: string): Shot => {
+  const entry = captures.shots.find((item) => item.id === id);
+  if (!entry) throw new Error(`No shot "${id}" in captures.json`);
+  return { src: staticFile(`shots/${id}.png`), ...entry.viewport };
+};
+
+/** Captured UI shots in `public/shots/`, written by `npm run capture`. */
 export const SHOTS = {
-  library: { src: staticFile('shots/library.webp'), width: 1600, height: 900 },
-  game: { src: staticFile('shots/game.webp'), width: 1600, height: 900 },
-} satisfies Record<string, Shot>;
+  library: shot('library'),
+  game: shot('game'),
+};
