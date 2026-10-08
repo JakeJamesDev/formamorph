@@ -3,7 +3,7 @@ import {
   CANVAS_HISTORY_LIMIT, canvasHistoryFor, EMPTY_CANVAS_HISTORY, historyShortcut, recordCanvasEdit,
   redoCanvasEdit, undoCanvasEdit,
   type CanvasEdit, type CanvasHistory, type CanvasRestore, type CanvasWorld,
-} from "./canvasHistory";
+} from "./editorHistory";
 import {
   applyCanvasDrops, applyCanvasIntent, connectIntent, deleteIntent, directionIntent, updateIntent,
   multiDropIntents,

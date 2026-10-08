@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { canvasHistoryFor } from '@/lib/canvasHistory';
+import { canvasHistoryFor } from '@/lib/editorHistory';
 import { LocationsCanvasReference } from './LocationsCanvasReference';
 
 afterEach(() => vi.restoreAllMocks());

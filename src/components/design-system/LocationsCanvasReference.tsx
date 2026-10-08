@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meta } from '@/components/ui/typography';
 import { LocationCanvasWorkspace } from '@/managers/LocationCanvas';
-import type { CanvasHistory } from '@/lib/canvasHistory';
+import type { CanvasHistory } from '@/lib/editorHistory';
 import { EMPTY_LETTERS } from '@/lib/placementLetters';
 import { NO_OWNERS } from '@/lib/placeholderHomes';
 import {

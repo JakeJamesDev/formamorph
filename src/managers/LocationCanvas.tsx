@@ -47,7 +47,7 @@ import {
 import {
   canvasHistoryFor, historyShortcut, recordCanvasEdit, redoCanvasEdit, undoCanvasEdit,
   type CanvasHistory,
-} from '@/lib/canvasHistory';
+} from '@/lib/editorHistory';
 import { holderOf } from '@/lib/locationTree';
 import { autoArrange, autoArrangeAll } from '@/lib/locationArrange';
 import {
