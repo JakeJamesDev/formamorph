@@ -50,7 +50,8 @@ describe('World Editor save shortcut', () => {
     expect(press(field, { ctrlKey: true })).toBe(true);
     await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
     expect(storeWorld.mock.calls[0][0]).toMatchObject({ name: 'Renamed World' });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled());
+    // Saved shows only once the world reads clean.
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
   });
 
   it('saves with Cmd+S', async () => {

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench, saveAnnouncement as announced } from '@/test/worldEditorBench';
 import { downloadBlob } from '@/lib/downloadBlob';
+import { SAVED_HOLD_MS } from '@/components/editor/useSaveStatus';
+import WorldStorageService from '../services/WorldStorageService';
 
 /** The World Editor's desktop app bar: its order, the world actions per mode, the world name, and the footer. */
 
@@ -28,7 +30,8 @@ vi.mock('react-toastify', () => ({
 const WORLD = benchEditorWorld({});
 
 const button = (name: string | RegExp) => screen.getByRole('button', { name });
-const saveState = () => screen.queryByText(/^(Saved|Unsaved changes)$/);
+/** Save-state text drawn beside Save; the face's own stacked labels are not it. */
+const saveState = () => screen.queryByText(/^(Saved|Unsaved changes)$/, { ignore: '[data-save-face] *, script, style' });
 /** The bar's start column: back, the title, the chevron and the world's name. */
 const barStart = () => screen.getByRole('heading', { name: 'World Editor' }).parentElement!;
 const barChevron = () => barStart().querySelector<HTMLElement>('.lucide-chevron-right');
@@ -111,19 +114,58 @@ describe('World Editor app bar (desktop)', () => {
     expect(barStart().textContent).toBe('World Editor');
   });
 
-  it('shows no save-state text, and Save alone tracks whether the world has changes', async () => {
+  it('shows no save-state text beside Save, whose face walks Save, Saving…, Saved, then the muted Save', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let finish!: () => void;
+      vi.mocked(WorldStorageService.storeWorld).mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+      const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+      act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
+      expect(button('Save')).toBeDisabled();
+
+      rename('Sedge Landing', 'Brinewell');
+      expect(button('Save')).toBeEnabled();
+      expect(announced(button('Save'))).toBe('');
+
+      fireEvent.click(button('Save'));
+      const saving = await screen.findByRole('button', { name: 'Saving…' });
+      expect(saving).toHaveAttribute('aria-disabled', 'true');
+      expect(announced(saving)).toBe('Saving');
+
+      await act(async () => { finish(); });
+      const saved = await screen.findByRole('button', { name: 'Saved' });
+      expect(saved).toHaveClass('bg-success/20', 'text-foreground');
+      expect(saved).toBeEnabled();
+      expect(announced(saved)).toBe('Saved');
+
+      act(() => { vi.advanceTimersByTime(SAVED_HOLD_MS - 50); });
+      expect(button('Saved')).toBeInTheDocument();
+      act(() => { vi.advanceTimersByTime(50); });
+      expect(button('Save')).toBeDisabled();
+      expect(announced(button('Save'))).toBe('');
+      expect(saveState()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('ends Saved on an edit, back to the enabled Save', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
-    expect(saveState()).toBeNull();
-    expect(button('Save')).toBeDisabled();
-
     rename('Sedge Landing', 'Brinewell');
-    expect(saveState()).toBeNull();
-    expect(button('Save')).toBeEnabled();
-
     await save();
-    expect(saveState()).toBeNull();
-    expect(button('Save')).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
+
+    rename('Brinewell', 'Saltmarsh');
+    expect(button('Save')).toBeEnabled();
+    expect(button('Save')).not.toHaveClass('bg-success/20');
+  });
+
+  it('stacks every face label and shows only the current one', () => {
+    renderWorldEditorBench(WORLD, 'simple');
+    const faces = [...button('Save').querySelectorAll<HTMLElement>('[data-save-face]')];
+    expect(faces.map((f) => f.textContent)).toEqual(['Save', 'Saving…', 'Saved', 'Failed']);
+    expect(faces.filter((f) => f.getAttribute('aria-hidden') === 'false').map((f) => f.textContent)).toEqual(['Save']);
   });
 
   it('draws no footer on Overview, and only the tab\'s own actions on Entities', () => {

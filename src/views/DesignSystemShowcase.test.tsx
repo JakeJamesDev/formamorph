@@ -430,11 +430,19 @@ describe('surface app bar reference', () => {
     order.slice(1).forEach((el, i) => {
       expect(order[i].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
-    expect(within(region).queryByText(/^(Saved|Unsaved changes)$/)).toBeNull();
+    // The Save face's own stacked labels are not save-state text.
+    expect(within(region).queryByText(/^(Saved|Unsaved changes)$/, { ignore: '[data-save-face] *' })).toBeNull();
     expect(within(region).queryByRole('radiogroup')).toBeNull();
 
     await user.click(within(region).getByRole('button', { name: 'Save' }));
     expect(within(region).getByText('Last action: Save.')).toBeInTheDocument();
+    expect(within(region).getByRole('button', { name: 'Saving…' })).toBeInTheDocument();
+    expect(await within(region).findByRole('button', { name: 'Saved' }, { timeout: 2000 })).toBeInTheDocument();
+
+    await user.click(within(region).getByRole('checkbox', { name: 'Fail Saves' }));
+    await user.click(within(region).getByRole('button', { name: 'Make a Change' }));
+    await user.click(within(region).getByRole('button', { name: 'Save' }));
+    expect(await within(region).findByRole('button', { name: 'Failed' }, { timeout: 2000 })).toBeEnabled();
 
     await user.click(within(region).getByRole('button', { name: 'Save options' }));
     await user.click(await screen.findByRole('button', { name: 'Export World' }));

@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Ctrl+B and Ctrl+I make text bold or italic in fields with a formatting toolbar.** On a Mac, use Cmd+B and Cmd+I. Press the key again to remove the formatting. The **Bold** and **Italic** tooltips show the shortcut.
   - **The World Editor now has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.
   - **The World Editor's Save button now has a menu with Export World, and Optimize Images is its own icon.** Select the arrow beside **Save** to export, even when Save is dim. In Advanced mode, the **Optimize Images** icon shows a spinner, and its tooltip shows progress. The **More world actions** menu is gone.
+  - **The World Editor's Save button shows Saving…, then Saved, and fades back to a dim Save.** A failed save shows **Failed** in red until a save works; select it to try again. On mobile, the Save icon changes the same way.
 
 #### 🔧 Fixed
 

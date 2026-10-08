@@ -996,7 +996,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 - The search field sits on the window's center line when space allows, and never overlaps the side columns. The bar splits into three equal columns, and the field is at most 26rem wide.
 - The end column always fits its controls. When it needs more than a third of the bar, the field narrows to a floor of 10rem and moves off center.
 - A plain line splits the mode from the actions after it.
-- The bar shows no save-state text. The primary action's enabled state is the only save signal.
+- The bar shows no save-state text beside Save. The Save face is the only save signal: it shows Save, Saving…, Saved or Failed.
 - The subject follows the title after a 12px muted chevron, in the body role, muted. A blank subject shows the title alone, with no chevron. A long subject truncates with "…" before the center group, and a cut-off one shows its full text in the shared tooltip.
 - A list card's footer under the bar holds only the open tab's own actions, and draws nothing on a tab with none.
 
@@ -1007,6 +1007,8 @@ The live reference draws the World Editor's registry as the rail beside sample p
 - The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the History pill; the Mode Select; Optimize Images as an icon button in Advanced; the Test Bench; Save with its menu.
 - The title is the surface's name. The world is the surface's subject, so its name follows the title. No tab's open item ever does.
 - Save is a split button. The face saves, and the chevron opens a menu that holds Export World in both modes.
+- Every Save label stacks in one grid cell, so the face is as wide as **Saving…** in every state. Saved uses `success` at 20% with the normal text color. After about 2 s it eases over 700ms to the muted Save. Failed uses the destructive fill and does not fade.
+- A polite live region beside Save announces Saving, Saved and Save failed. Mobile's icon-only face swaps its icon the same way.
 - Optimize Images shows a spinner while it runs, and its tooltip shows the progress.
 - Tour anchors, tutorial notes and Take Me There targets ride the controls they always named.
 
@@ -1020,7 +1022,8 @@ The live reference draws the World Editor's registry as the rail beside sample p
 | The mode | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx) |
 | The cut-off tooltip on the subject | `TruncatedText` in [`TruncatedText.tsx`](../src/components/TruncatedText.tsx) |
 | The search field | `EditorFindBar` with `layout="docked"` in [`EditorFindBar.tsx`](../src/components/editor/EditorFindBar.tsx) |
-| Save and its menu | `SplitButton` with `variant="default"` and `side="bottom"` in [`split-button.tsx`](../src/components/ui/split-button.tsx) |
+| Save, its states and its menu | `SaveSplitButton` in [`SaveSplitButton.tsx`](../src/components/editor/SaveSplitButton.tsx), on `SplitButton` in [`split-button.tsx`](../src/components/ui/split-button.tsx) |
+| The save state | `useSaveStatus` in [`useSaveStatus.ts`](../src/components/editor/useSaveStatus.ts) |
 | The World Editor's bar | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
 | Isolated reference | [`SurfaceAppBarReference.tsx`](../src/components/design-system/SurfaceAppBarReference.tsx) |
 
@@ -1039,13 +1042,16 @@ The bar is desktop-only. On mobile the surface keeps its card header, and its fo
 | Searching | The field shows the match count, and the arrows step through the matches. Escape clears it. |
 | Search expanded | The full Find and Replace bar covers the row from the field's slot. The other controls do not move. |
 | Unsaved changes | The Save face is enabled. No text says so. |
-| Saved | The Save face is disabled. The chevron stays enabled. |
+| Saving | A spinner and **Saving…**. A click does nothing. |
+| Just saved | A check and **Saved** on the success tint. An edit returns the face to Save. |
+| Saved | After the hold the face fades to the muted, disabled Save. The chevron stays enabled. |
+| Save failed | An alert icon and **Failed** on the destructive fill, enabled. Its tooltip says the save failed and a click tries again. It stays until a save succeeds. |
 | Simple | The Save menu holds Export World. No other world action shows. |
 | Advanced | The Save menu holds Export World. Optimize Images is an icon button before the Test Bench. |
 | Optimizing | The Optimize Images icon turns into a spinner, and its tooltip shows the count. A second click does nothing. |
 | Tour running | The Mode Select is disabled; its tooltip says to end the tour. |
 
-The live reference draws the World Editor's bar over sample controls and a sample world name. Every control changes only the reference's own state, and it never reads or writes authored worlds, saves, library data, or storage.
+The live reference draws the World Editor's bar over sample controls and a sample world name. Its Save runs a short sample save through every state; **Make a Change** gives it something to save, and **Fail Saves** makes the next save fail. Every control changes only the reference's own state, and it never reads or writes authored worlds, saves, library data, or storage.
 
 ### Writing review
 

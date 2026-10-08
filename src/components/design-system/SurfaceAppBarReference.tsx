@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { ChevronRight, FlaskConical, ImageDown, Save } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronRight, FlaskConical, ImageDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SplitButton } from '@/components/ui/split-button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
+import { useSaveStatus } from '@/components/editor/useSaveStatus';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModeSelect } from '@/components/ui/mode-select';
 import { Tip } from '@/components/ui/tooltip';
@@ -19,12 +21,29 @@ import type { Placeholder } from '@/types';
 const SAMPLE_WORLD_NAME = 'Sedge Landing';
 const NO_TARGETS: SearchTarget[] = [];
 const NO_PLACEHOLDERS: Placeholder[] = [];
+/** How long the sample save runs, so Saving… shows. */
+const SAMPLE_SAVE_MS = 600;
 
 /** The World Editor's app bar over sample controls. Every control changes only this reference's own state. */
 export function SurfaceAppBarReference() {
   const [mode, setMode] = useState<EditorMode>('simple');
   const [action, setAction] = useState('No action yet.');
   const [searchExpanded, setSearchExpanded] = useState(false);
+  // A sample world: it starts with a change, and a save only flips these flags after a short wait.
+  const [dirty, setDirty] = useState(true);
+  const [failNext, setFailNext] = useState(false);
+  const save = useSaveStatus(dirty);
+  const saveTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(saveTimer.current), []);
+  const sampleSave = () => {
+    setAction('Save.');
+    void save.track(() => new Promise<boolean>((resolve) => {
+      saveTimer.current = window.setTimeout(() => {
+        if (!failNext) setDirty(false);
+        resolve(!failNext);
+      }, SAMPLE_SAVE_MS);
+    }));
+  };
   return (
     <Card role="region" aria-labelledby="surface-app-bar-title">
       <CardHeader>
@@ -85,26 +104,27 @@ export function SurfaceAppBarReference() {
                       <FlaskConical className="h-4 w-4" />
                     </Button>
                   </Tip>
-                  <SplitButton
-                    variant="default"
-                    side="bottom"
-                    align="end"
-                    icon={<Save className="mr-2 h-4 w-4" />}
-                    label="Save"
-                    faceTip="Save (Ctrl+S)"
+                  <SaveSplitButton
+                    status={save.status}
+                    onSave={sampleSave}
                     menu={[{
                       label: 'Export World',
                       icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
                       onClick: () => setAction('Export World.'),
                     }]}
-                    menuLabel="Save options"
-                    onClick={() => setAction('Save.')}
                   />
                 </>
               )}
             />
           </div>
           <p className="p-4 text-meta text-muted-foreground">The editor&apos;s panels start here.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <Button variant="secondary" size="sm" onClick={() => setDirty(true)}>Make a Change</Button>
+          <label htmlFor="app-bar-fail-save" className="flex items-center gap-2 text-label">
+            <Checkbox id="app-bar-fail-save" checked={failNext} onCheckedChange={(value) => setFailNext(value === true)} />
+            Fail Saves
+          </label>
         </div>
         <p className="text-meta text-muted-foreground" aria-live="polite">Last action: {action}</p>
       </CardContent>

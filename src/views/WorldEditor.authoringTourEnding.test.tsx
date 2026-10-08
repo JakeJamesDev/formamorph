@@ -51,7 +51,8 @@ const PLAY_STEP = 'Play Your World';
 
 const note = (title: string) => screen.getByRole('dialog', { name: title });
 const tourBar = () => screen.queryByRole('region', { name: 'Authoring Tour' });
-const saveButton = () => screen.getByRole('button', { name: 'Save' });
+/** The Save face, which reads Saved for a moment after the tour's own save. */
+const saveButton = () => screen.getByRole('button', { name: /^Saved?$/ });
 
 /** Waits out the tutorial layer's appear delay, so a note that was going to show has had its chance. */
 const pastAppearDelay = () => act(() => new Promise((r) => { setTimeout(r, TUTORIAL_APPEAR_DELAY_MS + 200); }));

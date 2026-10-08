@@ -203,6 +203,16 @@ Your edits stay in the editor until you select **Save**. Nothing saves by itself
 
 On desktop, **Save** in the bar at the top is on when you have changes to save and off when you don't.
 
+**Save** shows how a save goes:
+
+| Save shows | Meaning |
+|---|---|
+| ⏳ **Saving…** | The save is running. |
+| ✅ **Saved** | The save worked. After about 2 seconds, **Save** turns dim again. |
+| ⚠️ **Failed**, in red | The save didn't work. A message says why. Select **Failed** to try again. It stays until a save works. |
+
+On mobile, the **Save** icon changes the same way, without the words.
+
 When you leave with unsaved changes, the **Unsaved changes** dialog asks what to do:
 
 - **Save & Exit** saves, then closes the editor.
