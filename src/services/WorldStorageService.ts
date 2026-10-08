@@ -294,6 +294,16 @@ class WorldStorageService {
   }
 
   /**
+   * Whether a stored world is a bundled default that no save has edited, so it still takes bundled updates.
+   *
+   * @param worldId - The local record's id
+   */
+  async isUneditedDefault(worldId: string): Promise<boolean> {
+    const meta = await this.readMetaOf(worldId);
+    return meta?.sourceHash !== undefined && !meta.dirty;
+  }
+
+  /**
    * The local worlds holding a copy that follows `libraryId`.
    *
    * This is what a component's Compatible Worlds section is derived from. `sourceId` is the world's own

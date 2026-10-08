@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The World Editor now has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.
   - **The World Editor's Save button now has a menu with Export World, and Optimize Images is its own icon.** Select the arrow beside **Save** to export, even when Save is dim. In Advanced mode, the **Optimize Images** icon shows a spinner, and its tooltip shows progress. The **More world actions** menu is gone.
   - **The World Editor's Save button shows Saving…, then Saved, and fades back to a dim Save.** A failed save shows **Failed** in red until a save works; select it to try again. On mobile, the Save icon changes the same way.
+  - **The World Editor saves on its own after about 300 characters or 30 actions, or after a 30-second pause.** Turn it off with **Auto Save** in the **Save** menu. A new world waits for its first save by hand. A failed auto save pauses until you save. History keeps its Saved mark.
 - **🛠️ Developer tooling**
   - **Trailer:**
     - **`marketing/trailer/` renders a 20-second proof trailer to wide and tall MP4s with one command.** It is a Remotion package with its own dependencies and scripts. `npm run render` checks each file's size, frame rate and length.

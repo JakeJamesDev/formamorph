@@ -18,9 +18,9 @@ On desktop, the bar at the top of the editor holds the controls that act on the 
 | Center | The **Search World** box |
 | Right | The **Undo**, **Redo** and **History** controls, the mode select, **Optimize Images** (Advanced mode only), the Test Bench, and **Save** |
 
-**Save** has an arrow beside it. Select the arrow to open a menu with **Export World**, in both modes. The arrow works when **Save** is dim. In Advanced mode, **Optimize Images** is an icon button. It shows a spinner while it runs, and its tooltip shows the progress. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
+**Save** has an arrow beside it. Select the arrow to open a menu with **Export World** and the **Auto Save** checkbox, in both modes. The arrow works when **Save** is dim. In Advanced mode, **Optimize Images** is an icon button. It shows a spinner while it runs, and its tooltip shows the progress. The footer under the list holds only the tab's own actions, on Entities and Dictionary.
 
-On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Stats, Entities, Locations and Traits, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Optimize Images** (Advanced mode only) and the **Save** icon with its arrow. The arrow opens **Export World**.
+On mobile, the header holds the back arrow and the mode select. At the right are **History**, the Test Bench and **Find and replace**. Select **Sections** under the header to pick a tab. The list has the rail's order and lines: **Overview** alone, then Stats, Entities, Locations and Traits, then Dictionary and Placeholders. The footer holds **Save to Library** on Entities and Dictionary. At its right are **Optimize Images** (Advanced mode only) and the **Save** icon with its arrow. The arrow opens **Export World** and **Auto Save**.
 
 Each tab has its own page.
 
@@ -121,6 +121,8 @@ An edit after an undo erases the undone Steps. The list never branches.
 
 **Save** keeps your history. You can undo past the last save. The world then counts as unsaved again, and **Save** turns on. Undo back to the saved point, and **Save** turns off.
 
+An auto save doesn't move **Saved** and doesn't split a Step. Text you type across an auto save still undoes in one step.
+
 ### Text fields
 
 In a prompt field, **Ctrl+Z** undoes your typing in that field first. When the field has nothing left to undo, the next press undoes the world. A record's name is a prompt field too.
@@ -197,9 +199,18 @@ The tour goes through the tabs in order: **Overview**, **Locations**, **Entities
 - If you delete an item the tour made, the tour goes back to the step that made it.
 
 ## Saving and Discarding
-<!-- keywords: does it autosave, edits not kept, work disappeared, prompt on closing, new world vanished, manual saving, confirm exit -->
+<!-- keywords: does it autosave, auto save, turn off autosave, edits not kept, work disappeared, prompt on closing, new world vanished, manual saving, confirm exit -->
 
-Your edits stay in the editor until you select **Save**. Nothing saves by itself, except when you select **Next** in the Authoring Tour. A new world isn't stored until its first save.
+With **Auto Save** on, the editor saves your world by itself:
+
+- After about 300 characters of typing, or about 30 actions such as a toggle, an add or a delete.
+- After 30 seconds with no edit, when any change is not saved.
+
+**Save** and **Ctrl+S** still save at once. A new world isn't stored until you save it once yourself. After that, it auto saves too. A world that comes with Formamorph also waits for one save by you. Until then, it keeps getting the updates that come with the app. Auto save waits while the Authoring Tour runs, because each **Next** saves the world.
+
+**Auto Save** is on by default and applies to every world. To turn it off, select the arrow beside **Save**, then clear **Auto Save**. With it off, your edits stay in the editor until you select **Save**.
+
+If an auto save fails, a message says why and **Save** shows **Failed**. Auto save then stops until a save that you start works.
 
 On desktop, **Save** in the bar at the top is on when you have changes to save and off when you don't.
 

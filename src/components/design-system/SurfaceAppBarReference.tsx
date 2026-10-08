@@ -32,6 +32,7 @@ export function SurfaceAppBarReference() {
   // A sample world: it starts with a change, and a save only flips these flags after a short wait.
   const [dirty, setDirty] = useState(true);
   const [failNext, setFailNext] = useState(false);
+  const [autoSave, setAutoSave] = useState(true);
   const save = useSaveStatus(dirty);
   const saveTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(saveTimer.current), []);
@@ -111,6 +112,13 @@ export function SurfaceAppBarReference() {
                       label: 'Export World',
                       icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
                       onClick: () => setAction('Export World.'),
+                    }, {
+                      label: 'Auto Save',
+                      checked: autoSave,
+                      onClick: () => {
+                        setAutoSave(!autoSave);
+                        setAction(autoSave ? 'Auto Save off.' : 'Auto Save on.');
+                      },
                     }]}
                   />
                 </>

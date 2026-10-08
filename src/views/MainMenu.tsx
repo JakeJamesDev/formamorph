@@ -818,8 +818,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * round-trip for the payload is the only part swapped out.
    *
    * **The invariant this rests on:** at the moment the editor closes, the store equals what is on disk —
-   * Save persists it, and Exit Without Saving has already run `discardChanges` to roll it back. A future
-   * exit path that leaves the two apart (an autosave, a recovery flow) has to read the payload back here.
+   * Save persists it, and Exit Without Saving has already run `discardChanges` to roll it back. An auto save
+   * moves the baseline it rolls back to, and Exit waits for a running one, so both still land on disk's copy.
+   * A future exit path that leaves the two apart (a recovery flow) has to read the payload back here.
    */
   const resyncSelectedWorld = useCallback((list: WorldRecord[], worldId: string) => {
     const record = list.find(w => w.id === worldId);

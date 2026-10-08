@@ -50,6 +50,8 @@ import { Separator } from '@/components/ui/separator';
 import { ModeSelect } from '@/components/ui/mode-select';
 import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
 import { useSaveStatus } from '@/components/editor/useSaveStatus';
+import { useAutoSave } from '@/components/editor/useAutoSave';
+import { useSettings } from '@/contexts/SettingsContext';
 import { ImageDown, Loader2, Search, ChevronRight } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
@@ -164,8 +166,9 @@ const WorldEditorInner = ({
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     setLocations, setEntities, setDictionaries,
-    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
+    isWorldDirty, isWorldStored, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
+  const { editorAutoSave, setEditorAutoSave } = useSettings();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
   // A Formaquestion Tool and the code test read the world as the editor holds it, unsaved edits included.
@@ -603,10 +606,10 @@ const WorldEditorInner = ({
   });
 
   // `announce` false keeps a good save silent: the tour saves on every Next, and a toast per step is noise.
-  // The Save face walks every save through its states, the tour's quiet ones included.
+  // The Save face walks every save through its states, the tour's quiet ones and auto saves included.
   const saveStatus = useSaveStatus(isWorldDirty);
-  const saveWorldWith = (announce: boolean) => saveStatus.track(async () => {
-    const result = await saveWorldCtx();
+  const runSave = (announce: boolean, markSaved: boolean) => saveStatus.track(async () => {
+    const result = await saveWorldCtx({ markSaved });
     if (result.ok) {
       if (announce) toast.success('World saved successfully!');
       // The links made this session are now on disk, so they stop reading as pending.
@@ -616,6 +619,17 @@ const WorldEditorInner = ({
     }
     return result.ok;
   });
+  const historyMoves = useWorldHistoryMoves();
+  // The tour saves on every Next itself.
+  const autoSave = useAutoSave({
+    enabled: editorAutoSave && !touring,
+    worldId,
+    stored: isWorldStored,
+    dirty: isWorldDirty,
+    onChange: historyMoves.onChange,
+    save: () => runSave(false, false),
+  });
+  const saveWorldWith = (announce: boolean) => autoSave.manual(() => runSave(announce, true));
   const saveWorld = () => saveWorldWith(true);
   const saveWorldQuietly = () => saveWorldWith(false);
   // The listener reads the latest render's save and dirty flag without re-subscribing every render.
@@ -633,7 +647,6 @@ const WorldEditorInner = ({
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
-  const historyMoves = useWorldHistoryMoves();
   // The stack belongs to one visit: either host closes the editor by unmounting it.
   const clearHistory = historyMoves.clear;
   useEffect(() => clearHistory, [clearHistory]);
@@ -1030,6 +1043,10 @@ const WorldEditorInner = ({
     label: 'Export World',
     icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
     onClick: exportCurrentWorld,
+  }, {
+    label: 'Auto Save',
+    checked: editorAutoSave,
+    onClick: () => setEditorAutoSave(!editorAutoSave),
   }];
   const saveProps = { status: saveStatus.status, onSave: () => { void saveWorld(); }, menu: saveMenu };
   // Save's face is the only save signal; the bar names the world being edited.
@@ -1350,8 +1367,9 @@ const WorldEditorInner = ({
         onSave={async () => { if (await saveWorld()) afterLeave.current(); }}
         // The managers write edits straight into the store as you type, so leaving has to actively roll them
         // back — closing alone would keep them live for the next time this world is opened. The links made
-        // this session roll back with them; the library items they named stay.
-        onExit={() => { discardChanges(); linking.clearPendingLinks(); afterLeave.current(); }}
+        // this session roll back with them; the library items they named stay. A running save lands first, so
+        // the rollback reaches the world it wrote and the store still matches disk when the editor closes.
+        onExit={() => autoSave.afterSaves(() => { discardChanges(); linking.clearPendingLinks(); afterLeave.current(); })}
       />
       {worldExportDialog}
       {downscaleDialog}

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -11,7 +12,11 @@ export interface SplitButtonAction {
   onClick: () => void;
   /** Sized `mr-2 h-4 w-4 shrink-0` by the caller, as the face icon is. */
   icon?: ReactNode;
+  /** Draws a checkbox row in place of the icon. `onClick` toggles it, and the menu stays open. */
+  checked?: boolean;
 }
+
+const MENU_ITEM = 'justify-start text-meta h-8';
 
 /**
  * A joined pair: the face runs the action the surface calls for, and the chevron opens the rest.
@@ -81,17 +86,22 @@ export function SplitButton({
         </Tip>
         <PopoverContent side={side} align={align} className="w-56 p-1">
           <div className="flex flex-col">
-            {menu.map((action) => (
+            {menu.map((action) => (action.checked === undefined ? (
               <Button
                 key={action.label}
                 variant="ghost"
-                className="justify-start text-meta h-8"
+                className={MENU_ITEM}
                 onClick={() => { setOpen(false); action.onClick(); }}
               >
                 {action.icon}
                 {action.label}
               </Button>
-            ))}
+            ) : (
+              <label key={action.label} className={cn(buttonVariants({ variant: 'ghost' }), MENU_ITEM, 'cursor-pointer')}>
+                <Checkbox className="mr-2" checked={action.checked} onCheckedChange={action.onClick} />
+                {action.label}
+              </label>
+            )))}
           </div>
         </PopoverContent>
       </Popover>

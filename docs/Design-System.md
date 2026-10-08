@@ -1006,7 +1006,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 
 - The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the History pill; the Mode Select; Optimize Images as an icon button in Advanced; the Test Bench; Save with its menu.
 - The title is the surface's name. The world is the surface's subject, so its name follows the title. No tab's open item ever does.
-- Save is a split button. The face saves, and the chevron opens a menu that holds Export World in both modes.
+- Save is a split button. The face saves, and the chevron opens a menu that holds Export World and the Auto Save checkbox in both modes. A checkbox row toggles in place and leaves the menu open.
 - Every Save label stacks in one grid cell, so the face is as wide as **Saving…** in every state. Saved uses `success` at 20% with the normal text color. After about 2 s it eases over 700ms to the muted Save. Failed uses the destructive fill and does not fade.
 - A polite live region beside Save announces Saving, Saved and Save failed. Mobile's icon-only face swaps its icon the same way.
 - Optimize Images shows a spinner while it runs, and its tooltip shows the progress.
@@ -1046,8 +1046,8 @@ The bar is desktop-only. On mobile the surface keeps its card header, and its fo
 | Just saved | A check and **Saved** on the success tint. An edit returns the face to Save. |
 | Saved | After the hold the face fades to the muted, disabled Save. The chevron stays enabled. |
 | Save failed | An alert icon and **Failed** on the destructive fill, enabled. Its tooltip says the save failed and a click tries again. It stays until a save succeeds. |
-| Simple | The Save menu holds Export World. No other world action shows. |
-| Advanced | The Save menu holds Export World. Optimize Images is an icon button before the Test Bench. |
+| Simple | The Save menu holds Export World and Auto Save. No other world action shows. |
+| Advanced | The Save menu holds Export World and Auto Save. Optimize Images is an icon button before the Test Bench. |
 | Optimizing | The Optimize Images icon turns into a spinner, and its tooltip shows the count. A second click does nothing. |
 | Tour running | The Mode Select is disabled; its tooltip says to end the tour. |
 

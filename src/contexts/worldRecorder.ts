@@ -8,6 +8,7 @@ import {
   record, recordFieldMove, replaceRecords, settleKey, WORLD_SLICES,
   type EditorHistory, type SliceEdit, type SliceName, type Step, type StepKey, type WorldSlices,
 } from '@/lib/editorHistory';
+import type { CommittedChange } from '@/lib/changeMeter';
 
 /**
  * Records the open world's history after each commit. Every action is a deferred setter, so nothing can be
@@ -121,6 +122,8 @@ export interface WorldHistoryControls {
   clear(): void;
   /** Hears each move as it happens. Returns the call that stops listening. */
   onMove(listener: (move: HistoryMoveEvent) => void): () => void;
+  /** Hears each change to the world the recorder sees: recorded writes and moves, never loads or save stamps. */
+  onChange(listener: (change: CommittedChange) => void): () => void;
   /** Opens a group: every write until `endGroup` is one Step, labeled when a label is given. */
   beginGroup(label?: string): void;
   /** Closes the group after every write already queued has committed, so the gesture's last one lands inside. */
@@ -149,6 +152,14 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     last.current = { recorded: false };
     restored.current = NO_TEXTS;
   }, [store]);
+  const changeListeners = useRef(new Set<(change: CommittedChange) => void>());
+  const emitChange = useCallback((change: CommittedChange) => {
+    for (const listener of changeListeners.current) listener(change);
+  }, []);
+  const onChange = useCallback((listener: (change: CommittedChange) => void) => {
+    changeListeners.current.add(listener);
+    return () => { changeListeners.current.delete(listener); };
+  }, []);
 
   useLayoutEffect(() => {
     const before = seen.current;
@@ -186,12 +197,17 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     if (fieldMove) {
       store.set(fieldMove);
       // A join is a recorded write that a follow pass joins too; a cursor move is not.
-      last.current = fieldMove.cursor === was.cursor ? { recorded: true, tick: at } : { recorded: false };
+      const joined = fieldMove.cursor === was.cursor;
+      last.current = joined ? { recorded: true, tick: at } : { recorded: false };
+      emitChange({ edits, merged: joined });
       return;
     }
-    store.set(record(was, edits, { tick: at, key: settled }));
+    const next = record(was, edits, { tick: at, key: settled });
+    store.set(next);
     last.current = { recorded: true, tick: at };
-  }, [slices, worldId, store, reset]);
+    // A new Step holds the edits as given; a merge combines them into the Step before.
+    emitChange({ edits, merged: next.steps[next.cursor - 1]?.edits !== edits });
+  }, [slices, worldId, store, reset, emitChange]);
 
   // After the load's commit: its baseline is set, so the stack starts over and recording resumes.
   useLayoutEffect(() => {
@@ -231,13 +247,18 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     if (!moved) return;
     intent.current = { ...intent.current, history: true };
     restored.current = movedTexts(moved.steps);
+    const from = seen.current;
     // A second move before the commit reads the world this one leaves.
     seen.current = { ...seen.current, ...moved.restore };
+    const edits = (Object.keys(moved.restore) as SliceName[])
+      .map((slice) => diffSlice(slice, from[slice], seen.current[slice]))
+      .filter((edit): edit is SliceEdit => edit !== null);
+    if (edits.length) emitChange({ edits, merged: false });
     const write = settersRef.current as Record<SliceName, (value: unknown) => void>;
     for (const slice of Object.keys(moved.restore) as SliceName[]) write[slice](moved.restore[slice]);
     store.set(moved.history);
     for (const listener of moveListeners.current) listener({ steps: moved.steps, world: seen.current });
-  }, [store]);
+  }, [store, emitChange]);
   const undo = useCallback(() => jump(store.get().cursor - 1), [jump, store]);
   const redo = useCallback(() => jump(store.get().cursor + 1), [jump, store]);
 
@@ -276,8 +297,8 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   }, [beginGroup, endGroup]);
 
   const controls = useMemo<WorldHistoryControls>(
-    () => ({ store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, beginGroup, endGroup, batch }),
-    [store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, beginGroup, endGroup, batch],
+    () => ({ store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, onChange, beginGroup, endGroup, batch }),
+    [store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, onChange, beginGroup, endGroup, batch],
   );
   return { intent, controls, disarm, beginSave };
 }
