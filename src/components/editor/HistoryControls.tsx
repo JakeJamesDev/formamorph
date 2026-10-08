@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { MENU_ROW } from '@/components/menuRow';
+import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { cn } from '@/lib/utils';
 
 /** What the controls read: the rows to list and where the cursor and the Saved marker stand. */
@@ -99,12 +100,14 @@ const PILL_FACE = 'h-8 rounded-none border-y border-l px-2.5';
  * The app bar's history control. Desktop is a split pill: Undo, Redo and a chevron that opens the list.
  * Mobile is one History icon whose popover carries Undo and Redo in its head.
  */
-export function HistoryControls({ history, layout, disabled = false, openRequest = false }: {
+export function HistoryControls({ history, layout, disabled = false, openRequest = false, fieldAttributes }: {
   history: HistoryView;
   layout: 'pill' | 'icon';
   disabled?: boolean;
   /** Opens the list whenever it turns true (the dev route). */
   openRequest?: boolean;
+  /** The Take Me There attribute for the control: on the pill's group, or on the icon button. */
+  fieldAttributes?: TargetAttribute;
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => { if (openRequest && !disabled) setOpen(true); }, [openRequest, disabled]);
@@ -121,6 +124,7 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
           aria-label="History"
           aria-pressed={open}
           disabled={disabled}
+          {...(pill ? undefined : fieldAttributes)}
         >
           {pill ? <ChevronDown className="h-3.5 w-3.5" /> : <History className="h-4 w-4" />}
         </Button>
@@ -131,7 +135,7 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {pill ? (
-        <div className="flex items-center" role="group" aria-label="History">
+        <div className="flex items-center" role="group" aria-label="History" {...fieldAttributes}>
           <HistoryFace move="undo" history={history} disabled={disabled} size="sm" className={cn(PILL_FACE, 'rounded-l-md')} />
           <HistoryFace move="redo" history={history} disabled={disabled} size="sm" className={PILL_FACE} />
           {trigger}

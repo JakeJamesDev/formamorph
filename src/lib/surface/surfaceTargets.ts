@@ -21,7 +21,7 @@ export const SURFACE_TARGETS = {
   menu: ['import-save'],
   backup: ['start-backup', 'start-restore'],
   avatar: ['finalize-character'],
-  worldEditor: ['editor-mode', 'find-button'],
+  worldEditor: ['editor-mode', 'find-button', 'history'],
   'worldEditor.overview': ['thumbnail', 'background-music', 'custom-prompts'],
   'worldEditor.stats': ['list-toolbar'],
   'worldEditor.entities': ['list-toolbar'],

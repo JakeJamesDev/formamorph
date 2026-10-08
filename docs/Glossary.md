@@ -170,6 +170,8 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Entry](World-Editor-Dictionary#the-entry-panel) | One piece of lore: **Trigger Keywords** and the **Value** the AI gets |
 | [Scan Depth](World-Editor-Dictionary#matching) | How many earlier messages the game scans for an entry's keywords |
 | [Semantic Lore](World-Editor-Dictionary#semantic-lore) | Activates dictionary entries by meaning, as well as by keyword |
+| [Step](WorldEditor#what-makes-one-step) | One edit in the World Editor that **Undo** takes back as a whole: a run of typing, a drag or a multi-part change |
+| [History Popover](WorldEditor#the-history-list) | The app-bar control that opens the list of Steps, from **World opened** to the newest. Select a row to move the world to that point. |
 | [Test Bench](Test-Bench) | The World Editor's place to check a world without the AI |
 | [Bench Popover](Test-Bench#the-bench-popover) | The first view of the Test Bench, with the World Doctor's list only |
 | [Instrument](Test-Bench#the-full-panel) | One tab of the Test Bench. Each one answers one question about your world. |
