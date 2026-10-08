@@ -16,7 +16,7 @@ The History view (Q12, Q15, Q16, Q20). The prototype is on branch `prototype/edi
 - Desktop: the split pill at the head of the app bar's end slot gains its third face, a chevron that opens the popover. The three faces are joined; the chevron carries a "History" tip and reads pressed while open.
 - Mobile: one History icon in the header, between the mode select and the Bench. Its popover head holds Undo and Redo.
 - The popover is not portaled, like the Bench popover, so it works inside the in-game host. It lists the fixed World opened head, every Step with its label, the Saved marker, and the dimmed future, with the current Step marked. Rows use the menu row style; the list scrolls inside the popover.
-- Clicking any row jumps there through the hook.
+- Clicking any row jumps there through the hook. Note from ticket 02: `jump` writes against the recorder's last-seen world, so a write in the same handler before a jump is overwritten for shared slices. A row click must not write anything else in its handler.
 - Dev route: `#dev?modal=worldEditor&history=open` opens the popover. The route registry lists it.
 - The split pill is a new visual pattern. The Design System gets a pattern entry and the showcase a reference.
 

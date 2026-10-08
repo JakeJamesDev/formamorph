@@ -113,6 +113,10 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q19 | Drags are one Step through an explicit group begin and end. Keyboard nudges and stepper clicks follow the pause rule. |
 | Q20 | Undone Steps are shown dimmed and clickable. |
 | Q21 | During the Authoring Tour, Steps and Saved markers are recorded, but the chords, the pill, the popover and reveal are disabled until the tour ends. |
+| Q22 | Merge rules only merge; none splits. Order: open group, then key match within the pause, then same tick. A keyed write with a non-matching key in the same tick folds into that tick's Step, which keeps its first write's key. |
+| Q23 | A key or tick merge never crosses the Saved marker. Undo, redo and jump seal the top Step, so the next write starts a new one. An open group still swallows. |
+| Q24 | When the cap drops the oldest Step, its edits fold into the next Step's undo, label unchanged, so the World opened row still restores the loaded baseline. |
+| Q25 | Modals opened from the editor that report no surface (image replace, code rename offer, Replace All confirm) get surface ids, and the listener also yields to any open modal above the editor as a backstop. Ticket 05. |
 
 ### The history module
 

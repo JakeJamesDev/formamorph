@@ -17,7 +17,8 @@ Ctrl+Z inside a prompt field undoes the field's own text first, and hands the pr
 - The field's value sync marks the writes Lexical's own history makes by reading the historic tag on the update, and passes the mark with the change. The recorder treats a marked write as a cursor move on the Step it matches by key and content, and as a plain write otherwise.
 - A world undo or redo that restores a field's value rebuilds the field with the history-merge tag, so the restore never pushes a Lexical entry.
 - The listener yields while the event is composing (IME).
-- A world-bound plain input gets its default prevented so native undo never runs. Inputs not bound to the world (filter boxes, Search World, the find bar) keep native undo and the listener yields on them.
+- A world-bound plain input gets its default prevented so native undo never runs. Inputs not bound to the world (filter boxes, Search World, the find bar) keep native undo and the listener yields on them. Ticket 02 left an interim yield to every focused input, textarea, select and contenteditable; this ticket replaces it.
+- Q25: the image replace prompt, the code rename offer and the Replace All confirm report surface ids, and the listener also yields to any open modal above the editor as a backstop.
 
 ## Acceptance criteria
 
@@ -27,6 +28,7 @@ Ctrl+Z inside a prompt field undoes the field's own text first, and hands the pr
 - [ ] Ctrl+Z in a stat name input undoes the typed run through the world and the browser's native undo does not run.
 - [ ] Ctrl+Z in the Stats filter box leaves the world alone.
 - [ ] A composing keydown does nothing.
+- [ ] Ctrl+Z under the image replace prompt, the code rename offer and the Replace All confirm leaves the world alone.
 - [ ] Bench tests drive Lexical through the composer's undo command and update calls, not through simulated typing.
 - [ ] Guard bites: the no-Step test fails when the historic tag is ignored.
 - [ ] Gates green: `typecheck`, `lint`, `test`, `build`.

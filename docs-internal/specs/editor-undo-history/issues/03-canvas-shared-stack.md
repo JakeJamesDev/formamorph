@@ -24,5 +24,6 @@ The canvas's own stack and chord reader go. A multi-drag or an Auto Arrange on t
 - [ ] An edit made in the list panel between a canvas Step and its undo survives the undo.
 - [ ] The showcase canvas's history isolation test still passes.
 - [ ] The mascot tab's undo and redo still work.
-- [ ] Canvas commits are proved at the provider seam; the existing Playwright canvas suite still passes.
+- [ ] Canvas commits are proved at the provider seam; the existing Playwright canvas suite passes again, including the arrow-key nudge case that ticket 02 left red until nudges carry a key.
+- [ ] The canvas toolbar's Undo and Redo buttons read the shared stack, not the canvas's own.
 - [ ] Gates green: `typecheck`, `lint`, `test`, `build`.
