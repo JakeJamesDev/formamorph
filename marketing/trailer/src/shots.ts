@@ -1,9 +1,14 @@
 import { staticFile } from 'remotion';
 import captures from '../captures.json';
-import type { Size } from './layout';
+import type { Layout, Size } from './layout';
 
 /** A captured UI screenshot and its layout size in CSS pixels, for the camera math. */
 export type Shot = Size & { src: string };
+
+/** One shot for both layouts, or its own shot per layout (the tall cut recaptures some screens natively). */
+export type LayoutShot = Shot | Record<Layout, Shot>;
+
+export const shotFor = (shot: LayoutShot, layout: Layout): Shot => ('src' in shot ? shot : shot[layout]);
 
 /** A shot from the capture list. The PNG holds `scale` times the layout size in each direction. */
 const shot = (id: string): Shot => {
