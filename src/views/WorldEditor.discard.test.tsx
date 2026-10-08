@@ -105,6 +105,15 @@ describe('WorldEditor — exit without saving', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('says Exit drops only the changes since the last save while Auto Save is on', async () => {
+    setup();
+    renameTo('Sedge Landing EDITED');
+
+    fireEvent.click(backArrow());
+
+    expect(await screen.findByText(/drops only the changes since the last save/)).toBeInTheDocument();
+  });
+
   it('keeps the edit when the prompt is cancelled', async () => {
     const { onClose, ctx } = setup();
     renameTo('Sedge Landing EDITED');

@@ -126,9 +126,17 @@ function listToolbarTarget(tab: string): TargetAttribute | undefined {
 
 const RAIL_STORAGE_KEY = 'formamorph.worldEditor.navRail';
 
+/** What a host's own unsaved-changes prompt needs from the editor: a save and a discard that go through auto save. */
+export interface EditorExit {
+  /** Resolves false on a failure, after the failure toast. */
+  save: () => Promise<boolean>;
+  /** Waits for a running save, rolls the pending edits back, then runs `then`. */
+  discard: (then: () => void) => void;
+}
+
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
-  initialTab, initialBenchTab, initialTarget, requestKey, leaveRef,
+  initialTab, initialBenchTab, initialTarget, requestKey, leaveRef, exitRef,
 }: {
   onClose: () => void;
   /** A tab an outside request selects. */
@@ -141,6 +149,8 @@ const WorldEditorInner = ({
   requestKey?: string;
   /** Filled with the editor's leave step: it runs `then` now, or after the unsaved-changes prompt. */
   leaveRef?: MutableRefObject<((then: () => void) => void) | null>;
+  /** Filled with the save and discard a host's own leave prompt runs. */
+  exitRef?: MutableRefObject<EditorExit | null>;
   embedded?: boolean;
   /** The world is one New World just made. The editor offers the Authoring Tour on it. */
   newWorld?: boolean;
@@ -633,6 +643,21 @@ const WorldEditorInner = ({
   const saveWorldWith = (announce: boolean) => autoSave.manual(() => runSave(announce, true));
   const saveWorld = () => saveWorldWith(true);
   const saveWorldQuietly = () => saveWorldWith(false);
+  // The managers write edits straight into the store as you type, so leaving has to actively roll them
+  // back — closing alone would keep them live for the next time this world is opened. The links made
+  // this session roll back with them; the library items they named stay. A running save lands first, so
+  // the rollback reaches the world it wrote and the store still matches disk when the editor closes.
+  const discardAfterSaves = (then: () => void) => autoSave.afterSaves(() => {
+    discardChanges();
+    linking.clearPendingLinks();
+    then();
+  });
+  // Every render, so the host's prompt runs the latest closures.
+  useEffect(() => {
+    if (!exitRef) return;
+    exitRef.current = { save: saveWorld, discard: discardAfterSaves };
+    return () => { exitRef.current = null; };
+  });
   // The listener reads the latest render's save and dirty flag without re-subscribing every render.
   const saveShortcutRef = useRef<() => void>(() => {});
   // Failed retries like a click, even after an undo leaves the world clean.
@@ -1365,12 +1390,9 @@ const WorldEditorInner = ({
       <UnsavedChangesDialog
         open={showExitPrompt}
         onOpenChange={setShowExitPrompt}
+        autoSave={editorAutoSave}
         onSave={async () => { if (await saveWorld()) afterLeave.current(); }}
-        // The managers write edits straight into the store as you type, so leaving has to actively roll them
-        // back — closing alone would keep them live for the next time this world is opened. The links made
-        // this session roll back with them; the library items they named stay. A running save lands first, so
-        // the rollback reaches the world it wrote and the store still matches disk when the editor closes.
-        onExit={() => autoSave.afterSaves(() => { discardChanges(); linking.clearPendingLinks(); afterLeave.current(); })}
+        onExit={() => discardAfterSaves(() => afterLeave.current())}
       />
       {worldExportDialog}
       {downscaleDialog}

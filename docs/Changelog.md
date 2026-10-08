@@ -39,6 +39,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Auto Save:**
+    - **Exit Without Saving in the in-game World Editor now drops the edits you made since the last save.** With Auto Save on, the prompt says so.
   - **The app and the wiki now say In Game for the time after a game starts.** The trait toggle, the Authoring Tour pane and the Entities page use the same term.
   - **Test Bench now names the right requirements when a linked trait's default starts unselected.** The message names the entity, quotes the link's rows and opens the link.
   - **The markdown Preview now shows every edit inside a list, a quote or a multi-line paragraph.** Formatting and text changes in a list item, for example, now show at once instead of keeping the old text.
