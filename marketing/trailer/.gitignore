@@ -1,0 +1,3 @@
+node_modules
+# Rendered videos. `npm run render` writes them; only source and frames are tracked.
+out
