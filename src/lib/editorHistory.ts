@@ -292,6 +292,85 @@ export function record(history: EditorHistory, edits: SliceEdit[], options: Reco
   });
 }
 
+/** The keyed record on one side of a slice edit: the overview itself, or the record with the key's id. */
+function keyedRecord(edit: SliceEdit, side: "before" | "after", key: StepKey): object | undefined {
+  if (edit.slice === "worldOverview") return edit[side];
+  return (edit[side] as IdRecord[]).find((record) => record.id === key.id);
+}
+
+/** Whether a written record reads as one side of a Step: on the keyed field, or on every field the Step changed. */
+function readsAs(step: Step, side: "before" | "after", key: StepKey, written: object): boolean {
+  const edit = step.edits.find((e) => e.slice === key.slice);
+  const was = edit && keyedRecord(edit, "before", key);
+  const became = edit && keyedRecord(edit, "after", key);
+  if (!was || !became) return false;
+  const target = (side === "before" ? was : became) as Record<string, unknown>;
+  const now = written as Record<string, unknown>;
+  return (key.field ? [key.field] : changedFields(was, became)).every((field) => target[field] === now[field]);
+}
+
+/** Every string inside a value, at any depth. */
+function collectTexts(value: unknown, into: Set<string>) {
+  if (typeof value === "string") into.add(value);
+  else if (Array.isArray(value)) for (const item of value) collectTexts(item, into);
+  else if (value && typeof value === "object") for (const item of Object.values(value)) collectTexts(item, into);
+}
+
+/** The text a move over these Steps can write into a field: each changed field's strings, on both sides. */
+export function movedTexts(steps: Step[]): Set<string> {
+  const texts = new Set<string>();
+  const add = (was: object | undefined, now: object | undefined) => {
+    const fields = was && now ? changedFields(was, now) : [...new Set([...Object.keys(was ?? {}), ...Object.keys(now ?? {})])];
+    for (const field of fields) {
+      collectTexts((was as Record<string, unknown> | undefined)?.[field], texts);
+      collectTexts((now as Record<string, unknown> | undefined)?.[field], texts);
+    }
+  };
+  for (const edit of steps.flatMap((step) => [...step.edits, ...(step.carry ?? [])])) {
+    if (edit.slice === "worldOverview") { add(edit.before, edit.after); continue; }
+    const before = byId(edit.before as IdRecord[]);
+    const after = byId(edit.after as IdRecord[]);
+    for (const id of touchedIds(edit)) add(before.get(id), after.get(id));
+  }
+  return texts;
+}
+
+/** Whether a Step changed the keyed record and nothing else, so the field's own text is the whole Step. */
+function onlyKeyed(step: Step, key: StepKey): boolean {
+  if (step.carry?.length || step.edits.length !== 1) return false;
+  const [edit] = step.edits;
+  if (edit.slice !== key.slice) return false;
+  const touched = edit.slice === "worldOverview" ? null : touchedIds(edit);
+  return !touched || (touched.size === 1 && touched.has(key.id!));
+}
+
+/**
+ * A text field's own undo or redo. Text that reads as the top Step's earlier side moves the cursor back; text
+ * that reads as the next Step's later side moves it forward. A move needs a Step that holds the field alone, or
+ * the Step's other edits would stay in the world. Any other text with the top Step's key joins it, whatever the
+ * pause. Null when no Step matches by key, so the write records as a plain one.
+ */
+export function recordFieldMove(
+  history: EditorHistory, edits: SliceEdit[], key: StepKey | undefined, now = Date.now(),
+): EditorHistory | null {
+  const written = key && edits.find((edit) => edit.slice === key.slice);
+  const record = written && keyedRecord(written, "after", key);
+  if (!key || !record) return null;
+  const top = history.steps[history.cursor - 1];
+  const next = history.steps[history.cursor];
+  if (top && sameKey(top.key, key) && onlyKeyed(top, key) && readsAs(top, "before", key, record)) {
+    return { ...history, cursor: history.cursor - 1, sealed: false };
+  }
+  if (next && sameKey(next.key, key) && onlyKeyed(next, key) && readsAs(next, "after", key, record)) {
+    return { ...history, cursor: history.cursor + 1, sealed: false };
+  }
+  // A sealed top, the saved point or an open group keeps its edges, so the write records as a plain one there.
+  if (!top || !sameKey(top.key, key) || history.sealed || history.group || history.saved === history.cursor) return null;
+  const steps = history.steps.slice(0, history.cursor);
+  steps[steps.length - 1] = { ...top, edits: combineEdits(top.edits, edits), at: now };
+  return { ...history, steps };
+}
+
 function capped(history: EditorHistory): EditorHistory {
   if (history.steps.length <= HISTORY_LIMIT) return history;
   const [dropped, next, ...rest] = history.steps;

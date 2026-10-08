@@ -198,7 +198,7 @@ const WorldOverviewManager = () => {
     <div className="space-y-4">
       <div className="space-y-2" data-tour-anchor="world-name">
         <Label htmlFor="worldName">World Name</Label>
-        <Input
+        <Input data-world-field
           id="worldName"
           value={worldOverview.name}
           onChange={(e) => updateWorldOverview({ name: e.target.value })}
@@ -206,7 +206,7 @@ const WorldOverviewManager = () => {
       </div>
       <div className="space-y-2">
         <Label htmlFor="worldAuthor">Author</Label>
-        <Input
+        <Input data-world-field
           id="worldAuthor"
           value={worldOverview.author}
           onChange={(e) => updateWorldOverview({ author: e.target.value })}

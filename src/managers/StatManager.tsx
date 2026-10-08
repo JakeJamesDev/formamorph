@@ -298,7 +298,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Initial Value (%)</Label>
-                  <Input
+                  <Input data-world-field
                     type="number"
                     min={0}
                     max={100}
@@ -308,7 +308,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Regen</Label>
-                  <Input
+                  <Input data-world-field
                     type="number"
                     value={editingStat.regen || 0}
                     onChange={(e) => handleChange("regen", Number(e.target.value))}
@@ -319,7 +319,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               <>
                 <div>
                   <Label>Min</Label>
-                  <Input
+                  <Input data-world-field
                     type="number"
                     value={editingStat.min || 0}
                     onChange={(e) => handleChange("min", Number(e.target.value))}
@@ -327,7 +327,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Max</Label>
-                  <Input
+                  <Input data-world-field
                     type="number"
                     value={editingStat.max || 100}
                     onChange={(e) => handleChange("max", Number(e.target.value))}
@@ -335,7 +335,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Initial Value</Label>
-                  <Input
+                  <Input data-world-field
                     type="number"
                     value={(editingStat.value as number) || 0}
                     onChange={(e) => handleChange("value", Number(e.target.value))}
@@ -343,7 +343,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Regen</Label>
-                  <Input
+                  <Input data-world-field
                     type="number"
                     value={editingStat.regen || 0}
                     onChange={(e) => handleChange("regen", Number(e.target.value))}

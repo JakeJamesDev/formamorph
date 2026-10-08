@@ -2,8 +2,8 @@ import {
   createContext, startTransition, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
 } from 'react';
 import {
-  beginGroup as openGroup, canRedo, canUndo, createHistory, diffSlice, endGroup as closeGroup, jumpTo, markSaved, record,
-  replaceRecords, WORLD_SLICES,
+  beginGroup as openGroup, canRedo, canUndo, createHistory, diffSlice, endGroup as closeGroup, jumpTo, markSaved, movedTexts,
+  record, recordFieldMove, replaceRecords, WORLD_SLICES,
   type EditorHistory, type SliceEdit, type SliceName, type Step, type StepKey, type WorldSlices,
 } from '@/lib/editorHistory';
 
@@ -23,6 +23,8 @@ export interface WriteIntent {
   key?: StepKey;
   /** Save's link stamps: never recorded, and the Steps that hold the stamped records take the stamped copies. */
   stamp?: boolean;
+  /** The tick a text field's own undo or redo wrote in: a move or a join on the Step it matches, a plain write otherwise. */
+  fieldHistory?: number;
 }
 
 export type WorldSetters = { [S in SliceName]: (value: WorldSlices[S]) => void };
@@ -66,6 +68,8 @@ function currentTick(): number {
   return tick;
 }
 
+const NO_TEXTS: ReadonlySet<string> = new Set();
+
 /** Whether the two versions of a record differ in their link and nothing else. */
 function onlyLinkDiffers(was: object, now: object): boolean {
   const a = was as Record<string, unknown>;
@@ -107,6 +111,10 @@ export interface WorldHistoryControls {
   jump(position: number): void;
   /** Names the record and field the next write is about, for a write that goes through a whole-slice setter. */
   keyNext(key: StepKey): void;
+  /** Says the next write in this tick is a text field's own undo or redo. */
+  markFieldHistory(): void;
+  /** Whether a field's new text is what the last undo, redo or jump wrote, with no write recorded since. */
+  isRestoredText(text: string): boolean;
   /** Starts the stack over, as when the editor closes. */
   clear(): void;
   /** Hears each move as it happens. Returns the call that stops listening. */
@@ -132,15 +140,18 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const armed = useRef(true);
   // The tick a close cleared the stack in: what the closing editor still writes in it is not an edit.
   const closedIn = useRef<number | null>(null);
+  // The text the last move wrote, until the next recorded write. A field rebuilt to it is restoring, not editing.
+  const restored = useRef<ReadonlySet<string>>(NO_TEXTS);
   const reset = useCallback(() => {
     store.set(createHistory());
     last.current = { recorded: false };
+    restored.current = NO_TEXTS;
   }, [store]);
 
   useLayoutEffect(() => {
     const before = seen.current;
     seen.current = slices;
-    const { history: moved, follow, key, stamp } = intent.current;
+    const { history: moved, follow, key, stamp, fieldHistory } = intent.current;
     intent.current = {};
     if (worldId !== openWorld.current) {
       openWorld.current = worldId;
@@ -162,10 +173,20 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
       edits = split.rest;
     }
     if (!edits.length) return;
+    restored.current = NO_TEXTS;
     const at = follow ? last.current.tick : currentTick();
     // A key whose record did not change belongs to a write that bailed, so it never keys another one.
     const fits = !follow && key && edits.some((edit) => keyHolders(key).includes(edit.slice));
-    store.set(record(store.get(), edits, { tick: at, key: fits ? key : undefined }));
+    const was = store.get();
+    // A mark left by a field write that never reached the world is from an earlier tick.
+    const fieldMove = !follow && fieldHistory === at ? recordFieldMove(was, edits, fits ? key : undefined) : null;
+    if (fieldMove) {
+      store.set(fieldMove);
+      // A join is a recorded write that a follow pass joins too; a cursor move is not.
+      last.current = fieldMove.cursor === was.cursor ? { recorded: true, tick: at } : { recorded: false };
+      return;
+    }
+    store.set(record(was, edits, { tick: at, key: fits ? key : undefined }));
     last.current = { recorded: true, tick: at };
   }, [slices, worldId, store, reset]);
 
@@ -206,6 +227,7 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     const moved = jumpTo(store.get(), seen.current, position);
     if (!moved) return;
     intent.current = { ...intent.current, history: true };
+    restored.current = movedTexts(moved.steps);
     // A second move before the commit reads the world this one leaves.
     seen.current = { ...seen.current, ...moved.restore };
     const write = settersRef.current as Record<SliceName, (value: unknown) => void>;
@@ -217,6 +239,8 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const redo = useCallback(() => jump(store.get().cursor + 1), [jump, store]);
 
   const keyNext = useCallback((key: StepKey) => { intent.current.key ??= key; }, []);
+  const markFieldHistory = useCallback(() => { intent.current.fieldHistory = currentTick(); }, []);
+  const isRestoredText = useCallback((text: string) => restored.current.has(text), []);
   const beginGroup = useCallback((label?: string) => store.set(openGroup(store.get(), label)), [store]);
   // A transition commits after the writes queued before it, and this effect runs after the recorder's.
   const endWaiters = useRef<(() => void)[]>([]);
@@ -242,8 +266,8 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   }, [beginGroup, endGroup]);
 
   const controls = useMemo<WorldHistoryControls>(
-    () => ({ store, undo, redo, jump, keyNext, clear, onMove, beginGroup, endGroup, batch }),
-    [store, undo, redo, jump, keyNext, clear, onMove, beginGroup, endGroup, batch],
+    () => ({ store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, beginGroup, endGroup, batch }),
+    [store, undo, redo, jump, keyNext, markFieldHistory, isRestoredText, clear, onMove, beginGroup, endGroup, batch],
   );
   return { intent, controls, disarm, beginSave };
 }

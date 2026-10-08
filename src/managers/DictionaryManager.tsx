@@ -165,7 +165,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
       <div className="space-y-2">
         <Label>Scan Depth</Label>
         <Hint>Sets how many earlier messages are scanned for keywords. Blank scans all of them. 0 scans only the current scene.</Hint>
-        <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
+        <Input data-world-field type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
       </div>
       <div className="space-y-2">
         <Label>Secondary Keywords</Label>

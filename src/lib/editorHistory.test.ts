@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   beginGroup, canRedo, canUndo, createHistory, diffSlice, endGroup, HISTORY_LIMIT, historyShortcut, jumpTo, markSaved,
-  record, redo, replaceRecords, undo, WORLD_SLICES,
+  record, recordFieldMove, redo, replaceRecords, undo, WORLD_SLICES,
   type EditorHistory, type RecordOptions, type SliceEdit, type WorldSlices,
 } from "./editorHistory";
 import { stepLabel } from "./editorHistoryLabels";
@@ -42,6 +42,15 @@ function session(options: { pauseMs?: number } = {}) {
         .filter((edit): edit is SliceEdit => edit !== null);
       world = next;
       history = record(history, edits, { now: 0, ...opts });
+    },
+    /** A text field's own undo or redo: a move or a join where a Step matches, a plain write otherwise. */
+    fieldWrite(patch: Partial<WorldSlices>, opts: RecordOptions = {}) {
+      const next = { ...world, ...patch };
+      const edits = WORLD_SLICES
+        .map((slice) => diffSlice(slice, world[slice], next[slice]))
+        .filter((edit): edit is SliceEdit => edit !== null);
+      world = next;
+      history = recordFieldMove(history, edits, opts.key, opts.now ?? 0) ?? record(history, edits, { now: 0, ...opts });
     },
     /** A write that bypasses the history, standing in for an edit the recorder has not seen yet. */
     writeUnrecorded(patch: Partial<WorldSlices>) { world = { ...world, ...patch }; },
@@ -217,6 +226,93 @@ describe("merge precedence", () => {
     expect(s.history.steps).toHaveLength(3);
     s.undo();
     expect(s.world.stats[0].description).toBe("F");
+  });
+});
+
+describe("a text field's own undo and redo", () => {
+  const description = (s: ReturnType<typeof session>, text: string) => ({
+    stats: s.world.stats.map((st) => (st.id === "hunger" ? { ...st, description: text } : st)),
+  });
+  const descriptionKey = { slice: "stats", id: "hunger", field: "description" } as const;
+  const typed = (s: ReturnType<typeof session>, text: string, now: number) =>
+    s.write(description(s, text), { key: descriptionKey, now });
+  const fieldMove = (s: ReturnType<typeof session>, text: string, now = 5000) =>
+    s.fieldWrite(description(s, text), { key: descriptionKey, now });
+  const removeMood = (s: ReturnType<typeof session>) =>
+    s.write({ stats: s.world.stats.filter((st) => st.id !== "mood") }, { now: 0 });
+
+  it("moves the cursor back when the text reads as the top Step's earlier side, and adds no Step", () => {
+    const s = session();
+    removeMood(s);
+    typed(s, "Food", 2000);
+    fieldMove(s, "");
+    expect(s.history.steps).toHaveLength(2);
+    expect(s.history.cursor).toBe(1);
+
+    // The next world undo is the Step before the typing.
+    s.undo();
+    expect(names(s.world.stats)).toEqual(["Hunger", "Thirst", "Mood"]);
+  });
+
+  it("joins the top Step whatever the pause when the text lies between its sides, then moves back from its earlier side", () => {
+    const s = session();
+    typed(s, "Foo", 0);
+    typed(s, "Fo", 100);
+    fieldMove(s, "Foo", 60_000);
+    expect(s.history.steps).toHaveLength(1);
+    expect(s.history.cursor).toBe(1);
+    fieldMove(s, "", 60_001);
+    expect(s.history.cursor).toBe(0);
+
+    // The Step's later side followed the field, so a world redo lands where the field left the text.
+    s.redo();
+    expect(s.world.stats[0].description).toBe("Foo");
+  });
+
+  it("moves the cursor forward when the text reads as the next Step's later side", () => {
+    const s = session();
+    typed(s, "Food", 0);
+    fieldMove(s, "");
+    fieldMove(s, "Food");
+    expect(s.history.steps).toHaveLength(1);
+    expect(s.history.cursor).toBe(1);
+  });
+
+  it("joins a Step that holds more than the field rather than moving past it, so its other edits undo with it", () => {
+    const s = session();
+    s.write(description(s, "Food"), { key: descriptionKey, tick: 1, now: 0 });
+    s.write({ stats: s.world.stats.filter((st) => st.id !== "mood") }, { tick: 1, now: 0 });
+    fieldMove(s, "");
+    expect(s.history.cursor).toBe(1);
+
+    s.undo();
+    expect(names(s.world.stats)).toEqual(["Hunger", "Thirst", "Mood"]);
+  });
+
+  it("records a plain write when no Step matches by key", () => {
+    const s = session();
+    typed(s, "Food", 0);
+    removeMood(s);
+    fieldMove(s, "");
+    expect(s.history.steps).toHaveLength(3);
+  });
+
+  it("records a plain write against a sealed top and at the saved point", () => {
+    const sealed = session();
+    typed(sealed, "Foo", 0);
+    sealed.save();
+    fieldMove(sealed, "Fo");
+    expect(sealed.history.steps).toHaveLength(2);
+
+    // Moved off the saved point and back by the field, so only the marker holds the edge.
+    const saved = session();
+    typed(saved, "Foo", 0);
+    saved.save();
+    fieldMove(saved, "");
+    fieldMove(saved, "Foo");
+    fieldMove(saved, "Fo");
+    expect(saved.history.steps).toHaveLength(2);
+    expect(saved.history.saved).toBe(1);
   });
 });
 

@@ -296,7 +296,7 @@ const TraitManager = ({
                 ))}
               </SelectContent>
             </Select>
-            <Input
+            <Input data-world-field
               type="number"
               value={statChange.value}
               onChange={(e) => handleStatChangeUpdate(index, 'value', Number(e.target.value))}

@@ -115,20 +115,32 @@ export function CodeRenameProvider({ children }: { children: ReactNode }) {
   return (
     <CodeRenameContext.Provider value={offer}>
       {children}
-      <AlertDialog open={plan !== null} onOpenChange={(open) => { if (!open) settle(); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Update Code References</AlertDialogTitle>
-            <AlertDialogDescription>
-              {shown.current && renameQuestion(shown.current)}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Leave Code</AlertDialogCancel>
-            <AlertDialogAction onClick={apply}>Update Code</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CodeRenameDialog plan={shown.current} open={plan !== null} onApply={apply} onSettle={settle} />
     </CodeRenameContext.Provider>
+  );
+}
+
+/** The question itself. `plan` is what the body reads, kept while the dialog animates out. */
+export function CodeRenameDialog({ plan, open, onApply, onSettle }: {
+  plan: CodeRenamePlan | null;
+  open: boolean;
+  onApply: () => void;
+  onSettle: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => { if (!next) onSettle(); }}>
+      <AlertDialogContent surface="codeRename">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Update Code References</AlertDialogTitle>
+          <AlertDialogDescription>
+            {plan && renameQuestion(plan)}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Leave Code</AlertDialogCancel>
+          <AlertDialogAction onClick={onApply}>Update Code</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

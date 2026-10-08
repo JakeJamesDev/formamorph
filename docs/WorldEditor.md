@@ -164,6 +164,7 @@ Switching to Simple mode doesn't remove anything. The hidden fields keep their v
 
 ## Find and Replace
 <!-- keywords: swap text for chip, keyboard shortcuts, skip to next result, turn word into variable, undo a swap, confirm bulk change, shift+enter -->
+<!-- route: replaceAll -->
 
 A search covers the whole world, on every tab the current mode shows. It matches chips by their label, name or values.
 

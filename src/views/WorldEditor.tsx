@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, ty
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMoves } from '@/contexts/worldRecorder';
 import { historyShortcut } from '@/lib/editorHistory';
-import { isEditableTarget } from '@/lib/editableTarget';
+import { keepsOwnHistory } from '@/lib/editableTarget';
+import { DevEditorPrompts } from '@/components/editor/DevEditorPrompts';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { HistoryPill } from '@/components/editor/HistoryPill';
 import { useDevRoute } from '@/lib/devRouter';
@@ -644,8 +645,9 @@ const WorldEditorInner = ({
       // A dialog opened over the editor owns the keyboard. The in-game host's dialog is the editor's own.
       const dialog = surfaceRegistry.get().dialog;
       if (dialog !== null && dialog !== 'worldEditor') return;
-      // A text field keeps its own undo.
-      if (isEditableTarget(event.target)) return;
+      // A modal shuts every layer under it off from the pointer, also a modal that reports no surface.
+      if (editorRootRef.current?.closest<HTMLElement>('[style*="pointer-events"]')?.style.pointerEvents === 'none') return;
+      if (keepsOwnHistory(event.target, move)) return;
       event.preventDefault();
       if (move === 'undo') historyMoves.undo(); else historyMoves.redo();
     };
@@ -1437,6 +1439,7 @@ const WorldEditorInner = ({
           onReplace={() => setDevReplaceDone(true)}
         />
       )}
+      {import.meta.env.DEV && <DevEditorPrompts modal={devRoute?.modal} />}
       {linking.dialogs}
       <TutorialPopover
         entry={tutorial?.id !== AUTHORING_TOUR_OFFER_ID ? null

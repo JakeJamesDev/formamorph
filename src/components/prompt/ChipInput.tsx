@@ -6,7 +6,6 @@ import {
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ChipVocabularyContext, type ChipVocabulary } from '@/lib/chipVocabulary';
@@ -17,6 +16,8 @@ import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
 import { RefusedChipPastePlugin } from './PromptTokenPastePlugin';
+import { FieldHistoryPlugin } from './fieldHistory';
+import { useWorldValueSync } from './useWorldValueSync';
 
 /**
  * A one-line chip editor shaped like an ordinary text input — for name fields, where the full prompt editor's
@@ -52,19 +53,23 @@ function ValueSyncPlugin({ value, onChange, parse }: {
   const parseRef = useRef(parse);
   parseRef.current = parse;
 
+  const { markWrite, restoreTags } = useWorldValueSync();
   useEffect(() => {
     if (echoes.receive(value)) return;
-    editor.update(() => buildEditorState(value, parseRef.current));
-  }, [value, editor, echoes]);
+    const tag = restoreTags(value);
+    editor.update(() => buildEditorState(value, parseRef.current), tag ? { tag } : undefined);
+  }, [value, editor, echoes, restoreTags]);
 
   useEffect(
-    () => editor.registerUpdateListener(({ editorState }) => {
+    () => editor.registerUpdateListener(({ editorState, tags }) => {
       editorState.read(() => {
         const next = serializeRoot();
-        if (echoes.send(next)) onChangeRef.current(next);
+        if (!echoes.send(next)) return;
+        markWrite(tags);
+        onChangeRef.current(next);
       });
     }),
-    [editor, echoes],
+    [editor, echoes, markWrite],
   );
   return null;
 }
@@ -277,7 +282,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
       <ChipVocabularyContext.Provider value={vocabulary}>
         <PromptDragContext.Provider value={dragKey}>
           <Surface placeholder={placeholder} ariaLabel={ariaLabel} className={className} multiline={multiline} />
-          <HistoryPlugin />
+          <FieldHistoryPlugin />
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
           {vocabulary.refuses && <RefusedChipPastePlugin vocab={vocabulary} />}
           {!multiline && <SingleLinePlugin onSubmit={onSubmit} />}

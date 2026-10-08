@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
-  COMMAND_PRIORITY_LOW, SELECTION_CHANGE_COMMAND,
+  COMMAND_PRIORITY_LOW, HISTORY_MERGE_TAG, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND,
   type NodeKey,
 } from 'lexical';
@@ -8,7 +8,8 @@ import { mergeRegister } from '@lexical/utils';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { HistoryPlugin, createEmptyHistoryState } from '@lexical/react/LexicalHistoryPlugin';
+import { FieldHistoryPlugin } from './fieldHistory';
+import { useWorldValueSync } from './useWorldValueSync';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -315,24 +316,25 @@ function ValueSyncPlugin({ value, onChange, parse, onExternalValue }: {
     };
   }, [editor]);
 
+  const { markWrite, restoreTags } = useWorldValueSync();
   useEffect(() => {
     if (echoes.receive(value)) return;
-    // `history-merge` folds the rebuild into the current history entry instead of pushing one.
-    editor.update(
-      () => buildEditorState(value, parseRef.current),
-      userActed.current ? undefined : { tag: 'history-merge' },
-    );
+    // The merge tag folds the rebuild into the current history entry instead of pushing one.
+    const tag = restoreTags(value) ?? (userActed.current ? undefined : HISTORY_MERGE_TAG);
+    editor.update(() => buildEditorState(value, parseRef.current), tag ? { tag } : undefined);
     onExternalRef.current?.();
-  }, [value, editor, echoes]);
+  }, [value, editor, echoes, restoreTags]);
 
   useEffect(
-    () => editor.registerUpdateListener(({ editorState }) => {
+    () => editor.registerUpdateListener(({ editorState, tags }) => {
       editorState.read(() => {
         const next = serializeRoot();
-        if (echoes.send(next)) onChangeRef.current(next);
+        if (!echoes.send(next)) return;
+        markWrite(tags);
+        onChangeRef.current(next);
       });
     }),
-    [editor, echoes],
+    [editor, echoes, markWrite],
   );
   return null;
 }
@@ -355,28 +357,6 @@ function CaretFollowPlugin({ onCaret }: { onCaret: () => void }) {
     );
   }, [editor, onCaret]);
   return null;
-}
-
-/**
- * HistoryPlugin, given a baseline entry to undo *to*.
- *
- * It records a change by pushing the entry it was already holding, and starts holding none — so the
- * first change after mount becomes the baseline instead of an undo step. Typing hides that (the second
- * keystroke is undoable), but a field whose first change is a whole-value replace — Generate on an
- * untouched summary, a Reset, a template swap — had nothing to undo at all.
- */
-function SeededHistoryPlugin() {
-  const [editor] = useLexicalComposerContext();
-  const historyState = useMemo(() => createEmptyHistoryState(), []);
-
-  // In an effect, not in render: during render the initial state is still pending, so what's readable
-  // is the bare root — and `setEditorState` rejects an empty state, which makes undoing to it a silent
-  // no-op rather than an error.
-  useEffect(() => {
-    historyState.current ??= { editor, editorState: editor.getEditorState() };
-  }, [editor, historyState]);
-
-  return <HistoryPlugin externalHistoryState={historyState} />;
 }
 
 /** Reflects `readOnly` into the editor's editability (initialConfig only applies it at mount). */
@@ -1014,7 +994,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         ) : (
           body
         )}
-        <SeededHistoryPlugin />
+        <FieldHistoryPlugin />
         {vocab.header && <PromptTokenPastePlugin vocab={vocab} />}
         {vocab.refuses && <RefusedChipPastePlugin vocab={vocab} />}
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />

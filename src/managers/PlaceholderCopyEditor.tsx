@@ -33,7 +33,7 @@ function ValueText({ value, onChange, placeholders, ownerId, label }: {
 
 function WeightBox({ value, onChange, label }: { value: number; onChange: (weight: number) => void; label: string }) {
   return (
-    <Input
+    <Input data-world-field
       type="number"
       min={0}
       step={1}

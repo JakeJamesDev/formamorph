@@ -63,12 +63,15 @@ const ROW_TEXT = [
 const ROW_CONTROLS = 'flex items-center gap-2 ms-auto sm:ms-0 md:ms-auto xl:ms-0';
 
 /** A threshold input wearing its unit inside the right edge — a placeholder says it only until you type. */
-const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel }: {
+const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel, worldField = false }: {
   value: number | string; unit: string; placeholder?: string; ariaLabel: string;
   onChange: (v: string) => void; onBlur?: () => void;
+  /** The box writes the world, so the world stack owns its undo. */
+  worldField?: boolean;
 }) => (
   <div className="relative flex-shrink-0" style={{ width: `${thresholdInputWidthRem(unit)}rem` }}>
     <Input
+      data-world-field={worldField || undefined}
       type="number"
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -230,6 +233,7 @@ export const StatDescriptorsSection = ({
           <div key={descriptor.id}>
             <div className={ROW}>
               <UnitInput
+                worldField
                 value={descriptor.threshold}
                 unit={tag}
                 ariaLabel={`Threshold for ${chipText(descriptor.description) || 'descriptor'}`}
