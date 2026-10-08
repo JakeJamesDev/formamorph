@@ -19,7 +19,7 @@ The written word catches up. Always On becomes Automatic in `CONTEXT.md`, the Gl
 - [ ] Glossary and the Traits wiki page updated for Automatic, rows, And, Or Another Way, Not and the lock line. Route lines and surface anchors still resolve; the docs tests pass.
 - [ ] Test Bench rule messages and any help-doc line that say Always On say Automatic. The help retrieval tests still pass.
 - [ ] Persona Authoring and any other wiki page naming Always On updated.
-- [ ] Changelog: the fragments from 02 to 05 fold into one In Progress entry under Added, 👤, with a bold lead that states subject, surface and outcome by itself (`changelog-lead-guard`).
+- [ ] Changelog: this ticket adds no fragment. A ticket branch cannot merge the four landed entries, so the spec session folds them into one In Progress entry on main after this ticket lands, under Added, 👤, with a bold lead that states subject, surface and outcome by itself (`changelog-lead-guard`).
 - [ ] Gates green: `typecheck`, `lint`, `test`, `build`.
 
 ## Comments
