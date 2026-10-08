@@ -33,13 +33,14 @@ function isUnleadBullet(line) {
 /** Lint a slice of changelog lines (one release section). Returns a list of human-readable problems; an
  *  empty list means the section is well-formed. Checks the three things the extractor cannot recover from
  *  (a group with fewer than two children, a bullet with no bold lead, nesting past one level), and the
- *  word limits on each entry's lead and body. */
-export function lintSection(lines) {
+ *  word limits on each entry's lead and body. `inProgress` spares a one-child group: an effort's first
+ *  ticket names the group before its siblings land, and the release lint catches one that stayed alone. */
+export function lintSection(lines, { inProgress = false } = {}) {
   const problems = [];
   let openHeader = null; // { text, children }
 
   const closeHeader = () => {
-    if (openHeader && openHeader.children < 2) {
+    if (openHeader && openHeader.children < 2 && !inProgress) {
       problems.push(`Group "${openHeader.text}" has ${openHeader.children} child entries; a group needs at least 2.`);
     }
     openHeader = null;
