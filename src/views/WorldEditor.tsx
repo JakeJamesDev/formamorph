@@ -48,8 +48,9 @@ import { SurfaceAppBar } from '@/components/SurfaceAppBar';
 import { TruncatedText } from '@/components/TruncatedText';
 import { Separator } from '@/components/ui/separator';
 import { ModeSelect } from '@/components/ui/mode-select';
-import { SplitButton } from '@/components/ui/split-button';
-import { Save, ImageDown, Loader2, Search, ChevronRight } from "lucide-react";
+import { SaveSplitButton } from '@/components/editor/SaveSplitButton';
+import { useSaveStatus } from '@/components/editor/useSaveStatus';
+import { ImageDown, Loader2, Search, ChevronRight } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -602,7 +603,9 @@ const WorldEditorInner = ({
   });
 
   // `announce` false keeps a good save silent: the tour saves on every Next, and a toast per step is noise.
-  const saveWorldWith = async (announce: boolean) => {
+  // The Save face walks every save through its states, the tour's quiet ones included.
+  const saveStatus = useSaveStatus(isWorldDirty);
+  const saveWorldWith = (announce: boolean) => saveStatus.track(async () => {
     const result = await saveWorldCtx();
     if (result.ok) {
       if (announce) toast.success('World saved successfully!');
@@ -612,12 +615,13 @@ const WorldEditorInner = ({
       void toastSaveFailure(result.error, result.world);
     }
     return result.ok;
-  };
+  });
   const saveWorld = () => saveWorldWith(true);
   const saveWorldQuietly = () => saveWorldWith(false);
   // The listener reads the latest render's save and dirty flag without re-subscribing every render.
   const saveShortcutRef = useRef<() => void>(() => {});
-  saveShortcutRef.current = () => { if (isWorldDirty) void saveWorld(); };
+  // Failed retries like a click, even after an undo leaves the world clean.
+  saveShortcutRef.current = () => { if (isWorldDirty || saveStatus.status === 'failed') void saveWorld(); };
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;
@@ -1027,15 +1031,8 @@ const WorldEditorInner = ({
     icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
     onClick: exportCurrentWorld,
   }];
-  // The face is enabled only when there is something to save; the menu half stays available.
-  const saveProps = {
-    variant: 'default', align: 'end', tourAnchor: 'save', menu: saveMenu, menuLabel: 'Save options',
-    onClick: saveWorld, faceDisabled: !isWorldDirty,
-  } as const;
-  const saveButton = (
-    <SplitButton {...saveProps} side="bottom" icon={<Save className="h-4 w-4 mr-2" />} label="Save" faceTip="Save (Ctrl+S)" />
-  );
-  // Save's enabled state is the only save signal; the bar names the world being edited.
+  const saveProps = { status: saveStatus.status, onSave: () => { void saveWorld(); }, menu: saveMenu };
+  // Save's face is the only save signal; the bar names the world being edited.
   const worldName = worldOverview.name.trim();
   const worldTitle = worldName && (
     <>
@@ -1082,7 +1079,7 @@ const WorldEditorInner = ({
           <Separator orientation="vertical" className="mx-1 h-5" />
           {optimizeButton}
           {benchButton}
-          {saveButton}
+          <SaveSplitButton {...saveProps} />
         </>
       )}
     />
@@ -1142,7 +1139,7 @@ const WorldEditorInner = ({
       {tabActions}
       <div className="ml-auto flex items-center gap-2">
         {optimizeButton}
-        <SplitButton {...saveProps} size="icon" icon={<Save className="h-4 w-4" />} faceTip="Save" />
+        <SaveSplitButton {...saveProps} iconOnly />
       </div>
     </div>
   );

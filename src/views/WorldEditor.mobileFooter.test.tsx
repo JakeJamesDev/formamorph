@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, renderWorldEditorBench, saveAnnouncement } from '@/test/worldEditorBench';
 import { AUTHORING_TOUR_OFFER_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { NEW_WORLD_NAME } from '@/lib/blankWorld';
@@ -31,6 +31,8 @@ const button = (name: string | RegExp) => screen.getByRole('button', { name });
 /** True when each element comes after the one before it in the document. */
 const inOrder = (elements: HTMLElement[]) => elements.every((el, i) => i === 0
   || (elements[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
+/** The one face a stacked Save face shows. */
+const shownFace = (face: HTMLElement) => face.querySelector('[data-save-face][aria-hidden="false"]')?.getAttribute('data-save-face');
 const filterBox = () => screen.queryByPlaceholderText('Filter Entities');
 const addMenu = () => screen.queryByRole('button', { name: 'Add to Entities' });
 
@@ -79,6 +81,21 @@ describe('World Editor footer (mobile)', () => {
     fireEvent.click(button('Add to Entities'));
     fireEvent.click(button('Add Entity'));
     expect(button('Save')).toBeEnabled();
+  });
+
+  it('morphs the icon-only Save to the check on a save, with no label and the live region saying Saved', async () => {
+    renderWorldEditorBench(WORLD, 'simple', { initialTab: 'entities' });
+    fireEvent.click(button('Add to Entities'));
+    fireEvent.click(button('Add Entity'));
+    const face = button('Save');
+    expect(shownFace(face)).toBe('save');
+    await act(async () => { fireEvent.click(face); });
+
+    await waitFor(() => expect(shownFace(face)).toBe('saved'));
+    expect(face.querySelector('[data-save-face="saved"] .lucide-check')).not.toBeNull();
+    expect(face).toHaveTextContent(/^$/);
+    expect(face).toHaveClass('bg-success/20');
+    expect(saveAnnouncement(face)).toBe('Saved');
   });
 });
 

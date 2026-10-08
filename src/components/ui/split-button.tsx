@@ -19,19 +19,25 @@ export interface SplitButtonAction {
  * Defaults fit the editor footer: outline, small, and a menu that opens upward. The app bar passes
  * `variant="default"` and `side="bottom"`. The face keeps its own icon, since the two footer buttons are
  * told apart by their glyph before their label is read. No `label` draws an icon-only face; its tip names it.
+ * `children` draws a face whose content changes, such as Save's states, in place of the icon and label.
  */
 export function SplitButton({
-  icon, label, menu, onClick, disabled, faceDisabled, menuLabel, faceTip, tourAnchor,
-  variant = 'outline', size = 'sm', side = 'top', align = 'start',
+  icon, label, children, menu, onClick, disabled, faceDisabled, faceAriaDisabled, faceClassName, menuLabel, faceTip,
+  tourAnchor, variant = 'outline', size = 'sm', side = 'top', align = 'start',
 }: {
-  icon: ReactNode;
+  icon?: ReactNode;
+  /** The face's visible text. With `children` it still marks the face as named by its text, not its tip. */
   label?: string;
+  children?: ReactNode;
   menu: SplitButtonAction[];
   onClick: () => void;
   /** Disables the face and the chevron. */
   disabled?: boolean;
   /** Disables the face alone; the menu stays open to use. */
   faceDisabled?: boolean;
+  /** Keeps the face's full look and its tip but takes no click, for a face that is busy or shows a result. */
+  faceAriaDisabled?: boolean;
+  faceClassName?: string;
   /** The chevron's accessible name, which says what the menu holds. */
   menuLabel: string;
   /** The face's tooltip. On an icon-only face it is also the accessible name. */
@@ -46,11 +52,16 @@ export function SplitButton({
   const Chevron = side === 'top' ? ChevronUp : ChevronDown;
   const face = (
     <Button
-      variant={variant} size={size} className="rounded-r-none" onClick={onClick}
-      disabled={disabled || faceDisabled} data-tour-anchor={tourAnchor}
+      variant={variant} size={size} className={cn('rounded-r-none', faceClassName)}
+      onClick={() => { if (!faceAriaDisabled) onClick(); }}
+      disabled={disabled || faceDisabled} aria-disabled={faceAriaDisabled || undefined} data-tour-anchor={tourAnchor}
     >
-      {icon}
-      {label && <span className="truncate max-w-[14rem]">{label}</span>}
+      {children ?? (
+        <>
+          {icon}
+          {label && <span className="truncate max-w-[14rem]">{label}</span>}
+        </>
+      )}
     </Button>
   );
   return (

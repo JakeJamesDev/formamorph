@@ -42,6 +42,9 @@ export const asMobile = () => {
   };
 };
 
+/** What the Save face's live region says; the region follows the split button. */
+export const saveAnnouncement = (face: HTMLElement) => face.parentElement?.nextElementSibling?.textContent ?? null;
+
 /** Desktop's Search World field in the app bar. */
 export const searchWorldField = () => screen.getByRole('textbox', { name: 'Search World' });
 

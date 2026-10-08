@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, renderWorldEditorBench, saveAnnouncement } from '@/test/worldEditorBench';
 import { openLatestDetails, toastTexts } from '@/test/toastText';
 import { EXPORT_TO_KEEP, SAVE_FAILED, STORAGE_FULL } from '@/lib/saveFailureToast';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { serializeJsonBlob } from '@/lib/jsonFileWorkerUtils';
+import { SAVE_FAILED_TIP } from '@/components/editor/SaveSplitButton';
 import WorldStorageService from '../services/WorldStorageService';
 
 /**
@@ -70,7 +71,38 @@ describe('a save on a full disk', () => {
     expect(text).toContain(STORAGE_FULL);
     expect(text).toContain('Formamorph uses 2.4 GB. 100 MB is available.');
     expect(text).toContain(EXPORT_TO_KEEP);
-    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+    // The face holds Failed, and a click tries again.
+    expect(screen.getByRole('button', { name: 'Failed' })).toBeEnabled();
+  });
+
+  it('holds Failed on the destructive fill through an edit, and a good retry shows Saved', async () => {
+    storeWorld.mockRejectedValueOnce(new DOMException('The quota has been exceeded.', 'QuotaExceededError'));
+    await renameAndSave('Brinewell');
+    const failed = await screen.findByRole('button', { name: 'Failed' });
+    expect(failed).toHaveClass('bg-destructive-fill');
+    expect(saveAnnouncement(failed)).toBe('Save failed');
+    fireEvent.pointerEnter(failed);
+    fireEvent.focus(failed);
+    expect(await screen.findByText(SAVE_FAILED_TIP)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByDisplayValue('Brinewell'), { target: { value: 'Saltmarsh' } });
+    expect(screen.getByRole('button', { name: 'Failed' })).toBe(failed);
+
+    fireEvent.click(failed);
+    expect(await screen.findByRole('button', { name: 'Saved' })).not.toHaveClass('bg-destructive-fill');
+    expect(storeWorld).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries a failed save with Ctrl+S after an undo leaves the world clean', async () => {
+    storeWorld.mockRejectedValueOnce(new DOMException('The quota has been exceeded.', 'QuotaExceededError'));
+    await renameAndSave('Brinewell');
+    await screen.findByRole('button', { name: 'Failed' });
+    const field = screen.getByDisplayValue('Brinewell');
+    fireEvent.change(field, { target: { value: 'Sedge Landing' } });
+
+    fireEvent.keyDown(field, { key: 's', ctrlKey: true });
+    expect(await screen.findByRole('button', { name: 'Saved' })).toBeInTheDocument();
+    expect(storeWorld).toHaveBeenCalledTimes(2);
   });
 
   it('Export World downloads the unsaved world', async () => {
