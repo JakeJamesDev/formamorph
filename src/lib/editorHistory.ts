@@ -311,6 +311,22 @@ export function markSaved(history: EditorHistory): EditorHistory {
   return { ...history, saved: history.cursor, sealed: true };
 }
 
+/** Every record the map names swapped for its replacement, in every Step. The order and the cursor stay. */
+export function replaceRecords(history: EditorHistory, replacements: ReadonlyMap<object, object>): EditorHistory {
+  if (!replacements.size) return history;
+  const swap = (edits: SliceEdit[] | undefined) => edits?.map((edit): SliceEdit => {
+    if (edit.slice === "worldOverview") return edit;
+    const records = (list: IdRecord[]) => list.map((record) => (replacements.get(record) as IdRecord | undefined) ?? record);
+    return { ...edit, before: records(edit.before as IdRecord[]), after: records(edit.after as IdRecord[]) } as RecordEdit;
+  });
+  return {
+    ...history,
+    steps: history.steps.map((step) => ({
+      ...step, edits: swap(step.edits)!, ...(step.carry ? { carry: swap(step.carry) } : {}),
+    })),
+  };
+}
+
 export const canUndo = (history: EditorHistory) => history.cursor > 0;
 export const canRedo = (history: EditorHistory) => history.cursor < history.steps.length;
 

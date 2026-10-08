@@ -168,6 +168,58 @@ describe('the World Editor history', () => {
     expect(undoFace()).toBeDisabled();
   });
 
+  it('starts with an empty stack when the editor closes and opens again over the same world', async () => {
+    const { ctx, reopen } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    await removeStat('Damp');
+    expect(undoFace()).toBeEnabled();
+
+    await step(() => reopen());
+    openEditorTab(/Stats/);
+    expect(undoFace()).toBeDisabled();
+    expect(redoFace()).toBeDisabled();
+    await chord('z');
+    // The edit stays in the world; only its history is gone.
+    expect(ctx().stats.map((s) => s.name)).toEqual(['Warmth', 'Dread']);
+  });
+
+  it('leaves no Steps for the next open after Exit Without Saving', async () => {
+    const { ctx, reopen } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    await removeStat('Damp');
+
+    fireEvent.click(document.querySelector('.lucide-arrow-left')!.closest('button')!);
+    await step(() => fireEvent.click(screen.getByRole('button', { name: 'Exit Without Saving' })));
+    expect(ctx().stats.map((s) => s.name)).toEqual(['Warmth', 'Damp', 'Dread']);
+
+    await step(() => reopen());
+    openEditorTab(/Stats/);
+    expect(undoFace()).toBeDisabled();
+    await chord('z');
+    expect(rows()).toEqual(['Warmth', 'Damp', 'Dread']);
+  });
+
+  it('undoes from the chord and the pill in the in-game host, and clears when its editor closes', async () => {
+    const props = { inGame: true };
+    const { ctx, reopen } = renderWorldEditorBench(WORLD, 'advanced', props, inHost);
+    openEditorTab(/Stats/);
+    await removeStat('Damp');
+    await removeStat('Dread');
+
+    expect(await chord('z')).toBe(true);
+    expect(rows()).toEqual(['Warmth', 'Dread']);
+    await step(() => fireEvent.click(undoFace()));
+    expect(rows()).toEqual(['Warmth', 'Damp', 'Dread']);
+    await step(() => fireEvent.click(redoFace()));
+    expect(rows()).toEqual(['Warmth', 'Dread']);
+
+    await step(() => reopen(props));
+    openEditorTab(/Stats/);
+    expect(undoFace()).toBeDisabled();
+    expect(redoFace()).toBeDisabled();
+    expect(ctx().stats.map((s) => s.name)).toEqual(['Warmth', 'Dread']);
+  });
+
   it('does nothing while the key composes text', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Stats/);

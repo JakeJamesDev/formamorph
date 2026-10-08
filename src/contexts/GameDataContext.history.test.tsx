@@ -219,6 +219,122 @@ describe('the world history', () => {
     expect(statIds(ctx())).toEqual(['hunger', 'thirst', 'warmth']);
   });
 
+  it('records nothing for a load, so the first edit is the first Step', async () => {
+    const { ctx, history } = await open();
+    expect(history().steps).toHaveLength(0);
+    expect(history().canUndo).toBe(false);
+
+    await act1(() => ctx().removeStat('hunger'));
+    expect(history().steps).toHaveLength(1);
+    await act1(() => history().undo());
+    expect(statIds(ctx())).toEqual(['hunger', 'thirst', 'warmth']);
+  });
+
+  it('records nothing for the copies pass a load starts', async () => {
+    const { ctx, history } = await open(world('w-links', {
+      traits: [paladin], traitGroups: [TRAIT_BLUEPRINTS],
+      placeholders: [garb], placeholderGroups: [BLUEPRINTS],
+      entities: [entity('wick', { name: 'Wick', traitLinks: [paladinLink] })],
+    }));
+    expect(ctx().entities[0].placeholders?.some((p) => p.blueprintId)).toBe(true);
+    expect(history().steps).toHaveLength(0);
+  });
+
+  it('starts an empty stack when the same world loads again, as a discard does', async () => {
+    const { ctx, history } = await open();
+    await act1(() => ctx().removeStat('hunger'));
+    await act1(() => ctx().removeStat('thirst'));
+    expect(history().steps).toHaveLength(2);
+
+    await act1(() => ctx().discardChanges());
+    expect(statIds(ctx())).toEqual(['hunger', 'thirst', 'warmth']);
+    expect(history().steps).toHaveLength(0);
+    expect(history().canUndo).toBe(false);
+    expect(history().canRedo).toBe(false);
+
+    await act1(() => ctx().removeStat('warmth'));
+    expect(history().steps).toHaveLength(1);
+  });
+
+  it('starts an empty stack when the editor closes', async () => {
+    const { ctx, history } = await open();
+    await act1(() => ctx().removeStat('hunger'));
+    await act1(() => ctx().removeStat('thirst'));
+    await act1(() => history().undo());
+    await act1(() => history().clear());
+    expect(history().steps).toHaveLength(0);
+    expect(history().canRedo).toBe(false);
+    expect(statIds(ctx())).toEqual(['thirst', 'warmth']);
+    // The next edit starts the history over, never merging into a Step from before the close.
+    await act1(() => ctx().removeStat('warmth'));
+    expect(history().steps).toHaveLength(1);
+  });
+
+  it('records nothing the closing editor writes in the tick of the close', async () => {
+    const { ctx, history } = await open();
+    await act1(() => {
+      history().clear();
+      ctx().removeStat('hunger');
+    });
+    expect(statIds(ctx())).toEqual(['thirst', 'warmth']);
+    expect(history().steps).toHaveLength(0);
+
+    await act1(() => ctx().removeStat('thirst'));
+    expect(history().steps).toHaveLength(1);
+  });
+
+  it('adds the Saved marker on save and keeps every Step', async () => {
+    const { ctx, history } = await open();
+    await act1(() => ctx().removeStat('hunger'));
+    await act1(() => ctx().removeStat('thirst'));
+    expect(history().saved).toBeNull();
+
+    await act(async () => { expect((await ctx().saveWorld()).ok).toBe(true); });
+    expect(history().steps).toHaveLength(2);
+    expect(history().cursor).toBe(2);
+    expect(history().saved).toBe(2);
+    expect(ctx().isWorldDirty).toBe(false);
+
+    // The next edit is a Step after the marker, never part of the saved one.
+    await act1(() => ctx().removeStat('warmth'));
+    expect(history().steps).toHaveLength(3);
+    expect(history().saved).toBe(2);
+  });
+
+  it('reads dirty past the marker and clean back at it, in both directions', async () => {
+    const { ctx, history } = await open();
+    await act1(() => ctx().removeStat('hunger'));
+    await act(async () => { await ctx().saveWorld(); });
+    expect(ctx().isWorldDirty).toBe(false);
+
+    await act1(() => history().undo());
+    expect(ctx().isWorldDirty).toBe(true);
+    await act1(() => history().redo());
+    expect(ctx().isWorldDirty).toBe(false);
+
+    // An edit past the marker, undone, is clean again.
+    await act1(() => ctx().removeStat('thirst'));
+    expect(ctx().isWorldDirty).toBe(true);
+    await act1(() => history().undo());
+    expect(ctx().isWorldDirty).toBe(false);
+  });
+
+  it('places the marker where the saved world stood when an edit lands while the save runs', async () => {
+    const { ctx, history } = await open();
+    await act1(() => ctx().removeStat('hunger'));
+    await act(async () => {
+      const saving = ctx().saveWorld();
+      ctx().removeStat('thirst');
+      await saving;
+    });
+    expect(history().steps).toHaveLength(2);
+    expect(history().saved).toBe(1);
+    expect(ctx().isWorldDirty).toBe(true);
+
+    await act1(() => history().undo());
+    expect(ctx().isWorldDirty).toBe(false);
+  });
+
   it('starts an empty stack when another world opens', async () => {
     const { ctx, history } = await open();
     await act1(() => ctx().removeStat('hunger'));
