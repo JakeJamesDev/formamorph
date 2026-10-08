@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint, Meta } from '@/components/ui/typography';
 import { ImageUpload } from '@/lib/UtilityComponents';
-import { historyShortcut } from '@/lib/canvasHistory';
+import { historyShortcut } from '@/lib/editorHistory';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { filesFrom } from '@/lib/importFiles';
