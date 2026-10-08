@@ -1906,9 +1906,16 @@ interface DeadCondition {
   row: string | null;
 }
 
+/** A default that starts unselected on every bearer that holds its gate. */
+interface OffDefault {
+  traitId: string;
+  /** A link override's gate with its bearer; absent for the original's gate. */
+  gate?: HeldGate;
+  /** The gate as its rows read, each Condition quoted. */
+  requirements: string;
+}
+
 interface GateReport {
-  /** World trait id → its gate as its rows read, each Condition quoted. */
-  requirementTexts: Map<string, string>;
   /** Every Condition whose target this world no longer has, one per Condition. */
   unresolved: DeadCondition[];
   /** Rows that can never hold, with the row quoted. */
@@ -1918,7 +1925,7 @@ interface GateReport {
   /** Sets whose requirements loop through an odd number of Not Conditions, under any persona choice. */
   unstable: GateTrait[][];
   /** Defaults that start unselected under every persona choice, outside the never-unlockable sets. */
-  offDefaults: string[];
+  offDefaults: OffDefault[];
   /** Groups whose minimum a bearer can't meet, under every persona choice that holds the bearer. */
   picks: PickShortfall[];
 }
@@ -2050,22 +2057,42 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     && loop.keys.every((k) => other.keys.includes(k)))).map((loop) => loop.traits);
 
   const input = editorGateInput(openable);
+  // A link that overrides a trait's rows holds a gate of its own, judged apart from the original's.
+  const overrideKey = (link: TraitLink | undefined, traitId: string): string | null =>
+    (link?.overrides?.[traitId]?.requires ? pairKey(link.id, traitId) : null);
   const stuckIds = new Set([
     ...neverUnlockable(input).flat().filter((r) => r.ownerId === WORLD_OWNER).map((r) => r.traitId),
     ...stuck.flat().filter((t) => t.ownerId === WORLD_OWNER && !t.link).map((t) => t.traitId),
+    ...stuck.flat().flatMap((t) => overrideKey(t.link, t.traitId) ?? []),
   ]);
   // Each bearer settles its own defaults, so a default is off only when no bearer keeps it under any persona.
   const everOff = new Set<string>();
   const everOn = new Set<string>();
-  const settleInto = (gate: Omit<GateInput, 'active'>) => {
+  const overridden = new Map<string, GateTraitRef>();
+  const settleInto = (gate: Omit<GateInput, 'active'>, linkOf: (ownerId: string, traitId: string) => TraitLink | undefined) => {
     const settled = settleDefaults(gate);
-    for (const r of settled.turnedOff) everOff.add(r.traitId);
-    for (const ids of Object.values(settled.active)) for (const id of ids) everOn.add(id);
+    const keyOf = (ownerId: string, traitId: string) => {
+      const key = overrideKey(linkOf(ownerId, traitId), traitId);
+      if (key !== null) overridden.set(key, { ownerId, traitId });
+      return key ?? traitId;
+    };
+    for (const r of settled.turnedOff) everOff.add(keyOf(r.ownerId, r.traitId));
+    for (const [ownerId, ids] of Object.entries(settled.active)) {
+      // A bearer that keeps an overridden trait on also keeps the original quiet.
+      for (const id of ids) everOn.add(id).add(keyOf(ownerId, id));
+    }
     return settled;
   };
-  const settledByPass = passes.map((pass) => settleInto(pass.gate).active);
-  for (const persona of personaChoices(world)) settleInto({ ...input, persona });
-  const offDefaults = traits.filter((t) => !stuckIds.has(t.id) && everOff.has(t.id) && !everOn.has(t.id)).map((t) => t.id);
+  const settledByPass = passes.map((pass) => settleInto(pass.gate, (ownerId, traitId) => pass.bearers.get(ownerId)?.linkOf.get(traitId)).active);
+  for (const persona of personaChoices(world)) settleInto({ ...input, persona }, (ownerId, traitId) => linksOf.get(ownerId)?.get(traitId));
+  const isOff = (key: string) => !stuckIds.has(key) && everOff.has(key) && !everOn.has(key);
+  const offDefaults: OffDefault[] = [
+    ...traits.filter((t) => isOff(t.id)).map((t) => ({ traitId: t.id, requirements: requirementTexts.get(t.id) ?? '' })),
+    ...[...overridden].filter(([key]) => isOff(key)).flatMap(([, r]) => {
+      const gate = heldAt.get(pairKey(r.ownerId, r.traitId));
+      return gate ? [{ traitId: r.traitId, gate, requirements: quotedRules(gate.rows) }] : [];
+    }),
+  ];
 
   // A group is short only when it is short under every persona choice that holds its bearer. A group with an
   // unreachable minimum leaves its defaults to that finding, as does a minimum above the maximum.
@@ -2098,7 +2125,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     else if (defaults.length === runs && defaults[0].min <= (defaults[0].group.maxPicks ?? Infinity)) picks.push(defaults[0]);
   }
 
-  report = { requirementTexts, unresolved, deadRows: dead, stuck, unstable, offDefaults, picks };
+  report = { unresolved, deadRows: dead, stuck, unstable, offDefaults, picks };
   gateReportsByWorld.set(world, report);
   return report;
 };
@@ -2202,12 +2229,12 @@ const traitDefaultGated: Rule = {
   section: 'traits',
   summary: (count) => `${count} default traits start unselected because their requirements aren’t met`,
   check: (world) => {
-    const { offDefaults, requirementTexts } = gateReportOf(world);
-    return offDefaults.map((id) => {
-      const item = traitItem(id, world);
+    return gateReportOf(world).offDefaults.map(({ traitId, gate, requirements }) => {
+      const item = gate ? heldItem(gate, world) : traitItem(traitId, world);
+      const subject = onBearer(quote(item.name), gate?.link ? quote(labelOf(gate.owner.name, world)) : null);
       return finding(
         traitDefaultGated,
-        `${quote(item.name)} is marked default but starts unselected — no starting default or persona choice meets ${requirementTexts.get(id) ?? ''}`,
+        `${subject} is marked default but starts unselected — no starting default or persona choice meets ${requirements}`,
         [item],
       );
     });
