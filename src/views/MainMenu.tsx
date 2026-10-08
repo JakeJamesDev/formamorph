@@ -431,7 +431,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
     if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
-    if (devRoute?.modal === 'worldEditor' || devRoute?.modal === 'replaceSource') setShowWorldEditor(true);
+    if (['worldEditor', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll'].includes(devRoute?.modal ?? '')) setShowWorldEditor(true);
     if (devRoute?.modal === 'avatar') setShowCharacterCustomization(true);
     if (devRoute?.modal === 'aiSetup') setGate({ reason: 'firstRun' });
     // The prompt viewer reads a world's overrides, so it opens on a canned one rather than on whatever the

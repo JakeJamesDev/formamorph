@@ -147,6 +147,7 @@ A script does not have to return anything. One that only writes `self`, a placeh
 
 ### Accessing Other Stats
 <!-- keywords: reference another, dot notation, square brackets, misspelled name, undefined, get hp, missing gives zero, randomized names -->
+<!-- route: codeRename -->
 
 Read another stat by its name:
 
@@ -157,6 +158,8 @@ return health;
 ```
 
 A name with a space needs brackets: `stats["Hit Points"].value`. A name the world does not have reads as a blank entry with every number `0`, so a typo never throws.
+
+Rename a stat, a trait or a placeholder that code names, and **Update Code References** asks whether to change the name in that code too. **Leave Code** keeps the code as it is.
 
 > ℹ️ **A stat name with a placeholder chip in it reads in code as the placeholder's own name.** A stat named `{{Beast}} Power` is `stats["Beast Power"]` in every playthrough, whatever the chip rolled. The player still sees the rolled name.
 

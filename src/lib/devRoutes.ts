@@ -81,6 +81,9 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  Importing from it does write: the character lands in the library, and a world you tick gets a copy.
  *  `replaceSource` opens the World Editor and raises the Bench's Replace From Library picker over a canned
  *  missing copy, because in the app it opens only from an Issues row whose source is gone. Replace
+ *  closes it and writes nothing. `imageReplace`, `codeRename` and `replaceAll` open the World Editor and raise,
+ *  on canned text, the question a generated image with no free slot asks, the offer to carry a rename into
+ *  stat code, and the Replace All confirm. In the app each opens only partway through an edit. Every answer
  *  closes it and writes nothing. `demoAI` is in game (GameViewer) and opens the Demo AI dialog whatever the
   narration endpoint and the seen-key say, so it is reachable on a build that overrides the default endpoint.
  *  `persona` is in game (GameViewer) and opens the right panel's Change Persona picker. On mobile that panel
@@ -95,7 +98,7 @@ export type DevPaneModal = (typeof DEV_PANE_MODALS)[number];
  *  edit of the answer prompt. `formaquestionAiContext` opens the window and its AI Context under it, on two
  *  canned questions with traces, so the popup has pages to show without an AI. `settingsCompare` opens Settings
  *  and the compare view over it, on a canned edit of the Narration prompt. `DEV_PANE_MODALS` follow. */
-export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'settingsCompare', ...DEV_PANE_MODALS] as const;
+export const DEV_MODALS = ['settings', 'entity', 'export', 'menu', 'worldEditor', 'intro', 'avatar', 'backup', 'aiSetup', 'entityEditor', 'dictionaryEditor', 'modelDetails', 'community', 'memoryManager', 'profile', 'auth', 'feedbackHub', 'adminPanel', 'editText', 'location', 'changelog', 'eventAck', 'publish', 'worldPrompts', 'aiContext', 'ageGate', 'likers', 'privacyPolicy', 'deleteAccount', 'deletionCancelled', 'updateRequired', 'exitApp', 'designSystem', 'enterWorld', 'connectReferences', 'manageAddons', 'componentUpdates', 'worldUpdate', 'importComponent', 'replaceSource', 'imageReplace', 'codeRename', 'replaceAll', 'demoAI', 'persona', 'likePrompt', 'errorDetails', 'formaquestion', 'formaquestionSettings', 'formaquestionCompare', 'formaquestionAiContext', 'settingsCompare', ...DEV_PANE_MODALS] as const;
 export type DevModal = (typeof DEV_MODALS)[number];
 
 /** The `attach=…` value that stages sample attachments on the game view. */

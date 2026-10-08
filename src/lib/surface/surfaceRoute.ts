@@ -72,6 +72,10 @@ const DIALOGS: Record<DevModal, DialogRoute> = {
   deleteAccount: { ancestor: 'profile.settings' },
   connectReferences: { ancestor: 'worldEditor' },
   replaceSource: { ancestor: 'worldEditorBench.issues' },
+  // Asked partway through an edit, so help lands on the editor that asks them.
+  imageReplace: { ancestor: 'worldEditor' },
+  codeRename: { ancestor: 'worldEditor' },
+  replaceAll: { ancestor: 'worldEditor' },
 
   export: { host: 'gameViewer' },
   location: { host: 'gameViewer' },

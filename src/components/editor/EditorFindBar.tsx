@@ -144,6 +144,36 @@ function StepCell({ onClick, disabled, label, children }: {
   );
 }
 
+/** The question Replace All asks before it writes: how many matches, across how many fields, and what it skips. */
+export function ReplaceAllConfirm({ open, onOpenChange, count, fields, skipped, missingChip, onConfirm }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  count: number;
+  fields: number;
+  skipped: number;
+  missingChip: string;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent surface="replaceAll" data-editor-find-layer>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Replace All</AlertDialogTitle>
+          <AlertDialogDescription>
+            {`Replace ${count} match${count === 1 ? '' : 'es'} across ${fields} field${fields === 1 ? '' : 's'}?`
+              + (skipped ? ` ${skipped} in fields that can't hold ${missingChip} will be skipped.` : '')
+              + ' Discard Changes is the only way back.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Replace All</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export default function EditorFindBar({
   layout = 'floating', focusSignal, onActiveChange, onLeave, expanded = false, onExpandedChange, fieldAttributes,
   targets, placeholders, placementLetters, placeholderOwners, placeholderGroups, allowPlaceholderReplace, startWithReplace = false, onNavigate, onAddPlaceholder, onClose,
@@ -514,28 +544,17 @@ export default function EditorFindBar({
     </>
   );
 
+  const eligible = matches.filter((m) => insertFor(m.target) !== null);
   const confirmDialog = (
-    <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
-      <AlertDialogContent data-editor-find-layer>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Replace All</AlertDialogTitle>
-          <AlertDialogDescription>
-            {(() => {
-              const eligible = matches.filter((m) => insertFor(m.target) !== null);
-              const fields = new Set(eligible.map((m) => m.target)).size;
-              const skipped = matches.length - eligible.length;
-              return `Replace ${eligible.length} match${eligible.length === 1 ? '' : 'es'} across ${fields} field${fields === 1 ? '' : 's'}?`
-                + (skipped ? ` ${skipped} in fields that can't hold ${missingChip} will be skipped.` : '')
-                + ' Discard Changes is the only way back.';
-            })()}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={runReplaceAll}>Replace All</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ReplaceAllConfirm
+      open={confirmAll}
+      onOpenChange={setConfirmAll}
+      count={eligible.length}
+      fields={new Set(eligible.map((m) => m.target)).size}
+      skipped={matches.length - eligible.length}
+      missingChip={missingChip}
+      onConfirm={runReplaceAll}
+    />
   );
 
   if (docked) {

@@ -321,7 +321,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
         <>
           <p className="truncate text-label font-medium">{valueLine(openValue)}</p>
           <Label className="text-meta text-muted-foreground">Draw Weight</Label>
-          <Input
+          <Input data-world-field
             type="number"
             min={0}
             step={1}
@@ -343,7 +343,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
   const nameInput = (
     <div className="space-y-2">
       <Label>Name</Label>
-      <Input
+      <Input data-world-field
         value={editing.name}
         onChange={(e) => apply({ name: e.target.value })}
         disabled={locked}
@@ -667,7 +667,7 @@ const MultilineValues = ({
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {weight && value && (
                 <>
-                  <Input
+                  <Input data-world-field
                     type="number"
                     min={0}
                     step={1}

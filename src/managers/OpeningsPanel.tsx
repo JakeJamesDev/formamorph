@@ -455,7 +455,7 @@ const OpeningCard = ({
           </ToggleGroup>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <Input
+          <Input data-world-field
             type="number"
             min={0}
             step={1}

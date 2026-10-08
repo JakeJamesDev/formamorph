@@ -32,7 +32,7 @@ const DictionaryBookFields = ({ book, showEnabled = true }: { book: Dictionary; 
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Name</Label>
-        <Input
+        <Input data-world-field
           value={book.name}
           onChange={(e) => updateDictionary({ ...book, name: e.target.value })}
           aria-label="Name"
@@ -43,7 +43,7 @@ const DictionaryBookFields = ({ book, showEnabled = true }: { book: Dictionary; 
       </div>
       <div className="space-y-2">
         <Label>Description</Label>
-        <Textarea
+        <Textarea data-world-field
           value={book.description ?? ''}
           onChange={(e) => updateDictionary({ ...book, description: e.target.value })}
           placeholder="Notes for you, not injected into the prompt"

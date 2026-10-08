@@ -17,7 +17,7 @@ const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
       <ListDetailFirstRow>
         <div className="space-y-2">
           <Label>Group Name</Label>
-          <Input value={editingGroup.name || ''} onChange={(e) => setField('name', e.target.value)} />
+          <Input data-world-field value={editingGroup.name || ''} onChange={(e) => setField('name', e.target.value)} />
         </div>
       </ListDetailFirstRow>
       <p className="text-helper text-muted-foreground">

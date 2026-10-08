@@ -90,7 +90,7 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
           return (
             <div key={key} className="space-y-1">
               <Label htmlFor={id} className="flex items-center gap-1">{label}</Label>
-              <Input
+              <Input data-world-field
                 id={id}
                 ref={(node) => { boxes.current[key] = node; }}
                 value={copy ? firstHint : connection[key]?.hint ?? ''}

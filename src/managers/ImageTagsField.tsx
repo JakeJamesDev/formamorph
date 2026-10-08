@@ -399,36 +399,57 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
         tags={tags ?? ''}
         onTagsChange={onTagsChange}
       />
-      <Dialog open={pendingGenerated !== null} onOpenChange={(o) => { if (!o) closeOverwrite(false); }}>
-        <DialogContent className="sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle>Replace which image?</DialogTitle>
-            <DialogDescription>
-              There is no free slot for the generated image. Choose the one it takes the place of.
-            </DialogDescription>
-          </DialogHeader>
-          <RadioGroup value={String(overwriteSlot)} onValueChange={(v) => setOverwriteSlot(Number(v))}>
-            {shown.map((_url, i) => (
-              <Label
-                key={i}
-                htmlFor={`${imageId}-overwrite-${i}`}
-                className="flex cursor-pointer items-center gap-3 rounded-md border p-2 hover:border-muted-foreground"
-              >
-                <RadioGroupItem value={String(i)} id={`${imageId}-overwrite-${i}`} />
-                <RemoteImg src={shown[i]} alt="" className="h-12 w-12 rounded object-cover" />
-                <span>{i === 0 ? 'Primary' : `Image ${i + 1}`}</span>
-              </Label>
-            ))}
-          </RadioGroup>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button type="button" variant="outline" onClick={() => closeOverwrite(false)}>Cancel</Button>
-            <Button type="button" onClick={() => closeOverwrite(true)}>Replace</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ReplaceImageDialog
+        open={pendingGenerated !== null}
+        images={shown}
+        slot={overwriteSlot}
+        onSlotChange={setOverwriteSlot}
+        idPrefix={imageId}
+        onClose={closeOverwrite}
+      />
     </div>
   );
 };
+
+/** Asks which held image a generated one takes the place of. `onClose(true)` replaces the picked slot. */
+export function ReplaceImageDialog({ open, images, slot, onSlotChange, idPrefix, onClose }: {
+  open: boolean;
+  images: string[];
+  slot: number;
+  onSlotChange: (slot: number) => void;
+  idPrefix: string;
+  onClose: (replace: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(false); }}>
+      <DialogContent surface="imageReplace" className="sm:max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle>Replace which image?</DialogTitle>
+          <DialogDescription>
+            There is no free slot for the generated image. Choose the one it takes the place of.
+          </DialogDescription>
+        </DialogHeader>
+        <RadioGroup value={String(slot)} onValueChange={(v) => onSlotChange(Number(v))}>
+          {images.map((url, i) => (
+            <Label
+              key={i}
+              htmlFor={`${idPrefix}-overwrite-${i}`}
+              className="flex cursor-pointer items-center gap-3 rounded-md border p-2 hover:border-muted-foreground"
+            >
+              <RadioGroupItem value={String(i)} id={`${idPrefix}-overwrite-${i}`} />
+              <RemoteImg src={url} alt="" className="h-12 w-12 rounded object-cover" />
+              <span>{i === 0 ? 'Primary' : `Image ${i + 1}`}</span>
+            </Label>
+          ))}
+        </RadioGroup>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          <Button type="button" variant="outline" onClick={() => onClose(false)}>Cancel</Button>
+          <Button type="button" onClick={() => onClose(true)}>Replace</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 /**
  * The tags half of the widget: the booru Image Tags line with its AI tag writer. Advanced only, as the tags

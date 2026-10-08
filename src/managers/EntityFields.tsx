@@ -75,7 +75,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
       <div data-tour-anchor="entity-pronouns" className="space-y-2">
         <Label htmlFor={`entity-pronouns-${value.id}`}>Pronouns</Label>
         <Hint>Tells the AI how to refer to this entity</Hint>
-        <Input
+        <Input data-world-field
           id={`entity-pronouns-${value.id}`}
           value={value.pronouns || ''}
           onChange={(e) => onChange('pronouns', e.target.value)}
@@ -86,7 +86,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
       {advanced && (
         <div className="space-y-2">
           <Label>Type</Label>
-          <Input
+          <Input data-world-field
             value={value.type || ''}
             onChange={(e) => onChange('type', e.target.value)}
             placeholder="Enter entity type"

@@ -120,7 +120,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label htmlFor={`pick-min-${editingGroup.id}`} className="text-meta text-muted-foreground">At Least</Label>
-              <Input
+              <Input data-world-field
                 id={`pick-min-${editingGroup.id}`}
                 type="number"
                 min={0}
@@ -133,7 +133,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
             </div>
             <div className="space-y-1">
               <Label htmlFor={`pick-max-${editingGroup.id}`} className="text-meta text-muted-foreground">At Most</Label>
-              <Input
+              <Input data-world-field
                 id={`pick-max-${editingGroup.id}`}
                 type="number"
                 min={0}

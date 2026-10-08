@@ -157,10 +157,13 @@ An entity can have its own openings, so it can start the scene in its own voice.
 
 ## Images and models
 <!-- keywords: portrait, character art, sprite, danbooru, stable diffusion prompt, mesh, face picture, png metadata -->
+<!-- route: imageReplace -->
 
 The image and the 3D model are for the player's screen. **Image Tags** are booru tags for AI [image generation](Image-Generation#scene-images) only. The ✨ toolbar can write a draft of the tags from the description. When you upload an image that has a prompt in its file, the editor offers to use that prompt. The narrator reads none of this.
 
 An image field takes an uploaded file or a web address. See [Upload or link](World-Editor-Overview#upload-or-link).
+
+A generated image goes into the first free slot. With no free slot, **Replace which image?** asks which image it takes the place of. **Cancel** changes nothing.
 
 ## SillyTavern cards
 <!-- keywords: field mapping, what converts, card fields, alternate greetings, example dialogue, v2 spec, user tag, char tag -->

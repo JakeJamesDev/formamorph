@@ -19,7 +19,7 @@ const PlaceholderGroupManager = ({ group }: { group: PlaceholderGroup }) => {
       <ListDetailFirstRow>
         <div className="space-y-2">
           <Label htmlFor={`group-name-${editingGroup.id}`}>Group Name</Label>
-          <Input
+          <Input data-world-field
             id={`group-name-${editingGroup.id}`}
             value={editingGroup.name || ''}
             onChange={(e) => setField('name', e.target.value)}
