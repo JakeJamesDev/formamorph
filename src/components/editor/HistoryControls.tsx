@@ -135,7 +135,6 @@ export function HistoryList({ history }: { history: HistoryView }) {
                   data-undone={done ? undefined : 'true'}
                 >
                   <StepRowLabel parts={row} />
-                  {!done && <span className="sr-only">(undone)</span>}
                   {current && <span className="text-meta text-muted-foreground">Now</span>}
                 </button>
               )}
