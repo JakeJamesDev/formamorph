@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { useState } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -125,6 +125,9 @@ function worldNames(): VariableTreeNames {
 const level = (label: string) => screen.queryByRole('group', { name: label });
 
 describe('CodeArea', () => {
+  // The editor chunk's first load is a cold module transform that grows with suite load; pay it once here,
+  // not inside whichever test's `editor()` wait happens to run first.
+  beforeAll(() => import('@/components/prompt/codeSession'));
   // The split preference is shared and persisted, so one test's toggle would otherwise decide the next.
   beforeEach(() => localStorage.clear());
 
