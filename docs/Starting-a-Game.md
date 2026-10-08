@@ -114,13 +114,13 @@ An entity whose traits you set gets a category with its portrait and name. Your 
 |---|---|
 | A round button | Pick one. Select it again to clear it. |
 | A checkbox | Pick several. When the group is full, the rest turn off. |
-| A check mark with no control | **Always On**. The trait is on and you can't change it. |
-| A lock and *Requires …* | The trait needs another trait first. Pick one it names and it unlocks. |
+| A check mark with no control | **Automatic**. The trait is on and you can't change it. |
+| A lock and *Requires …* | The trait needs something first, such as *Requires Knight and not Paladin, or Mercenary*. Meet every part of one alternative and it unlocks. |
 | A lock and *Locked* | The trait needs only traits you can't see |
-| *Unlocked by …* | The trait you picked that opened it |
+| *Unlocked by …* | The picks that opened it |
 | A stat line, such as *Strength: +2* | What the trait does to a stat |
 
-A world can have **Hidden** traits. They work like **Always On** traits, and they never show in the list.
+A world can have **Hidden** traits. They work like **Automatic** traits, and they never show in the list.
 
 When one pick switches other traits off, a notice names them: *Turned off …, because of …*. Select **Dismiss** to close it.
 

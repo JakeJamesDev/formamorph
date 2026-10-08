@@ -142,7 +142,7 @@ export const TraitsTab = ({
     const gate = gates && gateOf(gates, bearerId, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
-    // A switch-on needs an open gate and a group below its max, and a max-one group's active Always On trait
+    // A switch-on needs an open gate and a group below its max, and a max-one group's active Automatic trait
     // can't be swapped out. A switch-off must not leave the group below its min.
     const fixedIn = fixedBlocks.has(`${bearerId}/${block.key}`);
     const disabled = readOnly || (off ? locked || (radio ? fixedIn : !!pick?.full) : !!pick && leavesShort(pick));

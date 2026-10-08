@@ -1580,17 +1580,17 @@ describe('trait group rules', () => {
     expect(only(grouped({ max: 2, members: 3, defaults: 2 }), 'trait-group-defaults-over-max')).toEqual([]);
   });
 
-  it('flags Always On traits that can be active together past the max, naming them', () => {
+  it('flags Automatic traits that can be active together past the max, naming them', () => {
     const w = grouped({ members: 3 });
     const fixed = { ...w, traits: w.traits!.map((t) => (t.id === 't3' ? t : { ...t, mode: 'alwaysOn' as const })) };
     const found = only(fixed, 'trait-group-always-on-over-max');
     expect(found.map((f) => f.message)).toEqual([
-      '“Origin” allows at most 1 pick but Origin 1 and Origin 2 are Always On and can be active together',
+      '“Origin” allows at most 1 pick but Origin 1 and Origin 2 are Automatic and can be active together',
     ]);
     expect(found[0].items.map((i) => i.id)).toEqual(['g1', 't1', 't2']);
   });
 
-  it('never counts an Always On trait’s Default toward defaults over the max', () => {
+  it('never counts an Automatic trait’s Default toward defaults over the max', () => {
     const w = grouped({ defaults: 2 });
     const one = { ...w, traits: w.traits!.map((t) => (t.id === 't2' ? { ...t, mode: 'alwaysOn' as const } : t)) };
     expect(only(one, 'trait-group-defaults-over-max')).toEqual([]);
@@ -1765,7 +1765,7 @@ describe('trait gate rules', () => {
     });
 
     it('counts every Not Condition as holding (Q15)', () => {
-      // Always On B keeps "not B" from ever holding; the check is optimistic and passes it.
+      // Automatic B keeps "not B" from ever holding; the check is optimistic and passes it.
       const w = gates([rowed('a', [{ all: [not(ref('b'))] }]), trait({ id: 'b', name: 'B', mode: 'alwaysOn' })]);
       expect(only(w, rule)).toEqual([]);
     });
@@ -2321,11 +2321,11 @@ describe('trait link rules', () => {
       expect(opened(short)).toEqual([['l-albus']]);
     });
 
-    it('flags Always On traits past the max on each bearer that links the group, and opens the link', () => {
+    it('flags Automatic traits past the max on each bearer that links the group, and opens the link', () => {
       const fixed = [faithful, ...blueprinted.map((t) => (t.groupId === 'classes' ? { ...t, mode: 'alwaysOn' as const } : t))];
       const found = only(withClasses({ maxPicks: 1 }, [bearing('albus', 'Albus')], fixed), 'trait-group-always-on-over-max');
       expect(found.map((f) => f.message)).toEqual([
-        '“Classes” on “Albus” allows at most 1 pick but Paladin and Wizard are Always On and can be active together',
+        '“Classes” on “Albus” allows at most 1 pick but Paladin and Wizard are Automatic and can be active together',
       ]);
       expect(found[0].severity).toBe('warning');
       expect(opened(found)).toEqual([['l-albus', 'l-albus', 'l-albus']]);

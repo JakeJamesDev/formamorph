@@ -531,7 +531,7 @@ describe('a group at its minimum', () => {
   });
 });
 
-describe('an Always On trait', () => {
+describe('an Automatic trait', () => {
   const GROUPS = [G('g-oath', 'Oath', { maxPicks: 1 })];
   const TRAITS = [
     T('t-ring', 'Cursed Ring'),

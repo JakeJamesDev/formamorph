@@ -339,7 +339,7 @@ A write to an unknown placeholder name is ignored. **Test Code** and the Test Be
 
 `enabled` and `acquired` read the player's state only. An entity that holds the same trait does not change them. Use `mode`, `available` and `group` to see why a switch had no effect.
 
-Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Always On or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In Game**, so a script can switch a trait the player cannot toggle.
+Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Automatic or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **In Game**, so a script can switch a trait the player cannot toggle.
 
 ```javascript
 // Cursed while Sanity is on the floor.
