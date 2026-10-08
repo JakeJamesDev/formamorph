@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useHistoryChords } from '@/components/editor/useHistoryChords';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meta } from '@/components/ui/typography';
 import { LocationCanvasWorkspace } from '@/managers/LocationCanvas';
@@ -46,6 +47,8 @@ export function LocationsCanvasReference() {
   const slices = useMemo(() => ({ ...NO_SLICES, locations, connections }), [locations, connections]);
   const writes = useMemo(() => ({ ...NO_WRITES, locations: setLocations, connections: setConnections }), []);
   const { controls } = useWorldRecorder(slices, 'locations-reference', writes);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  useHistoryChords(controls, canvasRef, { scoped: true });
   const snap = useState(DEFAULT_CANVAS_SNAP);
   const grid = useState(DEFAULT_CANVAS_GRID_VISIBLE);
   const connectionStyle = useState<ConnectionStyle>(DEFAULT_CANVAS_CONNECTION_STYLE);
@@ -58,7 +61,7 @@ export function LocationsCanvasReference() {
         <CardDescription>Select “Edit Full Screen”.</CardDescription>
       </CardHeader>
       <CardContent className="min-w-0 space-y-3">
-        <div className="h-[34rem] min-w-0 overflow-hidden rounded-md border border-border">
+        <div ref={canvasRef} className="h-[34rem] min-w-0 overflow-hidden rounded-md border border-border">
           <WorldHistoryContext.Provider value={controls}>
             <LocationCanvasWorkspace
               selectedId={selectedId}

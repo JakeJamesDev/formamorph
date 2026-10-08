@@ -128,7 +128,7 @@ describe('the World Editor history', () => {
     expect(redoFace()).toBeEnabled();
     fireEvent.pointerEnter(redoFace());
     fireEvent.focus(redoFace());
-    expect(await screen.findByText('Redo (Ctrl+Y)')).toBeInTheDocument();
+    expect(await screen.findByText('Redo (Ctrl+Y or Ctrl+Shift+Z)')).toBeInTheDocument();
 
     await step(() => fireEvent.click(redoFace()));
     expect(rows()).toEqual(['Warmth', 'Dread']);
@@ -233,7 +233,7 @@ describe('the World Editor history', () => {
 describe('the full-screen Locations Canvas', () => {
   const MAP: World = benchEditorWorld({
     locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }, { id: 'docks', name: 'Docks' }],
-  } as unknown as Partial<World>);
+  });
   const openWindow = async () => {
     openEditorTab(/Locations/);
     fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));

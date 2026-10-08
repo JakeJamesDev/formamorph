@@ -23,6 +23,7 @@ vi.mock('@/lib/libraryWriteBack', () => ({
 }));
 beforeEach(() => { whileWriting.edit = null; });
 
+// Only the slices the stamps touch, as hand-authored world JSON gives them; loadWorldData fills the rest.
 const WORLD = {
   id: 'w-stamps', version: '3.0.0',
   worldOverview: {

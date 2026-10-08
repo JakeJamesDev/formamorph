@@ -11,7 +11,6 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -29,6 +28,7 @@ import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
 import type { Entity, GameLocation, Opening, OpeningKind, Placeholder } from '@/types';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /** The Starting Location filter's value for every start at once. */
 const ALL_LOCATIONS = 'all-locations';
@@ -455,7 +455,7 @@ const OpeningCard = ({
           </ToggleGroup>
         )}
         <div className="ml-auto flex items-center gap-2">
-          <Input data-world-field
+          <WorldInput
             type="number"
             min={0}
             step={1}

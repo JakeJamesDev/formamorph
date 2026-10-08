@@ -2,6 +2,7 @@ import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlaceholderGroup, Stat, StatUpdate, Trait,
   TraitGroup, WorldOverview,
 } from "@/types";
+import { canonicalEqual } from "@/lib/canonicalStringify";
 
 /**
  * The World Editor's undo stack. A Step is one author action: the slices it rewrote, each as the touched
@@ -59,6 +60,8 @@ export type SliceEdit = RecordEdit | OverviewEdit;
 export interface StepKey {
   slice: SliceName;
   id?: string;
+  /** The records a write moves together, in place of one id. */
+  ids?: readonly string[];
   field?: string;
 }
 
@@ -74,6 +77,9 @@ export interface Step {
   carry?: SliceEdit[];
 }
 
+/** No seal; one set by undo, redo, jump, a group's end or a save; or one set by a field's own move. */
+export type Seal = false | "edge" | "field";
+
 export interface EditorHistory {
   steps: Step[];
   /** How many Steps are applied. 0 is the World opened head. */
@@ -81,8 +87,8 @@ export interface EditorHistory {
   /** The cursor position at the last save, or null when no position matches it. */
   saved: number | null;
   group: { label?: string; started: boolean } | null;
-  /** The next write starts a new Step whatever its key or tick. */
-  sealed: boolean;
+  /** The next plain write starts a new Step whatever its key or tick. */
+  sealed: Seal;
   pauseMs: number;
 }
 
@@ -141,10 +147,38 @@ export function changedFields(before: object, after: object): string[] {
   return [...keys].filter((key) => was[key] !== now[key]);
 }
 
-/** A write's merge key: the record, and the field when the write changed exactly one. */
+/** A write's merge key: the record, and the field when it changed one besides a linked copy's `link` mark. */
 export function writeKey(slice: SliceName, id: string | undefined, was: object | undefined, now: object): StepKey {
   const fields = was ? changedFields(was, now) : [];
-  return fields.length === 1 ? { slice, id, field: fields[0] } : { slice, id };
+  const content = fields.length > 1 ? fields.filter((field) => field !== "link") : fields;
+  return content.length === 1 ? { slice, id, field: content[0] } : { slice, id };
+}
+
+/** The record with this id in a list, or one array down inside one of its records (an entry, a Copy). */
+function findById(records: IdRecord[], id: string): object | undefined {
+  const own = records.find((record) => record.id === id);
+  if (own) return own;
+  for (const record of records) {
+    for (const value of Object.values(record)) {
+      if (!Array.isArray(value)) continue;
+      const nested = value.find((item: unknown) => !!item && typeof item === "object" && (item as IdRecord).id === id);
+      if (nested) return nested as object;
+    }
+  }
+  return undefined;
+}
+
+/** A writer's key with the field its record's commit changed, or none when it changed several. */
+export function settleKey(key: StepKey, edits: SliceEdit[], holders: readonly SliceName[]): StepKey {
+  for (const edit of edits) {
+    if (!holders.includes(edit.slice)) continue;
+    const [was, now] = edit.slice === "worldOverview" ? [edit.before, edit.after]
+      : key.id === undefined ? [] : [findById(edit.before, key.id), findById(edit.after, key.id)];
+    if (!was || !now || was === now) continue;
+    const settled = writeKey(key.slice, key.id, was, now);
+    return key.field && settled.field ? key : settled;
+  }
+  return key;
 }
 
 const sameOrder = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
@@ -250,7 +284,9 @@ export function combineEdits(first: SliceEdit[], second: SliceEdit[]): SliceEdit
   return combined;
 }
 
-const sameKey = (a?: StepKey, b?: StepKey) => !!a && !!b && a.slice === b.slice && a.id === b.id && a.field === b.field;
+const sameIds = (a?: readonly string[], b?: readonly string[]) => (a && b ? sameOrder([...a], [...b]) : a === b);
+const sameKey = (a?: StepKey, b?: StepKey) =>
+  !!a && !!b && a.slice === b.slice && a.id === b.id && sameIds(a.ids, b.ids) && a.field === b.field;
 
 export interface RecordOptions {
   key?: StepKey;
@@ -298,7 +334,7 @@ function keyedRecord(edit: SliceEdit, side: "before" | "after", key: StepKey): o
   return (edit[side] as IdRecord[]).find((record) => record.id === key.id);
 }
 
-/** Whether a written record reads as one side of a Step: on the keyed field, or on every field the Step changed. */
+/** Whether a written record reads as one side of a Step on every field the Step changed, by content. */
 function readsAs(step: Step, side: "before" | "after", key: StepKey, written: object): boolean {
   const edit = step.edits.find((e) => e.slice === key.slice);
   const was = edit && keyedRecord(edit, "before", key);
@@ -306,7 +342,8 @@ function readsAs(step: Step, side: "before" | "after", key: StepKey, written: ob
   if (!was || !became) return false;
   const target = (side === "before" ? was : became) as Record<string, unknown>;
   const now = written as Record<string, unknown>;
-  return (key.field ? [key.field] : changedFields(was, became)).every((field) => target[field] === now[field]);
+  // By content: a field that follows the keyed one (a rename's descriptors) is rebuilt, never the same object.
+  return changedFields(was, became).every((field) => canonicalEqual(target[field], now[field]));
 }
 
 /** Every string inside a value, at any depth. */
@@ -358,17 +395,21 @@ export function recordFieldMove(
   if (!key || !record) return null;
   const top = history.steps[history.cursor - 1];
   const next = history.steps[history.cursor];
+  // A move seals as undo does, so a plain write after it never merges across it; the field's own walk still joins.
   if (top && sameKey(top.key, key) && onlyKeyed(top, key) && readsAs(top, "before", key, record)) {
-    return { ...history, cursor: history.cursor - 1, sealed: false };
+    return { ...history, cursor: history.cursor - 1, sealed: "field" };
   }
   if (next && sameKey(next.key, key) && onlyKeyed(next, key) && readsAs(next, "after", key, record)) {
-    return { ...history, cursor: history.cursor + 1, sealed: false };
+    return { ...history, cursor: history.cursor + 1, sealed: "field" };
   }
-  // A sealed top, the saved point or an open group keeps its edges, so the write records as a plain one there.
-  if (!top || !sameKey(top.key, key) || history.sealed || history.group || history.saved === history.cursor) return null;
+  // An edge seal, the saved point or an open group keeps its edges, so the write records as a plain one there.
+  if (!top || !sameKey(top.key, key) || history.sealed === "edge" || history.group || history.saved === history.cursor) {
+    return null;
+  }
   const steps = history.steps.slice(0, history.cursor);
   steps[steps.length - 1] = { ...top, edits: combineEdits(top.edits, edits), at: now };
-  return { ...history, steps };
+  // The join drops the undone Steps, and a marker on one of them goes with it.
+  return { ...history, steps, saved: history.saved !== null && history.saved > history.cursor ? null : history.saved };
 }
 
 function capped(history: EditorHistory): EditorHistory {
@@ -389,12 +430,12 @@ export function beginGroup(history: EditorHistory, label?: string): EditorHistor
 
 /** Closes the group, so the next write starts a new Step. */
 export function endGroup(history: EditorHistory): EditorHistory {
-  return history.group ? { ...history, group: null, sealed: history.group.started || history.sealed } : history;
+  return history.group ? { ...history, group: null, sealed: history.group.started ? "edge" : history.sealed } : history;
 }
 
 /** Places the Saved marker at the cursor. The next write starts a new Step after it. */
 export function markSaved(history: EditorHistory): EditorHistory {
-  return { ...history, saved: history.cursor, sealed: true };
+  return { ...history, saved: history.cursor, sealed: "edge" };
 }
 
 /** Every record the map names swapped for its replacement, in every Step. The order and the cursor stay. */
@@ -454,7 +495,7 @@ export function jumpTo(
       moved.push(history.steps[i]);
     }
   }
-  return { history: { ...history, cursor: to, group: null, sealed: true }, restore, steps: moved };
+  return { history: { ...history, cursor: to, group: null, sealed: "edge" }, restore, steps: moved };
 }
 
 export function undo(history: EditorHistory, world: WorldSlices) {

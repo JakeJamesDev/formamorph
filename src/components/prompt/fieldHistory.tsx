@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { CAN_REDO_COMMAND, CAN_UNDO_COMMAND, type LexicalEditor } from 'lexical';
+import { CLEAR_HISTORY_COMMAND, type LexicalEditor } from 'lexical';
 import { HistoryPlugin, createEmptyHistoryState, type HistoryState } from '@lexical/react/LexicalHistoryPlugin';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { registerFieldUndo } from '@/lib/fieldUndo';
@@ -36,12 +36,8 @@ export function FieldHistoryPlugin() {
   }, [editor, historyState]);
   // The field's entries describe text the world has since moved away from, so a restore ends both stacks.
   useEffect(() => editor.registerUpdateListener(({ tags }) => {
-    if (!tags.has(WORLD_RESTORE_TAG)) return;
-    historyState.undoStack.length = 0;
-    historyState.redoStack.length = 0;
-    editor.dispatchCommand(CAN_UNDO_COMMAND, false);
-    editor.dispatchCommand(CAN_REDO_COMMAND, false);
-  }), [editor, historyState]);
+    if (tags.has(WORLD_RESTORE_TAG)) editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
+  }), [editor]);
   useFieldUndoReport(editor, historyState);
   return <HistoryPlugin externalHistoryState={historyState} />;
 }

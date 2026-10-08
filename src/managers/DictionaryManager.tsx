@@ -2,7 +2,6 @@ import { useEffect, type ReactNode } from 'react';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import type { SurfaceLedgerName } from "@/components/ui/surface";
@@ -15,6 +14,7 @@ import {
   dictionaryPanelTabsFor, dictionaryTabForField, type DictionaryPanelTab,
 } from '@/views/dictionaryPanelTabs';
 import type { DictionaryEntry, FocusFieldHint, Placeholder } from '@/types';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /** The long form behind the Trigger Keywords ⓘ: the chip editor's own controls, which the field does not
  *  label. The line under the chips carries only what the keywords do. */
@@ -165,7 +165,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
       <div className="space-y-2">
         <Label>Scan Depth</Label>
         <Hint>Sets how many earlier messages are scanned for keywords. Blank scans all of them. 0 scans only the current scene.</Hint>
-        <Input data-world-field type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
+        <WorldInput type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
       </div>
       <div className="space-y-2">
         <Label>Secondary Keywords</Label>

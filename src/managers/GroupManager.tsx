@@ -2,13 +2,13 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { updateOwnedGroup } from '@/lib/ownedTraits';
 import type { TraitGroup } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { Hint } from '@/components/ui/typography';
+import { WorldInput } from '@/components/editor/WorldField';
 
 type PickPreset = 'any' | 'exactlyOne' | 'upToOne' | 'custom';
 
@@ -120,7 +120,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label htmlFor={`pick-min-${editingGroup.id}`} className="text-meta text-muted-foreground">At Least</Label>
-              <Input data-world-field
+              <WorldInput
                 id={`pick-min-${editingGroup.id}`}
                 type="number"
                 min={0}
@@ -133,7 +133,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
             </div>
             <div className="space-y-1">
               <Label htmlFor={`pick-max-${editingGroup.id}`} className="text-meta text-muted-foreground">At Most</Label>
-              <Input data-world-field
+              <WorldInput
                 id={`pick-max-${editingGroup.id}`}
                 type="number"
                 min={0}

@@ -38,6 +38,7 @@ import { CODE_BOX_TARGET, CODE_FIELD, REPLACE_CODE_TITLE, replaceCodeDescription
 import { findTargetRow, routeText } from "@/lib/surface/surfaceTargets";
 import { useLanding } from "@/lib/surface/useLanding";
 import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
+import { WorldInput } from '@/components/editor/WorldField';
 
 export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and Code don't run.
 
@@ -298,7 +299,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Initial Value (%)</Label>
-                  <Input data-world-field
+                  <WorldInput
                     type="number"
                     min={0}
                     max={100}
@@ -308,7 +309,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Regen</Label>
-                  <Input data-world-field
+                  <WorldInput
                     type="number"
                     value={editingStat.regen || 0}
                     onChange={(e) => handleChange("regen", Number(e.target.value))}
@@ -319,7 +320,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
               <>
                 <div>
                   <Label>Min</Label>
-                  <Input data-world-field
+                  <WorldInput
                     type="number"
                     value={editingStat.min || 0}
                     onChange={(e) => handleChange("min", Number(e.target.value))}
@@ -327,7 +328,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Max</Label>
-                  <Input data-world-field
+                  <WorldInput
                     type="number"
                     value={editingStat.max || 100}
                     onChange={(e) => handleChange("max", Number(e.target.value))}
@@ -335,7 +336,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Initial Value</Label>
-                  <Input data-world-field
+                  <WorldInput
                     type="number"
                     value={(editingStat.value as number) || 0}
                     onChange={(e) => handleChange("value", Number(e.target.value))}
@@ -343,7 +344,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
                 </div>
                 <div>
                   <Label>Regen</Label>
-                  <Input data-world-field
+                  <WorldInput
                     type="number"
                     value={editingStat.regen || 0}
                     onChange={(e) => handleChange("regen", Number(e.target.value))}

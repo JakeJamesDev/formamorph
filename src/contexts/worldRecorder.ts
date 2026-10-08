@@ -1,9 +1,11 @@
 import {
-  createContext, startTransition, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
+  createContext, startTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState,
+  useSyncExternalStore,
 } from 'react';
+import { useMountedRef } from '@/lib/useMountedRef';
 import {
   beginGroup as openGroup, canRedo, canUndo, createHistory, diffSlice, endGroup as closeGroup, jumpTo, markSaved, movedTexts,
-  record, recordFieldMove, replaceRecords, WORLD_SLICES,
+  record, recordFieldMove, replaceRecords, settleKey, WORLD_SLICES,
   type EditorHistory, type SliceEdit, type SliceName, type Step, type StepKey, type WorldSlices,
 } from '@/lib/editorHistory';
 
@@ -19,7 +21,7 @@ export interface WriteIntent {
   history?: boolean;
   /** A pass that follows the commit before it: joins that commit's Step, or stays unrecorded with it. */
   follow?: boolean;
-  /** The record and field the write is about. The first key set before a commit wins. */
+  /** The record the write is about. The first key set before a commit wins; the commit settles the field. */
   key?: StepKey;
   /** Save's link stamps: never recorded, and the Steps that hold the stamped records take the stamped copies. */
   stamp?: boolean;
@@ -177,16 +179,17 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     const at = follow ? last.current.tick : currentTick();
     // A key whose record did not change belongs to a write that bailed, so it never keys another one.
     const fits = !follow && key && edits.some((edit) => keyHolders(key).includes(edit.slice));
+    const settled = fits ? settleKey(key, edits, keyHolders(key)) : undefined;
     const was = store.get();
     // A mark left by a field write that never reached the world is from an earlier tick.
-    const fieldMove = !follow && fieldHistory === at ? recordFieldMove(was, edits, fits ? key : undefined) : null;
+    const fieldMove = !follow && fieldHistory === at ? recordFieldMove(was, edits, settled) : null;
     if (fieldMove) {
       store.set(fieldMove);
       // A join is a recorded write that a follow pass joins too; a cursor move is not.
       last.current = fieldMove.cursor === was.cursor ? { recorded: true, tick: at } : { recorded: false };
       return;
     }
-    store.set(record(was, edits, { tick: at, key: fits ? key : undefined }));
+    store.set(record(was, edits, { tick: at, key: settled }));
     last.current = { recorded: true, tick: at };
   }, [slices, worldId, store, reset]);
 
@@ -244,18 +247,25 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const beginGroup = useCallback((label?: string) => store.set(openGroup(store.get(), label)), [store]);
   // A transition commits after the writes queued before it, and this effect runs after the recorder's.
   const endWaiters = useRef<(() => void)[]>([]);
+  const settleEndWaiters = useCallback(() => {
+    const waiters = endWaiters.current;
+    endWaiters.current = [];
+    for (const resolve of waiters) resolve();
+  }, []);
   const [endRequest, setEndRequest] = useState(0);
   useLayoutEffect(() => {
     if (!endWaiters.current.length) return;
     store.set(closeGroup(store.get()));
-    const waiters = endWaiters.current;
-    endWaiters.current = [];
-    for (const resolve of waiters) resolve();
-  }, [endRequest, store]);
+    settleEndWaiters();
+  }, [endRequest, store, settleEndWaiters]);
+  // An unmounted recorder never commits again, so a wait for its commit settles at once.
+  const mounted = useMountedRef();
+  useEffect(() => settleEndWaiters, [settleEndWaiters]);
   const endGroup = useCallback(() => new Promise<void>((resolve) => {
+    if (!mounted.current) { resolve(); return; }
     endWaiters.current.push(resolve);
     startTransition(() => setEndRequest((n) => n + 1));
-  }), []);
+  }), [mounted]);
   const batch = useCallback(async (label: string, run: () => void | Promise<void>) => {
     beginGroup(label);
     try {

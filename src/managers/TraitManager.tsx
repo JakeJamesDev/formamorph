@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { bearerPreview } from '@/lib/ownedTraitsInPlay';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
@@ -29,6 +28,7 @@ import { FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import type {
   Entity, FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitRequirementRow, TraitStatToggle,
 } from '@/types';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
  *  since, and where a whole-trait write and a field reset go. */
@@ -296,7 +296,7 @@ const TraitManager = ({
                 ))}
               </SelectContent>
             </Select>
-            <Input data-world-field
+            <WorldInput
               type="number"
               value={statChange.value}
               onChange={(e) => handleStatChangeUpdate(index, 'value', Number(e.target.value))}

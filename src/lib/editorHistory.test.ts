@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   beginGroup, canRedo, canUndo, createHistory, diffSlice, endGroup, HISTORY_LIMIT, historyShortcut, jumpTo, markSaved,
-  record, recordFieldMove, redo, replaceRecords, undo, WORLD_SLICES,
+  record, recordFieldMove, redo, replaceRecords, settleKey, undo, WORLD_SLICES,
   type EditorHistory, type RecordOptions, type SliceEdit, type WorldSlices,
 } from "./editorHistory";
 import { stepLabel } from "./editorHistoryLabels";
@@ -289,6 +289,57 @@ describe("a text field's own undo and redo", () => {
     expect(names(s.world.stats)).toEqual(["Hunger", "Thirst", "Mood"]);
   });
 
+  it("joins rather than moves when the text reads as the earlier side on the keyed field only", () => {
+    const s = session();
+    // A typed run whose Step also changed another field of the record, as a linked copy's mark does.
+    s.write({ stats: s.world.stats.map((st) => (st.id === "hunger" ? { ...st, description: "Food", max: 90 } : st)) },
+      { key: descriptionKey, now: 0 });
+    fieldMove(s, "");
+    expect(s.history.cursor).toBe(1);
+
+    s.undo();
+    expect(s.world.stats[0].max).toBe(100);
+  });
+
+  it("seals a field move against a plain keyed write, so the write never merges across the Saved marker", () => {
+    const s = session();
+    typed(s, "Foo", 0);
+    s.save();
+    typed(s, "Food", 100);
+    fieldMove(s, "Foo", 200);
+    expect(s.history.cursor).toBe(1);
+
+    typed(s, "Fool", 300);
+    expect(s.history.steps).toHaveLength(2);
+    expect(s.history.saved).toBe(1);
+  });
+
+  it("lets the field's own walk join past the seal its move set, so the list never grows", () => {
+    const s = session();
+    typed(s, "a", 0);
+    typed(s, "ab", 100);
+    typed(s, "abcd", 5000);
+    fieldMove(s, "ab", 6000);
+    expect(s.history.cursor).toBe(1);
+    // A join is a write, so it drops the undone Step as any write does.
+    fieldMove(s, "a", 6001);
+    fieldMove(s, "", 6002);
+    expect(s.history.steps).toHaveLength(1);
+    expect(s.history.cursor).toBe(0);
+  });
+
+  it("drops a Saved marker on the undone Step a join cuts away", () => {
+    const s = session();
+    typed(s, "a", 0);
+    typed(s, "ab", 100);
+    typed(s, "abcd", 5000);
+    s.save();
+    fieldMove(s, "ab", 6000);
+    fieldMove(s, "a", 6001);
+    expect(s.history.steps).toHaveLength(1);
+    expect(s.history.saved).toBeNull();
+  });
+
   it("records a plain write when no Step matches by key", () => {
     const s = session();
     typed(s, "Food", 0);
@@ -313,6 +364,48 @@ describe("a text field's own undo and redo", () => {
     fieldMove(saved, "Fo");
     expect(saved.history.steps).toHaveLength(2);
     expect(saved.history.saved).toBe(1);
+  });
+});
+
+describe("a writer's key, settled by the commit", () => {
+  const statsEdit = (was: Stat, now: Stat) => diffSlice("stats", [was], [now])!;
+  const hunger = stat("hunger", "Hunger");
+
+  it("takes the one field its record changed", () => {
+    expect(settleKey({ slice: "stats", id: "hunger" }, [statsEdit(hunger, { ...hunger, max: 90 })], ["stats"]))
+      .toEqual({ slice: "stats", id: "hunger", field: "max" });
+  });
+
+  it("drops a named field when the record changed more than one", () => {
+    const renamed = { ...hunger, name: "Appetite", descriptors: [{ id: "d0", threshold: 30, description: "Appetite is low" }] };
+    expect(settleKey({ slice: "stats", id: "hunger", field: "name" }, [statsEdit(hunger, renamed)], ["stats"]))
+      .toEqual({ slice: "stats", id: "hunger" });
+  });
+
+  it("keeps a named field when the record changed that one alone", () => {
+    expect(settleKey({ slice: "stats", id: "hunger", field: "sub" }, [statsEdit(hunger, { ...hunger, max: 90 })], ["stats"]))
+      .toEqual({ slice: "stats", id: "hunger", field: "sub" });
+  });
+
+  it("reads past a linked copy's mark, so the mark never splits a typed run", () => {
+    const wick: Entity = { id: "wick", name: "Wick", link: { sourceId: "src" } };
+    const edited: Entity = { ...wick, playerDescription: "A lamplighter.", link: { ...wick.link!, localReplacement: true } };
+    const edits = [diffSlice("entities", [wick], [edited])!];
+    expect(settleKey({ slice: "entities", id: "wick" }, edits, ["entities"]))
+      .toEqual({ slice: "entities", id: "wick", field: "playerDescription" });
+  });
+
+  it("finds a record one array down, as an entry inside its book", () => {
+    const entry = { id: "tide", name: "Tide Tables", key: ["tide"], value: "Low at dawn." };
+    const book = { id: "lore", name: "Lore", enabled: true, entries: [entry] };
+    const edits = [diffSlice("dictionaries", [book], [{ ...book, entries: [{ ...entry, value: "Low at dusk." }] }])!];
+    expect(settleKey({ slice: "dictionaries", id: "tide" }, edits, ["dictionaries"]))
+      .toEqual({ slice: "dictionaries", id: "tide", field: "value" });
+  });
+
+  it("leaves a key whose record the commit did not touch", () => {
+    const key = { slice: "locations", ids: ["docks", "market"], field: "canvasPosition" } as const;
+    expect(settleKey(key, [statsEdit(hunger, { ...hunger, max: 90 })], ["locations"])).toBe(key);
   });
 });
 

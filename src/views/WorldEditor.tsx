@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type MutableRefObject, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useWorldHistoryMoves } from '@/contexts/worldRecorder';
-import { historyShortcut } from '@/lib/editorHistory';
-import { keepsOwnHistory } from '@/lib/editableTarget';
+import { useHistoryChords } from '@/components/editor/useHistoryChords';
 import { DevEditorPrompts } from '@/components/editor/DevEditorPrompts';
-import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { HistoryPill } from '@/components/editor/HistoryPill';
 import { useDevRoute } from '@/lib/devRouter';
 import { useSurfaceTab } from '@/components/ui/surface';
@@ -636,27 +634,8 @@ const WorldEditorInner = ({
   // The stack belongs to one visit: either host closes the editor by unmounting it.
   const clearHistory = historyMoves.clear;
   useEffect(() => clearHistory, [clearHistory]);
-  const touringRef = useRef(touring);
-  touringRef.current = touring;
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const move = historyShortcut(event);
-      if (!move || event.isComposing || touringRef.current) return;
-      // A dialog opened over the editor owns the keyboard. The in-game host's dialog is the editor's own.
-      const dialog = surfaceRegistry.get().dialog;
-      if (dialog !== null && dialog !== 'worldEditor') return;
-      // A modal shuts every layer under it off from the pointer, also a modal that reports no surface. A
-      // full-screen window that edits the world is a layer of the editor.
-      const layer = (event.target instanceof Element && event.target.closest('[data-world-window]')) || editorRootRef.current;
-      if (layer?.closest<HTMLElement>('[style*="pointer-events"]')?.style.pointerEvents === 'none') return;
-      if (keepsOwnHistory(event.target, move)) return;
-      event.preventDefault();
-      if (move === 'undo') historyMoves.undo(); else historyMoves.redo();
-    };
-    // Capture, like the save shortcut.
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [historyMoves]);
+  // The in-game host's dialog is the editor's own.
+  useHistoryChords(historyMoves, editorRootRef, { hostDialog: 'worldEditor', paused: touring });
   const { connectionReveal, clearConnectionReveal } = useHistoryReveal({
     onMove: historyMoves.onMove, touring, visibleTabs, setActiveTab, clearSearch, setLocationView,
     navigateToItem: navigateToBenchItem,

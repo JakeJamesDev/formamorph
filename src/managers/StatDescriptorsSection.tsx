@@ -9,6 +9,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { WorldInput } from '@/components/editor/WorldField';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -68,25 +69,27 @@ const UnitInput = ({ value, unit, onChange, onBlur, placeholder, ariaLabel, worl
   onChange: (v: string) => void; onBlur?: () => void;
   /** The box writes the world, so the world stack owns its undo. */
   worldField?: boolean;
-}) => (
-  <div className="relative flex-shrink-0" style={{ width: `${thresholdInputWidthRem(unit)}rem` }}>
-    <Input
-      data-world-field={worldField || undefined}
-      type="number"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onBlur}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      // Width and padding both track the tag's length, so the tag never crowds out the value.
-      style={{ paddingRight: `${thresholdTagInsetRem(unit)}rem` }}
-      className="[appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
-    />
-    <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-helper text-muted-foreground">
-      {unit}
-    </span>
-  </div>
-);
+}) => {
+  const Box = worldField ? WorldInput : Input;
+  return (
+    <div className="relative flex-shrink-0" style={{ width: `${thresholdInputWidthRem(unit)}rem` }}>
+      <Box
+        type="number"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        // Width and padding both track the tag's length, so the tag never crowds out the value.
+        style={{ paddingRight: `${thresholdTagInsetRem(unit)}rem` }}
+        className="[appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-helper text-muted-foreground">
+        {unit}
+      </span>
+    </div>
+  );
+};
 
 /** A band of the bar. Its label wraps to two centered lines and steps its font down until it fits, so long
  *  descriptor prose narrows the text rather than dictating it. */

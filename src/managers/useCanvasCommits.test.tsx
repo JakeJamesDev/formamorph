@@ -24,6 +24,7 @@ const house: GameLocation = { id: 'house', name: 'House', parentId: 'village', c
 const shore: GameLocation = { id: 'shore', name: 'Shore', canvasPosition: { x: 400, y: 40 } };
 const road: Connection = { id: 'road', a: 'village', b: 'shore', aToB: {}, bToA: {} };
 
+// A world with only the slices the canvas writes; loadWorldData fills the rest.
 const world = (): World => ({
   id: 'w-canvas', version: '3.0.0',
   worldOverview: {

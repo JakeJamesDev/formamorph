@@ -447,7 +447,7 @@ New reference instructions name the visible “Open Code Templates” action and
 | Floating tool groups | `CanvasToolbar` in the canvas: arrangement, alignment/distribution, grid/snap, Connection Style, then undo/redo, separated by hairlines. |
 | Search and reveal | `LocationSearch`: names plus ancestry, keyboard result selection, and viewport reveal of deeply nested locations. |
 | Zoom and orientation | [`CanvasControls.tsx`](../src/components/CanvasControls.tsx): zoom in, zoom out, and fit; the canvas supplies the fullscreen button. The fullscreen minimap also pans and navigates. |
-| Manual arrangement and history | [`locationArrange.ts`](../src/lib/locationArrange.ts), [`locationAlign.ts`](../src/lib/locationAlign.ts), and [`canvasHistory.ts`](../src/lib/canvasHistory.ts): explicit edits, with a whole arrangement restored in one undo step. |
+| Manual arrangement and history | [`locationArrange.ts`](../src/lib/locationArrange.ts), [`locationAlign.ts`](../src/lib/locationAlign.ts), and the editor's history, [`editorHistory.ts`](../src/lib/editorHistory.ts) with its recorder [`worldRecorder.ts`](../src/contexts/worldRecorder.ts): explicit edits, with a whole arrangement restored in one undo step. |
 | Isolated reference | [`LocationsCanvasReference.tsx`](../src/components/design-system/LocationsCanvasReference.tsx): the production workspace with local locations, Connections, history, and preferences. |
 
 Opening, zooming, or fitting the canvas never rewrites manual positions. Auto Arrange acts on the selected Group, or a selected child's Group; Auto Arrange All acts recursively when nothing is selected. Preserve these scopes and the existing drag/nesting and touch gestures. These are authoring commands, not background layout behavior.
@@ -1061,7 +1061,7 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 **Rule:**
 
 - **Desktop: one split pill.** Three faces joined edge to edge: **Undo**, **Redo**, and a chevron that opens **History**. The faces are ghost buttons that share one outline and one set of rounded outer corners.
-- Undo and Redo disable at the ends of the history. Their tooltips name the chord: **Undo (Ctrl+Z)** and **Redo (Ctrl+Y)**. The chevron's tooltip is **History**.
+- Undo and Redo disable at the ends of the history. Their tooltips name the chord: **Undo (Ctrl+Z)** and **Redo (Ctrl+Y or Ctrl+Shift+Z)**. The chevron's tooltip is **History**.
 - While the list is open the chevron reads pressed: the secondary fill, with `aria-pressed`.
 - **Mobile: one History icon** in the header, between the mode select and the Test Bench. Its popover head holds Undo and Redo as icon buttons, so the header keeps its room.
 - The popover opens under the control, aligned to its end. It is not portaled, so the list scrolls inside a dialog host.

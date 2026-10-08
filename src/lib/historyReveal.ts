@@ -14,7 +14,7 @@ export interface RevealTarget {
   id?: string;
   /** The world no longer holds the record. The tab opens and its list drops the stale selection. */
   gone?: boolean;
-  /** The id names a connection, which the Locations canvas selects. */
+  /** The id names a connection, which the Locations Canvas selects. */
   connection?: boolean;
 }
 

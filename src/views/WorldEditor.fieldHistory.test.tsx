@@ -10,6 +10,7 @@ import { SurfaceLayer, SurfaceReporterContext } from '@/components/ui/surface';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
+import { defaultDescriptorBands } from '@/lib/statDescriptors';
 import type { World } from '@/types';
 
 /** A field's own history and the world's meet at Ctrl+Z: the field goes first, the world takes the rest. */
@@ -149,6 +150,29 @@ describe('Ctrl+Z in a prompt field', () => {
   });
 });
 
+describe('a field undo of a rename', () => {
+  it('takes the name and the descriptors that followed it back together, adding no Step', async () => {
+    const descriptors = defaultDescriptorBands('Warmth').map((band, i) => ({ ...band, id: `w${i}` }));
+    const { ctx } = renderWorldEditorBench(
+      benchEditorWorld({ stats: [{ ...stat('s-warmth', 'Warmth'), descriptors }] } as Partial<World>), 'advanced',
+    );
+    openEditorTab(/Stats/);
+    fireEvent.click(rowButton('Warmth'));
+    const name = screen.getByRole('textbox', { name: 'Name' });
+    await setText(name, 'Heat');
+    expect(ctx().stats[0].descriptors?.[0].description).toBe('Heat is low');
+
+    await chordIn(name, 'z');
+    expect(ctx().stats[0].name).toBe('Warmth');
+    expect(ctx().stats[0].descriptors?.[0].description).toBe('Warmth is low');
+    await openHistory();
+    expect(historyRows().map((row) => row.textContent)).toEqual([
+      expect.stringMatching(/^World opened/), expect.stringMatching(/^Edit Stat Heat(?!:)/),
+    ]);
+    expect(currentRow()).toMatch(/^World opened/);
+  });
+});
+
 describe('a field mark', () => {
   it('belongs to its own tick, so a later write that lands on a Step side still records', async () => {
     const { history } = renderWorldEditorBench(WORLD, 'advanced');
@@ -228,6 +252,18 @@ describe('Ctrl+Z in a plain input', () => {
 
     expect(await chord(max, 'z')).toBe(true);
     expect(ctx().stats[0].max).toBe(10);
+  });
+
+  it('undoes a world-bound textarea through the world', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Dictionar/);
+    fireEvent.click(screen.getAllByText('Default')[0]);
+    const notes = await screen.findByPlaceholderText('Notes for you, not injected into the prompt');
+    await step(() => fireEvent.change(notes, { target: { value: 'Fen lore.' } }));
+    expect(ctx().dictionaries[0].description).toBe('Fen lore.');
+
+    expect(await chord(notes, 'z')).toBe(true);
+    expect(ctx().dictionaries[0].description ?? '').toBe('');
   });
 
   it('leaves a filter box to the browser', async () => {
