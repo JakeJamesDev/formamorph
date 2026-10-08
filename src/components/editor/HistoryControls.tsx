@@ -37,6 +37,25 @@ const SAVED_MARKER = (
 // Brings the current row into view when the list opens or the cursor moves off-screen.
 const showRow = (row: HTMLElement | null) => row?.scrollIntoView?.({ block: 'nearest' });
 
+/** A Step's label in parts: a named row sets its name and field chip over the muted verb and type. */
+function StepRowLabel({ parts: { verb, type, name, field } }: { parts: StepLabelParts }) {
+  // Flex drops the space nodes from layout; they keep the row's text readable as words.
+  const verbType = <><span className="shrink-0">{verb}</span>{type && <> <span className="shrink-0">{type}</span></>}</>;
+  const chip = field && <> <span className="shrink-0 rounded border px-1 text-meta opacity-80">{field}</span></>;
+  if (!name) return <span className="flex min-w-0 flex-grow items-baseline gap-1">{verbType}{chip}</span>;
+  return (
+    <span className="flex min-w-0 flex-grow flex-col">
+      <span className="flex min-w-0 items-baseline gap-1">
+        <span className="min-w-0 truncate italic">{name}</span>
+        {chip}
+      </span>
+      {' '}
+      {/* Opacity, not a gray, so the muting stacks with an undone row's dimming. */}
+      <span className="flex items-center gap-1 text-meta opacity-60">{verbType}</span>
+    </span>
+  );
+}
+
 /** The head row, every Step, the Saved marker and the dimmed future. A click on a row only jumps. */
 export function HistoryList({ history }: { history: HistoryView }) {
   const { rows, cursor, saved, jump } = history;
@@ -68,7 +87,7 @@ export function HistoryList({ history }: { history: HistoryView }) {
               aria-current={current ? 'step' : undefined}
               data-undone={done ? undefined : 'true'}
             >
-              <span className="min-w-0 flex-grow truncate">{label}</span>
+              <StepRowLabel parts={row} />
               {!done && <span className="sr-only">(undone)</span>}
               {current && <span className="text-meta text-muted-foreground">Now</span>}
             </button>
@@ -151,7 +170,7 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
         portal={false}
         align="end"
         sideOffset={8}
-        className="flex w-72 max-w-[90vw] flex-col p-2"
+        className="flex w-80 max-w-[90vw] flex-col p-2"
         aria-label="History"
       >
         <div className="flex items-center gap-2 pb-1">

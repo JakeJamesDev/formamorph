@@ -89,7 +89,12 @@ const chord = async (target: Element, key: 'z' | 'y') => {
 
 const openHistory = () => step(() => fireEvent.click(screen.getByRole('button', { name: 'History' })));
 const historyRows = () => within(screen.getByRole('dialog', { name: 'History' })).getAllByRole('button');
-const currentRow = () => historyRows().find((row) => row.getAttribute('aria-current') === 'step')?.textContent;
+// A Step row is named by its full label; the head row by its text.
+const rowLabel = (row: HTMLElement) => row.getAttribute('aria-label') ?? row.textContent;
+const currentRow = () => {
+  const row = historyRows().find((r) => r.getAttribute('aria-current') === 'step');
+  return row && rowLabel(row);
+};
 
 beforeEach(() => {
   localStorage.clear();
@@ -166,7 +171,7 @@ describe('a field undo of a rename', () => {
     expect(ctx().stats[0].name).toBe('Warmth');
     expect(ctx().stats[0].descriptors?.[0].description).toBe('Warmth is low');
     await openHistory();
-    expect(historyRows().map((row) => row.textContent)).toEqual([
+    expect(historyRows().map(rowLabel)).toEqual([
       expect.stringMatching(/^World opened/), expect.stringMatching(/^Edit Stat Heat(?!:)/),
     ]);
     expect(currentRow()).toMatch(/^World opened/);
