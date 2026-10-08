@@ -123,6 +123,8 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q29 | A marked (field-history) write whose key matches the top applied Step but whose content matches neither side merges into that Step regardless of the pause: no new Step, no cursor move, the Step's after follows the field. A marked write that reaches the Step's before moves the cursor back. No key match, or a sealed top: a plain write. The list never grows during a field's own undo or redo. |
 | Q30 | World-bound plain inputs opt in with a `data-world-field` attribute. An unmarked input keeps native undo and the listener yields, so a missed input keeps today's behavior. |
 | Q31 | One-line chip fields (record names, placeholder names) are Lexical fields and follow Q1, not Q10. Q10 covers the plain inputs only: number boxes, pronouns, entity type, book name and description, group names, world name and author, travel hints. Ticket 05's stat-name criterion reads as the stat's Max box. |
+| Q32 | A world restore into a field clears the field's own undo and redo stacks as well as rebuilding with the merge tag. The tag alone left stale redo entries that turned the next Ctrl+Y into a plain write. |
+| Q33 | A field's own undo moves the cursor only past a Step that holds that field alone. Otherwise it merges into the Step (Q29), so a Step's other edits (a tick fold, Links-follow) never stay in the world while the Step reads as undone. |
 
 ### The history module
 
