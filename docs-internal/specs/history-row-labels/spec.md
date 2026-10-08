@@ -1,6 +1,7 @@
 # History Row Labels
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-08. Tickets 01-04 done. Last landing e0f39498; review fold-in 2b2cd0e0. Closed without gates.
 Spec session: history-row-labels — spec
 
 ## Problem Statement
