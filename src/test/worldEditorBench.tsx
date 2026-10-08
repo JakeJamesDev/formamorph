@@ -102,12 +102,14 @@ export const renderWorldEditorBench = (
   let ctx!: GameDataHandle;
   writeEditorMode(mode);
   const onClose = vi.fn();
+  // A new key remounts the editor over the same provider, as closing it and opening it again does.
+  let visit = 0;
   const tree = (editorProps: typeof props) => wrap(
     <SettingsProvider>
       <TooltipProvider>
         <GameDataProvider>
           <Harness world={world} onReady={(c) => { ctx = c; }}>
-            <WorldEditor onClose={onClose} embedded backButton {...editorProps} />
+            <WorldEditor key={visit} onClose={onClose} embedded backButton {...editorProps} />
           </Harness>
         </GameDataProvider>
       </TooltipProvider>
@@ -119,6 +121,8 @@ export const renderWorldEditorBench = (
     unmount: view.unmount,
     /** Renders the editor again with new props, as a host does for a later request. */
     rerender: (next: typeof props) => view.rerender(tree(next)),
+    /** Closes the editor and opens it again over the same world, as a host that keeps its provider does. */
+    reopen: (next: typeof props = props) => { visit += 1; view.rerender(tree(next)); },
   };
 };
 

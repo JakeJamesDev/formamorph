@@ -304,6 +304,20 @@ function useProvideGameData() {
     }
   }, []);
 
+  const slices = useMemo(() => ({
+    worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
+    placeholders: worldPlaceholders, placeholderGroups,
+  }), [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups]);
+  const sliceSetters = useMemo(() => ({
+    worldOverview: setWorldOverview, stats: setStats, locations: setLocations, connections: setConnections,
+    entities: setEntities, entityGroups: setEntityGroups, traits: setTraits, traitGroups: setTraitGroups,
+    statUpdates: setStatUpdates, dictionaries: setDictionaries, placeholders: setWorldPlaceholders,
+    placeholderGroups: setPlaceholderGroups,
+  }), [setDictionaries]);
+  const { intent: writeIntent, controls: history, disarm: disarmHistory, beginSave: beginHistorySave } = useWorldRecorder(
+    slices, worldId, sliceSetters, savedWorld,
+  );
+
   // Returns the migrated world so a caller that also needs the loaded data (e.g. to seed a cross-world save
   // load, or to cache it for later reuse) uses the current-shape version rather than the raw input — which
   // would otherwise bypass the migration this function just applied.
@@ -376,6 +390,8 @@ function useProvideGameData() {
     const nextEntities = syncBlueprintCopies({
       traits: nextTraits, traitGroups: nextTraitGroups, entities: loadedEntities, placeholders: nextPlaceholders, placeholderGroups: nextPlaceholderGroups,
     });
+    // The load sets the baseline, so none of its writes is a Step; the commit that carries it re-arms.
+    disarmHistory();
     setWorldId(worldData.id ?? null);
     setStats(nextStats);
     setLocations(nextLocations);
@@ -396,19 +412,7 @@ function useProvideGameData() {
     setWorldStored(stored);
 
     return { world: worldData, isDefault };
-  }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
-
-  const slices = useMemo(() => ({
-    worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
-    placeholders: worldPlaceholders, placeholderGroups,
-  }), [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups]);
-  const sliceSetters = useMemo(() => ({
-    worldOverview: setWorldOverview, stats: setStats, locations: setLocations, connections: setConnections,
-    entities: setEntities, entityGroups: setEntityGroups, traits: setTraits, traitGroups: setTraitGroups,
-    statUpdates: setStatUpdates, dictionaries: setDictionaries, placeholders: setWorldPlaceholders,
-    placeholderGroups: setPlaceholderGroups,
-  }), [setDictionaries]);
-  const { intent: writeIntent, controls: history } = useWorldRecorder(slices, worldId, sliceSetters);
+  }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries, disarmHistory]);
 
   // Copies follow the traits after every write. The slices are separate states, so the pass reads the
   // committed world rather than one setter's view of it.
@@ -577,6 +581,7 @@ function useProvideGameData() {
   const saveWorld = useCallback(async (): Promise<SaveResult> => {
     const { worldId, worldOverview, placeholders, locations } = latest.current;
     const data = latest.current.getWorldData();
+    const placeSavedMarker = beginHistorySave();
     try {
       const writeBack = await planOwnedWriteBack({
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
@@ -604,9 +609,15 @@ function useProvideGameData() {
       const world = stamped(written);
       if (written.length) {
         await store(world);
+        // Stamps are not edits. The flag goes only on a write that changes a slice, so none waits for a later one.
+        const live = latest.current.getWorldData();
+        if (stampLinks(live.entities, written) !== live.entities || stampLinks(live.dictionaries, written) !== live.dictionaries) {
+          writeIntent.current.stamp = true;
+        }
         setEntities((prev) => stampLinks(prev, written));
         setDictionaries((prev) => stampLinks(prev, written));
       }
+      placeSavedMarker();
       setSavedWorld(world);
       setWorldStored(true);
       return { ok: true };
@@ -614,7 +625,7 @@ function useProvideGameData() {
       console.error('Error saving world:', error);
       return { ok: false, error, world: { id: worldId ?? '', version: APP_VERSION, ...data } };
     }
-  }, [setDictionaries]);
+  }, [setDictionaries, writeIntent, beginHistorySave]);
 
   useEffect(() => {
     WorldStorageService.initialize();

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   beginGroup, canRedo, canUndo, createHistory, diffSlice, endGroup, HISTORY_LIMIT, historyShortcut, jumpTo, markSaved,
-  record, redo, undo, WORLD_SLICES,
+  record, redo, replaceRecords, undo, WORLD_SLICES,
   type EditorHistory, type RecordOptions, type SliceEdit, type WorldSlices,
 } from "./editorHistory";
 import { stepLabel } from "./editorHistoryLabels";
@@ -51,6 +51,7 @@ function session(options: { pauseMs?: number } = {}) {
     group(label?: string) { history = beginGroup(history, label); },
     endGroup() { history = endGroup(history); },
     save() { history = markSaved(history); },
+    replace(swaps: Map<object, object>) { history = replaceRecords(history, swaps); },
   };
 }
 
@@ -356,6 +357,61 @@ describe("the stack", () => {
     s.undo();
     renameHunger(s, "C");
     expect(s.history.saved).toBeNull();
+  });
+});
+
+describe("replacing records", () => {
+  const rename = (s: ReturnType<typeof session>, name: string) =>
+    s.write({ stats: s.world.stats.map((st) => (st.id === "hunger" ? { ...st, name } : st)) });
+
+  // The records a run of edits leaves, as the objects a stamp would swap.
+  const after = (edits: SliceEdit[] | undefined): object[] =>
+    (edits ?? []).flatMap((e) => (e.slice === "worldOverview" ? [] : (e.after as object[])));
+
+  it("restores the replacement where a redo or an undo brings the record back", () => {
+    const s = session();
+    rename(s, "Appetite");
+    rename(s, "Craving");
+    const [appetite] = after(s.history.steps[0].edits);
+    const stamped = { ...appetite, description: "stamped" };
+    s.replace(new Map([[appetite, stamped]]));
+
+    s.undo();
+    expect(s.world.stats[0]).toBe(stamped);
+    s.undo();
+    s.redo();
+    expect(s.world.stats[0]).toBe(stamped);
+  });
+
+  it("leaves the Steps alone when the map names nothing they hold", () => {
+    const s = session();
+    rename(s, "Appetite");
+    const before = s.history;
+    s.replace(new Map());
+    expect(s.history).toBe(before);
+    s.replace(new Map([[{ id: "other" }, { id: "other", name: "Other" }]]));
+    s.undo();
+    expect(s.world.stats[0].name).toBe("Hunger");
+  });
+
+  it("replaces inside the edits a cap folded into the next Step", () => {
+    const s = session();
+    for (let i = 0; i <= HISTORY_LIMIT; i += 1) rename(s, `Hunger ${i}`);
+    const carried = after(s.history.steps[0].carry);
+    expect(carried.length).toBeGreaterThan(0);
+    const stamped = { ...carried[0], description: "stamped" };
+    s.replace(new Map([[carried[0], stamped]]));
+    const swapped = after(s.history.steps[0].carry);
+    expect(swapped).toContain(stamped);
+    expect(swapped).not.toContain(carried[0]);
+  });
+
+  it("passes an overview edit through", () => {
+    const s = session();
+    s.write({ worldOverview: { ...s.world.worldOverview, author: "Wren" } });
+    const before = s.history.steps[0].edits;
+    s.replace(new Map([[{ id: "x" }, { id: "y" }]]));
+    expect(s.history.steps[0].edits).toEqual(before);
   });
 });
 

@@ -631,6 +631,9 @@ const WorldEditorInner = ({
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
   const historyMoves = useWorldHistoryMoves();
+  // The stack belongs to one visit: either host closes the editor by unmounting it.
+  const clearHistory = historyMoves.clear;
+  useEffect(() => clearHistory, [clearHistory]);
   const touringRef = useRef(touring);
   touringRef.current = touring;
   useEffect(() => {
