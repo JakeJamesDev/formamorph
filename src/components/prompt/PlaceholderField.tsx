@@ -3,8 +3,8 @@ import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { promptVocabulary, usePlaceholderChipVocabulary, worldPromptVocabulary } from '@/lib/chipVocabulary';
 import type { PromptVariable } from '@/lib/promptVariables';
-import { decodePlaceholderToken, directChipTargets } from '@/lib/placeholders';
-import { hasBuiltin } from '@/lib/builtinPlaceholders';
+import { decodePlaceholderToken, directChipTargets, parsePlaceholderText } from '@/lib/placeholders';
+import { builtinForToken, hasBuiltin } from '@/lib/builtinPlaceholders';
 import {
   allPinRows, canCommitPinSource, commitPinSource, pinsTargeting, sameSource, updatePinAt,
   type PinEditorWorld, type PinSourceRef, type PinWriters,
@@ -177,8 +177,13 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, b
         }),
       };
     }
+    // A Built-in has no values to edit, so it opens read-only on what Preview shows.
+    for (const seg of parsePlaceholderText(value)) {
+      const builtin = seg.type === 'variable' ? builtinForToken(seg.token) : undefined;
+      if (seg.type === 'variable' && builtin) out[seg.token] = { text: chipValues[seg.token] ?? builtin.label, label: '' };
+    }
     return out;
-  }, [rolls, value, placeholders, pinRows, readOnly, writers, writePin, writeValue]);
+  }, [rolls, value, placeholders, pinRows, readOnly, writers, writePin, writeValue, chipValues]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],

@@ -1,4 +1,4 @@
-import { forwardRef, type ComponentPropsWithoutRef } from 'react';
+import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import { Chip } from '@/components/Chip';
 import { chipTokenKey } from '@/lib/promptVariables';
 import { CHIP_TOKEN_ATTR } from '@/lib/editorFieldFocus';
@@ -35,6 +35,9 @@ export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, '
   showAffixes?: boolean;
   startsOnEmptyLine?: boolean;
 }
+
+/** A label after a leading icon. The pill takes its baseline from its first baseline item, so the text sets it, not the icon. */
+const MarkedLabel = ({ children }: { children: ReactNode }) => <span className="self-baseline">{children}</span>;
 
 export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function TokenChip(
   { token, vocab, neutral, tip, onRemove, grabbable, showAffixes, startsOnEmptyLine = true, className, ...rest },
@@ -82,8 +85,8 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       {affixes?.pre && affixText(affixes.pre, header ? true : startsOnEmptyLine)}
       <Chip
         label={vocab.builtin?.(token)
-          ? <><BuiltinMark />{vocab.display?.(token) ?? name}</>
-          : vocab.blueprint?.(token) ? <><BlueprintMark />{shown}</> : shown}
+          ? <><BuiltinMark /><MarkedLabel>{vocab.display?.(token) ?? name}</MarkedLabel></>
+          : vocab.blueprint?.(token) ? <><BlueprintMark /><MarkedLabel>{shown}</MarkedLabel></> : shown}
         removeLabel={name}
         tip={tip ?? (hint ? `${name} — ${hint}` : undefined)}
         onRemove={onRemove}

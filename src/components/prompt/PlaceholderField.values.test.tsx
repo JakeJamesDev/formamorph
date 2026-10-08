@@ -95,6 +95,16 @@ describe('the Values tab content', () => {
     expect(editor.textContent).toMatch(/^Welcome to .*, said .*\.$/);
   });
 
+  it('opens a Built-in read-only on its Preview text', async () => {
+    render(field(`${tok('town', 'p1')} greets {{user}} here.`));
+    await userEvent.click(tab('Values')!);
+    const [, builtin] = openValues();
+    expect(valueText(builtin)).toBe('Player Name');
+    expect(builtin).toHaveAttribute('data-read-only', 'value');
+    // An empty value renders a <br>, which breaks the field's line.
+    expect(builtin.querySelector('[data-open-value-text] br')).toBeNull();
+  });
+
   it('shows a chip inside a value as a chip', async () => {
     render(field(`She has ${tok('look', 'p1')}.`));
     await userEvent.click(tab('Values')!);
