@@ -306,13 +306,17 @@ function authoredRank(input: GateInput): Map<string, number> {
 const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap<string, number>): T[] =>
   [...items].sort((a, b) => (rank.get(keyOf(a)) ?? 0) - (rank.get(keyOf(b)) ?? 0));
 
-/** Whether `req` on `from` could be met by `p` being active. A Not Condition is never met by a trait. */
-function metBy(req: TraitRequirement, from: GateOwner, p: Located<Trait>, idx: Index): boolean {
-  if (req.kind === 'playingAs' || req.not) return false;
+/** The traits a Condition on `from` names, in the owners it reads, either polarity. */
+function targetsOf(req: TraitRequirement, from: GateOwner, idx: Index): Located<Trait>[] {
+  if (req.kind === 'playingAs') return [];
   const set = idx.bearerSet(req.bearer, from);
-  if (!set.has(p.owner.id)) return false;
-  return req.kind === 'trait' ? req.id === p.item.id : idx.traitsBelow(set, req.id).includes(p.item.id);
+  const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
+  return [...set].flatMap((ownerId) => ids.flatMap((id) => idx.owners.get(ownerId)?.traits.get(id) ?? []));
 }
+
+/** Whether `req` on `from` could be met by `p` being active. A Not Condition is never met by a trait. */
+const metBy = (req: TraitRequirement, from: GateOwner, p: Located<Trait>, idx: Index): boolean =>
+  !req.not && targetsOf(req, from, idx).includes(p);
 
 /** Order turned-off traits so each comes before every trait it required; ties and loops go by authored rank. */
 function cascadeOrder(off: Located<Trait>[], idx: Index, rank: ReadonlyMap<string, number>): Located<Trait>[] {
@@ -603,6 +607,103 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
     sets.set(k, [...(sets.get(k) ?? []), { ownerId: t.owner.id, traitId: t.item.id }]);
   }
   return [...sets.values()];
+}
+
+/**
+ * The sets of traits whose requirements loop through an odd number of Not Conditions, so no state of the
+ * loop holds still (Q13, Q32). An even loop, such as two traits that exclude each other, settles by pick
+ * order and passes. Each set is a strongly connected part of the requirement graph, in authored order.
+ */
+export function unstableCycles(input: Omit<GateInput, 'active'>): GateTraitRef[][] {
+  const idx = index({ ...input, active: {} });
+  const rank = authoredRank({ ...input, active: {} });
+  const all = byRank([...idx.owners.values()].flatMap((o) => [...o.traits.values()]), rank);
+  // The trait itself and its exclusive siblings in its own tree never count (Q26), so they add no edge.
+  const own = (d: Located<Trait>, p: Located<Trait>) => p.owner.id === d.owner.id
+    && (p.item.id === d.item.id || !!idx.owners.get(d.owner.id)?.rivals.get(d.item.id)?.has(p.item.id));
+  const edges = new Map(all.map((d) => [keyOf(d), conditionsOf(d.item.requires).flatMap((req) =>
+    targetsOf(req, d.owner, idx).filter((p) => !own(d, p)).map((p) => ({ to: keyOf(p), not: !!req.not })))]));
+
+  // Tarjan's strongly connected components.
+  const order = new Map<string, number>();
+  const low = new Map<string, number>();
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const parts: string[][] = [];
+  const visit = (k: string) => {
+    order.set(k, order.size);
+    low.set(k, order.get(k)!);
+    stack.push(k);
+    onStack.add(k);
+    for (const { to } of edges.get(k)!) {
+      if (!order.has(to)) {
+        visit(to);
+        low.set(k, Math.min(low.get(k)!, low.get(to)!));
+      } else if (onStack.has(to)) {
+        low.set(k, Math.min(low.get(k)!, order.get(to)!));
+      }
+    }
+    if (low.get(k) !== order.get(k)) return;
+    const part: string[] = [];
+    for (let top = ''; top !== k;) {
+      top = stack.pop()!;
+      onStack.delete(top);
+      part.push(top);
+    }
+    parts.push(part);
+  };
+  for (const t of all) if (!order.has(keyOf(t))) visit(keyOf(t));
+
+  // A part holds an odd loop exactly when no Not parity can be given to its traits that every edge keeps.
+  const odd = (part: string[]): boolean => {
+    const inPart = new Set(part);
+    const parity = new Map([[part[0], false]]);
+    const queue = [part[0]];
+    while (queue.length) {
+      const k = queue.shift()!;
+      for (const { to, not } of edges.get(k)!) {
+        if (!inPart.has(to)) continue;
+        const want = parity.get(k)! !== not;
+        if (!parity.has(to)) {
+          parity.set(to, want);
+          queue.push(to);
+        } else if (parity.get(to) !== want) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  const byKey = new Map(all.map((t) => [keyOf(t), t]));
+  return parts.filter(odd)
+    .map((part) => byRank(part.map((k) => byKey.get(k)!), rank).map((t) => ({ ownerId: t.owner.id, traitId: t.item.id })))
+    .sort((a, b) => (rank.get(key(a[0].ownerId, a[0].traitId)) ?? 0) - (rank.get(key(b[0].ownerId, b[0].traitId)) ?? 0));
+}
+
+/** A Requirement Row by its position in its trait's gate. */
+export interface RowRef extends GateTraitRef {
+  row: number;
+}
+
+/**
+ * Every row that can never hold: it names one target both plain and Not, or a trait plain and a group above it
+ * Not, under the same bearer (Q14, Q34). The group reads the bearer's own tree, as the gate does.
+ */
+export function deadRows(input: Omit<GateInput, 'active'>): RowRef[] {
+  const idx = index({ ...input, active: {} });
+  // Two Conditions share a bearer when they read the same owners, however each names it: "You:" on the
+  // player's own trait reads what no bearer does.
+  const sameOwners = (a: ReadonlySet<string>, b: ReadonlySet<string>) => a.size === b.size && [...a].every((id) => b.has(id));
+  const clash = (owner: GateOwner) => (plain: TraitRequirement, not: TraitRequirement): boolean => {
+    if (plain.not || !not.not) return false;
+    if (plain.kind === 'playingAs' || not.kind === 'playingAs') return plain.kind === not.kind && plain.id === not.id;
+    const set = idx.bearerSet(plain.bearer, owner);
+    if (!sameOwners(set, idx.bearerSet(not.bearer, owner))) return false;
+    if (plain.kind === not.kind && plain.id === not.id) return true;
+    return plain.kind === 'trait' && not.kind === 'group' && idx.traitsBelow(set, not.id).includes(plain.id);
+  };
+  return input.owners.flatMap((owner) => owner.traits.flatMap((trait) => (trait.requires ?? []).flatMap((row, i) =>
+    (row.all.some((a) => row.all.some((b) => clash(owner)(a, b))) ? [{ ownerId: owner.id, traitId: trait.id, row: i }] : []))));
 }
 
 /** A group whose Always On traits can be on together past its max, on one bearer. */
