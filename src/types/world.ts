@@ -209,8 +209,8 @@ export interface Trait {
   placeholderPins?: PlaceholderPin[];
   /** Any one row that holds unlocks the trait. Absent or empty = always available. */
   requires?: TraitRequirementRow[];
-  /** Absent = Optional. Always On is active exactly while its gate holds, and the player never switches it.
-   *  Hidden acts as Always On. Both ignore `isDefault` and `playerToggle`. */
+  /** Absent = Optional. Automatic (stored `alwaysOn`) is active exactly while its gate holds, and the player never
+   *  switches it. Hidden acts as Automatic. Both ignore `isDefault` and `playerToggle`. */
   mode?: TraitMode;
 }
 

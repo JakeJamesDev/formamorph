@@ -145,10 +145,12 @@ The words Formamorph uses, and what each one means. Each term links the page tha
 | [Stat Code](StatCodeGuide) | JavaScript that a stat runs each turn, in its **Before the AI** and **After the AI** boxes |
 | [Trait](World-Editor-Traits) | A fact about the player or an entity, such as a class or a fear |
 | [Acquired](StatCodeGuide#traits) | A trait the player has. A trait switched off is still acquired. |
-| [Trait Modes](World-Editor-Traits#mode) | **Optional**: the player chooses. **Always On**: active while its requirements hold. **Hidden**: Always On, and the player never sees it. |
-| [Curse](World-Editor-Traits#curses) | An Always On trait that requires the cursed item |
+| [Trait Modes](World-Editor-Traits#mode) | **Optional**: the player chooses. **Automatic**: active while its requirements hold. **Hidden**: Automatic, and the player never sees it. |
+| [Curse](World-Editor-Traits#curses) | An Automatic trait that requires the cursed item |
 | [Pick Count](World-Editor-Traits#pick-count) | How many traits the player must and can pick from a group: **Any**, **Exactly One**, **Up to One** or **Custom** |
-| [Requirement](World-Editor-Traits#requirements) | A trait, a group or a persona that a trait needs before it is available |
+| [Requirement](World-Editor-Traits#requirements) | What a trait needs before it is available: a list of rows. The trait opens when any one row holds. |
+| [Requirement Row](World-Editor-Traits#rows) | One way to open a trait. It holds when every Condition in it holds. |
+| [Condition](World-Editor-Traits#conditions) | One check in a row: a trait, any trait in a group, or a persona. **Not** makes it hold while the target is off. |
 | [Bearer](World-Editor-Traits#whose-trait-counts) | The entity that has a trait. You are the bearer **You**. |
 | [Blueprint](World-Editor-Traits#blueprints) | A trait or [placeholder](World-Editor-Placeholders#blueprints) in the **Blueprints** group. It exists to be linked or copied. |
 | [Link](World-Editor-Traits#links) | Gives a Blueprint trait to an entity. It reads the Blueprint live until you change a field. |

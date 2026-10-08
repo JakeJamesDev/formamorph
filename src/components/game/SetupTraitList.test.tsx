@@ -157,7 +157,7 @@ describe('SetupTraitList gates', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  describe('an Always On trait', () => {
+  describe('an Automatic trait', () => {
     const marked: Trait = { id: 'marked', name: 'Marked', groupId: 'origin', mode: 'alwaysOn', statChanges: [] } as Trait;
     const traits = [dockhand, scholar, marked];
 
@@ -170,7 +170,7 @@ describe('SetupTraitList gates', () => {
     it('shows checked with no control while active, and blocks the max-one group’s other picks', () => {
       view({ traits, selectedTraits: ['marked'], picks: groupPickState(origin, traits, ['marked']) });
       expect(screen.getByText('Marked')).toBeInTheDocument();
-      expect(screen.getByRole('img', { name: 'Always On' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Automatic' })).toBeInTheDocument();
       expect(screen.queryByRole('radio', { name: 'Marked' })).toBeNull();
       expect(screen.getByRole('radio', { name: 'Scholar' })).toBeDisabled();
       expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeDisabled();
@@ -179,7 +179,7 @@ describe('SetupTraitList gates', () => {
     it('shows no control in a checkbox group either', () => {
       view({ traits: [marked], picks: null, selectedTraits: ['marked'] });
       expect(screen.queryByRole('checkbox')).toBeNull();
-      expect(screen.getByRole('img', { name: 'Always On' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Automatic' })).toBeInTheDocument();
     });
   });
 
@@ -190,7 +190,7 @@ describe('SetupTraitList gates', () => {
     it('does not show while active, and still blocks the max-one group’s other picks', () => {
       view({ traits, selectedTraits: ['secret-bond'], picks: groupPickState(origin, traits, ['secret-bond']) });
       expect(screen.queryByText('Secret Bond')).toBeNull();
-      expect(screen.queryByRole('img', { name: 'Always On' })).toBeNull();
+      expect(screen.queryByRole('img', { name: 'Automatic' })).toBeNull();
       expect(screen.getByRole('radio', { name: 'Scholar' })).toBeDisabled();
     });
 

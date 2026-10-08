@@ -309,12 +309,24 @@ _Avoid_: owner (an owner holds its own traits only), holder
 The world trait or group a Link points at, at the root or under Blueprints. An Original is a Blueprint trait. An entity's own trait is never an Original.
 _Avoid_: source (a listing's term), template, parent
 
-**Always On**:
-A trait Mode. The trait is active exactly when its gate holds, and no one can switch it: not the player, not Stat code. With no requirements it is always active. A curse is an Always On trait that requires the cursed item. Always On traits count toward their group's Pick Count.
-_Avoid_: forced, mandatory, locked (a Locked trait is one whose gate fails), permanent
+**Automatic**:
+A trait Mode. The trait is active exactly when its gate holds, and no one can switch it: not the player, not Stat code. With no Requirement Rows it is always active. A curse is an Automatic trait that requires the cursed item. Automatic traits count toward their group's Pick Count. The stored value stays `alwaysOn`.
+_Avoid_: Always On (the old name), forced, mandatory, locked (a Locked trait is one whose gate fails), permanent
+
+**Requirement**:
+The gate on a trait: a list of Requirement Rows. The trait is available when it has no rows, or when any one row holds. The editor field is **Requires**; the player reads the same rule as the lock line, such as "Requires Knight and not Paladin, or Mercenary".
+_Avoid_: prerequisite, lock (a Locked trait is one whose gate fails), rule (a rule is Test Bench's word)
+
+**Requirement Row**:
+One alternative in a Requirement. A row holds when every Condition in it holds ("and"). Rows join by "or". A row has at least one Condition; removing the last one removes the row. The editor adds a Condition to a row with **And** and a row with **Or Another Way**.
+_Avoid_: clause, branch, group (a group is a trait group)
+
+**Condition**:
+One check in a Requirement Row: a trait, any trait in a group, or a persona the player plays as, with an optional Bearer. A Condition can carry the Not flag, and then it holds while its target is off. Not is a flag on a Condition, not a separate item.
+_Avoid_: exclusion, negation, rule, requirement (a Requirement is the whole gate)
 
 **Hidden (trait)**:
-A trait Mode that is Always On and never shown to the player. The AI reads it like any active trait. Only dev tools, the Prompt viewer and Test Bench show its name. Its Stat changes apply.
+A trait Mode that is Automatic and never shown to the player. The AI reads it like any active trait. Only dev tools, the Prompt viewer and Test Bench show its name. Its Stat changes apply.
 _Avoid_: secret, invisible, silent
 
 **Pick Count**:

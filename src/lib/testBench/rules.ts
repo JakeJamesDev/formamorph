@@ -1733,7 +1733,7 @@ const traitGroupAlwaysOnOverMax: Rule = {
   id: 'trait-group-always-on-over-max',
   severity: 'warning',
   section: 'traits',
-  summary: (count) => `${count} trait groups can have more Always On traits active than they allow`,
+  summary: (count) => `${count} trait groups can have more Automatic traits active than they allow`,
   // Under every persona choice; a group reports the largest set any one of them opens together.
   check: (world) => {
     const found = new Map<string, { bearer: Bearer | undefined; group: TraitGroup; traits: Trait[] }>();
@@ -1754,7 +1754,7 @@ const traitGroupAlwaysOnOverMax: Rule = {
       const items = traits.map((t) => bearerTraitItem(t, bearer, world));
       return finding(
         traitGroupAlwaysOnOverMax,
-        `${groupSubject(group, bearer, world)} allows at most ${picksOf(group.maxPicks ?? 0)} but ${listNames(items.map((i) => i.name))} are Always On and can be active together`,
+        `${groupSubject(group, bearer, world)} allows at most ${picksOf(group.maxPicks ?? 0)} but ${listNames(items.map((i) => i.name))} are Automatic and can be active together`,
         [bearerTraitItem(group, bearer, world), ...items],
       );
     });

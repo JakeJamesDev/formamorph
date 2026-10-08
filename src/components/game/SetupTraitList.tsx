@@ -39,7 +39,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  * One trait category of the setup screen: its heading, the Player-Facing Descriptions of the groups it
  * sits in, and its traits with their stat changes. A max-one category is a radio choice; a full category with
  * a larger max disables its unchecked rows. A short category says how many more picks it needs. An active
- * Always On trait shows checked with no control. A dormant one and a Hidden one don't show.
+ * Automatic trait shows checked with no control. A dormant one and a Hidden one don't show.
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
@@ -73,7 +73,7 @@ export function SetupTraitList({
   const needed = picks ? picks.min - picks.count : 0;
   const shown = traits.filter((trait) => isShown(trait, selectedTraits));
   const selectedRadio = shown.find((trait) => !isAlwaysOn(trait) && selectedTraits.includes(trait.id))?.id;
-  // A max-one group's active Always On trait can't be swapped out.
+  // A max-one group's active Automatic trait can't be swapped out.
   const fixedRadio = radio && traits.some((trait) => isAlwaysOn(trait) && !isDormant(trait, selectedTraits));
   const rows = shown.map((trait) => {
     const selected = selectedTraits.includes(trait.id);
@@ -92,7 +92,7 @@ export function SetupTraitList({
         className={cn(choiceRowClass(selected), disabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-card')}
       >
         {fixed ? (
-          <Check role="img" aria-label="Always On" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <Check role="img" aria-label="Automatic" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         ) : radio ? (
           <RadioGroupItem
             id={`setup-trait-${trait.id}`}

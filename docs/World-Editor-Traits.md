@@ -35,10 +35,11 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 2. Open the **Availability** tab.
 3. Under **Requires**, select **Add Requirement**.
 4. Pick a target in the **Traits**, **Any Trait in a Group** or **Playing As** list.
-5. Pick whose trait counts: **Same Bearer**, **You**, or an entity. A **Playing As** target skips this step.
-6. Optional: repeat for a second target. Any one target is enough.
+5. Pick whose trait counts: **Same Bearer**, **You**, or an entity. A **Playing As** target skips this step, and so does a target that only one bearer can have.
+6. Optional: to need a second target as well, select **And** in the same row and pick it. The trait then needs both.
+7. Optional: to open the trait another way, select **Or Another Way** and pick a target for the new row. Any one row is enough.
 
-To remove a target, select the **×** on its chip.
+To remove a target, select the **×** on its chip. To remove a whole row, select the **×** at the end of the row.
 
 ## How to Set a Pick Count
 <!-- keywords: limit, cap, how many, choose one, max, min, exactly one, radio, multiple, mutually exclusive, single choice, one of, at least two, force selection, mandatory, slots, required choice -->
@@ -47,7 +48,7 @@ To remove a target, select the **×** on its chip.
 1. Select a trait group. To add one, switch to Advanced mode, select **+**, then **Add Group**.
 2. Open the **Pick Count** list and pick **Any**, **Exactly One**, **Up to One** or **Custom**.
 3. For **Custom**, type **At Least** and **At Most**. Leave **At Most** empty for no limit.
-4. For **Exactly One**, select a trait in the group, open its **Availability** tab, and check **Enabled by Default**. A new game then starts with a valid pick.
+4. For **Exactly One**, select a trait in the group, open its **Availability** tab, and set **Starts** to **On**. A new game then starts with a valid pick.
 
 ## How to Make a Blueprint
 <!-- keywords: template, reusable, shared trait, base, prototype, copy for entities, npc only, not for player, master version, common pool, define once, library of classes -->
@@ -107,17 +108,17 @@ Select a trait to open its panel.
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | **Name** and the two descriptions | Simple and Advanced |
-| **Availability** | **Mode**, the two checkboxes below, and [**Requires**](#requirements) | Simple and Advanced |
+| **Availability** | **Mode**, **Starts**, **In Game** and [**Requires**](#requirements) | Simple and Advanced |
 | **Stats** | **Stat Changes**, and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 
 On an entity's own trait, the **Details** tab starts with the line **Owned by** and the entity's name. The **Stats** tab shows only when the entity can [own stat traits](#entity-traits).
 
 ## Availability
-<!-- keywords: curse, cursed item, passive, forced on, secret bonus, preselected, switch mid game, innate, cant turn off -->
+<!-- keywords: automatic, always on, curse, cursed item, passive, forced on, secret bonus, preselected, switch mid game, innate, cant turn off -->
 <!-- route: worldEditorTrait.availability -->
 
-The **Availability** tab sets who controls the trait and when it can be active.
+The **Availability** tab sets who controls the trait and when it can be active. It opens with three rows, **Mode**, **Starts** and **In Game**. One sentence under them states the rule they make together.
 
 ### Mode
 
@@ -126,27 +127,27 @@ The **Availability** tab sets who controls the trait and when it can be active.
 | Mode | What it does |
 |---|---|
 | **Optional** | The player chooses the trait. This is the default. |
-| **Always On** | The trait is on whenever its [requirements](#requirements) hold. The player can never switch it. With no requirements, it's always on. |
-| **Hidden** | Works like **Always On**, and the player never sees it. The AI reads it like any active trait. |
+| **Automatic** | The trait is on whenever its [requirements](#requirements) hold. The player can never switch it. With no requirements, it's always on. |
+| **Hidden** | Works like **Automatic**, and the player never sees it. The AI reads it like any active trait. |
 
-Only **Optional** traits show the two checkboxes below. **Always On** and **Hidden** hide them, because a value there would mean nothing.
+Only **Optional** traits use **Starts** and **In Game**. Under **Automatic** and **Hidden** they stay in place but dim, because a value there would mean nothing.
 
-| Checkbox | What it does |
-|---|---|
-| **Enabled by Default** | Selects the trait when a new game starts. The player can still clear it. |
-| **Player Can Toggle In Game** | The player can turn the trait on or off from the **Traits** tab during the game |
+| Row | Choices | What it does |
+|---|---|---|
+| **Starts** | **Off** or **On** | **On** selects the trait when a new game starts. The player can still clear it. |
+| **In Game** | **Fixed** or **Toggleable** | **Toggleable** lets the player turn the trait on or off from the **Traits** tab during the game |
 
 ### Curses
 
-A curse is an **Always On** trait that requires the cursed item. The player picks the item, and the curse comes with it. The player drops the item, and the curse lifts. The player sees the curse only when it takes effect.
+A curse is an **Automatic** trait that requires the cursed item. The player picks the item, and the curse comes with it. The player drops the item, and the curse lifts. The player sees the curse only when it takes effect.
 
 ### Hidden traits
 
-A **Hidden** trait can carry **Stat Changes**, and visible stat bars move. Use it for a secret bonus or a hidden nature. A hidden trait's name shows only in tools for authors: the Prompt viewer and the **Test Bench**. Other requirement lines skip it, and a trait whose requirements are all hidden reads **Locked**.
+A **Hidden** trait can carry **Stat Changes**, and visible stat bars move. Use it for a secret bonus or a hidden nature. A hidden trait's name shows only in tools for authors: the Prompt viewer and the **Test Bench**. Other requirement lines skip it, **Not** conditions on it too, and a trait whose requirements are all hidden reads **Locked**.
 
-> 💡 **A requirement can point at an Always On or Hidden trait.** A hidden bonus can unlock other traits.
+> 💡 **A requirement can point at an Automatic or Hidden trait.** A hidden bonus can unlock other traits.
 
-> ⚠️ **Stat code never switches an Always On or Hidden trait.** Its requirements alone decide.
+> ⚠️ **Stat code never switches an Automatic or Hidden trait.** Its requirements alone decide.
 
 ## Stat Changes
 <!-- keywords: bonus, buff, debuff, modifier, penalty, extra hp, raise cap, boost, adds not sets -->
@@ -207,9 +208,9 @@ Groups organize the list. A trait group also has text of its own:
 | **Up to One** | Zero or one pick |
 | **Custom** | You set **At Least** and **At Most**. Leave **At Most** empty for no limit. |
 
-Only traits placed directly in the group count. A subgroup sets its own count. An **Always On** trait counts toward its group's minimum and maximum.
+Only traits placed directly in the group count. A subgroup sets its own count. An **Automatic** trait counts toward its group's minimum and maximum.
 
-A group with a maximum of one shows radio buttons. In **Up to One**, pick another trait, and the first one clears. Select the picked trait to clear it, so "none of these" is always possible. During the game, a trait the player can toggle works the same way: turn one on, and the others in its group turn off. An **Always On** sibling can't clear, so the switch is refused.
+A group with a maximum of one shows radio buttons. In **Up to One**, pick another trait, and the first one clears. Select the picked trait to clear it, so "none of these" is always possible. During the game, a trait the player can toggle works the same way: turn one on, and the others in its group turn off. An **Automatic** sibling can't clear, so the switch is refused.
 
 On the setup screen:
 
@@ -221,27 +222,61 @@ During the game:
 
 - The game refuses a switch-off that drops a group below its minimum.
 - A trait that leaves because its requirements stop holding can drop a group below its minimum. The game doesn't ask for a replacement. The trait returns when its requirements hold again.
-- An **Always On** trait whose requirements start to hold joins its group even when the group is full. The group runs over its maximum until the player drops a pick.
+- An **Automatic** trait whose requirements start to hold joins its group even when the group is full. The group runs over its maximum until the player drops a pick.
 - **Exactly** N with N above one can't change during the game. To allow swaps, set a range with **Custom**.
 
-> 💡 **Give an Exactly One group a default.** Check **Enabled by Default** on one trait, so a new game starts with a valid answer. With two defaults in an **Up to One** group, the first in the list wins.
+> 💡 **Give an Exactly One group a default.** Set **Starts** to **On** for one trait, so a new game starts with a valid answer. With two defaults in an **Up to One** group, the first in the list wins.
 
 ## Requirements
-<!-- keywords: who must have it, either or, any of, depends on player class, npc needs player choice, owner check, relationship perk, holder -->
+<!-- keywords: rows, and, or another way, not, exclude, cant have both, only when not, condition, who must have it, either or, any of, depends on player class, npc needs player choice, owner check, relationship perk, holder -->
 
-**Requires** on the **Availability** tab makes a trait available only when one of its targets holds. A target is a trait, any trait in a group, or a persona the player plays as. With two targets, either one is enough.
+**Requires** on the **Availability** tab makes a trait available only when its requirements hold. A trait with no requirements is always available. The requirements are rows of conditions.
 
-**Add Requirement** opens a search with three lists: **Traits**, **Any Trait in a Group** and **Playing As**.
+### Rows
+
+A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
+
+- **Add Requirement** adds the first condition. It opens a search with three lists: **Traits**, **Any Trait in a Group** and **Playing As**.
+- **And** (in a row) adds another condition to that row.
+- **Or Another Way** (below the rows) adds a new row.
+- The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
+
+For example, two rows read *Knight and Heavy Build*, then *Mercenary*. The trait opens for a Knight with Heavy Build, and it opens for a Mercenary.
+
+### Conditions
+
+A **condition** checks one target. A target is a trait, any trait in a group, or a persona the player plays as. Select a condition to open its target.
+
+Select **Require it to be off** on a condition's chip to make it **Not**. A Not condition shows a **NOT** mark and a dashed border, and it holds while its target is off. Select the button again to require the target instead.
+
+| Not condition | Holds when |
+|---|---|
+| *not Paladin* | The bearer doesn't have Paladin on |
+| *not any Class* | No trait in the Class group is on |
+| *not playing as Sir Aldric* | The player plays any other persona |
+| *Ash: not Tamed* | Ash doesn't have Tamed on |
+
+For example, one row reads *Knight and not Paladin*, and a second row reads *Mercenary*. The trait opens for a Knight who isn't a Paladin, and for a Mercenary.
+
+A trait's own state never counts toward its own requirements. A condition whose target is gone never holds, so the trait stays locked. The chip reads red under its saved name.
+
+> 💡 **Two traits can exclude each other.** Give each one a *not* condition for the other. The pick made first stays on, and the later trait turns off with a notice. It returns when the first pick goes.
+
+> 💡 **Use Not on an Automatic trait to switch it off in some cases.** *Automatic unless Paladin* turns the trait on, and off again if the player takes Paladin.
+
+### What the player reads
+
+A locked trait shows its requirements as one line: *Requires Knight and not Paladin, or Mercenary*. Conditions join with **and** and rows join with **or**. A trait that opens shows the rows that opened it, as *Unlocked by …*. Conditions on a [Hidden](#hidden-traits) trait are left out of the line the player reads. A row with nothing left to show is dropped. A trait with no row left to show reads **Locked**.
 
 ### Whose trait counts
 
 The entity that has a trait is its **bearer**. The player is one bearer, marked **You**. Each entity in the cast is another.
 
-A requirement checks the same bearer by default. *Smite* requires *Paladin* means Paladin on the entity that has Smite. The player's *Wizard* never unlocks Smite for anyone else.
+A condition checks the same bearer by default. *Smite* requires *Paladin* means Paladin on the entity that has Smite. The player's *Wizard* never unlocks Smite for anyone else.
 
-To check another bearer, pick one after you pick the target:
+To check another bearer, pick one after you pick the target. When only one bearer can have the target, the search skips this step and adds the condition at once.
 
-| Bearer | The requirement holds when |
+| Bearer | The condition holds when |
 |---|---|
 | **Same Bearer** | Whoever has the trait also has the target. This is the default. |
 | **You** | The player has the target |
@@ -249,7 +284,7 @@ To check another bearer, pick one after you pick the target:
 
 For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squire trait only when the player is a Paladin.
 
-A requirement that names an entity describes a relationship to someone else. When the player plays that entity, the requirement falls away. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second target, such as *Paladin* on the same bearer, stays and uses the other target. An entity's own traits keep every requirement, so Albus can still gate his own trait on *Albus: Paladin*.
+A condition that names an entity describes a relationship to someone else. When the player plays that entity, the relationship can't apply to themself, so the row with that condition can never hold. The game drops that row. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second row, such as *Paladin* on the same bearer, stays and opens by that row. A trait with no row left is not offered. An entity's own traits keep every row, so Albus can still gate his own trait on *Albus: Paladin*.
 
 ## Entity Traits
 <!-- keywords: npc perks, npc abilities, give character a class, companion skills, name the holder, can npcs have stats, move to character -->
@@ -286,11 +321,11 @@ Select a link to edit it. The link's **Details** tab starts with **Linked from**
 
 | Field | Override |
 |---|---|
-| **Enabled by Default** | Selects the trait for this entity when a new game starts. A linked group lists each of its traits under **This Link**. |
-| **Requires** | Replaces the original's whole list |
+| **Starts** | Selects the trait for this entity when a new game starts. A linked group lists each of its traits under **Enabled by Default** in **This Link**. |
+| **Requires** | Replaces the original's whole list of rows |
 | **Placeholder Pins** | Replaces the original's whole list |
-| **Mode** | Makes the trait Optional, Always On or Hidden for this entity. One bearer can have a trait innately, and another can pick it. |
-| **Player Can Toggle In Game** | Locks or opens the trait for this entity |
+| **Mode** | Makes the trait Optional, Automatic or Hidden for this entity. One bearer can have a trait innately, and another can pick it. |
+| **In Game** | Locks (**Fixed**) or opens (**Toggleable**) the trait for this entity |
 | **Stat Changes** | Replaces the original's whole list |
 
 **Stat Availability** stays read-only on a link. Change it on the original.
@@ -394,17 +429,19 @@ The **Test Bench** checks every bearer as if the player picked it. That includes
 It shows an error when:
 
 - A trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
-- A requirement names a trait or group the world no longer has.
+- A condition names a trait or group the world no longer has. The check reports each condition.
+- Requirements loop through a **Not** and can never settle. For example, *A* requires *B*, and *B* requires *not A*. Two traits that exclude each other, such as *A: not B* and *B: not A*, are fine.
 - A trait's **Stat Availability** names a stat that doesn't exist.
 - A group's **At Least** is above its **At Most**.
 - A group needs more picks than its traits can ever unlock.
-- A new game starts a group with fewer picks than its minimum. The defaults and active **Always On** traits don't meet it.
+- A new game starts a group with fewer picks than its minimum. The defaults and active **Automatic** traits don't meet it.
 
 It shows a warning when:
 
-- More **Always On** traits can be active together than a group's maximum allows. The check can report a group that never fills, because it ignores the maximums of other groups.
+- More **Automatic** traits can be active together than a group's maximum allows. The check can report a group that never fills, because it ignores the maximums of other groups.
 - A group marks more traits as default than its maximum allows. Some defaults won't apply.
-- A trait is marked **Enabled by Default**, but no starting choice meets its requirements, so it starts unselected.
+- A row can never hold, such as *Paladin and not Paladin*. Remove the row or change a condition.
+- A trait has **Starts** set to **On**, but no starting choice meets its requirements, so it starts unselected. Two defaults that exclude each other count: the later one starts unselected.
 - A bearer needs a copy of a blueprint and has none. The warning names the bearer and the trait or chip that needs it.
 - A copy removed the value that a pin names. The pin pins nothing.
 - A blueprint chip or a pin by blueprint sits where it is refused, such as in a location or a world placeholder.
@@ -422,7 +459,7 @@ It shows a note when:
 A world where the player and some entities have a class. The steps run on the **Traits** tab with Advanced mode on, except step 3, which runs on the **Placeholders** tab.
 
 1. **Add a Blueprints group.** Add a **Classes** group set to **Exactly One**, with *Paladin*, *Cleric* and *Wizard*, and drag it into Blueprints. Add a **Spells** group with *Smite* the same way, and set *Smite* to require *Paladin*.
-2. **Link Classes and Spells to Albus.** Select the link, then check **Enabled by Default** on *Paladin*. Albus starts as a Paladin, and Smite unlocks for him.
+2. **Link Classes and Spells to Albus.** Select the link, then set **Starts** to **On** for *Paladin*. Albus starts as a Paladin, and Smite unlocks for him.
 3. **Pin a blueprint from each class.** In the Placeholders tab, add a Blueprints group with *Class Garb*. *Paladin* pins *Class Garb* to *silvered plate*. Albus gets his own copy of *Class Garb* by itself.
 4. **Mark a Custom Persona entity and link Classes to it.** A player with no world persona now picks a class too.
 
