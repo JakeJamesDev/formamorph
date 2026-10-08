@@ -645,8 +645,10 @@ const WorldEditorInner = ({
       // A dialog opened over the editor owns the keyboard. The in-game host's dialog is the editor's own.
       const dialog = surfaceRegistry.get().dialog;
       if (dialog !== null && dialog !== 'worldEditor') return;
-      // A modal shuts every layer under it off from the pointer, also a modal that reports no surface.
-      if (editorRootRef.current?.closest<HTMLElement>('[style*="pointer-events"]')?.style.pointerEvents === 'none') return;
+      // A modal shuts every layer under it off from the pointer, also a modal that reports no surface. A
+      // full-screen window that edits the world is a layer of the editor.
+      const layer = (event.target instanceof Element && event.target.closest('[data-world-window]')) || editorRootRef.current;
+      if (layer?.closest<HTMLElement>('[style*="pointer-events"]')?.style.pointerEvents === 'none') return;
       if (keepsOwnHistory(event.target, move)) return;
       event.preventDefault();
       if (move === 'undo') historyMoves.undo(); else historyMoves.redo();

@@ -81,6 +81,7 @@ const PARENT_CHILD_CONNECTION_WORLD = {
 
 /** A translate in pixels, read off a node's or the viewport's own transform. */
 interface At { x: number; y: number }
+type Box = NonNullable<Awaited<ReturnType<Locator['boundingBox']>>>;
 
 /** The pixel translate xyflow wrote onto an element, which is where the thing actually sits. */
 async function translateOf(el: Locator): Promise<At> {
@@ -128,7 +129,7 @@ const implicitEdges = (page: Page) => page.locator('.react-flow__edge[data-id^="
 async function selectEverything(page: Page): Promise<void> {
   // A menu still closing holds the page's pointer events, so the press below would never reach the pane.
   await expect(page.getByRole('menu')).toHaveCount(0);
-  const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+  const pane = await paneAtRest(page);
   await page.mouse.click(pane.x + 8, pane.y + 8);
   await page.keyboard.press('Control+a');
 }
@@ -137,7 +138,29 @@ async function selectEverything(page: Page): Promise<void> {
  *  the selection is what the map keeps. */
 async function pickLocation(page: Page, id: string, touch: boolean): Promise<void> {
   await page.locator(`.react-flow__node[data-id="${id}"]`).click();
-  if (touch) await page.getByRole('button', { name: /^Back to/ }).click();
+  await closeDetail(page, touch);
+}
+
+/** Closes the detail a tap or an undo's reveal opened over the map on a narrow layout, once the map is back. */
+async function closeDetail(page: Page, touch: boolean): Promise<void> {
+  if (!touch) return;
+  await page.getByRole('button', { name: /^Back to/ }).click();
+  await paneAtRest(page);
+}
+
+/** The pane's box once it stops moving: on a narrow layout the map slides back in under the detail panel, and
+ *  a press measured mid-slide lands off the screen. */
+async function paneAtRest(page: Page): Promise<Box> {
+  const pane = page.locator('.react-flow__pane');
+  // Each read is a poll interval after the one before, so two equal reads are a frame or more apart.
+  let last: Box | null = null;
+  await expect.poll(async () => {
+    const now = (await pane.boundingBox())!;
+    const still = last !== null && now.x === last.x && now.y === last.y;
+    last = now;
+    return still;
+  }, { intervals: [100] }).toBe(true);
+  return last!;
 }
 
 /** Clicks the middle of an arrow's own box: an SVG hairline takes no element click, and react-flow reads the
@@ -241,7 +264,7 @@ test.describe('Locations canvas', () => {
     await expect(implicitEdges(page)).toHaveCount(0);
 
     await page.locator('.react-flow__node[data-id="loc-child-a"]').click();
-    await page.getByRole('button', { name: /^Back to/ }).click();
+    await closeDetail(page, true);
     await expect(page.locator('.react-flow__node[data-id="loc-child-a"]')).toHaveClass(/selected/);
     await expect(implicitEdges(page)).toHaveCount(2);
 
@@ -836,7 +859,8 @@ test.describe('Locations canvas', () => {
    * keypress meet — that a drag actually reached the stack, that one press takes back the whole of it, and that
    * an arrangement of several boxes is one step rather than one per box.
    */
-  test('Ctrl+Z takes back a drag and an Auto Arrange, and Ctrl+Y puts them back', async ({ page }) => {
+  test('Ctrl+Z takes back a drag and an Auto Arrange, and Ctrl+Y puts them back', async ({ page }, testInfo) => {
+    const touch = testInfo.project.name === 'mobile';
     await openApp(page);
     await page.evaluate(async (world) => {
       const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
@@ -864,6 +888,7 @@ test.describe('Locations canvas', () => {
     // One press takes the reparent back — and the list view is reading the same undone world.
     await page.keyboard.press('Control+z');
     await expect(edges).toHaveCount(2);
+    await closeDetail(page, touch);
     await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'list' });
     const rowLeft = async (name: string) => (await page.getByText(name, { exact: true }).first().boundingBox())!.x;
     expect(await rowLeft('Beach')).toBeCloseTo(await rowLeft('Harbor'), 0);
@@ -875,11 +900,18 @@ test.describe('Locations canvas', () => {
     await selectEverything(page);
     await page.keyboard.press('Control+y');
     await expect(edges).toHaveCount(6);
+    await closeDetail(page, touch);
     await page.keyboard.press('Control+z');
     await expect(edges).toHaveCount(2);
+    await closeDetail(page, touch);
 
     // An arrangement moves both of the Harbor's children off each other; one press puts both back stacked.
-    // Selection cleared first: a right-click on a picked box among several is the selection's menu.
+    // Selection cleared first: a right-click on a picked box among several is the selection's menu. The Back
+    // press took the keyboard off the map, so a press on the pane hands it back.
+    if (touch) {
+      const pane = await paneAtRest(page);
+      await page.mouse.click(pane.x + 8, pane.y + 8);
+    }
     await page.keyboard.press('Escape');
     const overlapping = async () => {
       const dock = (await node('loc-child-a').boundingBox())!;

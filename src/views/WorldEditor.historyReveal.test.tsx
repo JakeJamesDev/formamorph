@@ -124,6 +124,26 @@ describe('revealing what an undo restored', () => {
     expect(connectionPanelShown()).toBe(true);
   });
 
+  it('keeps the whole canvas selection when the location an undo reveals is part of it', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Locations/);
+    fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
+    const picked = () => [...document.querySelectorAll('.react-flow__node.selected')].map((n) => n.getAttribute('data-id'));
+    // The canvas answers keys only after a press on the map.
+    fireEvent.pointerDown(document.querySelector('.react-flow')!);
+    await step(() => { fireEvent.keyDown(document.body, { key: 'a', ctrlKey: true }); });
+    expect(picked()).toEqual(['harbor', 'docks']);
+    await step(() => ctx().updateLocation({ ...ctx().locations.find((l) => l.id === 'docks')!, name: 'Quay' }));
+
+    await undo();
+    expect(ctx().locations.find((l) => l.id === 'docks')!.name).toBe('Docks');
+    expect(picked()).toEqual(['harbor', 'docks']);
+    // The redo redraws the map from the selection the canvas holds, so a selection lost to the reveal shows here.
+    await redo();
+    expect(ctx().locations.find((l) => l.id === 'docks')!.name).toBe('Quay');
+    expect(picked()).toEqual(['harbor', 'docks']);
+  });
+
   describe('when an undo removes a connection', () => {
     const addSecondConnection = (ctx: () => { addConnection: (c: never) => void }) =>
       step(() => ctx().addConnection({ id: 'c2', a: 'docks', b: 'harbor', aToB: {} } as never));
