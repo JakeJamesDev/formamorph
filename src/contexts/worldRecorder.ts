@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   canRedo, canUndo, createHistory, diffSlice, jumpTo, markSaved, record, replaceRecords, WORLD_SLICES,
-  type EditorHistory, type SliceEdit, type SliceName, type StepKey, type WorldSlices,
+  type EditorHistory, type SliceEdit, type SliceName, type Step, type StepKey, type WorldSlices,
 } from '@/lib/editorHistory';
 
 /**
@@ -90,6 +90,12 @@ function splitStamps(edits: SliceEdit[]): { swaps: Map<object, object>; rest: Sl
   return { swaps, rest };
 }
 
+/** A move that changed the cursor: the Steps it crossed, and the slices as the move left them. */
+export interface HistoryMoveEvent {
+  steps: Step[];
+  world: WorldSlices;
+}
+
 export interface WorldHistoryControls {
   store: HistoryStore;
   undo(): void;
@@ -100,6 +106,8 @@ export interface WorldHistoryControls {
   keyNext(key: StepKey): void;
   /** Starts the stack over, as when the editor closes. */
   clear(): void;
+  /** Hears each move as it happens. Returns the call that stops listening. */
+  onMove(listener: (move: HistoryMoveEvent) => void): () => void;
 }
 
 /**
@@ -179,6 +187,12 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const settersRef = useRef(setters);
   useLayoutEffect(() => { settersRef.current = setters; });
 
+  const moveListeners = useRef(new Set<(move: HistoryMoveEvent) => void>());
+  const onMove = useCallback((listener: (move: HistoryMoveEvent) => void) => {
+    moveListeners.current.add(listener);
+    return () => { moveListeners.current.delete(listener); };
+  }, []);
+
   const jump = useCallback((position: number) => {
     const moved = jumpTo(store.get(), seen.current, position);
     if (!moved) return;
@@ -188,6 +202,7 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     const write = settersRef.current as Record<SliceName, (value: unknown) => void>;
     for (const slice of Object.keys(moved.restore) as SliceName[]) write[slice](moved.restore[slice]);
     store.set(moved.history);
+    for (const listener of moveListeners.current) listener({ steps: moved.steps, world: seen.current });
   }, [store]);
   const undo = useCallback(() => jump(store.get().cursor - 1), [jump, store]);
   const redo = useCallback(() => jump(store.get().cursor + 1), [jump, store]);
@@ -195,8 +210,8 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const keyNext = useCallback((key: StepKey) => { intent.current = { ...intent.current, key }; }, []);
 
   const controls = useMemo<WorldHistoryControls>(
-    () => ({ store, undo, redo, jump, keyNext, clear }),
-    [store, undo, redo, jump, keyNext, clear],
+    () => ({ store, undo, redo, jump, keyNext, clear, onMove }),
+    [store, undo, redo, jump, keyNext, clear, onMove],
   );
   return { intent, controls, disarm, beginSave };
 }
@@ -204,7 +219,7 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
 export const WorldHistoryContext = createContext<WorldHistoryControls | null>(null);
 
 /** Only the moves and the key channel, which keep one identity, so a caller does not re-render when the history changes. */
-export function useWorldHistoryMoves(): Pick<WorldHistoryControls, 'undo' | 'redo' | 'jump' | 'keyNext' | 'clear'> {
+export function useWorldHistoryMoves(): Pick<WorldHistoryControls, 'undo' | 'redo' | 'jump' | 'keyNext' | 'clear' | 'onMove'> {
   const controls = useContext(WorldHistoryContext);
   if (!controls) throw new Error('useWorldHistoryMoves must be used within a GameDataProvider');
   return controls;
@@ -214,7 +229,7 @@ export function useWorldHistoryMoves(): Pick<WorldHistoryControls, 'undo' | 'red
 export function useWorldHistory() {
   const controls = useContext(WorldHistoryContext);
   if (!controls) throw new Error('useWorldHistory must be used within a GameDataProvider');
-  const { store, undo, redo, jump, keyNext, clear } = controls;
+  const { store, undo, redo, jump, keyNext, clear, onMove } = controls;
   const history = useSyncExternalStore(store.subscribe, store.get);
   return {
     canUndo: canUndo(history),
@@ -222,6 +237,6 @@ export function useWorldHistory() {
     steps: history.steps,
     cursor: history.cursor,
     saved: history.saved,
-    undo, redo, jump, keyNext, clear,
+    undo, redo, jump, keyNext, clear, onMove,
   };
 }

@@ -12,12 +12,14 @@ import { focusFieldForItem } from '@/views/findFocus';
 import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import type { LocationView } from '@/views/locationViews';
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
-import LocationCanvas from './LocationCanvas';
+import LocationCanvas, { type ConnectionReveal } from './LocationCanvas';
 import LocationManager from './LocationManager';
 import LocationTree from './LocationTree';
 
 /** The World Editor's Locations tab as a List Editor adapter: the tree or the canvas, a flat sortable search, and the location panel. */
-export function useWorldLocationsAdapter({ selectedId, onSelect, search, view, tab, onTabChange, focusField }: {
+export function useWorldLocationsAdapter({
+  selectedId, onSelect, search, view, tab, onTabChange, focusField, revealConnection, onConnectionRevealed,
+}: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   /** The World Editor's shared search, which hides the open location while it leaves the location out. */
@@ -26,6 +28,9 @@ export function useWorldLocationsAdapter({ selectedId, onSelect, search, view, t
   tab: LocationPanelTab;
   onTabChange: (tab: LocationPanelTab) => void;
   focusField: FocusFieldHint | null;
+  /** A connection the canvas should select, as an undo brings it back. */
+  revealConnection?: ConnectionReveal | null;
+  onConnectionRevealed?: () => void;
 }): ListEditorAdapter {
   const { locations, placeholders, placementLetters, placeholderOwners, addLocation, removeLocation, setLocations } = useGameData();
   const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
@@ -72,7 +77,16 @@ export function useWorldLocationsAdapter({ selectedId, onSelect, search, view, t
   const canvas = view === 'canvas';
   return {
     tree: canvas
-      ? <PanelErrorBoundary><LocationCanvas selectedId={selectedId} onSelect={onSelect} /></PanelErrorBoundary>
+      ? (
+        <PanelErrorBoundary>
+          <LocationCanvas
+            selectedId={selectedId}
+            onSelect={onSelect}
+            revealConnection={revealConnection}
+            onConnectionRevealed={onConnectionRevealed}
+          />
+        </PanelErrorBoundary>
+      )
       : <LocationTree selectedId={selectedId} onSelect={onSelect} />,
     ownsSlot: canvas,
     rows,
