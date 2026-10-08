@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The app and the wiki now say In Game for the time after a game starts.** The trait toggle, the Authoring Tour pane and the Entities page use the same term.
+  - **Test Bench now names the right requirements when a linked trait's default starts unselected.** The message names the entity, quotes the link's rows and opens the link.
 
 ---
 

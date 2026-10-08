@@ -2237,6 +2237,59 @@ describe('trait link rules', () => {
       const found = only(w, 'trait-default-gated');
       expect(found.map((f) => f.message)).toEqual(['“Smite” is marked default but starts unselected — no starting default or persona choice meets “not Faithful”']);
     });
+
+    describe('default-gated reads the link’s rows', () => {
+      const rule = 'trait-default-gated';
+      const wizard: TraitRequirementRow[] = [{ all: [{ kind: 'trait', id: 'wizard' }] }];
+      // Faithful and Smite are defaults; Wizard is not.
+      const defaults = (smiteRequires: TraitRequirementRow[]) => [
+        { ...faithful, isDefault: true },
+        ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, isDefault: true, requires: smiteRequires } : t)),
+      ];
+      const bearing = (id: string, name: string, smite: TraitLink) =>
+        albus({ id, name, traitLinks: [link(`${id}-faithful`, 'faithful', 'trait'), link(`${id}-wizard`, 'wizard', 'trait'), smite] });
+      const overrideTo = (id: string, value: TraitRequirementRow[]) =>
+        link(id, 'smite', 'trait', { overrides: { smite: { requires: { value, blueprint: needs('faithful') } } } });
+
+      it('quotes the link’s rows, names the entity and opens the link when the override can’t be met', () => {
+        const w = linked([bearing('albus', 'Albus', overrideTo('l-smite', wizard))], { traits: defaults(needs('faithful')) });
+        const found = only(w, rule);
+        expect(found.map((f) => f.message)).toEqual(['“Smite” on “Albus” is marked default but starts unselected — no starting default or persona choice meets “Wizard”']);
+        expect(opened(found)).toEqual([['l-smite']]);
+      });
+
+      it('reads the original’s rows and opens the original for a link with no override', () => {
+        const w = linked([bearing('albus', 'Albus', link('l-smite', 'smite', 'trait'))], { traits: defaults(wizard) });
+        const found = only(w, rule);
+        expect(found.map((f) => f.message)).toEqual(['“Smite” is marked default but starts unselected — no starting default or persona choice meets “Wizard”']);
+        expect(opened(found)).toEqual([['smite']]);
+      });
+
+      it('leaves a link override its bearer can never meet to the never-unlockable rule', () => {
+        const oath = [{ all: [{ kind: 'trait' as const, id: 'oath' }] }];
+        const w = linked([bearing('albus', 'Albus', overrideTo('l-smite', oath))], {
+          traits: [...defaults(needs('faithful')), trait({ id: 'oath', name: 'Oath', groupId: 'blueprints' })],
+        });
+        expect(only(w, rule)).toEqual([]);
+        expect(only(w, 'trait-requirement-never-unlockable').map((f) => f.message)).toEqual(['“Albus” links “Smite” but can never meet “Oath”, so it never unlocks']);
+      });
+
+      it('leaves the original quiet when only an override bearer keeps the default', () => {
+        // The original needs Wizard, which no default meets; Albus's override needs Faithful, a default.
+        const w = linked([bearing('albus', 'Albus', overrideTo('l-smite', needs('faithful')))], { traits: defaults(wizard) });
+        expect(only(w, rule)).toEqual([]);
+      });
+
+      it('names only the link when the original’s own rows keep the default', () => {
+        const w = linked(
+          [bearing('albus', 'Albus', overrideTo('l-smite', wizard)), bearing('bree', 'Bree', link('b-smite', 'smite', 'trait'))],
+          { traits: defaults(needs('faithful')) },
+        );
+        const found = only(w, rule);
+        expect(found.map((f) => f.message)).toEqual(['“Smite” on “Albus” is marked default but starts unselected — no starting default or persona choice meets “Wizard”']);
+        expect(opened(found)).toEqual([['l-smite']]);
+      });
+    });
   });
 
   describe('pick counts per bearer', () => {
