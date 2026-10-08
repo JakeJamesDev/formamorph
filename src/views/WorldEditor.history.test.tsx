@@ -285,7 +285,7 @@ const historyFace = () => screen.getByRole('button', { name: 'History' });
 const openHistory = () => step(() => fireEvent.click(historyFace()));
 const historyList = () => screen.getByRole('dialog', { name: 'History' });
 const listRow = (name: string | RegExp) => within(historyList()).getByRole('button', { name });
-const listRows = () => within(historyList()).getAllByRole('button').map((b) => b.textContent);
+const listRows = () => within(historyList()).getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent);
 
 describe('the History popover (desktop)', () => {
   it('joins Undo, Redo and the History chevron in one pill, each with a tip', async () => {
@@ -311,9 +311,12 @@ describe('the History popover (desktop)', () => {
     await chord('z');
     await openHistory();
 
-    expect(listRows()).toEqual(['World opened', 'Remove Stat DampNow', 'Remove Stat Dread(undone)']);
+    expect(listRows()).toEqual(['World opened', 'Remove Stat Damp', 'Remove Stat Dread (undone)']);
     // Each row is named by its full label, and an undone row says so.
     expect(listRow('Remove Stat Damp')).toHaveAttribute('aria-current', 'step');
+    expect(listRow('Remove Stat Damp')).toHaveTextContent('Now');
+    // The record's name is its own part of the row.
+    expect(within(listRow('Remove Stat Dread (undone)')).getByText('Dread')).toBeInTheDocument();
     expect(listRow('Remove Stat Dread (undone)')).toHaveAttribute('data-undone', 'true');
     expect(listRow('Remove Stat Damp')).not.toHaveAttribute('data-undone');
     expect(listRow('World opened')).not.toHaveAttribute('aria-current');

@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Ctrl+S saves the world in the World Editor.** On a Mac, use Cmd+S. It works while you type in a field, and the **Save** tooltip shows it.
   - **Ctrl+B and Ctrl+I make text bold or italic in fields with a formatting toolbar.** On a Mac, use Cmd+B and Cmd+I. Press the key again to remove the formatting. The **Bold** and **Italic** tooltips show the shortcut.
   - **The World Editor now has undo, redo and a History list for your world's edits.** Press Ctrl+Z, or open History in the app bar to jump to any earlier point.
+  - **History rows in the World Editor show the record's name first, with the changed field in a chip beside it.** The action and type sit below in smaller text. A long name ends in an ellipsis, so the field always shows.
 
 #### 🔧 Fixed
 

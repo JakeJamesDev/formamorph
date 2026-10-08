@@ -1054,7 +1054,7 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 
 **Purpose:** Let an author step back and forward through the edits to the open document, and jump to any earlier point, from the surface's app bar.
 
-> ✅ **Approved** on the editor history bar prototype (variant B on desktop, variant A's header on mobile), 2026-10-07.
+> ✅ **Approved** on the editor history bar prototype (variant B on desktop, variant A's header on mobile), 2026-10-07. The two-line row was approved on the history labels prototype, 2026-10-08.
 
 **Density:** Compact. Each face is 32px tall.
 
@@ -1066,6 +1066,12 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 - **Mobile: one History icon** in the header, between the mode select and the Test Bench. Its popover head holds Undo and Redo as icon buttons, so the header keeps its room.
 - The popover opens under the control, aligned to its end. It is not portaled, so the list scrolls inside a dialog host.
 - Set the list in the menu row style. It holds the fixed head row **World opened**, one row per Step with its label, the **Saved** marker after the Step that was saved, and the undone Steps dimmed below the current one.
+- **A row with a record name has two lines.** Line one is the name in italics, then the field as a small bordered chip. Line two is the verb and type at the meta size.
+- Only the name truncates. The verb, the type and the chip always show in full.
+- Mute the verb and type with opacity, not a gray color. Opacity stacks with an undone row's dimming, so a muted part never looks brighter than its row.
+- **A row with no name has one line:** the verb, the type and the field chip, not muted. A labeled batch shows its label.
+- The row's accessible name is the whole label in its natural order, such as "Edit Entity Mara: Player Description".
+- The popover is 20rem wide, at most 90% of the window.
 - Mark the current row with the accent fill and a **Now** tag. Mark the head with the fill only.
 - A click on a row moves the document to that point and keeps the list open. The click handler does nothing else.
 - The list scrolls in its own box, at most half the window tall, and brings the current row into view.
@@ -1076,7 +1082,7 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 | --- | --- |
 | The pill, the icon, the popover and the list | `HistoryControls` and `HistoryList` in [`HistoryControls.tsx`](../src/components/editor/HistoryControls.tsx) |
 | The World Editor's binding to the open world | `HistoryPill` in [`HistoryPill.tsx`](../src/components/editor/HistoryPill.tsx) |
-| Step labels | `stepLabel` in [`editorHistoryLabels.ts`](../src/lib/editorHistoryLabels.ts) |
+| Step labels | `stepLabelParts` and `stepLabel` in [`editorHistoryLabels.ts`](../src/lib/editorHistoryLabels.ts) |
 | Row style | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
 | Isolated reference | [`HistoryControlsReference.tsx`](../src/components/design-system/HistoryControlsReference.tsx) |
 
