@@ -109,7 +109,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q15 | Desktop: variant B, the split pill (Undo, Redo, chevron) at the head of the app bar's end slot. Mobile: variant A's header, one History icon whose popover carries Undo and Redo in its head. |
 | Q16 | Labels: action, type, name, and the field when one field changed. "Edit Stat Hunger: Description", "Remove Location Docks". |
 | Q17 | The app bar was prototyped before the spec. |
-| Q18 | Chords are suppressed while a surface opened after the editor is on the surface registry. The in-game host dialog is opened before the editor and never suppresses. |
+| Q18 | Chords are suppressed while a surface opened after the editor is on the surface registry, read as "the registry's top dialog is not the editor". The in-game host dialog is opened before the editor and never suppresses. |
 | Q19 | Drags are one Step through an explicit group begin and end. Keyboard nudges and stepper clicks follow the pause rule. |
 | Q20 | Undone Steps are shown dimmed and clickable. |
 | Q21 | During the Authoring Tour, Steps and Saved markers are recorded, but the chords, the pill, the popover and reveal are disabled until the tour ends. |
@@ -119,10 +119,10 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q25 | Modals opened from the editor that report no surface (image replace, code rename offer, Replace All confirm) get surface ids, and the listener also yields to any open modal above the editor as a backstop. Ticket 05. |
 | Q26 | A write that changes several fields of one record keeps the record key with no field. A typed rename that also rewrites descriptors merges as one Step, labeled with the record alone. |
 | Q27 | A dictionary entry edit is keyed to the entry, not its book, and labels as "Edit Entry <name>: <field>". Labels name the thing the author edited, as for Copy placeholders. |
-| Q28 | Continuous controls: the Slider and ColorPicker primitives open a group on press and close it on release as a transition-priority update (a one-task deferral raced React's scheduler in Node), when a world is open. They read a gesture leaf the world provider fills after load, so the account site bundle never pulls the recorder. Optimize Images batches around the apply only, after its prompt resolves. Ticket 04 owns the stamp flag; ticket 08 owns the Saved marker and the content compare. Entry field labels follow the editor's own labels ("Value"). |
-| Q29 | A marked (field-history) write whose key matches the top applied Step but whose content matches neither side merges into that Step regardless of the pause: no new Step, no cursor move, the Step's after follows the field. A marked write that reaches the Step's before moves the cursor back. No key match, or a sealed top: a plain write. The list never grows during a field's own undo or redo. |
+| Q28 | Continuous controls: the Slider and ColorPicker primitives open a group on press and close it on release as a transition-priority update, when a world is open. They read a gesture leaf the world provider fills after load, so the account site bundle never pulls the recorder. Optimize Images batches around the apply only, after its prompt resolves. Ticket 04 owns the stamp flag; ticket 08 owns the Saved marker and the content compare. Entry field labels follow the editor's own labels ("Value"). |
+| Q29 | A marked (field-history) write whose key matches the top applied Step but whose content matches neither side merges into that Step regardless of the pause: no new Step, no cursor move, the Step's after follows the field. A marked write that reaches the Step's before moves the cursor back; a field redo that reaches the next Step's after moves it forward. A sealed top blocks the merge only; a cursor move on a matching side still happens. No key match: a plain write. The list never grows during a field's own undo or redo. |
 | Q30 | World-bound plain inputs opt in with a `data-world-field` attribute. An unmarked input keeps native undo and the listener yields, so a missed input keeps today's behavior. |
-| Q31 | One-line chip fields (record names, placeholder names) are Lexical fields and follow Q1, not Q10. Q10 covers the plain inputs only: number boxes, pronouns, entity type, book name and description, group names, world name and author, travel hints. Ticket 05's stat-name criterion reads as the stat's Max box. |
+| Q31 | One-line chip fields (record names, placeholder names) are Lexical fields and follow Q1, not Q10. Q10 covers the plain inputs only, including number boxes, pronouns, entity type, book name and description, group names, world name and author, travel hints, openings, trait and placeholder values, and scan depth. Ticket 05's stat-name criterion reads as the stat's Max box. |
 | Q32 | A world restore into a field clears the field's own undo and redo stacks as well as rebuilding with the merge tag. The tag alone left stale redo entries that turned the next Ctrl+Y into a plain write. |
 | Q33 | A field's own undo moves the cursor only past a Step that holds that field alone. Otherwise it merges into the Step (Q29), so a Step's other edits (a tick fold, Links-follow) never stay in the world while the Step reads as undone. |
 
@@ -131,7 +131,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 - The canvas history module becomes the editor history module. A Step carries one or more slice edits, each the slice's records as they were and as they became, plus the slice's id order on both sides. The Formaquestion mascot tab keeps the chord helper it imports from this module.
 - **Restore is order-aware.** Undo rebuilds the slice in the Step's earlier id order, puts each touched record back as it was, drops the ones the Step added, and keeps every untouched record where it stands now. A reorder undoes to the old order; an undone delete returns the record to its old place. An edit to another record made between a Step and its undo survives, as it does on the canvas today.
 - Eleven slices are record arrays. The overview slice is one object: its Steps store the object whole on both sides and restore by field.
-- The module keeps `record`, `undo`, `redo`, and gains `jumpTo` for the list, `beginGroup` and `endGroup` for drags, and the Saved marker. Merge precedence, highest first: an open group swallows every write until it ends; a keyed write merges into the previous Step when the key matches and that Step is younger than the pause; writes committed in one tick fold into one Step. A folded Step carries the key of its first write, so a keyed run merges into it.
+- The module keeps `record`, `undo`, `redo`, and gains `jumpTo` for the list, `beginGroup` and `endGroup` for drags, the Saved marker, and the helpers tickets 05 and 08 added: the field-move cursor rule, the moved-text set, the stamped-record swap, the slice diff, the write key and the edit combiner. Merge precedence, highest first: an open group swallows every write until it ends; a keyed write merges into the previous Step when the key matches and that Step is younger than the pause; writes committed in one tick fold into one Step. A folded Step carries the key of its first write, so a keyed run merges into it.
 - The list's head row, World opened, is fixed. It is not a Step, does not count toward the cap, and jumping to it restores the loaded baseline.
 - Labels are a pure function of a Step and its key: the action, the type name of the slice, the record's display name, and the field's label when the key names one field. A Copy placeholder edit inside an entity or a book is keyed to the placeholder, so it labels as the placeholder, not the owner. Overview Steps label as "Edit World: Field". The field-label table lives beside the module.
 - The stack is held by the world provider for the open world and cleared on editor close. The Design System showcase's canvas gets an isolated instance. It is session memory only. No world or save shape changes.
@@ -139,24 +139,27 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 ### The recorder
 
 - Every action is a deferred React setter, so nothing can be captured around the call. The recorder runs after commit: a layout effect in the world provider diffs the twelve committed slices against the last snapshot it recorded, by reference, and records what changed. It therefore sees every write, including the ones that do not go through the actions object: the Links-follow pass that rewrites entities a render after a trait or placeholder write, the placeholder list setter, and the dictionary store's own setters.
-- Writes carry intent to the recorder through a small side channel set before the setter runs: a merge key (record id and field), an explicit group or batch label, or a flag. The Links-follow pass folds into the Step of the write that caused it. Save's link stamps are flagged and never recorded; undo past a Saved marker compares against the stamped baseline by content, so a restored unstamped record that matches by content reads clean. Undo and redo writes are flagged.
+- Writes carry intent to the recorder through a small side channel set before the setter runs: a merge key (record id and field), an explicit group or batch label, or a flag. The Links-follow pass folds into the Step of the write that caused it. Save's link stamps are flagged and never recorded; the stamped records are swapped into every Step by reference, so an undo past the Saved marker restores stamped records and the existing dirty check reads them clean. Undo and redo writes are flagged.
+- Two save edges: a write that merges into the Step the save read leaves the marker unplaced, and an edit that lands while the save runs places the marker at the pre-save cursor without sealing.
 - The recorder arms after load sets the baseline and disarms before discard and close. Load, save, discard, metadata and ownership calls never record; save adds the marker.
 - Merge keys: a per-record update names the record and its one changed field. The function-taking entity edit and a partial overview update derive the field from the keys that changed, one key means a field key, more means none. Whole-slice setters carry a key only when the caller passes one, as the canvas does for travel hints and must for keyboard nudges.
 - Optimize Images runs as an explicit batch labeled as such, opened after its dialog closes.
-- The provider exposes the history through one hook: can undo, can redo, the Steps with the cursor and markers, and undo, redo, jump. The pill, the popover, and the tests read it there.
+- The provider exposes the history through one store, read through a subscribing hook (can undo, can redo, the Steps with the cursor and markers) and a stable-identity moves hook (undo, redo, jump), with an optional form for hosts outside a world. The pill, the popover, and the tests read it there.
 - The library's book and entity editors use their own stores and never reach the recorder.
 
 ### Chords and focus
 
 - One capture-phase listener in the editor reads the chord. It yields when a surface opened after the editor is on the surface registry, when the tour is running, when the event is composing, when the active element is an input not bound to the world, and when the active element is a Lexical field that reports it can undo in the asked direction.
-- A Lexical field reports whether it can undo and redo, and marks the writes its own history makes by reading the historic tag on the update. The recorder treats a marked write as a cursor move on the Step it matches by key and content, and as a plain write otherwise, so a field's undo never appears in the list and a fall-through lands where the field left the text.
-- A world undo or redo that restores a field's value rebuilds the field with Lexical's history-merge tag, so the restore never becomes a text-undo entry.
+- A Lexical field reports whether it can undo and redo, and marks the writes its own history makes by reading the historic tag on the update. The mark carries its tick, so a mark from a field outside the world never keys a later write. The recorder treats a marked write by Q29 and Q33, so a field's undo never appears in the list and a fall-through lands where the field left the text.
+- A world undo or redo that restores a field's value rebuilds the field with Lexical's history-merge tag and clears the field's own stacks (Q32). Restored text is detected by string set: every string in every changed field on both sides of the move.
 - A world-bound plain input gets its default prevented so the browser's native undo never runs.
 - The canvas's own chord reader is removed; the shared listener serves it.
 
 ### Reveal
 
-- A Step records the ids it touched. After undo or redo the editor opens the tab that owns the first touched record and selects it, through the same reveal path the find bar and Take Me There use. A touched record that is gone clears that tab's selection. A connection reveals the Locations tab and selects the connection on the canvas. An overview field reveals the Overview tab. Reveal is skipped while the tour runs.
+- A Step records the ids it touched. After undo or redo the editor opens the tab that owns the revealed record and selects it, through the same reveal path the find bar and Take Me There use. Inside a Step the keyed slice leads, then add and remove edits, then slice order. A jump reveals the Step nearest the landing cursor, falling back inward.
+- A touched record that is gone ends with that tab's selection cleared: reveal opens the tab, and each list editor drops a selection it no longer holds. A list editor that kept a stale id would break story 33a.
+- A connection reveals the Locations tab and selects the connection on the canvas. A book edit selects the changed entry, else the book. An overview field reveals the Overview tab. Stat updates and tabs the mode hides reveal nothing. Reveal is skipped while the tour runs.
 
 ### App bar
 
@@ -171,7 +174,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 
 ## Testing Decisions
 
-A good test drives the seam an author would and asserts what the author would see: the world's records after undo, the button state, the list rows, the selected record. Tests never read the stack's internal arrays and never assert on a wrapper's call count.
+A good test drives the seam an author would and asserts what the author would see: the world's records after undo, the button state, the list rows, the selected record. Tests never read the stack's internal arrays and never count the recorder's commits.
 
 Three seams, no new ones:
 
@@ -196,6 +199,17 @@ Every guard proves it bites: a test that a drag is one Step fails when the group
 
 - The pause rule and the gesture rule follow the convention other editors settled on: continuous controls commit one entry on release; typing coalesces by time. The research links are in the grilling transcript.
 - Two stacks touch in one place: a Lexical field's history-driven writes, and the history-merge rebuild on restore. That sync is the riskiest piece and deserves its own ticket.
-- A review agent read the first draft against the code; its findings shaped the recorder, the order-aware restore, the Lexical rules and Q21.
-- Known edges left by ticket 04, not fixed: groups do not nest (a drag during an open batch closes the batch early), and a second press before the first drag's close commits shares one group. Both need sub-frame timing. Backlog.
+- A review agent read the first draft against the code; its findings shaped the recorder, the order-aware restore, the Lexical rules and Q21. A second review at close compared the spec with the landed code; its findings reworded Q29, the recorder, chords and reveal sections and filled the Backlog.
 - Images are inline base64 strings shared by reference between Steps, so the 100-Step cap bounds memory near one world copy plus the changed images.
+- Prototype: branch `prototype/editor-history-bar` at `ba8acd8c`, worktree kept on disk. Cut the junction before any removal.
+- Ticket 08's release gate is satisfied: it landed before any release carried ticket 02 (3.0.1 predates the effort).
+
+## Backlog
+
+- Groups do not nest: a drag during an open batch closes the batch early. A second press before the first drag's close commits shares one group. Both need sub-frame timing.
+- Restored-text detection is a string set. The empty string and short values are in it after most moves, so a Lexical field rebuilt to one of them before the next recorded write is treated as restored and loses its own stacks.
+- A write that merges into the Step the save read leaves the Saved marker unplaced.
+- Mobile 390px no-wrap and both-theme frames for the pill and popover are unproved in jsdom; capture Playwright frames when the app bar next changes.
+- Playwright canvas suite at close: a marquee selection counts 3 nodes instead of 4 on desktop, and the mobile undo test finds no implicit edges. Ticket 10 triages both.
+- Q21: the tour test proves the chords are off; it does not show the Step recorded during the tour.
+- Story 4: entity image and BGM undo are covered only through the thumbnail reveal test.

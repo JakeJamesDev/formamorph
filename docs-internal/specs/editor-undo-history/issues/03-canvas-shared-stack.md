@@ -27,3 +27,7 @@ The canvas's own stack and chord reader go. A multi-drag or an Auto Arrange on t
 - [ ] Canvas commits are proved at the provider seam; the existing Playwright canvas suite passes again, including the arrow-key nudge case that ticket 02 left red until nudges carry a key.
 - [ ] The canvas toolbar's Undo and Redo buttons read the shared stack, not the canvas's own.
 - [ ] Gates green: `typecheck`, `lint`, `test`, `build`.
+
+## Comments
+
+Close check, 2026-10-08, at `fa936bda`: the Playwright canvas suite ran 30 passed, 6 failed, 4 skipped in 198 s. Ctrl+Z in the full-screen canvas undoes nothing after nudges or a line-up, on desktop and mobile. The Playwright criterion above is not met; ticket 10 carries it.

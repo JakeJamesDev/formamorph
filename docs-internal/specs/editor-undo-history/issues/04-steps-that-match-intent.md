@@ -31,3 +31,9 @@ Nothing an author would call one action takes two presses to undo (Q9, Q11, Q19)
 - [ ] A Copy placeholder edit inside an entity labels as the placeholder.
 - [ ] Guards bite: the drag test fails when the group is removed; the Links test fails when the fold is removed.
 - [ ] Gates green: `typecheck`, `lint`, `test`, `build`.
+
+## Comments
+
+Mutation evidence, 2026-10-08, at `fa936bda`:
+- The Links-follow pass given no tick so it opens its own Step: 1 red, the provider test "folds the copies pass after a trait removal into the removal" (one undo reverted only the pass). The editor bench tests stayed green, so the provider test is the sole guard for the fold.
+- Restored; recorder file diff empty.
