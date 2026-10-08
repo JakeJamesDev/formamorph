@@ -125,6 +125,8 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q31 | One-line chip fields (record names, placeholder names) are Lexical fields and follow Q1, not Q10. Q10 covers the plain inputs only, including number boxes, pronouns, entity type, book name and description, group names, world name and author, travel hints, openings, trait and placeholder values, and scan depth. Ticket 05's stat-name criterion reads as the stat's Max box. |
 | Q32 | A world restore into a field clears the field's own undo and redo stacks as well as rebuilding with the merge tag. The tag alone left stale redo entries that turned the next Ctrl+Y into a plain write. |
 | Q33 | A field's own undo moves the cursor only past a Step that holds that field alone. Otherwise it merges into the Step (Q29), so a Step's other edits (a tick fold, Links-follow) never stay in the world while the Step reads as undone. |
+| Q34 | Q6 stands on mobile: a reveal in the Locations canvas view selects the location and pushes its detail panel over the canvas, as a tap does. The e2e canvas test closes the panel after each undo. |
+| Q35 | A reveal of a location already in the canvas's multi-selection keeps the whole selection. A location outside it replaces the selection, as today. An undo of a group command never collapses the author's selection. |
 
 ### The history module
 
@@ -153,6 +155,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 - A Lexical field reports whether it can undo and redo, and marks the writes its own history makes by reading the historic tag on the update. The mark carries its tick, so a mark from a field outside the world never keys a later write. The recorder treats a marked write by Q29 and Q33, so a field's undo never appears in the list and a fall-through lands where the field left the text.
 - A world undo or redo that restores a field's value rebuilds the field with Lexical's history-merge tag and clears the field's own stacks (Q32). Restored text is detected by string set: every string in every changed field on both sides of the move.
 - A world-bound plain input gets its default prevented so the browser's native undo never runs.
+- The listener also yields when the layer the key came from is under a modal's pointer-events: none. A full-screen window that edits the world carries `data-world-window` and counts as its own layer, so chords stay live in the full-screen Locations Canvas and stop when a modal opens over it.
 - The canvas's own chord reader is removed; the shared listener serves it.
 
 ### Reveal
@@ -210,6 +213,7 @@ Every guard proves it bites: a test that a drag is one Step fails when the group
 - Restored-text detection is a string set. The empty string and short values are in it after most moves, so a Lexical field rebuilt to one of them before the next recorded write is treated as restored and loses its own stacks.
 - A write that merges into the Step the save read leaves the Saved marker unplaced.
 - Mobile 390px no-wrap and both-theme frames for the pill and popover are unproved in jsdom; capture Playwright frames when the app bar next changes.
-- Playwright canvas suite at close: a marquee selection counts 3 nodes instead of 4 on desktop, and the mobile undo test finds no implicit edges. Ticket 10 triages both.
+- The other full-screen shells (prompt and code fields, the panel shell) do not carry `data-world-window`, so a world chord that falls through from one of them in full screen is still dropped.
+- Marquee selection counted 3 of 4 nodes on desktop once at close (the canvas e2e marquee case). It did not reproduce in 11 runs (6 alone, 5 in the full suite) on 2026-10-08. Cause not found. A suspect, UNVERIFIED: the marquee is drawn before the canvas's first fit settles, so a box sits outside the pane.
 - Q21: the tour test proves the chords are off; it does not show the Step recorded during the tour.
 - Story 4: entity image and BGM undo are covered only through the thumbnail reveal test.
