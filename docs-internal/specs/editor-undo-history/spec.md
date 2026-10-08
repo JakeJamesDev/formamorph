@@ -117,6 +117,9 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q23 | A key or tick merge never crosses the Saved marker. Undo, redo and jump seal the top Step, so the next write starts a new one. An open group still swallows. |
 | Q24 | When the cap drops the oldest Step, its edits fold into the next Step's undo, label unchanged, so the World opened row still restores the loaded baseline. |
 | Q25 | Modals opened from the editor that report no surface (image replace, code rename offer, Replace All confirm) get surface ids, and the listener also yields to any open modal above the editor as a backstop. Ticket 05. |
+| Q26 | A write that changes several fields of one record keeps the record key with no field. A typed rename that also rewrites descriptors merges as one Step, labeled with the record alone. |
+| Q27 | A dictionary entry edit is keyed to the entry, not its book, and labels as "Edit Entry <name>: <field>". Labels name the thing the author edited, as for Copy placeholders. |
+| Q28 | Continuous controls: the Slider and ColorPicker primitives open a group on press and close it on release as a transition-priority update (a one-task deferral raced React's scheduler in Node), when a world is open. They read a gesture leaf the world provider fills after load, so the account site bundle never pulls the recorder. Optimize Images batches around the apply only, after its prompt resolves. Ticket 04 owns the stamp flag; ticket 08 owns the Saved marker and the content compare. Entry field labels follow the editor's own labels ("Value"). |
 
 ### The history module
 
@@ -189,4 +192,5 @@ Every guard proves it bites: a test that a drag is one Step fails when the group
 - The pause rule and the gesture rule follow the convention other editors settled on: continuous controls commit one entry on release; typing coalesces by time. The research links are in the grilling transcript.
 - Two stacks touch in one place: a Lexical field's history-driven writes, and the history-merge rebuild on restore. That sync is the riskiest piece and deserves its own ticket.
 - A review agent read the first draft against the code; its findings shaped the recorder, the order-aware restore, the Lexical rules and Q21.
+- Known edges left by ticket 04, not fixed: groups do not nest (a drag during an open batch closes the batch early), and a second press before the first drag's close commits shares one group. Both need sub-frame timing. Backlog.
 - Images are inline base64 strings shared by reference between Steps, so the 100-Step cap bounds memory near one world copy plus the changed images.
