@@ -5,17 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { HistoryControls, type HistoryView } from '@/components/editor/HistoryControls';
+import type { StepLabelParts } from '@/lib/editorHistoryLabels';
 
-const SAMPLE_STEPS = [
-  'Add Stat Hunger',
-  'Edit Stat Hunger: Description',
-  'Add Location Docks',
-  'Edit Locations',
-  'Edit World: Thumbnail',
-  'Remove Trait Brave',
-  'Edit Entity Mara: Image Tags',
-  'Edit Location Docks: Travel Hint',
-  'Add Connection Docks → Market',
+const SAMPLE_STEPS: StepLabelParts[] = [
+  { verb: 'Add', type: 'Stat', slice: 'stats', name: 'Hunger' },
+  { verb: 'Edit', type: 'Stat', slice: 'stats', name: 'Hunger', field: 'Description' },
+  { verb: 'Add', type: 'Location', slice: 'locations', name: 'Docks' },
+  { verb: 'Edit', type: 'Locations', slice: 'locations' },
+  { verb: 'Edit', type: 'World', slice: 'worldOverview', field: 'Thumbnail' },
+  { verb: 'Remove', type: 'Trait', slice: 'traits', name: 'Brave' },
+  { verb: 'Edit', type: 'Entity', slice: 'entities', name: 'Mara', field: 'Image Tags' },
+  { verb: 'Edit', type: 'Location', slice: 'locations', name: 'Docks', field: 'Travel Hint' },
+  { verb: 'Add', type: 'Connection', slice: 'connections', name: 'Docks → Market' },
 ];
 const START = { count: 7, cursor: 7, saved: 5 as number | null };
 

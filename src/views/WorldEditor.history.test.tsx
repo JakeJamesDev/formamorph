@@ -312,9 +312,10 @@ describe('the History popover (desktop)', () => {
     await openHistory();
 
     expect(listRows()).toEqual(['World opened', 'Remove Stat DampNow', 'Remove Stat Dread(undone)']);
-    expect(listRow(/^Remove Stat Damp/)).toHaveAttribute('aria-current', 'step');
-    expect(listRow(/^Remove Stat Dread/)).toHaveAttribute('data-undone', 'true');
-    expect(listRow(/^Remove Stat Damp/)).not.toHaveAttribute('data-undone');
+    // Each row is named by its full label, and an undone row says so.
+    expect(listRow('Remove Stat Damp')).toHaveAttribute('aria-current', 'step');
+    expect(listRow('Remove Stat Dread (undone)')).toHaveAttribute('data-undone', 'true');
+    expect(listRow('Remove Stat Damp')).not.toHaveAttribute('data-undone');
     expect(listRow('World opened')).not.toHaveAttribute('aria-current');
   });
 
