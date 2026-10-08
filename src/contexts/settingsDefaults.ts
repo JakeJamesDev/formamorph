@@ -228,5 +228,7 @@ export const DEFAULT_QUOTE_COLOR_DARK: string | null = null;
 
 // The global Tools switch. On sends each prompt its offered Tools; each Tool is still opt-in.
 export const DEFAULT_TOOLS_ENABLED = true;
+// The World Editor's Auto Save. Off saves only on Save and Ctrl+S.
+export const DEFAULT_EDITOR_AUTO_SAVE = true;
 // Calls one Tool may make per request when the Tool sets no limit of its own.
 export const DEFAULT_TOOL_CALL_LIMIT = 4;

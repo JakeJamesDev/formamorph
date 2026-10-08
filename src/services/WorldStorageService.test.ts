@@ -422,6 +422,20 @@ describe('local world storage (IndexedDB)', () => {
 
     await WorldStorageService.deleteWorld('sticky-2');
   });
+
+  it('reads a bundled default as unedited until a save marks it edited', async () => {
+    await WorldStorageService.storeWorld({ ...validWorld, id: 'bundled-1', sourceHash: 'abc123' });
+    expect(await WorldStorageService.isUneditedDefault('bundled-1')).toBe(true);
+    await WorldStorageService.storeWorld({ ...validWorld, id: 'bundled-1', dirty: true });
+    expect(await WorldStorageService.isUneditedDefault('bundled-1')).toBe(false);
+
+    await WorldStorageService.storeWorld({ ...validWorld, id: 'own-1' });
+    expect(await WorldStorageService.isUneditedDefault('own-1')).toBe(false);
+    expect(await WorldStorageService.isUneditedDefault('missing')).toBe(false);
+
+    await WorldStorageService.deleteWorld('bundled-1');
+    await WorldStorageService.deleteWorld('own-1');
+  });
 });
 
 /** Read a stored record straight from IndexedDB — `getWorldMetadata` doesn't expose `sourceHash`. */

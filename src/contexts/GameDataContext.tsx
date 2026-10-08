@@ -566,10 +566,10 @@ function useProvideGameData() {
   // go to the library only after the world is stored, so a failed save changes neither. The stamps they
   // produce go into the stored world and onto the live copies, so each holds the revision it wrote. Here
   // rather than in the editor, so every world save writes back, whichever surface asked for it.
-  const saveWorld = useCallback(async (): Promise<SaveResult> => {
+  const writeWorld = useCallback(async (markSaved: boolean): Promise<SaveResult> => {
     const { worldId, worldOverview, placeholders, locations } = latest.current;
     const data = latest.current.getWorldData();
-    const placeSavedMarker = beginHistorySave();
+    const placeSavedMarker = markSaved ? beginHistorySave() : () => {};
     try {
       const writeBack = await planOwnedWriteBack({
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
@@ -608,12 +608,23 @@ function useProvideGameData() {
       placeSavedMarker();
       setSavedWorld(world);
       setWorldStored(true);
+      // A discard before the commit rolls back to this save, not the one before it.
+      latest.current = { ...latest.current, savedWorld: world, worldStored: true };
       return { ok: true };
     } catch (error) {
       console.error('Error saving world:', error);
       return { ok: false, error, world: { id: worldId ?? '', version: APP_VERSION, ...data } };
     }
   }, [setDictionaries, writeIntent, beginHistorySave]);
+  // One write at a time, in the order asked, so an older world never lands over a newer one.
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  /** `markSaved` false is an auto save: it leaves History's Saved marker and its Steps alone. */
+  const saveWorld = useCallback((options: { markSaved?: boolean } = {}): Promise<SaveResult> => {
+    const run = saveQueue.current.then(() => writeWorld(options.markSaved ?? true));
+    // A save that throws still frees the queue for the next one.
+    saveQueue.current = run.catch(() => undefined);
+    return run;
+  }, [writeWorld]);
 
   useEffect(() => {
     WorldStorageService.initialize();

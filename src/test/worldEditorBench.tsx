@@ -8,7 +8,7 @@ import { useEffect, type ComponentProps, type ReactNode } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
-import { useWorldHistoryMoves } from '@/contexts/worldRecorder';
+import { useWorldHistory, useWorldHistoryMoves } from '@/contexts/worldRecorder';
 import { writeEditorMode, type EditorMode } from '@/lib/editorMode';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -78,17 +78,19 @@ export const benchEditorWorld = (over: Partial<World>): World => ({
 
 type GameDataHandle = ReturnType<typeof useGameData>;
 type HistoryMoves = ReturnType<typeof useWorldHistoryMoves>;
+type HistoryState = ReturnType<typeof useWorldHistory>;
 
 // eslint-disable-next-line react-refresh/only-export-components -- test-only module; nothing is hot-reloaded
 const Harness = ({ world, children, onReady }: {
   world: World;
   children?: ReactNode;
-  onReady: (ctx: GameDataHandle, moves: HistoryMoves) => void;
+  onReady: (ctx: GameDataHandle, moves: HistoryMoves, state: HistoryState) => void;
 }) => {
   const ctx = useGameData();
   const moves = useWorldHistoryMoves();
+  const state = useWorldHistory();
   useEffect(() => { ctx.loadWorldData(world); /* once */ }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  onReady(ctx, moves);
+  onReady(ctx, moves, state);
   return <>{children}</>;
 };
 
@@ -108,6 +110,7 @@ export const renderWorldEditorBench = (
 ) => {
   let ctx!: GameDataHandle;
   let moves!: HistoryMoves;
+  let historyState!: HistoryState;
   writeEditorMode(mode);
   const onClose = vi.fn();
   // A new key remounts the editor over the same provider, as closing it and opening it again does.
@@ -116,7 +119,7 @@ export const renderWorldEditorBench = (
     <SettingsProvider>
       <TooltipProvider>
         <GameDataProvider>
-          <Harness world={world} onReady={(c, m) => { ctx = c; moves = m; }}>
+          <Harness world={world} onReady={(c, m, h) => { ctx = c; moves = m; historyState = h; }}>
             <WorldEditor key={visit} onClose={onClose} embedded backButton {...editorProps} />
           </Harness>
         </GameDataProvider>
@@ -128,6 +131,8 @@ export const renderWorldEditorBench = (
     ctx: () => ctx,
     /** The history's moves, called as a hook caller would, past the chords and the pill. */
     history: () => moves,
+    /** The Steps, the cursor and the Saved marker as the last render read them. */
+    historyState: () => historyState,
     unmount: view.unmount,
     /** Renders the editor again with new props, as a host does for a later request. */
     rerender: (next: typeof props) => view.rerender(tree(next)),
