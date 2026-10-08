@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { GameDataProvider, useGameData } from './GameDataContext';
 import { useWorldHistory } from './worldRecorder';
+import { revealTargetForMove, type RevealTarget } from '@/lib/historyReveal';
 import type { Entity, GameLocation, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup, TraitLink, World } from '@/types';
 
 /** Every write to the open world can be undone and redone through the provider's history. */
@@ -62,6 +63,13 @@ const open = async (initial = world('w-history')) => {
 const act1 = (writes: () => void) => act(async () => { writes(); });
 
 const statIds = (ctx: Handle) => ctx.stats.map((s) => s.id);
+
+/** Where each later move lands, as the editor would reveal it. */
+const watch = (history: HistoryView) => {
+  const targets: (RevealTarget | null)[] = [];
+  const stop = history.onMove((move) => targets.push(revealTargetForMove(move.steps, move.world)));
+  return { targets, stop };
+};
 
 describe('the world history', () => {
   it('undoes a removed stat back to its index and redoes the removal', async () => {
@@ -166,11 +174,14 @@ describe('the world history', () => {
     }
     expect(ctx().entities[0].traitLinks ?? []).toEqual([]);
 
+    // The removal leads the Step, so the reveal opens the trait and not the entity the follow pass rewrote.
+    const { targets } = watch(history());
     await act1(() => history().undo());
     expect(ctx().traits.map((t) => t.id)).toEqual(['paladin']);
     expect(ctx().entities[0].traitLinks).toEqual([paladinLink]);
     expect(copiesOf()).toEqual(copy);
     expect(history().canUndo).toBe(false);
+    expect(targets).toEqual([{ tab: 'traits', id: 'paladin' }]);
   });
 
   it('never records an undo or a redo as a Step', async () => {
@@ -345,5 +356,39 @@ describe('the world history', () => {
     expect(history().canRedo).toBe(false);
     await act1(() => history().undo());
     expect(statIds(ctx())).toEqual(['hunger', 'thirst', 'warmth']);
+  });
+
+  describe('moves', () => {
+    it('tell a listener where an undo and a redo land, read against the world they leave', async () => {
+      const { ctx, history } = await open();
+      await act1(() => ctx().removeStat('thirst'));
+      const { targets } = watch(history());
+
+      await act1(() => history().undo());
+      await act1(() => history().redo());
+      expect(targets).toEqual([{ tab: 'stats', id: 'thirst' }, { tab: 'stats', id: 'thirst', gone: true }]);
+    });
+
+    it('tell a listener where a jump over several Steps lands', async () => {
+      const { ctx, history } = await open();
+      await act1(() => ctx().removeStat('thirst'));
+      await act1(() => ctx().addLocation(location('docks')));
+      const { targets } = watch(history());
+
+      await act1(() => history().jump(0));
+      expect(targets).toEqual([{ tab: 'stats', id: 'thirst' }]);
+    });
+
+    it('stay silent when nothing moves and after the listener stops', async () => {
+      const { ctx, history } = await open();
+      await act1(() => ctx().removeStat('thirst'));
+      const { targets, stop } = watch(history());
+
+      await act1(() => history().redo());
+      expect(targets).toEqual([]);
+      stop();
+      await act1(() => history().undo());
+      expect(targets).toEqual([]);
+    });
   });
 });

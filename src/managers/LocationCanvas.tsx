@@ -1402,16 +1402,39 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
   );
 };
 
+/** A request from the editor to select a connection, or to drop the selection when that connection is gone. */
+export interface ConnectionReveal {
+  id: string;
+  gone?: boolean;
+}
+
+interface CanvasReveal {
+  revealConnection?: ConnectionReveal | null;
+  /** Called once the canvas has taken the request, so a later mount does not take it again. */
+  onConnectionRevealed?: () => void;
+}
+
 /** Embedded and fullscreen canvas with caller-owned data and preferences. It records into the world history
  *  above it, so a caller with a world of its own provides one. */
-export const LocationCanvasWorkspace = (props: LocationCanvasInputs & {
+export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReveal & {
   selectedId: string | null; onSelect: (id: string) => void;
 }) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const morph = useMorphFullscreen(hostRef);
   const selectedIdsRef = useRef<string[]>(props.selectedId ? [props.selectedId] : []);
   const lastSyncedRef = useRef<string | null>(props.selectedId);
+  const { revealConnection, onConnectionRevealed } = props;
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!revealConnection) return;
+    const { id, gone } = revealConnection;
+    // A removed connection drops the selection only when it is the open one.
+    setSelectedConnectionId((open) => {
+      if (!gone) return id;
+      return open === id ? null : open;
+    });
+    onConnectionRevealed?.();
+  }, [revealConnection, onConnectionRevealed]);
 
   // Set while the canvas is moving between the pane and the window. The old one reports an empty selection as
   // it goes and the new one before it has drawn, and neither is the author letting go of anything.
@@ -1477,7 +1500,7 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & {
   );
 };
 
-const LocationCanvas = (props: { selectedId: string | null; onSelect: (id: string) => void }) => {
+const LocationCanvas = (props: CanvasReveal & { selectedId: string | null; onSelect: (id: string) => void }) => {
   const data = useGameData();
   const snap = useCanvasSnap();
   const grid = useCanvasGridVisible();

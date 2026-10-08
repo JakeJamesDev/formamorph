@@ -10,6 +10,7 @@ import { useSurfaceTab } from '@/components/ui/surface';
 import { isSurfaceTarget, routeText, TARGET_ATTRIBUTE, targetAttribute, type TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { useRouteLanding } from '@/lib/surface/useLanding';
 import { editorTabGroupsFor, editorTabsFor, RAIL_ROOM_PX } from './worldEditorTabs';
+import { useHistoryReveal } from './useHistoryReveal';
 import { EditorSectionsBar } from '@/components/editor/EditorSectionsBar';
 import { EDITOR_HIDDEN_NOTICE, EDITOR_MODE_DESCRIPTIONS, useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
@@ -652,6 +653,10 @@ const WorldEditorInner = ({
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [historyMoves]);
+  const { connectionReveal, clearConnectionReveal } = useHistoryReveal({
+    onMove: historyMoves.onMove, touring, visibleTabs, setActiveTab, clearSearch, setLocationView,
+    navigateToItem: navigateToBenchItem,
+  });
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
@@ -833,6 +838,8 @@ const WorldEditorInner = ({
     tab: shownLocationTab,
     onTabChange: setLocationTab,
     focusField: findField,
+    revealConnection: connectionReveal,
+    onConnectionRevealed: clearConnectionReveal,
   });
   const locationsParts = useListEditor(locationsAdapter, {
     selectedId: selections.locations ?? null, onSelect: selectLocation, search,
