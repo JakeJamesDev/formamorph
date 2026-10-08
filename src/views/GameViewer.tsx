@@ -66,7 +66,7 @@ import { putSaveRecord } from "../components/modals/dbUtils";
 import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
-import WorldEditor from "./WorldEditor";
+import WorldEditor, { type EditorExit } from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, RequestMessage, ImageAttachment, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
@@ -168,7 +168,6 @@ import { useMountedRef } from "../lib/useMountedRef";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
-import { toastSaveFailure } from "../lib/saveFailureToast";
 import { rollbackState, regenerateState, canRegenerate, lastTurnAction, markRegeneratedTurn, markPrunedTurns, snapshotPageIndex, placeSnapshot, sliceHistoryToPage, pageAssistantIndex } from "../lib/turnHistory";
 import { useDeferredSnapshot } from "../lib/useDeferredSnapshot";
 import { statMorphMap } from "../lib/bodyMorphs";
@@ -408,7 +407,6 @@ const GameViewer = ({
     worldId,
     worldLoaded,
     isWorldDirty,
-    saveWorld,
     loadWorldData,
     getWorldData,
   } = useGameData();
@@ -1186,6 +1184,8 @@ const GameViewer = ({
   const surfaceNav = useSurfaceNav();
   // What follows the in-game editor's unsaved prompt: the rest of the request, or its refusal.
   const editorLeave = useRef<{ then: () => void; cancel: () => void } | null>(null);
+  // The open editor's save and discard, which run through its auto save.
+  const editorExit = useRef<EditorExit | null>(null);
   // A request for the main menu, waiting on the leave prompt. Leaving keeps it pending for the menu.
   const [leaveForSurface, setLeaveForSurface] = useState<{ clear: () => void } | null>(null);
   // Set by the leave prompt's Confirm, so the close that follows it is not read as a refusal.
@@ -4787,6 +4787,7 @@ const GameViewer = ({
             initialBenchTab={surfaceNav.tab('worldEditorBench')}
             initialTarget={surfaceNav.target}
             requestKey={surfaceNav.key}
+            exitRef={editorExit}
           />
         </DialogContent>
       </Dialog>
@@ -4794,14 +4795,24 @@ const GameViewer = ({
         open={showEditorExitPrompt}
         // A dismissal is a refusal of whatever waited on the prompt.
         onOpenChange={(open) => { setShowEditorExitPrompt(open); if (!open) takeEditorLeave()?.cancel(); }}
+        autoSave={settings.editorAutoSave}
+        // The editor saves and discards, so the prompt shares auto save's lock and its failure toast.
         onSave={async () => {
+          // No editor means nothing to save; the prompt stays up rather than close on a save that never ran.
+          const exit = editorExit.current;
+          if (!exit) return;
           const next = takeEditorLeave();
-          const saved = await saveWorld(); setShowEditorExitPrompt(false); setIsEditingWorld(false);
+          const saved = await exit.save();
+          setShowEditorExitPrompt(false); setIsEditingWorld(false);
           // A failed save stops the request and closes the editor; the toast keeps Export World for the edits.
-          if (saved.ok) next?.then();
-          else { next?.cancel(); void toastSaveFailure(saved.error, saved.world); }
+          if (saved) next?.then(); else next?.cancel();
         }}
-        onExit={() => { const next = takeEditorLeave(); setShowEditorExitPrompt(false); setIsEditingWorld(false); next?.then(); }}
+        onExit={() => {
+          const next = takeEditorLeave();
+          setShowEditorExitPrompt(false);
+          const leave = () => { setIsEditingWorld(false); next?.then(); };
+          if (editorExit.current) editorExit.current.discard(leave); else leave();
+        }}
       />
       {/* A surface request for the main menu asks the in-game Exit's question, then the editor's. */}
       <ConfirmDialog
