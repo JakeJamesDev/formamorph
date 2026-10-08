@@ -105,7 +105,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q11 | Writes in one event-loop tick fold into one Step. Async operations wrap in an explicit labeled batch. |
 | Q12 | The History view is an app-bar popover. |
 | Q13 | Undo works in-game with the same behavior. |
-| Q14 | Save adds a marker to the list and clears nothing. Discard runs only on exit, from the editor's own close and from the in-game host's close, and both clear the stack, so it needs no rule. |
+| Q14 | Save adds a marker to the list and clears nothing. Discard runs only on exit, and the editor's unmount on either host clears the stack, so it needs no rule. |
 | Q15 | Desktop: variant B, the split pill (Undo, Redo, chevron) at the head of the app bar's end slot. Mobile: variant A's header, one History icon whose popover carries Undo and Redo in its head. |
 | Q16 | Labels: action, type, name, and the field when one field changed. "Edit Stat Hunger: Description", "Remove Location Docks". |
 | Q17 | The app bar was prototyped before the spec. |
@@ -127,6 +127,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q33 | A field's own undo moves the cursor only past a Step that holds that field alone. Otherwise it merges into the Step (Q29), so a Step's other edits (a tick fold, Links-follow) never stay in the world while the Step reads as undone. |
 | Q34 | Q6 stands on mobile: a reveal in the Locations canvas view selects the location and pushes its detail panel over the canvas, as a tap does. The e2e canvas test closes the panel after each undo. |
 | Q35 | A reveal of a location already in the canvas's multi-selection keeps the whole selection. A location outside it replaces the selection, as today. An undo of a group command never collapses the author's selection. |
+| Q36 | A field-driven cursor move seals the top Step (Q23), and the seal records its origin. The Q29 join ignores a seal a field move set, so a field walk through Lexical's finer entries never grows the list. A plain keyed or tick merge respects every seal. A field join that cuts Steps drops a Saved marker on them. |
 
 ### The history module
 
@@ -143,8 +144,9 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 - Every action is a deferred React setter, so nothing can be captured around the call. The recorder runs after commit: a layout effect in the world provider diffs the twelve committed slices against the last snapshot it recorded, by reference, and records what changed. It therefore sees every write, including the ones that do not go through the actions object: the Links-follow pass that rewrites entities a render after a trait or placeholder write, the placeholder list setter, and the dictionary store's own setters.
 - Writes carry intent to the recorder through a small side channel set before the setter runs: a merge key (record id and field), an explicit group or batch label, or a flag. The Links-follow pass folds into the Step of the write that caused it. Save's link stamps are flagged and never recorded; the stamped records are swapped into every Step by reference, so an undo past the Saved marker restores stamped records and the existing dirty check reads them clean. Undo and redo writes are flagged.
 - Two save edges: a write that merges into the Step the save read leaves the marker unplaced, and an edit that lands while the save runs places the marker at the pre-save cursor without sealing.
-- The recorder arms after load sets the baseline and disarms before discard and close. Load, save, discard, metadata and ownership calls never record; save adds the marker.
-- Merge keys: a per-record update names the record and its one changed field. The function-taking entity edit and a partial overview update derive the field from the keys that changed, one key means a field key, more means none. Whole-slice setters carry a key only when the caller passes one, as the canvas does for travel hints and must for keyboard nudges.
+- The recorder arms after load sets the baseline; disarm runs at load. The stack clears through the editor's unmount effect on both hosts. Load, save, discard, metadata and ownership calls never record; save adds the marker.
+- Merge keys settle at commit: a writer names the record, and the recorder takes the one changed field or drops it when more changed (Q26). A linked copy's link mark does not count, so a linked entity's typed run stays one Step. Whole-slice setters carry a key only when the caller passes one, as the canvas does for travel hints and for keyboard nudges, whose key carries the selected ids as a list.
+- The field-move check (Q33) compares every field the Step changed by content, since a rename's descriptors are rebuilt objects.
 - Optimize Images runs as an explicit batch labeled as such, opened after its dialog closes.
 - The provider exposes the history through one store, read through a subscribing hook (can undo, can redo, the Steps with the cursor and markers) and a stable-identity moves hook (undo, redo, jump), with an optional form for hosts outside a world. The pill, the popover, and the tests read it there.
 - The library's book and entity editors use their own stores and never reach the recorder.
@@ -155,7 +157,7 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 - A Lexical field reports whether it can undo and redo, and marks the writes its own history makes by reading the historic tag on the update. The mark carries its tick, so a mark from a field outside the world never keys a later write. The recorder treats a marked write by Q29 and Q33, so a field's undo never appears in the list and a fall-through lands where the field left the text.
 - A world undo or redo that restores a field's value rebuilds the field with Lexical's history-merge tag and clears the field's own stacks (Q32). Restored text is detected by string set: every string in every changed field on both sides of the move.
 - A world-bound plain input gets its default prevented so the browser's native undo never runs.
-- The listener also yields when the layer the key came from is under a modal's pointer-events: none. A full-screen window that edits the world carries `data-world-window` and counts as its own layer, so chords stay live in the full-screen Locations Canvas and stop when a modal opens over it.
+- The listener is one hook. Its modal backstop reads the DOM: an open dialog or alert dialog later in the page, outside the key's layer, that is not a popover and not marked non-modal. Radix sets no aria-modal, and aria-hidden misses the editor root because the library keeps every container of a live region visible. A full-screen window that edits the world carries `data-world-window` and counts as its own layer, so chords stay live in the full-screen Locations Canvas and stop when a modal opens over it.
 - The canvas's own chord reader is removed; the shared listener serves it.
 
 ### Reveal
