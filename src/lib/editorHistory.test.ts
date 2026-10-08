@@ -4,7 +4,7 @@ import {
   record, recordFieldMove, redo, replaceRecords, settleKey, undo, WORLD_SLICES,
   type EditorHistory, type RecordOptions, type SliceEdit, type WorldSlices,
 } from "./editorHistory";
-import { stepLabel } from "./editorHistoryLabels";
+import { joinLabelParts, stepLabel, stepLabelParts } from "./editorHistoryLabels";
 import type { Entity, GameLocation, Placeholder, Stat } from "@/types";
 
 const stat = (id: string, name: string, extra: Partial<Stat> = {}): Stat => ({
@@ -663,6 +663,110 @@ describe("labels", () => {
     const s = session();
     s.write({ stats: [...s.world.stats].reverse() });
     expect(only(s)).toBe("Reorder Stats");
+  });
+});
+
+describe("label parts", () => {
+  const last = (s: ReturnType<typeof session>) => s.history.steps[s.history.steps.length - 1];
+  /** The parts and the flat text of the newest Step: the flat text must be the parts joined. */
+  const read = (s: ReturnType<typeof session>) => ({ parts: stepLabelParts(last(s)), flat: stepLabel(last(s)) });
+
+  it("splits a keyed record edit into verb, type, name and field", () => {
+    const s = session();
+    s.write({ stats: s.world.stats.map((st) => (st.id === "hunger" ? { ...st, description: "Food" } : st)) },
+      { key: { slice: "stats", id: "hunger", field: "description" } });
+    const { parts, flat } = read(s);
+    expect(parts).toEqual({ verb: "Edit", type: "Stat", slice: "stats", name: "Hunger", field: "Description" });
+    expect(flat).toBe("Edit Stat Hunger: Description");
+    expect(joinLabelParts(parts)).toBe(flat);
+  });
+
+  it("splits an add and a remove, with no field", () => {
+    const s = session();
+    s.write({ stats: [stat("fatigue", "Fatigue"), ...s.world.stats] });
+    expect(read(s)).toEqual({
+      parts: { verb: "Add", type: "Stat", slice: "stats", name: "Fatigue" },
+      flat: "Add Stat Fatigue",
+    });
+    s.write({ locations: s.world.locations.filter((l) => l.id !== "docks") });
+    expect(read(s)).toEqual({
+      parts: { verb: "Remove", type: "Location", slice: "locations", name: "Docks" },
+      flat: "Remove Location Docks",
+    });
+  });
+
+  it("splits a Copy edit inside an entity as the placeholder", () => {
+    const eyes: Placeholder = { id: "eyes-copy", name: "Eyes", values: [], blueprintId: "eyes" };
+    const wren = { id: "wren", name: "Wren", placeholders: [eyes] } as Entity;
+    const s = session();
+    s.writeUnrecorded({ entities: [wren] });
+    s.write({ entities: [{ ...wren, placeholders: [{ ...eyes, weights: { a: 2 } }] }] },
+      { key: { slice: "placeholders", id: "eyes-copy" } });
+    expect(read(s)).toEqual({
+      parts: { verb: "Edit", type: "Placeholder", slice: "placeholders", name: "Eyes" },
+      flat: "Edit Placeholder Eyes",
+    });
+  });
+
+  it("splits a dictionary entry edit with the type Entry", () => {
+    const tide = { id: "tide", name: "Tide Tables", key: ["tide"], value: "Low at dawn." };
+    const book = { id: "lore", name: "Lore", enabled: true, entries: [tide] };
+    const s = session();
+    s.writeUnrecorded({ dictionaries: [book] });
+    s.write({ dictionaries: [{ ...book, entries: [{ ...tide, value: "Low at dusk." }] }] },
+      { key: { slice: "dictionaries", id: "tide", field: "value" } });
+    expect(read(s)).toEqual({
+      parts: { verb: "Edit", type: "Entry", slice: "dictionaries", name: "Tide Tables", field: "Value" },
+      flat: "Edit Entry Tide Tables: Value",
+    });
+  });
+
+  it("splits a World overview edit with one field, and with several", () => {
+    const s = session();
+    s.write({ worldOverview: { ...s.world.worldOverview, thumbnail: "data:image/webp;base64,AAAA" } });
+    expect(read(s)).toEqual({
+      parts: { verb: "Edit", type: "World", slice: "worldOverview", field: "Thumbnail" },
+      flat: "Edit World: Thumbnail",
+    });
+    s.write({ worldOverview: { ...s.world.worldOverview, author: "Wren", description: "Marsh." } });
+    expect(read(s)).toEqual({
+      parts: { verb: "Edit", type: "World", slice: "worldOverview" },
+      flat: "Edit World",
+    });
+  });
+
+  it("splits a multi-record edit as the plural type with no name", () => {
+    const s = session();
+    s.write({ stats: s.world.stats.map((st) => ({ ...st, description: "x" })) });
+    expect(read(s)).toEqual({
+      parts: { verb: "Edit", type: "Stats", slice: "stats" },
+      flat: "Edit Stats",
+    });
+  });
+
+  it("splits a reorder as the verb and the plural type", () => {
+    const s = session();
+    s.write({ stats: [...s.world.stats].reverse() });
+    expect(read(s)).toEqual({
+      parts: { verb: "Reorder", type: "Stats", slice: "stats" },
+      flat: "Reorder Stats",
+    });
+  });
+
+  it("returns a labeled batch as its label alone", () => {
+    const s = session();
+    s.group("Optimize Images");
+    s.write({ stats: s.world.stats.slice(1) });
+    expect(read(s)).toEqual({ parts: { verb: "Optimize Images" }, flat: "Optimize Images" });
+  });
+
+  it("drops an empty record name", () => {
+    const s = session();
+    s.write({ stats: [...s.world.stats, stat("blank", "")] });
+    const { parts, flat } = read(s);
+    expect(parts).toEqual({ verb: "Add", type: "Stat", slice: "stats" });
+    expect(parts).not.toHaveProperty("name");
+    expect(flat).toBe("Add Stat");
   });
 });
 

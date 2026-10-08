@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { MENU_ROW } from '@/components/menuRow';
+import { joinLabelParts, type StepLabelParts } from '@/lib/editorHistoryLabels';
 import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
 import { cn } from '@/lib/utils';
 
@@ -13,8 +14,8 @@ import { cn } from '@/lib/utils';
 export interface HistoryView {
   canUndo: boolean;
   canRedo: boolean;
-  /** One label per Step, oldest first. */
-  rows: readonly string[];
+  /** One set of label parts per Step, oldest first. */
+  rows: readonly StepLabelParts[];
   /** How many Steps are applied. 0 is the World opened head. */
   cursor: number;
   /** The cursor position at the last save, or null. */
@@ -51,9 +52,10 @@ export function HistoryList({ history }: { history: HistoryView }) {
         World opened
       </button>
       {saved === 0 && SAVED_MARKER}
-      {rows.map((label, i) => {
+      {rows.map((row, i) => {
         const done = i < cursor;
         const current = i === cursor - 1;
+        const label = joinLabelParts(row);
         return (
           // eslint-disable-next-line react/no-array-index-key -- a Step has no id; the list is its position
           <div key={i}>
@@ -62,6 +64,7 @@ export function HistoryList({ history }: { history: HistoryView }) {
               className={cn(MENU_ROW, !done && 'text-muted-foreground/60', current && 'bg-accent')}
               ref={current ? showRow : undefined}
               onClick={() => jump(i + 1)}
+              aria-label={done ? label : `${label} (undone)`}
               aria-current={current ? 'step' : undefined}
               data-undone={done ? undefined : 'true'}
             >

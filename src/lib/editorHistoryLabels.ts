@@ -93,12 +93,42 @@ export function fieldLabel(slice: SliceName, field: string): string {
 
 type NamedRecord = { id: string; name?: string; placeholders?: NamedRecord[]; entries?: NamedRecord[] };
 
-const phrase = (...parts: (string | undefined)[]) => parts.filter(Boolean).join(" ");
-const withField = (text: string, slice: SliceName, field?: string) => (field ? `${text}: ${fieldLabel(slice, field)}` : text);
+/** A Step's label in parts, so the History list can style and truncate each on its own. */
+export interface StepLabelParts {
+  /** Add, Edit, Remove or Reorder, or a batch label in full. */
+  verb: string;
+  /** The singular or plural slice type name; "Entry" for a book's entry. */
+  type?: string;
+  slice?: SliceName;
+  /** The record's own name. An empty name is left out. */
+  name?: string;
+  /** The field, resolved through the field labels. */
+  field?: string;
+}
 
-function overviewLabel(edit: OverviewEdit | undefined, key?: StepKey): string {
+/** The flat label: the parts joined as "Verb Type Name: Field". */
+export function joinLabelParts({ verb, type, name, field }: StepLabelParts): string {
+  const text = [verb, type, name].filter(Boolean).join(" ");
+  return field ? `${text}: ${field}` : text;
+}
+
+/** Builds parts, leaving out each empty one. */
+function parts(verb: string, slice: SliceName, rest: Pick<StepLabelParts, "type" | "name" | "field"> = {}): StepLabelParts {
+  const result: StepLabelParts = { verb, slice };
+  if (rest.type) result.type = rest.type;
+  if (rest.name) result.name = rest.name;
+  if (rest.field) result.field = rest.field;
+  return result;
+}
+
+const fieldPart = (slice: SliceName, field?: string) => (field ? fieldLabel(slice, field) : undefined);
+
+function overviewParts(edit: OverviewEdit | undefined, key?: StepKey): StepLabelParts {
   const fields = key?.field ? [key.field] : edit ? changedFields(edit.before, edit.after) : [];
-  return withField("Edit World", "worldOverview", fields.length === 1 ? fields[0] : undefined);
+  return parts("Edit", "worldOverview", {
+    type: SLICE_TYPE_NAMES.worldOverview[0],
+    field: fieldPart("worldOverview", fields.length === 1 ? fields[0] : undefined),
+  });
 }
 
 /** A record by id inside an owner the Step touched: a Copy an entity or dictionary holds, or a book's entry. */
@@ -121,22 +151,25 @@ function action(was: unknown, became: unknown) {
   return "Edit";
 }
 
-/** A Step's label: the action, the type, the record's name, and the field when the key names one. */
-export function stepLabel(step: Step): string {
-  if (step.label) return step.label;
+/** A Step's label parts: the action, the type, the record's name, and the field when the key names one. */
+export function stepLabelParts(step: Step): StepLabelParts {
+  if (step.label) return { verb: step.label };
   const key = step.key;
   if (key?.slice === "worldOverview") {
-    return overviewLabel(step.edits.find((edit): edit is OverviewEdit => edit.slice === "worldOverview"), key);
+    return overviewParts(step.edits.find((edit): edit is OverviewEdit => edit.slice === "worldOverview"), key);
   }
   const id = key?.id ?? (key?.ids?.length === 1 ? key.ids[0] : undefined);
-  if (key && id) return keyedLabel(step, key.slice, id, key.field);
-  if (step.edits.length !== 1) return "Edit World";
+  if (key && id) return keyedParts(step, key.slice, id, key.field);
+  if (step.edits.length !== 1) return { verb: "Edit", type: SLICE_TYPE_NAMES.worldOverview[0] };
   const [edit] = step.edits;
-  if (edit.slice === "worldOverview") return overviewLabel(edit);
-  return recordEditLabel(edit);
+  if (edit.slice === "worldOverview") return overviewParts(edit);
+  return recordEditParts(edit);
 }
 
-function keyedLabel(step: Step, slice: RecordSliceName, id: string, field?: string): string {
+/** A Step's flat label: its parts joined. */
+export const stepLabel = (step: Step): string => joinLabelParts(stepLabelParts(step));
+
+function keyedParts(step: Step, slice: RecordSliceName, id: string, field?: string): StepLabelParts {
   let verb = "Edit";
   let type = SLICE_TYPE_NAMES[slice][0];
   let name: string | undefined;
@@ -154,15 +187,15 @@ function keyedLabel(step: Step, slice: RecordSliceName, id: string, field?: stri
     if (was || became) verb = action(was, became);
     name = (became ?? was)?.name;
   }
-  return withField(phrase(verb, type, name), slice, field);
+  return parts(verb, slice, { type, name, field: fieldPart(slice, field) });
 }
 
-function recordEditLabel(edit: RecordEdit): string {
+function recordEditParts(edit: RecordEdit): StepLabelParts {
   const [single, plural] = SLICE_TYPE_NAMES[edit.slice];
   const ids = touchedIds(edit);
-  if (ids.size === 0) return `Reorder ${plural}`;
-  if (ids.size > 1) return `Edit ${plural}`;
+  if (ids.size === 0) return parts("Reorder", edit.slice, { type: plural });
+  if (ids.size > 1) return parts("Edit", edit.slice, { type: plural });
   const was = (edit.before as NamedRecord[])[0];
   const became = (edit.after as NamedRecord[])[0];
-  return phrase(action(was, became), single, (became ?? was)?.name);
+  return parts(action(was, became), edit.slice, { type: single, name: (became ?? was)?.name });
 }

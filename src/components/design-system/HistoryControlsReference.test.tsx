@@ -37,6 +37,20 @@ it('lists World opened, the Steps, the Saved marker after its Step, and dims the
   expect(rows.getAllByText('Saved')).toHaveLength(1);
 });
 
+it('names each row by its full label, and an undone row as undone', () => {
+  renderReference();
+  fireEvent.click(screen.getByRole('button', { name: 'Reset Sample' }));
+  open(desktop());
+  // The current row also shows a Now marker, which the name leaves out.
+  expect(within(list(desktop())).getByRole('button', { name: 'Edit Entity Mara: Image Tags' })).toHaveTextContent('Now');
+  fireEvent.click(within(desktop()).getByRole('button', { name: 'Undo' }));
+
+  const rows = within(list(desktop()));
+  expect(rows.getByRole('button', { name: 'Edit Stat Hunger: Description' })).toBeInTheDocument();
+  expect(rows.getByRole('button', { name: 'Edit Entity Mara: Image Tags (undone)' })).toBeInTheDocument();
+  expect(rows.getByRole('button', { name: 'Edit Locations' })).toBeInTheDocument();
+});
+
 it('puts the Saved marker under World opened when the save matches the head', () => {
   renderReference();
   fireEvent.click(within(desktop()).getByRole('button', { name: 'History' }));
