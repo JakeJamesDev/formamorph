@@ -14,7 +14,7 @@ import type { MorphFullscreen } from '@/lib/useMorphFullscreen';
  * second control in the corner meaning the same thing reads as a different one. Escape still works, since
  * the dialog primitive owns it.
  */
-export function FullscreenShell({ morph, title, showTitle = false, returnFocus, className, children }: {
+export function FullscreenShell({ morph, title, showTitle = false, returnFocus, worldWindow = false, className, children }: {
   morph: MorphFullscreen;
   /** Always the window's accessible name; rendered as a header row only with `showTitle`. */
   title: string;
@@ -27,6 +27,8 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
   /** Where focus should land after closing when the control that opened the window no longer exists —
    *  callers that move their content into the overlay destroy that control on the way in. */
   returnFocus?: () => HTMLElement | null | undefined;
+  /** The window edits the world, so the World Editor's undo and redo chords stay live in it. */
+  worldWindow?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -39,6 +41,7 @@ export function FullscreenShell({ morph, title, showTitle = false, returnFocus, 
         hideClose
         overlayClassName={morph.overlayClassName}
         aria-describedby={undefined}
+        data-world-window={worldWindow || undefined}
         // Focus is moved by hand, without scrolling. Left to the dialog primitive it lands on the first
         // control inside the window — and since the window opens sitting on top of the field it came from,
         // which may be well down a scrolled panel, revealing that control drags the page with it. Closing

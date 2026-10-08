@@ -873,14 +873,15 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     });
   }, [setNodes, selectedIdsRef]);
 
-  // A selection made in the list view is the canvas's whole selection; one made here is already on the nodes.
+  // A location selected outside the canvas becomes its whole selection; one made here is already on the nodes.
   // The editor closing its detail panel clears `selectedId`, which is not the author letting go of the
   // location on the map: a finger has no hover, so the selection is what keeps its implicit arrows drawn.
+  // A location the selection already holds, such as one an undo reveals, keeps the whole selection.
   useEffect(() => {
     if (selectedId === lastSyncedRef.current) return;
     lastSyncedRef.current = selectedId;
-    if (selectedId !== null) setSelection((id) => id === selectedId);
-  }, [selectedId, setSelection, lastSyncedRef]);
+    if (selectedId !== null && !selectedIdsRef.current.includes(selectedId)) setSelection((id) => id === selectedId);
+  }, [selectedId, setSelection, lastSyncedRef, selectedIdsRef]);
 
   // The mapper owns what is on the map; xyflow owns only the in-flight drag, so a world edit anywhere
   // (a rename, a new Connection, a deletion) redraws from the world rather than from stale canvas state.
@@ -1488,6 +1489,7 @@ export const LocationCanvasWorkspace = (props: LocationCanvasInputs & CanvasReve
         <FullscreenShell
           morph={windowMorph}
           title="Locations Canvas"
+          worldWindow
           // The control that opened the window went with the canvas, so closing has to be told where to land.
           returnFocus={() => hostRef.current?.querySelector<HTMLElement>('.react-flow__controls button:last-child')}
         >

@@ -8,7 +8,7 @@ import { DEV_MODAL_TABS } from '@/lib/devRoutes';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
-import type { World } from '@/types';
+import type { GameLocation, World } from '@/types';
 
 /** Ctrl+Z and Ctrl+Y move the world through its history from the editor, and the app bar's pill shows where it stands. */
 
@@ -227,6 +227,54 @@ describe('the World Editor history', () => {
     await removeStat('Damp');
     expect(await chord('z', { isComposing: true })).toBe(false);
     expect(rows()).toEqual(['Warmth', 'Dread']);
+  });
+});
+
+describe('the full-screen Locations Canvas', () => {
+  const MAP: World = benchEditorWorld({
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true }, { id: 'docks', name: 'Docks' }],
+  } as unknown as Partial<World>);
+  const openWindow = async () => {
+    openEditorTab(/Locations/);
+    fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
+    await step(() => fireEvent.click(screen.getByRole('button', { name: /^Edit full screen$/i })));
+    return screen.findByRole('dialog', { name: 'Locations Canvas' });
+  };
+  const docks = (ctx: () => { locations: GameLocation[] }) => ctx().locations.find((l) => l.id === 'docks')!;
+
+  it('undoes and redoes the world from inside the window', async () => {
+    const { ctx } = renderWorldEditorBench(MAP, 'advanced', {}, inHost);
+    const shell = await openWindow();
+    await step(() => ctx().updateLocation({ ...docks(ctx), name: 'Quay' }));
+
+    expect(await chord('z', {}, shell)).toBe(true);
+    expect(docks(ctx).name).toBe('Docks');
+    expect(await chord('y', {}, shell)).toBe(true);
+    expect(docks(ctx).name).toBe('Quay');
+  });
+
+  it('leaves the world alone under a modal raised over the window', async () => {
+    const Unreported = () => {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>Ask</button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent aria-describedby={undefined}><DialogTitle>Question</DialogTitle></DialogContent>
+          </Dialog>
+        </>
+      );
+    };
+    const { ctx } = renderWorldEditorBench(MAP, 'advanced', {}, (tree) => inHost(<>{tree}<Unreported /></>));
+    const shell = await openWindow();
+    await step(() => ctx().updateLocation({ ...docks(ctx), name: 'Quay' }));
+    // The window hides the rest of the page from the accessibility tree, so the opener is found by its text.
+    fireEvent.click(screen.getByText('Ask'));
+    const question = await screen.findByRole('dialog', { name: 'Question' });
+
+    expect(await chord('z', {}, question)).toBe(false);
+    expect(await chord('z', {}, shell)).toBe(false);
+    expect(docks(ctx).name).toBe('Quay');
   });
 });
 
