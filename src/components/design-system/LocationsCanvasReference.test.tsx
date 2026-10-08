@@ -1,10 +1,11 @@
 // Must load before the services: their constructors open IndexedDB.
 import 'fake-indexeddb/auto';
 import { afterEach, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { GameDataProvider } from '@/contexts/GameDataContext';
+import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
+import type { World } from '@/types';
 import { useWorldHistory } from '@/contexts/worldRecorder';
 import { LocationsCanvasReference } from './LocationsCanvasReference';
 
@@ -49,6 +50,45 @@ it('keeps canvas preferences and history local across fullscreen edits and remou
   expect(read).not.toHaveBeenCalled();
   expect(write).not.toHaveBeenCalled();
   second.unmount();
+});
+
+it('undoes and redoes its own canvas by chord, inline and full screen, and leaves an open world alone', async () => {
+  const user = userEvent.setup();
+  let world!: ReturnType<typeof useGameData>;
+  let openWorld!: ReturnType<typeof useWorldHistory>;
+  const WorldProbe = () => { world = useGameData(); openWorld = useWorldHistory(); return null; };
+  const { container } = render(
+    <GameDataProvider><WorldProbe /><TooltipProvider><LocationsCanvasReference /></TooltipProvider></GameDataProvider>,
+  );
+  await act(async () => { world.loadWorldData({ id: 'w-open', version: '3.0.0', worldOverview: { name: 'Sedge Landing' } } as World); });
+  await act(async () => { world.updateWorldOverview({ author: 'Wren' }); });
+  const position = () => screen.getByLabelText('Selected Location').textContent;
+  const before = position();
+  const press = (target: Element, shiftKey = false) => act(async () => {
+    fireEvent.keyDown(target, { key: 'z', ctrlKey: true, shiftKey });
+  });
+
+  fireEvent.contextMenu(container.querySelector('.react-flow__pane') as HTMLElement);
+  await user.click(await screen.findByRole('menuitem', { name: 'Auto Arrange All' }));
+  const arranged = position();
+  expect(arranged).not.toBe(before);
+  // A press outside the canvas is the page's own.
+  await press(document.body);
+  expect(position()).toBe(arranged);
+  await press(container.querySelector('.react-flow__pane') as HTMLElement);
+  expect(position()).toBe(before);
+
+  await user.click(screen.getByRole('button', { name: 'Edit Full Screen' }));
+  const tools = await screen.findByRole('toolbar', { name: 'Canvas Tools' });
+  await press(tools, true);
+  expect(position()).toBe(arranged);
+  await press(tools);
+  expect(position()).toBe(before);
+  expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
+
+  expect(openWorld.steps).toHaveLength(1);
+  expect(openWorld.cursor).toBe(1);
+  expect(world.worldOverview.author).toBe('Wren');
 });
 
 it('clears the Find a Location text and its result list with the X, and keeps the cursor in the box', async () => {

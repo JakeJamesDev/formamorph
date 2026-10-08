@@ -38,7 +38,7 @@ const WORLD: World = benchEditorWorld({
     { id: 'docks', name: 'Docks' },
   ],
   connections: [{ id: 'c1', a: 'harbor', b: 'docks', aToB: {}, bToA: {} }],
-} as unknown as Partial<World>);
+});
 
 /** One author action, then the event loop moves on as it does between two presses. */
 const step = (action: () => void) => act(async () => { action(); });
@@ -112,7 +112,7 @@ describe('revealing what an undo restored', () => {
     expect(statPanelShown()).toBe(false);
   });
 
-  it('opens the Locations canvas with the connection selected when a connection edit is undone', async () => {
+  it('opens the Locations Canvas with the connection selected when a connection edit is undone', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openEditorTab(/Stats/);
     await step(() => ctx().updateConnection({ ...ctx().connections[0], aToB: { hint: 'by ferry' } }));
@@ -129,7 +129,7 @@ describe('revealing what an undo restored', () => {
     openEditorTab(/Locations/);
     fireEvent.click(screen.getByRole('radio', { name: 'Canvas' }));
     const picked = () => [...document.querySelectorAll('.react-flow__node.selected')].map((n) => n.getAttribute('data-id'));
-    // The canvas answers keys only after a press on the map.
+    // The canvas answers keys only after a press on the Locations Canvas.
     fireEvent.pointerDown(document.querySelector('.react-flow')!);
     await step(() => { fireEvent.keyDown(document.body, { key: 'a', ctrlKey: true }); });
     expect(picked()).toEqual(['harbor', 'docks']);
@@ -138,7 +138,7 @@ describe('revealing what an undo restored', () => {
     await undo();
     expect(ctx().locations.find((l) => l.id === 'docks')!.name).toBe('Docks');
     expect(picked()).toEqual(['harbor', 'docks']);
-    // The redo redraws the map from the selection the canvas holds, so a selection lost to the reveal shows here.
+    // The redo redraws the Locations Canvas from the selection it holds, so a selection lost to the reveal shows here.
     await redo();
     expect(ctx().locations.find((l) => l.id === 'docks')!.name).toBe('Quay');
     expect(picked()).toEqual(['harbor', 'docks']);

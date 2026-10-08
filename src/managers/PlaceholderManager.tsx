@@ -4,7 +4,6 @@ import { CollapseAllButton } from '@/components/CollapseAllButton';
 import { useCardCollapse } from '@/lib/cardCollapse';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { randomUUID } from '@/lib/uuid';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
@@ -37,6 +36,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
 import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { placeholderPanelTabsFor, type PlaceholderPanelTab } from '@/views/placeholderPanelTabs';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
@@ -321,7 +321,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
         <>
           <p className="truncate text-label font-medium">{valueLine(openValue)}</p>
           <Label className="text-meta text-muted-foreground">Draw Weight</Label>
-          <Input data-world-field
+          <WorldInput
             type="number"
             min={0}
             step={1}
@@ -343,7 +343,7 @@ const PlaceholderManager = ({ placeholder, rowId, share, tab, onTabChange }: {
   const nameInput = (
     <div className="space-y-2">
       <Label>Name</Label>
-      <Input data-world-field
+      <WorldInput
         value={editing.name}
         onChange={(e) => apply({ name: e.target.value })}
         disabled={locked}
@@ -667,7 +667,7 @@ const MultilineValues = ({
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {weight && value && (
                 <>
-                  <Input data-world-field
+                  <WorldInput
                     type="number"
                     min={0}
                     step={1}

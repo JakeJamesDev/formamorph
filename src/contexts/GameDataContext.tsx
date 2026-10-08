@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import { createContext, useContext, useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
 import { canonicalEqual } from '@/lib/canonicalStringify';
 import { dirtyDiff } from '@/lib/dirtyDiff';
@@ -33,9 +33,8 @@ import { worldAllowedPersonas, worldStartPersona } from '@/lib/personaPick';
 import { CodeRenameContext } from '@/lib/useCodeRename';
 import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import { GestureGroupContext, type GestureGroups } from '@/components/ui/gesture-group';
-import { writeKey, type RecordSliceName } from '@/lib/editorHistory';
+import type { SliceName } from '@/lib/editorHistory';
 import type {
-  DictionaryEntry,
   WorldMetadata,
   WorldOverview,
   Stat,
@@ -112,8 +111,8 @@ function useProvideGameData() {
   const bookStore = useDictionaryStoreState([]);
   const {
     dictionaries, setDictionaries,
-    addDictionary, updateDictionary: writeBook, removeDictionary,
-    addDictionaryEntry, updateDictionaryEntry: writeEntry, removeDictionaryEntry,
+    addDictionary, updateDictionary: updateBookUnkeyed, removeDictionary,
+    addDictionaryEntry, updateDictionaryEntry: updateEntryUnkeyed, removeDictionaryEntry,
     setOwnedLibraryIds: setOwnedBookIds,
   } = bookStore;
   // Which library items the author owns, so an edit to a copy of one stays Linked and the world save
@@ -145,23 +144,55 @@ function useProvideGameData() {
     slices, worldId, sliceSetters, savedWorld,
   );
   const { keyNext } = history;
-  const committedSlices = useRef(slices);
-  useLayoutEffect(() => { committedSlices.current = slices; });
-  // A per-record update names its record and field, so a typed run merges into one Step.
-  const keyUpdate = useCallback((slice: RecordSliceName, next: { id: string }) => {
-    const list: readonly { id: string }[] = committedSlices.current[slice];
-    keyNext(writeKey(slice, next.id, list.find((record) => record.id === next.id), next));
-  }, [keyNext]);
-  const updateDictionary = useCallback((book: Dictionary) => {
-    keyUpdate('dictionaries', book);
-    writeBook(book);
-  }, [keyUpdate, writeBook]);
-  // An entry is keyed by its own id, so its label names the entry rather than its book.
-  const updateDictionaryEntry = useCallback((entry: DictionaryEntry) => {
-    const was = committedSlices.current.dictionaries.flatMap((book) => book.entries).find((e) => e.id === entry.id);
-    keyNext(writeKey('dictionaries', entry.id, was, entry));
-    writeEntry(entry);
-  }, [keyNext, writeEntry]);
+  // A per-record write names its record first, so a typed run merges into one Step; the commit settles the field.
+  const keyed = useMemo(() => {
+    // The first argument is the record, or its id; the overview's updates carry none.
+    const keyedTo = <A extends unknown[]>(slice: SliceName, write: (...args: A) => void) => (...args: A) => {
+      const [first] = args;
+      const id = typeof first === 'string' ? first
+        : first && typeof first === 'object' && 'id' in first && typeof first.id === 'string' ? first.id : undefined;
+      keyNext({ slice, id });
+      write(...args);
+    };
+    const replaceIn = <T extends { id: string }>(set: Dispatch<SetStateAction<T[]>>) =>
+      (next: T) => set((prev) => prev.map((record) => (record.id === next.id ? next : record)));
+    // An edit to an entity that follows a source makes it a local replacement, unless the author owns the source.
+    const contentEdit = (entity: Entity, edited: Entity) =>
+      markEdited(edited, ownedLibraryIds.current.has(followedLibraryId(entity) ?? ''));
+    return {
+      keyedTo,
+      updateDictionary: keyedTo('dictionaries', updateBookUnkeyed),
+      // An entry is keyed by its own id, so its label names the entry rather than its book.
+      updateDictionaryEntry: keyedTo('dictionaries', updateEntryUnkeyed),
+      // A default descriptor follows the stat's name, so a rename never leaves "New Stat is low" behind.
+      updateStat: keyedTo('stats', (next: Stat) => setStats((prev) => prev.map((stat) => {
+        if (stat.id !== next.id) return stat;
+        const descriptors = followRename(stat, next);
+        return descriptors === next.descriptors ? next : { ...next, descriptors };
+      }))),
+      updateLocation: keyedTo('locations', replaceIn(setLocations)),
+      updateConnection: keyedTo('connections', replaceIn(setConnections)),
+      // A caller that hands over a different `link` is managing the link itself (linking, unlinking, taking a
+      // source update), so its record stands: only a content edit, which carries the link through, marks it.
+      updateEntity: keyedTo('entities', (next: Entity) => setEntities((prev) => prev.map((entity) => (
+        entity.id !== next.id ? entity : entity.link === next.link ? contentEdit(next, next) : next
+      )))),
+      // Read off the entity as it stands at write time, so two edits in one tick both land.
+      editEntity: keyedTo('entities', (id: string, edit: (entity: Entity) => Entity) =>
+        setEntities((prev) => prev.map((entity) => (entity.id === id ? contentEdit(entity, edit(entity)) : entity)))),
+      updateEntityGroup: keyedTo('entityGroups', replaceIn(setEntityGroups)),
+      updateTrait: keyedTo('traits', replaceIn(setTraits)),
+      updateTraitGroup: keyedTo('traitGroups', replaceIn(setTraitGroups)),
+      // A folder's delete goes through the placeholder store (`setLists`), beside the drops that move folders.
+      updatePlaceholderGroup: keyedTo('placeholderGroups', replaceIn(setPlaceholderGroups)),
+      updateWorldOverview: keyedTo('worldOverview', (updates: Partial<WorldOverview>) =>
+        setWorldOverview((prev) => ({ ...prev, ...updates }))),
+    };
+  }, [keyNext, updateBookUnkeyed, updateEntryUnkeyed]);
+  const {
+    keyedTo, updateDictionary, updateDictionaryEntry, updateStat, updateLocation, updateConnection, updateEntity, editEntity,
+    updateEntityGroup, updateTrait, updateTraitGroup, updatePlaceholderGroup, updateWorldOverview,
+  } = keyed;
   const dictStore = useMemo(() => ({
     dictionaries, setDictionaries, addDictionary, updateDictionary, removeDictionary,
     addDictionaryEntry, updateDictionaryEntry, removeDictionaryEntry, setOwnedLibraryIds: setOwnedBookIds,
@@ -173,16 +204,6 @@ function useProvideGameData() {
   const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
     setStats(prevStats => [...prevStats, withDefaultDescriptors(newStat)]);
   }, []);
-
-  // A default descriptor follows the stat's name, so a rename never leaves "New Stat is low" behind.
-  const updateStat = useCallback((updatedStat: Stat) => {
-    keyUpdate('stats', updatedStat);
-    setStats(prevStats => prevStats.map(stat => {
-      if (stat.id !== updatedStat.id) return stat;
-      const descriptors = followRename(stat, updatedStat);
-      return descriptors === updatedStat.descriptors ? updatedStat : { ...updatedStat, descriptors };
-    }));
-  }, [keyUpdate]);
 
   const removeStat = useCallback((statId: string) => {
     setStats(prevStats => prevStats.filter(stat => stat.id !== statId));
@@ -197,13 +218,6 @@ function useProvideGameData() {
         ?? newLocationPosition(prevLocations, newLocation.parentId ?? null),
     }]);
   }, []);
-
-  const updateLocation = useCallback((updatedLocation: GameLocation) => {
-    keyUpdate('locations', updatedLocation);
-    setLocations(prevLocations => prevLocations.map(location =>
-      location.id === updatedLocation.id ? updatedLocation : location
-    ));
-  }, [keyUpdate]);
 
   const removeLocation = useCallback((locationId: string) => {
     // Sub-locations move up to the deleted location's parent, so a delete loses one location only.
@@ -220,13 +234,6 @@ function useProvideGameData() {
     setConnections(prevConnections => [...prevConnections, newConnection]);
   }, []);
 
-  const updateConnection = useCallback((updatedConnection: Connection) => {
-    keyUpdate('connections', updatedConnection);
-    setConnections(prevConnections => prevConnections.map(connection =>
-      connection.id === updatedConnection.id ? updatedConnection : connection
-    ));
-  }, [keyUpdate]);
-
   const removeConnection = useCallback((connectionId: string) => {
     setConnections(prevConnections => prevConnections.filter(connection => connection.id !== connectionId));
   }, []);
@@ -234,32 +241,6 @@ function useProvideGameData() {
   const addEntity = useCallback((newEntity: Entity) => {
     setEntities(prevEntities => [...prevEntities, newEntity]);
   }, []);
-
-  // An edit to an entity that follows a source makes it a local replacement, unless the author owns the
-  // source. A caller that hands over a different `link` is managing the link itself (linking, unlinking,
-  // taking a source update), so its record stands: only a content edit, which carries the entity's own
-  // link through untouched, marks it.
-  const updateEntity = useCallback((updatedEntity: Entity) => {
-    keyUpdate('entities', updatedEntity);
-    setEntities(prevEntities => prevEntities.map(entity =>
-      entity.id === updatedEntity.id
-        ? (entity.link === updatedEntity.link
-          ? markEdited(updatedEntity, ownedLibraryIds.current.has(followedLibraryId(updatedEntity) ?? ''))
-          : updatedEntity)
-        : entity
-    ));
-  }, [keyUpdate]);
-
-  // A content edit read off the entity as it stands at write time, so two edits in one tick both land.
-  const editEntity = useCallback((entityId: string, edit: (entity: Entity) => Entity) => {
-    const entity = committedSlices.current.entities.find((e) => e.id === entityId);
-    if (entity) keyUpdate('entities', edit(entity));
-    setEntities(prevEntities => prevEntities.map(entity =>
-      entity.id === entityId
-        ? markEdited(edit(entity), ownedLibraryIds.current.has(followedLibraryId(entity) ?? ''))
-        : entity
-    ));
-  }, [keyUpdate]);
 
   // Membership rides on the entity itself, so deleting it takes every location link with it — no
   // location-side cleanup to do.
@@ -270,13 +251,6 @@ function useProvideGameData() {
   const addEntityGroup = useCallback((newGroup: EntityGroup) => {
     setEntityGroups(prev => [...prev, newGroup]);
   }, []);
-
-  const updateEntityGroup = useCallback((updatedGroup: EntityGroup) => {
-    keyUpdate('entityGroups', updatedGroup);
-    setEntityGroups(prev => prev.map(group =>
-      group.id === updatedGroup.id ? updatedGroup : group
-    ));
-  }, [keyUpdate]);
 
   // Removing a group reparents its direct children (subgroups + entities) to the group's own parent,
   // rather than orphaning them under a deleted id.
@@ -295,13 +269,6 @@ function useProvideGameData() {
     setTraits(prevTraits => [...prevTraits, newTrait]);
   }, []);
 
-  const updateTrait = useCallback((updatedTrait: Trait) => {
-    keyUpdate('traits', updatedTrait);
-    setTraits(prevTraits => prevTraits.map(trait =>
-      trait.id === updatedTrait.id ? updatedTrait : trait
-    ));
-  }, [keyUpdate]);
-
   // A link to a gone original resolves to nothing, so its links go with it.
   const removeTrait = useCallback((traitId: string) => {
     setTraits(prevTraits => prevTraits.filter(trait => trait.id !== traitId));
@@ -311,13 +278,6 @@ function useProvideGameData() {
   const addTraitGroup = useCallback((newGroup: TraitGroup) => {
     setTraitGroups(prev => [...prev, newGroup]);
   }, []);
-
-  const updateTraitGroup = useCallback((updatedGroup: TraitGroup) => {
-    keyUpdate('traitGroups', updatedGroup);
-    setTraitGroups(prev => prev.map(group =>
-      group.id === updatedGroup.id ? updatedGroup : group
-    ));
-  }, [keyUpdate]);
 
   // Removing a group reparents its direct children (subgroups + traits) to the group's own parent,
   // rather than orphaning them under a deleted id. Blueprints detaches its linked items and moves the rest up.
@@ -341,12 +301,6 @@ function useProvideGameData() {
     setTraits(prev => prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t)));
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
   }, []);
-
-  const updateWorldOverview = useCallback((updates: Partial<WorldOverview>) => {
-    const overview = committedSlices.current.worldOverview;
-    keyNext(writeKey('worldOverview', undefined, overview, { ...overview, ...updates }));
-    setWorldOverview(prev => ({ ...prev, ...updates }));
-  }, [keyNext]);
 
   const loadWorldMetadata = useCallback(async () => {
     try {
@@ -517,17 +471,16 @@ function useProvideGameData() {
 
   // Renaming a value carries the trait pins written before value ids existed, so vocabulary cleanup is one
   // field edit rather than a hunt through every trait. A pin naming its value by id needs nothing.
-  const updatePlaceholder = useCallback((updated: Placeholder) => {
+  // Keyed to the placeholder wherever it lives, so a Copy's edit labels as the placeholder, not its owner.
+  const updatePlaceholder = useMemo(() => keyedTo('placeholders', (updated: Placeholder) => {
     const before = latest.current.placeholders.find(p => p.id === updated.id);
-    // Keyed to the placeholder wherever it lives, so a Copy's edit labels as the placeholder, not its owner.
-    keyNext(writeKey('placeholders', updated.id, before, updated));
     // An edit that drops a chip value releases what it pointed at — see the scoped store, whose generic
     // update path this replaces so the world's own pin sweep runs beside it.
     writeListHolding(updated.id, list => releasePlaceholderOwners(list.map(p => (p.id === updated.id ? updated : p))));
     if (!before) return;
     const renames = renamedPlaceholderValues(before.values ?? [], updated.values ?? []);
     if (renames.length) setTraits(prev => repinRenamedValues(prev, updated.id, renames));
-  }, [writeListHolding, keyNext]);
+  }), [keyedTo, writeListHolding]);
 
   const removePlaceholder = useCallback((id: string) => {
     writeListHolding(id, list => removePlaceholderCascade(list, id));
@@ -546,13 +499,6 @@ function useProvideGameData() {
   const addPlaceholderGroup = useCallback((group: PlaceholderGroup) => {
     setPlaceholderGroups(prev => [...prev, group]);
   }, []);
-
-  // A folder's delete goes through the placeholder store (`setLists`), beside the drops that move folders,
-  // so there is no separate context path for it.
-  const updatePlaceholderGroup = useCallback((updated: PlaceholderGroup) => {
-    keyUpdate('placeholderGroups', updated);
-    setPlaceholderGroups(prev => prev.map(group => (group.id === updated.id ? updated : group)));
-  }, [keyUpdate]);
 
   // A whole-list write (a drag, a promote) is scattered back to the lists that hold each id.
   const setPlaceholders = useCallback((action: SetStateAction<Placeholder[]>) => {

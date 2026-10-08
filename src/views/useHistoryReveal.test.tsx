@@ -7,6 +7,7 @@ import { useHistoryReveal, type HistoryRevealOptions } from './useHistoryReveal'
 
 /** The editor's side of a reveal: which calls an undo or redo makes on the tabs, the selection and the canvas. */
 
+// Reveal reads ids and names only, so the fixtures carry no other field.
 const stat = (id: string): Stat => ({ id, name: id } as unknown as Stat);
 const wire = (id: string): Connection => ({ id } as unknown as Connection);
 
@@ -18,6 +19,7 @@ const world = (over: Partial<WorldSlices> = {}): WorldSlices => ({
 
 /** A move over the Step that added `after[0]` to an empty slice, leaving the world as `left` says. */
 const moveOf = <S extends SliceName>(slice: S, after: WorldSlices[S], left: WorldSlices): HistoryMoveEvent => ({
+  // The slice is generic here, and an empty list is the earlier side of every record slice.
   steps: record(createHistory(), [diffSlice(slice, [] as unknown as WorldSlices[S], after) as SliceEdit]).steps,
   world: left,
 });

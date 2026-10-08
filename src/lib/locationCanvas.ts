@@ -659,7 +659,7 @@ export const hintKey = (connectionId: string, leg: LegKey): StepKey => ({ slice:
 
 /** Keys a run of keyboard nudges. The key names what is moving, so picking something else starts a new Step. */
 export const nudgeKey = (selectedIds: string[]): StepKey => ({
-  slice: "locations", id: selectedIds.join(","), field: "canvasPosition",
+  slice: "locations", ids: [...selectedIds], field: "canvasPosition",
 });
 
 /** What an intent leaves the world's Connections as. */

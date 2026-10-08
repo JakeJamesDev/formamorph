@@ -162,7 +162,7 @@ export function ReplaceAllConfirm({ open, onOpenChange, count, fields, skipped, 
           <AlertDialogDescription>
             {`Replace ${count} match${count === 1 ? '' : 'es'} across ${fields} field${fields === 1 ? '' : 's'}?`
               + (skipped ? ` ${skipped} in fields that can't hold ${missingChip} will be skipped.` : '')
-              + ' Discard Changes is the only way back.'}
+              + ' The replacement is one Step, so Undo or History takes it back.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -14,6 +14,7 @@ import { newPlaceholderValue, placeholderIsChoice, placeholderWeight, prunePlace
 import { cn } from '@/lib/utils';
 import type { Placeholder, PlaceholderValue } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /** A weight typed into a box: whole, never negative. */
 const typedWeight = (raw: string) => Math.max(0, Math.round(Number(raw) || 0));
@@ -33,7 +34,7 @@ function ValueText({ value, onChange, placeholders, ownerId, label }: {
 
 function WeightBox({ value, onChange, label }: { value: number; onChange: (weight: number) => void; label: string }) {
   return (
-    <Input data-world-field
+    <WorldInput
       type="number"
       min={0}
       step={1}

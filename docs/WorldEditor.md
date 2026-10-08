@@ -123,9 +123,9 @@ An edit after an undo erases the undone Steps. The list never branches.
 
 ### Text fields
 
-In a prompt field, **Ctrl+Z** undoes your typing in that field first. When the field has nothing left to undo, the next press undoes the world.
+In a prompt field, **Ctrl+Z** undoes your typing in that field first. When the field has nothing left to undo, the next press undoes the world. A record's name is a prompt field too.
 
-In a plain field that holds world data, such as a name, **Ctrl+Z** undoes through the world. The field and the list then show the same text. In a filter box or **Search World**, **Ctrl+Z** works as it does in any browser box. While you compose text with an input method editor, the editor ignores **Ctrl+Z**.
+Some fields that hold world data are plain boxes, such as number boxes and the world's name and author. In these, **Ctrl+Z** undoes through the world. The field and the list then show the same text. In a filter box or **Search World**, **Ctrl+Z** works as it does in any browser box. While you compose text with an input method editor, the editor ignores **Ctrl+Z**.
 
 ### When undo is off
 

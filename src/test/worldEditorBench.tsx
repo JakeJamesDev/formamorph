@@ -29,6 +29,7 @@ export const asMobile = () => {
   const realMatchMedia = window.matchMedia;
   const realWidth = window.innerWidth;
   window.innerWidth = 400;
+  // A stub with only the members the two readers call.
   window.matchMedia = ((query: string) => ({
     matches: query.includes('max-width: 767px'),
     media: query, onchange: null,

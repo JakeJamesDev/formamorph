@@ -128,7 +128,8 @@ export function stepLabel(step: Step): string {
   if (key?.slice === "worldOverview") {
     return overviewLabel(step.edits.find((edit): edit is OverviewEdit => edit.slice === "worldOverview"), key);
   }
-  if (key?.id) return keyedLabel(step, key.slice, key.id, key.field);
+  const id = key?.id ?? (key?.ids?.length === 1 ? key.ids[0] : undefined);
+  if (key && id) return keyedLabel(step, key.slice, id, key.field);
   if (step.edits.length !== 1) return "Edit World";
   const [edit] = step.edits;
   if (edit.slice === "worldOverview") return overviewLabel(edit);

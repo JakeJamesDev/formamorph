@@ -7,6 +7,7 @@ import type {
 
 /** A moved Step names the tab and the record the editor shows the author afterward. */
 
+// Reveal reads ids and names only, so the fixtures carry no other field.
 const stat = (id: string): Stat => ({ id, name: id } as unknown as Stat);
 const location = (id: string): GameLocation => ({ id, name: id } as GameLocation);
 const connection = (id: string): Connection => ({ id } as unknown as Connection);
@@ -104,6 +105,7 @@ describe('revealTarget', () => {
   });
 
   describe('a Step that rewrote two slices', () => {
+    // Reveal reads ids and names only.
     const trait = { id: 'paladin', name: 'Paladin' } as unknown as Trait;
     const wick = { id: 'wick', name: 'Wick' } as unknown as Entity;
     const rewrittenWick = { ...wick, name: 'Sir Wick' };

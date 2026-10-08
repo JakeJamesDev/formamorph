@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
@@ -23,6 +22,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SelectOptions } from "@/components/SelectOptions";
 import type { AllowedPersonas, VrmLicense } from '@/types';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /**
  * The world's custom player VRM in the same details view the model library uses. The world stores the model
@@ -198,7 +198,7 @@ const WorldOverviewManager = () => {
     <div className="space-y-4">
       <div className="space-y-2" data-tour-anchor="world-name">
         <Label htmlFor="worldName">World Name</Label>
-        <Input data-world-field
+        <WorldInput
           id="worldName"
           value={worldOverview.name}
           onChange={(e) => updateWorldOverview({ name: e.target.value })}
@@ -206,7 +206,7 @@ const WorldOverviewManager = () => {
       </div>
       <div className="space-y-2">
         <Label htmlFor="worldAuthor">Author</Label>
-        <Input data-world-field
+        <WorldInput
           id="worldAuthor"
           value={worldOverview.author}
           onChange={(e) => updateWorldOverview({ author: e.target.value })}

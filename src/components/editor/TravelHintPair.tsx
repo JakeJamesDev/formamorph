@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { hintsLinked, withHint, withLink, withUnlink } from '@/lib/connectionEditing';
 import type { Connection, LegKey } from '@/types';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /** One hint box: the leg it edits, its visible label, and its accessible name. */
 export interface TravelHintLeg {
@@ -90,7 +90,7 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
           return (
             <div key={key} className="space-y-1">
               <Label htmlFor={id} className="flex items-center gap-1">{label}</Label>
-              <Input data-world-field
+              <WorldInput
                 id={id}
                 ref={(node) => { boxes.current[key] = node; }}
                 value={copy ? firstHint : connection[key]?.hint ?? ''}

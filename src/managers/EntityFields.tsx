@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
@@ -22,6 +21,7 @@ import { customPersonaCounts, personaRole, personaRolePatch, unmarkLine, type Pe
 import type { RenameFieldHandlers } from '@/lib/useCodeRename';
 import type { ReactNode } from 'react';
 import type { Entity, Placeholder } from '@/types';
+import { WorldInput } from '@/components/editor/WorldField';
 
 /** What every entity field group needs: the entity, a field writer, and the chip vocabulary to offer. */
 export interface EntityFieldGroupProps {
@@ -75,7 +75,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
       <div data-tour-anchor="entity-pronouns" className="space-y-2">
         <Label htmlFor={`entity-pronouns-${value.id}`}>Pronouns</Label>
         <Hint>Tells the AI how to refer to this entity</Hint>
-        <Input data-world-field
+        <WorldInput
           id={`entity-pronouns-${value.id}`}
           value={value.pronouns || ''}
           onChange={(e) => onChange('pronouns', e.target.value)}
@@ -86,7 +86,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
       {advanced && (
         <div className="space-y-2">
           <Label>Type</Label>
-          <Input data-world-field
+          <WorldInput
             value={value.type || ''}
             onChange={(e) => onChange('type', e.target.value)}
             placeholder="Enter entity type"

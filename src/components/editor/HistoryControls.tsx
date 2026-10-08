@@ -83,7 +83,7 @@ function HistoryFace({ move, history, disabled, className, size }: {
   const undo = move === 'undo';
   const Icon = undo ? Undo2 : Redo2;
   return (
-    <Tip tip={undo ? 'Undo (Ctrl+Z)' : 'Redo (Ctrl+Y)'} labelsChild={false}>
+    <Tip tip={undo ? 'Undo (Ctrl+Z)' : 'Redo (Ctrl+Y or Ctrl+Shift+Z)'} labelsChild={false}>
       <Button
         variant="ghost" size={size} className={className} onClick={undo ? history.undo : history.redo}
         disabled={disabled || !(undo ? history.canUndo : history.canRedo)} aria-label={undo ? 'Undo' : 'Redo'}
