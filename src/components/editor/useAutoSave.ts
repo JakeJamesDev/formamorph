@@ -11,9 +11,11 @@ import WorldStorageService from '@/services/WorldStorageService';
  * A world joins in once it is in the library. A new world and an unedited bundled default wait for a save by
  * hand: the one stays out of the library, and the other keeps its bundled updates after a stray edit.
  */
-export function useAutoSave({ enabled, worldId, stored, dirty, onChange, save }: {
+export function useAutoSave({ enabled, idleMs, worldId, stored, dirty, onChange, save }: {
   /** The preference, and no tour running. */
   enabled: boolean;
+  /** The pause after the last change that saves a small one. */
+  idleMs: number;
   worldId: string | null;
   /** The world has a copy in the library. */
   stored: boolean;
@@ -25,6 +27,7 @@ export function useAutoSave({ enabled, worldId, stored, dirty, onChange, save }:
   const saveRef = useRef(save);
   useLayoutEffect(() => { saveRef.current = save; });
   const [scheduler] = useState(() => createAutoSaveScheduler({ save: () => saveRef.current() }));
+  useEffect(() => scheduler.setIdleMs(idleMs), [idleMs, scheduler]);
   const mounted = useMountedRef();
 
   // Each holds the world id it is true for, so another world starts over without a reset.

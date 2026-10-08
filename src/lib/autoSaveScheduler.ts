@@ -3,8 +3,11 @@
  * passes with a count above zero. Every save, manual or auto, goes through it, so it never fires while one runs.
  */
 
+import { DEFAULT_EDITOR_AUTO_SAVE_IDLE_S } from '@/contexts/settingsDefaults';
+
 export const AUTO_SAVE_THRESHOLD = 300;
-export const AUTO_SAVE_IDLE_MS = 30_000;
+/** The default pause, in ms. */
+export const AUTO_SAVE_IDLE_MS = DEFAULT_EDITOR_AUTO_SAVE_IDLE_S * 1000;
 
 type SaveKind = 'manual' | 'auto';
 
@@ -15,6 +18,8 @@ export interface AutoSaveScheduler {
   manual(save: () => Promise<boolean>): Promise<boolean>;
   /** Off stops the timer; the count still grows, so turning it on saves what piled up. */
   setEnabled(enabled: boolean): void;
+  /** Sets the pause, counted again from now when one is waiting. */
+  setIdleMs(ms: number): void;
   /** Drops the count, as when the world is back to what is on disk. */
   clear(): void;
   /** Runs `then` now, or once no save runs. */
@@ -24,9 +29,13 @@ export interface AutoSaveScheduler {
 }
 
 /** `save` is the auto save. A save that resolves false or throws is a failed one. */
-export function createAutoSaveScheduler({ save }: { save: () => Promise<boolean> }): AutoSaveScheduler {
+export function createAutoSaveScheduler({ save, idleMs = AUTO_SAVE_IDLE_MS }: {
+  save: () => Promise<boolean>;
+  idleMs?: number;
+}): AutoSaveScheduler {
   let count = 0;
   let enabled = false;
+  let idle = idleMs;
   // A failed auto save pauses until a manual save succeeds, so a full disk toasts once.
   let failed = false;
   let running: { kind: SaveKind; done: Promise<boolean> } | null = null;
@@ -37,7 +46,7 @@ export function createAutoSaveScheduler({ save }: { save: () => Promise<boolean>
     stopTimer();
     if (!enabled || failed || running || count <= 0) return;
     // A full count saves on the next task, never inside the commit that filled it.
-    timer = setTimeout(() => { void run('auto', save); }, count >= AUTO_SAVE_THRESHOLD ? 0 : AUTO_SAVE_IDLE_MS);
+    timer = setTimeout(() => { void run('auto', save); }, count >= AUTO_SAVE_THRESHOLD ? 0 : idle);
   };
 
   function run(kind: SaveKind, write: () => Promise<boolean>): Promise<boolean> {
@@ -82,6 +91,11 @@ export function createAutoSaveScheduler({ save }: { save: () => Promise<boolean>
     afterSaves,
     setEnabled(next) {
       enabled = next;
+      schedule();
+    },
+    setIdleMs(next) {
+      if (next === idle) return;
+      idle = next;
       schedule();
     },
     clear() {

@@ -244,6 +244,20 @@ describe('a failed auto save', () => {
   });
 });
 
+describe('the idle pause setting', () => {
+  it('saves one action after the chosen pause, not the default one', async () => {
+    localStorage.setItem('FORMAMORPH_editorAutoSaveIdleSeconds', '90');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const bench = await openOptedIn();
+    act(() => bench.ctx().addStat(stat(1)));
+    await nextTask();
+    await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS * 2));
+    expect(storeWorld).not.toHaveBeenCalled();
+    await act(() => vi.advanceTimersByTimeAsync(AUTO_SAVE_IDLE_MS - 1000));
+    await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
+  });
+});
+
 describe('Auto Save off', () => {
   it('saves only by hand, from the Save menu checkbox', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

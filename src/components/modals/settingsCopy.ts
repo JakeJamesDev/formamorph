@@ -610,6 +610,19 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   },
 
   // ── Data · Authoring ────────────────────────────────────────────────────────
+  editorAutoSave: {
+    label: 'Auto Save',
+    description: 'Saves your world while you edit it',
+    info: `- Saves after a large run of edits or a short pause
+- **Save** and **Ctrl+S** still save right away
+- A new world waits for your first save
+- The **Save** menu in the World Editor has the same switch`,
+  },
+  editorAutoSavePause: {
+    label: 'Auto Save Pause',
+    description: 'Waits this long after your last edit before saving',
+    info: 'A longer pause writes less often but leaves more unsaved',
+  },
   authoringTour: {
     label: 'Authoring Tour',
     description: 'Walks you through building a new world, one field at a time',

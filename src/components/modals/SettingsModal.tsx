@@ -17,7 +17,9 @@ import { readSettingsMode, writeSettingsMode, SETTINGS_MODE_DESCRIPTIONS, SETTIN
 import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
-import { Row, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
+import { Row, CheckRow, Section, HintInfo, ValueSlider } from '@/components/SettingsRows';
+import { MIN_EDITOR_AUTO_SAVE_IDLE_S, MAX_EDITOR_AUTO_SAVE_IDLE_S, EDITOR_AUTO_SAVE_IDLE_STEP_S } from '@/contexts/settingsDefaults';
+import { formatPause } from '@/lib/formatPause';
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_NOTES } from '@/components/modals/settingsCopy';
 import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
@@ -455,6 +457,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     toolsEnabled,
     autosaveEnabled,
     setAutosaveEnabled,
+    editorAutoSave,
+    setEditorAutoSave,
+    editorAutoSaveIdleSeconds,
+    setEditorAutoSaveIdleSeconds,
     characterDiaries,
     describeCharacters,
     genTemperature,
@@ -1982,15 +1988,34 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               />
               </Section>
 
-              {onStartAuthoringTour && (
               <Section title="Authoring">
+              <CheckRow
+                htmlFor="editorAutoSave"
+                checked={editorAutoSave}
+                onChange={setEditorAutoSave}
+                {...rowCopy('editorAutoSave')}
+              />
+              {editorAutoSave && (
+              <Row htmlFor="editorAutoSaveIdleSeconds" {...rowCopy('editorAutoSavePause')}>
+                <ValueSlider
+                  id="editorAutoSaveIdleSeconds"
+                  value={editorAutoSaveIdleSeconds}
+                  min={MIN_EDITOR_AUTO_SAVE_IDLE_S}
+                  max={MAX_EDITOR_AUTO_SAVE_IDLE_S}
+                  step={EDITOR_AUTO_SAVE_IDLE_STEP_S}
+                  onChange={setEditorAutoSaveIdleSeconds}
+                  format={formatPause}
+                />
+              </Row>
+              )}
+              {onStartAuthoringTour && (
               <Row {...rowCopy('authoringTour')}>
                 <Button variant="outline" size="sm" onClick={onStartAuthoringTour} {...targetAttribute('settings.data', 'start-authoring-tour')}>
                   {SETTINGS_BUTTONS.startAuthoringTour}
                 </Button>
               </Row>
-              </Section>
               )}
+              </Section>
 
               {/* Housekeeping rather than settings — every one is a "put it back" a normal player never
                   needs, so Simple keeps the whole section out of the way. */}

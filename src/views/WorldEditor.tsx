@@ -168,7 +168,7 @@ const WorldEditorInner = ({
     setLocations, setEntities, setDictionaries,
     isWorldDirty, isWorldStored, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
-  const { editorAutoSave, setEditorAutoSave } = useSettings();
+  const { editorAutoSave, setEditorAutoSave, editorAutoSaveIdleSeconds } = useSettings();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
   // A Formaquestion Tool and the code test read the world as the editor holds it, unsaved edits included.
@@ -623,6 +623,7 @@ const WorldEditorInner = ({
   // The tour saves on every Next itself.
   const autoSave = useAutoSave({
     enabled: editorAutoSave && !touring,
+    idleMs: editorAutoSaveIdleSeconds * 1000,
     worldId,
     stored: isWorldStored,
     dirty: isWorldDirty,

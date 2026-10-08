@@ -230,5 +230,12 @@ export const DEFAULT_QUOTE_COLOR_DARK: string | null = null;
 export const DEFAULT_TOOLS_ENABLED = true;
 // The World Editor's Auto Save. Off saves only on Save and Ctrl+S.
 export const DEFAULT_EDITOR_AUTO_SAVE = true;
+// Seconds the World Editor waits after the last change before an auto save. The slider spans the min and max.
+export const DEFAULT_EDITOR_AUTO_SAVE_IDLE_S = 30;
+export const MIN_EDITOR_AUTO_SAVE_IDLE_S = 10;
+export const MAX_EDITOR_AUTO_SAVE_IDLE_S = 300;
+export const EDITOR_AUTO_SAVE_IDLE_STEP_S = 10;
+export const clampEditorAutoSaveIdle = (seconds: number) =>
+  Math.min(MAX_EDITOR_AUTO_SAVE_IDLE_S, Math.max(MIN_EDITOR_AUTO_SAVE_IDLE_S, seconds));
 // Calls one Tool may make per request when the Tool sets no limit of its own.
 export const DEFAULT_TOOL_CALL_LIMIT = 4;
