@@ -31,6 +31,7 @@ import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/
 import { EMPTY_LETTERS, worldPlacementLetters } from '@/lib/placementLetters';
 import { worldAllowedPersonas, worldStartPersona } from '@/lib/personaPick';
 import { CodeRenameContext } from '@/lib/useCodeRename';
+import { useWorldRecorder, WorldHistoryContext } from '@/contexts/worldRecorder';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -397,12 +398,26 @@ function useProvideGameData() {
     return { world: worldData, isDefault };
   }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
+  const slices = useMemo(() => ({
+    worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries,
+    placeholders: worldPlaceholders, placeholderGroups,
+  }), [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups]);
+  const sliceSetters = useMemo(() => ({
+    worldOverview: setWorldOverview, stats: setStats, locations: setLocations, connections: setConnections,
+    entities: setEntities, entityGroups: setEntityGroups, traits: setTraits, traitGroups: setTraitGroups,
+    statUpdates: setStatUpdates, dictionaries: setDictionaries, placeholders: setWorldPlaceholders,
+    placeholderGroups: setPlaceholderGroups,
+  }), [setDictionaries]);
+  const { intent: writeIntent, controls: history } = useWorldRecorder(slices, worldId, sliceSetters);
+
   // Copies follow the traits after every write. The slices are separate states, so the pass reads the
   // committed world rather than one setter's view of it.
   useEffect(() => {
     const next = syncBlueprintCopies({ traits, traitGroups, entities, placeholders: worldPlaceholders, placeholderGroups });
-    if (next !== entities) setEntities(next);
-  }, [traits, traitGroups, entities, worldPlaceholders, placeholderGroups]);
+    if (next === entities) return;
+    writeIntent.current.follow = true;
+    setEntities(next);
+  }, [traits, traitGroups, entities, worldPlaceholders, placeholderGroups, writeIntent]);
   // What each entity's copies are kept for, so the Placeholders tab can refuse a delete the sync would undo.
   const copiesInUse = useMemo(
     () => neededCopies({ traits, traitGroups, entities, placeholders: worldPlaceholders, placeholderGroups }),
@@ -678,7 +693,7 @@ function useProvideGameData() {
     isWorldDirty, worldStored, dictStore, phStore, placementLetters, placeholderOwnerIndex,
   ]);
 
-  return { value, actions };
+  return { value, actions, history };
 }
 
 type GameDataContextValue = ReturnType<typeof useProvideGameData>['value'];
@@ -720,13 +735,15 @@ export const useGameDataActions = (): GameDataActions => {
 export const NoWorld = ({ children }: { children: ReactNode }) => (
   <GameDataContext.Provider value={null}>
     <GameDataActionsContext.Provider value={null}>
-      <DictionaryStoreProvider value={null}>
-        <PlaceholderStoreProvider value={null}>
-          <PlacementLettersProvider letters={EMPTY_LETTERS}>
-            <CodeRenameContext.Provider value={null}>{children}</CodeRenameContext.Provider>
-          </PlacementLettersProvider>
-        </PlaceholderStoreProvider>
-      </DictionaryStoreProvider>
+      <WorldHistoryContext.Provider value={null}>
+        <DictionaryStoreProvider value={null}>
+          <PlaceholderStoreProvider value={null}>
+            <PlacementLettersProvider letters={EMPTY_LETTERS}>
+              <CodeRenameContext.Provider value={null}>{children}</CodeRenameContext.Provider>
+            </PlacementLettersProvider>
+          </PlaceholderStoreProvider>
+        </DictionaryStoreProvider>
+      </WorldHistoryContext.Provider>
     </GameDataActionsContext.Provider>
   </GameDataContext.Provider>
 );
@@ -734,18 +751,20 @@ export const NoWorld = ({ children }: { children: ReactNode }) => (
 /** Provides the world-editor data store (see `useGameData`); on mount it initializes storage and loads
  *  the world-metadata list. */
 export const GameDataProvider = ({ children }: { children: ReactNode }) => {
-  const { value, actions } = useProvideGameData();
+  const { value, actions, history } = useProvideGameData();
 
   return (
     <GameDataContext.Provider value={value}>
       <GameDataActionsContext.Provider value={actions}>
-        <DictionaryStoreProvider value={value.dictStore}>
-          <PlaceholderStoreProvider value={value.phStore}>
-            <PlacementLettersProvider letters={value.placementLetters}>
-              {children}
-            </PlacementLettersProvider>
-          </PlaceholderStoreProvider>
-        </DictionaryStoreProvider>
+        <WorldHistoryContext.Provider value={history}>
+          <DictionaryStoreProvider value={value.dictStore}>
+            <PlaceholderStoreProvider value={value.phStore}>
+              <PlacementLettersProvider letters={value.placementLetters}>
+                {children}
+              </PlacementLettersProvider>
+            </PlaceholderStoreProvider>
+          </DictionaryStoreProvider>
+        </WorldHistoryContext.Provider>
       </GameDataActionsContext.Provider>
     </GameDataContext.Provider>
   );
