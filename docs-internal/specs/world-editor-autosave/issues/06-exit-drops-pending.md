@@ -19,6 +19,8 @@ Leaving the editor with pending changes still shows the unsaved-changes prompt (
 
 Rulings: Q5, Q9.
 
+Handoff from 04: Exit Without Saving already waits for a running save through `autoSave.afterSaves`. The in-game prompt's Save still calls the context's `saveWorld` directly; route it through auto save here.
+
 ## Acceptance criteria
 
 - [ ] With Auto Save on, Exit drops only the changes since the last save, in both editor hosts.
