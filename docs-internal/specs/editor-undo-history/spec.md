@@ -120,6 +120,9 @@ The prototype that settled the app-bar layout is on branch `prototype/editor-his
 | Q26 | A write that changes several fields of one record keeps the record key with no field. A typed rename that also rewrites descriptors merges as one Step, labeled with the record alone. |
 | Q27 | A dictionary entry edit is keyed to the entry, not its book, and labels as "Edit Entry <name>: <field>". Labels name the thing the author edited, as for Copy placeholders. |
 | Q28 | Continuous controls: the Slider and ColorPicker primitives open a group on press and close it on release as a transition-priority update (a one-task deferral raced React's scheduler in Node), when a world is open. They read a gesture leaf the world provider fills after load, so the account site bundle never pulls the recorder. Optimize Images batches around the apply only, after its prompt resolves. Ticket 04 owns the stamp flag; ticket 08 owns the Saved marker and the content compare. Entry field labels follow the editor's own labels ("Value"). |
+| Q29 | A marked (field-history) write whose key matches the top applied Step but whose content matches neither side merges into that Step regardless of the pause: no new Step, no cursor move, the Step's after follows the field. A marked write that reaches the Step's before moves the cursor back. No key match, or a sealed top: a plain write. The list never grows during a field's own undo or redo. |
+| Q30 | World-bound plain inputs opt in with a `data-world-field` attribute. An unmarked input keeps native undo and the listener yields, so a missed input keeps today's behavior. |
+| Q31 | One-line chip fields (record names, placeholder names) are Lexical fields and follow Q1, not Q10. Q10 covers the plain inputs only: number boxes, pronouns, entity type, book name and description, group names, world name and author, travel hints. Ticket 05's stat-name criterion reads as the stat's Max box. |
 
 ### The history module
 
