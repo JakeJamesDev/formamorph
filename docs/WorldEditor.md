@@ -72,7 +72,7 @@ The tour opens the World Editor on a new world. Your other worlds don't change.
 1. Select the back arrow at the top left of the editor.
 2. In the **Unsaved changes** dialog, select **Save & Exit** to keep your changes. Select **Exit Without Saving** to discard them.
 
-To save and stay in the editor, select **Save**. On desktop it's at the right end of the bar at the top. On mobile it's at the bottom right.
+To save and stay in the editor, select **Save**. On desktop it's at the right end of the bar at the top. On mobile it's at the bottom right. You can also press **Ctrl+S** (**Cmd+S** on a Mac).
 
 ## Editor Modes
 <!-- keywords: difference between views, which tabs hidden, dot on button, lose data switching, stripped down, full feature set, default view -->

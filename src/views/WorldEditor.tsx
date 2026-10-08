@@ -611,6 +611,20 @@ const WorldEditorInner = ({
   };
   const saveWorld = () => saveWorldWith(true);
   const saveWorldQuietly = () => saveWorldWith(false);
+  // The listener reads the latest render's save and dirty flag without re-subscribing every render.
+  const saveShortcutRef = useRef<() => void>(() => {});
+  saveShortcutRef.current = () => { if (isWorldDirty) void saveWorld(); };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') return;
+      // Always: a clean world must not fall through to the browser's Save Page dialog.
+      event.preventDefault();
+      if (!event.repeat) saveShortcutRef.current();
+    };
+    // Capture, like the find shortcut: Lexical fields stop keydown from bubbling.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
@@ -1020,10 +1034,12 @@ const WorldEditorInner = ({
   // Enabled only when there is something to save; that is the one save-state signal on either layout.
   const saveProps = { onClick: saveWorld, disabled: !isWorldDirty, 'data-tour-anchor': 'save' };
   const saveButton = (
-    <Button size="sm" {...saveProps}>
-      <Save className="h-4 w-4 mr-2" />
-      Save
-    </Button>
+    <Tip tip="Save (Ctrl+S)" labelsChild={false}>
+      <Button size="sm" {...saveProps}>
+        <Save className="h-4 w-4 mr-2" />
+        Save
+      </Button>
+    </Tip>
   );
   // Save's enabled state is the only save signal; the bar names the world being edited.
   const worldName = worldOverview.name.trim();
