@@ -95,7 +95,7 @@ The prototype that settled the shape is `prototype.html` beside this spec (varia
 | Q10 | An Automatic trait with a Not Condition follows its gate both ways. It is never on the cascade-off list; its mode brings it back. |
 | Q11 | The player line reads rows joined by "or" and Conditions joined by "and". A Not Condition reads "not X"; with a bearer, "Ash: not Tamed" and "You: not Paladin". |
 | Q12 | A Not Condition whose target is Hidden is left out of the player line like a positive one (trait-modes Q14). A row whose Conditions are all left out is dropped from the line. No rows left reads "Locked". |
-| Q13 | Test Bench gains `trait-requirement-unstable` (error): a cycle in the requirement graph with at least one Not edge. A cycle with no Not edge stays `never-unlockable`. |
+| Q13 | Test Bench gains `trait-requirement-unstable` (error): a cycle in the requirement graph with at least one Not edge. A cycle with no Not edge stays `never-unlockable`. Refined by Q32: only an odd Not count fires. |
 | Q14 | Test Bench gains `trait-requirement-row-never-holds` (warning): a row names a target both plain and Not, or names a trait plain and its group Not under the same bearer. |
 | Q15 | `trait-requirement-never-unlockable` treats every Not Condition as holding. It is an optimistic check and may under-report; that is accepted. |
 | Q16 | `trait-default-gated` covers two defaults that exclude each other: `settleDefaults` turns the later one off, and the rule reports it like any default that does not start selected. |
@@ -183,6 +183,12 @@ Tests exercise behavior through public seams and never mirror the implementation
 - **`migrateWorld`:** flat entries become one-chip rows on world traits, owned traits and link overrides; twice gives the same result; rows pass through untouched. Prior art: the exclusive-groups migration tests.
 - **Character card codec:** a card with rows and Not round-trips; a card with the flat list imports as rows. Prior art: the existing entity file tests.
 - **Component tests** on the Requires field and the trait panel, for structure and copy only: rows render with "and" and "or"; the add buttons read per Q6 and the field decisions; the Not flip changes the chip and the stored flag; the bearer page is skipped for a single bearer and shown for two; Starts and In Game are disabled under Automatic and the summary sentence changes. Prior art: the existing Requires field and trait panel tests.
+
+## Backlog
+
+- An AI prompt line in the experimental prompts still says "changes during play". Ticket 01 left it alone because a prompt change needs probe numbers. Sweep it with the next prompt probe.
+- The Semantic search vectors for help sections are rebuilt at release, so the renamed Entities section drops out of Semantic search until then (ticket 01).
+- The `slots` segmented-control pattern has one user, the Availability tab. A Design System line was proposed, not applied; it waits on the user and a second surface.
 
 ## Out of Scope
 
