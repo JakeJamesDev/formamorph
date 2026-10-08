@@ -1004,7 +1004,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 
 ### Composition
 
-- The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; the Test Bench; Save.
+- The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the History pill; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; the Test Bench; Save.
 - The title is the surface's name. The world is the surface's subject, so its name follows the title. No tab's open item ever does.
 - Optimize Images shows its progress in its own menu row while it runs.
 - Tour anchors, tutorial notes and Take Me There targets ride the controls they always named.
@@ -1049,6 +1049,58 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 
 - The world's name is the author's text, shown as typed after trimming.
 - **Unverified:** the reference's description has terminology review only; vocabulary and grammar evidence is not recorded.
+
+## Pattern: History Controls
+
+**Purpose:** Let an author step back and forward through the edits to the open document, and jump to any earlier point, from the surface's app bar.
+
+> ✅ **Approved** on the editor history bar prototype (variant B on desktop, variant A's header on mobile), 2026-10-07.
+
+**Density:** Compact. Each face is 32px tall.
+
+**Rule:**
+
+- **Desktop: one split pill.** Three faces joined edge to edge: **Undo**, **Redo**, and a chevron that opens **History**. The faces are ghost buttons that share one outline and one set of rounded outer corners.
+- Undo and Redo disable at the ends of the history. Their tooltips name the chord: **Undo (Ctrl+Z)** and **Redo (Ctrl+Y)**. The chevron's tooltip is **History**.
+- While the list is open the chevron reads pressed: the secondary fill, with `aria-pressed`.
+- **Mobile: one History icon** in the header, between the mode select and the Test Bench. Its popover head holds Undo and Redo as icon buttons, so the header keeps its room.
+- The popover opens under the control, aligned to its end. It is not portaled, so the list scrolls inside a dialog host.
+- Set the list in the menu row style. It holds the fixed head row **World opened**, one row per Step with its label, the **Saved** marker after the Step that was saved, and the undone Steps dimmed below the current one.
+- Mark the current row with the accent fill and a **Now** tag. Mark the head with the fill only.
+- A click on a row moves the document to that point and keeps the list open. The click handler does nothing else.
+- The list scrolls in its own box, at most half the window tall, and brings the current row into view.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| The pill, the icon, the popover and the list | `HistoryControls` and `HistoryList` in [`HistoryControls.tsx`](../src/components/editor/HistoryControls.tsx) |
+| The World Editor's binding to the open world | `HistoryPill` in [`HistoryPill.tsx`](../src/components/editor/HistoryPill.tsx) |
+| Step labels | `stepLabel` in [`editorHistoryLabels.ts`](../src/lib/editorHistoryLabels.ts) |
+| Row style | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
+| Isolated reference | [`HistoryControlsReference.tsx`](../src/components/design-system/HistoryControlsReference.tsx) |
+
+### Responsive behavior
+
+Desktop shows the pill at the head of the app bar's end slot, before the mode select. Mobile shows the icon in the header row. Both read the same history. Open `#dev?modal=worldEditor&history=open` for the list in the editor, or `#dev?modal=designSystem&tab=history-controls` for the isolated reference.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Nothing to undo | Undo is disabled. The list shows only **World opened**, marked current. |
+| Nothing to redo | Redo is disabled. |
+| After an undo | The current row sits above the dimmed Steps. Redo and a click on a dimmed row bring them back. |
+| Saved | A **Saved** line with a save icon and a rule follows the saved Step, or the head row when nothing was done since the open. |
+| Long history | The list scrolls inside the popover. |
+| Authoring Tour running | Every face is disabled. |
+
+The live reference draws both layouts over one sample history, with buttons to add a Step, mark the cursor as saved, and reset. It never reads or writes a world, a save, or storage.
+
+### Writing review
+
+- Step labels are the editor's text: the action, the type, the record's name and the field when one changed.
+- **Unverified:** the reference's description and button labels have terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Narration Turn
 

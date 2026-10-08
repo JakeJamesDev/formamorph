@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { useState, type ReactNode } from 'react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { SurfaceLayer, SurfaceReporterContext } from '@/components/ui/surface';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { DEV_MODAL_TABS } from '@/lib/devRoutes';
 import { surfaceRegistry } from '@/lib/surface/surfaceRegistry';
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
@@ -226,5 +227,118 @@ describe('the World Editor history', () => {
     await removeStat('Damp');
     expect(await chord('z', { isComposing: true })).toBe(false);
     expect(rows()).toEqual(['Warmth', 'Dread']);
+  });
+});
+
+/** Lets the event loop move on, so the next write is a new Step and does not fold into the last one. */
+const apart = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
+const removeApart = async (name: string) => { await apart(); await removeStat(name); };
+const historyFace = () => screen.getByRole('button', { name: 'History' });
+const openHistory = () => step(() => fireEvent.click(historyFace()));
+const historyList = () => screen.getByRole('dialog', { name: 'History' });
+const listRow = (name: string | RegExp) => within(historyList()).getByRole('button', { name });
+const listRows = () => within(historyList()).getAllByRole('button').map((b) => b.textContent);
+
+describe('the History popover (desktop)', () => {
+  it('joins Undo, Redo and the History chevron in one pill, each with a tip', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    const pill = screen.getByRole('group', { name: 'History' });
+    expect(within(pill).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Undo', 'Redo', 'History']);
+
+    fireEvent.pointerEnter(historyFace());
+    fireEvent.focus(historyFace());
+    expect(await screen.findByText('History')).toBeInTheDocument();
+
+    expect(historyFace()).toHaveAttribute('aria-pressed', 'false');
+    await openHistory();
+    expect(historyFace()).toHaveAttribute('aria-pressed', 'true');
+    expect(historyList()).toBeInTheDocument();
+  });
+
+  it('lists World opened, each Step with its label, the current Step marked and the future dimmed', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    await removeStat('Damp');
+    await removeApart('Dread');
+    await chord('z');
+    await openHistory();
+
+    expect(listRows()).toEqual(['World opened', 'Remove Stat DampNow', 'Remove Stat Dread(undone)']);
+    expect(listRow(/^Remove Stat Damp/)).toHaveAttribute('aria-current', 'step');
+    expect(listRow(/^Remove Stat Dread/)).toHaveAttribute('data-undone', 'true');
+    expect(listRow(/^Remove Stat Damp/)).not.toHaveAttribute('data-undone');
+    expect(listRow('World opened')).not.toHaveAttribute('aria-current');
+  });
+
+  it('moves the world to the row that is clicked, back to World opened and forward to a dimmed row', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Stats/);
+    await removeStat('Damp');
+    await removeApart('Dread');
+    expect(rows()).toEqual(['Warmth']);
+    await openHistory();
+
+    await step(() => fireEvent.click(listRow('World opened')));
+    expect(ctx().stats.map((s) => s.name)).toEqual(['Warmth', 'Damp', 'Dread']);
+    expect(listRow('World opened')).toHaveAttribute('aria-current', 'step');
+
+    await step(() => fireEvent.click(listRow(/^Remove Stat Dread/)));
+    expect(ctx().stats.map((s) => s.name)).toEqual(['Warmth']);
+    expect(listRow(/^Remove Stat Dread/)).toHaveAttribute('aria-current', 'step');
+
+    await step(() => fireEvent.click(listRow(/^Remove Stat Damp/)));
+    expect(ctx().stats.map((s) => s.name)).toEqual(['Warmth', 'Dread']);
+    expect(undoFace()).toBeEnabled();
+    expect(redoFace()).toBeEnabled();
+  });
+
+  it('is shut during the Authoring Tour', async () => {
+    writeTourRecord(WORLD.id, { step: TOUR_STEPS[0].id, items: {} });
+    reloadTourProgress();
+    renderWorldEditorBench(WORLD, 'advanced');
+    expect(historyFace()).toBeDisabled();
+  });
+
+  // The route ledger lists what the router can target, so each listed value must open the popover.
+  it.each([...DEV_MODAL_TABS.worldEditorHistory])('opens from the dev route with history=%s', async (value) => {
+    window.location.hash = `#dev?modal=worldEditor&history=${value}`;
+    try {
+      renderWorldEditorBench(WORLD, 'advanced');
+      expect(await screen.findByRole('dialog', { name: 'History' })).toBeInTheDocument();
+    } finally {
+      window.location.hash = '';
+      // The router drops the route on the hashchange event, which arrives a task later.
+      await apart();
+    }
+  });
+});
+
+describe('the History popover (mobile)', () => {
+  it('puts one History icon in the header and Undo and Redo in the popover head', async () => {
+    const restore = asMobile();
+    try {
+      renderWorldEditorBench(WORLD, 'advanced');
+      expect(screen.queryByRole('group', { name: 'History' })).not.toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: 'History' })).toHaveLength(1);
+
+      await openHistory();
+      const head = historyList();
+      expect(within(head).getByRole('button', { name: 'Undo' })).toBeDisabled();
+      expect(within(head).getByRole('button', { name: 'Redo' })).toBeDisabled();
+    } finally {
+      restore();
+    }
+  });
+
+  it('sits between the mode select and the Bench', () => {
+    const restore = asMobile();
+    try {
+      renderWorldEditorBench(WORLD, 'advanced');
+      const order = [screen.getByRole('combobox', { name: 'Editor mode' }), historyFace(), screen.getByRole('button', { name: /^Test Bench/ })];
+      expect(order.every((el, i) => i === 0
+        || (order[i - 1].compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)).toBe(true);
+    } finally {
+      restore();
+    }
   });
 });
