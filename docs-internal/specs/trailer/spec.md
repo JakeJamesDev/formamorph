@@ -11,7 +11,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 
 ## Solution
 
-- **Build the trailer as code with Remotion.** Every scene is a React component. Animations are code. Renders go through headless Chromium to MP4. The stack matches ours (React 18, TypeScript), so we author in the Design System's tokens and re-render on every edit. No video editor.
+- **Build the trailer as code with Remotion.** Every scene is a React component. Animations are code. Renders go through headless Chromium to MP4. It is React and TypeScript like the app, so we author in the Design System's tokens and re-render on every edit. The package runs its own React version (Q7). No video editor.
 - **Own package, outside the app.** The trailer lives in `marketing/trailer/` with its own `package.json`, `tsconfig` and Remotion dependencies. Nothing enters the game bundle or the root dependencies.
 - **Real UI frames come from Playwright.** A capture script poses screens through the dev-router on a fixed demo world and writes PNGs the scenes import. Same approach as the existing title-card capture.
 - **One scene set, two cuts.** Each scene takes a layout for 16:9 and 9:16. Two compositions render from one scene list.
@@ -39,6 +39,13 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 | Q4 | The proof renders silent. Music is decided later and gets its own ticket. |
 | Q5 | The trailer lives in `marketing/trailer/` as its own package. It is excluded from the root typecheck, lint and test gates and has its own scripts. |
 | Q6 | The proof is 20 seconds: one title card, two UI frames with motion, one transition, rendered at both sizes. The pipeline is proven before the storyboard is written. |
+| Q7 | The trailer package uses React 19. `@remotion/transitions` 4.0.534 bundles a React DOM 19 copy and reads React 19 internals, so it fails to bundle against React 18 despite its declared peer range. The package is standalone (Q5), so the app stays on React 18. Ruled 2026-10-08 on ticket 01's evidence. |
+| Q8 | The storyboard lives at `docs-internal/specs/trailer/storyboard.md` and lands in ticket 03's commit. It holds its own capture table in the spec's field list (view, modal or tab, viewport, theme, scale, world, seed). Ticket 05 copies that table into ticket 02's capture list, so 02 and 03 never race on one file. The user approves the storyboard in the 03 session; its rulings come here as numbered Q-lines and fold into this spec. |
+| Q9 | The storyboard is approved (2026-10-08, ticket 03): wide cut 19 shots, 63.05 s (3,783 frames); tall cut 14 shots, 47.85 s (2,871 frames); frames 0 to 359 loop on a shared blurred library plate. |
+| Q10 | Feature cut: Morphie help, contests and 3D avatars stay in the wide cut. Memory is cut. Scene images, character cards and ST import, themes, TTS and authoring tools are not in the trailer. |
+| Q11 | The end card's call-to-action line is "formamorph.ai". |
+| Q12 | Gameplay shots use the Drone world on the landing page's site-game fixture. |
+| Q13 | The tall cut's two gameplay shots are native 540x960 (scale 2) mobile-layout recaptures, not crops of the wide capture. |
 
 ### Facts the design rests on
 
@@ -63,6 +70,7 @@ Gameplay is text. Watching someone read is not a trailer. The video is a showcas
 - Fonts load through Remotion's font loader, not a `<link>`, so renders never race the network.
 - The first 6 seconds must read as a loop on their own (microtrailer).
 - Both cuts render from one command. Rendered MP4s are gitignored; only source and captures are tracked.
+- Three shots need canned or frozen inputs to capture deterministically (storyboard §5): the help answer (live endpoint), community and contest listings (live server data), and the avatar's WebGL frame. Tickets 02 and 05 own this.
 
 ## Testing Decisions
 
