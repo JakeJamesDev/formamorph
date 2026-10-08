@@ -1,6 +1,7 @@
 # Editor Undo, Redo and History
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-08. Tickets 01-11 done. Last landing 06fcb424. Gates green on 2026-10-08.
 Spec session: editor-undo-history — spec
 
 ## Problem Statement
