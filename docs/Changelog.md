@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **Trailer:**
     - **`marketing/trailer/` renders a 20-second proof trailer to wide and tall MP4s with one command.** It is a Remotion package with its own dependencies and scripts. `npm run render` checks each file's size, frame rate and length.
+    - **`npm run capture` in `marketing/trailer/` writes the trailer's UI frames from the real app, and `capture:diff` flags UI changes.** It sets up each shot in `captures.json` on its own dev server, with watching off. The proof renders from these frames.
   - **The ticket test gate reruns files that failed only by timeout, alone, once.** A run starved by another session's gates is not a verdict. Any other failure stops the gate as before.
   - **The changelog lint lets a feature group hold one entry under In Progress.** The first ticket of an effort names the group. The release lint still needs two entries, and close-spec drops a header that stayed alone.
 

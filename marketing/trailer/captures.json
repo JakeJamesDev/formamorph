@@ -1,0 +1,30 @@
+{
+  "demo": {
+    "world": "src/defaultworlds/drone.json",
+    "scene": "scripts/fixtures/site-game.json",
+    "seed": 20261008,
+    "time": "2026-10-08T12:00:00Z"
+  },
+  "shots": [
+    {
+      "id": "library",
+      "kind": "page",
+      "route": { "view": "mainMenu" },
+      "ready": { "text": "Veilwood" },
+      "viewport": { "width": 1600, "height": 900 },
+      "scale": 2,
+      "theme": "dark",
+      "palette": "graphite"
+    },
+    {
+      "id": "game",
+      "kind": "game",
+      "route": { "view": "gameViewer", "fixture": "whiteRoom", "mode": "pages", "tab": "entities" },
+      "ready": { "testId": "narration" },
+      "viewport": { "width": 1600, "height": 900 },
+      "scale": 2,
+      "theme": "dark",
+      "palette": "graphite"
+    }
+  ]
+}
