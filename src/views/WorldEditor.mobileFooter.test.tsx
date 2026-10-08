@@ -44,30 +44,33 @@ beforeEach(() => {
 afterEach(() => { undoMobile?.(); undoMobile = null; });
 
 describe('World Editor footer (mobile)', () => {
-  it('shows Export World once on Overview in Simple, then an icon-only Save', () => {
+  it('shows an icon-only Save and its menu on Overview in Simple, with Export World inside the menu', async () => {
     renderWorldEditorBench(WORLD, 'simple', { initialTab: 'overview' });
-    const exports = screen.getAllByRole('button', { name: 'Export World' });
-    expect(exports).toHaveLength(1);
-    expect(inOrder([exports[0], button('Save')])).toBe(true);
-    expect(button('Save')).toHaveTextContent(/^$/);
-  });
-
-  it('holds the More world actions menu on Overview in Advanced, with no Export World of its own', () => {
-    renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
     expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
-    expect(inOrder([button('More world actions'), button('Save')])).toBe(true);
+    expect(inOrder([button('Save'), button('Save options')])).toBe(true);
+    expect(button('Save')).toHaveTextContent(/^$/);
+
+    fireEvent.click(button('Save options'));
+    expect(await screen.findAllByRole('button', { name: 'Export World' })).toHaveLength(1);
   });
 
-  it.each(['entities', 'dictionary'] as const)('leads with Save to Library on %s, then the world actions and Save', (tab) => {
+  it('shows Optimize Images as an icon before Save on Overview in Advanced, with no world-actions menu', () => {
+    renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
+    expect(screen.queryByRole('button', { name: 'More world actions' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull();
+    expect(inOrder([button('Optimize Images'), button('Save'), button('Save options')])).toBe(true);
+  });
+
+  it.each(['entities', 'dictionary'] as const)('leads with Save to Library on %s, then Optimize Images and Save', (tab) => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: tab });
-    expect(inOrder([button('Save to Library'), button('More world actions'), button('Save')])).toBe(true);
+    expect(inOrder([button('Save to Library'), button('Optimize Images'), button('Save')])).toBe(true);
   });
 
   it('leaves Save to Library off a tab with no selected content', () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'locations' });
     expect(screen.queryByRole('button', { name: 'Save to Library' })).toBeNull();
-    expect(inOrder([button('More world actions'), button('Save')])).toBe(true);
+    expect(inOrder([button('Optimize Images'), button('Save')])).toBe(true);
   });
 
   it('enables Save once the world has a change', () => {

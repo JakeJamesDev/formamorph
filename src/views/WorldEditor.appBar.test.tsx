@@ -46,7 +46,7 @@ const inOrder = (elements: HTMLElement[]) => elements.every((el, i) => i === 0
 beforeEach(() => { localStorage.clear(); vi.mocked(downloadBlob).mockClear(); });
 
 describe('World Editor app bar (desktop)', () => {
-  it('reads back, title, world name, Search World, the mode, the world actions, Test Bench and Save, with no ?', () => {
+  it('reads back, title, world name, Search World, the mode, Test Bench, Save and its menu, with no ?', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'simple', { initialTab: 'stats' });
     act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
     const order = [
@@ -55,32 +55,43 @@ describe('World Editor app bar (desktop)', () => {
       barName('Sedge Landing'),
       screen.getByRole('textbox', { name: 'Search World' }),
       screen.getByRole('combobox', { name: 'Editor mode' }),
-      button('Export World'),
       button(/^Test Bench/),
       button('Save'),
+      button('Save options'),
     ];
     expect(inOrder(order)).toBe(true);
     expect(screen.queryAllByRole('button', { name: /^About / })).toHaveLength(0);
   });
 
-  it('shows the Export World icon in Simple, and it downloads the world', async () => {
-    renderWorldEditorBench(WORLD, 'simple');
+  it.each(['simple', 'advanced'] as const)('holds Export World in the Save menu in %s, and it downloads the world', async (mode) => {
+    renderWorldEditorBench(WORLD, mode);
     expect(screen.queryByRole('button', { name: 'More world actions' })).toBeNull();
-    fireEvent.click(button('Export World'));
+    expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull();
+    fireEvent.click(button('Save options'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Export World' }));
     await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
     expect(vi.mocked(downloadBlob).mock.calls[0][1]).toBe('Sedge Landing.json');
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull());
   });
 
-  it('gathers Export World and Optimize Images in a menu in Advanced, and its Export downloads the world', async () => {
+  it('shows Optimize Images as an icon button before the Test Bench in Advanced only', () => {
+    const { unmount } = renderWorldEditorBench(WORLD, 'simple');
+    expect(screen.queryByRole('button', { name: 'Optimize Images' })).toBeNull();
+    unmount();
+
     renderWorldEditorBench(WORLD, 'advanced');
-    expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull();
-    fireEvent.click(button('More world actions'));
-    const menu = await screen.findByRole('dialog');
-    expect(within(menu).getByRole('button', { name: 'Optimize Images' })).toBeEnabled();
-    fireEvent.click(within(menu).getByRole('button', { name: 'Export World' }));
-    await waitFor(() => expect(downloadBlob).toHaveBeenCalledTimes(1));
-    // The menu itself: the first-visit Authoring Tour offer is a dialog too, and opens on its own delay.
-    await waitFor(() => expect(menu).not.toBeInTheDocument());
+    const optimize = button('Optimize Images');
+    expect(optimize).toBeEnabled();
+    expect(optimize).toHaveTextContent(/^$/);
+    expect(inOrder([screen.getByRole('combobox', { name: 'Editor mode' }), optimize, button(/^Test Bench/), button('Save')]))
+      .toBe(true);
+  });
+
+  it('keeps the Save menu open to use while a clean world disables the Save face', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    act(() => { ctx().loadWorldData(WORLD, false, { stored: true }); });
+    expect(button('Save')).toBeDisabled();
+    expect(button('Save options')).toBeEnabled();
   });
 
   it('names the world after a chevron, trimmed, and follows a rename', () => {
@@ -118,16 +129,16 @@ describe('World Editor app bar (desktop)', () => {
   it('draws no footer on Overview, and only the tab\'s own actions on Entities', () => {
     renderWorldEditorBench(WORLD, 'simple', { initialTab: 'overview' });
     expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: 'Export World' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Save options' })).toHaveLength(1);
     expect(screen.queryByRole('button', { name: 'Save to Library' })).toBeNull();
 
     openEditorTab(/^Entities$/);
     expect(button('Save to Library')).toBeInTheDocument();
     // The adds live in the + menu, not the footer.
     expect(screen.queryByRole('button', { name: 'Add Entity' })).toBeNull();
-    // The bar's Save and Export World are the only ones: the footer adds neither.
+    // The bar's Save pair is the only one: the footer adds none.
     expect(screen.getAllByRole('button', { name: 'Save' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: 'Export World' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Save options' })).toHaveLength(1);
   });
 });
 
@@ -136,11 +147,12 @@ describe('World Editor footer (mobile)', () => {
   beforeEach(() => { undoMobile = asMobile(); });
   afterEach(() => undoMobile());
 
-  it('keeps Export World and Optimize Images in the More world actions menu in Advanced, and Save', () => {
+  it('keeps Optimize Images as an icon in Advanced, and Export World in the Save menu', async () => {
     renderWorldEditorBench(WORLD, 'advanced', { initialTab: 'overview' });
-    fireEvent.click(button('More world actions'));
-    expect(button('Export World')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'More world actions' })).toBeNull();
     expect(button('Optimize Images')).toBeInTheDocument();
     expect(button('Save')).toBeInTheDocument();
+    fireEvent.click(button('Save options'));
+    expect(await screen.findByRole('button', { name: 'Export World' })).toBeInTheDocument();
   });
 });

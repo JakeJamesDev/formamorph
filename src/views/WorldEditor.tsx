@@ -48,8 +48,8 @@ import { SurfaceAppBar } from '@/components/SurfaceAppBar';
 import { TruncatedText } from '@/components/TruncatedText';
 import { Separator } from '@/components/ui/separator';
 import { ModeSelect } from '@/components/ui/mode-select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Save, ImageDown, Loader2, Search, MoreHorizontal, ChevronRight } from "lucide-react";
+import { SplitButton } from '@/components/ui/split-button';
+import { Save, ImageDown, Loader2, Search, ChevronRight } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -185,7 +185,6 @@ const WorldEditorInner = ({
   };
   // null = idle; 'scanning' = measuring before the choice dialog; then the live per-image encode progress.
   const [optimizeProgress, setOptimizeProgress] = useState<{ done: number; total: number } | 'scanning' | null>(null);
-  const [worldMenuOpen, setWorldMenuOpen] = useState(false);
   const { exportWorld, dialog: worldExportDialog } = useWorldExport(promptWorld);
   // Cancels an in-flight optimize when the editor closes: without it the orphaned run keeps the shared encode
   // worker busy for the whole world and then writes its stale click-time snapshot back into GameDataContext,
@@ -1001,63 +1000,40 @@ const WorldEditorInner = ({
       {findButton}
     </div>
   );
-  const optimizeLabel = optimizeProgress === null ? 'Optimize Images'
+  const optimizing = optimizeProgress !== null;
+  const optimizeTip = optimizeProgress === null ? 'Optimize Images: downscale oversized images to conserve file size'
     : optimizeProgress === 'scanning' ? 'Scanning…' : `Optimizing ${optimizeProgress.done}/${optimizeProgress.total}…`;
-  const optimizeIcon = optimizeProgress !== null
-    ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
-    : <ImageDown className="mr-2 h-4 w-4 shrink-0" />;
-  // Advanced gathers the world actions in a menu; Simple has only Export World, as an icon.
-  const worldActions = advanced ? (
-    <Popover open={worldMenuOpen} onOpenChange={setWorldMenuOpen}>
-      <Tip tip="More world actions">
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-      </Tip>
-      <PopoverContent align="end" className="w-56 p-1">
-        <div className="flex flex-col">
-          <Button
-            variant="ghost"
-            className="h-8 justify-start text-meta"
-            onClick={() => { setWorldMenuOpen(false); exportCurrentWorld(); }}
-          >
-            <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />
-            Export World
-          </Button>
-          {/* An oversized upload is already offered Optimize/Downscale as it lands, so this is the bulk pass
-              over a world that is already large. */}
-          <Tip tip="Downscale oversized images to conserve file size" labelsChild={false}>
-            <Button
-              variant="ghost"
-              className="h-8 justify-start text-meta"
-              disabled={optimizeProgress !== null}
-              onClick={() => { setWorldMenuOpen(false); void optimizeImages(); }}
-            >
-              {optimizeIcon}
-              {optimizeLabel}
-            </Button>
-          </Tip>
-        </div>
-      </PopoverContent>
-    </Popover>
-  ) : (
-    <Tip tip="Export World">
-      <Button variant="ghost" size="icon" onClick={exportCurrentWorld}>
-        <ActionIcon.export className="h-4 w-4" />
+  // An oversized upload is already offered Optimize/Downscale as it lands, so this is the bulk pass over a
+  // world that is already large. aria-disabled, not disabled: a disabled button takes no pointer events, and
+  // the tooltip carries the progress.
+  const optimizeButton = advanced && (
+    <Tip tip={optimizeTip}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="aria-disabled:opacity-50"
+        aria-label="Optimize Images"
+        aria-disabled={optimizing}
+        aria-busy={optimizing}
+        onClick={() => { if (!optimizing) void optimizeImages(); }}
+      >
+        {optimizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
       </Button>
     </Tip>
   );
-  // Enabled only when there is something to save; that is the one save-state signal on either layout.
-  const saveProps = { onClick: saveWorld, disabled: !isWorldDirty, 'data-tour-anchor': 'save' };
+  // Both modes and both layouts reach Export World here.
+  const saveMenu = [{
+    label: 'Export World',
+    icon: <ActionIcon.export className="mr-2 h-4 w-4 shrink-0" />,
+    onClick: exportCurrentWorld,
+  }];
+  // The face is enabled only when there is something to save; the menu half stays available.
+  const saveProps = {
+    variant: 'default', align: 'end', tourAnchor: 'save', menu: saveMenu, menuLabel: 'Save options',
+    onClick: saveWorld, faceDisabled: !isWorldDirty,
+  } as const;
   const saveButton = (
-    <Tip tip="Save (Ctrl+S)" labelsChild={false}>
-      <Button size="sm" {...saveProps}>
-        <Save className="h-4 w-4 mr-2" />
-        Save
-      </Button>
-    </Tip>
+    <SplitButton {...saveProps} side="bottom" icon={<Save className="h-4 w-4 mr-2" />} label="Save" faceTip="Save (Ctrl+S)" />
   );
   // Save's enabled state is the only save signal; the bar names the world being edited.
   const worldName = worldOverview.name.trim();
@@ -1104,7 +1080,7 @@ const WorldEditorInner = ({
           <Separator orientation="vertical" className="mx-1 h-5" />
           {modeSelect}
           <Separator orientation="vertical" className="mx-1 h-5" />
-          {worldActions}
+          {optimizeButton}
           {benchButton}
           {saveButton}
         </>
@@ -1165,12 +1141,8 @@ const WorldEditorInner = ({
     <div className="p-3 border-t flex flex-wrap items-center gap-2">
       {tabActions}
       <div className="ml-auto flex items-center gap-2">
-        {worldActions}
-        <Tip tip="Save">
-          <Button size="icon" {...saveProps}>
-            <Save className="h-4 w-4" />
-          </Button>
-        </Tip>
+        {optimizeButton}
+        <SplitButton {...saveProps} size="icon" icon={<Save className="h-4 w-4" />} faceTip="Save" />
       </div>
     </div>
   );

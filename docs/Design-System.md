@@ -1004,9 +1004,10 @@ The live reference draws the World Editor's registry as the rail beside sample p
 
 ### Composition
 
-- The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the History pill; the Mode Select; Export World as an icon in Simple, or a **More world actions** menu with Export World and Optimize Images in Advanced; the Test Bench; Save.
+- The World Editor reads: back, **World Editor**, a chevron, the world's name; the **Search World** field; the History pill; the Mode Select; Optimize Images as an icon button in Advanced; the Test Bench; Save with its menu.
 - The title is the surface's name. The world is the surface's subject, so its name follows the title. No tab's open item ever does.
-- Optimize Images shows its progress in its own menu row while it runs.
+- Save is a split button. The face saves, and the chevron opens a menu that holds Export World in both modes.
+- Optimize Images shows a spinner while it runs, and its tooltip shows the progress.
 - Tour anchors, tutorial notes and Take Me There targets ride the controls they always named.
 
 ### Production mapping
@@ -1019,6 +1020,7 @@ The live reference draws the World Editor's registry as the rail beside sample p
 | The mode | `ModeSelect` in [`mode-select.tsx`](../src/components/ui/mode-select.tsx) |
 | The cut-off tooltip on the subject | `TruncatedText` in [`TruncatedText.tsx`](../src/components/TruncatedText.tsx) |
 | The search field | `EditorFindBar` with `layout="docked"` in [`EditorFindBar.tsx`](../src/components/editor/EditorFindBar.tsx) |
+| Save and its menu | `SplitButton` with `variant="default"` and `side="bottom"` in [`split-button.tsx`](../src/components/ui/split-button.tsx) |
 | The World Editor's bar | `WorldEditor` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
 | Isolated reference | [`SurfaceAppBarReference.tsx`](../src/components/design-system/SurfaceAppBarReference.tsx) |
 
@@ -1036,11 +1038,11 @@ The bar is desktop-only. On mobile the surface keeps its card header, and its fo
 | Narrow window | When the end column needs more than a third of the bar, the field narrows and moves off center. It never overlaps the controls beside it. |
 | Searching | The field shows the match count, and the arrows step through the matches. Escape clears it. |
 | Search expanded | The full Find and Replace bar covers the row from the field's slot. The other controls do not move. |
-| Unsaved changes | Save is enabled. No text says so. |
-| Saved | Save is disabled. No text says so. |
-| Simple | Export World as one icon button. |
-| Advanced | **More world actions** opens a menu with Export World and Optimize Images. |
-| Optimizing | The Optimize Images row shows a spinner and the count, and is disabled. |
+| Unsaved changes | The Save face is enabled. No text says so. |
+| Saved | The Save face is disabled. The chevron stays enabled. |
+| Simple | The Save menu holds Export World. No other world action shows. |
+| Advanced | The Save menu holds Export World. Optimize Images is an icon button before the Test Bench. |
+| Optimizing | The Optimize Images icon turns into a spinner, and its tooltip shows the count. A second click does nothing. |
 | Tour running | The Mode Select is disabled; its tooltip says to end the tour. |
 
 The live reference draws the World Editor's bar over sample controls and a sample world name. Every control changes only the reference's own state, and it never reads or writes authored worlds, saves, library data, or storage.
