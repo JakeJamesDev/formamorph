@@ -1,5 +1,6 @@
 import { Composition } from 'remotion';
 import { CANVAS, type Layout } from './layout';
+import { SceneLibrary } from './library';
 import { FPS, TOTAL_FRAMES } from './timeline';
 import { Trailer } from './Trailer';
 
@@ -21,5 +22,6 @@ export const Root = () => (
         {...CANVAS[layout]}
       />
     ))}
+    <SceneLibrary />
   </>
 );

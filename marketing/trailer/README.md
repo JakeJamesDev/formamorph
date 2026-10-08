@@ -38,6 +38,24 @@ Each line reports size, frame rate, length and codecs. A mismatch prints `FAIL` 
 
 Rendered videos are not tracked.
 
+## Scene library
+
+The studio's **Scene-library** folder lists every scene type and transition in both layouts, for example `KineticText-wide` and `KineticText-tall`. Each entry uses sample copy from the storyboard.
+
+| Scene | File | Takes |
+|---|---|---|
+| Kinetic text card | `src/scenes/KineticText.tsx` | One or two lines, an optional blurred still plate |
+| Frame camera | `src/scenes/FrameScene.tsx` | A shot, a camera path per layout, an optional callout region and caption |
+| Stack | `src/scenes/StackScene.tsx` | Two panes, each with a shot, a camera path and a caption. Tall stacks top and bottom; wide sits side by side |
+| Typed prompt, then narration | `src/scenes/TypedNarration.tsx` | A player line, the narration, an optional shot behind (`before`, then `after`) |
+| Cut, fade, wipe | `src/transitions.tsx` | `TransitionName`; a cut has no overlap, a fade overlaps 15 frames, a wipe 18 |
+
+- 🔤 Copy uses the app's text size roles (`typeRoles` in `src/theme.ts`) scaled to the canvas, in Lexend.
+- 🎥 A camera path runs `from` to `to`. Add `via` stops for a move in stages, such as a push to the input and then to the narration.
+- 🖼️ Any shot prop takes one shot, or `{ wide, tall }` when the tall cut uses its own recapture (`LayoutShot` in `src/shots.ts`).
+- ✍️ The typed scene is a stylized overlay, never a copy of the real input. It throws if the copy does not fit the scene's frames.
+- 🧩 Add a scene by adding an entry to `ENTRIES` in `src/library.tsx`.
+
 ## Capture UI frames
 
 ```bash
@@ -66,11 +84,14 @@ A shot's `kind` is `page` (navigate and wait for `ready`) or `game` (load the de
 | Part | File |
 |---|---|
 | Scene list and timing, shared by both cuts | `src/timeline.tsx` |
-| The two compositions | `src/Root.tsx` |
+| The two compositions and the scene library folder | `src/Root.tsx` |
+| Scene library entries for the studio | `src/library.tsx` |
 | Title card scene | `src/scenes/TitleCard.tsx` |
-| UI frame scene: a captured shot under a moving camera | `src/scenes/FrameScene.tsx` |
-| The scene transition | `src/transitions.ts` |
-| Fonts and colors | `src/theme.ts` |
+| Scenes: kinetic text, frame camera, stack, typed narration | `src/scenes/` |
+| Shared parts: the moving camera and the copy block | `src/parts/` |
+| Enter and exit timing | `src/motion.ts` |
+| Transitions | `src/transitions.tsx` |
+| Fonts, type roles and colors | `src/theme.ts` |
 | Capture list and the demo world, scene and seed | `captures.json` |
 | Capture and diff script | `scripts/capture.mjs` |
 | Captured UI shots | `public/shots/` |
