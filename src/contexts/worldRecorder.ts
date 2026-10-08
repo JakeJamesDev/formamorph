@@ -1,6 +1,9 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
-  canRedo, canUndo, createHistory, diffSlice, jumpTo, markSaved, record, replaceRecords, WORLD_SLICES,
+  createContext, startTransition, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore,
+} from 'react';
+import {
+  beginGroup as openGroup, canRedo, canUndo, createHistory, diffSlice, endGroup as closeGroup, jumpTo, markSaved, record,
+  replaceRecords, WORLD_SLICES,
   type EditorHistory, type SliceEdit, type SliceName, type Step, type StepKey, type WorldSlices,
 } from '@/lib/editorHistory';
 
@@ -16,7 +19,7 @@ export interface WriteIntent {
   history?: boolean;
   /** A pass that follows the commit before it: joins that commit's Step, or stays unrecorded with it. */
   follow?: boolean;
-  /** What the write is about, so a run of writes to one record and field merges into one Step. */
+  /** The record and field the write is about. The first key set before a commit wins. */
   key?: StepKey;
   /** Save's link stamps: never recorded, and the Steps that hold the stamped records take the stamped copies. */
   stamp?: boolean;
@@ -102,12 +105,18 @@ export interface WorldHistoryControls {
   redo(): void;
   /** Moves the world to a list position. 0 is the World opened head. */
   jump(position: number): void;
-  /** Keys the next write, which must follow in the same event. */
+  /** Names the record and field the next write is about, for a write that goes through a whole-slice setter. */
   keyNext(key: StepKey): void;
   /** Starts the stack over, as when the editor closes. */
   clear(): void;
   /** Hears each move as it happens. Returns the call that stops listening. */
   onMove(listener: (move: HistoryMoveEvent) => void): () => void;
+  /** Opens a group: every write until `endGroup` is one Step, labeled when a label is given. */
+  beginGroup(label?: string): void;
+  /** Closes the group after every write already queued has committed, so the gesture's last one lands inside. */
+  endGroup(): Promise<void>;
+  /** Runs an operation as one labeled Step, however many ticks it writes across. */
+  batch(label: string, run: () => void | Promise<void>): Promise<void>;
 }
 
 /**
@@ -154,9 +163,9 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
     }
     if (!edits.length) return;
     const at = follow ? last.current.tick : currentTick();
-    // A key whose slice did not change belongs to a write that bailed, so it never keys another one.
-    const keyed = !follow && key && edits.some((edit) => edit.slice === key.slice) ? key : undefined;
-    store.set(record(store.get(), edits, { tick: at, key: keyed }));
+    // A key whose record did not change belongs to a write that bailed, so it never keys another one.
+    const fits = !follow && key && edits.some((edit) => keyHolders(key).includes(edit.slice));
+    store.set(record(store.get(), edits, { tick: at, key: fits ? key : undefined }));
     last.current = { recorded: true, tick: at };
   }, [slices, worldId, store, reset]);
 
@@ -207,29 +216,60 @@ export function useWorldRecorder(slices: WorldSlices, worldId: string | null, se
   const undo = useCallback(() => jump(store.get().cursor - 1), [jump, store]);
   const redo = useCallback(() => jump(store.get().cursor + 1), [jump, store]);
 
-  const keyNext = useCallback((key: StepKey) => { intent.current = { ...intent.current, key }; }, []);
+  const keyNext = useCallback((key: StepKey) => { intent.current.key ??= key; }, []);
+  const beginGroup = useCallback((label?: string) => store.set(openGroup(store.get(), label)), [store]);
+  // A transition commits after the writes queued before it, and this effect runs after the recorder's.
+  const endWaiters = useRef<(() => void)[]>([]);
+  const [endRequest, setEndRequest] = useState(0);
+  useLayoutEffect(() => {
+    if (!endWaiters.current.length) return;
+    store.set(closeGroup(store.get()));
+    const waiters = endWaiters.current;
+    endWaiters.current = [];
+    for (const resolve of waiters) resolve();
+  }, [endRequest, store]);
+  const endGroup = useCallback(() => new Promise<void>((resolve) => {
+    endWaiters.current.push(resolve);
+    startTransition(() => setEndRequest((n) => n + 1));
+  }), []);
+  const batch = useCallback(async (label: string, run: () => void | Promise<void>) => {
+    beginGroup(label);
+    try {
+      await run();
+    } finally {
+      await endGroup();
+    }
+  }, [beginGroup, endGroup]);
 
   const controls = useMemo<WorldHistoryControls>(
-    () => ({ store, undo, redo, jump, keyNext, clear, onMove }),
-    [store, undo, redo, jump, keyNext, clear, onMove],
+    () => ({ store, undo, redo, jump, keyNext, clear, onMove, beginGroup, endGroup, batch }),
+    [store, undo, redo, jump, keyNext, clear, onMove, beginGroup, endGroup, batch],
   );
   return { intent, controls, disarm, beginSave };
 }
 
+/** The slices a keyed record can live in: a placeholder also sits inside an entity or a book as a Copy. */
+const keyHolders = (key: StepKey): SliceName[] =>
+  key.slice === 'placeholders' ? ['placeholders', 'entities', 'dictionaries'] : [key.slice];
+
 export const WorldHistoryContext = createContext<WorldHistoryControls | null>(null);
 
-/** Only the moves and the key channel, which keep one identity, so a caller does not re-render when the history changes. */
-export function useWorldHistoryMoves(): Pick<WorldHistoryControls, 'undo' | 'redo' | 'jump' | 'keyNext' | 'clear' | 'onMove'> {
+/** The moves, the key, the groups, clear and the move listener, which keep one identity, so a caller does not re-render when the history changes. */
+export function useWorldHistoryMoves(): Omit<WorldHistoryControls, 'store'> {
   const controls = useContext(WorldHistoryContext);
   if (!controls) throw new Error('useWorldHistoryMoves must be used within a GameDataProvider');
   return controls;
 }
 
+/** The same, or null under a library editor's NoWorld. */
+export const useWorldHistoryMovesOptional = (): Omit<WorldHistoryControls, 'store'> | null =>
+  useContext(WorldHistoryContext);
+
 /** The open world's history: where the cursor stands, the Steps, and the moves. Throws outside a world. */
 export function useWorldHistory() {
   const controls = useContext(WorldHistoryContext);
   if (!controls) throw new Error('useWorldHistory must be used within a GameDataProvider');
-  const { store, undo, redo, jump, keyNext, clear, onMove } = controls;
+  const { store, ...moves } = controls;
   const history = useSyncExternalStore(store.subscribe, store.get);
   return {
     canUndo: canUndo(history),
@@ -237,6 +277,6 @@ export function useWorldHistory() {
     steps: history.steps,
     cursor: history.cursor,
     saved: history.saved,
-    undo, redo, jump, keyNext, clear, onMove,
+    ...moves,
   };
 }

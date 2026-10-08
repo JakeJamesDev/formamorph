@@ -2,6 +2,7 @@ import * as React from "react"
 import { HexColorPicker } from "react-colorful"
 
 import { cn } from "@/lib/utils"
+import { useGestureStart } from "@/components/ui/gesture-group"
 import { parseHex6 } from "@/lib/hslColor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,7 @@ export function ColorPicker({
   "aria-describedby": ariaDescribedBy,
 }: ColorPickerProps) {
   const valueId = React.useId()
+  const startGesture = useGestureStart()
   const [draft, setDraft] = React.useState(value)
   React.useEffect(() => setDraft(value), [value])
   const revertDraft = () => setDraft(value)
@@ -76,7 +78,10 @@ export function ColorPicker({
           "[&_[role=slider]:focus-visible]:ring-2 [&_[role=slider]:focus-visible]:ring-ring [&_[role=slider]:focus-visible]:ring-inset",
         )}
       >
-        <HexColorPicker color={value} onChange={commit} />
+        {/* A drag across the square or the hue bar is one undo Step. */}
+        <div onPointerDown={startGesture}>
+          <HexColorPicker color={value} onChange={commit} />
+        </div>
         <div className="flex items-center gap-2">
           <Input
             aria-label="Hex Color"

@@ -206,7 +206,7 @@ const WorldEditorInner = ({
         controller.signal,
       );
       // Never apply after an abort — the editor is gone or the run is stale.
-      if (w && !controller.signal.aborted) applyDownscaled(w);
+      if (w && !controller.signal.aborted) await historyMoves.batch('Optimize Images', () => applyDownscaled(w));
     } finally {
       optimizeAbortRef.current = null;
       setOptimizeProgress(null);
