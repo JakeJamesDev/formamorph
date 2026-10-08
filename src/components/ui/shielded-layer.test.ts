@@ -28,7 +28,7 @@ describe('the shielded layer', () => {
     const mount = ensureShieldedLayer();
     expect(ensureShieldedLayer()).toBe(mount);
     expect(mount.parentElement?.parentElement).toBe(document.body);
-    expect(document.querySelectorAll('[data-shielded-layer]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-shielded-layer="window"]')).toHaveLength(1);
   });
 
   it('paints above dialogs and under the chip typeahead and tooltips', () => {
@@ -50,6 +50,26 @@ describe('the shielded layer', () => {
     expect(mount.inert).toBe(false);
     // The rise waits for the closing dialog's exit animation.
     expect(host.style.transition).toBe('z-index 0s linear 200ms');
+  });
+
+  it('gives toasts their own host, above the window layer and below the chip typeahead', () => {
+    const toasts = ensureShieldedLayer('toasts');
+    const windowLayer = ensureShieldedLayer();
+    expect(toasts).not.toBe(windowLayer);
+    expect(ensureShieldedLayer('toasts')).toBe(toasts);
+    expect(Number(toasts.parentElement!.style.zIndex)).toBeGreaterThan(Number(windowLayer.parentElement!.style.zIndex));
+    expect(Number(toasts.parentElement!.style.zIndex)).toBeLessThan(70);
+    expect(inShieldedLayer(toasts)).toBe(true);
+  });
+
+  it('keeps the toasts layer above dialogs and live while the window layer is covered', () => {
+    const toasts = ensureShieldedLayer('toasts');
+    const zIndex = toasts.parentElement!.style.zIndex;
+    coverShieldedLayer(true);
+    expect(toasts.parentElement!.style.zIndex).toBe(zIndex);
+    expect(Number(zIndex)).toBeGreaterThan(50);
+    expect(toasts.inert).not.toBe(true);
+    coverShieldedLayer(false);
   });
 
   it('carries aria-live, which keeps a modal dialog from hiding it', () => {
