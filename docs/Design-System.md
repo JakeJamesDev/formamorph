@@ -1071,6 +1071,7 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 - Mute the verb and type with opacity, not a gray color. Opacity stacks with an undone row's dimming, so a muted part never looks brighter than its row.
 - **A row with no name has one line:** the verb, the type and the field chip, not muted. A labeled batch shows its label.
 - The row's accessible name is the whole label in its natural order, such as "Edit Entity Mara: Player Description".
+- **A cut-off row has its own tip,** not the shared `Tip`. It opens on the left on hover and on keyboard focus, and shows the same parts in the same order. The name wraps and the chip wraps under it, 18rem wide at most. A row that shows in full opens none. The tip adds nothing to the accessible name.
 - The popover is 20rem wide, at most 90% of the window.
 - Mark the current row with the accent fill and a **Now** tag. Mark the head with the fill only.
 - A click on a row moves the document to that point and keeps the list open. The click handler does nothing else.
@@ -1081,6 +1082,7 @@ The live reference draws the World Editor's bar over sample controls and a sampl
 | Need | Component |
 | --- | --- |
 | The pill, the icon, the popover and the list | `HistoryControls` and `HistoryList` in [`HistoryControls.tsx`](../src/components/editor/HistoryControls.tsx) |
+| The row tip | `StepRowTip` in [`HistoryControls.tsx`](../src/components/editor/HistoryControls.tsx), on `createTooltipHandle` from [`tooltip.tsx`](../src/components/ui/tooltip.tsx) |
 | The World Editor's binding to the open world | `HistoryPill` in [`HistoryPill.tsx`](../src/components/editor/HistoryPill.tsx) |
 | Step labels | `stepLabelParts` and `stepLabel` in [`editorHistoryLabels.ts`](../src/lib/editorHistoryLabels.ts) |
 | Row style | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |

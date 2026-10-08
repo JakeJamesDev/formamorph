@@ -37,6 +37,9 @@ function TooltipProvider({ children }: { children: React.ReactNode }) {
 
 const Tooltip = TooltipPrimitive.Root
 
+/** Joins many triggers to one `Tooltip` root, each trigger with its own payload. */
+const createTooltipHandle = TooltipPrimitive.createHandle
+
 /** Composes onto an existing control through `render`, so no wrapper element enters the DOM. The
  *  rendered child must forward its ref (the `formamorph/composed-forwardref` lint rule checks this). */
 const TooltipTrigger = TooltipPrimitive.Trigger
@@ -151,6 +154,8 @@ function FlashTip({ anchor, tip, open, side = "top" }: {
 }
 
 export {
+  // eslint-disable-next-line react-refresh/only-export-components
+  createTooltipHandle,
   FlashTip,
   Tip,
   Tooltip,

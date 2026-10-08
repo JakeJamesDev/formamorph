@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Tip } from '@/components/ui/tooltip';
+import {
+  createTooltipHandle, Tip, Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { MENU_ROW } from '@/components/menuRow';
 import { joinLabelParts, type StepLabelParts } from '@/lib/editorHistoryLabels';
 import type { TargetAttribute } from '@/lib/surface/surfaceTargets';
@@ -37,16 +39,20 @@ const SAVED_MARKER = (
 // Brings the current row into view when the list opens or the cursor moves off-screen.
 const showRow = (row: HTMLElement | null) => row?.scrollIntoView?.({ block: 'nearest' });
 
-/** A Step's label in parts: a named row sets its name and field chip over the muted verb and type. */
-function StepRowLabel({ parts: { verb, type, name, field } }: { parts: StepLabelParts }) {
+/**
+ * A Step's label in parts: a named row sets its name and field chip over the muted verb and type.
+ * `wrapped` is the tip's form: the name wraps instead of truncating, and the chip wraps under it.
+ */
+function StepRowLabel({ parts: { verb, type, name, field }, wrapped = false }: { parts: StepLabelParts; wrapped?: boolean }) {
   // Flex drops the space nodes from layout; they keep the row's text readable as words.
   const verbType = <><span className="shrink-0">{verb}</span>{type && <> <span className="shrink-0">{type}</span></>}</>;
   const chip = field && <> <span className="shrink-0 rounded border px-1 text-meta opacity-80">{field}</span></>;
-  if (!name) return <span className="flex min-w-0 flex-grow items-baseline gap-1">{verbType}{chip}</span>;
+  const line = cn('flex min-w-0 items-baseline gap-1', wrapped && 'flex-wrap');
+  if (!name) return <span className={cn(line, 'flex-grow')} data-step-label="">{verbType}{chip}</span>;
   return (
-    <span className="flex min-w-0 flex-grow flex-col">
-      <span className="flex min-w-0 items-baseline gap-1">
-        <span className="min-w-0 truncate italic">{name}</span>
+    <span className="flex min-w-0 flex-grow flex-col" data-step-label="">
+      <span className={line}>
+        <span className={cn('min-w-0 italic', wrapped ? 'break-words' : 'truncate')}>{name}</span>
         {chip}
       </span>
       {' '}
@@ -56,11 +62,48 @@ function StepRowLabel({ parts: { verb, type, name, field } }: { parts: StepLabel
   );
 }
 
+/** Whether any part of a row's label is cut off at the row's current width. */
+const labelCutOff = (row: Element) => {
+  const label = row.querySelector('[data-step-label]');
+  return !!label && [label, ...label.querySelectorAll('*')].some((part) => part.scrollWidth > part.clientWidth);
+};
+
+type StepTipHandle = ReturnType<typeof createTooltipHandle<StepLabelParts>>;
+
+/** The whole label of a cut-off row, beside the list. A row shown in full opens none. */
+function StepRowTip({ handle }: { handle: StepTipHandle }) {
+  return (
+    <Tooltip
+      handle={handle}
+      onOpenChange={(next, details) => {
+        // Measured at open time: the popover width and the text can change after render.
+        const cutOff = !!details.trigger && labelCutOff(details.trigger);
+        if (!next || cutOff) return;
+        details.cancel();
+        // A move from a cut-off row's open tip onto a row that fits would otherwise keep that tip.
+        handle.close();
+      }}
+    >
+      {({ payload }) => payload && (
+        <TooltipPortal>
+          <TooltipPositioner side="left">
+            <TooltipPopup className="max-w-72 text-label" data-step-tip="">
+              <StepRowLabel parts={payload} wrapped />
+            </TooltipPopup>
+          </TooltipPositioner>
+        </TooltipPortal>
+      )}
+    </Tooltip>
+  );
+}
+
 /** The head row, every Step, the Saved marker and the dimmed future. A click on a row only jumps. */
 export function HistoryList({ history }: { history: HistoryView }) {
   const { rows, cursor, saved, jump } = history;
+  const [tipHandle] = useState(() => createTooltipHandle<StepLabelParts>());
   return (
     <div className="flex flex-col">
+      <StepRowTip handle={tipHandle} />
       <button
         type="button"
         className={cn(MENU_ROW, 'text-meta text-muted-foreground', cursor === 0 && 'bg-accent')}
@@ -78,19 +121,25 @@ export function HistoryList({ history }: { history: HistoryView }) {
         return (
           // eslint-disable-next-line react/no-array-index-key -- a Step has no id; the list is its position
           <div key={i}>
-            <button
-              type="button"
-              className={cn(MENU_ROW, !done && 'text-muted-foreground/60', current && 'bg-accent')}
-              ref={current ? showRow : undefined}
-              onClick={() => jump(i + 1)}
-              aria-label={done ? label : `${label} (undone)`}
-              aria-current={current ? 'step' : undefined}
-              data-undone={done ? undefined : 'true'}
-            >
-              <StepRowLabel parts={row} />
-              {!done && <span className="sr-only">(undone)</span>}
-              {current && <span className="text-meta text-muted-foreground">Now</span>}
-            </button>
+            <TooltipTrigger
+              handle={tipHandle}
+              payload={row}
+              render={(
+                <button
+                  type="button"
+                  className={cn(MENU_ROW, !done && 'text-muted-foreground/60', current && 'bg-accent')}
+                  ref={current ? showRow : undefined}
+                  onClick={() => jump(i + 1)}
+                  aria-label={done ? label : `${label} (undone)`}
+                  aria-current={current ? 'step' : undefined}
+                  data-undone={done ? undefined : 'true'}
+                >
+                  <StepRowLabel parts={row} />
+                  {!done && <span className="sr-only">(undone)</span>}
+                  {current && <span className="text-meta text-muted-foreground">Now</span>}
+                </button>
+              )}
+            />
             {saved === i + 1 && SAVED_MARKER}
           </div>
         );
