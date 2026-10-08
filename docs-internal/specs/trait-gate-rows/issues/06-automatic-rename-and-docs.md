@@ -1,6 +1,6 @@
 # 06: Automatic rename and docs
 
-Status: ready-for-human
+Status: done
 Blocked by: 03, 04, 05
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: low

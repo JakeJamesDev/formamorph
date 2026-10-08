@@ -1,6 +1,7 @@
 # Trait Gate Rows and the Availability Rule
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-10-07. Tickets 01-07 done. Last landing 96b41f91. Gates green on 2026-10-07.
 Spec session: trait-gate-rows — spec
 
 ## Problem Statement
