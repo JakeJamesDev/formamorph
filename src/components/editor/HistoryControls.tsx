@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, History, Redo2, Save, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tip } from '@/components/ui/tooltip';
 import { MENU_ROW } from '@/components/menuRow';
@@ -160,12 +161,10 @@ export function HistoryControls({ history, layout, disabled = false, openRequest
             </span>
           )}
         </div>
-        {/* Native scroll box: the popover has a max height only, which a ScrollArea cannot resolve. */}
-        <div className="max-h-[50vh] overflow-y-auto">
+        <ScrollArea className="max-h-[50vh]">
           <HistoryList history={history} />
-        </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );
 }
-// scroll-guard: allow popover-list: popover-hosted; dialog scroll lock can intercept wheel input
